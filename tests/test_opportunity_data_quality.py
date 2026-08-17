@@ -840,11 +840,11 @@ class TestOnCampusMeansOnACampus:
             (o.get("source"), o.get("id"))
             for o in _load_data()
             if o.get("source_type") == "faculty_research"
-            and o.get("on_campus") is not True
+            and o.get("on_campus") is False
         ]
         assert not offenders, (
-            f"{len(offenders)} faculty records say they are not on a campus; "
-            f"a professor's lab is on their university's campus. "
+            f"{len(offenders)} faculty contact records assert off-campus; "
+            f"a directory without opening/location evidence must stay unknown. "
             f"First 3: {offenders[:3]}"
         )
 
@@ -853,6 +853,7 @@ class TestOnCampusMeansOnACampus:
             (o.get("source"), o.get("id"))
             for o in _load_data()
             if o.get("school") is not None
+            and o.get("source_type") != "faculty_research"
             and o.get("source") not in self.SELF_COMPUTED_SOURCES
             and o.get("on_campus") is not True
         ]

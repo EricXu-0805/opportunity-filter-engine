@@ -121,12 +121,12 @@ def test_normalize_produces_chem_record_with_keywords():
     assert opp["id"].startswith("faculty-ucb-chem-")
     assert opp["contact_email"] == "brooks.abel@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
-    assert opp["eligibility"]["majors"] == CHEM_CONFIG["majors"]
+    assert opp["eligibility"]["majors"] == []
     # research-interest enrichment yields topical keywords, not the lite fallback.
     assert "organic chemistry" in opp["keywords"]
     assert "catalysis" in opp["keywords"]
     # external campus, same as the other UCB collectors.
-    assert opp["on_campus"] is True
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
 
 

@@ -19,7 +19,7 @@ vi.mock('@/lib/api', async () => {
 vi.mock('@/lib/match-cache', async () => {
   const actual = await vi.importActual<typeof import('@/lib/match-cache')>('@/lib/match-cache');
   return {
-    MATCH_VIEW_CONTRACT_VERSION: 'match-view-v2-contact-trust',
+    MATCH_VIEW_CONTRACT_VERSION: 'match-view-v3-faculty-trust',
     hasValidMatchResultIdentity: actual.hasValidMatchResultIdentity,
     readMatchCache: mocks.readMatchCache,
     writeMatchCache: mocks.writeMatchCache,
@@ -106,7 +106,7 @@ function response(
     has_more: false,
     next_cursor: null,
     result_set_id: `set-${id}`,
-    contract_version: 'match-view-v2-contact-trust',
+    contract_version: 'match-view-v3-faculty-trust',
     view_start: 0,
     filtered_total: 1,
     view_counts: {

@@ -179,7 +179,9 @@ def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
     rec = j.fetch_ahs()[0]
     assert "Vocal Fatigue" in rec["keywords"]
     assert rec["department"] == "Department of Speech and Hearing Science"
-    assert rec["eligibility"]["majors"]  # routed majors present
+    # Department routing remains a research-topic signal; it is not evidence
+    # that a currently available opening has declared eligible majors.
+    assert rec["eligibility"]["majors"] == []
 
 
 def test_education_routes_office_to_department():

@@ -14,7 +14,7 @@ describe('MVP public release scope', () => {
     //     main, and migration 026 dropped the orders RLS policies and revoked
     //     anon/authenticated access. The flag is not the missing part.
     expect(RELEASE_SCOPE).toEqual({
-      matchAiRefine: true,
+      matchAiRefine: false,
       crossSchoolMatching: true,
       compare: true,
       resumeRenovate: true,

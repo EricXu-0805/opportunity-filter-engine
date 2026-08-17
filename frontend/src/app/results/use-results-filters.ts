@@ -2,7 +2,11 @@
 
 import { useMemo } from 'react';
 import { matchesScope } from '@/lib/discovery-scope';
-import { daysUntil, expandSearchAliases } from '@/lib/match-utils';
+import {
+  daysUntil,
+  expandSearchAliases,
+  facultySafeInternational,
+} from '@/lib/match-utils';
 import type { MatchesResponse, MatchResult } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import type { Filters, SortKey, Tab } from './types';
@@ -76,11 +80,14 @@ export function useResultsFilters({
       results = results.filter((m) => interactions.get(m.opportunity.id) !== 'dismissed');
     }
     if (filters.paid) {
-      results = results.filter((m) =>
-        filters.paid === 'yes'
-          ? m.opportunity.paid === 'yes' || m.opportunity.paid === 'stipend'
-          : m.opportunity.paid === 'no' || m.opportunity.paid === 'unknown',
-      );
+      results = results.filter((m) => {
+        const paid = m.opportunity.source_type === 'faculty_research'
+          ? 'unknown'
+          : m.opportunity.paid;
+        return filters.paid === 'yes'
+          ? paid === 'yes' || paid === 'stipend'
+          : paid === 'no' || paid === 'unknown';
+      });
     }
     if (filters.intl) {
       // 'no' is the labeled "Show all (incl. US-only)" option — a deliberate
@@ -88,7 +95,7 @@ export function useResultsFilters({
       // carried no eligibility object must not throw the whole results page.
       results = results.filter((m) =>
         filters.intl === 'yes'
-          ? m.opportunity.eligibility?.international_friendly === 'yes'
+          ? facultySafeInternational(m.opportunity) === 'yes'
           : true,
       );
     }
@@ -96,13 +103,21 @@ export function useResultsFilters({
       results = results.filter((m) => m.opportunity.source === filters.source);
     }
     if (filters.onCampus) {
-      results = results.filter((m) =>
-        filters.onCampus === 'yes' ? m.opportunity.on_campus : !m.opportunity.on_campus,
-      );
+      results = results.filter((m) => {
+        const onCampus = m.opportunity.source_type === 'faculty_research'
+          ? null
+          : m.opportunity.on_campus;
+        return filters.onCampus === 'yes'
+          ? onCampus === true
+          : onCampus === false;
+      });
     }
     if (filters.deadline) {
       results = results.filter((m) => {
-        if (filters.deadline === 'rolling') return m.opportunity.is_rolling === true;
+        if (m.opportunity.source_type === 'faculty_research') return false;
+        if (filters.deadline === 'rolling') {
+          return m.opportunity.is_rolling === true;
+        }
         const d = daysUntil(m.opportunity.deadline);
         if (filters.deadline === 'passed') return d !== null && d < 0;
         if (d === null || d < 0) return false;
@@ -168,14 +183,22 @@ export function useResultsFilters({
 
     if (sortBy === 'deadline') {
       results = [...results].sort((a, b) => {
-        const da = a.opportunity.deadline || '9999';
-        const db = b.opportunity.deadline || '9999';
+        const da = a.opportunity.source_type === 'faculty_research'
+          ? '9999'
+          : a.opportunity.deadline || '9999';
+        const db = b.opportunity.source_type === 'faculty_research'
+          ? '9999'
+          : b.opportunity.deadline || '9999';
         return da.localeCompare(db);
       });
     } else if (sortBy === 'newest') {
       results = [...results].sort((a, b) => {
-        const pa = a.opportunity.posted_date || '';
-        const pb = b.opportunity.posted_date || '';
+        const pa = a.opportunity.source_type === 'faculty_research'
+          ? ''
+          : a.opportunity.posted_date || '';
+        const pb = b.opportunity.source_type === 'faculty_research'
+          ? ''
+          : b.opportunity.posted_date || '';
         return pb.localeCompare(pa);
       });
     }

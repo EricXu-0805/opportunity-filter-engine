@@ -95,7 +95,7 @@ export function TrackerCard({
 
       {lab && <p className="mt-1 text-xs text-gray-500">{lab}</p>}
 
-      {opp.deadline && (
+      {opp.source_type !== 'faculty_research' && opp.deadline && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-400">
           <Calendar className="h-3 w-3" />
           {opp.deadline}

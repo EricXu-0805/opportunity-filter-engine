@@ -225,6 +225,33 @@ describe('CompareTable', () => {
       .toBe('Great topical fit.');
   });
 
+  it('strands the old ai0 cache that could contain a paid AI explanation', async () => {
+    setStorage(true, profile);
+    const oldKey = `ofe_explain_contact_trust_v1_a_${hashProfile(profile)}_ai0`;
+    sessionStorage.setItem(
+      oldKey,
+      JSON.stringify({
+        savedAt: Date.now(),
+        data: {
+          ...EXPLANATION,
+          method: 'llm',
+          explanation: 'Legacy AI text from the deterministic slot.',
+        },
+      }),
+    );
+    mockGetMatchExplanation.mockResolvedValue({ ...EXPLANATION, method: 'local' });
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(mockGetMatchExplanation).toHaveBeenCalledWith(profile, 'a', { llm: false });
+    expect(lastBucketRows?.find((row) => row.opp.id === 'a')?.match?.method)
+      .toBe('local');
+  });
+
   it('failed calls are not cached — a later visit retries', async () => {
     setStorage(true, profile);
     mockGetMatchExplanation

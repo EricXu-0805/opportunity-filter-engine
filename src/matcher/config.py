@@ -201,7 +201,7 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # different knobs can no longer emit identical-looking results.
 # 4: truthfulness W11 — the actionability tie-break now uses the shared
 # harvested-provenance email bar (a synthesized address no longer counts).
-_MATCHER_VERSION_BASE = "4"
+_MATCHER_VERSION_BASE = "5"
 
 
 def _matcher_fingerprint() -> str:

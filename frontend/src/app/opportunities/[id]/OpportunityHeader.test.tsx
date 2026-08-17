@@ -56,6 +56,74 @@ describe('OpportunityHeader MVP release surface', () => {
     expect(screen.getByText('unaccepted-professor-signal')).toBeInTheDocument();
   });
 
+  it('labels a faculty directory record as a contact, not a confirmed opening', () => {
+    renderHeader({
+      opp: {
+        ...OPP,
+        source_type: 'faculty_research',
+        url: 'https://faculty.example.edu/real-profile',
+        paid: 'yes',
+        on_campus: true,
+        remote_option: 'yes',
+        deadline: '2020-01-01',
+        deadline_is_estimate: false,
+        eligibility: {
+          international_friendly: 'yes',
+          citizenship_required: false,
+          preferred_year: [],
+          majors: [],
+          skills_required: [],
+        },
+        application: {
+          application_effort: 'unknown',
+          requires_resume: 'unknown',
+          contact_method: 'email',
+          application_url: 'https://fake.example.edu/apply',
+        },
+      },
+    });
+    expect(screen.getByText('card.facultyContactUnconfirmed')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toHaveAttribute(
+      'href',
+      'https://faculty.example.edu/real-profile',
+    );
+    expect(screen.queryByRole('link', { name: 'detail.apply' })).not.toBeInTheDocument();
+    expect(screen.queryByText('badges.paid')).not.toBeInTheDocument();
+    expect(screen.queryByText('badges.onCampus')).not.toBeInTheDocument();
+    expect(screen.queryByText('badges.remoteOk')).not.toBeInTheDocument();
+    expect(screen.queryByText('badges.internationalFriendly')).not.toBeInTheDocument();
+    expect(screen.queryByText('badges.pastDeadline')).not.toBeInTheDocument();
+    expect(screen.queryByText('2020-01-01')).not.toBeInTheDocument();
+  });
+
+  it('renders an undergraduate stop state and hides Draft Email', () => {
+    renderHeader({
+      opp: {
+        ...OPP,
+        source_type: 'faculty_research',
+        faculty_availability_status: 'not_accepting_undergraduates',
+        url: 'https://faculty.example.edu/profile',
+      },
+    });
+
+    expect(screen.getByText('card.facultyNotAcceptingUndergraduates')).toBeInTheDocument();
+    expect(screen.queryByText('card.facultyContactUnconfirmed')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'detail.draftEmail' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'detail.viewFacultyProfile' })).toBeInTheDocument();
+  });
+
+  it('renders research inactivity as a warning without disabling an inquiry', () => {
+    renderHeader({
+      opp: {
+        ...OPP,
+        source_type: 'faculty_research',
+        faculty_availability_status: 'research_inactive',
+      },
+    });
+    expect(screen.getByText('card.facultyResearchInactive')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'detail.draftEmail' })).toBeInTheDocument();
+  });
+
   it('shows Renovate only when the parent supplies its handler', () => {
     // resumeRenovate is accepted, but this component does not read the flag —
     // OpportunityDetail does, and expresses the decision by passing (or not

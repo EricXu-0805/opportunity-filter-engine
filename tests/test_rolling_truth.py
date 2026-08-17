@@ -2,11 +2,9 @@
 contradiction guard.
 
 Demote-only and conflict-only: a fixed deadline with no source text saying
-rolling demotes is_rolling; everything else — deadline-less faculty labs, the
-R70-A no-deadline defaults, explicit rolling prose, False/absent values — is
-untouched. The blanket no-evidence demotion Codex wrote is deliberately absent
-(it would have flipped 719 fellowship records and re-opened the
-"no deadline AND no is_rolling" DQ hole).
+rolling demotes is_rolling; everything else — R70-A no-deadline defaults,
+explicit rolling prose, False/absent values — is untouched. Faculty contact
+profiles are neutralized by their own trust boundary before serving.
 """
 
 from __future__ import annotations

@@ -164,6 +164,32 @@ describe('DashboardPage — personal metrics', () => {
     ]);
   });
 
+  it('does not treat a poisoned faculty-profile date as a saved deadline', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['faculty-1', 'listing-1']));
+    mockGetInteractionsFull.mockResolvedValue(new Map());
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      {
+        id: 'faculty-1',
+        title: 'Faculty Contact Profile',
+        source_type: 'faculty_research',
+        deadline: isoDateIn(1),
+        deadline_is_estimate: false,
+      },
+      {
+        id: 'listing-1',
+        title: 'Real Listing',
+        source_type: 'campus_program',
+        deadline: isoDateIn(4),
+        deadline_is_estimate: false,
+      },
+    ]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('Real Listing')).toBeInTheDocument());
+    expect(screen.queryByText('Faculty Contact Profile')).toBeNull();
+  });
+
   it('never lets a non-favorite record leak into the saved-deadline list', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([

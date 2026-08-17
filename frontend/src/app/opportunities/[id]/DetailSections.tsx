@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Opportunity } from '@/lib/types';
+import { facultySafeInternational } from '@/lib/match-utils';
 import {
   allowsProfessorFraming,
   cleanCompensation,
@@ -26,7 +27,7 @@ import type { TFunc } from './types';
 // `noDeadlineKind` in detail-utils.ts. "Rolling" renders only with actual
 // scraped rolling evidence; the blanket `is_rolling` default never does.
 const NO_DEADLINE_KEYS: Record<NoDeadlineKind, string> = {
-  inquiries: 'detail.fields.acceptsInquiries',
+  faculty: 'detail.fields.facultyNoOpeningDeadline',
   rolling: 'detail.fields.rollingBasis',
   none: 'detail.fields.noDeadlineListed',
 };
@@ -76,11 +77,12 @@ export function DescriptionSection({ description, t }: { description: string; t:
 }
 
 export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
-  const compensation = cleanCompensation(opp.compensation_details);
+  const isFaculty = opp.source_type === 'faculty_research';
+  const compensation = isFaculty ? '' : cleanCompensation(opp.compensation_details);
   return (
     <Section title={t('detail.sections.atGlance')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-        {opp.deadline && (
+        {!isFaculty && opp.deadline && (
           <DetailRow
             icon={<Calendar />}
             label={t('detail.fields.deadline')}
@@ -89,30 +91,34 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
               : opp.deadline}
           />
         )}
-        {!opp.deadline && opp.is_rolling && (
+        {(isFaculty || (!opp.deadline && opp.is_rolling)) && (
           <DetailRow
             icon={<Calendar />}
             label={t('detail.fields.deadline')}
             value={t(NO_DEADLINE_KEYS[noDeadlineKind(opp)])}
           />
         )}
-        {opp.start_date && (
+        {!isFaculty && opp.start_date && (
           <DetailRow icon={<Calendar />} label={t('detail.fields.startDate')} value={opp.start_date} />
         )}
-        {opp.duration && (
+        {!isFaculty && opp.duration && (
           <DetailRow icon={<Clock />} label={t('detail.fields.duration')} value={opp.duration} />
         )}
         {compensation && (
           <DetailRow icon={<DollarSign />} label={t('detail.fields.compensation')} value={compensation} />
         )}
-        {opp.posted_date && (
+        {!isFaculty && opp.posted_date && (
           <DetailRow icon={<Calendar />} label={t('detail.fields.posted')} value={opp.posted_date} />
         )}
         {opp.lab_or_program && (
           <DetailRow icon={<Briefcase />} label={t('detail.fields.lab')} value={opp.lab_or_program} />
         )}
         {opp.pi_name && (
-          <DetailRow icon={<Users />} label={t('detail.fields.pi')} value={opp.pi_name} />
+          <DetailRow
+            icon={<Users />}
+            label={t(isFaculty ? 'detail.fields.facultyMember' : 'detail.fields.pi')}
+            value={opp.pi_name}
+          />
         )}
       </dl>
     </Section>
@@ -122,24 +128,29 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   if (!opp.eligibility) return null;
   const e = opp.eligibility;
+  const isFaculty = opp.source_type === 'faculty_research';
+  const effectiveIntl = facultySafeInternational(opp);
+  const statedYears = (e.preferred_year ?? []).filter(
+    (year) => year.toLowerCase() !== 'unknown',
+  );
   return (
     <Section title={t('detail.sections.eligibility')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-        {e.preferred_year?.length > 0 && (
+        {!isFaculty && statedYears.length > 0 && (
           <DetailRow
             icon={<GraduationCap />}
             label={t('detail.fields.preferredYear')}
-            value={e.preferred_year.join(', ')}
+            value={statedYears.join(', ')}
           />
         )}
-        {e.majors?.length > 0 && (
+        {!isFaculty && e.majors?.length > 0 && (
           <DetailRow
             icon={<GraduationCap />}
             label={t('detail.fields.majors')}
             value={e.majors.join(', ')}
           />
         )}
-        {e.skills_required?.length > 0 && (
+        {!isFaculty && e.skills_required?.length > 0 && (
           <DetailRow
             icon={<Briefcase />}
             label={t('detail.fields.skills')}
@@ -149,7 +160,7 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         <DetailRow
           icon={<Globe />}
           label={t('detail.fields.international')}
-          value={friendlyLabel(e.international_friendly, t)}
+          value={friendlyLabel(effectiveIntl ?? 'unknown', t)}
         />
         {e.citizenship_required && (
           <DetailRow
@@ -167,22 +178,27 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   if (!opp.application) return null;
   const a = opp.application;
+  const isFaculty = opp.source_type === 'faculty_research';
   return (
-    <Section title={t('detail.sections.application')}>
+    <Section title={t(isFaculty ? 'detail.sections.outreach' : 'detail.sections.application')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-        {a.contact_method && (
-          <DetailRow icon={<Mail />} label={t('detail.fields.contactMethod')} value={a.contact_method} />
+        {a.contact_method && a.contact_method !== 'unknown' && (
+          <DetailRow
+            icon={<Mail />}
+            label={t(isFaculty ? 'detail.fields.suggestedOutreach' : 'detail.fields.contactMethod')}
+            value={a.contact_method}
+          />
         )}
-        {a.requires_resume && (
+        {!isFaculty && a.requires_resume && (
           <DetailRow icon={<Briefcase />} label={t('detail.fields.resume')} value={friendlyLabel(a.requires_resume, t)} />
         )}
-        {a.requires_cover_letter && (
+        {!isFaculty && a.requires_cover_letter && (
           <DetailRow icon={<Briefcase />} label={t('detail.fields.coverLetter')} value={friendlyLabel(a.requires_cover_letter, t)} />
         )}
-        {a.requires_recommendation && (
+        {!isFaculty && a.requires_recommendation && (
           <DetailRow icon={<Users />} label={t('detail.fields.recommendation')} value={friendlyLabel(a.requires_recommendation, t)} />
         )}
-        {a.application_effort && (
+        {!isFaculty && a.application_effort && a.application_effort !== 'unknown' && (
           <DetailRow icon={<Clock />} label={t('detail.fields.effort')} value={a.application_effort} />
         )}
       </dl>

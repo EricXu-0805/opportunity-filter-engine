@@ -232,6 +232,325 @@ class TestGenerateColdEmailEndToEnd:
         assert "Google Scholar:" not in email
 
 
+class TestFacultyContactProfileTruth:
+    """Faculty directory rows describe a person and their research, not a
+    confirmed opening. Both the AI brief and every deterministic variant must
+    preserve that distinction while ordinary opportunity records keep their
+    existing posting semantics."""
+
+    _PROFILE = {
+        "name": "Eric",
+        "year": "sophomore",
+        "major": "Computer Engineering",
+        "school": "UIUC",
+        "hard_skills": [
+            {"name": "Python", "level": "experienced"},
+            {"name": "PyTorch", "level": "beginner"},
+        ],
+        "research_interests_text": "computer vision",
+    }
+    _FACULTY = {
+        "source_type": "faculty_research",
+        "opportunity_type": "research",
+        "title": "Research with Prof. Jane Doe — Computer Science",
+        "pi_name": "Jane Doe",
+        "lab_or_program": "Jane Doe Research Group",
+        "department": "Computer Science",
+        "keywords": ["computer vision", "medical imaging"],
+        "description_raw": "Research on computer vision for medical imaging.",
+        "eligibility": {"skills_required": ["Python", "PyTorch"]},
+        "metadata": {
+            "faculty_title": "Associate Professor",
+            "research_areas_raw": "computer vision, medical imaging",
+        },
+    }
+
+    @staticmethod
+    def _capture_first_draft_prompt(monkeypatch, profile, opp):
+        from backend.routes import cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        captured = {}
+
+        def fake(messages, **kwargs):
+            captured.setdefault("messages", messages)
+            return (
+                "Subject: Computer vision research\n\nDear Professor Doe,\n"
+                "Your computer vision research relates to my Python background.\n"
+                "Best regards,\nEric"
+            )
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        assert ce._pipeline_generate(profile, opp, None) is not None
+        messages = captured["messages"]
+        return (
+            next(m["content"] for m in messages if m["role"] == "system"),
+            next(m["content"] for m in messages if m["role"] == "user"),
+        )
+
+    def test_ai_prompt_calls_faculty_row_a_contact_profile_and_disclaims_opening(
+        self, monkeypatch
+    ):
+        system, user = self._capture_first_draft_prompt(
+            monkeypatch, self._PROFILE, self._FACULTY
+        )
+        combined = f"{system}\n{user}".lower()
+
+        assert "FACULTY CONTACT PROFILE:" in user
+        assert "research/current projects" in combined
+        assert "current opening confirmed: no" in combined
+        assert "ask whether" in combined
+        assert "research openings" in combined
+        for forbidden in (
+            "posting title",
+            "required skills",
+            "position",
+            "posting",
+            "role requires",
+        ):
+            assert forbidden not in combined
+
+    def test_non_faculty_ai_prompt_keeps_existing_posting_semantics(self, monkeypatch):
+        ordinary = {
+            **self._FACULTY,
+            "source_type": "handshake",
+            "title": "Undergraduate Computer Vision Assistant",
+        }
+        system, user = self._capture_first_draft_prompt(
+            monkeypatch, self._PROFILE, ordinary
+        )
+
+        assert "OPPORTUNITY CONTACT:" in user
+        assert "Posting title: Undergraduate Computer Vision Assistant" in user
+        assert "Required skills: Python, PyTorch" in user
+        assert "posting's required stack" in system
+
+    def test_non_faculty_unspecified_recipient_ai_prompt_and_output_fail_closed(
+        self, monkeypatch
+    ):
+        """A generic listing cannot turn a missing contact into a professor.
+
+        The prompt must be recipient-neutral, and the runtime must correct both
+        bad greetings observed from providers rather than merely asking the
+        model nicely.
+        """
+        from backend.routes import cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        ordinary = {
+            "source_type": "campus_program",
+            "opportunity_type": "internship",
+            "title": "Undergraduate Data Research Internship",
+            "pi_name": "Unknown",
+            "lab_or_program": "Data Research Program",
+            "department": "Information Sciences",
+            "keywords": ["data science"],
+            "description_raw": "An internship supporting data science research.",
+            "eligibility": {"skills_required": ["Python"]},
+            "metadata": {},
+        }
+
+        for bad_greeting in ("Dear Professor,", "Dear (unspecified),"):
+            captured = {}
+
+            def fake(
+                messages,
+                _bad_greeting=bad_greeting,
+                _captured=captured,
+                **_kwargs,
+            ):
+                _captured["messages"] = messages
+                return (
+                    f"Subject: Data research internship\n\n{_bad_greeting}\n"
+                    "I am interested in the data science work described.\n"
+                    "Best regards,\nEric"
+                )
+
+            monkeypatch.setattr(ce, "chat_completion", fake)
+            output = ce._pipeline_generate(self._PROFILE, ordinary, None)
+            assert output is not None
+
+            system = next(
+                m["content"] for m in captured["messages"] if m["role"] == "system"
+            )
+            user = next(
+                m["content"] for m in captured["messages"] if m["role"] == "user"
+            )
+            combined = f"{system}\n{user}"
+            assert "OPPORTUNITY CONTACT:" in user
+            assert "Recipient: (unspecified)" in user
+            assert "Greeting MUST be exactly 'Hello,'" in system
+            assert "professor" not in combined.lower()
+            assert "\n\nHello,\n" in output
+            assert bad_greeting not in output
+
+    def test_summer_program_ai_prompt_keeps_coordinator_recipient(
+        self, monkeypatch
+    ):
+        from backend.routes import cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        summer = {
+            "source_type": "campus_program",
+            "opportunity_type": "summer_program",
+            "title": "Summer Research Program",
+            "pi_name": "",
+            "lab_or_program": "Summer Research Program",
+            "keywords": ["research"],
+            "eligibility": {},
+            "metadata": {},
+        }
+        captured = {}
+
+        def fake(messages, **_kwargs):
+            captured["messages"] = messages
+            return (
+                "Subject: Summer research\n\nDear Program Coordinator,\n"
+                "I am interested in the summer research program.\n"
+                "Best regards,\nEric"
+            )
+
+        monkeypatch.setattr(ce, "chat_completion", fake)
+        output = ce._pipeline_generate(self._PROFILE, summer, None)
+        assert output is not None
+        user = next(
+            m["content"] for m in captured["messages"] if m["role"] == "user"
+        )
+        assert "Recipient: Program Coordinator" in user
+        assert "\n\nDear Program Coordinator,\n" in output
+
+    def test_non_professor_faculty_prompt_never_invents_professor_rank(self, monkeypatch):
+        lecturer = {
+            **self._FACULTY,
+            "title": "Jane Doe",
+            "metadata": {
+                **self._FACULTY["metadata"],
+                "faculty_title": "Senior Lecturer",
+            },
+        }
+        system, user = self._capture_first_draft_prompt(
+            monkeypatch, self._PROFILE, lecturer
+        )
+        combined = f"{system}\n{user}".lower()
+
+        assert "senior lecturer" in combined
+        assert "recipient: jane doe" in combined
+        assert "faculty member" in combined
+        assert "professor" not in combined
+
+        deterministic = generate_cold_email(self._PROFILE, lecturer)
+        assert "Dear Jane Doe," in deterministic
+        assert "Dear Professor" not in deterministic
+
+    def test_non_professor_faculty_ai_output_uses_exact_trusted_recipient(
+        self, monkeypatch
+    ):
+        from backend.routes import cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        lecturer = {
+            **self._FACULTY,
+            "title": "Jane Doe",
+            "metadata": {
+                **self._FACULTY["metadata"],
+                "faculty_title": "Senior Lecturer",
+            },
+        }
+        provider_outputs = (
+            "Subject: Vision research\n\nDear Professor Doe,\n"
+            "Your computer vision work relates to my Python background.\n"
+            "Best regards,\nEric",
+            "Subject: Vision research\n\n"
+            "Your computer vision work relates to my Python background.\n"
+            "Best regards,\nEric",
+        )
+
+        for provider_output in provider_outputs:
+            monkeypatch.setattr(
+                ce,
+                "chat_completion",
+                lambda *_args, _output=provider_output, **_kwargs: _output,
+            )
+            output = ce._pipeline_generate(self._PROFILE, lecturer, None)
+            assert output is not None
+            assert output.count("Dear Jane Doe,") == 1
+            assert "Dear Professor" not in output
+
+    def test_professor_faculty_ai_output_keeps_verified_honorific(
+        self, monkeypatch
+    ):
+        from backend.routes import cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        monkeypatch.setattr(
+            ce,
+            "chat_completion",
+            lambda *_args, **_kwargs: (
+                "Subject: Vision research\n\nDear Jane Doe,\n"
+                "Your computer vision work relates to my Python background.\n"
+                "Best regards,\nEric"
+            ),
+        )
+        output = ce._pipeline_generate(self._PROFILE, self._FACULTY, None)
+        assert output is not None
+        assert output.count("Dear Professor Jane Doe,") == 1
+        assert "\n\nDear Jane Doe,\n" not in output
+
+    def test_faculty_prompt_ignores_poisoned_required_skills(self, monkeypatch):
+        poisoned = {
+            **self._FACULTY,
+            "eligibility": {"skills_required": ["FAKE_REQUIRED_SKILL"]},
+            "description_raw": "Research on computer vision for medical imaging.",
+        }
+        system, user = self._capture_first_draft_prompt(
+            monkeypatch, self._PROFILE, poisoned
+        )
+        combined = f"{system}\n{user}"
+
+        assert "FAKE_REQUIRED_SKILL" not in combined
+        parts = _common_parts(self._PROFILE, poisoned)
+        assert parts["opp_skills_required"] == []
+        assert "FAKE_REQUIRED_SKILL" not in parts["matching_skills"]
+
+    def test_faculty_rules_without_research_detail_still_ask_honestly(self):
+        from backend.routes.cold_email import _base_rules
+
+        for is_grad in (False, True):
+            rules = _base_rules(
+                is_grad,
+                has_target_data=False,
+                is_faculty=True,
+            ).lower()
+            assert "faculty contact profile" in rules
+            assert "current opening is not confirmed" in rules
+            assert "current or upcoming research openings" in rules
+            assert "posting" not in rules
+            assert "position" not in rules
+
+    def test_all_deterministic_faculty_variants_ask_about_openings_without_posting_claims(self):
+        variants = generate_variants(self._PROFILE, self._FACULTY)
+
+        assert {variant["id"] for variant in variants} == {
+            "balanced", "skills", "concise",
+        }
+        for variant in variants:
+            text = variant["text"].lower()
+            assert "your research" in text
+            assert "current or upcoming research openings" in text
+            for forbidden in (
+                "directly applicable to this position",
+                "this position uses",
+                "role requires",
+                "work described in your posting",
+            ):
+                assert forbidden not in text
+
+
 class TestCourseworkDatePollution:
     """Venue/date entries masquerading as course codes must never be cited.
 
@@ -293,13 +612,46 @@ class TestCourseworkDatePollution:
 
 
 class TestRecipientJunkNameCE6:
-    def test_na_pi_name_does_not_leak_into_recipient(self):
-        # CE-6: "N/A" (in the matcher's _BAD_PI_NAMES) must not render as a name.
+    def test_untrusted_pi_name_uses_neutral_greeting_for_non_faculty_listing(self):
+        # CE-6: "N/A" (in the matcher's _BAD_PI_NAMES) must neither render as
+        # a name nor manufacture a professor recipient for a generic listing.
         for junk in ("N/A", "n/a", "Unknown", ""):
-            p = _common_parts({}, {"pi_name": junk, "opportunity_type": "research"})
-            assert p["recipient"] == "Professor"
+            opportunity = {
+                "pi_name": junk,
+                "opportunity_type": "research",
+                "source_type": "campus_program",
+            }
+            p = _common_parts({}, opportunity)
+            assert p["recipient"] == ""
             if junk.strip():
                 assert junk.strip() not in p["recipient"]
+
+            drafts = [
+                generate_cold_email({}, opportunity),
+                *(variant["text"] for variant in generate_variants({}, opportunity)),
+            ]
+            for draft in drafts:
+                assert "\n\nHello,\n\n" in draft
+                assert "Dear Professor" not in draft
+                assert "Dear ," not in draft
+
+    def test_summer_program_without_name_keeps_coordinator_greeting(self):
+        opportunity = {
+            "pi_name": "N/A",
+            "opportunity_type": "summer_program",
+            "source_type": "campus_program",
+        }
+        assert _common_parts({}, opportunity)["recipient"] == "Program Coordinator"
+        assert "\n\nDear Program Coordinator,\n\n" in generate_cold_email({}, opportunity)
+
+    def test_faculty_without_name_keeps_faculty_recipient_semantics(self):
+        opportunity = {
+            "pi_name": "Unknown",
+            "opportunity_type": "research",
+            "source_type": "faculty_research",
+        }
+        assert _common_parts({}, opportunity)["recipient"] == "Faculty member"
+        assert "\n\nDear Faculty member,\n\n" in generate_cold_email({}, opportunity)
 
     def test_real_pi_name_still_used(self):
         # W11: the "Professor" honorific is a rank claim — earned only by a
@@ -308,9 +660,15 @@ class TestRecipientJunkNameCE6:
         assert p["recipient"] == "Jane Doe"
 
     def test_professor_rank_earns_honorific(self):
-        p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research",
-                               "metadata": {"faculty_title": "Associate Professor"}})
+        opportunity = {
+            "pi_name": "Jane Doe",
+            "opportunity_type": "research",
+            "source_type": "faculty_research",
+            "metadata": {"faculty_title": "Associate Professor"},
+        }
+        p = _common_parts({}, opportunity)
         assert p["recipient"] == "Professor Jane Doe"
+        assert "\n\nDear Professor Jane Doe,\n\n" in generate_cold_email({}, opportunity)
 
     def test_non_professor_rank_never_upgraded(self):
         p = _common_parts({}, {"pi_name": "Jane Doe", "opportunity_type": "research",
@@ -543,15 +901,17 @@ class TestRecentWorkGrounding:
 
     def _opp(self, works=None, status="verified_author_id"):
         opp = {
+            "source_type": "faculty_research",
             "opportunity_type": "research", "title": "Undergraduate Research",
             "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
             "department": "Electrical Engineering",
             "keywords": ["brain-computer interfaces"],
             "description_raw": "Research on neural interfaces.",
             "eligibility": {"skills_required": ["Python"]},
+            "metadata": {"faculty_title": "Associate Professor"},
         }
         if works is not None:
-            opp["metadata"] = {"recent_works": works}
+            opp["metadata"]["recent_works"] = works
             if status is not None:
                 opp["metadata"]["publication_attribution_status"] = status
         return opp
@@ -701,6 +1061,7 @@ class TestColdEmailPipeline:
 
     def _opp(self):
         return {
+            "source_type": "faculty_research",
             "opportunity_type": "research", "title": "Vision Research",
             "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Group",
             "department": "Computer Science", "keywords": ["computer vision"],
@@ -938,9 +1299,9 @@ class TestColdEmailPipeline:
         monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
 
         monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
-        draft = ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+        draft = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nYour computer vision "
                  "work fits my Python background. I am a fast learner.\nBest,\nEric")
-        worse = ("Subject: Vision fit\n\nDear Professor,\nI am a passionate, "
+        worse = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nI am a passionate, "
                  "dedicated fast learner drawn to your computer vision work."
                  "\nBest,\nEric")
         calls = []
@@ -989,9 +1350,9 @@ class TestNDraftJudgeTier:
     _opp = TestColdEmailPipeline._opp
 
     # Both grounded AND professor-referencing → deterministic score 0.
-    _CLEAN_A = ("Subject: Vision fit\n\nDear Professor,\nYour computer vision "
+    _CLEAN_A = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nYour computer vision "
                 "work fits my Python background.\nBest,\nEric")
-    _CLEAN_B = ("Subject: Medical imaging\n\nDear Professor,\nYour medical "
+    _CLEAN_B = ("Subject: Medical imaging\n\nDear Professor Jane Doe,\nYour medical "
                 "imaging research maps to my Python projects.\nBest,\nEric")
 
     @staticmethod

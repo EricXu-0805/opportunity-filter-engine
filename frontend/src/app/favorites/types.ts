@@ -1,6 +1,7 @@
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch } from '@/lib/saved-searches';
 import { humanizeTime } from '@/lib/humanize-time';
+import type { FacultyAvailabilityStatus } from '@/lib/types';
 
 export interface Opp {
   id: string;
@@ -12,12 +13,14 @@ export interface Opp {
   location?: string;
   url?: string;
   source?: string;
+  source_type?: string;
+  faculty_availability_status?: FacultyAvailabilityStatus;
   school?: string;
-  on_campus?: boolean;
+  on_campus?: boolean | null;
   deadline?: string;
   // NSF-style projected date marker — DeadlineBadge must not assert a
   // confident "passed"/countdown on an estimated date.
-  deadline_is_estimate?: boolean;
+  deadline_is_estimate?: boolean | null;
   description_clean?: string;
   description_raw?: string;
   keywords?: string[];

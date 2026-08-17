@@ -131,6 +131,33 @@ describe('OpportunityChatbot — welcome + suggested prompts', () => {
     expect(screen.getByText(/chatbot.tryAsking/)).toBeInTheDocument();
   });
 
+  it('uses faculty-contact questions and copy instead of application language', async () => {
+    mockChat.mockResolvedValue({ reply: 'Verify the source profile.', method: 'local' });
+    const faculty = {
+      ...OPP,
+      source_type: 'faculty_research',
+      title: 'Ada Lovelace',
+    };
+    render(<OpportunityChatbot opportunity={faculty} profile={null} />);
+
+    expect(screen.getByText('chatbot.facultySubtitle')).toBeInTheDocument();
+    expect(screen.getByText(/chatbot.facultyWelcome\{title=Ada Lovelace\}/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('chatbot.facultyPlaceholder')).toBeInTheDocument();
+    expect(screen.queryByText('chatbot.suggested.nextSteps')).toBeNull();
+
+    fireEvent.click(screen.getByText('chatbot.facultySuggested.nextSteps'));
+    await waitFor(() => {
+      expect(mockChat).toHaveBeenCalledWith(
+        'opp-1',
+        'chatbot.facultySuggested.nextSteps',
+        [],
+        null,
+        undefined,
+        expect.any(Function),
+      );
+    });
+  });
+
   it('renders 4 suggested-prompt buttons', () => {
     render(<OpportunityChatbot opportunity={OPP} profile={null} />);
     expect(screen.getByRole('button', { name: /chatbot.suggested.fit/ })).toBeInTheDocument();

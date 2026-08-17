@@ -62,14 +62,16 @@ describe('BucketCards — canonical match truth', () => {
     faculty.opp = {
       ...faculty.opp,
       id: 'faculty-stanford-ee-123',
-      application: { application_url: 'https://faculty.example.edu/profile' },
+      source_type: 'faculty_research',
+      url: 'https://faculty.example.edu/real-profile',
+      application: { application_url: 'https://fake.example.edu/apply' },
     } as Opportunity;
 
     render(<BucketCards rows={[faculty]} />);
 
     expect(screen.getByRole('link', { name: /View faculty profile/ })).toHaveAttribute(
       'href',
-      'https://faculty.example.edu/profile',
+      'https://faculty.example.edu/real-profile',
     );
     expect(screen.queryByRole('link', { name: /^Apply$/ })).toBeNull();
   });
@@ -145,5 +147,27 @@ describe('BucketCards — canonical match truth', () => {
 
     expect(screen.getByText(/2026-08-01/)).toBeInTheDocument();
     expect(screen.queryByText(/Rolling|No fixed deadline/)).toBeNull();
+  });
+
+  it('hides a poisoned faculty deadline and rolling claim', () => {
+    const row = readyRow();
+    row.opp = {
+      ...row.opp,
+      source_type: 'faculty_research',
+      deadline: '2099-12-31',
+      deadline_is_estimate: false,
+      is_rolling: true,
+      metadata: {
+        is_active: true,
+        confidence_score: 0.9,
+        deadline_note: 'Rolling admissions',
+      },
+    } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    expect(screen.getByText(/Current opening and deadline not confirmed/)).toBeInTheDocument();
+    expect(screen.queryByText(/2099-12-31/)).toBeNull();
+    expect(screen.queryByText(/Rolling/)).toBeNull();
   });
 });

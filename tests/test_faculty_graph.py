@@ -2705,17 +2705,21 @@ class TestMergePreservesRecentWorks:
 
 
 class TestFreshmanNotLockedOut:
-    def test_default_year_stamp_includes_freshman(self):
-        """Directory scrapes never state year preferences, so the blanket
-        [sophomore, junior, senior] stamp structurally locked freshmen out of
-        every faculty match at every school (year score 50 vs 100). Lock out
-        only when a posting explicitly does (Eric 2026-07-16)."""
+    def test_directory_contact_does_not_invent_year_eligibility(self):
+        """A directory proves who a faculty member is, not which class years
+        they are currently recruiting. Unknown stays neutral; only a real
+        posting may narrow or affirm year eligibility."""
         school = {"source": "x_faculty", "organization": "X", "location": "X",
                   "school_slug": "uw", "work_auth_notes": "", "id_prefix": "x"}
         rec = fg._normalize(school, {"name": "Dept of Widgets", "short": "WID"},
                             {"name": "Jane Q. Researcher", "link": "https://x.edu/jane"})
-        assert rec["eligibility"]["preferred_year"] == [
-            "freshman", "sophomore", "junior", "senior"]
+        assert rec["eligibility"]["preferred_year"] == ["unknown"]
+        assert rec["application"]["application_effort"] == "unknown"
+        assert rec["eligibility"]["citizenship_required"] is None
+        assert rec["on_campus"] is None
+        assert rec["eligibility"]["skills_required"] == []
+        assert rec["eligibility"]["skills_preferred"] == []
+        assert rec["eligibility"]["work_auth_notes"] == ""
 
 
 # --- Additive identity provenance (W7a) --------------------------------------
@@ -3448,4 +3452,3 @@ class TestResearchByLabel:
             "<h1>Ada Reyes</h1>"
             "<h3>Research Interests</h3><p>Education policy</p>"
         ) == ([], "Education policy")
-

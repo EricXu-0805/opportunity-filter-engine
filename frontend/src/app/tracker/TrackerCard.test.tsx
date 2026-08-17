@@ -19,6 +19,28 @@ const t: TFunc = ((key: string) => key) as TFunc;
 
 const opp = { id: 'o1', title: 'Test Lab', url: 'https://example.com' };
 
+describe('TrackerCard faculty trust boundary', () => {
+  it('never renders a legacy faculty deadline as an opening deadline', () => {
+    render(
+      <TrackerCard
+        opp={{
+          ...opp,
+          source_type: 'faculty_research',
+          deadline: '2099-12-31',
+        }}
+        status="applied"
+        draft=""
+        onDraftChange={() => {}}
+        onChangeStatus={() => {}}
+        onSaveNotes={() => {}}
+        onSetReminder={() => {}}
+        t={t}
+      />,
+    );
+    expect(screen.queryByText('2099-12-31')).toBeNull();
+  });
+});
+
 // TrackerCard's `draft` is a CONTROLLED prop (see TrackerCard.tsx) — the
 // real caller (useTrackerData's noteDrafts + page.tsx) owns the state.
 // This harness plays that role for tests that need realistic typing+blur

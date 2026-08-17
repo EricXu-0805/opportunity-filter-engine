@@ -254,6 +254,50 @@ class TestExplainServesTheListConclusion:
         # The canonical conclusion is stated, not contradicted by omission.
         assert "not in your results" in body["reasons_gap"][0].lower()
 
+    @pytest.mark.parametrize(
+        ("source_text", "reason", "gap_text"),
+        [
+            (
+                "Not accepting undergraduate researchers at this time.",
+                "faculty_not_accepting",
+                "not currently accepting undergraduate students",
+            ),
+        ],
+    )
+    def test_source_negative_faculty_explain_preserves_precise_exclusion(
+        self,
+        snapshot_env,
+        monkeypatch,
+        source_text,
+        reason,
+        gap_text,
+    ):
+        faculty = _opp(
+            "faculty-source-negative",
+            source_type="faculty_research",
+            description_raw=source_text,
+            description_clean=source_text,
+            metadata={"is_active": True, "research_areas_raw": source_text},
+        )
+        corpus = snapshot_env["corpus"] + [faculty]
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (corpus, f"faculty-exclusion-{reason}"),
+        )
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+
+        body = client.post(
+            "/api/matches/faculty-source-negative/explain",
+            json=_profile(),
+        ).json()
+        assert body["in_results"] is False
+        assert body["excluded_reason"] == reason
+        assert gap_text in body["reasons_gap"][0].lower()
+
     def test_matcher_version_served_and_stable(self, snapshot_env):
         listing = client.post("/api/matches", json=_profile()).json()
         assert listing["matcher_version"] == MATCHER_VERSION
@@ -700,7 +744,7 @@ class TestServerMatchView:
         first = response_pages[0]
         assert first["filtered_total"] == len(expected)
         assert first["view_counts"]["all"] == len(expected)
-        assert first["contract_version"] == "match-view-v2-contact-trust"
+        assert first["contract_version"] == "match-view-v3-faculty-trust"
         assert all(page["result_set_id"] == first["result_set_id"] for page in response_pages)
         assert all(page["view_id"] == first["view_id"] for page in response_pages)
 
@@ -830,34 +874,41 @@ class TestServerMatchView:
         ]
         assert scope_available is True
 
-    def test_rolling_deadline_selects_on_is_rolling_not_deadline(self):
-        """The facet's only value most of this corpus can answer.
-
-        98.7% of records are rolling and 0.6% carry a deadline at all, so every
-        other value on this control returns an empty page for a typical match
-        list. 'rolling' reads a different field, which is exactly why it has to
-        be wired in five places at once — this one, the schema Literal that
-        would otherwise 422 the whole view request, the client filter, the URL
-        allowlist, and the digest cron's own matcher.
-        """
+    def test_rolling_deadline_excludes_unconfirmed_faculty_contacts(self):
+        """A legacy faculty stamp cannot turn a directory profile into an opening."""
         from backend.schemas import MatchViewState
         from src.matcher.ranker import MatchResult
 
         results = [
             MatchResult(
-                opportunity_id="rolling-lab", eligibility_score=80,
+                opportunity_id="rolling-program", eligibility_score=80,
                 readiness_score=80, upside_score=80, final_score=79.5,
                 bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
             ),
             MatchResult(
-                opportunity_id="dated-program", eligibility_score=80,
+                opportunity_id="faculty-contact", eligibility_score=80,
                 readiness_score=80, upside_score=80, final_score=79.4,
+                bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
+            ),
+            MatchResult(
+                opportunity_id="dated-program", eligibility_score=80,
+                readiness_score=80, upside_score=80, final_score=79.3,
                 bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
             ),
         ]
         opportunities = {
-            # No deadline at all — the shape of a professor's lab.
-            "rolling-lab": {**_opp("rolling-lab"), "is_rolling": True, "deadline": None},
+            "rolling-program": {
+                **_opp("rolling-program"), "is_rolling": True, "deadline": None,
+            },
+            # Old shards stamped every faculty profile rolling. Source type +
+            # unreviewed metadata must fail closed even before loader cleanup.
+            "faculty-contact": {
+                **_opp("faculty-contact"),
+                "source_type": "faculty_research",
+                "is_rolling": True,
+                "deadline": None,
+                "metadata": {"manually_reviewed": False},
+            },
             # A real closing date, and explicitly not rolling.
             "dated-program": {
                 **_opp("dated-program"), "is_rolling": False, "deadline": "2026-08-01",
@@ -868,7 +919,127 @@ class TestServerMatchView:
         filtered, _counts, _facets, _scope, _deadlines = m_module._apply_match_view(
             results, opportunities, view, "uiuc",
         )
-        assert [r.opportunity_id for r in filtered] == ["rolling-lab"]
+        assert [r.opportunity_id for r in filtered] == ["rolling-program"]
+
+    def test_poisoned_faculty_never_satisfies_opening_facets_or_date_sort(self):
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        faculty = MatchResult(
+            opportunity_id="faculty-poison",
+            eligibility_score=80,
+            readiness_score=80,
+            upside_score=80,
+            final_score=90,
+            bucket="high_priority",
+            reasons_fit=[],
+            reasons_gap=[],
+            next_steps=[],
+        )
+        listing = MatchResult(
+            opportunity_id="real-listing",
+            eligibility_score=80,
+            readiness_score=80,
+            upside_score=80,
+            final_score=80,
+            bucket="good_match",
+            reasons_fit=[],
+            reasons_gap=[],
+            next_steps=[],
+        )
+        opportunities = {
+            "faculty-poison": {
+                **_opp("faculty-poison"),
+                "source_type": "faculty_research",
+                "paid": "yes",
+                "on_campus": True,
+                "deadline": "2026-08-01",
+                "posted_date": "2099-01-01",
+                "is_rolling": True,
+                "eligibility": {"international_friendly": "yes"},
+            },
+            "real-listing": {
+                **_opp("real-listing"),
+                "source_type": "campus_program",
+                "deadline": "2026-08-05",
+                "posted_date": "2026-07-01",
+            },
+        }
+
+        for view in (
+            MatchViewState(tab="all", paid="yes", today="2026-07-31"),
+            MatchViewState(tab="all", intl="yes", today="2026-07-31"),
+            MatchViewState(tab="all", on_campus="yes", today="2026-07-31"),
+            MatchViewState(tab="all", on_campus="no", today="2026-07-31"),
+            MatchViewState(tab="all", deadline="7", today="2026-07-31"),
+            MatchViewState(tab="all", deadline="rolling", today="2026-07-31"),
+        ):
+            filtered, *_ = m_module._apply_match_view(
+                [faculty], opportunities, view, "uiuc",
+            )
+            assert filtered == []
+
+        unfiltered, *_rest, deadline_facets = m_module._apply_match_view(
+            [faculty],
+            opportunities,
+            MatchViewState(tab="all", today="2026-07-31"),
+            "uiuc",
+        )
+        assert [result.opportunity_id for result in unfiltered] == ["faculty-poison"]
+        assert deadline_facets == {"7": 0, "14": 0, "30": 0, "passed": 0}
+
+        deadline_sorted, *_ = m_module._apply_match_view(
+            [faculty, listing],
+            opportunities,
+            MatchViewState(tab="all", sort_by="deadline", today="2026-07-31"),
+            "uiuc",
+        )
+        newest_sorted, *_ = m_module._apply_match_view(
+            [faculty, listing],
+            opportunities,
+            MatchViewState(tab="all", sort_by="newest", today="2026-07-31"),
+            "uiuc",
+        )
+        assert [result.opportunity_id for result in deadline_sorted] == [
+            "real-listing",
+            "faculty-poison",
+        ]
+        assert [result.opportunity_id for result in newest_sorted] == [
+            "real-listing",
+            "faculty-poison",
+        ]
+
+    def test_unknown_campus_is_neither_yes_nor_no(self):
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        results = [
+            MatchResult(
+                opportunity_id=ident,
+                eligibility_score=80,
+                readiness_score=80,
+                upside_score=80,
+                final_score=80 - index,
+                bucket="good_match",
+                reasons_fit=[],
+                reasons_gap=[],
+                next_steps=[],
+            )
+            for index, ident in enumerate(("campus-yes", "campus-no", "campus-unknown"))
+        ]
+        opportunities = {
+            "campus-yes": {**_opp("campus-yes"), "on_campus": True},
+            "campus-no": {**_opp("campus-no"), "on_campus": False},
+            "campus-unknown": {**_opp("campus-unknown"), "on_campus": None},
+        }
+
+        def selected(value: str) -> list[str]:
+            view = MatchViewState(tab="all", on_campus=value, today="2026-07-31")
+            filtered, *_ = m_module._apply_match_view(results, opportunities, view, "uiuc")
+            return [result.opportunity_id for result in filtered]
+
+        assert selected("yes") == ["campus-yes"]
+        assert selected("no") == ["campus-no"]
 
     def test_deadline_facets_count_what_each_chip_would_return(self):
         """The rail renders on these counts, so they must match the predicate.

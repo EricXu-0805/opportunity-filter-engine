@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import { facultySafeInternational } from '@/lib/match-utils';
 import { useT } from '@/i18n/client';
 import { cleanCompensation, noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 
@@ -10,11 +11,23 @@ type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
 type ComparisonValue = string | string[] | null | undefined;
 type ValueResolver = (opp: Opportunity) => ComparisonValue;
+const FACULTY_AFFILIATION_PREFIX = '__faculty_affiliation__:';
+
+function openingValue(opp: Opportunity, value: ComparisonValue): ComparisonValue {
+  return opp.source_type === 'faculty_research' ? undefined : value;
+}
 
 function truthValue(value: boolean | null | undefined): 'yes' | 'no' | 'unknown' {
   if (value === true) return 'yes';
   if (value === false) return 'no';
   return 'unknown';
+}
+
+function facultySafeCitizenship(opp: Opportunity): 'yes' | 'no' | 'unknown' {
+  if (opp.source_type !== 'faculty_research') {
+    return truthValue(opp.eligibility?.citizenship_required);
+  }
+  return opp.eligibility?.citizenship_required === true ? 'yes' : 'unknown';
 }
 
 interface FieldSpec {
@@ -25,28 +38,32 @@ interface FieldSpec {
 }
 
 const FIELDS: FieldSpec[] = [
-  { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => cleanCompensation(o.compensation_details) || (o.paid && o.paid !== 'unknown' ? o.paid : undefined) },
-  { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => o.paid },
-  { key: 'international', labelKey: 'compare.fields.international', value: (o) => o.eligibility?.international_friendly },
-  { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: (o) => truthValue(o.eligibility?.citizenship_required) },
+  { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => openingValue(o, cleanCompensation(o.compensation_details) || (o.paid && o.paid !== 'unknown' ? o.paid : undefined)) },
+  { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => openingValue(o, o.paid) },
+  { key: 'international', labelKey: 'compare.fields.international', value: facultySafeInternational },
+  { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: facultySafeCitizenship },
   // A listed date beats the `is_rolling` flag (a blanket collector default,
   // not scraped evidence); the 'rolling' sentinel is emitted only on actual
   // rolling evidence, otherwise the honest 'no_deadline' sentinel.
-  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => o.deadline ?? (o.is_rolling ? (noDeadlineKind(o) === 'rolling' ? 'rolling' : 'no_deadline') : undefined), kind: 'deadline' },
-  { key: 'effort', labelKey: 'compare.fields.applicationEffort', value: (o) => o.application?.application_effort },
-  { key: 'skills', labelKey: 'compare.fields.skills', value: (o) => o.eligibility?.skills_required, kind: 'skills' },
-  { key: 'majors', labelKey: 'compare.fields.majors', value: (o) => o.eligibility?.majors },
-  { key: 'preferredYear', labelKey: 'compare.fields.preferredYear', value: (o) => o.eligibility?.preferred_year },
+  { key: 'deadline', labelKey: 'compare.fields.deadline', value: (o) => o.source_type === 'faculty_research' ? 'faculty_opening_unconfirmed' : (o.deadline ?? (o.is_rolling ? (noDeadlineKind(o) === 'rolling' ? 'rolling' : 'no_deadline') : undefined)), kind: 'deadline' },
+  { key: 'effort', labelKey: 'compare.fields.applicationEffort', value: (o) => openingValue(o, o.application?.application_effort) },
+  { key: 'skills', labelKey: 'compare.fields.skills', value: (o) => openingValue(o, o.eligibility?.skills_required), kind: 'skills' },
+  { key: 'majors', labelKey: 'compare.fields.majors', value: (o) => openingValue(o, o.eligibility?.majors) },
+  { key: 'preferredYear', labelKey: 'compare.fields.preferredYear', value: (o) => openingValue(o, o.eligibility?.preferred_year?.filter((year) => year.toLowerCase() !== 'unknown')) },
   { key: 'type', labelKey: 'compare.fields.type', value: (o) => formatType(o.opportunity_type) },
   { key: 'organization', labelKey: 'compare.fields.organization', value: (o) => o.organization },
-  { key: 'duration', labelKey: 'compare.fields.duration', value: (o) => o.duration },
-  { key: 'startDate', labelKey: 'compare.fields.startDate', value: (o) => o.start_date },
-  { key: 'location', labelKey: 'compare.fields.location', value: (o) => o.location },
-  { key: 'remote', labelKey: 'compare.fields.remote', value: (o) => o.remote_option },
-  { key: 'onCampus', labelKey: 'compare.fields.onCampus', value: (o) => truthValue(o.on_campus) },
-  { key: 'requiresResume', labelKey: 'compare.fields.requiresResume', value: (o) => o.application?.requires_resume },
-  { key: 'requiresCoverLetter', labelKey: 'compare.fields.requiresCoverLetter', value: (o) => o.application?.requires_cover_letter },
-  { key: 'requiresRecommendation', labelKey: 'compare.fields.requiresRecommendation', value: (o) => o.application?.requires_recommendation },
+  { key: 'duration', labelKey: 'compare.fields.duration', value: (o) => openingValue(o, o.duration) },
+  { key: 'startDate', labelKey: 'compare.fields.startDate', value: (o) => openingValue(o, o.start_date) },
+  { key: 'location', labelKey: 'compare.fields.location', value: (o) => (
+    o.source_type === 'faculty_research' && o.location
+      ? `${FACULTY_AFFILIATION_PREFIX}${o.location}`
+      : o.location
+  ) },
+  { key: 'remote', labelKey: 'compare.fields.remote', value: (o) => openingValue(o, o.remote_option) },
+  { key: 'onCampus', labelKey: 'compare.fields.onCampus', value: (o) => openingValue(o, truthValue(o.on_campus)) },
+  { key: 'requiresResume', labelKey: 'compare.fields.requiresResume', value: (o) => openingValue(o, o.application?.requires_resume) },
+  { key: 'requiresCoverLetter', labelKey: 'compare.fields.requiresCoverLetter', value: (o) => openingValue(o, o.application?.requires_cover_letter) },
+  { key: 'requiresRecommendation', labelKey: 'compare.fields.requiresRecommendation', value: (o) => openingValue(o, o.application?.requires_recommendation) },
 ];
 
 function formatType(s: string): string {
@@ -60,7 +77,13 @@ function normalizeForComparison(v: ComparisonValue): string {
 
 function normalizeFieldForComparison(field: FieldSpec, opp: Opportunity): string {
   const value = normalizeForComparison(field.value(opp));
-  if (field.kind !== 'deadline' || !value || value === 'rolling' || value === 'no_deadline') return value;
+  if (
+    field.kind !== 'deadline'
+    || !value
+    || value === 'rolling'
+    || value === 'no_deadline'
+    || value === 'faculty_opening_unconfirmed'
+  ) return value;
   const precision = opp.deadline_is_estimate === false
     ? 'confirmed'
     : opp.deadline_is_estimate === true
@@ -293,6 +316,14 @@ function CellContent({
   if (value === 'unknown') return <span className="text-gray-400">{t('common.notSpecified')}</span>;
   if (value === 'rolling') return <span>{t('compare.rolling')}</span>;
   if (value === 'no_deadline') return <span className="text-gray-400">{t('compare.noDeadline')}</span>;
+  if (value === 'faculty_opening_unconfirmed') {
+    return <span className="text-gray-400">{t('compare.facultyOpeningUnconfirmed')}</span>;
+  }
+  if (typeof value === 'string' && value.startsWith(FACULTY_AFFILIATION_PREFIX)) {
+    return <span>{t('compare.facultyAffiliationLocation', {
+      location: value.slice(FACULTY_AFFILIATION_PREFIX.length),
+    })}</span>;
+  }
   if (kind === 'deadline' && deadlineIsEstimate !== false) {
     return (
       <span>

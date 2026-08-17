@@ -132,7 +132,7 @@ class TestMatchFilterOnCampus:
     def test_on_campus_no(self):
         f = {**EMPTY_FILTERS, "onCampus": "no"}
         assert match_filter(_opp(on_campus=False), f) is True
-        assert match_filter(_opp(on_campus=None), f) is True
+        assert match_filter(_opp(on_campus=None), f) is False
         assert match_filter(_opp(on_campus=True), f) is False
 
 
@@ -160,6 +160,18 @@ class TestMatchFilterDeadline:
         today = date.today().isoformat()
         assert match_filter(_opp(deadline=today), f) is True
 
+    def test_faculty_contact_never_matches_any_deadline_facet(self):
+        soon = (date.today() + timedelta(days=3)).isoformat()
+        past = (date.today() - timedelta(days=3)).isoformat()
+        for value, deadline in (("7", soon), ("30", soon), ("passed", past)):
+            filters = {**EMPTY_FILTERS, "deadline": value}
+            faculty = _opp(
+                source_type="faculty_research",
+                deadline=deadline,
+                is_rolling=True,
+            )
+            assert match_filter(faculty, filters) is False
+
     def test_rolling_selects_rolling_records_only(self):
         """The value the digest cron would otherwise wave through.
 
@@ -181,6 +193,21 @@ class TestMatchFilterDeadline:
 
 
 class TestMatchFilterCombinations:
+    def test_poisoned_faculty_contact_never_satisfies_positive_opening_facets(self):
+        faculty = _opp(
+            source_type="faculty_research",
+            paid="yes",
+            on_campus=True,
+            eligibility={"international_friendly": "yes"},
+        )
+        assert match_filter(faculty, {**EMPTY_FILTERS, "paid": "yes"}) is False
+        assert match_filter(faculty, {**EMPTY_FILTERS, "intl": "yes"}) is False
+        assert match_filter(faculty, {**EMPTY_FILTERS, "onCampus": "yes"}) is False
+        assert match_filter(faculty, {**EMPTY_FILTERS, "onCampus": "no"}) is False
+        # "Unpaid / not disclosed" intentionally includes unknown pay; a
+        # faculty profile is unknown, never promoted to a positive paid fact.
+        assert match_filter(faculty, {**EMPTY_FILTERS, "paid": "no"}) is True
+
     def test_all_filters_must_pass_aand_logic(self):
         f = {**EMPTY_FILTERS, "paid": "yes", "onCampus": "yes", "source": "uiuc_faculty"}
         assert match_filter(_opp(paid="yes", on_campus=True, source="uiuc_faculty"), f) is True

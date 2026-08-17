@@ -7,7 +7,10 @@
  * acceptance PR for that feature.
  */
 export const RELEASE_SCOPE = Object.freeze({
-  matchAiRefine: true,
+  // Closed again after the released switch was found to change URL/badges but
+  // not the /matches/view ranking. Re-open only with server mode attestation,
+  // bounded paid concurrency and a real provider-backed acceptance.
+  matchAiRefine: false,
   crossSchoolMatching: true,
   compare: true,
   resumeRenovate: true,
@@ -39,7 +42,7 @@ export const RELEASE_SCOPE = Object.freeze({
 // cached discovery response minted under the old contract is missing rows the
 // new one publishes.
 export const PUBLIC_RELEASE_CACHE_VERSION =
-  'mvp-scope-open-v1-contact-trust-v1';
+  'mvp-scope-open-v1-contact-trust-v1-faculty-trust-v1';
 
 /**
  * Remove preferences for feature families that are outside the public release.

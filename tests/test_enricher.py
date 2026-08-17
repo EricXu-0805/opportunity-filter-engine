@@ -257,10 +257,7 @@ class TestEnrichAll:
 
 
 class TestRollingDeadline:
-    """is_rolling_deadline: faculty records are rolling by source_type, not a
-    per-source list — every school's faculty collector inherits the default
-    without touching the enricher (the pre-multi-school _ROLLING_BY_SOURCE
-    list silently excluded ucb_*/umich/stanford/... faculty)."""
+    """A faculty directory contact is not rolling without explicit evidence."""
 
     def _faculty(self, source: str) -> dict:
         opp = _opp("Research with Prof. X — CS", "computational biology lab")
@@ -269,10 +266,15 @@ class TestRollingDeadline:
         opp["deadline"] = None
         return opp
 
-    def test_any_school_faculty_source_is_rolling(self):
+    def test_any_school_faculty_source_is_not_rolling_by_default(self):
         for source in ("uiuc_faculty", "ucb_eecs_faculty", "stanford_faculty",
                        "umich_faculty", "ucsd_faculty"):
-            assert is_rolling_deadline(self._faculty(source)), source
+            assert not is_rolling_deadline(self._faculty(source)), source
+
+    def test_faculty_needs_explicit_rolling_text(self):
+        opp = self._faculty("uiuc_faculty")
+        opp["description_clean"] = "Applications are reviewed on a rolling basis."
+        assert is_rolling_deadline(opp)
 
     def test_uiuc_sro_stays_rolling_by_source(self):
         opp = _opp("Summer lab position", "wet lab")
@@ -281,7 +283,7 @@ class TestRollingDeadline:
         opp["deadline"] = None
         assert is_rolling_deadline(opp)
 
-    def test_explicit_deadline_beats_faculty_default(self):
+    def test_explicit_deadline_is_not_rolling(self):
         opp = self._faculty("ucb_math_faculty")
         opp["deadline"] = "2026-10-01"
         assert not is_rolling_deadline(opp)
@@ -294,3 +296,17 @@ class TestRollingDeadline:
         assert not is_rolling_deadline(opp)
         opp["description_clean"] = "applications accepted on a rolling basis"
         assert is_rolling_deadline(opp)
+
+
+def test_faculty_contact_does_not_regrow_inferred_eligibility_majors():
+    opp = {
+        "source_type": "faculty_research",
+        "title": "Ada Lovelace",
+        "description_clean": "Machine learning and computer science research.",
+        "eligibility": {"majors": []},
+        "keywords": ["machine learning"],
+        "is_rolling": False,
+    }
+    enrich_opportunity(opp)
+    assert opp["eligibility"]["majors"] == []
+    assert opp["is_rolling"] is False

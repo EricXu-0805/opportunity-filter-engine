@@ -238,6 +238,16 @@ def _extract_keywords(title: str, desc: str) -> list[str]:
 
 def _compute_effort(application: dict) -> str:
     """Estimate application effort based on requirements."""
+    requirement_fields = (
+        "requires_resume",
+        "requires_cover_letter",
+        "requires_transcript",
+        "requires_recommendation",
+    )
+    # Unknown material requirements are not the same thing as "none". Until
+    # every input is known, a reassuring low-effort claim has no evidence.
+    if any(application.get(field) not in {"yes", "no"} for field in requirement_fields):
+        return "unknown"
     effort_points = 0
     if application.get("requires_resume") == "yes":
         effort_points += 1

@@ -94,11 +94,9 @@ describe('readInitialSemanticRerank', () => {
     localStorage.clear();
   });
 
-  it('prefers ?ai=1 over a stored off preference', () => {
-    // The URL wins over localStorage in both directions: a share link has to
-    // reproduce what the sender saw, not what the recipient last chose.
+  it('fails closed even when a stale URL asks for AI refine', () => {
     localStorage.setItem('ofe_semantic_rerank', '0');
-    expect(readInitialSemanticRerank(new URLSearchParams('ai=1'))).toBe(true);
+    expect(readInitialSemanticRerank(new URLSearchParams('ai=1'))).toBe(false);
   });
 
   it('prefers ?ai=0 over localStorage', () => {
@@ -157,17 +155,17 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
 
   it('omits ?tab= when activeTab is the new default "high_priority"', () => {
     renderHook(() => useResultsUrlSync(EMPTY_STATE));
-    expect(lastUrl()).toBe('/results?ai=0');
+    expect(lastUrl()).toBe('/results');
   });
 
   it('emits ?tab=all when activeTab is "all" (now an explicit, non-default tab)', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'all' }));
-    expect(lastUrl()).toBe('/results?tab=all&ai=0');
+    expect(lastUrl()).toBe('/results?tab=all');
   });
 
   it('emits ?tab=starred for non-default tabs', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'starred' }));
-    expect(lastUrl()).toBe('/results?tab=starred&ai=0');
+    expect(lastUrl()).toBe('/results?tab=starred');
   });
 
   it('round-trips multiple state pieces in one URL', () => {
@@ -185,7 +183,7 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
     expect(url).toContain('paid=yes');
     expect(url).toContain('min=60');
     expect(url).toContain('sort=deadline');
-    expect(url).toContain('ai=0');
+    expect(url).not.toContain('ai=');
   });
 
   it('emits ?scope= when the discovery-scope facet is active, omits when default', () => {
@@ -193,15 +191,11 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       ...EMPTY_STATE,
       filters: { ...EMPTY_STATE.filters, scope: 'campus' },
     }));
-    expect(lastUrl()).toBe('/results?scope=campus&ai=0');
+    expect(lastUrl()).toBe('/results?scope=campus');
   });
 
-  it('serializes AI-refine state in both directions, so a link reproduces it', () => {
-    // Unlike the other facets this one writes its default too. Omitting `ai=0`
-    // would let the recipient's stored preference turn refine ON in a link the
-    // sender shared with it off — the URL is the shared state, localStorage is
-    // only the fallback when the URL is silent.
+  it('removes stale AI-refine state from shareable URLs while closed', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticRerank: true }));
-    expect(lastUrl()).toBe('/results?ai=1');
+    expect(lastUrl()).toBe('/results');
   });
 });

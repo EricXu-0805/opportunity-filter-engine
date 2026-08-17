@@ -1071,11 +1071,13 @@ class TestCitizenshipRequiredHonored:
         assert any(r.opportunity_id == "us-only" for r in results)
 
 
-class TestForeignCampusWorkAuthBonus:
-    """BUG B (filter-correctness gate, 2026-06-15): a foreign campus stamped
-    on_campus=True must not earn an F-1 the 'no work authorization concerns'
-    bonus — they can't work on another school's campus. The student's own campus,
-    a national/legacy (school=None) row, or incomplete data still earns it."""
+class TestCampusConvenienceNeverClaimsWorkAuthorization:
+    """Location may be a convenience signal, never an immigration conclusion.
+
+    Even a verified same-campus posting cannot prove the student's particular
+    employment/funding arrangement. The matcher may say where it is, but must
+    not tell an F-1 student that work authorization is settled.
+    """
 
     def _on_campus(self, school):
         return {"id": f"oc-{school}", "opportunity_type": "research", "on_campus": True,
@@ -1084,25 +1086,29 @@ class TestForeignCampusWorkAuthBonus:
     def _f1(self, home):
         return {"international_student": True, "home_school": home, "research_interests_text": ""}
 
-    def _has_bonus(self, fit):
+    def _has_legal_claim(self, fit):
         return any("work authorization" in f.lower() for f in fit)
 
-    def test_own_campus_earns_bonus(self):
+    def test_own_campus_names_location_without_a_legal_claim(self):
         _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uiuc"))
-        assert self._has_bonus(fit)
+        assert "At your university" in fit
+        assert not self._has_legal_claim(fit)
 
     def test_foreign_campus_does_not_earn_bonus(self):
         _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uw"))
-        assert not self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
-    def test_missing_home_school_keeps_bonus(self):
+    def test_missing_home_school_cannot_claim_a_home_campus(self):
         _, fit, _ = score_upside({"international_student": True, "research_interests_text": ""},
                                  self._on_campus("uiuc"))
-        assert self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
-    def test_national_legacy_row_keeps_bonus(self):
+    def test_national_legacy_row_cannot_claim_a_home_campus(self):
         _, fit, _ = score_upside(self._f1("ucb"), self._on_campus(None))
-        assert self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
 
 class TestMajorFitSingleCount:

@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { Opportunity } from '@/lib/types';
 
-import { AtAGlanceSection, RecentWorksSection } from './DetailSections';
+import {
+  ApplicationSection,
+  AtAGlanceSection,
+  EligibilitySection,
+  RecentWorksSection,
+} from './DetailSections';
 
 function tFn(key: string) {
   return key;
@@ -22,16 +27,30 @@ function opp(
 }
 
 describe('AtAGlanceSection no-deadline wording', () => {
-  it('faculty records read "accepts inquiries", never "Rolling"', () => {
+  it('labels a faculty contact by entity type instead of assuming PI rank', () => {
+    render(
+      <AtAGlanceSection
+        opp={opp(
+          { faculty_title: 'Senior Lecturer' },
+          { source_type: 'faculty_research', pi_name: 'Ada Lovelace' },
+        )}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.fields.facultyMember')).toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.pi')).not.toBeInTheDocument();
+  });
+
+  it('faculty records show no listed opening deadline, never "Rolling"', () => {
     // is_rolling=true is a blanket collector default on faculty records —
     // not scraped evidence of rolling admissions.
     render(
       <AtAGlanceSection
-        opp={opp({}, { source_type: 'faculty_research', is_rolling: true })}
+        opp={opp({}, { source_type: 'faculty_research', is_rolling: false })}
         t={tFn}
       />,
     );
-    expect(screen.getByText('detail.fields.acceptsInquiries')).toBeInTheDocument();
+    expect(screen.getByText('detail.fields.facultyNoOpeningDeadline')).toBeInTheDocument();
     expect(screen.queryByText('detail.fields.rollingBasis')).not.toBeInTheDocument();
   });
 
@@ -59,15 +78,51 @@ describe('AtAGlanceSection no-deadline wording', () => {
     expect(screen.getByText('detail.fields.rollingBasis')).toBeInTheDocument();
   });
 
-  it('a listed deadline still wins over the rolling row', () => {
+  it('a poisoned faculty deadline is hidden behind the contact-profile boundary', () => {
     render(
       <AtAGlanceSection
         opp={opp({}, { source_type: 'faculty_research', is_rolling: true, deadline: '2026-10-01' })}
         t={tFn}
       />,
     );
-    expect(screen.getByText('2026-10-01')).toBeInTheDocument();
-    expect(screen.queryByText('detail.fields.acceptsInquiries')).not.toBeInTheDocument();
+    expect(screen.queryByText('2026-10-01')).not.toBeInTheDocument();
+    expect(screen.getByText('detail.fields.facultyNoOpeningDeadline')).toBeInTheDocument();
+  });
+});
+
+describe('unknown faculty requirements', () => {
+  it('does not render the unknown year or effort sentinel as a literal value', () => {
+    const faculty = opp({}, {
+      source_type: 'faculty_research',
+      eligibility: {
+        preferred_year: ['unknown'],
+        majors: ['Computer Science'],
+        skills_required: [],
+        international_friendly: 'yes',
+        citizenship_required: false,
+      },
+      application: {
+        application_effort: 'unknown',
+        requires_resume: 'unknown',
+        contact_method: 'email',
+      },
+    });
+    const { unmount } = render(<EligibilitySection opp={faculty} t={tFn} />);
+    expect(screen.queryByText('unknown')).not.toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.preferredYear')).not.toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.majors')).not.toBeInTheDocument();
+    expect(screen.queryByText('Computer Science')).not.toBeInTheDocument();
+    expect(screen.queryByText('common.yes')).not.toBeInTheDocument();
+    expect(screen.getByText('common.notSpecified')).toBeInTheDocument();
+    unmount();
+
+    render(<ApplicationSection opp={faculty} t={tFn} />);
+    expect(screen.queryByText('unknown')).not.toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.effort')).not.toBeInTheDocument();
+    expect(screen.getByText('detail.sections.outreach')).toBeInTheDocument();
+    expect(screen.getByText('detail.fields.suggestedOutreach')).toBeInTheDocument();
+    expect(screen.queryByText('detail.sections.application')).not.toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.resume')).not.toBeInTheDocument();
   });
 });
 

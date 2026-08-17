@@ -29,9 +29,11 @@ keeps re-answering ad hoc:
    never silently replace a higher one — it either abstains or records a
    conflict with ``record_conflict`` for review.
 
-Fail-open by design for legacy data (same contract as W7a): these helpers
-label and arbitrate NEW writes; they never destroy or gate values that
-predate stamping.
+The provenance helpers remain fail-open for unstamped legacy data (the W7a
+contract).  The faculty-directory helper below is one explicit, narrow
+exception: it removes a known collector template whose positive claims were
+never supported by the source, while preserving explicit restrictions and
+reviewed records.
 """
 from __future__ import annotations
 
@@ -159,6 +161,340 @@ def inferred_method(record: dict, field: str) -> str | None:
 def is_inferred(record: dict, field: str) -> bool:
     """True when the current value of ``field`` carries an inference stamp."""
     return inferred_method(record, field) is not None
+
+
+# ---------------------------------------------------------------------------
+# Faculty-directory claim boundary
+# ---------------------------------------------------------------------------
+
+def faculty_contact_claims_unverified(record: dict) -> bool:
+    """Whether a row is a faculty contact profile rather than a job posting.
+
+    Faculty collectors start from directory/profile pages. Those pages support
+    identity and research-topic facts, but not blanket claims about current
+    openings, eligible class years, application effort, or work authorization.
+    A real, source-backed opening must be represented with a listing source
+    type; neither a generic review flag nor one metadata bit may promote every
+    legacy template field on a faculty profile at once.
+    """
+    return record.get("source_type") == "faculty_research"
+
+
+_FACULTY_CITIZENSHIP_EVIDENCE_RE = re.compile(
+    r"(?:"
+    r"\b(?:u\.?s\.?|united states)\s+citizenship\s+(?:is\s+)?required\b|"
+    r"\bmust\s+be\s+(?:an?\s+)?(?:u\.?s\.?|united states)\s+citizens?\b|"
+    r"\b(?:only|limited|restricted)\s+to\s+(?:u\.?s\.?|united states)\s+"
+    r"(?:citizens?|permanent residents?)\b|"
+    r"\b(?:u\.?s\.?|united states)\s+citizens?\s+only\b"
+    r")",
+    re.IGNORECASE,
+)
+_FACULTY_RESTRICTION_MARKER = "faculty_citizenship_restriction_stated"
+_FACULTY_NOT_ACCEPTING_MARKER = "faculty_not_accepting_undergraduates_stated"
+_FACULTY_RESEARCH_INACTIVE_MARKER = "faculty_research_inactive_stated"
+_FACULTY_AVAILABILITY_STATUS_MARKER = "faculty_availability_status"
+_FACULTY_NOT_ACCEPTING_RE = re.compile(
+    r"\b(?:not|no\s+longer)\s+(?:(?:currently|now)\s+)?"
+    r"(?:accepting|taking)\s+(?:(?:any|additional|new)\s+)*"
+    r"(?:undergraduates?|undergraduate\s+(?:students?|researchers?)|students?)\b",
+    re.IGNORECASE,
+)
+_FACULTY_RESEARCH_INACTIVE_RE = re.compile(
+    r"\b(?:not|no\s+longer)\s+(?:(?:currently|now)\s+)?"
+    r"(?:research\s+active|conducting\s+research)\b",
+    re.IGNORECASE,
+)
+
+
+def faculty_restriction_is_source_stated(record: dict) -> bool:
+    """Whether source excerpt text directly states a citizenship restriction."""
+    eligibility = record.get("eligibility") or {}
+    excerpt = eligibility.get("eligibility_text_raw")
+    excerpt_matches = (
+        isinstance(excerpt, str)
+        and _FACULTY_CITIZENSHIP_EVIDENCE_RE.search(excerpt) is not None
+    )
+    metadata = record.get("metadata") or {}
+    canonical_marker = (
+        metadata.get(_FACULTY_RESTRICTION_MARKER) is True
+        and eligibility.get("international_friendly") == "no"
+        and eligibility.get("citizenship_required") is True
+    )
+    return excerpt_matches or canonical_marker
+
+
+def faculty_availability_status(record: dict) -> str:
+    """Return the precise, source-backed faculty availability constraint.
+
+    The pattern is intentionally narrow. In particular, a statement about not
+    accepting *graduate* students alone must not suppress undergraduate
+    outreach. Research inactivity is kept distinct from an explicit refusal of
+    undergraduate students: both make this matching record non-actionable, but
+    the product must never rewrite one claim as the other. Compact markers
+    survive removal of raw scrape excerpts and make the decision idempotent.
+    """
+    if not faculty_contact_claims_unverified(record):
+        return "unknown"
+    metadata = record.get("metadata") or {}
+    canonical_status = metadata.get(_FACULTY_AVAILABILITY_STATUS_MARKER)
+    if canonical_status in {
+        "unknown",
+        "not_accepting_undergraduates",
+        "research_inactive",
+    }:
+        return canonical_status
+    if metadata.get(_FACULTY_NOT_ACCEPTING_MARKER) is True:
+        return "not_accepting_undergraduates"
+    if metadata.get(_FACULTY_RESEARCH_INACTIVE_MARKER) is True:
+        return "research_inactive"
+    eligibility = record.get("eligibility") or {}
+    candidates = [
+        record.get("description_raw"),
+        record.get("description_clean"),
+        metadata.get("research_areas_raw"),
+        eligibility.get("eligibility_text_raw"),
+    ]
+    # Some legacy faculty collectors preserved a short, source-quoted status
+    # only as a keyword (for example UCR's "Not taking students at this time")
+    # while replacing the display description with constructed prose. Keep the
+    # same narrow regex and a bounded list; do not treat arbitrary student
+    # keywords as availability evidence.
+    keywords = record.get("keywords")
+    if isinstance(keywords, list):
+        candidates.extend(keywords[:20])
+    if any(
+        isinstance(value, str)
+        and _FACULTY_NOT_ACCEPTING_RE.search(value) is not None
+        for value in candidates
+    ):
+        return "not_accepting_undergraduates"
+    if any(
+        isinstance(value, str)
+        and _FACULTY_RESEARCH_INACTIVE_RE.search(value) is not None
+        for value in candidates
+    ):
+        return "research_inactive"
+    return "unknown"
+
+
+def faculty_availability_is_source_negative(record: dict) -> bool:
+    """Whether a precise source-backed status blocks opportunity outreach."""
+    return faculty_availability_status(record) != "unknown"
+
+
+def faculty_safe_eligibility(record: dict) -> dict:
+    """Return eligibility facts safe for ranking/display at any call boundary.
+
+    The loader normally neutralizes faculty rows once, but route tests, stale
+    snapshots and future callers can pass a raw record directly. This pure
+    projection is the second belt: research-directory metadata never becomes
+    opening eligibility, while a directly quoted citizenship restriction is
+    still preserved.
+    """
+    eligibility = record.get("eligibility") or {}
+    if not isinstance(eligibility, dict):
+        eligibility = {}
+    if not faculty_contact_claims_unverified(record):
+        return eligibility
+
+    restriction_is_stated = faculty_restriction_is_source_stated(record)
+    restriction_excerpt = eligibility.get("eligibility_text_raw")
+    safe = {
+        "preferred_year": ["unknown"],
+        "min_gpa": None,
+        "majors": [],
+        "skills_required": [],
+        "skills_preferred": [],
+        "first_time_researchers": None,
+        "international_friendly": "no" if restriction_is_stated else "unknown",
+        "citizenship_required": True if restriction_is_stated else None,
+        "work_auth_notes": (
+            str(restriction_excerpt).strip()[:500]
+            if restriction_is_stated
+            else ""
+        ),
+    }
+    # Keep a present source excerpt available for idempotent re-evaluation;
+    # do not add a null schema key to records that never carried one.
+    if restriction_excerpt is not None:
+        safe["eligibility_text_raw"] = restriction_excerpt
+    return safe
+
+
+def faculty_safe_lab_or_program(record: dict) -> str:
+    """Return the lab label unless it is the known constructed template."""
+    lab_name = str(record.get("lab_or_program") or "").strip()
+    if (
+        faculty_contact_claims_unverified(record)
+        and re.fullmatch(
+            r"Prof\.?\s+.+['’]s Research Group",
+            lab_name,
+            re.IGNORECASE,
+        )
+    ):
+        return ""
+    return lab_name
+
+
+def _faculty_profile_summary(record: dict) -> str:
+    """Build availability-neutral display prose from identity/research facts."""
+    name = str(record.get("pi_name") or "this faculty member").strip()
+    department = str(record.get("department") or "").strip()
+    organization = str(record.get("organization") or "").strip()
+    affiliation = ""
+    if department and organization:
+        affiliation = f" in {department} at {organization}"
+    elif department:
+        affiliation = f" in {department}"
+    elif organization:
+        affiliation = f" at {organization}"
+
+    metadata = record.get("metadata") or {}
+    research_areas = metadata.get("research_areas_raw")
+    if not isinstance(research_areas, str) or not research_areas.strip():
+        research_areas = ", ".join(
+            value.strip()
+            for value in (record.get("keywords") or [])[:6]
+            if isinstance(value, str) and value.strip()
+        )
+
+    parts = [f"Faculty research profile for {name}{affiliation}."]
+    if research_areas:
+        parts.append(f"Research areas: {research_areas.strip()[:300]}")
+    availability_status = faculty_availability_status(record)
+    if availability_status == "not_accepting_undergraduates":
+        parts.append(
+            "The source profile states that this faculty contact is not currently "
+            "accepting undergraduate students or researchers."
+        )
+    elif availability_status == "research_inactive":
+        parts.append(
+            "The source profile reports that this faculty member is not currently "
+            "conducting active research."
+        )
+    else:
+        parts.append(
+            "Contact this faculty member to ask whether undergraduate research "
+            "opportunities are currently available."
+        )
+    return " ".join(parts)
+
+
+def neutralize_unverified_faculty_claims(record: dict) -> dict:
+    """Downgrade known faculty-directory templates in place and return record.
+
+    Source-stated restrictive evidence (international ``no`` or citizenship
+    ``True``) is preserved. Every ``faculty_research`` row remains a contact
+    profile regardless of generic review flags; a genuinely verified opening
+    must use a listing source type instead. Positive opening attributes are
+    removed because a directory profile cannot establish availability, pay,
+    timing, application ease, or work location.
+    The function runs on the freshly parsed in-memory corpus, so legacy shards
+    become honest immediately without rewriting the committed 100+ MB dataset
+    or waiting for a successful refresh.
+    """
+    if not faculty_contact_claims_unverified(record):
+        return record
+
+    availability_status = faculty_availability_status(record)
+
+    eligibility = record.get("eligibility")
+    if isinstance(eligibility, dict):
+        restriction_is_stated = faculty_restriction_is_source_stated(record)
+        eligibility.update(faculty_safe_eligibility(record))
+        metadata = record.setdefault("metadata", {})
+        if isinstance(metadata, dict):
+            if restriction_is_stated:
+                metadata[_FACULTY_RESTRICTION_MARKER] = True
+            else:
+                metadata.pop(_FACULTY_RESTRICTION_MARKER, None)
+
+    metadata = record.setdefault("metadata", {})
+    if isinstance(metadata, dict):
+        metadata[_FACULTY_AVAILABILITY_STATUS_MARKER] = availability_status
+        if availability_status == "not_accepting_undergraduates":
+            metadata[_FACULTY_NOT_ACCEPTING_MARKER] = True
+        else:
+            metadata.pop(_FACULTY_NOT_ACCEPTING_MARKER, None)
+        if availability_status == "research_inactive":
+            metadata[_FACULTY_RESEARCH_INACTIVE_MARKER] = True
+        else:
+            metadata.pop(_FACULTY_RESEARCH_INACTIVE_MARKER, None)
+
+    # Explicit top-level API contract used by cards/details. This is a status,
+    # not a reconstructed opening claim, and is always present on faculty
+    # records so stale/partial clients can fail closed without reading metadata.
+    record["faculty_availability_status"] = availability_status
+
+    application = record.get("application")
+    if isinstance(application, dict):
+        # A directory profile may suggest outreach, but it does not establish
+        # an application method.  The verified-send-target boundary decides
+        # later whether a real email address can be used.
+        application["contact_method"] = "unknown"
+        application["application_effort"] = "unknown"
+        for requirement in (
+            "requires_resume",
+            "requires_cover_letter",
+            "requires_transcript",
+            "requires_recommendation",
+        ):
+            application[requirement] = "unknown"
+        # The collector stores the faculty biography page here for historical
+        # schema compatibility. It is not an application portal; the top-level
+        # profile URL remains available to the UI.
+        application["application_url"] = None
+
+    # A faculty affiliation/profile identifies a person and research area. It
+    # does not establish a currently available role's location, schedule,
+    # compensation, or rolling application status.
+    record["on_campus"] = None
+    record["remote_option"] = "unknown"
+    record["paid"] = "unknown"
+    record["compensation_details"] = ""
+    record["is_rolling"] = False
+    record["duration"] = None
+    record["deadline"] = None
+    record["deadline_is_estimate"] = None
+    record["start_date"] = None
+    record["posted_date"] = None
+    record["audience"] = "unknown"
+
+    metadata = record.get("metadata")
+    if isinstance(metadata, dict):
+        metadata.pop("deadline_note", None)
+
+    lab_name = faculty_safe_lab_or_program(record)
+    if not lab_name and record.get("lab_or_program"):
+        record["lab_or_program"] = ""
+
+    summary = _faculty_profile_summary(record)
+    pi_name = str(record.get("pi_name") or "").strip()
+    if pi_name:
+        record["title"] = pi_name
+    record["description_raw"] = summary
+    record["description_clean"] = summary
+    return record
+
+
+def faculty_safe_public_record(record: dict) -> dict:
+    """Copy-on-write faculty projection for routes and stale cached payloads."""
+    if not faculty_contact_claims_unverified(record):
+        return record
+    safe = dict(record)
+    for key in ("eligibility", "application", "metadata"):
+        value = record.get(key)
+        if isinstance(value, dict):
+            safe[key] = dict(value)
+    neutralize_unverified_faculty_claims(safe)
+    # The source excerpt is useful only while canonicalizing a restriction.
+    # Public payloads expose the compact provenance marker, never arbitrary
+    # scraped eligibility prose that can contain stale opening claims.
+    eligibility = safe.get("eligibility")
+    if isinstance(eligibility, dict):
+        eligibility.pop("eligibility_text_raw", None)
+    return safe
 
 
 # ---------------------------------------------------------------------------

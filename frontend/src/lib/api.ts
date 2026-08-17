@@ -1118,6 +1118,7 @@ export interface EmailMatchItem {
   source?: string;
   deadline?: string | null;
   organization?: string;
+  record_kind?: 'listing' | 'faculty_contact' | 'unknown';
 }
 
 export async function sendMatchesEmail(
@@ -1139,6 +1140,7 @@ export interface EmailFavoriteItem {
   deadline?: string | null;
   notes?: string;
   status?: string;
+  record_kind?: 'listing' | 'faculty_contact' | 'unknown';
 }
 
 export async function sendFavoritesEmail(

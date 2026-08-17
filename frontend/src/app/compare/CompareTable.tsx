@@ -21,9 +21,10 @@ import BucketCards from './BucketCards';
 import DifferencesSection from './DifferencesSection';
 import RadarChart from './RadarChart';
 
-// Each explain call is a paid LLM completion, and this page fires one per card
-// on every visit — so cache per (opportunity, profile-hash) in sessionStorage.
-// Revisits and re-renders within the hour render instantly and bill nothing;
+// AI-mode explain calls are paid completions; local deterministic summaries
+// share the same bounded memoization shape. Cache per (opportunity,
+// profile-hash, effective requested mode) in sessionStorage so revisits and
+// re-renders within the hour render instantly;
 // a profile edit changes the hash and misses. The contact-trust version in the
 // prefix deliberately strands older entries whose explanation/reason strings
 // may contain an address copied from corpus text.
@@ -38,7 +39,9 @@ import RadarChart from './RadarChart';
 // produced anyway. Cross-account isolation is not a relevant property of
 // a pure function's memoized output; per-tab sessionStorage already bounds
 // the sharing window to the SAME open tab.
-const EXPLAIN_CACHE_PREFIX = 'ofe_explain_contact_trust_v1_';
+// v2 strands ai0 entries written before fail-close, when the backend still
+// called the provider and returned method=llm even for llm=false.
+const EXPLAIN_CACHE_PREFIX = 'ofe_explain_faculty_truth_ai_close_v2_';
 const EXPLAIN_TTL_MS = 60 * 60 * 1000;
 
 function readExplainCache(key: string): MatchExplanationResponse | null {

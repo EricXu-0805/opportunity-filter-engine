@@ -93,16 +93,16 @@ describe('cleanCompensation', () => {
 describe('noDeadlineKind', () => {
   const meta = { is_active: true, confidence_score: 0.9 };
 
-  it('classifies faculty records as inquiries regardless of notes', () => {
-    expect(noDeadlineKind({ source_type: 'faculty_research', metadata: meta })).toBe('inquiries');
-    // Faculty beats the note: the honest claim for a PI record is
-    // "accepts inquiries", not "rolling admissions".
+  it('classifies faculty records as profiles with no opening deadline', () => {
+    expect(noDeadlineKind({ source_type: 'faculty_research', metadata: meta })).toBe('faculty');
+    // Faculty beats the note: a directory profile has no listed opening
+    // deadline, but that does not prove rolling recruitment.
     expect(
       noDeadlineKind({
         source_type: 'faculty_research',
         metadata: { ...meta, deadline_note: 'Rolling admissions' },
       }),
-    ).toBe('inquiries');
+    ).toBe('faculty');
   });
 
   it('returns rolling only with scraped rolling evidence in deadline_note', () => {

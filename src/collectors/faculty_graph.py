@@ -69,7 +69,6 @@ from urllib.parse import unquote, urljoin
 from ..evidence import is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
-    _detect_funding,
     _is_person_name,
     _strip_nav_furniture,
     clear_contact_claim,
@@ -502,31 +501,23 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         email = None
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
-    # Faculty are cold-email research contacts, not postings with required
-    # skills — inferring skills from research-topic prose is false-precise
-    # and degrades their match score (mirrors the R70A DQ gate; the enricher/
-    # llm_tagger backfills are already faculty-gated).
-    skills: list[str] = []
-
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     name_hash = hashlib.md5(f"{short}-{name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{school['id_prefix']}-{short.lower()}-{name_hash}"
 
     # Rank-neutral prose when the source stated no rank or a non-professor
-    # rank: "Research opportunity with Jane Doe", "Contact them directly".
-    # Only a source-stated professor rank earns "the professor" phrasing.
+    # rank. Only a source-stated professor rank earns the honorific in the
+    # display title; the profile summary never asserts a current opening.
     professor_rank = is_professor_rank(title)
     desc_parts = [
-        f"Research opportunity with {title + ' ' if title else ''}{name} in the {dept_name} "
+        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} "
         f"at {school['organization']}."
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {research_areas[:200]}")
     desc_parts.append(
-        "Contact the professor directly to inquire about undergraduate "
-        "research positions in their lab." if professor_rank else
-        "Contact them directly to inquire about undergraduate "
-        "research opportunities."
+        "Contact this faculty member to ask whether undergraduate research "
+        "opportunities are currently available."
     )
     description = " ".join(desc_parts)
     # Defensive second pass on the fully assembled description (mirrors
@@ -540,9 +531,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # professor rank (truthfulness W11). Unknown/non-professor ranks get the
     # bare name; the actual rank ships in metadata.faculty_title.
     honorific = "Prof. " if professor_rank else ""
-    opp_title = f"Research with {honorific}{name} — {short}{research_summary}"
-    paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
-
+    opp_title = f"{honorific}{name} — {short}{research_summary}"
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
         "last_verified": now,
@@ -584,49 +573,33 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "contact_email": email,
         "url": profile_url,
         "location": school["location"],
-        # A professor's lab IS on their university's campus. This said False
-        # from the single-school era, when "on campus" meant "on the UIUC
-        # campus, the only one we served" — a meaning that stopped being true
-        # at 117 schools and left the field asserting something plainly false
-        # about 122,203 records.
-        #
-        # Whose campus it is stays a separate question, and the ranker already
-        # answers it: score_upside grants the F-1 "no work authorization
-        # concerns" advantage only when opportunity.school == profile.home_school
-        # (see the withhold branch there, and TestForeignCampusWorkAuthBonus). With
-        # this field forced False, that advantage was unreachable for every
-        # school except UIUC — the one collector that always said True — so the
-        # product's central promise to its central audience was dead for 116 of
-        # its 117 campuses.
-        "on_campus": True,
+        # Affiliation locates the faculty member, not a confirmed student role.
+        # Without opening/location evidence, the opportunity location is unknown.
+        "on_campus": None,
         "remote_option": "unknown",
         "opportunity_type": "research",
-        "paid": paid,
-        "compensation_details": compensation_details,
+        "paid": "unknown",
+        "compensation_details": "",
         "deadline": None,
-        # True is the honest value for a faculty lab, not a placeholder: a
-        # professor's page has no application deadline and accepts inquiries
-        # year-round (same policy as enricher.is_rolling_deadline). Records
-        # with a real deadline are reconciled by normalizers.rolling_truth.
-        "is_rolling": True,
+        # A missing opening deadline is not evidence of rolling recruitment.
+        "is_rolling": False,
         "posted_date": None,
         "start_date": None,
-        "duration": "Semester or academic year",
+        "duration": None,
         "eligibility": {
-            # Directory scrapes never state year preferences; lock freshmen out
-            # only when a posting explicitly does (Eric 2026-07-16).
-            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+            # A directory profile states no recruiting-year preference.
+            "preferred_year": ["unknown"],
             "min_gpa": None,
-            "majors": dept.get("majors", []),
-            "skills_required": skills[:3],
-            "skills_preferred": skills[3:],
-            # Documented policy, not a scraped fact: inquiring with a professor
-            # about research as an enrolled student carries no citizenship bar
-            # (docs/international_logic.md). Funding-specific work-auth limits
-            # ride international_friendly, which stays "unknown".
-            "citizenship_required": False,
+            "majors": [],
+            # Research topics drive topical matching; they are not evidence of
+            # skills a student must already have for an unconfirmed opening.
+            "skills_required": [],
+            "skills_preferred": [],
+            "citizenship_required": None,
             "international_friendly": "unknown",
-            "work_auth_notes": school.get("work_auth_notes", ""),
+            # School-wide policy copy is viewer-relative guidance, not a fact
+            # about this faculty member or an unconfirmed role.
+            "work_auth_notes": "",
             "eligibility_text_raw": description[:500],
         },
         "application": {
@@ -635,8 +608,8 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
             "requires_cover_letter": "unknown",
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
-            "application_effort": "low",
-            "application_url": profile_url,
+            "application_effort": "unknown",
+            "application_url": None,
         },
         "description_raw": description,
         "description_clean": description[:_DESC_CAP],

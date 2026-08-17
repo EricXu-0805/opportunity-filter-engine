@@ -204,7 +204,12 @@ def _billable_class(request: Request, path: str) -> str | None:
     # card); the exact "/api/matches" check below misses it. Gap analysis and
     # the plain matches list stay non-billable.
     if path.startswith("/api/matches/") and path.endswith("/explain"):
-        return "llm"
+        if (
+            feature_enabled("match_ai_refine")
+            and request.query_params.get("llm", "").lower() in ("1", "true")
+        ):
+            return "llm"
+        return None
     if (
         path == "/api/matches"
         and feature_enabled("match_ai_refine")

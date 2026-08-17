@@ -50,6 +50,11 @@ from backend.schemas import (
     MatchViewState,
     ProfileRequest,
 )
+from src.evidence import (
+    faculty_contact_claims_unverified,
+    faculty_safe_eligibility,
+    faculty_safe_public_record,
+)
 from src.matcher.config import (
     LLM_RERANK_BATCH,
     LLM_RERANK_CACHE_MAX,
@@ -94,9 +99,10 @@ _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
 # instead of "Email Professor" + "View Faculty Page".
 _CARD_OPP_FIELDS = frozenset({
     "id", "title", "organization", "department", "opportunity_type", "paid",
-    "deadline", "source", "on_campus", "posted_date", "location", "url",
+    "deadline", "is_rolling", "source", "on_campus", "posted_date", "location", "url",
     "duration", "compensation_details", "keywords", "lab_or_program", "pi_name",
     "school", "audience", "description_clean", "source_type",
+    "faculty_availability_status",
     # W11: an estimated deadline must carry its estimate flag onto the card —
     # without it the UI renders a guessed date as a hard one.
     "deadline_is_estimate",
@@ -116,6 +122,7 @@ def _public_match_payload(value):
 def _match_card(opp: dict) -> dict:
     """Project an opportunity to the minimal card shape the results UI renders
     (email-redacted by construction — no email field is in the kept sets)."""
+    opp = faculty_safe_public_record(opp)
     out = {k: opp[k] for k in _CARD_OPP_FIELDS if k in opp}
     # Position truthfulness (W11): the card must not carry an unsupported
     # "Prof." honorific, and it serves the stated rank so the UI can frame
@@ -155,8 +162,8 @@ def _match_card(opp: dict) -> dict:
 # canonical universe, and the opaque cursor traverses every visible result.
 DEFAULT_RESULTS_PER_PAGE = 100
 MAX_RESULTS_PER_REQUEST = 100
-MATCH_CONTRACT_VERSION = "match-page-v2-contact-trust"
-MATCH_VIEW_CONTRACT_VERSION = "match-view-v2-contact-trust"
+MATCH_CONTRACT_VERSION = "match-page-v3-faculty-trust"
+MATCH_VIEW_CONTRACT_VERSION = "match-view-v3-faculty-trust"
 
 # Only fields consumed by ranker.py participate in a snapshot key. Contact
 # identity/signature fields do not change ranking; including them let trivial
@@ -1088,7 +1095,10 @@ def _apply_match_view(
             source_counts[source] = source_counts.get(source, 0) + 1
         if "school" in opportunity or "audience" in opportunity:
             scope_available = True
-        days_left = _calendar_days_until(opportunity.get("deadline"), today)
+        is_faculty_contact = faculty_contact_claims_unverified(opportunity)
+        days_left = None if is_faculty_contact else _calendar_days_until(
+            opportunity.get("deadline"), today,
+        )
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1099,14 +1109,18 @@ def _apply_match_view(
 
         if not view.show_dismissed and result.opportunity_id in dismissed_ids:
             continue
-        paid = opportunity.get("paid")
+        paid = (
+            "unknown"
+            if is_faculty_contact
+            else opportunity.get("paid")
+        )
         if view.paid == "yes" and paid not in {"yes", "stipend"}:
             continue
         if view.paid == "no" and paid not in {"no", "unknown"}:
             continue
         if (
             view.intl == "yes"
-            and (opportunity.get("eligibility") or {}).get(
+            and faculty_safe_eligibility(opportunity).get(
                 "international_friendly"
             )
             != "yes"
@@ -1114,17 +1128,23 @@ def _apply_match_view(
             continue
         if view.source and source != view.source:
             continue
-        if view.on_campus == "yes" and not opportunity.get("on_campus"):
+        on_campus = None if is_faculty_contact else opportunity.get("on_campus")
+        if view.on_campus == "yes" and on_campus is not True:
             continue
-        if view.on_campus == "no" and opportunity.get("on_campus"):
+        if view.on_campus == "no" and on_campus is not False:
             continue
         if view.deadline == "rolling":
-            # Reads a different field than every other value on this facet, and
-            # is the only one most of the corpus can answer: 98.7% of records
-            # are rolling, 0.6% carry a deadline at all.
-            if opportunity.get("is_rolling") is not True:
+            # Reads a different field than every other value on this facet.
+            # Faculty contact profiles are explicitly excluded: no listed
+            # opening deadline is not evidence of rolling recruitment.
+            if (
+                opportunity.get("is_rolling") is not True
+                or is_faculty_contact
+            ):
                 continue
         elif view.deadline:
+            if is_faculty_contact:
+                continue
             days = _calendar_days_until(opportunity.get("deadline"), today)
             if view.deadline == "passed":
                 if days is None or days >= 0:
@@ -1194,8 +1214,14 @@ def _apply_match_view(
     if view.sort_by == "deadline":
         filtered.sort(
             key=lambda result: str(
-                opportunities_by_id.get(result.opportunity_id, {}).get(
-                    "deadline"
+                (
+                    None
+                    if faculty_contact_claims_unverified(
+                        opportunities_by_id.get(result.opportunity_id, {})
+                    )
+                    else opportunities_by_id.get(result.opportunity_id, {}).get(
+                        "deadline"
+                    )
                 )
                 or "9999"
             )
@@ -1203,8 +1229,14 @@ def _apply_match_view(
     elif view.sort_by == "newest":
         filtered.sort(
             key=lambda result: str(
-                opportunities_by_id.get(result.opportunity_id, {}).get(
-                    "posted_date"
+                (
+                    None
+                    if faculty_contact_claims_unverified(
+                        opportunities_by_id.get(result.opportunity_id, {})
+                    )
+                    else opportunities_by_id.get(result.opportunity_id, {}).get(
+                        "posted_date"
+                    )
                 )
                 or ""
             ),
@@ -1491,14 +1523,17 @@ _EXPLAIN_CACHE_MAX_ENTRIES = 500
 _explain_cache: dict[str, tuple[float, str]] = {}
 
 
-def _explain_cache_key(opportunity_id: str, profile: dict) -> str:
+def _explain_cache_key(opportunity_id: str, profile: dict, mode: str) -> str:
     # corpus_version + MATCHER_VERSION participate: without them a data refresh
     # or scoring change kept serving hour-old prose written from the OLD record
     # next to freshly recomputed numbers in the same response.
     profile_hash = hashlib.sha256(
         json.dumps(profile, sort_keys=True, default=str).encode()
     ).hexdigest()[:16]
-    return f"{opportunity_id}:{profile_hash}:{corpus_version()}:{MATCHER_VERSION}"
+    return (
+        f"{opportunity_id}:{profile_hash}:{mode}:"
+        f"{corpus_version()}:{MATCHER_VERSION}"
+    )
 
 
 def _explain_cache_get(key: str) -> str | None:
@@ -1532,6 +1567,7 @@ _EXCLUSION_GAP_TEXT = {
     "other_school_campus": "Restricted to another school's own students — not in your results",
     "cross_school_hidden": "Hosted at another school — enable cross-school results to include it",
     "citizenship_restricted": "Requires US citizenship or permanent residency — excluded from your results",
+    "faculty_not_accepting": "Source profile states this faculty member is not currently accepting undergraduate students — excluded from your results",
     "seeking_type_mismatch": "Outside your selected opportunity types — not in your results",
     "below_threshold": "Below your minimum match threshold — not shown in your results",
 }
@@ -1587,12 +1623,16 @@ async def get_match_explanation(
             0, _EXCLUSION_GAP_TEXT.get(excluded_reason, "Not part of your current results")
         )
 
-    cache_key = _explain_cache_key(opportunity_id, profile_dict)
-    llm_text = _explain_cache_get(cache_key)
+    cache_key = _explain_cache_key(opportunity_id, profile_dict, "ai-refine-v1")
+    # `llm=true` is only an intent. The source-controlled acceptance gate is
+    # authoritative: when it is closed, do not read an old AI cache entry and
+    # do not spend on a fresh explanation. Otherwise URL manipulation can still
+    # reach the provider even though ranking itself correctly stayed rule-only.
+    llm_text = _explain_cache_get(cache_key) if use_llm else None
     public_opp = _public_match_payload(opp)
     public_reasons_fit = redact_embedded_emails(result.reasons_fit)
     public_reasons_gap = redact_embedded_emails(result.reasons_gap)
-    if llm_text is None:
+    if use_llm and llm_text is None:
         try:
             llm_text = await run_blocking(
                 _llm_explanation,

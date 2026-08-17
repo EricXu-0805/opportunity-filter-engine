@@ -19,6 +19,8 @@ import type { TFunc } from './types';
  * and the cold-email modal owns that honest state.
  */
 export function ContactRevealSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
+  const outreachBlocked = opp.source_type === 'faculty_research'
+    && opp.faculty_availability_status === 'not_accepting_undergraduates';
   const { openModal } = useAuthModal();
   const [status, setStatus] = useState<ContactEmailStatus | null>(
     opp.contact_email_status ?? null,
@@ -37,7 +39,12 @@ export function ContactRevealSection({ opp, t }: { opp: Opportunity; t: TFunc })
   const signedIn = authState !== null && !!authState.session && !authState.isAnonymous;
 
   useEffect(() => {
-    if (status !== 'sign_in_required' || !signedIn || revealInFlight.current) return;
+    if (
+      outreachBlocked
+      || status !== 'sign_in_required'
+      || !signedIn
+      || revealInFlight.current
+    ) return;
     revealInFlight.current = true;
     let cancelled = false;
     void (async () => {
@@ -58,7 +65,11 @@ export function ContactRevealSection({ opp, t }: { opp: Opportunity; t: TFunc })
       }
     })();
     return () => { cancelled = true; };
-  }, [status, signedIn, opp.id]);
+  }, [outreachBlocked, status, signedIn, opp.id]);
+
+  // The detail header already renders the precise source-backed stop status.
+  // Do not expose a second mailto/unlock path that contradicts it.
+  if (outreachBlocked) return null;
 
   if (status === 'revealed' && email) {
     return (

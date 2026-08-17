@@ -183,8 +183,11 @@ def test_placeholder_directory_email_is_treated_as_no_email():
 def test_external_campus_semantics():
     abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
     opp = normalize_faculty(abbeel, EECS_CONFIG)
-    assert opp["on_campus"] is True
+    assert opp["on_campus"] is None
+    assert opp["eligibility"]["preferred_year"] == ["unknown"]
+    assert opp["eligibility"]["citizenship_required"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
+    assert opp["application"]["application_effort"] == "unknown"
     assert "no work authorization required" not in opp["eligibility"]["work_auth_notes"]
 
 
@@ -201,7 +204,7 @@ def test_metadata_keys_are_canonical():
         "id", "source", "source_url", "source_type", "title", "organization",
         "department", "lab_or_program", "pi_name", "contact_email", "url",
         "location", "on_campus", "remote_option", "opportunity_type", "paid",
-        "compensation_details", "deadline", "posted_date", "start_date",
+        "compensation_details", "deadline", "is_rolling", "posted_date", "start_date",
         "duration", "eligibility", "application", "description_raw",
         "description_clean", "keywords", "metadata",
     }

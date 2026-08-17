@@ -13,14 +13,31 @@ const PROFILE = {
   skills: [{ name: 'Python', level: 'experienced' }],
 } as ProfileData;
 
-function opportunity(id: string, effort: 'low' | 'medium' | 'high'): Opportunity {
+function opportunity(id: string, effort: string): Opportunity {
   return {
     id,
     title: id,
     organization: 'Test U',
-    application: { application_effort: effort },
-    eligibility: {},
-  } as Opportunity;
+    opportunity_type: 'research',
+    paid: 'unknown',
+    location: '',
+    on_campus: null,
+    description_clean: '',
+    keywords: [],
+    application: {
+      application_effort: effort,
+      requires_resume: 'unknown',
+      contact_method: 'unknown',
+    },
+    eligibility: {
+      international_friendly: 'unknown',
+      preferred_year: [],
+      majors: [],
+      skills_required: [],
+      citizenship_required: null,
+    },
+    metadata: { is_active: true, confidence_score: 1 },
+  };
 }
 
 function row(id: string, finalScore: number | null, inputIndex: number): CompareRow {
@@ -75,8 +92,23 @@ describe('compare score truth source', () => {
         skills_required: [],
         citizenship_required: false,
       },
-    } as Opportunity);
+    });
     expect(withEvidence.eligibility).toBe(100);
+  });
+
+  it('treats an explicit unknown year sentinel as missing evidence', () => {
+    const factors = computeDecisionFactors(PROFILE, {
+      ...opportunity('unknown-year', 'unknown'),
+      eligibility: {
+        majors: ['Computer Science'],
+        preferred_year: ['unknown'],
+        international_friendly: 'unknown',
+        skills_required: [],
+        citizenship_required: null,
+      },
+    });
+    expect(factors.eligibility).toBeNull();
+    expect(factors.ease).toBeNull();
   });
 
   it.each([true, null, undefined])(
@@ -86,7 +118,7 @@ describe('compare score truth source', () => {
         ...opportunity('estimated', 'medium'),
         deadline: '2030-01-01',
         deadline_is_estimate: deadlineIsEstimate,
-      } as Opportunity);
+      });
       expect(factors.deadline_runway).toBeNull();
     },
   );
@@ -97,6 +129,29 @@ describe('compare score truth source', () => {
       is_rolling: true,
     });
     expect(factors.deadline_runway).toBe(85);
+  });
+
+  it('does not score legacy opening fields on a faculty contact profile', () => {
+    const factors = computeDecisionFactors(PROFILE, {
+      ...opportunity('faculty-contact', 'low'),
+      source_type: 'faculty_research',
+      paid: 'yes',
+      is_rolling: true,
+      deadline: '2099-12-31',
+      eligibility: {
+        international_friendly: 'yes',
+        preferred_year: ['Junior'],
+        majors: ['Computer Science'],
+        skills_required: ['Python'],
+        citizenship_required: null,
+      },
+    });
+    expect(factors.skill_match).toBeNull();
+    expect(factors.eligibility).toBeNull();
+    expect(factors.ease).toBeNull();
+    expect(factors.compensation).toBeNull();
+    expect(factors.deadline_runway).toBeNull();
+    expect(factors.intl_friendly).toBeNull();
   });
 
   it('sorts only by canonical final_score, never by locally estimated factors', () => {

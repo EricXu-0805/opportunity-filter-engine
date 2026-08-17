@@ -10,11 +10,9 @@ contradiction — a real deadline present with no source text saying rolling.
 Deliberately NOT done here (Codex's rolling_truth.py did, and it was dropped):
 demoting no-deadline records whose text merely lacks the word "rolling". 719
 fellowship/summer-program records carry that shape today — the R70-A migration
-set them True as the safe no-deadline default, the DQ audit targets zero
-"no deadline AND no is_rolling" records, and faculty labs genuinely accept
-inquiries year-round (see ``enricher.is_rolling_deadline``). Blanket demotion
-would flip all 719 and re-open the DQ hole. This pass never promotes either:
-False/absent values are left alone.
+set them True as the safe no-deadline default. Faculty directory contacts are
+handled separately by the faculty trust boundary and are not openings. This
+pass never promotes either: False/absent values are left alone.
 """
 
 from __future__ import annotations
@@ -77,7 +75,7 @@ def reconcile_rolling_with_deadline(record: dict) -> bool:
     Fires only when the record carries a fixed deadline AND no source text
     saying rolling — the two claims cannot both be true, and the deadline is
     the structured, collector-verified one. Never promotes, never touches
-    deadline-less records (faculty labs stay honestly rolling).
+    deadline-less records (their source-specific trust boundary decides them).
     """
     if record.get("is_rolling") is not True:
         return False

@@ -16,6 +16,13 @@ from functools import lru_cache
 
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
+from ..evidence import (
+    faculty_availability_status,
+    faculty_contact_claims_unverified,
+    faculty_safe_eligibility,
+    faculty_safe_lab_or_program,
+    is_professor_rank,
+)
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
@@ -585,6 +592,8 @@ def _empty_interest_major_bonus(profile: dict, opportunity: dict) -> float:
     2026-07 audit). Additive lift for opportunities that explicitly want the
     student's major, gated to the empty-interest case: once interests exist,
     the interest bonus takes over and this stays out of the way."""
+    if faculty_contact_claims_unverified(opportunity):
+        return 0.0
     if len(str(profile.get("research_interests_text") or "").strip()) >= 4:
         return 0.0
     student_majors = [profile.get("major", "")] + (profile.get("secondary_interests") or [])
@@ -907,7 +916,8 @@ def score_eligibility(
     ``skill_map`` is the precomputed _parse_skills(profile hard_skills); rank_all
     passes it so the profile's skills are parsed once per request, not per opp.
     """
-    elig = opportunity.get("eligibility") or {}
+    is_faculty_contact = faculty_contact_claims_unverified(opportunity)
+    elig = faculty_safe_eligibility(opportunity)
     reasons_fit = []
     reasons_gap = []
 
@@ -973,17 +983,25 @@ def score_eligibility(
                 )
             else:
                 intl_score = INTL_UNKNOWN_SCORE
-                reasons_gap.append("International eligibility unclear — verify before applying")
+                reasons_gap.append(
+                    "International eligibility is not stated — confirm when "
+                    "contacting the faculty member"
+                    if is_faculty_contact
+                    else "International eligibility unclear — verify before applying"
+                )
         else:
             reasons_fit.append("Open to international students")
 
-    # Skill overlap (15% weight). Rolling-basis postings (faculty labs,
-    # SRO entries) typically don't list fixed skill requirements because
-    # they adapt to whoever applies. Treat their empty skills as neutral
-    # (60) rather than penalized (35) so research-curious students don't
-    # get marked down for lab postings that explicitly don't screen on skills.
+    # Skill overlap (15% weight). Evidence-backed rolling postings such as SRO
+    # entries may omit fixed requirements because they adapt to the applicant.
+    # A faculty directory contact is not a rolling posting and cannot earn this
+    # boost merely because an old collector stamped is_rolling=True.
     required_skills_list = elig.get("skills_required", []) or []
-    if not required_skills_list and opportunity.get("is_rolling"):
+    if (
+        not required_skills_list
+        and opportunity.get("is_rolling")
+        and not faculty_contact_claims_unverified(opportunity)
+    ):
         skill_score = 60.0
     else:
         skill_score = _skill_overlap_score(
@@ -1065,7 +1083,8 @@ def score_eligibility(
 
 def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str], list[str]]:
     """Score readiness (0-100)."""
-    app = opportunity.get("application") or {}
+    is_faculty_contact = faculty_contact_claims_unverified(opportunity)
+    app = {} if is_faculty_contact else (opportunity.get("application") or {})
     reasons_fit = []
     reasons_gap = []
 
@@ -1081,9 +1100,17 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
     exp_map = {"strong": 100, "some": 70, "beginner": 40, "none": 20}
     exp_score = exp_map.get(profile.get("experience_level", "none"), 20)
     if exp_score >= 70:
-        reasons_fit.append("Your experience level is competitive")
+        reasons_fit.append(
+            "Your experience can support a thoughtful faculty outreach"
+            if is_faculty_contact
+            else "Your experience level is competitive"
+        )
     elif exp_score <= 30:
-        reasons_gap.append("Limited prior experience — position may be competitive")
+        reasons_gap.append(
+            "Your experience signal is limited — ask what preparation would help"
+            if is_faculty_contact
+            else "Limited prior experience — position may be competitive"
+        )
 
     student_courses, course_tokens = _course_sets(tuple(profile.get("coursework", []) or []))
     course_score = _coursework_score(student_courses, opportunity, course_tokens=course_tokens)
@@ -1126,6 +1153,7 @@ def score_upside(
     result (rank_opportunity computes it once for both this layer and
     field_relevant); None means compute it here."""
     st = _opp_static(opportunity)
+    is_faculty_contact = faculty_contact_claims_unverified(opportunity)
     reasons_fit = []
     reasons_gap = []
 
@@ -1134,37 +1162,30 @@ def score_upside(
     # enum all collapse to "unknown" → 40. (Previously an explicit null scored
     # 50 while a missing key scored 40 — the same unknown fact, two scores.)
     paid_map = {"yes": 100, "stipend": 80, "unknown": 40, "no": 25}
-    paid_score = paid_map.get(opportunity.get("paid") or "unknown", 40)
+    paid_value = "unknown" if is_faculty_contact else (opportunity.get("paid") or "unknown")
+    paid_score = paid_map.get(paid_value, 40)
     if paid_score >= 70:
         reasons_fit.append("Paid opportunity" if paid_score == 100 else "Includes stipend")
 
-    # First-experience friendly (25%)
+    # First-experience friendly (25%). Class-year eligibility is not evidence
+    # that a posting welcomes applicants without prior research experience;
+    # only the dedicated explicit field may earn this claim.
     first_exp_score = 40.0  # Default: no signal of freshman-friendliness
     if st.first_exp:
         first_exp_score = 100.0
         reasons_fit.append("Explicitly welcomes first-time researchers")
 
-    # On-campus convenience (10%)
-    campus_score = 80.0 if opportunity.get("on_campus") else 50.0
-    if opportunity.get("on_campus") and profile.get("international_student"):
-        # The F-1 "no work-authorization concerns" advantage only holds on the
-        # student's OWN campus. Withhold it only when we KNOW the campus is a
-        # different school. Missing home_school or national/legacy (school=None)
-        # records keep the original behavior — an F-1 can't work on another
-        # school's campus, but we never penalize on incomplete data.
-        #
-        # "on_campus=True on a foreign campus" was described here as a future
-        # multi-school data error. It is now the normal shape of the corpus:
-        # every school's own faculty and programs carry on_campus=True, and this
-        # comparison is the only thing separating "your campus" from "a campus".
-        # Until that flip the collectors forced False everywhere except UIUC, so
-        # this branch — the product's central claim to international students —
-        # was unreachable at 116 of 117 schools.
+    # On-campus convenience (10%). This is a location signal, never a work-
+    # authorization conclusion: employment/funding rules depend on the actual
+    # arrangement and cannot be inferred from the campus alone.
+    on_campus = None if is_faculty_contact else opportunity.get("on_campus")
+    campus_score = 80.0 if on_campus else 50.0
+    if on_campus is True:
         opp_school = opportunity.get("school")
         home_school = profile.get("home_school")
-        if opp_school is None or not home_school or opp_school == home_school:
+        if opp_school and home_school and opp_school == home_school:
             campus_score = 90.0
-            reasons_fit.append("On-campus — no work authorization concerns")
+            reasons_fit.append("At your university")
 
     # Brand/prestige (15%)
     brand_score = st.brand_score
@@ -1173,7 +1194,7 @@ def score_upside(
 
     mentor_score = st.mentor_score
     pathway_score = st.pathway_score
-    if st.pathway_reason:
+    if st.pathway_reason and not faculty_contact_claims_unverified(opportunity):
         reasons_fit.append("Potential for publication or long-term involvement")
 
     keyword_score = 25.0
@@ -1466,7 +1487,13 @@ def _summarize_research(opportunity: dict) -> str:
     pi = opportunity.get("pi_name") or ""
     if pi.lower().strip() in _BAD_PI_NAMES:
         pi = ""
-    lab = opportunity.get("lab_or_program", "")
+    metadata = opportunity.get("metadata") or {}
+    stated_rank = metadata.get("faculty_title") or opportunity.get("faculty_title") or ""
+    # "Prof." is an academic-rank claim, not a generic synonym for anyone in
+    # a faculty directory. Keep the person's name useful in the explanation,
+    # but earn the honorific from a source-stated professor rank.
+    pi_label = f"Prof. {pi}" if pi and is_professor_rank(stated_rank) else pi
+    lab = faculty_safe_lab_or_program(opportunity)
     dept = opportunity.get("department", "")
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
 
@@ -1476,17 +1503,17 @@ def _summarize_research(opportunity: dict) -> str:
     lab_has_pi = pi and pi.split()[-1].lower() in lab.lower()
 
     if pi and lab and specific_kw:
-        prefix = lab if lab_has_pi else f"Prof. {pi}'s {lab}"
+        prefix = lab if lab_has_pi else f"{pi_label}'s {lab}"
         return f"{prefix} — {', '.join(specific_kw[:3])}"
     if pi and specific_kw:
-        return f"Prof. {pi} ({dept or 'UIUC'}) — {', '.join(specific_kw[:3])}"
+        return f"{pi_label} ({dept or 'UIUC'}) — {', '.join(specific_kw[:3])}"
     if pi and lab:
-        prefix = lab if lab_has_pi else f"Prof. {pi}'s {lab}"
+        prefix = lab if lab_has_pi else f"{pi_label}'s {lab}"
         if desc_focus:
             return f"{prefix}: {desc_focus}"
         return f"{prefix} ({dept})" if dept and dept not in prefix else prefix
     if pi and desc_focus:
-        return f"Prof. {pi}: {desc_focus}"
+        return f"{pi_label}: {desc_focus}"
     if lab and specific_kw:
         return f"{lab} — {', '.join(specific_kw[:3])}"
     if lab:
@@ -1531,6 +1558,8 @@ _GRADUATE_YEARS = frozenset({
 
 
 def _requires_graduate_standing(opportunity: dict) -> bool:
+    if faculty_contact_claims_unverified(opportunity):
+        return False
     title = str(opportunity.get("title", ""))
     if _GRAD_TITLE_RE.search(title):
         return True
@@ -1715,6 +1744,7 @@ class _OppStatic:
 
 
 def _build_opp_static(opp: dict) -> _OppStatic:
+    is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
     kw_lower = tuple(k.lower() for k in keywords)
     kw_set = frozenset(kw_lower)
@@ -1732,7 +1762,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
     )
 
-    elig = opp.get("eligibility", {}) or {}
+    elig = faculty_safe_eligibility(opp)
     course_signals = frozenset(
         k.lower() for k in keywords if isinstance(k, str)
     ) | frozenset(
@@ -1742,17 +1772,39 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     brand_score, brand_reason = 60.0, None
     org = (opp.get("organization") or "").lower()
     if opp.get("school") in REGISTERED_SCHOOLS:
-        brand_score, brand_reason = 90.0, "Major research university — strong resume builder"
+        brand_score = 90.0
+        brand_reason = (
+            "Faculty profile from a major research university"
+            if is_faculty_contact
+            else "Major research university — strong resume builder"
+        )
     elif _PRESTIGE_ORG_RE.search(org):
-        brand_score, brand_reason = 95.0, "Prestigious institution — strong resume builder"
+        brand_score = 95.0
+        brand_reason = (
+            "Faculty profile from a recognized research institution"
+            if is_faculty_contact
+            else "Prestigious institution — strong resume builder"
+        )
 
     desc = (opp.get("description_raw") or "").lower()
     mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if k in desc)
     pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if k in desc)
 
-    lab = opp.get("lab_or_program", "")
+    lab = faculty_safe_lab_or_program(opp)
     pi_name = opp.get("pi_name", "")
     clean_pi = pi_name if pi_name and pi_name.lower().strip() not in _BAD_PI_NAMES else ""
+    stated_rank = (
+        (opp.get("metadata") or {}).get("faculty_title")
+        or opp.get("faculty_title")
+        or ""
+    )
+    lab_label = lab or opp.get("department", "")
+    if clean_pi:
+        lab_label = (
+            f"Prof. {clean_pi}"
+            if not is_faculty_contact or is_professor_rank(stated_rank)
+            else clean_pi
+        )
 
     # Interest-bonus haystack. Two guards against name-luck ranking (a
     # cancer-immunology student's "gene/genomics" tokens put Gene Fridman and
@@ -1767,7 +1819,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         ]
     signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
 
-    deadline = opp.get("deadline", "")
+    deadline = "" if is_faculty_contact else opp.get("deadline", "")
     deadline_date = None
     if deadline and len(deadline) >= 8 and deadline[4] == "-":
         try:
@@ -1788,15 +1840,18 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         ov_canon=ov_canon,
         containment_res=containment_res,
         course_signals=course_signals,
-        first_exp="freshman" in [y.lower() for y in elig.get("preferred_year", []) or []],
+        first_exp=(
+            not is_faculty_contact
+            and elig.get("first_time_researchers") is True
+        ),
         brand_score=brand_score,
         brand_reason=brand_reason,
         mentor_score=35.0 + min(55.0, mentor_hits * 20.0),
         pathway_score=40.0 + min(55.0, pathway_hits * 18.0),
-        pathway_reason=pathway_hits >= 2,
+        pathway_reason=not is_faculty_contact and pathway_hits >= 2,
         has_desc=bool(opp.get("description_raw") or opp.get("description_clean") or ""),
-        has_skill_signal=bool(elig.get("skills_required")),
-        lab_label=clean_pi and f"Prof. {clean_pi}" or lab or opp.get("department", ""),
+        has_skill_signal=not is_faculty_contact and bool(elig.get("skills_required")),
+        lab_label=lab_label,
         signal_text=f" {signal_joined} " if signal_joined else "",
         dept_lower=(opp.get("department") or "").lower(),
         topic_candidates=tuple(
@@ -1813,7 +1868,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         topic_has_specific=any(
             k.lower() not in _BROAD_FIELDS for k in _extract_specific_keywords(opp)
         ),
-        requires_grad=_requires_graduate_standing(opp),
+        requires_grad=False if is_faculty_contact else _requires_graduate_standing(opp),
         research_summary=_summarize_research(opp),
         deadline_date=deadline_date,
     )
@@ -2010,7 +2065,7 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     (3, ("Explicitly welcomes first-time researchers",
          "Potential for publication", "Deadline in ", "Summer research — in season")),
     # 5 — nice-to-know attributes.
-    (5, ("Paid opportunity", "Includes stipend", "On-campus — ")),
+    (5, ("Paid opportunity", "Includes stipend", "At your university")),
     # 6 — boilerplate that is true of half the results page. The brand lines
     # are school-constant (every registered-school result gets one), so they
     # must not occupy a top-3 card slot when specific reasons are scarce.
@@ -2142,6 +2197,10 @@ def _rank_opportunity_unlocked(
     # (2026-07 dogfood). Stable sort: within a tier, original order holds.
     all_fit = sorted(elig_fit + ready_fit + up_fit, key=_reason_priority)
     all_gap = elig_gap + ready_gap + up_gap
+    if faculty_contact_claims_unverified(opportunity):
+        all_gap.append(
+            "Faculty availability and eligibility are not confirmed — verify when you contact them"
+        )
 
     research_summary = st.research_summary
     if research_summary:
@@ -2216,7 +2275,8 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     (never silently converted to eligible/ineligible); surfaces may render
     these as "verify"-style hints but must not reinterpret them."""
     unknowns: list[str] = []
-    elig = opportunity.get("eligibility") or {}
+    is_faculty_contact = faculty_contact_claims_unverified(opportunity)
+    elig = faculty_safe_eligibility(opportunity)
 
     student_year = (profile.get("year") or "").strip().lower()
     if not student_year or student_year == "unknown":
@@ -2234,9 +2294,20 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     ) == "unknown" and elig.get("citizenship_required") is not True:
         # verify-don't-rule-out: INTL_UNKNOWN_*_SCORE, never a hard exclusion
         unknowns.append("opportunity.international_friendly")
-    if (opportunity.get("paid") or "unknown") not in ("yes", "stipend", "no"):
+    paid = "unknown" if is_faculty_contact else (opportunity.get("paid") or "unknown")
+    if paid not in ("yes", "stipend", "no"):
         unknowns.append("opportunity.paid")  # scored 40
-    if not opportunity.get("deadline"):
+    effort = (
+        None
+        if is_faculty_contact
+        else (opportunity.get("application") or {}).get("application_effort")
+    )
+    if effort not in {"low", "medium", "high"}:
+        unknowns.append("opportunity.application_effort")
+    on_campus = None if is_faculty_contact else opportunity.get("on_campus")
+    if on_campus is not True and on_campus is not False:
+        unknowns.append("opportunity.on_campus")
+    if is_faculty_contact or not opportunity.get("deadline"):
         unknowns.append("opportunity.deadline")  # no penalty, no seasonal boost
     if elig.get("min_gpa") is not None and str(elig.get("min_gpa")).strip():
         # The corpus records GPA floors but the product never collects the
@@ -2249,10 +2320,12 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
 def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> list[str]:
     """Generate actionable next steps based on gaps."""
     steps = []
-    app = opportunity.get("application") or {}
+    is_faculty_contact = opportunity.get("source_type") == "faculty_research"
+    raw_app = opportunity.get("application") or {}
+    app = {} if is_faculty_contact else raw_app
 
     # Deadline urgency
-    deadline = opportunity.get("deadline")
+    deadline = None if is_faculty_contact else opportunity.get("deadline")
     if deadline:
         steps.append(f"Apply before deadline: {deadline}")
 
@@ -2260,13 +2333,27 @@ def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> l
     if not profile.get("resume_ready") and app.get("requires_resume") == "yes":
         steps.append("Prepare a research-focused resume")
 
-    # Cold email
-    if app.get("contact_method") == "email" and profile.get("can_cold_email"):
+    # Cold email. Faculty outreach is a distinct action from an application
+    # method: a directory record's application.contact_method is deliberately
+    # neutralized. A verified target can still produce a send-ready next step;
+    # otherwise the honest action is to verify a channel on the profile.
+    if is_faculty_contact and profile.get("can_cold_email"):
+        if verified_send_target(opportunity):
+            steps.append("Send a brief cold email to the PI expressing interest")
+        else:
+            steps.append("Open the faculty profile and verify a contact channel")
+    elif raw_app.get("contact_method") == "email" and profile.get("can_cold_email"):
         steps.append("Send a brief cold email to the PI expressing interest")
 
     # Default
     if not steps:
-        steps.append("Review the posting and prepare your application materials")
+        if is_faculty_contact:
+            steps.append(
+                "Review the faculty profile and ask whether current research "
+                "opportunities are available"
+            )
+        else:
+            steps.append("Review the posting and prepare your application materials")
 
     return steps
 
@@ -2550,6 +2637,9 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     or None when the record stays."""
     if (opp.get("metadata") or {}).get("is_active") is False:
         return "inactive"
+    faculty_status = faculty_availability_status(opp)
+    if faculty_status == "not_accepting_undergraduates":
+        return "faculty_not_accepting"
 
     # Multi-university scope (PR #187 Phase 1): another school's campus-only
     # posting is not actionable for this user, so it always drops. The rest of
@@ -2557,22 +2647,23 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     # include_cross_school — except summer programs, which recruit nationally
     # regardless of host (Eric: 暑期科研肯定是无所谓的). National records
     # (school=None) never enter this branch.
+    is_faculty_contact = faculty_contact_claims_unverified(opp)
     opp_school = opp.get("school")
     if opp_school is not None and opp_school != ctx.home_school:
-        if opp.get("audience") == "campus":
+        if not is_faculty_contact and opp.get("audience") == "campus":
             return "other_school_campus"
         if ctx.hide_cross_school and opp.get("opportunity_type") != "summer_program":
             return "cross_school_hidden"
 
     if ctx.international_student:
-        elig = opp.get("eligibility") or {}
+        elig = faculty_safe_eligibility(opp)
         if elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True:
             if ctx.exclude_citizenship_restricted:
                 return "citizenship_restricted"
 
     opp_type = opp.get("opportunity_type", "")
     if ctx.seeking and opp_type and opp_type not in ctx.seeking:
-        opp_majors = (opp.get("eligibility") or {}).get("majors") or []
+        opp_majors = faculty_safe_eligibility(opp).get("majors") or []
         if opp_majors:
             opp_majors_norm = {_normalize_major(m) for m in opp_majors}
             if not (ctx.student_majors_norm & opp_majors_norm):

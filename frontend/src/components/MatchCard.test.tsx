@@ -29,6 +29,7 @@ function makeOpp(overrides: Partial<Opportunity> = {}): Opportunity {
     id: 'opp-1',
     title: 'Test Opportunity',
     organization: 'UIUC CS',
+    source_type: 'campus_program',
     opportunity_type: 'Research',
     paid: 'yes',
     location: 'Urbana, IL',
@@ -167,6 +168,17 @@ describe('MatchCard', () => {
       );
       expect(screen.getByText(/A Borderline Paper \(2025\)/)).toBeInTheDocument();
     });
+  });
+
+  it('labels a faculty city as affiliation rather than an opening location', () => {
+    render(
+      <MatchCard
+        match={makeMatch({ source_type: 'faculty_research', location: 'Urbana, IL' })}
+        onDraftEmail={() => {}}
+      />,
+    );
+    expect(screen.getByText('card.facultyAffiliationLocation')).toBeInTheDocument();
+    expect(screen.queryByText('Urbana, IL')).toBeNull();
   });
 
   describe('international-friendly badge', () => {
@@ -548,28 +560,32 @@ describe('MatchCard', () => {
       expect(link!.getAttribute('href')).toBe('https://opp.example');
     });
 
-    it('faculty record shows "Email Professor" + secondary "Faculty Page", never "Apply Now"', () => {
+    it('faculty record shows "Draft Email" + secondary "Faculty Page", never "Apply Now"', () => {
       // application_url on a faculty record is the prof's directory page, not
       // an apply form — surfacing it as "Apply Now" dead-ends, so we don't.
       const match = makeMatch({
         source_type: 'faculty_research',
-        url: 'https://faculty.example/prof',
+        url: 'https://faculty.example/real-profile',
         faculty_title: 'Professor',
         application: {
           application_effort: 'medium',
           requires_resume: 'no',
           contact_method: 'email',
-          application_url: 'https://faculty.example/prof',
+          application_url: 'https://fake.example/apply',
         },
       });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
       expect(screen.queryByText('card.applyNow')).toBeNull();
-      expect(screen.getByText('card.emailProfessor')).toBeInTheDocument();
+      expect(screen.getByText('card.facultyContactUnconfirmed')).toBeInTheDocument();
+      expect(screen.queryByText('badges.paid')).toBeNull();
+      expect(screen.queryByText('card.emailProfessor')).toBeNull();
+      expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
       const facultyLink = screen.getByText('card.viewFacultyPage').closest('a');
-      expect(facultyLink!.getAttribute('href')).toBe('https://faculty.example/prof');
+      expect(facultyLink!.getAttribute('href')).toBe('https://faculty.example/real-profile');
+      expect(screen.queryByRole('link', { name: 'card.applyNow' })).toBeNull();
     });
 
-    it('faculty "Email Professor" button triggers onDraftEmail', () => {
+    it('faculty "Draft Email" button triggers onDraftEmail', () => {
       const handler = vi.fn();
       const match = makeMatch({
         id: 'fac-1',
@@ -583,8 +599,37 @@ describe('MatchCard', () => {
         },
       });
       render(<MatchCard match={match} onDraftEmail={handler} />);
-      fireEvent.click(screen.getByText('card.emailProfessor'));
+      fireEvent.click(screen.getByText('card.draftEmail'));
       expect(handler).toHaveBeenCalledWith('fac-1');
+    });
+
+    it('shows an explicit undergraduate stop and removes the outreach draft action', () => {
+      const handler = vi.fn();
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        faculty_availability_status: 'not_accepting_undergraduates',
+        url: 'https://faculty.example/source',
+      });
+      render(<MatchCard match={match} onDraftEmail={handler} />);
+
+      expect(screen.getByText('card.facultyNotAcceptingUndergraduates')).toBeInTheDocument();
+      expect(screen.queryByText('card.facultyContactUnconfirmed')).toBeNull();
+      expect(screen.queryByText('card.draftEmail')).toBeNull();
+      expect(handler).not.toHaveBeenCalled();
+      expect(screen.getByText('card.viewFacultyPage')).toBeInTheDocument();
+    });
+
+    it('shows research inactivity precisely without inferring that outreach is forbidden', () => {
+      const handler = vi.fn();
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        faculty_availability_status: 'research_inactive',
+      });
+      render(<MatchCard match={match} onDraftEmail={handler} />);
+
+      expect(screen.getByText('card.facultyResearchInactive')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('card.draftEmail'));
+      expect(handler).toHaveBeenCalledWith('opp-1');
     });
 
     it('faculty record with a non-professor rank gets "Draft Email", not "Email Professor"', () => {
@@ -599,13 +644,47 @@ describe('MatchCard', () => {
       expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
     });
 
-    it('faculty record with a professor-like rank keeps "Email Professor"', () => {
+    it('faculty record with a professor-like rank still gets "Draft Email"', () => {
       const match = makeMatch({
         source_type: 'faculty_research',
         faculty_title: 'Assistant Professor',
       });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);
-      expect(screen.getByText('card.emailProfessor')).toBeInTheDocument();
+      expect(screen.queryByText('card.emailProfessor')).toBeNull();
+      expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
+    });
+
+    it('fails closed for a poisoned faculty profile with no verified email or opening facts', () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const match = makeMatch({
+        source_type: 'faculty_research',
+        faculty_title: 'Professor',
+        deadline: '2099-12-31',
+        posted_date: today,
+        paid: 'yes',
+        eligibility: {
+          ...makeOpp().eligibility,
+          international_friendly: 'yes',
+          citizenship_required: false,
+          skills_required: ['FAKE_REQUIRED_SKILL'],
+        },
+        application: {
+          application_effort: 'unknown',
+          requires_resume: 'unknown',
+          contact_method: '',
+        },
+      });
+      render(<MatchCard match={match} isNew onDraftEmail={() => {}} />);
+
+      expect(screen.queryByText('card.emailProfessor')).toBeNull();
+      expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
+      expect(screen.queryByText('results.newMatchBadge')).toBeNull();
+      expect(screen.queryByText('badges.new')).toBeNull();
+      expect(screen.queryByText('2099-12-31')).toBeNull();
+      expect(screen.queryByText('badges.intlOk')).toBeNull();
+      expect(screen.getByText('badges.intlVerify')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.queryByText('FAKE_REQUIRED_SKILL')).toBeNull();
     });
   });
 

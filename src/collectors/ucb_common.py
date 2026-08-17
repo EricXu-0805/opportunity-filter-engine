@@ -1713,26 +1713,16 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     keywords = extract_research_keywords(person, config)
-    # Faculty are cold-email research contacts, not postings with required
-    # skills — inferring skills from research-topic prose is false-precise (a
-    # Statistics professor whose interests say "statistics"/"probability" gets a
-    # bare skills_required=["R"]) and degrades their match score. Mirrors the
-    # R70A DQ gate and faculty_graph.normalize_person, which already ship []; the
-    # enricher/llm_tagger skill backfills are likewise faculty-gated.
-    skills: list[str] = []
-
     professor_rank = is_professor_rank(title)
     desc_parts = [
-        f"Research opportunity with {title + ' ' if title else ''}{name} in the {dept_name} "
+        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} "
         f"at UC Berkeley.",
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {research_areas[:200]}")
     desc_parts.append(
-        "Contact the professor directly to inquire about undergraduate "
-        "research positions in their lab." if professor_rank else
-        "Contact them directly to inquire about undergraduate "
-        "research opportunities."
+        "Contact this faculty member to ask whether undergraduate research "
+        "opportunities are currently available."
     )
     description = " ".join(desc_parts)
     # Defensive second pass: strip nav-furniture from the FULLY ASSEMBLED
@@ -1746,9 +1736,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
     # "Prof." is a rank claim, earned only by a source-stated professor rank
     # (truthfulness W11); the actual rank ships in metadata.faculty_title.
     honorific = "Prof. " if professor_rank else ""
-    opp_title = f"Research with {honorific}{name} — {dept_short}{research_summary}"
-
-    paid, compensation_details = _detect_funding(f"{research_areas} {description} {title}")
+    opp_title = f"{honorific}{name} — {dept_short}{research_summary}"
 
     metadata = {
         "confidence_score": 0.7 if email else 0.5,
@@ -1790,26 +1778,29 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "contact_email": email or None,
         "url": profile_url,
         "location": "Berkeley, CA",
-        # A professor's lab is on their university's campus — see the same note
-        # in faculty_graph. school (ucb) carries whose campus it is.
-        "on_campus": True,
+        # Faculty affiliation is not evidence of a currently available role's
+        # physical work location.
+        "on_campus": None,
         "remote_option": "unknown",
         "opportunity_type": "research",
-        "paid": paid,
-        "compensation_details": compensation_details,
+        "paid": "unknown",
+        "compensation_details": "",
         "deadline": None,
+        "is_rolling": False,
         "posted_date": None,
         "start_date": None,
-        "duration": "Semester or academic year",
+        "duration": None,
         "eligibility": {
-            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+            "preferred_year": ["unknown"],
             "min_gpa": None,
-            "majors": config["majors"],
-            "skills_required": skills[:3],
-            "skills_preferred": skills[3:],
-            "citizenship_required": False,
+            "majors": [],
+            # Research topics drive topical matching; they are not applicant
+            # requirements for a faculty contact profile.
+            "skills_required": [],
+            "skills_preferred": [],
+            "citizenship_required": None,
             "international_friendly": "unknown",
-            "work_auth_notes": config.get("work_auth_notes", ""),
+            "work_auth_notes": "",
             "eligibility_text_raw": description[:500],
         },
         "application": {
@@ -1818,8 +1809,8 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
             "requires_cover_letter": "unknown",
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
-            "application_effort": "low",
-            "application_url": profile_url,
+            "application_effort": "unknown",
+            "application_url": None,
         },
         "description_raw": description,
         "description_clean": description[:1500],

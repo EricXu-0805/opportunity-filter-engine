@@ -35,9 +35,13 @@ import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
-import { getDeadlineUrgency } from '@/lib/match-utils';
+import {
+  facultySafeInternational,
+  getDeadlineUrgency,
+  opportunityDestination,
+} from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { allowsProfessorFraming, cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
+import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
@@ -157,24 +161,32 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const { t } = useT();
 
   const { opportunity: opp } = match;
+  const isFaculty = opp.source_type === 'faculty_research';
+  const facultyUnavailable = isFaculty
+    && opp.faculty_availability_status === 'not_accepting_undergraduates';
   const compensation = cleanCompensation(opp.compensation_details);
   const tier = getBucketLabel(match.bucket, t);
-  const intl = getIntlBadge(opp.eligibility?.international_friendly ?? 'unknown', t);
+  const effectiveIntl = facultySafeInternational(opp) ?? 'unknown';
+  const intl = getIntlBadge(effectiveIntl, t);
   const paid = getPaidBadge(opp.paid, t);
   // Home-campus records get no chip (the majority — avoid noise); only
   // open/unknown/foreign-campus records carry the host+audience chip.
   const scopeChip = scopeChipFor(opp, homeSchoolOf(profile ?? null));
-  const urgency = getDeadlineUrgency(opp.deadline, undefined, opp.deadline_is_estimate);
+  const urgency = isFaculty
+    ? null
+    : getDeadlineUrgency(
+        opp.deadline,
+        undefined,
+        opp.deadline_is_estimate ?? undefined,
+      );
   const urgencyBorder = urgency ? URGENCY_BORDER[urgency] ?? '' : '';
 
-  // Faculty "Research with Prof. X" records set application_url to the
-  // professor's directory page (not an application form), and you actually
-  // apply by emailing the PI. So for them the honest primary CTA is "Email
-  // Professor", with the directory link demoted to a secondary "Faculty Page"
-  // — never "Apply Now", which dead-ends on a bio page.
-  const isFaculty = opp.source_type === 'faculty_research';
-  const applyUrl = opp.application?.application_url;
-  const facultyPageUrl = applyUrl || opp.url;
+  // A faculty record's application_url is a directory page, not an application
+  // form. Keep drafting and opening that page as separate actions: neither one
+  // proves contact, and the page must never be labelled "Apply Now".
+  const applyUrl = isFaculty ? undefined : opp.application?.application_url;
+  const facultyPageUrl = isFaculty ? opportunityDestination(opp) : undefined;
+  const sourcePageUrl = !isFaculty && !applyUrl ? opportunityDestination(opp) : undefined;
   const showApplyNow = !!applyUrl && !isFaculty;
   const emailIsPrimary = isFaculty || !showApplyNow;
 
@@ -217,7 +229,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {opp.location && (
                 <span className="inline-flex items-center gap-1 min-w-0">
                   <MapPin className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate max-w-[160px] sm:max-w-none">{opp.location}</span>
+                  <span className="truncate max-w-[160px] sm:max-w-none">
+                    {isFaculty
+                      ? t('card.facultyAffiliationLocation', { location: opp.location })
+                      : opp.location}
+                  </span>
                 </span>
               )}
             </div>
@@ -228,22 +244,33 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-5">
-          {isNew && (
+          {!isFaculty && isNew && (
             <Badge variant="orange" dot>
               <BellRing className="w-3 h-3" />
               {t('results.newMatchBadge')}
             </Badge>
           )}
-          {isNewPosting(opp) && <Badge variant="green" dot>{t('badges.new')}</Badge>}
+          {!isFaculty && isNewPosting(opp) && <Badge variant="green" dot>{t('badges.new')}</Badge>}
           <Badge variant="indigo">{opp.opportunity_type}</Badge>
+          {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+            <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
+          )}
+          {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
+            <Badge variant="red">{t('card.facultyNotAcceptingUndergraduates')}</Badge>
+          )}
+          {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
+            <Badge variant="red">{t('card.facultyResearchInactive')}</Badge>
+          )}
           <Badge variant={intl.variant} dot>
             <Globe className="w-3 h-3" />
             {intl.label}
           </Badge>
-          <Badge variant={paid.variant} dot>
-            <DollarSign className="w-3 h-3" />
-            {paid.label}
-          </Badge>
+          {!isFaculty && (
+            <Badge variant={paid.variant} dot>
+              <DollarSign className="w-3 h-3" />
+              {paid.label}
+            </Badge>
+          )}
           {RELEASE_SCOPE.professorSignals && <ResponsivenessBadge opportunityId={opp.id} />}
           {opp.source && <Badge variant="gray">{opp.source}</Badge>}
           {scopeChip && (
@@ -251,7 +278,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {scopeChipText(scopeChip, t)}
             </Badge>
           )}
-          {opp.deadline && (() => {
+          {!isFaculty && opp.deadline && (() => {
             // An estimated date (NSF projected deadlines) must never yield a
             // confident "Deadline passed" / countdown claim — always the
             // neutral gray date with an explicit estimate marker.
@@ -288,7 +315,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           </p>
         )}
 
-        {(compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
+        {!isFaculty && (compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-gray-400 mb-4">
             {compensation && (
               <span className="inline-flex items-center gap-1">
@@ -363,23 +390,22 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.applyNow')}
             </a>
           ) : null}
-          <button
-            type="button"
-            onClick={() => onDraftEmail(opp.id)}
-            className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
-              emailIsPrimary
-                ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
-                : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5" />
-            {/* "Email Professor" only when the scraped rank is a stated
-                professor rank — unknown ranks and known non-professor ranks
-                ("Senior Lecturer") get the rank-neutral "Draft Email". */}
-            {isFaculty && allowsProfessorFraming(opp.faculty_title)
-              ? t('card.emailProfessor')
-              : t('card.draftEmail')}
-          </button>
+          {!facultyUnavailable && (
+            <button
+              type="button"
+              onClick={() => onDraftEmail(opp.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
+                emailIsPrimary
+                  ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
+                  : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              {/* This action only opens a draft. It never proves that a message
+                  was sent, even for a faculty contact profile. */}
+              {t('card.draftEmail')}
+            </button>
+          )}
           {profile && (
             <button
               type="button"
@@ -414,9 +440,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               <ExternalLink className="w-3.5 h-3.5" />
               {t('card.viewFacultyPage')}
             </a>
-          ) : opp.url && !applyUrl ? (
+          ) : sourcePageUrl ? (
             <a
-              href={opp.url}
+              href={sourcePageUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
@@ -527,7 +553,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </div>
             )}
 
-            {opp.eligibility?.skills_required?.length > 0 && (
+            {!isFaculty && opp.eligibility?.skills_required?.length > 0 && (
               <div className="pt-1">
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">
                   {t('favorites.requiredSkills')}

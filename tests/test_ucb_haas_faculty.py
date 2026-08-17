@@ -140,10 +140,10 @@ def test_lite_output_shape_no_email():
     # Haas publishes no emails -> always lite.
     assert opp["contact_email"] is None
     assert opp["metadata"]["confidence_score"] == 0.5
-    assert opp["eligibility"]["majors"] == HAAS_CONFIG["majors"]
-    assert opp["on_campus"] is True
+    assert opp["eligibility"]["majors"] == []
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == HAAS_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
 
 
 def test_no_area_falls_back_to_broad_keyword():

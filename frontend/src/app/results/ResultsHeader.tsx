@@ -3,6 +3,7 @@
 import { Download, Sparkles } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendMatchesEmail } from '@/lib/api';
+import { opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 import { SemanticToggle } from './SemanticToggle';
@@ -120,14 +121,20 @@ export function ResultsHeader({
             }
             onSend={async (emailAddr) => {
               const top = (await loadEmailMatches()).slice(0, 50);
-              const items = top.map((m) => ({
-                title: m.opportunity.title,
-                url: m.opportunity.url || m.opportunity.source_url || '',
-                score: m.final_score,
-                source: m.opportunity.source || '',
-                deadline: m.opportunity.deadline || null,
-                organization: m.opportunity.organization || '',
-              }));
+              const items = top.map((m) => {
+                const recordKind = opportunityRecordKind(m.opportunity);
+                return {
+                  title: m.opportunity.title,
+                  url: m.opportunity.url || m.opportunity.source_url || '',
+                  score: m.final_score,
+                  source: m.opportunity.source || '',
+                  deadline: recordKind === 'listing'
+                    ? m.opportunity.deadline || null
+                    : null,
+                  organization: m.opportunity.organization || '',
+                  record_kind: recordKind,
+                };
+              });
               const hint = t('email.subjectMatches', { count: items.length });
               return sendMatchesEmail(emailAddr, items, hint);
             }}

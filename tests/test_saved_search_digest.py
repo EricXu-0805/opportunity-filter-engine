@@ -158,6 +158,36 @@ class TestDigestCronSkips:
 
 
 class TestDigestCronSend:
+    def test_mixed_digest_labels_faculty_contact_without_opening_deadline(self):
+        subject, html, text = ss_mod._render_digest_email(
+            "ML research",
+            [
+                {
+                    "id": "faculty-ada",
+                    "title": "Ada profile",
+                    "organization": "Test University",
+                    "source_type": "faculty_research",
+                    "deadline": "2099-12-31",
+                },
+                {
+                    "id": "reu-1",
+                    "title": "Real REU",
+                    "organization": "Test University",
+                    "source_type": "campus_program",
+                    "deadline": "2027-02-01",
+                },
+            ],
+            "https://example.test/unsubscribe",
+        )
+
+        assert subject.startswith("2 new matches")
+        for body in (html, text):
+            assert "Faculty contact profile" in body
+            assert "current opening not confirmed" in body
+            assert "2099-12-31" not in body
+            assert "Opportunity listing" in body
+            assert "2027-02-01" in body
+
     def test_happy_path_sends_one_email_and_stamps_sent_at(self, monkeypatch):
         _set_digest_env(monkeypatch)
         sends: list = []

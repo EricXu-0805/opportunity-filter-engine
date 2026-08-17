@@ -4,6 +4,7 @@ import { fetchOpportunityDetail, fetchSimilarServer } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
 import OpportunityUnavailable from './OpportunityUnavailable';
+import { buildOpportunityJsonLd } from './json-ld';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -34,14 +35,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${title} — JoinALab`,
-    description: description || `${opp.opportunity_type} opportunity${opp.organization ? ` at ${opp.organization}` : ''}.`,
+    description: description || (opp.source_type === 'faculty_research'
+      ? `Faculty research profile${opp.organization ? ` at ${opp.organization}` : ''}. Current openings are not confirmed.`
+      : `${opp.opportunity_type} opportunity${opp.organization ? ` at ${opp.organization}` : ''}.`),
     keywords: keywords.length > 0 ? keywords : undefined,
     openGraph: {
       title,
       description: description || undefined,
       type: 'article',
       siteName: 'JoinALab',
-      publishedTime: opp.posted_date,
+      publishedTime: opp.source_type === 'faculty_research' ? undefined : opp.posted_date,
       images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
@@ -70,43 +73,16 @@ export default async function OpportunityPage({ params }: PageProps) {
   const opp = result.opportunity;
   const similar = await similarPromise;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'JobPosting',
-    title: opp.title,
-    description: opp.description_clean || opp.description_raw || '',
-    datePosted: opp.posted_date,
-    validThrough: opp.deadline,
-    employmentType: opp.opportunity_type === 'research' ? 'PART_TIME' : 'INTERN',
-    hiringOrganization: {
-      '@type': 'Organization',
-      name: opp.organization ?? 'Host institution',
-    },
-    jobLocation: {
-      '@type': 'Place',
-      address: {
-        '@type': 'PostalAddress',
-        addressLocality: opp.location,
-        addressCountry: 'US',
-      },
-    },
-    baseSalary: opp.paid === 'yes' || opp.paid === 'stipend' ? {
-      '@type': 'MonetaryAmount',
-      currency: 'USD',
-      value: {
-        '@type': 'QuantitativeValue',
-        value: opp.compensation_details ?? 'See description',
-        unitText: 'HOUR',
-      },
-    } : undefined,
-  };
+  const jsonLd = buildOpportunityJsonLd(opp);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
-      />
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+        />
+      )}
       {/*
         Forces a full remount on every distinct target — client-side
         navigation between two /opportunities/[id] routes would otherwise

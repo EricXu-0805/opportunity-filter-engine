@@ -43,6 +43,13 @@ def save_opportunities(opps: list[dict]) -> None:
 
 def needs_tagging(opp: dict) -> bool:
     """Check if an opportunity has unknown fields that could be improved."""
+    # Faculty directory/profile rows are research contacts, not postings.  Bio
+    # prose can support research-topic matching, but it cannot establish pay,
+    # application requirements, class-year eligibility, or work authorization.
+    # Those rows get their research keywords from the faculty collectors and
+    # dedicated enrichers; this opening-field tagger must leave them alone.
+    if opp.get("source_type") == "faculty_research":
+        return False
     elig = opp.get("eligibility", {})
     if opp.get("paid") == "unknown":
         return True
@@ -206,6 +213,9 @@ PAID_TITLE_PATTERNS = [
 
 def rule_based_tag(opp: dict) -> dict:
     """Apply rule-based heuristics to extract structured fields."""
+    if opp.get("source_type") == "faculty_research":
+        return {}
+
     full_text = _build_full_text(opp)
     lower = full_text.lower()
     updates = {}
@@ -511,6 +521,14 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
     distinguishable at rest. ``method`` names the producer ("rule:llm_tagger"
     or "llm:llm_tagger").
     """
+    # Defense in depth: callers may supply cached or LLM-produced updates
+    # without consulting ``needs_tagging`` / ``rule_based_tag`` first.  A
+    # forced update must not turn faculty biography words such as
+    # "Scholarship", "Volunteer", or "U.S. national security" into opening
+    # facts.
+    if opp.get("source_type") == "faculty_research":
+        return False
+
     changed = False
     meta = opp.setdefault("metadata", {})
 

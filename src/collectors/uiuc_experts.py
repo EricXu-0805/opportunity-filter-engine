@@ -160,9 +160,6 @@ def refresh(path: str = "data/processed/opportunities.json") -> int:
     if enriched:
         merge_into_processed(enriched, path)
         corpus = json.load(open(path))
-        for o in corpus:
-            if o.get("source_type") == "faculty_research" and o.get("is_rolling") is not True:
-                o["is_rolling"] = True
         apply_school_audience(corpus)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(corpus, f, indent=2, ensure_ascii=False, default=str)

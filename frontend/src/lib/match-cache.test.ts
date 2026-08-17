@@ -88,7 +88,8 @@ describe('match-cache', () => {
   it('preserves source_type so the faculty CTA survives a cache-hit return', () => {
     // Regression guard for the honest faculty CTA (#218, regressed in #368):
     // without source_type, MatchCard renders a green "Apply Now" that
-    // dead-ends on the professor's bio page instead of "Email Professor".
+    // dead-ends on the professor's bio page instead of the safe draft/profile
+    // actions.
     const resp = makeResponse(1);
     (resp.results[0].opportunity as unknown as Record<string, unknown>).source_type =
       'faculty_research';
@@ -96,6 +97,20 @@ describe('match-cache', () => {
     const out = readMatchCache('h1', false)!;
     const opp = out.results[0].opportunity as unknown as Record<string, unknown>;
     expect(opp.source_type).toBe('faculty_research');
+  });
+
+  it('preserves a source-backed faculty stop status across a cache hit', () => {
+    const resp = makeResponse(1);
+    (resp.results[0].opportunity as unknown as Record<string, unknown>).source_type =
+      'faculty_research';
+    resp.results[0].opportunity.faculty_availability_status =
+      'not_accepting_undergraduates';
+
+    writeMatchCache('h1', false, resp);
+    const hit = readMatchCache('h1', false);
+    expect(hit?.results[0].opportunity.faculty_availability_status).toBe(
+      'not_accepting_undergraduates',
+    );
   });
 
   it('preserves school + audience so the scope facet survives a cache-hit return', () => {

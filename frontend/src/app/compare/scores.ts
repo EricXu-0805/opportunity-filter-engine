@@ -1,5 +1,5 @@
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { daysUntil } from '@/lib/match-utils';
+import { daysUntil, facultySafeInternational } from '@/lib/match-utils';
 
 /**
  * These values are transparent, local decision-factor estimates. They help a
@@ -68,7 +68,9 @@ function majorMatchScore(userMajor: string, oppMajors: string[] | undefined): nu
 
 function yearMatchScore(userYear: string, oppYears: string[] | undefined): number | null {
   if (!oppYears || oppYears.length === 0) return null;
-  return oppYears.some((year) => year.toLowerCase() === userYear.toLowerCase()) ? 100 : 50;
+  const statedYears = oppYears.filter((year) => year.toLowerCase() !== 'unknown');
+  if (statedYears.length === 0) return null;
+  return statedYears.some((year) => year.toLowerCase() === userYear.toLowerCase()) ? 100 : 50;
 }
 
 function intlEligibilityScore(
@@ -111,9 +113,10 @@ function deadlineRunwayScore(
 }
 
 export function computeDecisionFactors(profile: ProfileData, opp: Opportunity): AxisScores {
+  const isFaculty = opp.source_type === 'faculty_research';
   const userSkillSet = new Set(profile.skills.map((skill) => skill.name.toLowerCase()));
   const required = opp.eligibility?.skills_required ?? [];
-  const skill_match = required.length === 0
+  const skill_match = isFaculty || required.length === 0
     ? null
     : Math.round(
         (required.filter((skill) => userSkillSet.has(skill.toLowerCase())).length / required.length) * 100,
@@ -123,23 +126,25 @@ export function computeDecisionFactors(profile: ProfileData, opp: Opportunity): 
   const year = yearMatchScore(profile.grade || '', opp.eligibility?.preferred_year);
   const intl_friendly = intlEligibilityScore(
     profile.is_international,
-    opp.eligibility?.international_friendly,
+    facultySafeInternational(opp),
   );
-  const eligibility = major !== null && year !== null && intl_friendly !== null
+  const eligibility = !isFaculty && major !== null && year !== null && intl_friendly !== null
     ? Math.round(0.5 * major + 0.3 * year + 0.2 * intl_friendly)
     : null;
 
   return {
     skill_match,
     eligibility,
-    ease: easeScore(opp.application?.application_effort),
-    compensation: compensationScore(opp.paid),
-    deadline_runway: deadlineRunwayScore(
-      opp.deadline,
-      opp.is_rolling,
-      opp.deadline_is_estimate,
-    ),
-    intl_friendly,
+    ease: isFaculty ? null : easeScore(opp.application?.application_effort),
+    compensation: isFaculty ? null : compensationScore(opp.paid),
+    deadline_runway: isFaculty
+      ? null
+      : deadlineRunwayScore(
+          opp.deadline,
+          opp.is_rolling,
+          opp.deadline_is_estimate,
+        ),
+    intl_friendly: isFaculty ? null : intl_friendly,
   };
 }
 

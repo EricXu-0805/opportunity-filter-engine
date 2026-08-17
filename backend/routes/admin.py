@@ -155,10 +155,15 @@ async def data_quality(
 
     by_source: dict[str, dict] = {}
     global_counts = Counter(
+        listing_total=0,
         empty_majors=0, empty_keywords=0, empty_description=0,
         short_description=0, missing_deadline=0, rolling_deadline=0,
         missing_skills=0, past_deadline=0, stale_verify=0,
         flagged_inactive=0,
+    )
+    faculty_counts = Counter(
+        total=0, empty_keywords=0, empty_description=0,
+        short_description=0, stale_verify=0, flagged_inactive=0,
     )
 
     today = datetime.now(UTC).date()
@@ -166,6 +171,44 @@ async def data_quality(
         src = o.get("source", "?")
         b = by_source.setdefault(src, Counter(total=0))
         b["total"] += 1
+        is_faculty_contact = o.get("source_type") == "faculty_research"
+
+        if is_faculty_contact:
+            # A faculty directory row is a person/research contact, not an
+            # opening. Track its identity/topic/freshness quality separately;
+            # never count intentionally unknown majors, skills or deadlines as
+            # broken listing fields.
+            b["faculty_contacts"] += 1
+            faculty_counts["total"] += 1
+
+            if o.get("metadata", {}).get("is_active") is False:
+                b["faculty_flagged_inactive"] += 1
+                faculty_counts["flagged_inactive"] += 1
+
+            if _is_unsorted(o.get("keywords") or []):
+                b["faculty_empty_keywords"] += 1
+                faculty_counts["empty_keywords"] += 1
+            desc = (o.get("description_raw") or o.get("description_clean") or "").strip()
+            if not desc:
+                b["faculty_empty_description"] += 1
+                faculty_counts["empty_description"] += 1
+            elif len(desc) < 100:
+                b["faculty_short_description"] += 1
+                faculty_counts["short_description"] += 1
+
+            last_verified = (o.get("metadata") or {}).get("last_verified")
+            if last_verified:
+                try:
+                    lv = datetime.fromisoformat(str(last_verified).replace("Z", "+00:00"))
+                    if (datetime.now(UTC) - lv).days > 60:
+                        b["faculty_stale_verify"] += 1
+                        faculty_counts["stale_verify"] += 1
+                except (ValueError, TypeError):
+                    pass
+            continue
+
+        b["listing_total"] += 1
+        global_counts["listing_total"] += 1
 
         if o.get("metadata", {}).get("is_active") is False:
             b["flagged_inactive"] += 1
@@ -223,7 +266,10 @@ async def data_quality(
 
     worst_fields = []
     for o in opps:
-        if o.get("metadata", {}).get("is_active") is False:
+        if (
+            o.get("metadata", {}).get("is_active") is False
+            or o.get("source_type") == "faculty_research"
+        ):
             continue
         elig = o.get("eligibility", {}) or {}
         missing_fields: list[str] = []
@@ -253,6 +299,7 @@ async def data_quality(
     snapshot = {
         "total": total,
         "global": dict(global_counts),
+        "faculty_contacts_quality": dict(faculty_counts),
         "sources": sources_list,
         "worst_fields": worst_fields[:20],
         "generated_at": generated_at.isoformat(),

@@ -80,7 +80,7 @@ const MATCH_VIEW_RESPONSE = {
       opportunity: TEST_OPPORTUNITY,
     }],
     returned_count: 1, has_more: false, next_cursor: null,
-    contract_version: 'match-view-v2-contact-trust',
+    contract_version: 'match-view-v3-faculty-trust',
     view_start: 0, filtered_total: 1,
     view_counts: { all: 1, high_priority: 1, good_match: 0, reach: 0, starred: 0 },
     view_id: 'view-wiring-1',

@@ -17,7 +17,12 @@ import {
   Star,
 } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { getDeadlineUrgency, daysUntil } from '@/lib/match-utils';
+import {
+  facultySafeInternational,
+  getDeadlineUrgency,
+  daysUntil,
+  opportunityDestination,
+} from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
@@ -73,12 +78,20 @@ export function OpportunityHeader({
   onShare: () => void;
   t: TFunc;
 }) {
-  const applyUrl = opp.application?.application_url || opp.url || opp.source_url;
-  const urgency = getDeadlineUrgency(opp.deadline, undefined, opp.deadline_is_estimate);
+  const isFaculty = opp.source_type === 'faculty_research';
+  const facultyUnavailable = isFaculty
+    && opp.faculty_availability_status === 'not_accepting_undergraduates';
+  const applyUrl = opportunityDestination(opp);
+  const effectiveIntl = facultySafeInternational(opp);
+  const urgency = getDeadlineUrgency(
+    opp.deadline,
+    undefined,
+    opp.deadline_is_estimate ?? undefined,
+  );
   const days = daysUntil(opp.deadline);
 
   const deadlineBadge = useMemo(() => {
-    if (!opp.deadline || days === null) return null;
+    if (isFaculty || !opp.deadline || days === null) return null;
     if (urgency === 'passed') {
       return <DetailBadge tone="gray" icon={<AlertTriangle className="w-3 h-3" />}>{t('badges.pastDeadline')}</DetailBadge>;
     }
@@ -90,7 +103,7 @@ export function OpportunityHeader({
     }
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opp.deadline, urgency, days]);
+  }, [isFaculty, opp.deadline, urgency, days]);
 
   return (
     <div className="p-5 sm:p-8">
@@ -98,12 +111,21 @@ export function OpportunityHeader({
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <DetailBadge tone="blue">{formatType(opp.opportunity_type)}</DetailBadge>
-            {opp.paid === 'yes' && <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>}
-            {opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
-            {opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
-            {opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
-            {opp.remote_option === 'yes' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
-            {opp.eligibility?.international_friendly === 'yes' && (
+            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+              <DetailBadge tone="amber">{t('card.facultyContactUnconfirmed')}</DetailBadge>
+            )}
+            {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
+              <DetailBadge tone="red">{t('card.facultyNotAcceptingUndergraduates')}</DetailBadge>
+            )}
+            {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
+              <DetailBadge tone="red">{t('card.facultyResearchInactive')}</DetailBadge>
+            )}
+            {!isFaculty && opp.paid === 'yes' && <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>}
+            {!isFaculty && opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
+            {!isFaculty && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
+            {!isFaculty && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
+            {!isFaculty && opp.remote_option === 'yes' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
+            {!isFaculty && effectiveIntl === 'yes' && (
               <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
@@ -125,7 +147,9 @@ export function OpportunityHeader({
             {opp.location && (
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                {opp.location}
+                {isFaculty
+                  ? t('detail.fields.facultyAffiliationLocation', { location: opp.location })
+                  : opp.location}
               </span>
             )}
           </div>
@@ -152,10 +176,10 @@ export function OpportunityHeader({
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-[14px] font-semibold hover:bg-indigo-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <ExternalLink className="w-4 h-4" aria-hidden="true" />
-            {t('detail.apply')}
+            {t(isFaculty ? 'detail.viewFacultyProfile' : 'detail.apply')}
           </a>
         )}
-        {profile && (
+        {profile && !facultyUnavailable && (
           <button
             type="button"
             onClick={onOpenEmailModal}

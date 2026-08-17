@@ -17,6 +17,7 @@ import os
 import re
 import time
 from collections import defaultdict
+from typing import Literal
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -85,6 +86,7 @@ class MatchItem(BaseModel):
     source: str = ""
     deadline: str | None = None
     organization: str = ""
+    record_kind: Literal["listing", "faculty_contact", "unknown"] = "unknown"
 
 
 class SendMatchesRequest(BaseModel):
@@ -106,6 +108,7 @@ class FavoriteItem(BaseModel):
     deadline: str | None = None
     notes: str = ""
     status: str = ""
+    record_kind: Literal["listing", "faculty_contact", "unknown"] = "unknown"
 
 
 class SendFavoritesRequest(BaseModel):
@@ -238,8 +241,16 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
     rows_html = []
     rows_text = []
     for i, m in enumerate(items, 1):
+        faculty_contact = m.record_kind == "faculty_contact"
         score_str = f"{m.score:.0f}% match" if m.score is not None else ""
-        dl_str = f" · due {m.deadline}" if m.deadline else ""
+        dl_str = f" · due {m.deadline}" if m.deadline and m.record_kind == "listing" else ""
+        kind_str = (
+            "Faculty contact profile · current opening not confirmed"
+            if faculty_contact
+            else "Opportunity listing"
+            if m.record_kind == "listing"
+            else "Saved match · type not confirmed"
+        )
         safe = _safe_url(m.url)
         title_html = (
             f'<a href="{_html_escape(safe)}" style="color:#4f46e5;text-decoration:none">{_html_escape(m.title)}</a>'
@@ -248,7 +259,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
         )
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
-            f'<div style="font-size:13px;color:#6b7280">#{i} · {_html_escape(score_str)}{_html_escape(dl_str)}</div>'
+            f'<div style="font-size:13px;color:#6b7280">#{i} · {_html_escape(kind_str)} · {_html_escape(score_str)}{_html_escape(dl_str)}</div>'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
             f'{title_html}'
             f'</div>'
@@ -256,7 +267,7 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
             f'</td></tr>'
         )
         rows_text.append(
-            f"#{i} {score_str}{dl_str}\n"
+            f"#{i} {kind_str} · {score_str}{dl_str}\n"
             f"  {m.title}\n"
             f"  {m.organization} · {m.source}\n"
             f"  {safe or '(no link)'}\n"
@@ -270,8 +281,8 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
     <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
     <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(title_line)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
-      Here {'is' if len(items) == 1 else 'are'} {len(items)} opportunit{'y' if len(items) == 1 else 'ies'} we surfaced for you.
-      Links take you directly to the application page.
+      Here {'is' if len(items) == 1 else 'are'} {len(items)} match{'es' if len(items) != 1 else ''} we surfaced for you.
+      Links open the corresponding listing or faculty profile; a faculty profile does not confirm a current opening.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
@@ -292,10 +303,11 @@ def _render_match_email(items: list[MatchItem], subject_hint: str) -> tuple[str,
 
 
 def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
-    subject = f"Your {len(items)} saved opportunities"
+    subject = f"Your {len(items)} saved JoinALab results"
     rows_html = []
     rows_text = []
     for i, f in enumerate(items, 1):
+        faculty_contact = f.record_kind == "faculty_contact"
         status_badge = ""
         if f.status:
             color = {
@@ -308,7 +320,14 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
                 f'font-size:11px;font-weight:600;text-transform:uppercase;'
                 f'letter-spacing:0.5px;margin-right:8px">{_html_escape(f.status)}</span>'
             )
-        dl_str = f" · due {f.deadline}" if f.deadline else ""
+        dl_str = f" · due {f.deadline}" if f.deadline and f.record_kind == "listing" else ""
+        kind_str = (
+            "Faculty contact profile · current opening not confirmed"
+            if faculty_contact
+            else "Opportunity listing"
+            if f.record_kind == "listing"
+            else "Saved match · type not confirmed"
+        )
         notes_html = ""
         if f.notes.strip():
             notes_html = (
@@ -324,7 +343,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
         )
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
-            f'<div>{status_badge}<span style="font-size:12px;color:#9ca3af">{_html_escape(dl_str.lstrip(" ·"))}</span></div>'
+            f'<div>{status_badge}<span style="font-size:12px;color:#9ca3af">{_html_escape(kind_str)}{_html_escape(dl_str)}</span></div>'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
             f'{title_html}'
             f'</div>'
@@ -332,7 +351,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
             f'{notes_html}</td></tr>'
         )
         rows_text.append(
-            f"#{i} [{f.status.upper() if f.status else 'saved'}]{dl_str}\n"
+            f"#{i} [{f.status.upper() if f.status else 'saved'}] {kind_str}{dl_str}\n"
             f"  {f.title}\n"
             f"  {safe or '(no link)'}\n"
             + (f"  notes: {f.notes}\n" if f.notes.strip() else "")
@@ -346,7 +365,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
     <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
     <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(subject)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
-      Your saved opportunities, with any notes and status you've tracked.
+      Your saved listings and faculty contact profiles, with any notes and status you've tracked.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
@@ -397,5 +416,3 @@ async def send_favorites(req: SendFavoritesRequest):
         subject=subject, html=html, text=text,
     )
     return {"ok": True, "count": len(req.items)}
-
-
