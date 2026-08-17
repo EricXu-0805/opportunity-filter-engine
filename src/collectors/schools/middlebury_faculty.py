@@ -16,7 +16,9 @@ person is cross-listed, so the engine's url/email dedup collapses a professor
 who appears under several interdisciplinary programs into ONE record), the rank
 is the first ``p.f2`` paragraph, and the public email is an inline ``mailto:``
 in the card's definition list. Emails are present inline for essentially every
-professor, so no profile-enrichment pass is needed.
+professor. A gated profile pass still follows canonical person pages to stamp
+the profile-level tracking baseline and recover the minority of pages that
+publish an ``Areas of Interest`` research block.
 
 Role gating: pages are titled by section — "Department Chair", "Faculty",
 "Academic Coordinator", "Retired Faculty" — and interleave staff and emeriti.
@@ -72,7 +74,10 @@ _ENRICH = {
     "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
         r"areas?\s+of\s+(expertise|research)",
         r"areas?\s+of\s+(expertise|research|interests?)"),
-    "profile_url_re": r"https://www\.middlebury\.edu/college/people/",
+    "profile_url_re": (
+        r"^https://www\.middlebury\.edu/college/people/"
+        r"[a-z0-9][a-z0-9-]*/?(?:[?#].*)?$"
+    ),
     "throttle": 0.15,
 }
 

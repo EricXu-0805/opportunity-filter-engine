@@ -18,8 +18,10 @@ lists a professor on every program they contribute to).
 No public email: Bowdoin does not publish faculty email addresses anywhere on
 the listing OR the individual profile pages (no ``mailto:``, no obfuscated
 token — the only contact link is the college switchboard), so records ship
-without ``contact_email`` and topical enrichment comes from OpenAlex. No render
-mode needed — the CMS is fully server-rendered, no WAF.
+without ``contact_email``. A gated canonical-profile pass provides the
+profile-level tracking baseline and recovers the few published Research
+Interests blocks; verified OpenAlex data remains a separate optional source.
+No render mode is needed — the CMS is fully server-rendered, no WAF.
 
 Single source ("bowdoin_faculty"); department rides each record's
 ``department``, ids namespaced by short-code. Audience "unknown".
@@ -56,7 +58,10 @@ _LADDER = {"drop": r"emerit|adjunct|visiting|postdoc|research affiliate|teaching
 # where the section exists at all.
 _ENRICH = {
     "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
-    "profile_url_re": r"https://www\.bowdoin\.edu/profiles/faculty/",
+    "profile_url_re": (
+        r"^https://www\.bowdoin\.edu/profiles/faculty/"
+        r"[^/?#]+/index\.html(?:[?#].*)?$"
+    ),
     "throttle": 0.15,
 }
 

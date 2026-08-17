@@ -26,9 +26,10 @@ comma-joined selectors resolve unambiguously per card):
   ``a.emailAddress`` email — the same information under camelCase class names.
 
 Both are fully server-rendered and expose inline emails for most faculty, so
-records ship with ``contact_email`` where published; topical enrichment comes
-from OpenAlex (no env-gated profile pass — Carleton profile pages carry only a
-free-prose bio, no structured research block).
+records ship with ``contact_email`` where published. A gated pass follows only
+canonical ``/directory/<username>/`` person pages: today those pages yield no
+structured research signal, but a successful identity check still supplies the
+profile-level tracking baseline. Verified OpenAlex data remains separate.
 
 Because these are "Faculty & Staff" pages, each list mixes teaching faculty
 with lab managers, coordinators, technicians, research/educational associates,
@@ -86,7 +87,10 @@ _LADDER = {
 # against a roster.
 _ENRICH = {
     "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
-    "profile_url_re": r"https://www\.carleton\.edu/directory/",
+    "profile_url_re": (
+        r"^https://www\.carleton\.edu/directory/"
+        r"[a-z0-9][a-z0-9-]*/?(?:[?#].*)?$"
+    ),
     "throttle": 0.15,
 }
 
