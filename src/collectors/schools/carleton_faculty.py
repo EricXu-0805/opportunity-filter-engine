@@ -26,9 +26,10 @@ comma-joined selectors resolve unambiguously per card):
   ``a.emailAddress`` email — the same information under camelCase class names.
 
 Both are fully server-rendered and expose inline emails for most faculty, so
-records ship with ``contact_email`` where published; topical enrichment comes
-from OpenAlex (no env-gated profile pass — Carleton profile pages carry only a
-free-prose bio, no structured research block).
+records ship with ``contact_email`` where published. A gated pass follows only
+canonical ``/directory/<username>/`` person pages: today those pages yield no
+structured research signal, but a successful identity check still supplies the
+profile-level tracking baseline. Verified OpenAlex data remains separate.
 
 Because these are "Faculty & Staff" pages, each list mixes teaching faculty
 with lab managers, coordinators, technicians, research/educational associates,
@@ -80,6 +81,20 @@ _LADDER = {
 }
 
 
+# The listing carries no research. 276 of 294 people link to their own
+# /directory/<netid>/ page; the remaining 18 carry the department listing URL
+# their card sat on, which profile_url_re refuses so they are not "verified"
+# against a roster.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": (
+        r"^https://www\.carleton\.edu/directory/"
+        r"[a-z0-9][a-z0-9-]*/?(?:[?#].*)?$"
+    ),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str,
           path: str = "faculty") -> dict:
     """A Carleton department on the shared faculty-listing CMS template."""
@@ -89,7 +104,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str,
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

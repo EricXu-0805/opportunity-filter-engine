@@ -19,9 +19,11 @@ mode anywhere):
   ``/basics/contact/directory/people/<slug>.html`` central-directory URL),
   ``.text-muted.depts`` carries the rank ("Professor", "Associate Professor,
   Chair", "Assistant Professor", "Senior Lecturer"), and ``.email a[mailto]``
-  is the inline public email (present for essentially every professor, so no
-  profile-enrichment pass is needed). Pronouns live in a separate ``<em>``
-  sibling under ``.panel-title`` and are NOT captured in the name.
+  is the inline public email (present for essentially every professor). A gated
+  pass follows canonical central-directory person pages to establish the
+  profile-level tracking baseline and recover the minority of pages with a
+  ``BIOGRAPHY AND RESEARCH INTERESTS`` block. Pronouns live in a separate
+  ``<em>`` sibling under ``.panel-title`` and are NOT captured in the name.
 
 Ladder gate keeps professorial + lecturer + instructor ranks (the
 cold-emailable research/teaching faculty) and drops emeriti, visiting, and
@@ -70,6 +72,20 @@ _LADDER = {
 }
 
 
+# The listing carries no research. CC titles the block "BIOGRAPHY AND
+# RESEARCH INTERESTS", a compound the shared pattern will not take.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"^\s*(research\s+(interests?",
+        r"^\s*((?:biography\s+and\s+)?research\s+(interests?"),
+    "profile_url_re": (
+        r"^https://www\.coloradocollege\.edu/basics/contact/directory/people/"
+        r"[^/?#]+\.html(?:[?#].*)?$"
+    ),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str, path: str) -> dict:
     """A CC department on the shared panel-body person-card component."""
     url = f"{_BASE}/{slug}/{path}"
@@ -78,7 +94,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str, path: str) -> dic
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

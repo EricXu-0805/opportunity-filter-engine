@@ -18,8 +18,10 @@ lists a professor on every program they contribute to).
 No public email: Bowdoin does not publish faculty email addresses anywhere on
 the listing OR the individual profile pages (no ``mailto:``, no obfuscated
 token — the only contact link is the college switchboard), so records ship
-without ``contact_email`` and topical enrichment comes from OpenAlex. No render
-mode needed — the CMS is fully server-rendered, no WAF.
+without ``contact_email``. A gated canonical-profile pass provides the
+profile-level tracking baseline and recovers the few published Research
+Interests blocks; verified OpenAlex data remains a separate optional source.
+No render mode is needed — the CMS is fully server-rendered, no WAF.
 
 Single source ("bowdoin_faculty"); department rides each record's
 ``department``, ids namespaced by short-code. Audience "unknown".
@@ -52,13 +54,26 @@ _FACULTY_SECTION = {"heading": "h2", "include": r"^faculty$"}
 _LADDER = {"drop": r"emerit|adjunct|visiting|postdoc|research affiliate|teaching fellow"}
 
 
+# The listing carries no research; the profile labels it "Research Interests"
+# where the section exists at all.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": (
+        r"^https://www\.bowdoin\.edu/profiles/faculty/"
+        r"[^/?#]+/index\.html(?:[?#].*)?$"
+    ),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
     """A Bowdoin department on the shared faculty-and-staff profile-card page."""
     url = f"https://www.bowdoin.edu/{slug}/faculty-and-staff/index.html"
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": _CARD_SEL,
-                   "section_filter": _FACULTY_SECTION, "ladder_filter": _LADDER},
+                   "section_filter": _FACULTY_SECTION, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

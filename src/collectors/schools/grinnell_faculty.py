@@ -16,8 +16,9 @@ anywhere):
   "Associate Professor", "Assistant Professor", "Senior Lecturer",
   "Instructor", "Professor Emeritus", "Visiting Assistant Professor", …), and
   the public email is a plain ``mailto:`` under ``.user__email``. Emails are
-  inline for the large majority of professors, so no profile-enrichment pass is
-  needed.
+  inline for the large majority of professors. A gated pass follows canonical
+  numeric ``/user/<id>`` pages to establish the profile-level tracking baseline;
+  current sampling found no structured research signal there.
 
 Sample verified live (``.user`` card counts before ladder gating): Biology 18,
 Chemistry 19, Economics 20, Mathematics & Statistics 21, History 16, Physics
@@ -73,6 +74,14 @@ _LADDER = {
 }
 
 
+# The listing carries no research; each person has a /user/<id> profile.
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE,
+    "profile_url_re": r"^https://www\.grinnell\.edu/user/\d+/?(?:[?#].*)?$",
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
     """A Grinnell department on the shared /profiles/<slug>/faculty view."""
     url = f"{_BASE}/{slug}/faculty"
@@ -81,7 +90,8 @@ def _dept(short: str, name: str, majors: list[str], slug: str) -> dict:
         "name": name,
         "majors": majors,
         "directory_url": url,
-        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER},
+        "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH},
     }
 
 

@@ -16,7 +16,9 @@ person is cross-listed, so the engine's url/email dedup collapses a professor
 who appears under several interdisciplinary programs into ONE record), the rank
 is the first ``p.f2`` paragraph, and the public email is an inline ``mailto:``
 in the card's definition list. Emails are present inline for essentially every
-professor, so no profile-enrichment pass is needed.
+professor. A gated profile pass still follows canonical person pages to stamp
+the profile-level tracking baseline and recover the minority of pages that
+publish an ``Areas of Interest`` research block.
 
 Role gating: pages are titled by section — "Department Chair", "Faculty",
 "Academic Coordinator", "Retired Faculty" — and interleave staff and emeriti.
@@ -65,12 +67,28 @@ _LADDER = {
 _BASE = "https://www.middlebury.edu/college/academics"
 
 
+# The listing carries no research. Middlebury labels the section "Areas of
+# Interest", which the shared pattern does not take — it allows "areas of
+# expertise" and "areas of research" but not "of interest".
+_ENRICH = {
+    "research_label_re": faculty_graph.RESEARCH_LABEL_RE.replace(
+        r"areas?\s+of\s+(expertise|research)",
+        r"areas?\s+of\s+(expertise|research|interests?)"),
+    "profile_url_re": (
+        r"^https://www\.middlebury\.edu/college/people/"
+        r"[a-z0-9][a-z0-9-]*/?(?:[?#].*)?$"
+    ),
+    "throttle": 0.15,
+}
+
+
 def _dept(short: str, name: str, majors: list[str], slug: str,
           page: str = "faculty-and-staff") -> dict:
     """A department/program on the shared Drupal profile-list component."""
     url = f"{_BASE}/{slug}/{page}"
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
-            "scrape": {"url": url, "selectors": _SEL, "ladder_filter": _LADDER}}
+            "scrape": {"url": url, "selectors": _SEL, "ladder_filter": _LADDER,
+                   "profile_enrich": _ENRICH}}
 
 
 SCHOOL: dict = {
