@@ -35,6 +35,82 @@ def test_surname():
     assert oa._surname("Joseph A. Marino, III") == "iii" or oa._surname("Joseph A. Marino") == "marino"
 
 
+def test_the_school_s_author_wins_over_the_more_published_one(monkeypatch):
+    """Two OpenAlex authors named Elizabeth Rodrigues both list Grinnell.
+
+    A5007392163 has 20 works and one Grinnell year against three at
+    Universidade Federal do Pará; A5072745591 has 12 works and two of its three
+    years at Grinnell. "Most works wins" picked the first and offered a
+    digital-humanities scholar a materials chemist's research areas — and her
+    department, "Digital Studies Concentration", maps to no field family, so
+    the wrong-field gate never ran. Being the more prolific author is not
+    evidence of being this school's.
+    """
+    monkeypatch.setattr(oa, "_get", lambda p: {"results": [
+        {"id": "A_chemist", "display_name": "Elizabeth Rodrigues",
+         "works_count": 20,
+         "affiliations": [
+             {"institution": {"id": "https://openalex.org/I173288447"},
+              "years": [2022]},
+             {"institution": {"id": "https://openalex.org/I999"},
+              "years": [2019, 2018, 2017]},
+         ],
+         "topics": [{"display_name": "Layered Double Hydroxides"}]},
+        {"id": "A_scholar", "display_name": "Elizabeth Rodrigues",
+         "works_count": 12,
+         "affiliations": [
+             {"institution": {"id": "https://openalex.org/I173288447"},
+              "years": [2020, 2017]},
+             {"institution": {"id": "https://openalex.org/I888"},
+              "years": [2008]},
+         ],
+         "topics": [{"display_name": "Digital Humanities and Scholarship"}]},
+    ]})
+
+    best = oa._match_author("Elizabeth (Liz) Rodrigues", "I173288447",
+                            "Digital Studies Concentration")
+
+    assert best["id"] == "A_scholar"
+
+
+def test_a_lone_affiliation_still_scores_full_share(monkeypatch):
+    """A new hire whose only listed institution is the school must not lose for
+    having a short history — the share is a ratio, not a year count."""
+    monkeypatch.setattr(oa, "_get", lambda p: {"results": [
+        {"id": "A_new", "display_name": "Ada Lovelace", "works_count": 9,
+         "affiliations": [{"institution": {"id": "https://openalex.org/I1"},
+                           "years": [2025]}],
+         "topics": [{"display_name": "Analytical Engines"}]},
+    ]})
+
+    assert oa._match_author("Ada Lovelace", "I1")["id"] == "A_new"
+
+
+def test_the_word_department_does_not_name_a_discipline():
+    """"dep-ART-ment" contains the table's "art" key, so any department whose
+    name missed every earlier key was handed Arts and Humanities on the
+    strength of the word "Department" — 13,755 faculty corpus-wide.
+
+    Music and Classics landed there by accident and were fine. Entomology,
+    Animal Science, Kinesiology and Pathology were handed a family none of
+    their topics belong to, so the majority-compatible gate rejected the
+    correct author every time and those faculty were silently never enriched.
+    """
+    art = {"Arts and Humanities", "Social Sciences"}
+    assert oa._dept_fields("Department of Entomology") != art
+    assert "Agricultural and Biological Sciences" in oa._dept_fields(
+        "Department of Entomology")
+    assert "Health Professions" in oa._dept_fields("Department of Pathology")
+    assert "Health Professions" in oa._dept_fields("Department of Kinesiology")
+    # A department that really is about art still is.
+    assert oa._dept_fields("Department of Art History") == art
+    assert oa._dept_fields("Art Department") == art
+    assert oa._dept_fields("Department of Music") == art
+    # An earlier key still wins over the word, as it always did.
+    assert "Chemistry" in oa._dept_fields("Department of Chemistry")
+    assert oa._dept_fields("Departments") is None
+
+
 def test_author_topics_requires_institution_and_surname(monkeypatch):
     # right surname but WRONG institution -> no match
     monkeypatch.setattr(oa, "_get", lambda p: {"results": [
