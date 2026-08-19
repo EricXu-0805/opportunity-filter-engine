@@ -379,8 +379,110 @@ class TestMajorMatching:
         assert humanities_vs_stem < same_domain
         assert humanities_vs_stem <= 10.0
 
+    def test_an_unrecognised_field_is_unknown_not_a_conflict(self):
+        # The domain lists name 53 majors; this field carries 1,305 distinct
+        # strings across the corpus. Reading every unrecognised one as a clash
+        # charged the cross-domain penalty for Immunology, Epidemiology, Cell
+        # Biology — and told a Bioengineering student they conflict with them.
+        for field in ("Immunology", "Cell Biology", "Epidemiology", "Physiology"):
+            unknown = _major_match_score(["ECE"], [field])
+            clash = _major_match_score(["Spanish"], ["CS"])
+            assert unknown > clash, field
+            assert unknown == _major_match_score(["Biology"], ["CS"]), field
+
+    def test_a_department_label_costs_nothing_to_miss(self):
+        # `label_only` says the list NAMES a department rather than requiring a
+        # major. Missing it must score exactly like a posting that states no
+        # major at all — there is no requirement to have failed.
+        assert _major_match_score(["ECE"], ["Bioengineering"], label_only=True) == \
+            _major_match_score(["ECE"], [])
+
+    def test_a_matching_department_label_still_earns_credit(self):
+        # Neutral on a miss, not blind: sharing the department is real evidence.
+        assert _major_match_score(["ECE"], ["ECE"], label_only=True) == 100.0
+        assert _major_match_score(["ECE"], ["CS"], label_only=True) == 70.0
+
 
 # ── Unit Tests: Scoring Layers ────────────────
+
+class TestFacultyMajorIsALabel:
+    """`majors` on a faculty record is the department the professor sits in,
+    copied from config — not a requirement any page of theirs states. Grading a
+    mismatch against it cost 20.4 eligibility points, 9.2 of final score, on
+    80-85% of 128,449 faculty records."""
+
+    @staticmethod
+    def _faculty(**over):
+        opp = {
+            "id": "fac-1",
+            "title": "Research with Prof. Example — Bioengineering",
+            "source_type": "faculty_research",
+            "opportunity_type": "research",
+            "on_campus": True,
+            "paid": "unknown",
+            "is_rolling": True,
+            "description_clean": "Medical imaging research.",
+            "eligibility": {
+                "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+                "majors": ["Bioengineering", "Biomedical Engineering"],
+                "skills_required": [],
+                "skills_preferred": [],
+                "international_friendly": "unknown",
+                "citizenship_required": False,
+            },
+            "application": {"contact_method": "email", "application_effort": "low"},
+        }
+        opp.update(over)
+        return opp
+
+    # The production case, stated exactly: an ECE sophomore who named no second
+    # field, against a Bioengineering professor. That pair scores 15.0 — the
+    # related-majors bridge does not connect them — which is where the 20.4
+    # points went.
+    PROFILE = {
+        "year": "sophomore",
+        "major": "Electrical and Computer Engineering",
+        "secondary_interests": [],
+        "international_student": True,
+        "hard_skills": ["Python"],
+        "coursework": ["ECE 120"],
+        "experience_level": "beginner",
+        "resume_ready": True,
+        "can_cold_email": True,
+        "seeking_type": ["research"],
+        "research_interests_text": "deep learning for medical imaging",
+    }
+
+    def test_another_department_costs_the_student_nothing(self):
+        outside, _, _ = score_eligibility(self.PROFILE, self._faculty())
+        unlabelled = self._faculty()
+        unlabelled["eligibility"] = {**unlabelled["eligibility"], "majors": []}
+        open_posting, _, _ = score_eligibility(self.PROFILE, unlabelled)
+        assert outside == open_posting
+
+    def test_the_professor_is_not_given_a_preference_they_never_stated(self):
+        _, _, gap = score_eligibility(self.PROFILE, self._faculty())
+        assert not any(g.startswith("Prefers ") for g in gap), gap
+
+    def test_a_real_posting_still_states_a_real_requirement(self):
+        # The discriminator is source_type, and it has to stay narrow: a
+        # Handshake listing that names majors named them on purpose.
+        posting = self._faculty(source_type="handshake")
+        scored, _, gap = score_eligibility(self.PROFILE, posting)
+        neutral = self._faculty(source_type="handshake")
+        neutral["eligibility"] = {**neutral["eligibility"], "majors": []}
+        open_scored, _, _ = score_eligibility(self.PROFILE, neutral)
+        assert scored < open_scored
+        assert any(g.startswith("Prefers ") for g in gap), gap
+
+    def test_sharing_the_department_still_earns_credit(self):
+        same = self._faculty()
+        same["eligibility"] = {**same["eligibility"], "majors": ["ECE"]}
+        matched, fit, _ = score_eligibility(self.PROFILE, same)
+        outside, _, _ = score_eligibility(self.PROFILE, self._faculty())
+        assert matched > outside
+        assert any("direct match" in f for f in fit), fit
+
 
 class TestEligibilityScoring:
     def test_good_match(self, sample_profile, good_match_opportunity):
