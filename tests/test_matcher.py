@@ -481,7 +481,36 @@ class TestFacultyMajorIsALabel:
         matched, fit, _ = score_eligibility(self.PROFILE, same)
         outside, _, _ = score_eligibility(self.PROFILE, self._faculty())
         assert matched > outside
-        assert any("direct match" in f for f in fit), fit
+        assert any("department aligns" in f for f in fit), fit
+
+    def test_department_credit_survives_faculty_claim_neutralization(self):
+        from src.evidence import (
+            FACULTY_MAJOR_LABELS_MARKER,
+            faculty_safe_public_record,
+            neutralize_unverified_faculty_claims,
+        )
+
+        same = self._faculty()
+        same["eligibility"] = {**same["eligibility"], "majors": ["ECE"]}
+        neutralize_unverified_faculty_claims(same)
+        neutralize_unverified_faculty_claims(same)
+        assert same["eligibility"]["majors"] == []
+        assert same["metadata"][FACULTY_MAJOR_LABELS_MARKER] == ["ECE"]
+
+        matched, fit, gap = score_eligibility(self.PROFILE, same)
+        outside = self._faculty()
+        outside["eligibility"] = {**outside["eligibility"], "majors": ["Bioengineering"]}
+        neutralize_unverified_faculty_claims(outside)
+        outside_score, _, outside_gap = score_eligibility(self.PROFILE, outside)
+
+        assert matched > outside_score
+        assert any("department aligns" in f for f in fit), fit
+        assert not any("Prefers " in item or "requirements" in item for item in gap)
+        assert not any("Prefers " in item or "requirements" in item for item in outside_gap)
+
+        public = faculty_safe_public_record(same)
+        assert public["eligibility"]["majors"] == []
+        assert FACULTY_MAJOR_LABELS_MARKER not in public["metadata"]
 
 
 class TestEligibilityScoring:
@@ -1173,11 +1202,13 @@ class TestCitizenshipRequiredHonored:
         assert any(r.opportunity_id == "us-only" for r in results)
 
 
-class TestForeignCampusWorkAuthBonus:
-    """BUG B (filter-correctness gate, 2026-06-15): a foreign campus stamped
-    on_campus=True must not earn an F-1 the 'no work authorization concerns'
-    bonus — they can't work on another school's campus. The student's own campus,
-    a national/legacy (school=None) row, or incomplete data still earns it."""
+class TestCampusConvenienceNeverClaimsWorkAuthorization:
+    """Location may be a convenience signal, never an immigration conclusion.
+
+    Even a verified same-campus posting cannot prove the student's particular
+    employment/funding arrangement. The matcher may say where it is, but must
+    not tell an F-1 student that work authorization is settled.
+    """
 
     def _on_campus(self, school):
         return {"id": f"oc-{school}", "opportunity_type": "research", "on_campus": True,
@@ -1186,25 +1217,29 @@ class TestForeignCampusWorkAuthBonus:
     def _f1(self, home):
         return {"international_student": True, "home_school": home, "research_interests_text": ""}
 
-    def _has_bonus(self, fit):
+    def _has_legal_claim(self, fit):
         return any("work authorization" in f.lower() for f in fit)
 
-    def test_own_campus_earns_bonus(self):
+    def test_own_campus_names_location_without_a_legal_claim(self):
         _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uiuc"))
-        assert self._has_bonus(fit)
+        assert "At your university" in fit
+        assert not self._has_legal_claim(fit)
 
     def test_foreign_campus_does_not_earn_bonus(self):
         _, fit, _ = score_upside(self._f1("uiuc"), self._on_campus("uw"))
-        assert not self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
-    def test_missing_home_school_keeps_bonus(self):
+    def test_missing_home_school_cannot_claim_a_home_campus(self):
         _, fit, _ = score_upside({"international_student": True, "research_interests_text": ""},
                                  self._on_campus("uiuc"))
-        assert self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
-    def test_national_legacy_row_keeps_bonus(self):
+    def test_national_legacy_row_cannot_claim_a_home_campus(self):
         _, fit, _ = score_upside(self._f1("ucb"), self._on_campus(None))
-        assert self._has_bonus(fit)
+        assert "At your university" not in fit
+        assert not self._has_legal_claim(fit)
 
 
 class TestMajorFitSingleCount:

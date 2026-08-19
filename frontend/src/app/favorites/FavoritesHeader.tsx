@@ -3,6 +3,7 @@
 import { GitCompare, X } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendFavoritesEmail } from '@/lib/api';
+import { opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { getInteractionsFull } from '@/lib/supabase';
 import { MAX_COMPARE, MIN_COMPARE, type Opp, type TFunc } from './types';
@@ -52,13 +53,15 @@ export function FavoritesHeader({
                 .slice(0, 50)
                 .map((o) => {
                   const rec = interactions.get(o.id);
+                  const recordKind = opportunityRecordKind(o);
                   return {
                     title: o.title,
                     url: o.url || '',
                     source: o.source || '',
-                    deadline: o.deadline || null,
+                    deadline: recordKind === 'listing' ? o.deadline || null : null,
                     notes: rec?.notes || '',
                     status: rec?.type || '',
+                    record_kind: recordKind,
                   };
                 });
               return sendFavoritesEmail(emailAddr, items);

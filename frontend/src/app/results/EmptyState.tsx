@@ -17,10 +17,9 @@ export function EmptyState({
   onShowRolling?: () => void;
   t: TFunc;
 }) {
-  // "No matches, try clearing filters" is true but useless here, and it reads
-  // as a broken product: 98.7% of this corpus is rolling and only 0.6% carries
-  // a deadline at all, so filtering by one is empty far more often than it is
-  // wrong. Say why, and offer the filter that does apply.
+  // Explain the missing deadline evidence without converting an undated
+  // faculty contact into a supposedly open/rolling position. The optional
+  // action selects only records that are explicitly marked rolling.
   if (deadlineFilterFoundNothing) {
     return (
       <div className="text-center py-16 space-y-3">

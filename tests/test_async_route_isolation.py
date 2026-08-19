@@ -242,7 +242,7 @@ def test_match_explain_llm_does_not_block_live(monkeypatch, profile, opportunity
     fake, gate = _gated(lambda *_args, **_kwargs: None)
     monkeypatch.setattr(matches, "_llm_explanation", fake)
     response = _run_probe(
-        f"/api/matches/{opportunity_id}/explain",
+        f"/api/matches/{opportunity_id}/explain?llm=true",
         profile,
         gate,
     )

@@ -1,10 +1,31 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsHeader } from './ResultsHeader';
-import type { MatchesResponse } from '@/lib/types';
+import type { MatchResult, MatchesResponse } from '@/lib/types';
+
+const { sendMatchesEmailMock } = vi.hoisted(() => ({
+  sendMatchesEmailMock: vi.fn(),
+}));
+
+vi.mock('@/lib/api', () => ({
+  sendMatchesEmail: sendMatchesEmailMock,
+}));
+
+vi.mock('@/components/EmailMeButton', () => ({
+  default: ({ onSend }: { onSend: (email: string) => Promise<unknown> }) => (
+    <button type="button" onClick={() => void onSend('student@example.com')}>
+      mock-email
+    </button>
+  ),
+}));
 
 const t = (k: string, vars?: Record<string, string | number>) =>
   vars ? `${k}{${Object.entries(vars).map(([a, b]) => `${a}=${b}`).join(',')}}` : k;
+
+beforeEach(() => {
+  sendMatchesEmailMock.mockReset();
+  sendMatchesEmailMock.mockResolvedValue({ ok: true, count: 6 });
+});
 
 function renderHeader(fieldRelevantCount: number) {
   const data = {
@@ -36,9 +57,9 @@ function renderHeader(fieldRelevantCount: number) {
 }
 
 describe('ResultsHeader strong-match header', () => {
-  it('renders the AI refine toggle now that the feature is accepted', () => {
+  it('hides AI refine until the server can attest a real refined result', () => {
     renderHeader(0);
-    expect(screen.getByTestId('semantic-toggle')).toBeInTheDocument();
+    expect(screen.queryByTestId('semantic-toggle')).not.toBeInTheDocument();
   });
 
   it('uses the singular variant for exactly one strong match', () => {
@@ -55,5 +76,101 @@ describe('ResultsHeader strong-match header', () => {
   it('hides the line entirely at zero', () => {
     renderHeader(0);
     expect(screen.queryByText(/results\.fieldMatches/)).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultsHeader email payload', () => {
+  it('fails closed when the producer cannot prove a listing record', async () => {
+    const data = {
+      total: 6,
+      high_priority: 6,
+      good_match: 0,
+      reach: 0,
+      low_fit: 0,
+      results: [],
+    } as MatchesResponse;
+    const matches = [
+      {
+        final_score: 98,
+        opportunity: {
+          title: 'Faculty contact',
+          source_type: 'faculty_research',
+          deadline: '2026-09-01',
+        },
+      },
+      {
+        final_score: 95,
+        opportunity: {
+          title: 'Verified listing',
+          source_type: 'campus_program',
+          deadline: '2026-09-02',
+        },
+      },
+      {
+        final_score: 90,
+        opportunity: {
+          title: 'Missing type',
+          deadline: '2026-09-03',
+        },
+      },
+      {
+        final_score: 85,
+        opportunity: {
+          title: 'Empty type',
+          source_type: '   ',
+          deadline: '2026-09-04',
+        },
+      },
+      {
+        final_score: 80,
+        opportunity: {
+          title: 'Unknown type',
+          source_type: 'unknown',
+          deadline: '2026-09-05',
+        },
+      },
+      {
+        final_score: 75,
+        opportunity: {
+          title: 'Unrecognized type',
+          source_type: 'unreviewed_feed',
+          deadline: '2026-09-06',
+        },
+      },
+    ] as unknown as MatchResult[];
+
+    render(
+      <ResultsHeader
+        loading={false}
+        showSlowHint={false}
+        data={data}
+        filteredTotal={matches.length}
+        counts={{ all: matches.length }}
+        favs={new Set<string>()}
+        activeTab="all"
+        semanticRerank={false}
+        onSemanticChange={() => {}}
+        onOpenHelp={() => {}}
+        onExport={() => {}}
+        loadEmailMatches={async () => matches}
+        t={t}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock-email' }));
+
+    await waitFor(() => expect(sendMatchesEmailMock).toHaveBeenCalledOnce());
+    const items = sendMatchesEmailMock.mock.calls[0][1] as Array<{
+      record_kind: string;
+      deadline: string | null;
+    }>;
+    expect(items.map(({ record_kind, deadline }) => [record_kind, deadline])).toEqual([
+      ['faculty_contact', null],
+      ['listing', '2026-09-02'],
+      ['unknown', null],
+      ['unknown', null],
+      ['unknown', null],
+      ['unknown', null],
+    ]);
   });
 });

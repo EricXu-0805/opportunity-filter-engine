@@ -101,11 +101,41 @@ describe('useResultsFilters — filter-aware tab counts', () => {
   });
 });
 
+describe('useResultsFilters — tri-state campus evidence', () => {
+  it('unknown location is neither on-campus nor off-campus', () => {
+    const triState = {
+      ...DATA,
+      results: [
+        { ...mr('campus-yes', 'test', 'good_match'), opportunity: { ...mr('campus-yes', 'test', 'good_match').opportunity, on_campus: true } },
+        { ...mr('campus-no', 'test', 'good_match'), opportunity: { ...mr('campus-no', 'test', 'good_match').opportunity, on_campus: false } },
+        { ...mr('campus-unknown', 'test', 'good_match'), opportunity: { ...mr('campus-unknown', 'test', 'good_match').opportunity, on_campus: null } },
+      ],
+    } as MatchesResponse;
+
+    const filteredIds = (onCampus: 'yes' | 'no') => renderHook(() =>
+      useResultsFilters({
+        data: triState,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS, onCampus },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'test',
+      }),
+    ).result.current.filtered.map((match) => match.opportunity.id);
+
+    expect(filteredIds('yes')).toEqual(['campus-yes']);
+    expect(filteredIds('no')).toEqual(['campus-no']);
+  });
+});
+
 describe('useResultsFilters — the deadline facet on a rolling corpus', () => {
-  // Every record in RESULTS has deadline: null, which is the corpus's normal
-  // shape: 98.7% rolling, 0.6% with any deadline at all. So the four dated
-  // options are four ways to reach an empty page, and 'rolling' is the only
-  // one that can answer for a professor's lab.
+  // Every record in RESULTS has deadline: null. Faculty contacts remain
+  // undated, but must not be promoted into the rolling-open set.
   it('a dated option finds nothing when no match carries a deadline', () => {
     expect(run({ activeTab: 'all', filters: { deadline: '30' } }).filtered).toHaveLength(0);
   });
@@ -113,7 +143,13 @@ describe('useResultsFilters — the deadline facet on a rolling corpus', () => {
   it('rolling selects on is_rolling, independent of the deadline field', () => {
     const rolling = { ...DATA, results: DATA.results.map((r, i) => ({
       ...r,
-      opportunity: { ...r.opportunity, is_rolling: i % 2 === 0 },
+      opportunity: {
+        ...r.opportunity,
+        is_rolling: i % 2 === 0,
+        source_type: r.opportunity.source?.includes('faculty')
+          ? 'faculty_research'
+          : 'campus_program',
+      },
     })) };
     const out = renderHook(() =>
       useResultsFilters({
@@ -130,12 +166,82 @@ describe('useResultsFilters — the deadline facet on a rolling corpus', () => {
         homeSchool: 'ucb',
       }),
     ).result.current;
-    // 5 non-low_fit rows, of which the even indices (0, 2, 4) are rolling.
-    expect(out.filtered.map((m) => m.opportunity.id)).toEqual(['fac-1', 'prog-1', 'prog-3']);
+    // Even indices are stamped rolling, but index 0 is only a faculty contact.
+    expect(out.filtered.map((m) => m.opportunity.id)).toEqual(['prog-1', 'prog-3']);
   });
 });
 
 describe('useResultsFilters — canonical consistency guards', () => {
+  it('fails poisoned faculty opening fields closed in every positive facet', () => {
+    const faculty = mr('faculty-poison', 'faculty_source', 'good_match');
+    faculty.opportunity = {
+      ...faculty.opportunity,
+      source_type: 'faculty_research',
+      paid: 'yes',
+      on_campus: true,
+      deadline: '2026-01-01',
+      posted_date: '2099-01-01',
+      eligibility: {
+        ...faculty.opportunity.eligibility,
+        international_friendly: 'yes',
+        citizenship_required: false,
+      },
+    };
+    const listing = mr('real-listing', 'listing_source', 'good_match');
+    listing.opportunity = {
+      ...listing.opportunity,
+      source_type: 'campus_program',
+      paid: 'yes',
+      on_campus: true,
+      deadline: '2027-01-01',
+      posted_date: '2027-01-01',
+      eligibility: {
+        ...listing.opportunity.eligibility,
+        international_friendly: 'yes',
+      },
+    };
+    const data = { ...DATA, total: 2, results: [faculty, listing] } as MatchesResponse;
+    const filteredIds = (filters: Partial<Filters>) => renderHook(() =>
+      useResultsFilters({
+        data,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS, ...filters },
+        favs: new Set<string>(),
+        sortBy: 'score',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'test',
+      }),
+    ).result.current.filtered.map((match) => match.opportunity.id);
+
+    expect(filteredIds({ paid: 'yes' })).toEqual(['real-listing']);
+    expect(filteredIds({ intl: 'yes' })).toEqual(['real-listing']);
+    expect(filteredIds({ onCampus: 'yes' })).toEqual(['real-listing']);
+    // The existing "unpaid / not disclosed" option includes honest unknowns.
+    expect(filteredIds({ paid: 'no' })).toEqual(['faculty-poison']);
+
+    const sortedIds = (sortBy: 'deadline' | 'newest') => renderHook(() =>
+      useResultsFilters({
+        data,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS },
+        favs: new Set<string>(),
+        sortBy,
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'test',
+      }),
+    ).result.current.filtered.map((match) => match.opportunity.id);
+    expect(sortedIds('deadline')).toEqual(['real-listing', 'faculty-poison']);
+    expect(sortedIds('newest')).toEqual(['real-listing', 'faculty-poison']);
+  });
+
   it('minScore filters on the DISPLAYED (rounded) score', () => {
     // A 79.6 renders as "80%" on the card, so it must survive minScore=80 —
     // filtering the raw value made labeled-80 cards vanish.

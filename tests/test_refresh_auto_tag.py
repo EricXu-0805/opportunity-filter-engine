@@ -85,17 +85,38 @@ def test_rule_based_gates_context_less_single_letter_skills():
     assert "Python" in skills
 
 
-def test_faculty_rank_words_do_not_narrow_preferred_year():
-    # "Senior Lecturer" / "Junior Fellow" are academic ranks, not class-year
-    # eligibility. Reading them as one pinned 2.4k faculty labs to seniors-only
-    # and hid them from every underclassman, so faculty keep the full range.
+def test_faculty_profiles_are_not_opening_tag_candidates():
+    # Biography/title prose cannot prove pay, eligibility, or application
+    # requirements.  These phrases used to create false paid and US-only facts.
     opp = _opp(
         source_type="faculty_research",
-        title="Research with Prof. Jane Doe — BIOL",
-        description_clean="Senior Lecturer in Biological Sciences. Contact the professor directly.",
+        title="Scholarship of Teaching and Learning",
+        description_clean=(
+            "Senior Lecturer studying U.S. national security. Volunteer work "
+            "uses Python and machine learning."
+        ),
     )
-    apply_updates(opp, rule_based_tag(opp))
+    assert not needs_tagging(opp)
+    assert rule_based_tag(opp) == {}
+    assert not apply_updates(
+        opp,
+        {
+            "paid": "yes",
+            "international_friendly": "no",
+            "citizenship_required": True,
+            "skills_required": ["Python"],
+            "skills_preferred": ["Machine Learning"],
+            "preferred_year": ["senior"],
+        },
+        method="llm:llm_tagger",
+    )
+    assert opp["paid"] == "unknown"
+    assert opp["eligibility"]["international_friendly"] == "unknown"
+    assert "citizenship_required" not in opp["eligibility"]
+    assert opp["eligibility"]["skills_required"] == []
+    assert opp["eligibility"]["skills_preferred"] == []
     assert opp["eligibility"]["preferred_year"] == ["freshman", "sophomore", "junior", "senior"]
+    assert opp.get("metadata") is None
 
 
 def test_non_faculty_postings_still_infer_preferred_year():

@@ -4,6 +4,7 @@ import { ExternalLink, Sparkles, Star, Shield, Mountain } from 'lucide-react';
 import type { CompareRow } from './scores';
 import { useT } from '@/i18n/client';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
+import { opportunityDestination } from '@/lib/match-utils';
 
 interface Props {
   rows: CompareRow[];
@@ -108,11 +109,12 @@ export default function BucketCards({ rows }: Props) {
           const isError = status === 'error' || !match;
           const fits = match?.reasons_fit ?? [];
           const gaps = match?.reasons_gap ?? [];
-          const applyUrl = opp.application?.application_url || opp.url || opp.source_url;
           const isFacultyProfile = Boolean(
             opp.id.startsWith('faculty-')
-            || (opp.source ?? '').toLowerCase().includes('faculty'),
+            || (opp.source ?? '').toLowerCase().includes('faculty')
+            || opp.source_type === 'faculty_research',
           );
+          const applyUrl = opportunityDestination(opp);
           const actionLabel = isFacultyProfile
             ? t('compare.viewFaculty')
             : opp.application?.application_url
@@ -122,7 +124,9 @@ export default function BucketCards({ rows }: Props) {
           // collector default, not scraped evidence); without a date,
           // "Rolling" renders only on actual rolling evidence — otherwise
           // the honest claim is just "no fixed deadline".
-          const deadlineSummary = opp.deadline
+          const deadlineSummary = opp.source_type === 'faculty_research'
+            ? t('compare.facultyOpeningUnconfirmed')
+            : opp.deadline
             ? `${opp.deadline}${
                 opp.deadline_is_estimate === false
                   ? ''

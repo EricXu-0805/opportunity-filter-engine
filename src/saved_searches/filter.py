@@ -35,6 +35,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date, datetime
 
+from src.evidence import faculty_contact_claims_unverified
+
 
 def days_until(deadline: str | None) -> int | None:
     """Return calendar days from today until ``deadline`` (YYYY-MM-DD).
@@ -81,13 +83,15 @@ def _matches_on_campus(opp_on_campus: bool | None, want: str) -> bool:
     if want == "yes":
         return opp_on_campus is True
     if want == "no":
-        return not opp_on_campus
+        return opp_on_campus is False
     return True
 
 
 def _matches_deadline(opp: dict, want: str) -> bool:
     if not want:
         return True
+    if faculty_contact_claims_unverified(opp):
+        return False
     # 'rolling' reads a different field, so it takes the whole record. Note the
     # fallthrough below returns True for an unrecognised value: before this
     # branch existed, a saved search carrying deadline='rolling' matched every
@@ -126,14 +130,26 @@ def match_filter(opp: dict, filters: dict) -> bool:
     real opportunities.json data is well-formed but cron should never
     crash on a single malformed row.
     """
+    is_faculty_contact = faculty_contact_claims_unverified(opp)
     eligibility = opp.get("eligibility") or {}
     if not isinstance(eligibility, dict):
         eligibility = {}
     return (
-        _matches_paid(opp.get("paid"), filters.get("paid", ""))
-        and _matches_intl(eligibility, filters.get("intl", ""))
+        _matches_paid(
+            "unknown" if is_faculty_contact else opp.get("paid"),
+            filters.get("paid", ""),
+        )
+        and _matches_intl(
+            {"international_friendly": "unknown"}
+            if is_faculty_contact
+            else eligibility,
+            filters.get("intl", ""),
+        )
         and _matches_source(opp.get("source"), filters.get("source", ""))
-        and _matches_on_campus(opp.get("on_campus"), filters.get("onCampus", ""))
+        and _matches_on_campus(
+            None if is_faculty_contact else opp.get("on_campus"),
+            filters.get("onCampus", ""),
+        )
         and _matches_deadline(opp, filters.get("deadline", ""))
     )
 

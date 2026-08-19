@@ -38,6 +38,7 @@ from src.collectors.uiuc_faculty import (
     missing_departments,
     normalize_faculty,
 )
+from src.evidence import FACULTY_MAJOR_LABELS_MARKER
 
 NEWLY_ADDED = {
     "aero", "cee", "npre", "chbe", "ise", "astro", "mcb", "psych",
@@ -154,6 +155,13 @@ def test_normalize_keeps_real_person():
     assert opp["pi_name"] == "Milan K. Bagchi"
     assert opp["source"] == "uiuc_faculty"
     assert opp["department"] == cfg["name"]
+    assert opp["on_campus"] is None
+    assert opp["eligibility"]["preferred_year"] == ["unknown"]
+    assert opp["eligibility"]["international_friendly"] == "unknown"
+    assert opp["eligibility"]["citizenship_required"] is None
+    assert opp["eligibility"]["majors"] == []
+    assert opp["metadata"][FACULTY_MAJOR_LABELS_MARKER] == cfg["majors"]
+    assert opp["application"]["application_effort"] == "unknown"
 
 
 def test_normalize_never_infers_skills_for_faculty():
@@ -364,10 +372,11 @@ def test_carry_forward_preserves_enrichment_over_broad_rescrape():
         "contact_email": "baym@illinois.edu",  # a fresh factual field
     }
     _carry_forward_enrichment(existing, incoming)
-    # enrichment carried forward onto the incoming (winning) record...
+    # Research facts survive, but legacy opening-shaped display prose must not
+    # be carried back over the fresh availability-neutral projection.
     assert incoming["keywords"] == existing["keywords"]
-    assert incoming["title"] == existing["title"]
-    assert incoming["description_clean"] == existing["description_clean"]
+    assert incoming["title"] == "Research with Prof. Gordon Baym — Physics"
+    assert incoming["description_clean"] == "Contact the professor to inquire about research."
     # ...while the fresh factual field is untouched (still updates on merge)
     assert incoming["contact_email"] == "baym@illinois.edu"
 
@@ -889,7 +898,7 @@ def test_rebuild_title_drops_navmenu_for_broad_only_prof():
         "eligibility": {"eligibility_text_raw": "stale"},
     }]
     assert _rebuild_faculty_title_and_desc(rows) == 1
-    assert rows[0]["title"] == "Research with Prof. Sasa Misailovic — CS"
+    assert rows[0]["title"] == "Sasa Misailovic — CS"
     assert "bioinformatics" not in rows[0]["title"]
     assert "Research areas:" not in rows[0]["description_clean"]
     assert "Architecture" not in rows[0]["description_clean"]
@@ -905,11 +914,12 @@ def test_rebuild_title_keeps_genuine_specific_areas():
     }]
     _rebuild_faculty_title_and_desc(rows)
     assert rows[0]["title"] == (
-        "Research with Prof. Alexander Schwing — ECE "
-        "(machine learning, computer vision, robotics)"
+        "Alexander Schwing — ECE (machine learning, computer vision, robotics)"
     )
     assert "Research areas: machine learning, computer vision, robotics." in \
         rows[0]["description_raw"]
+    assert "Research opportunity" not in rows[0]["description_raw"]
+    assert "positions in their lab" not in rows[0]["description_raw"]
 
 
 def test_strip_pi_name_credential_suffix():

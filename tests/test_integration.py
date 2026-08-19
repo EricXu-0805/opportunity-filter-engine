@@ -236,16 +236,28 @@ class TestTaggerUpdates:
         assert opp["eligibility"]["skills_required"] == ["Python"]
         assert opp["eligibility"]["international_friendly"] == "yes"
 
-    def test_tagger_tags_real_data(self):
-        """At least some real opportunities should be taggable."""
+    def test_tagger_leaves_real_faculty_profiles_alone(self):
+        """No faculty profile in the real corpus is an opening-tag candidate.
+
+        Sampling the corpus for taggable records is not a valid gate in the
+        other direction: a fully tagged corpus legitimately yields zero
+        updates, and a non-empty update dict can still be a no-op. The
+        deterministic positive path lives in the fixtures above and in
+        tests/test_refresh_auto_tag.py.
+        """
         data = _load_real_data()
-        tagged_count = 0
-        for opp in data[:50]:
-            if needs_tagging(opp):
-                updates = rule_based_tag(opp)
-                if updates:
-                    tagged_count += 1
-        assert tagged_count > 0, "Tagger should produce updates for at least some real entries"
+        faculty = [o for o in data if o.get("source_type") == "faculty_research"]
+        assert faculty, "Real corpus should contain faculty_research records"
+
+        flagged = [o.get("id") for o in faculty if needs_tagging(o) is not False]
+        assert not flagged, (
+            f"{len(flagged)} faculty profiles flagged for tagging, e.g. {flagged[:5]}"
+        )
+
+        tagged = [o.get("id") for o in faculty if rule_based_tag(o) != {}]
+        assert not tagged, (
+            f"{len(tagged)} faculty profiles produced tag updates, e.g. {tagged[:5]}"
+        )
 
 
 # ── Test: Ranker Produces Sane Results ────────────────

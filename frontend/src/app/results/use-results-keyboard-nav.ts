@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { MatchResult } from '@/lib/types';
+import { opportunityDestination } from '@/lib/match-utils';
 
 export interface UseResultsKeyboardNavParams {
   paginated: MatchResult[];
@@ -82,7 +83,7 @@ export function useResultsKeyboardNav({
       } else if (e.key === 'Enter' && focusedIdx >= 0) {
         e.preventDefault();
         const match = paginated[focusedIdx];
-        const url = match?.opportunity.application?.application_url || match?.opportunity.url;
+        const url = match ? opportunityDestination(match.opportunity) : undefined;
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
       }
     }

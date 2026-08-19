@@ -29,7 +29,11 @@ from bs4 import BeautifulSoup
 
 from backend.lib.contact_visibility import canonical_profile_evidence_url
 
-from ..evidence import UNIT_MAILBOX_LOCALPARTS, dept_name_stems
+from ..evidence import (
+    FACULTY_MAJOR_LABELS_MARKER,
+    UNIT_MAILBOX_LOCALPARTS,
+    dept_name_stems,
+)
 from .ucb_common import (
     apply_record_contact_claim,
     clear_contact_claim,
@@ -789,20 +793,20 @@ def normalize_faculty(
         keywords = _extract_research_keywords(person, dept_config)
 
     desc_parts = [
-        f"Research opportunity with {title} {name} in the {dept_name} at UIUC.",
+        f"Faculty research profile for {title} {name} in the {dept_name} at UIUC.",
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {research_areas[:200]}")
     desc_parts.append(
-        "Contact the professor directly to inquire about undergraduate "
-        "research positions in their lab."
+        "Contact this faculty member to ask whether undergraduate research "
+        "opportunities are currently available."
     )
     description = " ".join(desc_parts)
 
     research_summary = ""
     if keywords:
         research_summary = f" ({', '.join(keywords[:3])})"
-    opp_title = f"Research with Prof. {name} — {dept_short}{research_summary}"
+    opp_title = f"Prof. {name} — {dept_short}{research_summary}"
 
     return {
         "id": opp_id,
@@ -812,24 +816,25 @@ def normalize_faculty(
         "title": opp_title,
         "organization": "University of Illinois Urbana-Champaign",
         "department": dept_name,
-        "lab_or_program": f"Prof. {name}'s Research Group",
+        "lab_or_program": "",
         "pi_name": name,
         "contact_email": email or None,
         "url": profile_url,
         "location": "Urbana-Champaign, IL",
-        "on_campus": True,
+        "on_campus": None,
         "remote_option": "unknown",
         "opportunity_type": "research",
         "paid": "unknown",
         "compensation_details": "",
         "deadline": None,
+        "is_rolling": False,
         "posted_date": None,
         "start_date": None,
-        "duration": "Semester or academic year",
+        "duration": None,
         "eligibility": {
-            "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+            "preferred_year": ["unknown"],
             "min_gpa": None,
-            "majors": dept_config["majors"],
+            "majors": [],
             # Faculty are cold-email research contacts, not postings — never
             # infer skills from their research prose (a topology professor whose
             # page says "finite element" would become FEA-required, defeating
@@ -839,9 +844,9 @@ def normalize_faculty(
             # must not seed skills at the source either.
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": False,
-            "international_friendly": "yes",
-            "work_auth_notes": "On-campus research — no work authorization required",
+            "citizenship_required": None,
+            "international_friendly": "unknown",
+            "work_auth_notes": "",
             "eligibility_text_raw": description[:500],
         },
         "application": {
@@ -850,8 +855,8 @@ def normalize_faculty(
             "requires_cover_letter": "unknown",
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
-            "application_effort": "low",
-            "application_url": profile_url,
+            "application_effort": "unknown",
+            "application_url": None,
         },
         "description_raw": description,
         "description_clean": description[:1500],
@@ -866,6 +871,7 @@ def normalize_faculty(
             "notes": f"Auto-imported from {dept_name} faculty directory",
             "faculty_title": title,
             "research_areas_raw": research_areas[:300] if research_areas else "",
+            FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
 
@@ -1069,11 +1075,11 @@ def _faculty_is_richer(a: dict, b: dict) -> bool:
     return ad > bd
 
 
-# Fields that carry run-once enrichment (OpenAlex/LLM research topics + the
-# title and descriptions rebuilt from them). A directory re-scrape emits these
-# too — broad or empty for exactly the faculty the enrichment targeted — so a
-# same-id merge must not let a poorer scrape overwrite them.
-_ENRICHMENT_CARRY_FIELDS = ("keywords", "title", "description_raw", "description_clean")
+# The durable enrichment fact is the research-topic list.  Title/description
+# are display projections rebuilt from those facts and must come from the new,
+# availability-neutral writer; carrying old prose would resurrect legacy
+# "Research opportunity" / "positions in their lab" claims every refresh.
+_ENRICHMENT_CARRY_FIELDS = ("keywords",)
 
 
 # Departmental/role boxes — a real contact for a program record, never a
@@ -1856,7 +1862,7 @@ def _null_wrong_person_emails(opps: list[dict]) -> int:
 
 def _title_dept_short(opp: dict) -> str:
     """The short department label embedded in a faculty title
-    ("Research with Prof. X — CS (areas)") → "CS". Empty when absent."""
+    ("Ada Lovelace — CS (areas)") → "CS". Empty when absent."""
     title = opp.get("title") or ""
     m = re.search(r" — (.+)$", title)
     if not m:
@@ -1897,21 +1903,20 @@ def _rebuild_faculty_title_and_desc(opps: list[dict]) -> int:
         dept_short = _title_dept_short(o)
         summary = f" ({', '.join(specific[:3])})" if specific else ""
         new_title = (
-            f"Research with Prof. {name} — {dept_short}{summary}"
-            if dept_short else f"Research with Prof. {name}{summary}"
+            f"{name} — {dept_short}{summary}"
+            if dept_short else f"{name}{summary}"
         )
 
-        fac_title = (o.get("metadata") or {}).get("faculty_title") or "Professor"
         dept_name = o.get("department", "")
         parts = [
-            f"Research opportunity with {fac_title} {name} in the {dept_name} at UIUC."
-            if dept_name else f"Research opportunity with {fac_title} {name} at UIUC."
+            f"Faculty research profile for {name} in the {dept_name} at UIUC."
+            if dept_name else f"Faculty research profile for {name} at UIUC."
         ]
         if specific:
             parts.append(f"Research areas: {', '.join(specific)}.")
         parts.append(
-            "Contact the professor directly to inquire about undergraduate "
-            "research positions in their lab."
+            "Contact this faculty member to ask whether undergraduate research "
+            "opportunities are currently available."
         )
         new_desc = " ".join(parts)
 

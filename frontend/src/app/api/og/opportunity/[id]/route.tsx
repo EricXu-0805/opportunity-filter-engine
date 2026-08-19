@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { fetchOpportunityServer } from '@/lib/api-server';
+import { buildOpportunityOgFacts } from './og-facts';
 
 export const runtime = 'edge';
 
@@ -9,13 +10,6 @@ const OG_HEIGHT = 630;
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
   return str.slice(0, max - 1).trimEnd() + '…';
-}
-
-function daysUntil(deadline?: string): number | null {
-  if (!deadline) return null;
-  const dl = Date.parse(deadline + 'T00:00:00Z');
-  if (isNaN(dl)) return null;
-  return Math.ceil((dl - Date.now()) / 86400000);
 }
 
 export async function GET(
@@ -37,18 +31,18 @@ export async function GET(
     );
   }
 
-  const title = truncate(opp.title, 110);
-  const org = opp.organization ? truncate(opp.organization, 60) : '';
-  const days = daysUntil(opp.deadline);
+  const facts = buildOpportunityOgFacts(opp);
+  const title = truncate(facts.title, 110);
+  const org = facts.organization ? truncate(facts.organization, 60) : '';
+  const days = facts.daysUntilDeadline;
 
   const badges: Array<{ label: string; bg: string; fg: string }> = [];
-  const typeLabel = (opp.opportunity_type ?? '').replace(/_/g, ' ');
-  if (typeLabel) badges.push({ label: capitalize(typeLabel), bg: '#e0e7ff', fg: '#4338ca' });
-  if (opp.paid === 'yes' || opp.paid === 'stipend') {
+  if (facts.typeLabel) badges.push({ label: capitalize(facts.typeLabel), bg: '#e0e7ff', fg: '#4338ca' });
+  if (facts.showPaid) {
     badges.push({ label: opp.paid === 'stipend' ? 'Stipend' : 'Paid', bg: '#d1fae5', fg: '#047857' });
   }
-  if (opp.on_campus) badges.push({ label: 'On campus', bg: '#f3f4f6', fg: '#4b5563' });
-  if ((opp.eligibility as { international_friendly?: string } | undefined)?.international_friendly === 'yes') {
+  if (facts.showOnCampus) badges.push({ label: 'On campus', bg: '#f3f4f6', fg: '#4b5563' });
+  if (facts.showInternational) {
     badges.push({ label: 'International OK', bg: '#ede9fe', fg: '#6d28d9' });
   }
   if (days !== null && days >= 0 && days <= 7) {
@@ -145,7 +139,11 @@ export async function GET(
               }}
             >
               <span>{org}</span>
-              {opp.location && <span style={{ color: '#94a3b8' }}>· {opp.location}</span>}
+              {facts.location && (
+                <span style={{ color: '#94a3b8' }}>
+                  · {facts.locationPrefix ? `${facts.locationPrefix}: ` : ''}{facts.location}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -161,8 +159,8 @@ export async function GET(
             color: '#64748b',
           }}
         >
-          <span>Find research &amp; internships that fit you</span>
-          {opp.deadline && <span>Deadline: {opp.deadline}</span>}
+          <span>{facts.footer}</span>
+          {facts.deadlineLabel && <span>{facts.deadlineLabel}</span>}
         </div>
       </div>
     ),

@@ -27,6 +27,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
 
 import { ContactRevealSection } from './ContactRevealSection';
 import type { Opportunity } from '@/lib/types';
+import { en, zh } from '@/i18n/dictionaries';
 
 const t = (key: string) => key;
 
@@ -80,6 +81,23 @@ beforeEach(() => {
 });
 
 describe('locked state (sign_in_required)', () => {
+  it('uses recipient-neutral contact copy for non-faculty records', async () => {
+    render(
+      <ContactRevealSection
+        opp={makeOpp({
+          source_type: 'campus_program',
+          contact_email_status: 'sign_in_required',
+        })}
+        t={t}
+      />,
+    );
+    expect(await screen.findByText('detail.contactSignInPrompt')).toBeInTheDocument();
+    expect(en.detail.contactSignInPrompt.toLowerCase()).not.toContain('faculty');
+    expect(en.detail.contactVerifyHint.toLowerCase()).not.toContain('faculty');
+    expect(zh.detail.contactSignInPrompt).not.toMatch(/教授|教师/);
+    expect(zh.detail.contactVerifyHint).not.toMatch(/教授|教师/);
+  });
+
   it('renders the sign-in affordance for anonymous visitors, no fetch', async () => {
     render(<ContactRevealSection opp={makeOpp({ contact_email_status: 'sign_in_required' })} t={t} />);
     expect(await screen.findByTestId('contact-sign-in')).toBeInTheDocument();
@@ -139,6 +157,45 @@ describe('locked state (sign_in_required)', () => {
 });
 
 describe('other states', () => {
+  it.each(['sign_in_required', 'revealed'] as const)(
+    'hides a not-accepting faculty contact even when address state is %s',
+    async (contactStatus) => {
+    mockGetAuthState.mockResolvedValue(signedInState);
+    const { container } = render(
+      <ContactRevealSection
+        opp={makeOpp({
+          source_type: 'faculty_research',
+          faculty_availability_status: 'not_accepting_undergraduates',
+          contact_email_status: contactStatus,
+          contact_email: 'prof@example.edu',
+        })}
+        t={t}
+      />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByTestId('contact-email-link')).toBeNull();
+    expect(screen.queryByTestId('contact-sign-in')).toBeNull();
+    await waitFor(() => expect(mockGetOpportunityById).not.toHaveBeenCalled());
+    expect(openModalMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not turn research inactivity into a contact prohibition', () => {
+    render(
+      <ContactRevealSection
+        opp={makeOpp({
+          source_type: 'faculty_research',
+          faculty_availability_status: 'research_inactive',
+          contact_email_status: 'revealed',
+          contact_email: 'prof@example.edu',
+        })}
+        t={t}
+      />,
+    );
+    expect(screen.getByTestId('contact-email-link')).toHaveTextContent('prof@example.edu');
+  });
+
   it('renders nothing when no verified address exists', () => {
     const { container } = render(
       <ContactRevealSection opp={makeOpp({ contact_email_status: 'unavailable' })} t={t} />,

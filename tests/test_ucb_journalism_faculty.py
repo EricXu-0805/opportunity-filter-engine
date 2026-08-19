@@ -130,10 +130,10 @@ def test_output_shape_matches_other_faculty_collectors():
     assert opp["contact_email"] == "geeta_anand@berkeley.edu"
     assert verified_send_target(opp) == "geeta_anand@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
-    assert opp["eligibility"]["majors"] == JOURNALISM_CONFIG["majors"]
-    assert opp["on_campus"] is True
+    assert opp["eligibility"]["majors"] == []
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == JOURNALISM_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
 
 
 def test_lite_record_has_lower_confidence():

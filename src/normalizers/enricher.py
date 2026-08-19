@@ -428,13 +428,9 @@ def is_rolling_deadline(opp: dict) -> bool:
     source = opp.get("source", "")
     if source in _ROLLING_BY_SOURCE:
         return True
-    # Faculty cold-email targets accept students year-round — a professor
-    # page has no application deadline. Every school's faculty collector
-    # (uiuc, the ucb_* fleet, the faculty_graph schools) emits this
-    # source_type, so keying on it instead of a per-source list means new
-    # schools inherit the rolling default automatically.
-    if opp.get("source_type") == "faculty_research":
-        return True
+    # A faculty directory profile has no opening deadline because it is not a
+    # confirmed opening. Source type alone must never promote it to rolling;
+    # only explicit source text below can establish that status.
     text = " ".join([
         (opp.get("title") or ""),
         (opp.get("description_clean") or opp.get("description_raw") or ""),
@@ -454,7 +450,7 @@ def enrich_opportunity(opp: dict) -> dict:
     non-opportunity heuristic matches (then is_active is forced False).
     """
     elig = opp.setdefault("eligibility", {})
-    if not elig.get("majors"):
+    if opp.get("source_type") != "faculty_research" and not elig.get("majors"):
         inferred = infer_majors(opp)
         if inferred:
             elig["majors"] = inferred
@@ -504,7 +500,7 @@ def enrich_opportunity(opp: dict) -> dict:
     # A record claiming BOTH a fixed deadline and rolling admission is lying to
     # someone — the fellowship UI's rolling filter and deactivate_past's
     # expiry skip both key on is_rolling. Demote-only; deadline-less records
-    # (faculty labs, R70-A defaults) are untouched.
+    # (R70-A defaults) are untouched.
     reconcile_rolling_with_deadline(opp)
 
     _normalize_date_fields(opp)

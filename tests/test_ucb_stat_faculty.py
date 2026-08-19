@@ -91,12 +91,12 @@ def test_normalize_produces_lite_berkeley_record():
     assert opp["contact_email"] is None
     assert opp["metadata"]["confidence_score"] == 0.5
     assert opp["keywords"] == ["statistics"]
-    assert opp["eligibility"]["majors"] == STAT_CONFIG["majors"]
+    assert opp["eligibility"]["majors"] == []
     # External campus: not on the product's UIUC campus, and work-auth /
     # international-friendliness can't be verified from the directory.
-    assert opp["on_campus"] is True
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == STAT_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
 
 
 def test_keyword_picked_up_from_title_when_present():

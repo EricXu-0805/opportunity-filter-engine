@@ -1,6 +1,42 @@
 import type { MatchResult } from './types';
 
 export type DeadlineUrgency = 'passed' | 'urgent' | 'soon' | 'later' | null;
+export type OpportunityRecordKind = 'faculty_contact' | 'listing' | 'unknown';
+
+// Every value currently emitted by the canonical collectors for a real
+// listing. New collector kinds must be reviewed and added explicitly; a
+// missing, stale, or unfamiliar source type cannot prove that a job/program
+// opening exists.
+const LISTING_SOURCE_TYPES = new Set([
+  'campus_announcement',
+  'campus_career',
+  'campus_department',
+  'campus_lab',
+  'campus_program',
+  'external',
+  'external_reu',
+  'internship',
+  'job',
+  'manual',
+  'rss',
+  'summer_program',
+  'ucb_announcement',
+  'ucb_career',
+  'ucb_department',
+  'ucb_lab',
+  'ucb_program',
+  'uiuc_research',
+]);
+
+export function opportunityRecordKind(
+  opp: { source_type?: string | null },
+): OpportunityRecordKind {
+  if (opp.source_type === 'faculty_research') return 'faculty_contact';
+  if (typeof opp.source_type === 'string' && LISTING_SOURCE_TYPES.has(opp.source_type)) {
+    return 'listing';
+  }
+  return 'unknown';
+}
 
 export function daysUntil(deadline: string | undefined, now: Date = new Date()): number | null {
   if (!deadline) return null;
@@ -23,6 +59,53 @@ export function getDeadlineUrgency(
   if (days <= 7) return isEstimate ? 'soon' : 'urgent';
   if (days <= 30) return 'soon';
   return 'later';
+}
+
+/**
+ * Faculty-directory rows are contact profiles, not verified openings. Legacy
+ * payloads can still carry a guessed `international_friendly=yes`; never let
+ * that stale opening claim reach a user-facing surface. An explicit negative
+ * restriction remains useful, while every other faculty value fails closed to
+ * "unknown / verify".
+ */
+export function facultySafeInternational(
+  opp: {
+    source_type?: string;
+    eligibility?: {
+      international_friendly?: string;
+      citizenship_required?: boolean | null;
+    };
+  },
+): string | undefined {
+  const eligibility = opp.eligibility;
+  const kind = opportunityRecordKind(opp);
+  if (kind === 'listing') {
+    return eligibility?.international_friendly;
+  }
+  if (kind === 'unknown') return 'unknown';
+  return eligibility?.international_friendly === 'no'
+    || eligibility?.citizenship_required === true
+    ? 'no'
+    : 'unknown';
+}
+
+/**
+ * Return the only honest external destination for an opportunity. Faculty
+ * rows are directory/contact profiles, so a stale `application_url` must
+ * never outrank their canonical profile URL at any client boundary.
+ */
+export function opportunityDestination(
+  opp: {
+    source_type?: string;
+    application?: { application_url?: string | null };
+    url?: string;
+    source_url?: string;
+  },
+): string | undefined {
+  if (opportunityRecordKind(opp) !== 'listing') {
+    return opp.url || opp.source_url;
+  }
+  return opp.application?.application_url || opp.url || opp.source_url;
 }
 
 const SEARCH_ALIASES: Record<string, string[]> = {
@@ -68,21 +151,25 @@ export function expandSearchAliases(query: string): string[] {
 
 export function matchesToCSV(matches: MatchResult[]): string {
   const header = [
-    'Title', 'Organization', 'Type', 'Paid', 'Location', 'Deadline',
+    'Title', 'Organization', 'Type', 'Paid', 'Location / faculty affiliation', 'Deadline',
     'International Friendly', 'Score', 'Bucket', 'URL',
   ];
-  const rows = matches.map(m => [
-    m.opportunity.title,
-    m.opportunity.organization ?? '',
-    m.opportunity.opportunity_type,
-    m.opportunity.paid,
-    m.opportunity.location ?? '',
-    m.opportunity.deadline ?? '',
-    m.opportunity.eligibility?.international_friendly ?? '',
-    m.final_score.toFixed(1),
-    m.bucket,
-    m.opportunity.application?.application_url || m.opportunity.url || '',
-  ]);
+  const rows = matches.map((m) => {
+    const recordKind = opportunityRecordKind(m.opportunity);
+    const listing = recordKind === 'listing';
+    return [
+      m.opportunity.title,
+      m.opportunity.organization ?? '',
+      listing ? m.opportunity.opportunity_type : recordKind,
+      listing ? m.opportunity.paid : '',
+      m.opportunity.location ?? '',
+      listing ? m.opportunity.deadline ?? '' : '',
+      facultySafeInternational(m.opportunity) ?? '',
+      m.final_score.toFixed(1),
+      m.bucket,
+      opportunityDestination(m.opportunity) || '',
+    ];
+  });
   const escape = (v: string) => {
     // CSV quoting prevents delimiter injection, but spreadsheet programs may
     // still execute an imported cell as a formula (=HYPERLINK, @SUM, +cmd…).

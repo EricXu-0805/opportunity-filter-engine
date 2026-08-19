@@ -6,6 +6,8 @@ import re
 import threading
 from pathlib import Path
 
+from src.evidence import neutralize_unverified_faculty_claims
+
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
@@ -55,6 +57,10 @@ def _strip_html(text: str) -> str:
 
 
 def _sanitize_opportunity(opp: dict) -> dict:
+    # Protect the currently committed legacy shards immediately: faculty
+    # directories are contact/research evidence, not proof of an opening's
+    # year, effort, location or immigration terms.
+    neutralize_unverified_faculty_claims(opp)
     for field in ("description_raw", "description_clean", "title"):
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])

@@ -57,7 +57,6 @@ def scope_closed(monkeypatch):
 
 
 ACCEPTED_FEATURES = frozenset({
-    "match_ai_refine",
     "cross_school_matching",
     "compare",
     "fellowships",
@@ -67,6 +66,7 @@ ACCEPTED_FEATURES = frozenset({
     "professor_signals",
 })
 UNACCEPTED_FEATURES = frozenset({
+    "match_ai_refine",
     "payments",
     "microsoft_school_auth",
     "concierge_pay_qr",
@@ -260,6 +260,106 @@ def test_match_ai_query_is_not_billable_while_refine_is_unaccepted(scope_closed)
         }
     )
     assert main_module._billable_class(request, "/api/matches") is None
+
+
+def _release_contract_snapshot(
+    *,
+    opportunity: dict | None = None,
+) -> matches_module._MatchSnapshot:
+    visible: list[MatchResult] = []
+    opportunities_by_id: dict[str, dict] = {}
+    if opportunity is not None:
+        visible = [
+            MatchResult(
+                opportunity_id=opportunity["id"],
+                eligibility_score=70,
+                readiness_score=70,
+                upside_score=70,
+                final_score=70,
+                bucket="good_match",
+                reasons_fit=["Research interests align"],
+                reasons_gap=["Verify details"],
+                next_steps=["Review details"],
+            )
+        ]
+        opportunities_by_id = {opportunity["id"]: opportunity}
+    return matches_module._MatchSnapshot(
+        created_at=0,
+        corpus_identity=1,
+        result_set_id="release-contract-snapshot",
+        visible=visible,
+        by_id={result.opportunity_id: result for result in visible},
+        opportunities_by_id=opportunities_by_id,
+        buckets={
+            "high_priority": 0,
+            "good_match": len(visible),
+            "reach": 0,
+            "low_fit": 0,
+        },
+        field_relevant_count=len(visible),
+    )
+
+
+def test_match_ai_query_reaches_only_the_deterministic_snapshot(monkeypatch):
+    seen_modes: list[bool] = []
+
+    async def snapshot(_profile, llm):
+        seen_modes.append(llm)
+        return _release_contract_snapshot()
+
+    monkeypatch.setattr(matches_module, "_get_or_compute_snapshot", snapshot)
+    monkeypatch.setattr(
+        matches_module,
+        "llm_rerank",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("AI rerank must stay unreachable")
+        ),
+    )
+
+    response = client.post("/api/matches?llm=true", json={})
+    assert response.status_code == 200
+    assert response.json()["results"] == []
+    assert seen_modes == [False]
+
+
+def test_match_explain_ai_query_is_local_and_bypasses_ai_cache(monkeypatch):
+    opportunity = {
+        "id": "release-contract-opp",
+        "title": "Confirmed program listing",
+        "organization": "Test University",
+        "source_type": "campus_program",
+        "opportunity_type": "research",
+        "paid": "unknown",
+        "on_campus": None,
+        "location": "Test City",
+        "keywords": ["robotics"],
+        "eligibility": {},
+        "application": {},
+        "metadata": {"is_active": True},
+    }
+    seen_modes: list[bool] = []
+
+    async def snapshot(_profile, llm):
+        seen_modes.append(llm)
+        return _release_contract_snapshot(opportunity=opportunity)
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("closed AI explain path was reached")
+
+    monkeypatch.setattr(matches_module, "load_opportunities_by_id", lambda: {
+        opportunity["id"]: opportunity,
+    })
+    monkeypatch.setattr(matches_module, "_get_or_compute_snapshot", snapshot)
+    monkeypatch.setattr(matches_module, "_explain_cache_get", forbidden)
+    monkeypatch.setattr(matches_module, "_llm_explanation", forbidden)
+
+    response = client.post(
+        f"/api/matches/{opportunity['id']}/explain?llm=true",
+        json={},
+    )
+    assert response.status_code == 200
+    assert response.json()["method"] == "local"
+    assert seen_modes == [False]
 
 
 def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkeypatch):

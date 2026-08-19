@@ -1,5 +1,18 @@
 import type { AdminResponse, HistoryEntry, TFunc } from './types';
 
+const LISTING_QUALITY_KEYS = new Set([
+  'empty_majors',
+  'empty_keywords',
+  'empty_description',
+  'short_description',
+  'missing_deadline',
+  'rolling_deadline',
+  'missing_skills',
+  'past_deadline',
+  'stale_verify',
+  'flagged_inactive',
+]);
+
 /**
  * Returns the delta between current's `key` and previous's `key`, or
  * null if previous is missing or the value is not a number. Used by
@@ -11,10 +24,41 @@ export function diff(
   previous: HistoryEntry | null,
 ): number | null {
   if (!previous) return null;
+  if (
+    LISTING_QUALITY_KEYS.has(key)
+    && (
+      typeof current.global.listing_total !== 'number'
+      || typeof previous.listing_total !== 'number'
+    )
+  ) return null;
   const cur = current.global[key] ?? 0;
   const prev = (previous as unknown as Record<string, unknown>)[key];
   if (typeof prev !== 'number') return null;
   return cur - prev;
+}
+
+/**
+ * Percentage denominator for the listing-only quality counters.
+ *
+ * The backend skips faculty contact profiles when counting empty_majors,
+ * empty_keywords, missing_deadline and rolling_deadline — a directory row has
+ * no opening to be missing a deadline. It ships the matching denominator as
+ * `global.listing_total`. Dividing by `total` instead mixes 127,885 faculty
+ * rows into the denominator of a listing-only numerator and understates every
+ * defect rate ~18x, on the dashboard used to judge whether data is fit to ship.
+ */
+export function listingPct(key: string, data: AdminResponse): number | undefined {
+  const denominator = data.global.listing_total;
+  // A legacy response has no compatible denominator. Omitting the percentage
+  // is honest; falling back to the mixed faculty+listing total recreates the
+  // exact ~18x understatement this helper exists to prevent.
+  if (typeof denominator !== 'number' || denominator <= 0) return undefined;
+  return ((data.global[key] ?? 0) / denominator) * 100;
+}
+
+/** Remove legacy mixed-scope snapshots before rendering listing trends. */
+export function listingScopedHistory(history: HistoryEntry[]): HistoryEntry[] {
+  return history.filter((entry) => typeof entry.listing_total === 'number');
 }
 
 /**

@@ -91,11 +91,12 @@ describe('readInitialFiltersFromUrl', () => {
 });
 
 describe('readSemanticRerankUrlPin', () => {
-  it('reads both explicit values and no opinion at all', () => {
-    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=1'))).toBe(true);
-    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=0'))).toBe(false);
-    expect(readSemanticRerankUrlPin(new URLSearchParams(''))).toBe(null);
-    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=yes'))).toBe(null);
+  it('reads explicit values only after the feature is accepted', () => {
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=1'), true)).toBe(true);
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=0'), true)).toBe(false);
+    expect(readSemanticRerankUrlPin(new URLSearchParams(''), true)).toBe(null);
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=yes'), true)).toBe(null);
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=1'), false)).toBe(null);
   });
 });
 
@@ -103,31 +104,33 @@ describe('resolveSemanticRerank', () => {
   it('lets the URL win over the stored preference in both directions', () => {
     // A share link has to reproduce what the sender saw, not what the recipient
     // last chose.
-    expect(resolveSemanticRerank(true, true, '0')).toBe(true);
-    expect(resolveSemanticRerank(false, true, '1')).toBe(false);
+    expect(resolveSemanticRerank(true, true, '0', true)).toBe(true);
+    expect(resolveSemanticRerank(false, true, '1', true)).toBe(false);
   });
 
-  it('turns AI refine on for a student who has never chosen', () => {
-    // The reason line on the card is the differentiator. A student who does not
-    // know the toggle exists must still get it.
-    expect(resolveSemanticRerank(null, false, null)).toBe(true);
+  it('keeps the deterministic default when the student has never chosen', () => {
+    expect(resolveSemanticRerank(null, false, null, true)).toBe(false);
   });
 
   it('honors a stored choice in both directions', () => {
-    expect(resolveSemanticRerank(null, true, '0')).toBe(false);
-    expect(resolveSemanticRerank(null, true, '1')).toBe(true);
+    expect(resolveSemanticRerank(null, true, '0', true)).toBe(false);
+    expect(resolveSemanticRerank(null, true, '1', true)).toBe(true);
   });
 
   it('stays off while the stored preference is unreadable', () => {
     // `undefined` is "ownership is not confirmed yet", which is not "nothing was
     // stored". Reading it as absent would turn the pass back on for a student
     // who had already opted out — and spend on them — during every first render.
-    expect(resolveSemanticRerank(null, undefined, null)).toBe(false);
-    expect(resolveSemanticRerank(null, undefined, '1')).toBe(false);
+    expect(resolveSemanticRerank(null, undefined, null, true)).toBe(false);
+    expect(resolveSemanticRerank(null, undefined, '1', true)).toBe(false);
   });
 
   it('still lets an explicit URL through before the preference is readable', () => {
-    expect(resolveSemanticRerank(true, undefined, null)).toBe(true);
+    expect(resolveSemanticRerank(true, undefined, null, true)).toBe(true);
+  });
+
+  it('fails closed while the release gate is closed', () => {
+    expect(resolveSemanticRerank(true, true, '1', false)).toBe(false);
   });
 });
 
@@ -171,17 +174,17 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
 
   it('omits ?tab= when activeTab is the new default "high_priority"', () => {
     renderHook(() => useResultsUrlSync(EMPTY_STATE));
-    expect(lastUrl()).toBe('/results?ai=0');
+    expect(lastUrl()).toBe('/results');
   });
 
   it('emits ?tab=all when activeTab is "all" (now an explicit, non-default tab)', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'all' }));
-    expect(lastUrl()).toBe('/results?tab=all&ai=0');
+    expect(lastUrl()).toBe('/results?tab=all');
   });
 
   it('emits ?tab=starred for non-default tabs', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, activeTab: 'starred' }));
-    expect(lastUrl()).toBe('/results?tab=starred&ai=0');
+    expect(lastUrl()).toBe('/results?tab=starred');
   });
 
   it('round-trips multiple state pieces in one URL', () => {
@@ -199,7 +202,7 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
     expect(url).toContain('paid=yes');
     expect(url).toContain('min=60');
     expect(url).toContain('sort=deadline');
-    expect(url).toContain('ai=0');
+    expect(url).not.toContain('ai=');
   });
 
   it('emits ?scope= when the discovery-scope facet is active, omits when default', () => {
@@ -207,16 +210,12 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       ...EMPTY_STATE,
       filters: { ...EMPTY_STATE.filters, scope: 'campus' },
     }));
-    expect(lastUrl()).toBe('/results?scope=campus&ai=0');
+    expect(lastUrl()).toBe('/results?scope=campus');
   });
 
-  it('serializes AI-refine state in both directions, so a link reproduces it', () => {
-    // Unlike the other facets this one writes its default too. Omitting `ai=0`
-    // would let the recipient's stored preference turn refine ON in a link the
-    // sender shared with it off — the URL is the shared state, localStorage is
-    // only the fallback when the URL is silent.
+  it('removes stale AI-refine state from shareable URLs while closed', () => {
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticRerank: true }));
-    expect(lastUrl()).toBe('/results?ai=1');
+    expect(lastUrl()).toBe('/results');
   });
 
   it('writes no ?ai= at all until the preference is readable', () => {

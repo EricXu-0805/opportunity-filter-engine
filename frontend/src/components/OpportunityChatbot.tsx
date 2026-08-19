@@ -22,6 +22,7 @@ const SUGGESTED_KEYS = ['fit', 'nextSteps', 'skills', 'email'] as const;
 
 export default function OpportunityChatbot({ opportunity, profile, onClose }: Props) {
   const { t } = useT();
+  const isFaculty = opportunity.source_type === 'faculty_research';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [askedKeys, setAskedKeys] = useState<Set<string>>(new Set());
@@ -120,8 +121,8 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
   // first question, forcing users to retype the others).
   const askSuggestion = useCallback((key: string) => {
     setAskedKeys((prev) => new Set(prev).add(key));
-    sendMessage(t(`chatbot.suggested.${key}`));
-  }, [sendMessage, t]);
+    sendMessage(t(`chatbot.${isFaculty ? 'facultySuggested' : 'suggested'}.${key}`));
+  }, [isFaculty, sendMessage, t]);
 
   const remainingSuggestions = SUGGESTED_KEYS.filter((k) => !askedKeys.has(k));
 
@@ -149,7 +150,9 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
           </div>
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-gray-900 truncate">{t('chatbot.title')}</h3>
-            <p className="text-[11px] text-gray-500 truncate">{t('chatbot.subtitle')}</p>
+            <p className="text-[11px] text-gray-500 truncate">
+              {t(isFaculty ? 'chatbot.facultySubtitle' : 'chatbot.subtitle')}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -222,7 +225,9 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
                 <Bot className="w-3.5 h-3.5 text-indigo-600" aria-hidden="true" />
               </div>
               <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-sm border border-gray-100 px-3 py-2 text-[13px] text-gray-700 leading-relaxed">
-                {t('chatbot.welcome', { title: opportunity.title })}
+                {t(isFaculty ? 'chatbot.facultyWelcome' : 'chatbot.welcome', {
+                  title: opportunity.title,
+                })}
               </div>
             </div>
             <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider px-1 mb-2 mt-4">
@@ -236,7 +241,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
                   onClick={() => askSuggestion(key)}
                   className="text-left px-3 py-2 rounded-xl bg-white border border-gray-200 text-[12.5px] text-gray-700 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors"
                 >
-                  {t(`chatbot.suggested.${key}`)}
+                  {t(`chatbot.${isFaculty ? 'facultySuggested' : 'suggested'}.${key}`)}
                 </button>
               ))}
             </div>
@@ -289,7 +294,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
               onClick={() => askSuggestion(key)}
               className="px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-[11.5px] text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
-              {t(`chatbot.suggested.${key}`)}
+              {t(`chatbot.${isFaculty ? 'facultySuggested' : 'suggested'}.${key}`)}
             </button>
           ))}
         </div>
@@ -302,7 +307,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t('chatbot.placeholder')}
+            placeholder={t(isFaculty ? 'chatbot.facultyPlaceholder' : 'chatbot.placeholder')}
             rows={1}
             disabled={loading}
             className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-[13px] resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400 max-h-32"

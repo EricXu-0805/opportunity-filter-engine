@@ -100,7 +100,7 @@ export interface OpportunityEligibility {
   preferred_year: string[];
   majors: string[];
   skills_required: string[];
-  citizenship_required: boolean;
+  citizenship_required: boolean | null;
 }
 
 export interface OpportunityApplication {
@@ -109,7 +109,7 @@ export interface OpportunityApplication {
   requires_recommendation?: string;
   requires_cover_letter?: string;
   contact_method: string;
-  application_url?: string;
+  application_url?: string | null;
 }
 
 // Pipeline-stamped provenance for recent_works: 'verified_author_id' when the
@@ -143,6 +143,10 @@ export interface OpportunityMetadata {
 // says who may apply. Both optional: cached results predating #189
 // simply lack them and render without scope chips.
 export type OpportunityAudience = 'campus' | 'open' | 'unknown';
+export type FacultyAvailabilityStatus =
+  | 'unknown'
+  | 'not_accepting_undergraduates'
+  | 'research_inactive';
 
 export interface Opportunity {
   id: string;
@@ -158,17 +162,21 @@ export interface Opportunity {
   source?: string;
   source_url?: string;
   source_type?: string;
+  // Source-backed status for faculty contact profiles. It is distinct from a
+  // current-opening claim and lets stale/favorite/detail surfaces suppress an
+  // outreach CTA when the source explicitly says the contact is unavailable.
+  faculty_availability_status?: FacultyAvailabilityStatus;
   school?: string | null;
   audience?: OpportunityAudience;
-  on_campus: boolean;
+  on_campus: boolean | null;
   description_clean: string;
   description_raw?: string;
   keywords: string[];
   deadline?: string;
-  deadline_is_estimate?: boolean;
+  deadline_is_estimate?: boolean | null;
   is_rolling?: boolean;
   compensation_details?: string;
-  duration?: string;
+  duration?: string | null;
   start_date?: string;
   posted_date?: string;
   remote_option?: string;
@@ -293,7 +301,8 @@ export type ColdEmailFallbackReason =
   | 'not_configured'
   | 'unavailable'
   | 'invalid_output'
-  | 'fabrication';
+  | 'fabrication'
+  | 'insufficient_evidence';
 
 export interface ColdEmailResponse {
   subject: string;
@@ -492,6 +501,8 @@ export interface ResumeParseResponse {
 export interface StatsResponse {
   total: number;
   active: number;
+  /** Active faculty contact profiles, deliberately separate from openings. */
+  faculty_contact_total?: number;
   paid_total: number;
   international_friendly_total: number;
   by_type: Record<string, number>;

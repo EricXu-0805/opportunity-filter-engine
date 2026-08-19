@@ -174,7 +174,9 @@ export default function DashboardPage() {
         const items = opportunities
           .filter((opportunity) => {
             const id = typeof opportunity.id === 'string' ? opportunity.id : '';
-            return favoriteIds.has(id) && typeof opportunity.deadline === 'string';
+            return favoriteIds.has(id)
+              && opportunity.source_type !== 'faculty_research'
+              && typeof opportunity.deadline === 'string';
           })
           .map((opportunity): FavoriteDeadline | null => {
             const deadline = opportunity.deadline as string;

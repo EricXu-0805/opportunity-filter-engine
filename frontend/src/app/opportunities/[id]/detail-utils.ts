@@ -10,20 +10,20 @@ export function formatType(t: string): string {
  * collector default on all faculty records and most campus programs — NOT
  * scraped evidence of rolling admissions — so displays must never read it as
  * a fact on its own:
- *   - 'inquiries' — faculty records: the honest claim is "accepts inquiries
- *     year-round" (you email the PI whenever), not "rolling admissions";
+ *   - 'faculty'   — a faculty profile with no listed opening deadline; this
+ *     says nothing about whether the lab is currently recruiting;
  *   - 'rolling'   — actual scraped evidence: metadata.deadline_note mentions
  *     rolling;
  *   - 'none'      — everything else: we only know no deadline was listed.
  * Shared by the detail page and the compare surfaces so the evidence gate
  * lives in exactly one place.
  */
-export type NoDeadlineKind = 'inquiries' | 'rolling' | 'none';
+export type NoDeadlineKind = 'faculty' | 'rolling' | 'none';
 
 export function noDeadlineKind(
   opp: Pick<Opportunity, 'source_type' | 'metadata'>,
 ): NoDeadlineKind {
-  if (opp.source_type === 'faculty_research') return 'inquiries';
+  if (opp.source_type === 'faculty_research') return 'faculty';
   const note = opp.metadata?.deadline_note;
   if (note && /rolling/i.test(note)) return 'rolling';
   return 'none';

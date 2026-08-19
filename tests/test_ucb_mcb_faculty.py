@@ -147,10 +147,10 @@ def test_lite_output_shape_no_email():
     assert opp["contact_email"] is None
     assert opp["metadata"]["confidence_score"] == 0.5
     assert opp["metadata"]["research_areas_raw"]
-    assert opp["eligibility"]["majors"] == MCB_CONFIG["majors"]
-    assert opp["on_campus"] is True
+    assert opp["eligibility"]["majors"] == []
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == MCB_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
 
 
 def test_directory_emails_parsed_and_emeriti_section_skipped():

@@ -2,7 +2,6 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import CompareTable from './CompareTable';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
-import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, writeUserScopedRaw } from '@/lib/identity-owner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { hashProfile } from '@/lib/match-utils';
 import type { Opportunity, ProfileData } from '@/lib/types';
@@ -62,9 +61,18 @@ const EXPLANATION = {
   upside_score: 70,
 };
 
-function setStorage(has: boolean | undefined, value: ProfileData | null) {
-  vi.mocked(useHasLocalStorageKey).mockReturnValue(has);
-  vi.mocked(useLocalStorageJSON).mockReturnValue(value);
+function setStorage(
+  hasProfile: boolean | undefined,
+  value: ProfileData | null,
+  semanticExists = false,
+  semanticValue: string | null = null,
+) {
+  vi.mocked(useHasLocalStorageKey).mockImplementation((key) => (
+    key === STORAGE_KEYS.PROFILE ? hasProfile : semanticExists
+  ));
+  vi.mocked(useLocalStorageJSON).mockImplementation((key) => (
+    key === STORAGE_KEYS.PROFILE ? value : semanticValue
+  ));
 }
 
 afterEach(() => {
@@ -125,10 +133,7 @@ describe('CompareTable', () => {
 
   it('uses AI only after the current-version preference is explicitly enabled AND the release accepts it', async () => {
     releaseScopeRef.matchAiRefine = true;
-    setStorage(true, profile);
-    advanceOwnerEpoch('compare-test-uid');
-    await syncLocalIdentityOwner('compare-test-uid');
-    writeUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK, '1', captureOwnerToken());
+    setStorage(true, profile, true, '1');
     mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
 
     render(<CompareTable opps={opps} />);
@@ -145,10 +150,7 @@ describe('CompareTable', () => {
 
   it('a stale enabled preference does NOT force llm:true while AI-refine is outside the accepted release — the flag wins regardless of what is stored', async () => {
     releaseScopeRef.matchAiRefine = false; // dormant, same as the CURRENT real release
-    setStorage(true, profile);
-    advanceOwnerEpoch('compare-test-uid-2');
-    await syncLocalIdentityOwner('compare-test-uid-2');
-    writeUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK, '1', captureOwnerToken());
+    setStorage(true, profile, true, '1');
     mockGetMatchExplanation.mockResolvedValue(EXPLANATION);
 
     render(<CompareTable opps={opps} />);
@@ -223,6 +225,33 @@ describe('CompareTable', () => {
     expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
     expect(lastBucketRows?.find((row) => row.opp.id === 'a')?.match?.explanation)
       .toBe('Great topical fit.');
+  });
+
+  it('strands the old ai0 cache that could contain a paid AI explanation', async () => {
+    setStorage(true, profile);
+    const oldKey = `ofe_explain_contact_trust_v1_a_${hashProfile(profile)}_ai0`;
+    sessionStorage.setItem(
+      oldKey,
+      JSON.stringify({
+        savedAt: Date.now(),
+        data: {
+          ...EXPLANATION,
+          method: 'llm',
+          explanation: 'Legacy AI text from the deterministic slot.',
+        },
+      }),
+    );
+    mockGetMatchExplanation.mockResolvedValue({ ...EXPLANATION, method: 'local' });
+
+    render(<CompareTable opps={opps} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('bucket-cards')).toBeInTheDocument();
+    });
+
+    expect(mockGetMatchExplanation).toHaveBeenCalledTimes(2);
+    expect(mockGetMatchExplanation).toHaveBeenCalledWith(profile, 'a', { llm: false });
+    expect(lastBucketRows?.find((row) => row.opp.id === 'a')?.match?.method)
+      .toBe('local');
   });
 
   it('failed calls are not cached — a later visit retries', async () => {

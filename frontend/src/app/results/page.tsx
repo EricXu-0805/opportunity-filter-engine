@@ -328,8 +328,8 @@ function ResultsContent() {
   ], [data?.source_facets, t]);
 
   // Same rule as sourceOptions, applied to the one facet that was ignoring it.
-  // "Rolling" reads is_rolling and answers for 98.7% of the corpus, so it is
-  // always offered; every other value reads `deadline`, which 786 of 789
+  // "Rolling" reads the explicit is_rolling contract and is offered as the
+  // undated option; every other value reads `deadline`, which 786 of 789
   // records had already let expire — so on 2026-08-14 the three day-windows
   // returned zero rows each and "passed" returned 786. Render each chip only
   // when the server counted something it would return.

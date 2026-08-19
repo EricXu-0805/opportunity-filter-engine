@@ -21,7 +21,7 @@ import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
 const CACHE_VERSION = 'contact-trust-v1';
-export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v2-contact-trust';
+export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v3-faculty-trust';
 const OBSOLETE_MATCH_KEYS = [
   'ofe_match_results',
   'ofe_match_results_v2',
@@ -45,12 +45,12 @@ const DESC_CHARS = 200; // keep a snippet so the free-text search still matches 
 // cache-hit turns every faculty card into a dead-end "Apply Now".
 const OPP_FIELDS = [
   'id', 'title', 'organization', 'department', 'opportunity_type', 'paid',
-  'deadline', 'source', 'on_campus', 'posted_date', 'location', 'url',
+  'deadline', 'is_rolling', 'source', 'on_campus', 'posted_date', 'location', 'url',
   'duration', 'compensation_details', 'keywords', 'lab_or_program', 'pi_name',
   'school', 'audience', 'source_type', 'recent_works',
+  'faculty_availability_status',
   'publication_attribution_status',
-  // W11: dropping these on a cache-hit would silently change what the card
-  // claims — faculty_title gates the "Email Professor" framing and
+  // W11: keep the stated faculty title for rank-aware profile copy, while
   // deadline_is_estimate keeps an estimated date from rendering as hard.
   'faculty_title', 'deadline_is_estimate',
 ] as const;

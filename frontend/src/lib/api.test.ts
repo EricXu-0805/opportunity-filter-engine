@@ -203,7 +203,7 @@ describe('getMatches', () => {
     expect(body.school).toBe('UC Berkeley');
   });
 
-  it('passes the caller AI-refine choice through now that it is accepted', async () => {
+  it('fails closed to deterministic matching while AI Refine is outside release scope', async () => {
     // Fresh Response per call — this test fetches twice, and a shared
     // mockResolvedValue Response throws "Body has already been read" on the
     // second res.json() (CI Node enforces single-use bodies).
@@ -211,9 +211,9 @@ describe('getMatches', () => {
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile(), { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=true');
-    // Still explicit rather than omitted: llm=false is what keeps a stored
-    // preference on the server side from deciding for the caller.
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches?llm=false');
+    // Still explicit rather than omitted: the server cannot infer a paid mode
+    // from stale client state while the feature is closed.
     await getMatches(makeProfile(), { llm: false });
     expect(fetchMock.mock.calls[1][0]).toBe('/api/matches?llm=false');
   });
@@ -231,7 +231,7 @@ describe('getMatchView', () => {
         results: [],
         filtered_total: 0,
         view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
-        contract_version: 'match-view-v2-contact-trust',
+        contract_version: 'match-view-v3-faculty-trust',
       }),
     );
     const view = {
@@ -264,7 +264,7 @@ describe('getMatchView', () => {
     expect(body.cursor).toBe('opaque-cursor');
   });
 
-  it('carries the AI-refine opt-in in the query string', async () => {
+  it('fails closed when a caller asks for AI refine before release acceptance', async () => {
     // In the query, not the body: the server's spend backstop reads the query,
     // and this route is the one the results page calls. Sending nothing here is
     // how the toggle came to change the cache key and nothing else.
@@ -298,7 +298,7 @@ describe('getMatchView', () => {
       today: '2026-07-31',
     };
     await getMatchView(makeProfile(), view, { llm: true });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view?llm=true');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view?llm=false');
   });
 
   it('never includes an HTML gateway body in the user-facing error', async () => {

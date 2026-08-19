@@ -21,12 +21,13 @@ const mockGetVariants = vi.fn();
 const mockGenerateColdEmail = vi.fn();
 const mockGenerateColdEmailStream = vi.fn();
 const mockRefineEmail = vi.fn();
+const mockExtractResumeBullets = vi.fn();
 vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
   generateColdEmail: (...args: unknown[]) => mockGenerateColdEmail(...args),
   generateColdEmailStream: (...args: unknown[]) => mockGenerateColdEmailStream(...args),
   refineEmail: (...args: unknown[]) => mockRefineEmail(...args),
-  extractResumeBullets: async () => ({ bullets: [], method: 'heuristic' }),
+  extractResumeBullets: (...args: unknown[]) => mockExtractResumeBullets(...args),
 }));
 
 // W10b: spy the auth modal opener so the sign-in-to-reveal affordance is
@@ -46,6 +47,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
 
 import ColdEmailModal from './ColdEmailModal';
 import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
+import { en, zh } from '@/i18n/dictionaries';
 
 function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   return {
@@ -86,6 +88,10 @@ beforeEach(() => {
   // tests exercise the fallback path by default (stream "unavailable").
   mockGenerateColdEmailStream.mockReset().mockRejectedValue(new Error('no stream in tests'));
   mockRefineEmail.mockReset();
+  mockExtractResumeBullets.mockReset().mockResolvedValue({
+    bullets: [],
+    method: 'heuristic',
+  });
   writeTextMock.mockReset().mockResolvedValue(undefined);
   windowOpenMock.mockReset();
 
@@ -533,6 +539,33 @@ describe('ColdEmailModal', () => {
       );
     });
 
+    it('explains when target evidence is insufficient without claiming AI ran', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGenerateColdEmail.mockResolvedValue({
+        subject: 'Template Subject',
+        body: 'Template Body',
+        recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu',
+        method: 'template',
+        fallback_reason: 'insufficient_evidence',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp-no-target"
+          opportunityTitle="Faculty profile"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() =>
+        expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument(),
+      );
+      expect(screen.queryByText('coldEmail.aiFallbackFabrication')).toBeNull();
+    });
+
     it('clicking the AI pill again switches to the cached AI variant without re-fetching', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
       mockGenerateColdEmail.mockResolvedValue({
@@ -611,6 +644,62 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       expect(mockGenerateColdEmail).not.toHaveBeenCalled();
+    });
+
+    it('no-target automatic AI attempt never calls resume extraction', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant()],
+        grounding: 'no_target_data',
+      });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue({
+        subject: 'Template subject',
+        body: 'Template body',
+        recipient_email: '',
+        mailto_link: 'mailto:',
+        method: 'template',
+        fallback_reason: 'insufficient_evidence',
+        grounding: 'no_target_data',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile({ resume_text: 'Built an HPC solver in Python.' })}
+          opportunityId="opp-no-target-auto"
+          opportunityTitle="Faculty profile"
+        />,
+      );
+      await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      expect(mockExtractResumeBullets).toHaveBeenCalledTimes(0);
+    });
+
+    it('no-target manual AI attempt also never calls resume extraction', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant()],
+        grounding: 'no_target_data',
+      });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue({
+        subject: 'Template subject',
+        body: 'Template body',
+        recipient_email: '',
+        mailto_link: 'mailto:',
+        method: 'template',
+        fallback_reason: 'insufficient_evidence',
+        grounding: 'no_target_data',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile({ resume_text: 'Built a CFD solver in Python.' })}
+          opportunityId="opp-no-target-manual"
+          opportunityTitle="Faculty profile"
+        />,
+      );
+      await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(2));
+      expect(mockExtractResumeBullets).toHaveBeenCalledTimes(0);
     });
 
     it('stays silently on the template when the automatic run falls back', async () => {
@@ -954,6 +1043,47 @@ describe('ColdEmailModal', () => {
       await waitFor(() =>
         expect(screen.getByText('coldEmail.refineFabrication')).toBeInTheDocument(),
       );
+    });
+
+    it('reports an evidence-gated safe-template replacement instead of a basic tone edit', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ body: 'Original body.' })],
+      });
+      mockRefineEmail.mockResolvedValue({
+        body: 'Safe general inquiry template.',
+        method: 'local',
+        fallback_reason: 'insufficient_evidence',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp-no-target-refine"
+          opportunityTitle="Faculty profile"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Original body.')).toBeInTheDocument());
+      const input = screen.getByPlaceholderText('coldEmail.refinePlaceholder');
+      fireEvent.change(input, { target: { value: 'Make it warmer' } });
+      const form = input.closest('form');
+      await act(async () => {
+        fireEvent.submit(form!);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByDisplayValue('Safe general inquiry template.')).toBeInTheDocument(),
+      );
+      expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.doneFallback')).not.toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.doneLlm')).not.toBeInTheDocument();
+    });
+
+    it('ships the evidence-gated no-AI outcome in both locales', () => {
+      expect(en.coldEmail.aiFallbackInsufficientEvidence).toContain('safe inquiry template');
+      expect(en.coldEmail.aiFallbackInsufficientEvidence).toContain('AI did not run');
+      expect(zh.coldEmail.aiFallbackInsufficientEvidence).toContain('安全询问模板');
+      expect(zh.coldEmail.aiFallbackInsufficientEvidence).toContain('未运行 AI');
     });
   });
 

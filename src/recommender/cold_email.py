@@ -1,6 +1,6 @@
 import re
 
-from src.evidence import is_professor_rank
+from src.evidence import faculty_contact_claims_unverified, is_professor_rank
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
 from src.publication_trust import verified_recent_works
 
@@ -54,9 +54,16 @@ def _extract_skill_levels(raw_skills: list) -> dict[str, str]:
 _EMAIL_GENERIC_KW = frozenset({
     "undergraduate", "research", "summer", "program", "internship",
     "opportunity", "assistant", "student", "uiuc", "illinois",
-    "computer science", "artificial intelligence", "machine learning",
+    "computer science", "artificial intelligence", "machine learning", "ai", "ml",
     "engineering", "science", "technology", "science & technology",
     "natural sciences", "social sciences & behavior", "department",
+    # Current directory imports also use these bare taxonomy buckets as the
+    # only keyword for some faculty rows.  They identify a school/discipline,
+    # not the person's research, so they cannot authorize paid personalized
+    # prose such as "your research on law".  Keep exact matching: short but
+    # meaningful source terms such as HPC, CFD, AMO, HEP, CMT, tax, and Tap
+    # remain valid evidence.
+    "law", "art", "lit", "inc",
 })
 
 
@@ -191,12 +198,17 @@ def _detect_lab_type(opportunity: dict) -> LabType:
     title = (opportunity.get("title") or "").lower()
     lab = (opportunity.get("lab_or_program") or "").lower()
     keywords_text = " ".join(opportunity.get("keywords", []) or []).lower()
+    is_faculty = faculty_contact_claims_unverified(opportunity)
     desc = (
-        opportunity.get("description_clean")
-        or opportunity.get("description_raw")
-        or ""
+        _source_backed_faculty_research_text(opportunity)
+        if is_faculty
+        else (
+            opportunity.get("description_clean")
+            or opportunity.get("description_raw")
+            or ""
+        )
     ).lower()[:1500]
-    required_text = " ".join(
+    required_text = "" if is_faculty else " ".join(
         opportunity.get("eligibility", {}).get("skills_required", []) or []
     ).lower()
 
@@ -293,15 +305,55 @@ def _alignment_plausible(interests: str, opp_topic_text: str) -> bool:
     return not interest_domains or not opp_domains or bool(interest_domains & opp_domains)
 
 
+def _source_backed_faculty_research_text(opportunity: dict) -> str:
+    """Research text a faculty-contact draft is allowed to treat as evidence.
+
+    Faculty ``description_*`` is a product-generated display summary after the
+    public projection.  Keep it out of every personalization consumer.  The
+    only substantive target-side inputs here are source keywords, the scraped
+    ``research_areas_raw`` field, and works whose attribution was independently
+    verified.
+    """
+    parts = [
+        str(keyword).strip()
+        for keyword in (opportunity.get("keywords") or [])[:20]
+        if str(keyword).strip()
+    ]
+    metadata = opportunity.get("metadata") or {}
+    if isinstance(metadata, dict):
+        research_areas = metadata.get("research_areas_raw")
+        if isinstance(research_areas, str) and research_areas.strip():
+            parts.append(research_areas.strip())
+    for work in verified_recent_works(opportunity):
+        title = str(work.get("title") or "").strip()
+        if title:
+            parts.append(title)
+    return " ".join(parts)
+
+
 def _infer_research_topic(opportunity: dict) -> str:
-    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
-    keywords = opportunity.get("keywords", [])
+    keywords = opportunity.get("keywords") or []
     specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
 
     if specific:
         if len(specific) <= 2:
             return " and ".join(specific[:2])
         return ", ".join(specific[:2]) + f", and {specific[2]}"
+
+    # A faculty row's description is OURS, not the source's:
+    # neutralize_unverified_faculty_claims rewrites description_raw/clean from
+    # identity fields on every faculty_research record the API serves. Mining
+    # it would quote our own summary back to the professor as their research
+    # AND satisfy the anchors/has_target_data/ungrounded-claim gates that exist
+    # to catch that. The professor's own words are in research_areas_raw; with
+    # neither that nor keywords there is no topic, and the caller degrades to a
+    # neutral inquiry.
+    if faculty_contact_claims_unverified(opportunity):
+        metadata = opportunity.get("metadata") or {}
+        areas = str(metadata.get("research_areas_raw") or "").strip()
+        return areas[:80]
+
+    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     if desc:
         noise = {"seeking", "looking for", "we are", "this position", "the lab",
                  "research opportunity with", "contact the professor"}
@@ -318,11 +370,20 @@ def _infer_research_topic(opportunity: dict) -> str:
 
 
 def _infer_research_area(opportunity: dict) -> str:
-    keywords = opportunity.get("keywords", [])
+    keywords = opportunity.get("keywords") or []
     if keywords:
         specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
         if specific:
             return specific[0]
+    if faculty_contact_claims_unverified(opportunity):
+        metadata = opportunity.get("metadata") or {}
+        raw = str(metadata.get("research_areas_raw") or "").strip()
+        if raw:
+            return re.split(r"[,;|\n]", raw, maxsplit=1)[0].strip()[:80]
+        # The faculty title and our display summary are identity/UI fields, not
+        # evidence of a research area. Verified works remain available to the
+        # AI brief as works rather than being relabelled as an area here.
+        return ""
     # A department name ("Siebel School of Computing and Data Science") is not a
     # research area — claiming "your work in <department>, which aligns closely
     # with my interest" is the false-alignment outreach this email avoids (CE-2).
@@ -337,9 +398,70 @@ def _infer_research_area(opportunity: dict) -> str:
     return ""
 
 
+def _target_signal_is_specific(value: object) -> bool:
+    """Whether a source research label says more than a generic field.
+
+    This is an existence check, not a ranking threshold.  Short, meaningful
+    source terms such as HPC, CFD, and AMO are valid evidence even though the
+    scoring anchors intentionally prefer longer strings.  Conversely, a broad
+    directory bucket such as ``Machine Learning`` or ``Computer Science`` is
+    not enough to tell a provider that it knows this professor's actual work.
+    """
+    if not isinstance(value, str):
+        return False
+    normalized = re.sub(r"\s+", " ", value).strip().strip(".:- ").casefold()
+    normalized = re.sub(r"^research (?:areas?|topics?)\s*:\s*", "", normalized)
+    if not normalized:
+        return False
+    generic = _EMAIL_GENERIC_KW | _BROAD_FIELDS
+    pieces = [
+        piece.strip().strip(".:- ")
+        for piece in re.split(r"\s*(?:[,;|/]|\band\b|&)\s*", normalized)
+        if piece.strip().strip(".:- ")
+    ]
+    return any(piece not in generic for piece in pieces)
+
+
+def has_source_backed_target_evidence(
+    opportunity: dict,
+    parts: dict | None = None,
+) -> bool:
+    """Single truth source for whether a cold-email brief may personalize.
+
+    The provider may run only when at least one source-backed, non-generic
+    target signal exists: a specific keyword/area/topic/raw research label or
+    a work that passed attribution verification.  ``_professor_anchors`` is a
+    separate scoring aid and may keep length thresholds; it must never decide
+    whether evidence exists.
+    """
+    signals: list[object] = list((opportunity.get("keywords") or [])[:20])
+    metadata = opportunity.get("metadata") or {}
+    if isinstance(metadata, dict):
+        signals.append(metadata.get("research_areas_raw"))
+    for key in ("research_area", "research_topic", "research_areas_raw"):
+        signals.append(opportunity.get(key))
+        if parts is not None:
+            signals.append(parts.get(key))
+    if any(_target_signal_is_specific(signal) for signal in signals):
+        return True
+    if parts is not None and parts.get("recent_works"):
+        # _common_parts populates this only through verified_recent_works.
+        return True
+    return bool(verified_recent_works(opportunity))
+
+
 def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
-    desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
-    required = [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
+    is_faculty = faculty_contact_claims_unverified(opp)
+    desc = (
+        _source_backed_faculty_research_text(opp)
+        if is_faculty
+        else (opp.get("description_raw") or opp.get("description_clean") or "")
+    ).lower()
+    required = (
+        []
+        if is_faculty
+        else [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
+    )
     desc_tokens = set(_SKILL_TOKEN_RE.findall(desc))
     req_tokens = set()
     for r in required:
@@ -371,18 +493,32 @@ def _common_parts(
     github_url = profile.get("github_url", "")
     scholar_url = profile.get("scholar_url", "")
 
+    is_faculty = faculty_contact_claims_unverified(opportunity)
     pi_name = opportunity.get("pi_name") or ""
     lab = opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
     opp_type = opportunity.get("opportunity_type", "")
     research_area = _infer_research_area(opportunity)
     research_topic = _infer_research_topic(opportunity)
-    opp_desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
-    opp_skills_required = opportunity.get("eligibility", {}).get("skills_required", [])
+    # Faculty descriptions are constructed display prose after projection, so
+    # they must never enter the provider brief or anti-fabrication corpus as if
+    # they were source research evidence. The real signals are carried in the
+    # dedicated keyword/raw-area/verified-work fields below.
+    opp_desc = "" if is_faculty else (
+        opportunity.get("description_raw") or opportunity.get("description_clean") or ""
+    )
+    opp_skills_required = (
+        []
+        if is_faculty
+        else opportunity.get("eligibility", {}).get("skills_required", [])
+    )
     matching_skills = _match_skills_to_tasks(skills, opportunity)
 
     meta = opportunity.get("metadata") or {}
+    if not isinstance(meta, dict):
+        meta = {}
     stated_rank = meta.get("faculty_title") or ""
+    faculty_is_professor = is_faculty and is_professor_rank(stated_rank)
 
     # CE-6: reuse the matcher's junk-name set (adds "n/a" and "") as the single
     # source of truth, so a non-faculty source emitting "N/A" can't render
@@ -404,7 +540,10 @@ def _common_parts(
     elif opp_type == "summer_program":
         recipient = "Program Coordinator"
     else:
-        recipient = "Professor"
+        # A generic listing with no trustworthy contact name does not prove
+        # the recipient is a professor. The blank value intentionally routes
+        # deterministic drafts to the neutral greeting in ``_greeting``.
+        recipient = "Faculty member" if is_faculty else ""
 
     coursework = filter_course_entries(profile.get("coursework", []))
     lab_type = _detect_lab_type(opportunity)
@@ -431,6 +570,8 @@ def _common_parts(
         # works never reach the template cite or the AI professor brief.
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
+        is_faculty=is_faculty,
+        faculty_is_professor=faculty_is_professor,
         # The student's real resume experience bullets (from /tailor/extract-
         # bullets, already grounded). Only the AI pipeline supplies these; the
         # deterministic template path leaves it empty.
@@ -505,7 +646,20 @@ def _closing(p: dict) -> str:
     return "\n".join(lines)
 
 
-def _ask_for_lab_type(lab_type: LabType) -> str:
+def _greeting(p: dict) -> str:
+    """Render a named/role recipient, or fail closed to a neutral greeting."""
+    recipient = str(p.get("recipient") or "").strip()
+    return f"Dear {recipient}," if recipient else "Hello,"
+
+
+def _ask_for_lab_type(lab_type: LabType, is_faculty: bool = False) -> str:
+    if is_faculty:
+        return (
+            "\n\nWould you be open to letting me know whether you have any"
+            " current or upcoming research openings for a student? If so, I"
+            " would appreciate a brief conversation about how I might support"
+            " your research."
+        )
     if lab_type == "wet":
         return (
             "\n\nI am eager to develop my wet-lab skills further and"
@@ -555,14 +709,16 @@ def _student_self(p: dict, connector: str) -> str:
 
 def _build_balanced(p: dict) -> str:
     subject = _subject(p)
-    greeting = f"Dear {p['recipient']},"
+    greeting = _greeting(p)
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'studying')}."
     intro += _p1_research_hook(p)
     intro += _recent_work_cite(p)
 
     skills_para = _p2_skills_applied(p)
-    ask = _ask_for_lab_type(p.get("lab_type", "dry"))
+    ask = _ask_for_lab_type(
+        p.get("lab_type", "dry"), is_faculty=bool(p.get("is_faculty"))
+    )
     closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
@@ -570,7 +726,7 @@ def _build_balanced(p: dict) -> str:
 
 def _build_skills_focus(p: dict) -> str:
     subject = _subject(p)
-    greeting = f"Dear {p['recipient']},"
+    greeting = _greeting(p)
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'major')}."
     intro += _p1_research_hook(p)
@@ -604,23 +760,41 @@ def _build_skills_focus(p: dict) -> str:
         if matching:
             seasoned_matching = [s for s in matching if s.lower() in seasoned]
             if seasoned_matching:
-                skills_para += (
-                    f" In particular, my background in {', '.join(seasoned_matching)}"
-                    f" is directly applicable to this position."
-                )
+                if p.get("is_faculty"):
+                    skills_para += (
+                        f" In particular, my background in {', '.join(seasoned_matching)}"
+                        f" is relevant to your research and current projects."
+                    )
+                else:
+                    skills_para += (
+                        f" In particular, my background in {', '.join(seasoned_matching)}"
+                        f" is directly applicable to this position."
+                    )
             else:
                 # A beginner-level overlap is a reason to be interested, not a
                 # background to claim.
-                skills_para += (
-                    f" I am actively building on {', '.join(matching)},"
-                    f" which this position uses directly."
-                )
+                if p.get("is_faculty"):
+                    skills_para += (
+                        f" I am actively building on {', '.join(matching)},"
+                        f" which is relevant to your research areas."
+                    )
+                else:
+                    skills_para += (
+                        f" I am actively building on {', '.join(matching)},"
+                        f" which this position uses directly."
+                    )
 
         required = p["opp_skills_required"]
         if required:
             have = [s for s in required if s.lower() in seasoned]
             if have:
-                skills_para += f" I already work with {', '.join(have)} which this role requires."
+                if p.get("is_faculty"):
+                    skills_para += (
+                        f" I already work with {', '.join(have)}, which could"
+                        " support your research and current projects."
+                    )
+                else:
+                    skills_para += f" I already work with {', '.join(have)} which this role requires."
 
     coursework = p.get("coursework", [])
     if coursework:
@@ -630,11 +804,18 @@ def _build_skills_focus(p: dict) -> str:
     if lab_type == "dry" and p.get("github_url"):
         skills_para += f" My recent work is on GitHub at {p['github_url']}."
 
-    ask = (
-        "\n\nI would welcome the opportunity to discuss how my skills"
-        " could support your current projects."
-        "\n\nWould you have 15 minutes for a brief conversation?"
-    )
+    if p.get("is_faculty"):
+        ask = (
+            "\n\nCould I ask whether you have any current or upcoming research"
+            " openings for a student? If so, I would welcome a brief conversation"
+            " about how my skills could support your research."
+        )
+    else:
+        ask = (
+            "\n\nI would welcome the opportunity to discuss how my skills"
+            " could support your current projects."
+            "\n\nWould you have 15 minutes for a brief conversation?"
+        )
     closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
@@ -642,11 +823,15 @@ def _build_skills_focus(p: dict) -> str:
 
 def _build_concise(p: dict) -> str:
     subject = _subject(p, style="concise")
-    greeting = f"Dear {p['recipient']},"
+    greeting = _greeting(p)
 
     core = f"I am {_student_self(p, 'student')}"
     if p["research_area"]:
-        core += f", interested in {p['research_area']}"
+        core += (
+            f", interested in your research in {p['research_area']}"
+            if p.get("is_faculty")
+            else f", interested in {p['research_area']}"
+        )
     core += "."
 
     skills = p["skills"]
@@ -662,11 +847,18 @@ def _build_concise(p: dict) -> str:
     if matching:
         chosen = matching[:3]
         verb = "is" if len(chosen) == 1 else "are"
-        core += _claim(chosen)[:-1] + f", which {verb} relevant to your work."
+        target = "your research" if p.get("is_faculty") else "your work"
+        core += _claim(chosen)[:-1] + f", which {verb} relevant to {target}."
     elif skills:
         core += _claim(skills[:3])
 
-    ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
+    if p.get("is_faculty"):
+        ask = (
+            " Could I ask whether you have any current or upcoming research"
+            " openings for a student?"
+        )
+    else:
+        ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
 
     closing = _closing(p)
     body = f"{greeting}\n\n{core}{ask}{closing}"
@@ -732,8 +924,8 @@ def _p1_research_hook(p: dict) -> str:
         )
     if interests and lab_ref:
         return (
-            f" I came across {lab_ref} and am very interested in"
-            f" contributing, as my background in {short_interest} is closely related."
+            f" I came across {lab_ref} and would like to ask whether there are"
+            f" ways for a student interested in {short_interest} to contribute."
         )
     if is_short_topic and lab_ref:
         return (
@@ -838,7 +1030,10 @@ def _p2_skills_applied(p: dict) -> str:
     # them again here just repeats the same list. Keep the relevance emphasis
     # without re-listing the identical skills.
     if matching and len(matching) >= 2:
-        para += " These directly apply to the work described in your posting."
+        if p.get("is_faculty"):
+            para += " These are relevant to your research and current projects."
+        else:
+            para += " These directly apply to the work described in your posting."
 
     coursework = p.get("coursework", [])
     if coursework:

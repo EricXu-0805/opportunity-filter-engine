@@ -66,7 +66,8 @@ class TestPositionUnknown:
     def test_stated_professor_rank_keeps_honorific(self):
         rec = fg_normalize(SCHOOL, DEPT, _person(title="Associate Professor"))
         assert rec["metadata"]["faculty_title"] == "Associate Professor"
-        assert rec["title"].startswith("Research with Prof. Jane Doe")
+        assert rec["title"].startswith("Prof. Jane Doe")
+        assert "Research with" not in rec["title"]
 
     def test_stated_non_professor_rank_is_preserved_not_upgraded(self):
         rec = fg_normalize(SCHOOL, DEPT, _person(title="Senior Lecturer"))

@@ -3,6 +3,9 @@ import {
   daysUntil,
   getDeadlineUrgency,
   expandSearchAliases,
+  facultySafeInternational,
+  opportunityDestination,
+  opportunityRecordKind,
   matchesToCSV,
   hashProfile,
 } from './match-utils';
@@ -63,6 +66,80 @@ describe('getDeadlineUrgency', () => {
     // Confirmed dates behave exactly as before with an explicit false.
     expect(getDeadlineUrgency('2026-04-10', NOW, false)).toBe('passed');
     expect(getDeadlineUrgency('2026-04-20', NOW, false)).toBe('urgent');
+  });
+});
+
+describe('facultySafeInternational', () => {
+  it('fails a stale faculty yes claim closed to unknown', () => {
+    expect(facultySafeInternational({
+      source_type: 'faculty_research',
+      eligibility: { international_friendly: 'yes', citizenship_required: false },
+    })).toBe('unknown');
+  });
+
+  it('preserves only explicit faculty restrictions', () => {
+    expect(facultySafeInternational({
+      source_type: 'faculty_research',
+      eligibility: { international_friendly: 'no', citizenship_required: false },
+    })).toBe('no');
+    expect(facultySafeInternational({
+      source_type: 'faculty_research',
+      eligibility: { international_friendly: 'yes', citizenship_required: true },
+    })).toBe('no');
+  });
+
+  it('does not alter a non-faculty listing', () => {
+    expect(facultySafeInternational({
+      source_type: 'campus_program',
+      eligibility: { international_friendly: 'yes', citizenship_required: false },
+    })).toBe('yes');
+  });
+
+  it('does not trust an international-friendly claim from an untyped record', () => {
+    expect(facultySafeInternational({
+      eligibility: { international_friendly: 'yes', citizenship_required: false },
+    })).toBe('unknown');
+  });
+});
+
+describe('opportunityRecordKind', () => {
+  it('recognizes faculty contacts and reviewed listing source types', () => {
+    expect(opportunityRecordKind({ source_type: 'faculty_research' })).toBe('faculty_contact');
+    expect(opportunityRecordKind({ source_type: 'campus_program' })).toBe('listing');
+    expect(opportunityRecordKind({ source_type: 'internship' })).toBe('listing');
+  });
+
+  it.each([undefined, null, '', 'unknown', 'future_unreviewed_kind'])(
+    'fails %s closed to unknown',
+    (source_type) => {
+      expect(opportunityRecordKind({ source_type })).toBe('unknown');
+    },
+  );
+});
+
+describe('opportunityDestination', () => {
+  it('never lets a faculty application URL override the canonical profile', () => {
+    expect(opportunityDestination({
+      source_type: 'faculty_research',
+      application: { application_url: 'https://fake.example/apply' },
+      url: 'https://real.example/faculty/ada',
+      source_url: 'https://backup.example/faculty/ada',
+    })).toBe('https://real.example/faculty/ada');
+  });
+
+  it('keeps the application portal first for a real listing', () => {
+    expect(opportunityDestination({
+      source_type: 'campus_program',
+      application: { application_url: 'https://real.example/apply' },
+      url: 'https://real.example/listing',
+    })).toBe('https://real.example/apply');
+  });
+
+  it('does not treat an untyped record URL as a verified application portal', () => {
+    expect(opportunityDestination({
+      application: { application_url: 'https://fake.example/apply' },
+      url: 'https://real.example/source',
+    })).toBe('https://real.example/source');
   });
 });
 
@@ -172,6 +249,7 @@ describe('matchesToCSV', () => {
   it('prefers application_url over opportunity.url', () => {
     const csv = matchesToCSV([
       makeMatch({
+        source_type: 'campus_program',
         url: 'https://old-url.com',
         application: {
           application_effort: 'low',
@@ -183,6 +261,62 @@ describe('matchesToCSV', () => {
     ]);
     expect(csv).toContain('"https://apply-here.com"');
     expect(csv).not.toContain('old-url');
+  });
+
+  it('exports faculty profiles as contacts, not paid openings or apply URLs', () => {
+    const csv = matchesToCSV([
+      makeMatch({
+        source_type: 'faculty_research',
+        paid: 'yes',
+        deadline: '2026-10-01',
+        eligibility: {
+          international_friendly: 'yes',
+          preferred_year: [],
+          majors: [],
+          skills_required: [],
+          citizenship_required: false,
+        },
+        url: 'https://faculty.example.edu/ada',
+        application: {
+          application_effort: 'low',
+          requires_resume: 'no',
+          contact_method: 'email',
+          application_url: 'https://example.edu/fake-apply',
+        },
+      }),
+    ]);
+    expect(csv).toContain('"Location / faculty affiliation"');
+    expect(csv).toContain('"faculty_contact","","Urbana","","unknown"');
+    expect(csv).toContain('"https://faculty.example.edu/ada"');
+    expect(csv).not.toContain('fake-apply');
+  });
+
+  it('exports an untyped stale record without opening facts or an apply URL', () => {
+    const csv = matchesToCSV([
+      makeMatch({
+        source_type: undefined,
+        paid: 'yes',
+        deadline: '2026-10-01',
+        eligibility: {
+          international_friendly: 'yes',
+          preferred_year: [],
+          majors: [],
+          skills_required: [],
+          citizenship_required: false,
+        },
+        url: 'https://example.edu/source',
+        application: {
+          application_effort: 'low',
+          requires_resume: 'yes',
+          contact_method: 'website',
+          application_url: 'https://example.edu/fake-apply',
+        },
+      }),
+    ]);
+    expect(csv).toContain('"unknown","","Urbana","","unknown"');
+    expect(csv).toContain('"https://example.edu/source"');
+    expect(csv).not.toContain('fake-apply');
+    expect(csv).not.toContain('2026-10-01');
   });
 
   it('handles missing organization', () => {

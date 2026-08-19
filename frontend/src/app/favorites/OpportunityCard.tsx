@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Badge from '@/components/Badge';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
+import { facultySafeInternational } from '@/lib/match-utils';
 import { DeadlineBadge } from './DeadlineBadge';
 import { MAX_COMPARE, type Opp, type TFunc } from './types';
 
@@ -61,13 +62,16 @@ export function OpportunityCard({
   tailorDisabled,
   t,
 }: OpportunityCardProps) {
+  const isFaculty = opp.source_type === 'faculty_research';
+  const facultyUnavailable = isFaculty
+    && opp.faculty_availability_status === 'not_accepting_undergraduates';
   // R70-E: switched from inline ternaries to the shared badge-utils
   // helpers so this card stays in sync with MatchCard. The inline paid
   // ternary that used to live here had the same R70-D bug — labelling
   // paid='unknown' (1262 records) as the misleading "Unpaid".
-  const intlFriendly = opp.eligibility?.international_friendly;
+  const intlFriendly = facultySafeInternational(opp);
   const intlBadge = intlFriendly ? getIntlBadge(intlFriendly, t) : null;
-  const paidBadge = opp.paid ? getPaidBadge(opp.paid, t) : null;
+  const paidBadge = !isFaculty && opp.paid ? getPaidBadge(opp.paid, t) : null;
   const desc = opp.description_clean || opp.description_raw || '';
   const canSelect = !isSelected && selectedSize < MAX_COMPARE;
 
@@ -109,7 +113,9 @@ export function OpportunityCard({
                 {opp.location && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
-                    {opp.location}
+                    {isFaculty
+                      ? t('favorites.facultyAffiliationLocation', { location: opp.location })
+                      : opp.location}
                   </span>
                 )}
               </div>
@@ -137,6 +143,15 @@ export function OpportunityCard({
                 {t('favorites.customBadge')}
               </Badge>
             )}
+            {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
+              <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
+            )}
+            {isFaculty && opp.faculty_availability_status === 'not_accepting_undergraduates' && (
+              <Badge variant="red">{t('card.facultyNotAcceptingUndergraduates')}</Badge>
+            )}
+            {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
+              <Badge variant="red">{t('card.facultyResearchInactive')}</Badge>
+            )}
             {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
             {intlBadge && (
               <Badge variant={intlBadge.variant} dot>
@@ -151,12 +166,18 @@ export function OpportunityCard({
               </Badge>
             )}
             {opp.source && !opp._customId && <Badge variant="gray">{opp.source}</Badge>}
-            <DeadlineBadge deadline={opp.deadline} isEstimate={opp.deadline_is_estimate} t={t} />
+            {!isFaculty && (
+              <DeadlineBadge
+                deadline={opp.deadline}
+                isEstimate={opp.deadline_is_estimate ?? undefined}
+                t={t}
+              />
+            )}
           </div>
 
           {!selectionMode && (
             <div className="flex flex-wrap items-center gap-2">
-              {hasProfile && !opp._customId && (
+              {hasProfile && !opp._customId && !facultyUnavailable && (
                 <button
                   type="button"
                   onClick={() => onOpenEmailModal(opp)}
@@ -186,7 +207,11 @@ export function OpportunityCard({
                   className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
                 >
                   {opp._customId ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                  {opp._customId ? t('favorites.openSource') : t('card.viewDetails')}
+                  {opp._customId
+                    ? t('favorites.openSource')
+                    : isFaculty
+                      ? t('card.viewFacultyPage')
+                      : t('card.viewDetails')}
                 </a>
               )}
             </div>
@@ -209,7 +234,12 @@ export function OpportunityCard({
                 {(opp.pi_name || opp.lab_or_program || opp.department) && (
                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
                     {opp.pi_name && (
-                      <span className="text-gray-500"><span className="font-medium text-gray-700">PI:</span> {opp.pi_name}</span>
+                      <span className="text-gray-500">
+                        <span className="font-medium text-gray-700">
+                          {isFaculty ? t('card.facultyMember') : 'PI:'}
+                        </span>{' '}
+                        {opp.pi_name}
+                      </span>
                     )}
                     {opp.lab_or_program && (
                       <span className="text-gray-500"><span className="font-medium text-gray-700">Lab:</span> {opp.lab_or_program}</span>
@@ -226,7 +256,7 @@ export function OpportunityCard({
                   </p>
                 )}
 
-                {opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
+                {!isFaculty && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                   <div>
                     <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">{t('favorites.requiredSkills')}</span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">

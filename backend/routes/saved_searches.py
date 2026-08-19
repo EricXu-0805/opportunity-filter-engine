@@ -182,20 +182,30 @@ def _render_digest_email(
     rows_html = []
     rows_text = []
     for i, opp in enumerate(items, 1):
-        title = opp.get("title") or "Untitled opportunity"
+        faculty_contact = opp.get("source_type") == "faculty_research"
+        title = opp.get("title") or (
+            "Untitled faculty contact" if faculty_contact else "Untitled opportunity"
+        )
         org = opp.get("organization") or ""
-        deadline = opp.get("deadline") or ""
+        deadline = "" if faculty_contact else (opp.get("deadline") or "")
         dl_str = f" · due {deadline}" if deadline else ""
+        kind_str = (
+            "Faculty contact profile · current opening not confirmed"
+            if faculty_contact
+            else "Opportunity listing"
+        )
         detail_url = f"{FRONTEND_BASE}/opportunities/{opp.get('id', '')}"
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
             f'<a href="{_html_escape(detail_url)}" style="color:#4f46e5;text-decoration:none">{_html_escape(title)}</a>'
             f'</div>'
-            f'<div style="font-size:12px;color:#9ca3af">{_html_escape(org)}{_html_escape(dl_str)}</div>'
+            f'<div style="font-size:12px;color:#9ca3af">{_html_escape(kind_str)} · {_html_escape(org)}{_html_escape(dl_str)}</div>'
             f'</td></tr>'
         )
-        rows_text.append(f"#{i} {title}\n  {org}{dl_str}\n  {detail_url}\n")
+        rows_text.append(
+            f"#{i} {title}\n  {kind_str} · {org}{dl_str}\n  {detail_url}\n"
+        )
 
     overflow_html = (
         f'<p style="color:#6b7280;font-size:13px;margin:14px 0 0">+{overflow} more in the app</p>'
@@ -211,7 +221,7 @@ def _render_digest_email(
     <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
     <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{_html_escape(subject)}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
-      New opportunities that started matching your saved search since we last checked.
+      New listings and faculty contact profiles that started matching your saved search since we last checked. Faculty profiles do not confirm a current opening.
     </p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}

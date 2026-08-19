@@ -233,7 +233,12 @@ def _billable_class(request: Request, path: str) -> str | None:
     # card); the exact "/api/matches" check below misses it. Gap analysis and
     # the plain matches list stay non-billable.
     if path.startswith("/api/matches/") and path.endswith("/explain"):
-        return "llm"
+        if (
+            feature_enabled("match_ai_refine")
+            and request.query_params.get("llm", "").lower() in ("1", "true")
+        ):
+            return "llm"
+        return None
     # /matches/view is the route the results page actually calls, so an AI-on
     # session bills here, not on /matches. Counted per REQUEST, which
     # overcounts: the match snapshot and the rerank score cache absorb most of

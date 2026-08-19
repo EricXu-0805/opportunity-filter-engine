@@ -98,10 +98,10 @@ def test_output_shape_with_email():
     assert opp["contact_email"] == "begus@berkeley.edu"
     assert verified_send_target(opp) == "begus@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
-    assert opp["eligibility"]["majors"] == LING_CONFIG["majors"]
-    assert opp["on_campus"] is True
+    assert opp["eligibility"]["majors"] == []
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == LING_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
     assert opp["metadata"]["research_areas_raw"]
 
 

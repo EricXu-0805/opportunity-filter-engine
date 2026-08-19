@@ -29,7 +29,10 @@ ReleaseFeature = Literal[
 
 RELEASE_SCOPE = MappingProxyType(
     {
-        "match_ai_refine": True,
+        # Closed again after the accepted surface was found to be cosmetic:
+        # /matches/view always executes deterministic ranking. Re-open only in
+        # the bounded, server-attested acceptance PR.
+        "match_ai_refine": False,
         "cross_school_matching": True,
         "compare": True,
         "fellowships": True,

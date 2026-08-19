@@ -133,11 +133,11 @@ def test_output_shape_matches_other_faculty_collectors():
     assert opp["id"].startswith("faculty-ucb-cee-")
     assert opp["contact_email"] == "abrahamson@berkeley.edu"
     assert opp["metadata"]["confidence_score"] == 0.7
-    assert opp["eligibility"]["majors"] == CEE_CONFIG["majors"]
+    assert opp["eligibility"]["majors"] == []
     # External campus, same as the other UCB collectors.
-    assert opp["on_campus"] is True
+    assert opp["on_campus"] is None
     assert opp["eligibility"]["international_friendly"] == "unknown"
-    assert opp["eligibility"]["work_auth_notes"] == CEE_CONFIG["work_auth_notes"]
+    assert opp["eligibility"]["work_auth_notes"] == ""
     # Listing research text is preserved even when keywords fall back to broad.
     assert opp["metadata"]["research_areas_raw"]
 

@@ -72,14 +72,10 @@ export function readInitialFiltersFromUrl(
 //                 ownership is not confirmed yet, which is NOT "no preference".
 //   prefValue   — the stored preference, JSON-decoded.
 //
-// Off is not a neutral default, so absent-preference resolves to ON.
-// Deterministic matching answered "deep learning for medical imaging, MRI
-// segmentation" with an LLM-inference lab at #1 and the department's MRI
-// professor at #5, and put a research-area line on no card at all; a student
-// who does not know the toggle exists never sees the ranking this product is
-// built to give. The server still decides whether the pass may actually run —
-// past the day budget it serves the deterministic list rather than an error
-// (backend/main.py `_llm_degradable`).
+// Deterministic matching is the product default. AI refine is a paid,
+// user-triggered enhancement: an absent or malformed preference must never be
+// promoted into consent. The URL may carry an explicit choice for a shared
+// result, and a stored `1` records the user's own prior opt-in.
 //
 // An UNREADABLE preference resolves to off, not on. Ownership is established
 // asynchronously (supabase.ts's ensureAnonSession), so the first render
@@ -89,19 +85,21 @@ export function resolveSemanticRerank(
   urlPin: boolean | null,
   prefExists: boolean | undefined,
   prefValue: string | null,
+  enabled: boolean = RELEASE_SCOPE.matchAiRefine,
 ): boolean {
-  if (!RELEASE_SCOPE.matchAiRefine) return false;
+  if (!enabled) return false;
   if (urlPin !== null) return urlPin;
   if (prefExists === undefined) return false;
-  if (!prefExists) return true;
-  return prefValue !== '0';
+  if (!prefExists) return false;
+  return prefValue === '1';
 }
 
 /** ?ai=1 / ?ai=0, or null when the URL expresses no opinion. */
 export function readSemanticRerankUrlPin(
   searchParams: URLSearchParams | ReadonlyURLSearchParams,
+  enabled: boolean = RELEASE_SCOPE.matchAiRefine,
 ): boolean | null {
-  if (!RELEASE_SCOPE.matchAiRefine) return null;
+  if (!enabled) return null;
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
