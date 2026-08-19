@@ -127,7 +127,7 @@ describe('useResultsData x match-cache integration: a stale write never corrupts
       () => new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }),
     );
 
-    renderHook(() => useResultsData(profile, false, baseView, 1, t));
+    renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
     await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
 
     advanceOwnerEpoch('results-integration-u2');

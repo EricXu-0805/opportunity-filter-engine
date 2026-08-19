@@ -2,8 +2,6 @@
 
 import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
-import { readUserScopedRaw } from '@/lib/identity-owner';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
@@ -65,22 +63,49 @@ export function readInitialFiltersFromUrl(
   };
 }
 
-// AI-refine state fails closed before consulting URL or localStorage. Once the
-// feature passes acceptance, the dormant branch below preserves explicit URL
-// then saved-preference resolution; until then deterministic is unconditional.
-// Kept separate from readInitialFiltersFromUrl because it consults
-// localStorage too — the filters reader is pure URL.
-export function readInitialSemanticRerank(
-  searchParams: URLSearchParams | ReadonlyURLSearchParams,
+// Which AI-refine state a page load should use, from the three inputs that can
+// carry one. Pure, so the precedence is testable without a browser.
+//
+//   urlPin      — ?ai=1 / ?ai=0, or null when the URL says nothing. A share
+//                 link has to reproduce what the sender saw.
+//   prefExists  — TRI-state from useHasLocalStorageKey: `undefined` means local
+//                 ownership is not confirmed yet, which is NOT "no preference".
+//   prefValue   — the stored preference, JSON-decoded.
+//
+// Off is not a neutral default, so absent-preference resolves to ON.
+// Deterministic matching answered "deep learning for medical imaging, MRI
+// segmentation" with an LLM-inference lab at #1 and the department's MRI
+// professor at #5, and put a research-area line on no card at all; a student
+// who does not know the toggle exists never sees the ranking this product is
+// built to give. The server still decides whether the pass may actually run —
+// past the day budget it serves the deterministic list rather than an error
+// (backend/main.py `_llm_degradable`).
+//
+// An UNREADABLE preference resolves to off, not on. Ownership is established
+// asynchronously (supabase.ts's ensureAnonSession), so the first render
+// genuinely cannot read it, and treating that as "nothing stored" would spend
+// against a student who had already opted out.
+export function resolveSemanticRerank(
+  urlPin: boolean | null,
+  prefExists: boolean | undefined,
+  prefValue: string | null,
 ): boolean {
   if (!RELEASE_SCOPE.matchAiRefine) return false;
+  if (urlPin !== null) return urlPin;
+  if (prefExists === undefined) return false;
+  if (!prefExists) return true;
+  return prefValue !== '0';
+}
+
+/** ?ai=1 / ?ai=0, or null when the URL expresses no opinion. */
+export function readSemanticRerankUrlPin(
+  searchParams: URLSearchParams | ReadonlyURLSearchParams,
+): boolean | null {
+  if (!RELEASE_SCOPE.matchAiRefine) return null;
   const p = searchParams.get('ai');
   if (p === '1') return true;
   if (p === '0') return false;
-  const stored = readUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK);
-  if (stored === '0') return false;
-  if (stored === '1') return true;
-  return false;
+  return null;
 }
 
 // URL writer. Uses history.replaceState (not router.replace) to avoid
@@ -95,8 +120,12 @@ export function useResultsUrlSync(state: {
   filters: Filters;
   sortBy: SortKey;
   semanticRerank: boolean;
+  /** False while the stored preference is still unreadable — see below. */
+  semanticSettled: boolean;
 }): void {
-  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank } = state;
+  const {
+    activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
+  } = state;
   useEffect(() => {
     const params = new URLSearchParams();
     // R69-A: omit-sentinel is 'high_priority' (the new default). Every other
@@ -113,14 +142,17 @@ export function useResultsUrlSync(state: {
     if (filters.scope) params.set('scope', filters.scope);
     if (sortBy !== 'score') params.set('sort', sortBy);
     // Only an accepted AI-refine release may serialize its state into a
-    // shareable URL. Dormant-feature query params are removed.
-    if (RELEASE_SCOPE.matchAiRefine) {
+    // shareable URL, and only once that state is real. Writing during the
+    // unreadable window would stamp ?ai=0 into the address bar and turn a
+    // transient "we cannot see the preference yet" into an explicit opt-out
+    // that survives the next reload as a pin.
+    if (RELEASE_SCOPE.matchAiRefine && semanticSettled) {
       params.set('ai', semanticRerank ? '1' : '0');
     }
     const qs = params.toString();
     const newUrl = qs ? `/results?${qs}` : '/results';
     window.history.replaceState(null, '', newUrl);
-  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank]);
+  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled]);
 }
 
 export { DEFAULT_FILTERS };
