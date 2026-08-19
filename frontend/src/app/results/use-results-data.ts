@@ -207,8 +207,21 @@ export function useResultsData(
         // Skipped when the cache already painted (nothing to wait in front of)
         // and past page one (the refined snapshot owns the cursor chain).
         if (semanticRerank && page === 1 && !painted) {
-          await new Promise((resolve) => setTimeout(resolve, INTERIM_PAINT_AFTER_MS));
-          if (active && !requestSettled) {
+          // Race, don't sleep. Awaiting the timer outright would delay every
+          // warm load by the full interval as well — the timer exists for the
+          // cold case only — and would leave a live timer plus this whole
+          // closure alive for that long after an unmount, which is enough
+          // memory pressure to take a test worker down.
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          await Promise.race([
+            request.then(() => undefined, () => undefined),
+            new Promise<void>((resolve) => {
+              timer = setTimeout(resolve, INTERIM_PAINT_AFTER_MS);
+            }),
+          ]);
+          clearTimeout(timer);
+          if (!active) return;
+          if (!requestSettled) {
             try {
               const ruleOnly = await getMatchView(profile, view, {
                 cursor: null,

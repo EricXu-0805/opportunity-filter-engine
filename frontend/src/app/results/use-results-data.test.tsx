@@ -373,6 +373,20 @@ describe('useResultsData', () => {
     expect(result.current.refined).toBe(true);
   });
 
+  it('does not make a warm load wait out the interim timer', async () => {
+    // The timer exists for the cold case. Awaiting it unconditionally would
+    // add its full interval to every AI-on first page, warm ones included —
+    // slower than doing nothing at all, and it holds the request closure alive
+    // that long after an unmount.
+    mocks.getMatchView.mockResolvedValue(response('warm'));
+
+    const started = Date.now();
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-warm'));
+
+    expect(Date.now() - started).toBeLessThan(400);
+  });
+
   it('leaves the rule list up and claims nothing when the refine fails', async () => {
     // The interim list is a real, complete answer and stays. What it must not
     // do is inherit the badge for work that failed.
