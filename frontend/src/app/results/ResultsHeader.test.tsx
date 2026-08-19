@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsHeader } from './ResultsHeader';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
@@ -9,6 +9,15 @@ const { sendMatchesEmailMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/api', () => ({
   sendMatchesEmail: sendMatchesEmailMock,
+}));
+
+// The badge logic is what these tests are about, not the release gate that
+// currently hides it: match_ai_refine is closed on main, so an unmocked scope
+// would make every badge assertion pass for the wrong reason. Same framing
+// CompareTable.test.tsx uses.
+const releaseScopeRef = vi.hoisted(() => ({ matchAiRefine: false }));
+vi.mock('@/lib/release-scope', () => ({
+  RELEASE_SCOPE: releaseScopeRef,
 }));
 
 vi.mock('@/components/EmailMeButton', () => ({
@@ -150,6 +159,9 @@ describe('ResultsHeader email payload', () => {
       <ResultsHeader
         loading={false}
         showSlowHint={false}
+        refining={false}
+        refined={false}
+        refineFailed={false}
         data={data}
         filteredTotal={matches.length}
         counts={{ all: matches.length }}
@@ -183,6 +195,12 @@ describe('ResultsHeader email payload', () => {
 });
 
 describe('ResultsHeader refine state', () => {
+  // Opened only here. The badge logic has to be right for the release that
+  // reopens the flag, and main's own test asserts the control stays hidden
+  // while it is closed — a file-wide override would make that pass vacuously.
+  beforeEach(() => { releaseScopeRef.matchAiRefine = true; });
+  afterEach(() => { releaseScopeRef.matchAiRefine = false; });
+
   it('does not call a list AI-refined while the refine is still running', () => {
     renderHeader(0, { semanticRerank: true, refining: true });
     expect(screen.getByText('results.aiRefining')).toBeInTheDocument();
