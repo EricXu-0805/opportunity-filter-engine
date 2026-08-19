@@ -29,7 +29,11 @@ from bs4 import BeautifulSoup
 
 from backend.lib.contact_visibility import canonical_profile_evidence_url
 
-from ..evidence import UNIT_MAILBOX_LOCALPARTS, dept_name_stems
+from ..evidence import (
+    FACULTY_MAJOR_LABELS_MARKER,
+    UNIT_MAILBOX_LOCALPARTS,
+    dept_name_stems,
+)
 from .ucb_common import (
     apply_record_contact_claim,
     clear_contact_claim,
@@ -867,6 +871,7 @@ def normalize_faculty(
             "notes": f"Auto-imported from {dept_name} faculty directory",
             "faculty_title": title,
             "research_areas_raw": research_areas[:300] if research_areas else "",
+            FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
 

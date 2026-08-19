@@ -38,6 +38,7 @@ from src.collectors.uiuc_faculty import (
     missing_departments,
     normalize_faculty,
 )
+from src.evidence import FACULTY_MAJOR_LABELS_MARKER
 
 NEWLY_ADDED = {
     "aero", "cee", "npre", "chbe", "ise", "astro", "mcb", "psych",
@@ -158,6 +159,8 @@ def test_normalize_keeps_real_person():
     assert opp["eligibility"]["preferred_year"] == ["unknown"]
     assert opp["eligibility"]["international_friendly"] == "unknown"
     assert opp["eligibility"]["citizenship_required"] is None
+    assert opp["eligibility"]["majors"] == []
+    assert opp["metadata"][FACULTY_MAJOR_LABELS_MARKER] == cfg["majors"]
     assert opp["application"]["application_effort"] == "unknown"
 
 

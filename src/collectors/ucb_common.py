@@ -50,7 +50,7 @@ from backend.lib.contact_visibility import (
     verified_send_target,
 )
 
-from ..evidence import is_professor_rank
+from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .atomic_json import atomic_write_json
 
 logger = logging.getLogger(__name__)
@@ -1748,6 +1748,7 @@ def normalize_faculty(person: dict, config: dict) -> dict | None:
         "notes": f"Auto-imported from {dept_name} faculty directory",
         "faculty_title": title,
         "research_areas_raw": research_areas[:300] if research_areas else "",
+        FACULTY_MAJOR_LABELS_MARKER: list(config.get("majors") or []),
     }
     # Additive provenance: enrich_faculty_from_profiles leaves hints about
     # where the record's fields were extracted. A person without them (email

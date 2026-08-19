@@ -196,6 +196,9 @@ _FACULTY_RESEARCH_INACTIVE_MARKER = "faculty_research_inactive_stated"
 _FACULTY_AVAILABILITY_STATUS_MARKER = "faculty_availability_status"
 _FACULTY_AVAILABILITY_SCAN_VERSION_MARKER = "faculty_availability_scan_version"
 _FACULTY_AVAILABILITY_SCAN_VERSION = 1
+# Internal corpus field shared by collectors, the serve-time neutralizer and
+# the ranker. Public projections remove it before serialization.
+FACULTY_MAJOR_LABELS_MARKER = "_faculty_major_labels"
 # The verb set is corpus-derived, not speculative.  Keep the object bounded so
 # an unrelated later mention of students cannot turn a general negation into
 # an outreach block. Object semantics are checked separately below: explicit
@@ -402,6 +405,48 @@ def faculty_safe_eligibility(record: dict) -> dict:
     return safe
 
 
+def faculty_positive_major_labels(record: dict) -> list[str]:
+    """Return source-backed faculty field labels for positive-only matching.
+
+    Faculty collectors historically stored a department/field label in
+    ``eligibility.majors``.  It is not an application requirement, so the
+    public eligibility projection must continue to clear it.  It is still a
+    useful weak fit signal when the student's field actually aligns.  Preserve
+    that signal under an internal metadata marker before neutralization; fall
+    back to the stated department so future collectors that correctly leave
+    opening eligibility empty do not lose the label on the next refresh.
+    """
+    if not faculty_contact_claims_unverified(record):
+        return []
+
+    metadata = record.get("metadata")
+    stored = (
+        metadata.get(FACULTY_MAJOR_LABELS_MARKER)
+        if isinstance(metadata, dict)
+        else None
+    )
+    eligibility = record.get("eligibility")
+    raw = eligibility.get("majors") if isinstance(eligibility, dict) else None
+    candidates = stored if isinstance(stored, list) and stored else raw
+    if not isinstance(candidates, list) or not candidates:
+        department = record.get("department")
+        candidates = [department] if isinstance(department, str) else []
+
+    labels: list[str] = []
+    seen: set[str] = set()
+    for value in candidates:
+        if not isinstance(value, str):
+            continue
+        label = value.strip()[:120]
+        key = label.casefold()
+        if label and key not in seen:
+            labels.append(label)
+            seen.add(key)
+        if len(labels) >= 12:
+            break
+    return labels
+
+
 def faculty_safe_lab_or_program(record: dict) -> str:
     """Return the lab label unless it is the known constructed template."""
     lab_name = str(record.get("lab_or_program") or "").strip()
@@ -478,6 +523,7 @@ def neutralize_unverified_faculty_claims(record: dict) -> dict:
         return record
 
     availability_status = faculty_availability_status(record)
+    major_labels = faculty_positive_major_labels(record)
 
     eligibility = record.get("eligibility")
     if isinstance(eligibility, dict):
@@ -492,6 +538,10 @@ def neutralize_unverified_faculty_claims(record: dict) -> dict:
 
     metadata = record.setdefault("metadata", {})
     if isinstance(metadata, dict):
+        if major_labels:
+            metadata[FACULTY_MAJOR_LABELS_MARKER] = major_labels
+        else:
+            metadata.pop(FACULTY_MAJOR_LABELS_MARKER, None)
         metadata[_FACULTY_AVAILABILITY_STATUS_MARKER] = availability_status
         metadata[_FACULTY_AVAILABILITY_SCAN_VERSION_MARKER] = (
             _FACULTY_AVAILABILITY_SCAN_VERSION
@@ -577,6 +627,9 @@ def faculty_safe_public_record(record: dict) -> dict:
     eligibility = safe.get("eligibility")
     if isinstance(eligibility, dict):
         eligibility.pop("eligibility_text_raw", None)
+    metadata = safe.get("metadata")
+    if isinstance(metadata, dict):
+        metadata.pop(FACULTY_MAJOR_LABELS_MARKER, None)
     return safe
 
 

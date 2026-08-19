@@ -192,6 +192,8 @@ def test_external_campus_semantics():
 
 
 def test_metadata_keys_are_canonical():
+    from src.evidence import FACULTY_MAJOR_LABELS_MARKER
+
     abbeel = next(p for p in _scrape() if p["name"] == "Pieter Abbeel")
     opp = normalize_faculty(abbeel, EECS_CONFIG)
     assert set(opp["metadata"]) == {
@@ -199,7 +201,9 @@ def test_metadata_keys_are_canonical():
         "is_active", "manually_reviewed", "notes", "faculty_title",
         "research_areas_raw", "identity_bound", "email_source",
         "contact_verified_email", "contact_source_url", "contact_verified_at",
+        FACULTY_MAJOR_LABELS_MARKER,
     }
+    assert opp["metadata"][FACULTY_MAJOR_LABELS_MARKER] == EECS_CONFIG["majors"]
     assert set(opp) == {
         "id", "source", "source_url", "source_type", "title", "organization",
         "department", "lab_or_program", "pi_name", "contact_email", "url",

@@ -66,7 +66,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
-from ..evidence import is_professor_rank
+from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
     _is_person_name,
@@ -543,6 +543,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
         "faculty_title": title,
         "research_areas_raw": research_areas[:300] if research_areas else "",
         "curated": True,
+        FACULTY_MAJOR_LABELS_MARKER: list(dept.get("majors") or []),
     }
     # Additive provenance from the harvest path (fetch_and_normalize tags
     # curated-vs-discovered, _apply_profile_enrich upgrades to "profile" after

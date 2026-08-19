@@ -481,7 +481,36 @@ class TestFacultyMajorIsALabel:
         matched, fit, _ = score_eligibility(self.PROFILE, same)
         outside, _, _ = score_eligibility(self.PROFILE, self._faculty())
         assert matched > outside
-        assert any("direct match" in f for f in fit), fit
+        assert any("department aligns" in f for f in fit), fit
+
+    def test_department_credit_survives_faculty_claim_neutralization(self):
+        from src.evidence import (
+            FACULTY_MAJOR_LABELS_MARKER,
+            faculty_safe_public_record,
+            neutralize_unverified_faculty_claims,
+        )
+
+        same = self._faculty()
+        same["eligibility"] = {**same["eligibility"], "majors": ["ECE"]}
+        neutralize_unverified_faculty_claims(same)
+        neutralize_unverified_faculty_claims(same)
+        assert same["eligibility"]["majors"] == []
+        assert same["metadata"][FACULTY_MAJOR_LABELS_MARKER] == ["ECE"]
+
+        matched, fit, gap = score_eligibility(self.PROFILE, same)
+        outside = self._faculty()
+        outside["eligibility"] = {**outside["eligibility"], "majors": ["Bioengineering"]}
+        neutralize_unverified_faculty_claims(outside)
+        outside_score, _, outside_gap = score_eligibility(self.PROFILE, outside)
+
+        assert matched > outside_score
+        assert any("department aligns" in f for f in fit), fit
+        assert not any("Prefers " in item or "requirements" in item for item in gap)
+        assert not any("Prefers " in item or "requirements" in item for item in outside_gap)
+
+        public = faculty_safe_public_record(same)
+        assert public["eligibility"]["majors"] == []
+        assert FACULTY_MAJOR_LABELS_MARKER not in public["metadata"]
 
 
 class TestEligibilityScoring:

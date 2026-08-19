@@ -19,6 +19,7 @@ from backend.lib.contact_visibility import send_target_strength, verified_send_t
 from ..evidence import (
     faculty_availability_status,
     faculty_contact_claims_unverified,
+    faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
     is_professor_rank,
@@ -990,14 +991,23 @@ def score_eligibility(
     # research-curious student's match through a skills mismatch they never
     # should have been graded on."
     major_is_label = opportunity.get("source_type") == "faculty_research"
+    major_labels = (
+        faculty_positive_major_labels(opportunity)
+        if major_is_label
+        else (elig.get("majors") or [])
+    )
     student_majors = [profile.get("major", "")] + (profile.get("secondary_interests") or [])
     major_score = _major_match_score(
         student_majors,
-        elig.get("majors") or [],
+        major_labels,
         exploring=bool(profile.get("exploring")),
         label_only=major_is_label,
     )
-    if major_score >= 100:
+    if major_is_label and major_score >= 100:
+        reasons_fit.append("This faculty member's department aligns with your major")
+    elif major_is_label and major_score >= 70:
+        reasons_fit.append("This faculty member's department is related to your major")
+    elif major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is closely related to requirements")

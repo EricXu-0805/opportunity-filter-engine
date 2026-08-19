@@ -20,6 +20,7 @@ from src.collectors import faculty_graph as fg
 from src.collectors.schools.umich_faculty import SCHOOL
 from src.collectors.ucb_common import _is_person_name
 from src.collectors.uiuc_faculty import _is_junk_keyword
+from src.evidence import FACULTY_MAJOR_LABELS_MARKER
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
@@ -87,6 +88,13 @@ class TestSeedNormalization:
             assert isinstance(o["keywords"], list)
             assert len(o["description_clean"]) <= 1500
             assert o["deadline"] is None
+
+    def test_department_labels_are_internal_positive_only_evidence(self, recs):
+        by_name = {d["name"]: d for d in SCHOOL["departments"]}
+        for o in recs:
+            assert o["eligibility"]["majors"] == []
+            expected = by_name[o["department"]].get("majors") or []
+            assert o["metadata"][FACULTY_MAJOR_LABELS_MARKER] == expected
 
     def test_title_parenthetical_is_subset_of_keywords(self, recs):
         for o in recs:
