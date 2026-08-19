@@ -117,6 +117,7 @@ function response(
       starred: 0,
     },
     view_id: `view-${id}`,
+    ai_refined: false,
     ...overrides,
   };
 }
@@ -348,7 +349,9 @@ describe('useResultsData', () => {
     expect(result.current.paginationReady).toBe(false);
     expect(mocks.writeMatchCache).not.toHaveBeenCalled();
 
-    await act(async () => { resolveRefine?.(response('ai')); });
+    await act(async () => {
+      resolveRefine?.(response('ai', { ai_refined: true }));
+    });
 
     await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-ai'));
     expect(result.current.refining).toBe(false);
@@ -362,7 +365,7 @@ describe('useResultsData', () => {
     // A warm server snapshot needs no help, and a rule ranking fired behind a
     // request that already returned is pure server cost. This is the shape that
     // once took the E2E job from seven minutes to past its timeout.
-    mocks.getMatchView.mockResolvedValue(response('warm'));
+    mocks.getMatchView.mockResolvedValue(response('warm', { ai_refined: true }));
 
     const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
 
@@ -385,6 +388,20 @@ describe('useResultsData', () => {
     await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-warm'));
 
     expect(Date.now() - started).toBeLessThan(400);
+  });
+
+  it('believes the server over the request when the refine silently degraded', async () => {
+    // The request asked for a refine and got 200 with a complete list back.
+    // Nothing in the results distinguishes a degraded pass from a real one —
+    // the provider being unconfigured, the day budget degrading the call, and
+    // an unusable batch all return the rule ranking. Only ai_refined does.
+    mocks.getMatchView.mockResolvedValue(response('degraded', { ai_refined: false }));
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-degraded'));
+    expect(result.current.refined).toBe(false);
+    expect(result.current.error).toBeNull();
   });
 
   it('leaves the rule list up and claims nothing when the refine fails', async () => {

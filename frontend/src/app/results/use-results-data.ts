@@ -165,9 +165,10 @@ export function useResultsData(
         // lives minutes, so pagination stays locked until the live response.
         setLoading(false);
         painted = true;
-        // Only a refined result is ever written under a refined cache key, so
-        // a hit here is a refined list, not merely a requested one.
-        setRefined(semanticRerank);
+        // The cached response carries the server's own attestation, so a
+        // refined cache entry says so itself rather than being inferred from
+        // the key it was filed under.
+        setRefined(cached.ai_refined === true);
         trackOnce('matches_generated', {
           llm: semanticRerank,
           cached: true,
@@ -256,7 +257,12 @@ export function useResultsData(
           );
         }
         setData(result);
-        setRefined(semanticRerank);
+        // What the server says happened, not what this request asked for. The
+        // two differ whenever the provider was unconfigured, the day budget
+        // degraded the call, or a batch came back unusable — and each of those
+        // still returns a complete rule ranking, so nothing else in the
+        // response distinguishes them.
+        setRefined(result.ai_refined === true);
         if (result.has_more && result.next_cursor) {
           cursorsRef.current.byPage.set(page + 1, result.next_cursor);
         } else {
