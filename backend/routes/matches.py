@@ -558,13 +558,15 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
     if not feature_enabled("fellowships"):
         seeking = [
             value for value in profile_dict.get("seeking_type", [])
-            if value != "fellowship"
+            if not (
+                isinstance(value, str)
+                and value.strip().lower() == "fellowship"
+            )
         ]
         profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
-    # Cross-school recommendation currently expands one normal profile to
-    # ~126k visible records and a ~31s first request. Keep the dormant matcher
-    # code for MTP, but fail closed at the server boundary so stale clients or
-    # crafted JSON cannot reopen an unaccepted, memory-heavy universe.
+    # Cross-school deterministic matching is accepted for this release. Keep
+    # the server-side kill switch authoritative, though: if operations disable
+    # it later, stale clients or crafted JSON must not preserve the expansion.
     if not feature_enabled("cross_school_matching"):
         profile_dict["include_cross_school"] = False
     if profile_dict.get("preferences") is None:

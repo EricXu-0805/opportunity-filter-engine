@@ -49,11 +49,11 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
 }
 
 describe('OpportunityHeader MVP release surface', () => {
-  it('shows the professor signal now that professorSignals is accepted', () => {
+  it('keeps Tailor while hiding Professor Signals', () => {
     renderHeader();
 
     expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
-    expect(screen.getByText('unaccepted-professor-signal')).toBeInTheDocument();
+    expect(screen.queryByText('unaccepted-professor-signal')).not.toBeInTheDocument();
   });
 
   it('labels a faculty directory record as a contact, not a confirmed opening', () => {
@@ -125,10 +125,9 @@ describe('OpportunityHeader MVP release surface', () => {
   });
 
   it('shows Renovate only when the parent supplies its handler', () => {
-    // resumeRenovate is accepted, but this component does not read the flag —
-    // OpportunityDetail does, and expresses the decision by passing (or not
-    // passing) onOpenRenovationModal. Keeping that split tested means the flag
-    // has exactly one reader per surface.
+    // This leaf does not read the release flag. OpportunityDetail owns the
+    // public gate; this preserves dormant implementation coverage without
+    // making the MVP surface reachable.
     renderHeader();
     expect(screen.queryByText('card.renovateResume')).not.toBeInTheDocument();
 

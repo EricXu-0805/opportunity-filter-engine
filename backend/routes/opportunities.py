@@ -29,6 +29,7 @@ from backend.lib.public_projection import (
 )
 from backend.lib.publication_attribution import works_are_verified
 from backend.lib.release_scope import (
+    feature_enabled,
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
@@ -48,7 +49,7 @@ from src.tracking.professor_profiles import canonical_professor_id
 router = APIRouter()
 logger = logging.getLogger("ofe.opportunities")
 
-REDACTED_FIELDS = {"contact_email", "pi_email"}
+REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
 
 _stats_cache: dict | None = None
 _stats_cache_time: float = 0
@@ -393,12 +394,15 @@ async def get_opportunity(
     detail["contact_email_status"] = status
     if status == STATUS_REVEALED:
         detail["contact_email"] = email
-    # Additive: the record-scoped follow/tracking id (None for non-faculty
-    # records), so the detail page can offer "follow this professor" and ask
-    # /api/professors/updates about exactly the record it is showing.
-    professor_id = canonical_professor_id(opp)
-    if professor_id is not None:
-        detail["professor_id"] = professor_id
+    # The record-scoped follow/tracking id is a Professor Signals capability,
+    # not part of the public faculty-contact profile.  Strip a poisoned/stale
+    # corpus value as well as declining to derive a fresh one while the MTP
+    # feature is closed, so old data cannot reopen the hidden client path.
+    detail.pop("professor_id", None)
+    if feature_enabled("professor_signals"):
+        professor_id = canonical_professor_id(opp)
+        if professor_id is not None:
+            detail["professor_id"] = professor_id
     return detail
 
 

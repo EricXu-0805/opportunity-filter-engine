@@ -18,7 +18,7 @@ import type {
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
-import { RELEASE_SCOPE } from './release-scope';
+import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -258,7 +258,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
   const requestedSeekingTypes =
     profile.seeking_types ?? ['research', 'summer_program'];
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
-    (value) => value !== 'fellowship' || RELEASE_SCOPE.fellowships,
+    (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
   return {
     name: profile.name ?? '',

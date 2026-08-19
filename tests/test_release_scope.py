@@ -58,15 +58,15 @@ def scope_closed(monkeypatch):
 
 ACCEPTED_FEATURES = frozenset({
     "cross_school_matching",
+})
+UNACCEPTED_FEATURES = frozenset({
+    "match_ai_refine",
     "compare",
     "fellowships",
     "resume_renovate",
     "roadmap",
     "ask_ai",
     "professor_signals",
-})
-UNACCEPTED_FEATURES = frozenset({
-    "match_ai_refine",
     "payments",
     "microsoft_school_auth",
     "concierge_pay_qr",
@@ -322,7 +322,7 @@ def test_match_ai_query_reaches_only_the_deterministic_snapshot(monkeypatch):
     assert seen_modes == [False]
 
 
-def test_match_explain_ai_query_is_local_and_bypasses_ai_cache(monkeypatch):
+def test_hidden_compare_explain_route_never_reaches_snapshot_or_ai(monkeypatch):
     opportunity = {
         "id": "release-contract-opp",
         "title": "Confirmed program listing",
@@ -357,9 +357,8 @@ def test_match_explain_ai_query_is_local_and_bypasses_ai_cache(monkeypatch):
         f"/api/matches/{opportunity['id']}/explain?llm=true",
         json={},
     )
-    assert response.status_code == 200
-    assert response.json()["method"] == "local"
-    assert seen_modes == [False]
+    assert response.status_code == 404
+    assert seen_modes == []
 
 
 def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkeypatch):
@@ -370,10 +369,103 @@ def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkey
     assert asyncio.run(matches_module._responsiveness_for_matching()) is None
 
 
+def test_hidden_professor_signals_never_leave_public_opportunity_surfaces(monkeypatch):
+    opportunity = {
+        "id": "faculty-release-contract",
+        "title": "Faculty contact profile",
+        "organization": "Example University",
+        "source_type": "faculty_research",
+        "opportunity_type": "research",
+        "pi_name": "Jane Doe",
+        "professor_id": "poisoned-stale-professor-id",
+        "description": "Faculty research profile.",
+        "keywords": ["robotics"],
+        "eligibility": {},
+        "application": {},
+        "metadata": {"is_active": True, "school": "uiuc"},
+    }
+    peer = {
+        **opportunity,
+        "id": "faculty-release-contract-peer",
+        "pi_name": "Alex Doe",
+        "professor_id": "second-poisoned-stale-professor-id",
+    }
+    derived_id = "prof:v1:uiuc:0123456789abcdef0123"
+    corpus = [opportunity, peer]
+    monkeypatch.setattr(
+        opportunities_module,
+        "load_opportunities_by_id",
+        lambda: {item["id"]: item for item in corpus},
+    )
+    monkeypatch.setattr(
+        opportunities_module,
+        "load_opportunities",
+        lambda: corpus,
+    )
+    monkeypatch.setattr(
+        opportunities_module,
+        "canonical_professor_id",
+        lambda _opportunity: derived_id,
+    )
+
+    monkeypatch.setattr(
+        opportunities_module,
+        "feature_enabled",
+        lambda _feature: False,
+    )
+    hidden = client.get(f"/api/opportunities/{opportunity['id']}")
+    assert hidden.status_code == 200
+    assert "professor_id" not in hidden.json()
+
+    listed = client.get("/api/opportunities?limit=10")
+    assert listed.status_code == 200
+    assert all(
+        "professor_id" not in item
+        for item in listed.json()["opportunities"]
+    )
+
+    batched = client.post(
+        "/api/opportunities/batch",
+        json={"ids": [opportunity["id"], peer["id"]]},
+    )
+    assert batched.status_code == 200
+    assert all(
+        "professor_id" not in item
+        for item in batched.json()["opportunities"]
+    )
+
+    similar = client.get(f"/api/opportunities/{opportunity['id']}/similar")
+    assert similar.status_code == 200
+    assert similar.json()["opportunities"]
+    assert all(
+        "professor_id" not in item
+        for item in similar.json()["opportunities"]
+    )
+
+    monkeypatch.setattr(
+        opportunities_module,
+        "feature_enabled",
+        lambda feature: feature == "professor_signals",
+    )
+    accepted = client.get(f"/api/opportunities/{opportunity['id']}")
+    assert accepted.status_code == 200
+    assert accepted.json()["professor_id"] == derived_id
+
+
 def test_hidden_fellowship_preference_is_removed_server_side(scope_closed):
-    profile = ProfileRequest(seeking_type=["fellowship"])
+    profile = ProfileRequest(
+        seeking_type=["fellowship", " Fellowship ", "FELLOWSHIP"],
+    )
     normalized = matches_module._normalized_profile(profile)
     assert normalized["seeking_type"] == ["research", "summer_program"]
+
+    mixed = ProfileRequest(
+        seeking_type=["research", " Fellowship ", "summer_program"],
+    )
+    assert matches_module._normalized_profile(mixed)["seeking_type"] == [
+        "research",
+        "summer_program",
+    ]
 
 
 def _fellowship_release_corpus() -> list[dict]:
@@ -801,7 +893,12 @@ def test_saved_search_digest_cleans_hidden_pending_id_without_sending(scope_clos
     assert patches[0]["json"] == {"new_match_ids": []}
 
 
-def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeypatch):
+@pytest.mark.parametrize("target_state", ["known_hidden", "unknown"])
+def test_unprovable_reminder_is_kept_but_never_sent(
+    scope_closed,
+    monkeypatch,
+    target_state,
+):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()
@@ -856,7 +953,11 @@ def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeyp
     monkeypatch.setattr(
         push_module,
         "load_opportunities_by_id",
-        lambda: {hidden["id"]: hidden},
+        lambda: (
+            {hidden["id"]: hidden}
+            if target_state == "known_hidden"
+            else {}
+        ),
     )
     monkeypatch.setattr(push_module, "send_webpush_safely", forbidden_send)
     monkeypatch.setattr(push_module, "_send_via_resend", forbidden_send)

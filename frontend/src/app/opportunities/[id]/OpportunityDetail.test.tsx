@@ -23,11 +23,29 @@ vi.mock('./DetailSections', () => ({
   ApplicationSection: () => null,
   KeywordsSection: () => null,
 }));
-vi.mock('./OpportunityHeader', () => ({ OpportunityHeader: () => null }));
+vi.mock('./OpportunityHeader', () => ({
+  OpportunityHeader: (props: {
+    onOpenTailorModal?: () => void;
+    onOpenRenovationModal?: () => void;
+  }) => (
+    <div>
+      <span data-testid="header-tailor-handler">{String(Boolean(props.onOpenTailorModal))}</span>
+      <span data-testid="header-renovate-handler">{String(Boolean(props.onOpenRenovationModal))}</span>
+    </div>
+  ),
+}));
 vi.mock('./SimilarOpportunities', () => ({ SimilarOpportunities: () => null }));
 vi.mock('./InteractionPills', () => ({ InteractionPills: () => null }));
-vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => null }));
-vi.mock('./ProfessorFollowToggle', () => ({ ProfessorFollowToggle: () => null }));
+vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => <div data-testid="chat-drawer" /> }));
+vi.mock('./ProfessorFollowToggle', () => ({
+  ProfessorFollowToggle: () => <div data-testid="professor-follow" />,
+}));
+vi.mock('@/components/ResumeRenovationModal', () => ({
+  default: () => <div data-testid="renovation-modal" />,
+}));
+vi.mock('@/components/OpportunityChatbot', () => ({
+  default: () => <div data-testid="opportunity-chatbot" />,
+}));
 // A sentinel mock, NOT the real TailorModal: the real component has its OWN
 // ownerScopeKey-driven reset effect, which would clear its draft on a prop
 // change alone — a test built on the real component would stay green even
@@ -101,6 +119,26 @@ function baseHookResult(overrides: Record<string, unknown> = {}) {
 }
 
 const opp = { id: 'opp-1', title: 'Test Opportunity' } as never;
+
+describe('OpportunityDetail — MVP capability surface', () => {
+  it('keeps Tailor while not mounting Renovate, Ask AI, or Professor Signals', async () => {
+    window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
+      institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
+      research_interests: 'ml', skills: [],
+    }));
+    mockHookState.current = baseHookResult({ tailorOpen: true, renovationOpen: true });
+
+    render(<OpportunityDetail opp={opp} />);
+
+    expect(screen.getByTestId('header-tailor-handler')).toHaveTextContent('true');
+    expect(screen.getByTestId('header-renovate-handler')).toHaveTextContent('false');
+    expect(await screen.findByTestId('mock-tailor-modal')).toBeInTheDocument();
+    expect(screen.queryByTestId('renovation-modal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('opportunity-chatbot')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('chat-drawer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('professor-follow')).not.toBeInTheDocument();
+  });
+});
 
 describe('OpportunityDetail — TrackerPanel is keyed by identityGeneration', () => {
   it('an identityGeneration bump (a real account switch) force-remounts TrackerPanel — an uncommitted local draft from the OLD identity never leaks into the NEW one, even when both share the same opportunity id', () => {

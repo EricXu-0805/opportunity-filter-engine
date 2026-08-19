@@ -111,6 +111,25 @@ def _install_reminder_io(
     today: str = "2026-08-01",
 ) -> None:
     """Stub the reminder cron's Supabase, Resend and dispatcher boundaries."""
+    due_rows = [_DUE] if due is None else due
+
+    # The release boundary now requires every reminder target to resolve to a
+    # currently visible record. These delivery/idempotency tests exercise the
+    # send path, so make that precondition explicit instead of accidentally
+    # relying on whatever happens to exist in the assembled corpus.
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            row["opportunity_id"]: {
+                "id": row["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+            for row in due_rows
+        },
+    )
 
     class _Client:
         def __init__(self, *_a, **_k):
@@ -131,7 +150,7 @@ def _install_reminder_io(
                 return _Resp([])
             if "push_subscriptions" in url:
                 return _Resp([_SUB] if subscriptions is None else subscriptions)
-            return _Resp([_DUE] if due is None else due)
+            return _Resp(due_rows)
 
         async def post(self, url, json=None, **_kwargs):
             if rpcs is not None:

@@ -293,6 +293,11 @@ class TestOpportunityProfessorId:
         faculty = record()
         monkeypatch.setattr(
             opportunities_route,
+            "feature_enabled",
+            lambda feature: feature == "professor_signals",
+        )
+        monkeypatch.setattr(
+            opportunities_route,
             "load_opportunities_by_id",
             lambda: {faculty["id"]: faculty},
         )

@@ -135,21 +135,17 @@ describe('getMatches', () => {
     expect(body.exploring).toBe(true);
   });
 
-  it('sends accepted preferences through instead of stripping them', async () => {
-    // Both families normalizeProfileForRelease guards are accepted now, so it
-    // is a pass-through here. The enforced boundary is the server's
-    // (_normalized_profile, tests/test_release_scope.py) — this one only stops
-    // a stale local profile from re-showing a selector.
+  it('strips hidden fellowship preferences but keeps accepted cross-school matching', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile({
       include_cross_school: true,
-      seeking_types: ['research', 'fellowship'],
+      seeking_types: ['research', 'fellowship', ' Fellowship ', 'FELLOWSHIP'],
     }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.include_cross_school).toBe(true);
-    expect(body.seeking_type).toEqual(['research', 'fellowship']);
+    expect(body.seeking_type).toEqual(['research']);
   });
 
   it('maps scholar_url into the request and defaults it to "" when absent', async () => {

@@ -3961,6 +3961,19 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
     monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
     monkeypatch.setattr(push_mod, "send_webpush_safely", _passthrough_send_webpush)
     monkeypatch.setattr(push_mod, "_send_via_resend", _fake_send)
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            row["opportunity_id"]: {
+                "id": row["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+            for row in interactions
+        },
+    )
     # Per-recipient quota is in-memory module state shared across tests.
     email_mod._recipient_sends.clear()
 

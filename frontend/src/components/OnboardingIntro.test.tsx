@@ -15,10 +15,9 @@ vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
 import OnboardingIntro from './OnboardingIntro';
 import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
-// welcome, generate, favorites, compare, tracker, dashboard, roadmap, school —
-// the compare and roadmap slides are conditional on RELEASE_SCOPE, and both
-// features are accepted now.
-const SLIDE_COUNT = 8;
+// welcome, generate, favorites, tracker, dashboard, school. Compare and
+// Roadmap stay implemented but are absent from the MVP tour while hidden.
+const SLIDE_COUNT = 6;
 
 beforeEach(() => {
   localStorage.clear();
@@ -76,15 +75,13 @@ describe('OnboardingIntro', () => {
     expect(screen.queryByTestId('onboarding-back')).toBeNull();
   });
 
-  it('includes the Compare and Roadmap slides now that both are accepted', async () => {
-    // The walkthrough is where a new student learns what the product does, so
-    // an accepted feature missing from it is the same defect as a dead link.
+  it('omits hidden Compare, Roadmap and Fellowship claims from the tour', async () => {
     render(<OnboardingIntro />);
     await waitFor(() => screen.getByTestId('onboarding-intro'));
     expect(screen.getByText(`1 / ${SLIDE_COUNT}`)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('onboarding-primary'));
     expect(screen.getByText('onboarding.exResearch')).toBeInTheDocument();
-    expect(screen.getByText('onboarding.exFellowship')).toBeInTheDocument();
+    expect(screen.queryByText('onboarding.exFellowship')).not.toBeInTheDocument();
   });
 
   it('pages through to the end and completes via the school gate (default UIUC: seen + tracked + persisted)', async () => {

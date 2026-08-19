@@ -97,6 +97,14 @@ afterEach(() => {
 });
 
 describe('DashboardPage — personal metrics', () => {
+  it('does not mount hidden Professor Updates or the Roadmap CTA', async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('0'));
+    expect(screen.queryByTestId('professor-updates-section')).not.toBeInTheDocument();
+    expect(screen.queryByText('dashboard.roadmapCta.title')).not.toBeInTheDocument();
+  });
+
   it('shows the saved count and tracker funnel, with no whole-database stats', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'fav-2']));
     mockGetInteractionsFull.mockResolvedValue(new Map([

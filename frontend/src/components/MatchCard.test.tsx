@@ -530,13 +530,13 @@ describe('MatchCard', () => {
   });
 
   describe('MVP release surface', () => {
-    it('offers Tailor, Renovate and the preparation plan now all three are accepted', () => {
+    it('keeps Tailor while hiding Renovate and the Roadmap preparation plan', () => {
       render(<MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} />);
       expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
-      expect(screen.getByText('card.renovateResume')).toBeInTheDocument();
+      expect(screen.queryByText('card.renovateResume')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByText('card.showDetails'));
-      expect(screen.getByText('Show preparation plan')).toBeInTheDocument();
+      expect(screen.queryByText('Show preparation plan')).not.toBeInTheDocument();
     });
   });
 

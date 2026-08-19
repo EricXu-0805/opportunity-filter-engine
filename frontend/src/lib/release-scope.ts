@@ -12,12 +12,15 @@ export const RELEASE_SCOPE = Object.freeze({
   // bounded paid concurrency and a real provider-backed acceptance.
   matchAiRefine: false,
   crossSchoolMatching: true,
-  compare: true,
-  resumeRenovate: true,
-  fellowships: true,
-  roadmap: true,
-  askAi: true,
-  professorSignals: true,
+  // These MTP capabilities stay in the codebase and keep their internal test
+  // coverage, but are not part of the accepted MVP surface. Each must reopen
+  // in a separate product-acceptance PR.
+  compare: false,
+  resumeRenovate: false,
+  fellowships: false,
+  roadmap: false,
+  askAi: false,
+  professorSignals: false,
   // Still closed, and for a reason that is not about this codebase: Azure
   // publisher verification requires a verified legal entity, which does not
   // exist yet. Opening it shows students an "unverified publisher" consent
@@ -37,12 +40,18 @@ export const RELEASE_SCOPE = Object.freeze({
 // record-visibility contract changes so a new Vercel deployment cannot reuse
 // an older deployment's Data Cache entries.
 //
-// Bumped here because fellowships changes exactly that: opportunity_visible_in_release
-// stopped filtering `fellowship` records out of every public surface, so a
-// cached discovery response minted under the old contract is missing rows the
-// new one publishes.
+// Bumped here because the MVP capability close hides fellowships again. A
+// cached discovery response minted while they were public must not survive the
+// deployment boundary and reintroduce them into any release surface.
 export const PUBLIC_RELEASE_CACHE_VERSION =
-  'mvp-scope-open-v1-contact-trust-v1-faculty-trust-v1';
+  'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1';
+
+/** Match a hidden Fellowship preference even when stale storage was written
+ * by an older client with different casing or stray whitespace. */
+export function isFellowshipPreference(value: unknown): boolean {
+  return typeof value === 'string'
+    && value.trim().toLowerCase() === 'fellowship';
+}
 
 /**
  * Remove preferences for feature families that are outside the public release.
@@ -57,7 +66,7 @@ export function normalizeProfileForRelease<
   let normalized = profile;
   if (!RELEASE_SCOPE.fellowships && Array.isArray(profile.seeking_types)) {
     const seekingTypes = profile.seeking_types.filter(
-      (value) => value !== 'fellowship',
+      (value) => !isFellowshipPreference(value),
     );
     if (seekingTypes.length !== profile.seeking_types.length) {
       normalized = { ...normalized, seeking_types: seekingTypes };

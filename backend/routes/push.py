@@ -410,21 +410,17 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         # A reminder can outlive the release surface that originally exposed
         # its target. Keep the user's reminder row intact for a future release,
         # but never send a push/email that points at a now-hidden record.
-        # Unknown ids retain the historical behavior (the corpus may be
-        # temporarily incomplete during refresh); only known hidden records are
-        # skipped by this release gate.
+        # Unknown ids fail closed too: a temporarily incomplete corpus delays a
+        # reminder instead of sending a claim whose current release visibility
+        # cannot be proven.
         opportunity_lookup = load_opportunities_by_id()
         sendable_due = []
         for row in due:
             opportunity_id = row["opportunity_id"]
-            if (
-                opportunity_id in opportunity_lookup
-                and release_visible_opportunity_by_id(
-                    opportunity_lookup,
-                    opportunity_id,
-                )
-                is None
-            ):
+            if release_visible_opportunity_by_id(
+                opportunity_lookup,
+                opportunity_id,
+            ) is None:
                 skipped += 1
                 continue
             sendable_due.append(row)

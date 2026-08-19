@@ -63,7 +63,7 @@ describe('match-cache', () => {
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
     const raw = localStorage.getItem(MATCH_KEY)!;
-    expect(JSON.parse(raw).version).toBe('contact-trust-v1');
+    expect(JSON.parse(raw).version).toBe('mvp-core-close-v1-contact-trust-v1');
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
     expect(raw).not.toContain('x'.repeat(500)); // full description not stored
@@ -219,6 +219,24 @@ describe('match-cache', () => {
     );
 
     expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('rejects and removes the open-capability cache version under the current key', () => {
+    const response = makeResponse(1);
+    response.results[0].opportunity.opportunity_type = 'fellowship';
+    localStorage.setItem(
+      MATCH_KEY,
+      JSON.stringify({
+        version: 'contact-trust-v1',
+        hash: 'h1',
+        semantic: false,
+        savedAt: Date.now(),
+        ...response,
+      }),
+    );
+
+    expect(readMatchCache('h1', false)).toBeNull();
     expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 

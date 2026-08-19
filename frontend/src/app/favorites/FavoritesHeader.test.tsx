@@ -100,4 +100,24 @@ describe('FavoritesHeader email payload', () => {
       ['unknown', null],
     ]);
   });
+
+  it('does not offer Compare even when enough favorites are present', () => {
+    const onEnterSelection = vi.fn();
+    render(
+      <FavoritesHeader
+        opportunities={[
+          { id: 'one', title: 'One' },
+          { id: 'two', title: 'Two' },
+        ]}
+        serverOpportunitiesCount={2}
+        selectionMode={false}
+        onEnterSelection={onEnterSelection}
+        onCancelSelection={() => {}}
+        t={t}
+      />,
+    );
+
+    expect(screen.queryByText('favorites.compare')).not.toBeInTheDocument();
+    expect(onEnterSelection).not.toHaveBeenCalled();
+  });
 });

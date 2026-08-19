@@ -20,7 +20,10 @@ import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, removeUserScop
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
-const CACHE_VERSION = 'contact-trust-v1';
+// Bump when the public result-set capability boundary changes. This invalidates
+// seven-day local payloads written while fellowships and other MTP surfaces
+// were public without changing the server match-view protocol or storage key.
+const CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1';
 export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v3-faculty-trust';
 const OBSOLETE_MATCH_KEYS = [
   'ofe_match_results',
