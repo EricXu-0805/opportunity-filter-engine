@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import { readUserScopedRaw } from '@/lib/identity-owner';
-import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { resolveSemanticRerank } from '@/app/results/use-results-url';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { useHasLocalStorageKey, useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useT } from '@/i18n/client';
@@ -72,16 +71,6 @@ function writeExplainCache(key: string, data: MatchExplanationResponse): void {
   }
 }
 
-// The same explicit AI-refine opt-in /results honors. Missing, unreadable, or
-// legacy state is deterministic; Compare must never turn AI on by default.
-// Gated on RELEASE_SCOPE.matchAiRefine first, exactly like
-// use-results-url.ts's readInitialSemanticRerank: a stale persisted '1'
-// must never force llm:true while the feature itself is dormant.
-function readAiTogglePreference(): boolean {
-  if (!RELEASE_SCOPE.matchAiRefine) return false;
-  return readUserScopedRaw(STORAGE_KEYS.SEMANTIC_RERANK) === '1';
-}
-
 function toCanonicalSummary(resp: MatchExplanationResponse): CanonicalMatchSummary | null {
   if (
     typeof resp.final_score !== 'number'
@@ -109,6 +98,13 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
   // profile stuck on a permanent loading card.
   const hasProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
+  // The same preference /results resolves, through the same function and the
+  // same tri-state hooks. Compare reads the SAME snapshot /results serves, so
+  // resolving it differently here would make the table contradict the list it
+  // was opened from. No URL pin: /compare carries no ?ai=.
+  const semanticPrefExists = useHasLocalStorageKey(STORAGE_KEYS.SEMANTIC_RERANK);
+  const semanticPrefValue = useLocalStorageJSON<string>(STORAGE_KEYS.SEMANTIC_RERANK);
+  const llm = resolveSemanticRerank(null, semanticPrefExists, semanticPrefValue);
   const [matches, setMatches] = useState<Map<string, CanonicalMatchSummary | 'error'>>(new Map());
 
   useEffect(() => {
@@ -124,7 +120,6 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
         return next;
       });
     };
-    const llm = readAiTogglePreference();
     (async () => {
       await Promise.all(
         ids.map(async (id) => {
@@ -148,7 +143,7 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
       );
     })();
     return () => { cancelled = true; };
-  }, [opps, profile]);
+  }, [opps, profile, llm]);
 
   const ranked = useMemo(() => {
     if (!profile) return null;

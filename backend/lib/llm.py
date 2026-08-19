@@ -46,6 +46,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Optional
 
+from backend.lib import llm_budget
+
 logger = logging.getLogger("ofe.llm")
 
 _MAX_ATTEMPTS = 2
@@ -249,6 +251,11 @@ def chat_completion(
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
             client = openai.OpenAI(**client_kwargs)
+            # Counted before the call, and per attempt: a retry is a second
+            # request the provider may well bill for, and a call that raises
+            # after the provider received it is not free either. The day
+            # ceiling has to fail toward under-spending.
+            llm_budget.spend()
             resp = client.chat.completions.create(**call_kwargs)
             text = (resp.choices[0].message.content or "").strip()
             return text or None
@@ -328,6 +335,7 @@ def chat_completion_stream(
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
             client = openai.OpenAI(**client_kwargs)
+            llm_budget.spend()
             stream = client.chat.completions.create(**call_kwargs)
             break
         except Exception as exc:

@@ -183,7 +183,17 @@ RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 2.0)
 LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5")
 LLM_RERANK_TOPK = int(_env_float("OFE_LLM_RERANK_TOPK", 20))
 LLM_RERANK_BATCH = int(_env_float("OFE_LLM_RERANK_BATCH", 10))
-LLM_RERANK_WEIGHT = _env_float("OFE_LLM_RERANK_W", 0.35)
+# How much of the ORDER inside the reranked slice comes from the model. The
+# number moved with the scale it acts on: the pass used to blend a raw 0..100
+# model score against rule scores whose whole top-20 spread is about ten
+# points, so 0.35 bought 35 points of authority and flung candidates out of the
+# result set entirely. The model's score is now mapped onto that slice's own
+# band first (backend/routes/matches.py:llm_rerank), which makes 0.35 mean 35%
+# of ten points — a tenth of the influence, too little to correct the ordering
+# this pass is paid to correct. 0.7 lets the model lead inside the slice while
+# the rule score still breaks near-ties, and the band keeps it from reaching
+# past the candidates it was shown.
+LLM_RERANK_WEIGHT = _env_float("OFE_LLM_RERANK_W", 0.7)
 LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 
 # ── Matcher version ──────────────────────────────────────────────────────────
@@ -201,6 +211,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # different knobs can no longer emit identical-looking results.
 # 4: truthfulness W11 — the actionability tie-break now uses the shared
 # harvested-provenance email bar (a synthesized address no longer counts).
+# 5: the LLM rerank blends on a shared scale. The model's 0..100 verdict is
+# mapped onto the candidate slice's own rule-score band before blending, so it
+# reorders that slice instead of ejecting members of it past records it was
+# never shown. A formula change, not a knob change — the fingerprint below
+# would not have caught it on its own.
 _MATCHER_VERSION_BASE = "5"
 
 

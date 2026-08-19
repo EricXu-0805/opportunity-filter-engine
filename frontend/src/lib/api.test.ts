@@ -254,7 +254,7 @@ describe('getMatchView', () => {
       cursor: 'opaque-cursor',
       pageSize: 50,
     });
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view?llm=false');
     const body = JSON.parse(
       (fetchMock.mock.calls[0][1] as RequestInit).body as string,
     );
@@ -262,6 +262,43 @@ describe('getMatchView', () => {
     expect(body.view).toEqual(view);
     expect(body.page_size).toBe(50);
     expect(body.cursor).toBe('opaque-cursor');
+  });
+
+  it('fails closed when a caller asks for AI refine before release acceptance', async () => {
+    // In the query, not the body: the server's spend backstop reads the query,
+    // and this route is the one the results page calls. Sending nothing here is
+    // how the toggle came to change the cache key and nothing else.
+    fetchMock.mockResolvedValue(
+      okJson({
+        total: 0,
+        high_priority: 0,
+        good_match: 0,
+        reach: 0,
+        low_fit: 0,
+        results: [],
+        filtered_total: 0,
+        view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
+        contract_version: 'match-view-v2-contact-trust',
+      }),
+    );
+    const view = {
+      tab: 'all' as const,
+      search_query: '',
+      paid: '' as const,
+      intl: '' as const,
+      source: '',
+      on_campus: '' as const,
+      deadline: '' as const,
+      min_score: 0,
+      scope: '' as const,
+      sort_by: 'score' as const,
+      show_dismissed: false,
+      favorite_ids: [],
+      dismissed_ids: [],
+      today: '2026-07-31',
+    };
+    await getMatchView(makeProfile(), view, { llm: true });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/matches/view?llm=false');
   });
 
   it('never includes an HTML gateway body in the user-facing error', async () => {

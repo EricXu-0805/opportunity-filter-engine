@@ -132,6 +132,41 @@ describe('useResultsData', () => {
     mocks.readMatchCache.mockReturnValue(null);
   });
 
+  it('sends nothing until the AI-refine preference is readable', async () => {
+    // Firing early costs a full server-side ranking under the wrong answer and
+    // a second one the moment the right answer lands — two rankings per page
+    // load. Local ownership is established asynchronously, so "not yet" is the
+    // normal first-render state, not an edge case.
+    mocks.getMatchView.mockResolvedValue(response('a'));
+    const { result, rerender } = renderHook(
+      ({ settled }) => useResultsData(profile, true, baseView, 1, t, settled),
+      { initialProps: { settled: false } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(true));
+    expect(mocks.getMatchView).not.toHaveBeenCalled();
+
+    rerender({ settled: true });
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    expect(mocks.getMatchView.mock.calls[0][2].llm).toBe(true);
+  });
+
+  it('forwards the AI-refine choice into the request, both ways', async () => {
+    // The hop that was missing: semanticRerank keyed the cache and nothing
+    // else, so /matches/view always answered deterministically no matter what
+    // the toggle said. Assert the flag reaches the call, not just the key.
+    mocks.getMatchView.mockResolvedValue(response('a'));
+    const { rerender } = renderHook(
+      ({ llm }) => useResultsData(profile, llm, baseView, 1, t, true),
+      { initialProps: { llm: true } },
+    );
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    expect(mocks.getMatchView.mock.calls[0][2].llm).toBe(true);
+
+    rerender({ llm: false });
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(2));
+    expect(mocks.getMatchView.mock.calls[1][2].llm).toBe(false);
+  });
+
   it('aborts the obsolete request and ignores its late response', async () => {
     const resolvers: Array<(value: MatchesResponse) => void> = [];
     const signals: AbortSignal[] = [];
@@ -144,7 +179,7 @@ describe('useResultsData', () => {
       },
     );
     const { result, rerender } = renderHook(
-      ({ view }) => useResultsData(profile, false, view, 1, t),
+      ({ view }) => useResultsData(profile, false, view, 1, t, true),
       { initialProps: { view: baseView } },
     );
     await waitFor(() => expect(signals).toHaveLength(1));
@@ -177,7 +212,7 @@ describe('useResultsData', () => {
       .mockResolvedValueOnce(response('second', { view_start: 50 }));
 
     const { result, rerender } = renderHook(
-      ({ page }) => useResultsData(profile, false, baseView, page, t),
+      ({ page }) => useResultsData(profile, false, baseView, page, t, true),
       { initialProps: { page: 1 } },
     );
     await waitFor(() => expect(result.current.data).not.toBeNull());
@@ -202,7 +237,7 @@ describe('useResultsData', () => {
       .mockResolvedValueOnce(response('live-second', { view_start: 50 }));
 
     const { result, rerender, unmount } = renderHook(
-      ({ page }) => useResultsData(profile, false, baseView, page, t),
+      ({ page }) => useResultsData(profile, false, baseView, page, t, true),
       { initialProps: { page: 1 } },
     );
     await waitFor(() => {
@@ -236,7 +271,7 @@ describe('useResultsData', () => {
     (bad.results[0].opportunity as unknown as Record<string, unknown>).id = 'drifted-id';
     mocks.getMatchView.mockResolvedValueOnce(bad);
 
-    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t));
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
 
     await waitFor(() => expect(result.current.error).toBe('Match results need to be refreshed. Please retry.'));
     expect(result.current.data).toBeNull();
@@ -252,7 +287,7 @@ describe('useResultsData', () => {
     });
     mocks.getMatchView.mockResolvedValueOnce(bad);
 
-    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t));
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
 
     await waitFor(() => expect(result.current.error).toBe('Match results need to be refreshed. Please retry.'));
     expect(result.current.data).toBeNull();
@@ -269,7 +304,7 @@ describe('useResultsData', () => {
       () => new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }),
     );
 
-    renderHook(() => useResultsData(profile, false, baseView, 1, t));
+    renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
     await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
 
     // The hook's own props (profile/view/page) never change here, so this

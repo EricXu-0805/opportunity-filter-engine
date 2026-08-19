@@ -717,6 +717,34 @@ class TestServerMatchView:
         view.update(view_overrides)
         return {"profile": profile, "view": view, "page_size": 4}
 
+    def test_the_refine_flag_reaches_the_route_the_results_page_calls(
+        self, snapshot_env, monkeypatch
+    ):
+        """?llm=true must actually run the refine pass here.
+
+        This route passed a hardcoded False to the snapshot resolver, so the
+        AI toggle changed the client's cache key and the header copy while the
+        list stayed deterministic — an accepted, flag-open feature that no
+        student could reach. Assert the pass runs, not merely that the
+        parameter parses.
+        """
+        from backend.routes import matches as matches_mod
+
+        seen: list[bool] = []
+        original = matches_mod._get_or_compute_snapshot
+
+        async def _record(profile_dict, llm):
+            seen.append(llm)
+            return await original(profile_dict, llm)
+
+        monkeypatch.setattr(matches_mod, "_get_or_compute_snapshot", _record)
+
+        request = self._request(_profile())
+        assert client.post("/api/matches/view?llm=true", json=request).status_code == 200
+        assert client.post("/api/matches/view?llm=false", json=request).status_code == 200
+        assert client.post("/api/matches/view", json=request).status_code == 200
+        assert seen == [True, False, False]
+
     def test_unfiltered_cursor_walk_equals_canonical_visible_universe(
         self, snapshot_env
     ):

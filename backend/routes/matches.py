@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from backend.data_loader import (
     corpus_version,
@@ -430,15 +430,43 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
             _llm_rerank_cache.clear()
         _llm_rerank_cache[cache_key] = scores
 
-    for r in top:
-        llm = scores.get(r.opportunity_id)
-        if llm is None:
-            continue
-        r.final_score = round(
-            max(0.0, min(100.0, (1 - weight) * r.final_score + weight * llm["s"])), 1
-        )
-        if llm.get("r"):
-            r.ai_reason = llm["r"]
+    # The two scores are not on the same scale, and blending them raw is what
+    # made this pass destructive. Across a candidate set the rule score spans
+    # about ten points — 83.8..93.7 on a measured UIUC ECE profile — while the
+    # model answers on the full 0..100. At w=0.35 the model therefore moves a
+    # card up to 35 points against a signal whose entire spread is 10. That is
+    # not refinement, it is replacement, and only for the K cards it was shown:
+    # a card the model scored below ~50 (moderately related, not irrelevant)
+    # landed past rank 100, behind eighty cards it never looked at, which took
+    # its place carrying no reason line at all. Fourteen of every twenty paid
+    # judgements were discarded that way.
+    #
+    # So map the model's scores onto the rule scores THIS candidate set already
+    # holds, then blend. rank_all decides membership and the score band; the
+    # model decides the order inside it. Because both terms then lie within
+    # [band_lo, band_hi] and band_lo is by construction >= the best score below
+    # the slice, no evaluated card can fall behind an unevaluated one — the
+    # model is never asked to outrank something it was not shown.
+    rated = [(r, scores[r.opportunity_id]) for r in top if r.opportunity_id in scores]
+    if rated:
+        band = [r.final_score for r, _ in rated]
+        band_lo, band_hi = min(band), max(band)
+        judged = [llm["s"] for _, llm in rated]
+        judged_lo, judged_hi = min(judged), max(judged)
+        spread = judged_hi - judged_lo
+        for r, llm in rated:
+            # A model that separated nothing gets no say: rescaling a flat set
+            # would be dividing by zero, and there is no order to express.
+            mapped = (
+                band_lo + (llm["s"] - judged_lo) / spread * (band_hi - band_lo)
+                if spread > 0
+                else r.final_score
+            )
+            r.final_score = round(
+                max(0.0, min(100.0, (1 - weight) * r.final_score + weight * mapped)), 1
+            )
+            if llm.get("r"):
+                r.ai_reason = llm["r"]
 
     # Canonical order: the blend creates/moves ties, and a bare score sort
     # silently dropped the actionable-first + unique-id tie-break contract
@@ -930,10 +958,9 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
             responsiveness,
         )
 
-    # Dormant/MTP path: keep the complete result list because a future accepted
-    # LLM blend may move records across percentile buckets. The public release
-    # cannot enter this branch (feature_enabled("match_ai_refine") is
-    # source-controlled false).
+    # Refine path: keep the complete result list because the LLM blend moves
+    # records across percentile buckets, so the buckets have to be recomputed
+    # from the whole set rather than patched on the visible slice.
     try:
         results = await asyncio.to_thread(
             _rank_all_for_generation,
@@ -957,10 +984,10 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         if opportunity.get("id")
     }
 
-    # LLM rerank (default-on, OpenRouter). Runs after the rule rank; a strict
-    # no-op when OpenRouter is unconfigured or any call fails, so the rule
-    # order holds. The belt honors the same contract: rerank machinery must
-    # never turn the default /matches route into a 5xx.
+    # LLM rerank (OpenRouter). Runs after the rule rank; a strict no-op when
+    # OpenRouter is unconfigured or any call fails, so the rule order holds. The
+    # belt honors the same contract: rerank machinery must never turn the
+    # /matches route into a 5xx.
     if llm:
         try:
             # Bounded AI pool, not the unbounded default executor: the rerank
@@ -1254,8 +1281,23 @@ def _apply_match_view(
     return filtered, view_counts, source_facets, scope_available, deadline_counts
 
 
+def _ai_pass_allowed(request: Request, llm: bool) -> bool:
+    """Whether this request may run the paid rerank.
+
+    Three gates, all of which must hold: the client asked, the release accepts
+    the feature, and the day's provider budget is not spent. The third is set
+    by the rate-limit middleware, which lets the request through unbilled
+    rather than refusing it — a student past the ceiling gets the rule ranking,
+    which is a real answer, instead of a 429, which is not.
+    """
+    if not llm or not feature_enabled("match_ai_refine"):
+        return False
+    return not getattr(request.state, "llm_budget_exhausted", False)
+
+
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(
+    request: Request,
     profile: ProfileRequest,
     limit: int = Query(
         default=DEFAULT_RESULTS_PER_PAGE,
@@ -1279,10 +1321,11 @@ async def get_matches(
     and to the number of items a full offset traversal returns. low_fit is
     counted separately and never returned.
 
-    Deterministic matching is the public default. The bounded OpenRouter refine
-    pass only runs when the feature has passed release acceptance and the caller
-    explicitly sends ``llm=true``. URL manipulation cannot promote the dormant
-    feature.
+    Deterministic matching is what a caller gets by default. The bounded
+    OpenRouter refine pass runs only when the feature has passed release
+    acceptance, the caller explicitly sends ``llm=true``, and the day's provider
+    budget is unspent — see ``_ai_pass_allowed``. A caller past the budget is
+    served the rule ranking, not an error.
     """
     decoded_cursor: tuple[str, int] | None = None
     if cursor is not None:
@@ -1308,7 +1351,7 @@ async def get_matches(
             ) from exc
 
     profile_dict = _normalized_profile(profile)
-    use_llm = llm and feature_enabled("match_ai_refine")
+    use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     opp_lookup = snap.opportunities_by_id
 
@@ -1354,17 +1397,32 @@ async def get_matches(
 
 
 @router.post("/matches/view", response_model=MatchesResponse)
-async def get_match_view(request: MatchViewRequest):
+async def get_match_view(
+    request: Request,
+    body: MatchViewRequest,
+    llm: bool = Query(default=False),
+):
     """Return one exact filtered/sorted page over the canonical Match snapshot.
 
     Counts, facets, empty-state truth and pagination all derive from the
     complete visible universe. The browser therefore never treats a bounded
     response page as if it were the full result set.
+
+    ``llm`` honors the same refine pass /matches does, and must: this is the
+    route the results page actually calls. It used to pass a hardcoded False,
+    so the AI toggle moved the cache key and the header copy while the list
+    itself stayed deterministic and no card ever carried an ``ai_reason``. It
+    also put this route and /matches/{id}/explain on different snapshots, which
+    is exactly the disagreement explain's consistency contract forbids.
+
+    In the query string rather than the body so the rate-limit middleware can
+    see it — a body field is unreadable at that layer, and an unreadable paid
+    class is an unbounded one.
     """
     decoded_cursor: tuple[str, str, int] | None = None
-    if request.cursor is not None:
+    if body.cursor is not None:
         try:
-            decoded_cursor = _decode_match_view_cursor(request.cursor)
+            decoded_cursor = _decode_match_view_cursor(body.cursor)
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
@@ -1375,10 +1433,10 @@ async def get_match_view(request: MatchViewRequest):
                 },
             ) from exc
 
-    profile_dict = _normalized_profile(request.profile)
-    snap = await _get_or_compute_snapshot(profile_dict, False)
+    profile_dict = _normalized_profile(body.profile)
+    snap = await _get_or_compute_snapshot(profile_dict, _ai_pass_allowed(request, llm))
     opportunities_by_id = snap.opportunities_by_id
-    view_id = _match_view_id(request.view)
+    view_id = _match_view_id(body.view)
     page_offset = 0
     if decoded_cursor is not None:
         cursor_result_set_id, cursor_view_id, page_offset = decoded_cursor
@@ -1404,10 +1462,10 @@ async def get_match_view(request: MatchViewRequest):
     ) = _apply_match_view(
         snap.visible,
         opportunities_by_id,
-        request.view,
+        body.view,
         profile_dict.get("home_school") or "uiuc",
     )
-    page = filtered[page_offset:page_offset + request.page_size]
+    page = filtered[page_offset:page_offset + body.page_size]
     page_response = [
         _match_result_response(result, opportunities_by_id) for result in page
     ]
@@ -1575,6 +1633,7 @@ _EXCLUSION_GAP_TEXT = {
 
 @router.post("/matches/{opportunity_id}/explain")
 async def get_match_explanation(
+    request: Request,
     opportunity_id: str,
     profile: ProfileRequest,
     llm: bool = Query(default=False),
@@ -1601,7 +1660,7 @@ async def get_match_explanation(
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = _normalized_profile(profile)
-    use_llm = llm and feature_enabled("match_ai_refine")
+    use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None

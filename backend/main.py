@@ -21,6 +21,7 @@ try:
 except ImportError:
     pass
 
+from backend.lib import llm_budget
 from backend.lib.build_info import BUILD_VERSION, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
@@ -174,6 +175,34 @@ _global_buckets: dict[str, list[float]] = defaultdict(list)
 GLOBAL_LLM_PER_MIN = int(os.environ.get("OFE_GLOBAL_LLM_PER_MIN", "240"))
 GLOBAL_EMAIL_PER_HOUR = int(os.environ.get("OFE_GLOBAL_EMAIL_PER_HOUR", "60"))
 
+# The per-minute ceiling above bounds a burst, not a drip: 240/min sustained is
+# 345,600 requests a day against a shared provider key. The day ceiling lives in
+# backend.lib.llm_budget, counted at the provider boundary rather than here,
+# because most requests on the paid paths never reach a provider — the match
+# snapshot and the rerank score cache absorb a session's paging and filtering.
+# Counting requests here would degrade a working feature while the real bill sat
+# near zero. Email needs no day figure: its hourly cap already implies one.
+
+
+def _llm_degradable(path: str) -> bool:
+    """Whether this endpoint has a free answer to fall back on.
+
+    The LLM pass on the matching routes is an ENHANCEMENT: the rule ranking and
+    its reasons are computed either way, so when a global ceiling is reached
+    these serve that instead of 429. Refusing them would deny a student results
+    that cost nothing to produce. Endpoints where the completion IS the product
+    — cold email, tailor, chat — still fail closed, because there is nothing
+    honest to serve in their place.
+
+    /explain is included with the list for the same reason its docstring gives
+    for mirroring the ``llm`` flag: the modal must reach the conclusion the list
+    reached. A degraded list beside a 429 modal is the split-brain that contract
+    exists to prevent.
+    """
+    return path in ("/api/matches", "/api/matches/view") or (
+        path.startswith("/api/matches/") and path.endswith("/explain")
+    )
+
 _LLM_COST_PREFIXES = ("/api/cold-email", "/api/import-url", "/api/import-text")
 _EMAIL_SEND_PATHS = frozenset(
     {
@@ -210,8 +239,14 @@ def _billable_class(request: Request, path: str) -> str | None:
         ):
             return "llm"
         return None
+    # /matches/view is the route the results page actually calls, so an AI-on
+    # session bills here, not on /matches. Counted per REQUEST, which
+    # overcounts: the match snapshot and the rerank score cache absorb most of
+    # a session's paging and filtering without a provider call. Overcounting
+    # only makes the day backstop conservative — it degrades to the rule
+    # ranking sooner than strictly necessary, never later.
     if (
-        path == "/api/matches"
+        path in ("/api/matches", "/api/matches/view")
         and feature_enabled("match_ai_refine")
         and request.query_params.get("llm", "").lower() in ("1", "true")
     ):
@@ -275,13 +310,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             _global_buckets[klass] = [
                 t for t in _global_buckets[klass] if t > now - gwindow
             ]
-            if len(_global_buckets[klass]) >= gmax:
+            over_window = len(_global_buckets[klass]) >= gmax
+            over_day = klass == "llm" and llm_budget.exhausted()
+            if over_window or over_day:
                 logger.warning(
-                    "Global %s ceiling reached (%d/%ds) — throttling; possible abuse or viral spike",
-                    klass, gmax, gwindow,
+                    "Global %s ceiling reached (%s) — %s; possible abuse or viral spike",
+                    klass,
+                    f"{gmax}/{gwindow}s" if over_window
+                    else f"{llm_budget.spent()}/{llm_budget.limit()} completions today",
+                    "degrading" if _llm_degradable(path) else "throttling",
                 )
-                return _rate_limited(gwindow)
-            _global_buckets[klass].append(now)
+                if klass == "llm" and _llm_degradable(path):
+                    # Through, but told to skip the paid pass. The rule ranking
+                    # is a real answer; a 429 is not.
+                    request.state.llm_budget_exhausted = True
+                else:
+                    return _rate_limited(gwindow)
+            else:
+                _global_buckets[klass].append(now)
 
         _rate_buckets[bucket_key].append(now)
         response = await call_next(request)
