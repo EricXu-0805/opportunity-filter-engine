@@ -216,7 +216,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # reorders that slice instead of ejecting members of it past records it was
 # never shown. A formula change, not a knob change — the fingerprint below
 # would not have caught it on its own.
-_MATCHER_VERSION_BASE = "5"
+# 6: a faculty record's `majors` is the department the professor sits in, not a
+# requirement anyone stated, so missing it no longer costs anything; and an
+# unrecognised field name is scored as unknown rather than as a cross-domain
+# clash. Both were charging a penalty for a fact the source never carried.
+_MATCHER_VERSION_BASE = "6"
 
 
 def _matcher_fingerprint() -> str:

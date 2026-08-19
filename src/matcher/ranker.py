@@ -465,11 +465,23 @@ def _responsiveness_bonus(
     return min(RESPONSIVENESS_BONUS, 3.0)
 
 
+NO_MAJOR_REQUIREMENT = 30.0
+
+
 def _major_match_score(
-    student_majors: list[str], required_majors: list[str], exploring: bool = False
+    student_majors: list[str],
+    required_majors: list[str],
+    exploring: bool = False,
+    label_only: bool = False,
 ) -> float:
+    """Score the student's major against the opportunity's.
+
+    ``label_only`` says the ``majors`` list NAMES something rather than
+    REQUIRING it — see the caller. A match still earns credit either way; a
+    mismatch cannot cost anything, because there is nothing to have missed.
+    """
     if not required_majors:
-        return 30.0  # No requirement = open, but no signal of good fit
+        return NO_MAJOR_REQUIREMENT  # No requirement = open, but no signal of good fit
 
     s_normalized = {_normalize_major(m) for m in student_majors}
     r_normalized = {_normalize_major(m) for m in required_majors}
@@ -481,6 +493,12 @@ def _major_match_score(
         related = RELATED_MAJORS.get(sm, [])
         if any(r in r_normalized for r in related):
             return 70.0
+
+    # A department label the student does not share is not a failed
+    # requirement. Score it exactly like a posting that names no major at all —
+    # which is what a directory scrape in fact does.
+    if label_only:
+        return NO_MAJOR_REQUIREMENT
 
     # An explorer hasn't picked a field, so a "wrong" major is breadth, not a
     # poor fit — lift both mismatch tiers to a single floor so other-domain
@@ -500,6 +518,15 @@ def _major_match_score(
 
     s_domains = {_domain(m) for m in s_normalized}
     r_domains = {_domain(m) for m in r_normalized}
+    # An unrecognised name is UNKNOWN, not a conflict. The three lists name 53
+    # majors between them; the corpus carries 1,305 distinct strings in this
+    # field across 186,044 records, so "other" is the ordinary case rather than
+    # the edge. Reading it as a clash charged every student the cross-domain
+    # penalty for Immunology, Cell Biology, Epidemiology, Physiology,
+    # Biostatistics — and told a Bioengineering student they conflict with Cell
+    # Biology. Unknown falls back to the same-domain tier.
+    if "other" in s_domains or "other" in r_domains:
+        return 15.0
     if s_domains and r_domains and not (s_domains & r_domains):
         return 8.0
 
@@ -946,17 +973,39 @@ def score_eligibility(
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
 
     # Major match (20% weight)
+    #
+    # On a faculty record `majors` is the DEPARTMENT the professor sits in,
+    # copied straight from config (faculty_graph writes
+    # `"majors": dept.get("majors", [])`) — a label, never a requirement anyone
+    # stated. Grading a mismatch against it invented a constraint the source
+    # does not carry, and an expensive one: 80-85% of the 128,449 faculty
+    # records missed any given student's major, each losing 20.4 eligibility
+    # points, which is 9.2 of final score against a top-100 spread of about 14.
+    # Working in another department is the ordinary shape of undergraduate
+    # research, not a disqualification.
+    #
+    # This is the same call `enrich_opportunity` already makes one field over,
+    # for the same reason: it refuses to infer skills_required for faculty
+    # because a cold-email research contact must not be "routing a
+    # research-curious student's match through a skills mismatch they never
+    # should have been graded on."
+    major_is_label = opportunity.get("source_type") == "faculty_research"
     student_majors = [profile.get("major", "")] + (profile.get("secondary_interests") or [])
     major_score = _major_match_score(
-        student_majors, elig.get("majors") or [], exploring=bool(profile.get("exploring"))
+        student_majors,
+        elig.get("majors") or [],
+        exploring=bool(profile.get("exploring")),
+        label_only=major_is_label,
     )
     if major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is closely related to requirements")
-    elif major_score < 50 and elig.get("majors"):
+    elif major_score < 50 and elig.get("majors") and not major_is_label:
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
+        # A department label earns none either — "Prefers Bioengineering" put a
+        # preference in a professor's mouth that no page of theirs states.
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
     intl_score = 100.0

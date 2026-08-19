@@ -389,6 +389,48 @@ class TestLLMRerank:
         assert [r.opportunity_id for r in out] == ["a", "b", "c"]
         assert [r.final_score for r in out] == [86.0, 85.5, 85.0]
 
+    def test_a_refusal_is_a_concern_not_a_recommendation(self, monkeypatch):
+        """The lead line renders as an indigo highlight behind a Sparkles icon.
+
+        Asked why a candidate connects to the student's interests, the model
+        answers why it does not whenever it rates one poorly — accurate, useful,
+        and wrong for a slot that reads as praise. It belongs in the amber
+        "Potential concerns" list the card already renders.
+        """
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "chat_completion",
+            lambda *a, **k: '{"0": {"s": 20, "r": "Focuses on GPU systems, not medical imaging."},'
+                            ' "1": {"s": 92, "r": "Directly on MRI reconstruction."}}',
+        )
+        results = self._results([("a", 90.0), ("b", 89.0)])
+        out = matches.llm_rerank({"research_interests_text": "polarity-query"}, results,
+                                 self._lookup(["a", "b"]))
+        by_id = {r.opportunity_id: r for r in out}
+        assert by_id["a"].ai_reason is None
+        assert "Focuses on GPU systems, not medical imaging." in by_id["a"].reasons_gap
+        assert by_id["b"].ai_reason == "Directly on MRI reconstruction."
+        assert "Directly on MRI reconstruction." not in by_id["b"].reasons_gap
+
+    def test_the_same_refusal_is_not_appended_twice(self, monkeypatch):
+        # Snapshots are cached and the rerank can run over results that already
+        # carry the sentence; a repeat must not stack duplicates in the list.
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "chat_completion",
+            lambda *a, **k: '{"0": {"s": 10, "r": "Not your field."}, "1": {"s": 80, "r": "Yes."}}',
+        )
+        results = self._results([("a", 90.0), ("b", 89.0)])
+        results[0].reasons_gap.append("Not your field.")
+        out = matches.llm_rerank({"research_interests_text": "dup-query"}, results,
+                                 self._lookup(["a", "b"]))
+        by_id = {r.opportunity_id: r for r in out}
+        assert by_id["a"].reasons_gap.count("Not your field.") == 1
+
     def test_a_reason_still_reaches_every_card_the_model_scored(self, monkeypatch):
         # Coverage is the point of keeping the slice together: whatever the
         # model rated stays on the page carrying what it said.
@@ -408,7 +450,9 @@ class TestLLMRerank:
             top_k=2,
         )
         rated = [r for r in out if r.opportunity_id in ("a", "b")]
-        assert all(r.ai_reason for r in rated)
+        # Whatever the model rated keeps what it said — as the lead line when
+        # it recommends, as a concern when it does not. Neither is dropped.
+        assert all(r.ai_reason or r.reasons_gap for r in rated)
         assert [r.opportunity_id for r in out][:2] == ["b", "a"]
 
     def test_attaches_ai_reason_to_reranked_results(self, monkeypatch):
