@@ -48,6 +48,7 @@ from src.recommender.cold_email import (
     _detect_lab_type,
     generate_cold_email,
     generate_variants,
+    has_source_backed_target_evidence,
 )
 from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
@@ -445,9 +446,43 @@ def _opportunity_contact_wording(text: str) -> str:
 
 
 _BRIEF_RECIPIENT_RE = re.compile(r"(?m)^- Recipient:\s*(.*?)\s*$")
-_SALUTATION_RE = re.compile(
-    r"^[ \t]*(?:dear(?:[ \t]+[^,\r\n]{1,120})?|hello|hi|greetings?|"
-    r"good[ \t]+(?:morning|afternoon|evening))[,!:]?[ \t]*$",
+# Markdown/list wrappers observed in provider output.  The recipient itself is
+# never parsed on punctuation: names such as ``Vijay Chopra, Ph.D. CFA`` and
+# ``Martin Davis, Jr.`` make the first comma an identity character, not the
+# greeting boundary.  The exact trusted greeting is escaped and consumed
+# before any generic fallback is considered.
+_GREETING_WRAPPER_PREFIX = r"[ \t]*(?:(?:>|[-+*])[ \t]+)?\*{0,2}[ \t]*"
+_GREETING_WRAPPER_SUFFIX = r"[ \t]*\*{0,2}[ \t]*"
+_GREETING_SCAN_PREFIX_RE = re.compile(
+    rf"^{_GREETING_WRAPPER_PREFIX}",
+    re.IGNORECASE,
+)
+_GREETING_SCAN_SUFFIX_RE = re.compile(r"[ \t]*\*{1,2}[ \t]*$")
+_SAFE_STANDALONE_NEUTRAL_RE = re.compile(
+    rf"^{_GREETING_WRAPPER_PREFIX}(?:hello|hi|greetings?|salutations?|"
+    rf"good[ \t]+(?:morning|afternoon|evening|day))[,!:]"
+    rf"{_GREETING_WRAPPER_SUFFIX}$",
+    re.IGNORECASE,
+)
+_DEAR_ANYWHERE_RE = re.compile(r"\bdear\b", re.IGNORECASE)
+_NAMED_NEUTRAL_GREETING_RE = re.compile(
+    r"(?:^|[.!?][ \t]+)(?:hello|hi|greetings?|salutations?)"
+    r"[ \t]*[,!:;]?[ \t]+"
+    r"[^\s,;:!\u2013\u2014.]+(?:[ \t]+[^\s,;:!\u2013\u2014.]+){0,5}"
+    r"[ \t]*(?:[,;:!\u2013\u2014.]|$)",
+    re.IGNORECASE,
+)
+_GOOD_DAY_GREETING_RE = re.compile(
+    r"(?:^|[.!?][ \t]+)good[ \t]+(?:morning|afternoon|evening|day)"
+    r"[ \t]*[,!:;]?[ \t]+[^\s,;:!\u2013\u2014.]+"
+    r"(?:[ \t]+[^\s,;:!\u2013\u2014.]+){0,5}"
+    r"[ \t]*(?:[,;:!\u2013\u2014.]|$)",
+    re.IGNORECASE,
+)
+_BARE_TITLE_CANDIDATE_RE = re.compile(
+    r"(?:^|[.!?][ \t]+)(?P<candidate>(?:professor|prof\.?|dr\.?)"
+    r"[ \t]+[^,;:!\u2013\u2014.\r\n]{1,120})"
+    r"(?P<punctuation>[,;:!\u2013\u2014.]|$)",
     re.IGNORECASE,
 )
 
@@ -461,6 +496,114 @@ def _brief_recipient(prof_brief: str) -> str | None:
     if recipient.casefold() in {"(unspecified)", "unspecified", "(none)", "none"}:
         return ""
     return recipient
+
+
+_GREETING_TITLE_TOKENS = frozenset({
+    "professor", "prof", "dr", "doctor", "phd", "md", "cfa", "jr", "sr",
+    # Provider-rendered placeholders are safe to replace only when the brief
+    # itself says the recipient is unspecified; they never become output.
+    "unspecified",
+})
+
+
+def _greeting_name_tokens(value: str) -> set[str]:
+    normalized = value.casefold()
+    for old, new in (
+        ("ph.d.", "phd"),
+        ("m.d.", "md"),
+        ("prof.", "prof"),
+        ("dr.", "dr"),
+        ("jr.", "jr"),
+        ("sr.", "sr"),
+    ):
+        normalized = normalized.replace(old, new)
+    return set(re.findall(r"[^\W_]+", normalized, flags=re.UNICODE))
+
+
+def _safe_wrong_dear_is_greeting_only(line: str, recipient: str) -> bool:
+    """Recognize a wrong-title greeting without guessing across body prose.
+
+    The model commonly emits ``Dear Professor Smith,`` for a trusted
+    ``Jane Smith`` recipient.  That exact greeting-only shape is recoverable.
+    A line such as ``Dear Professor Smith, I hope ...,`` is not: deleting it
+    would silently discard real body text.  Require every candidate token to
+    be either part of the trusted recipient or a small title/suffix set, plus
+    a trusted-name overlap (or a title-only generic greeting).
+    """
+    semantic = _GREETING_SCAN_PREFIX_RE.sub("", line, count=1)
+    semantic = _GREETING_SCAN_SUFFIX_RE.sub("", semantic, count=1).strip()
+    match = re.fullmatch(r"dear[ \t]+(?P<candidate>.+),", semantic, re.IGNORECASE)
+    if not match:
+        return False
+    candidate_tokens = _greeting_name_tokens(match.group("candidate"))
+    recipient_tokens = _greeting_name_tokens(recipient)
+    if not candidate_tokens:
+        return False
+    allowed = recipient_tokens | _GREETING_TITLE_TOKENS
+    if not candidate_tokens <= allowed:
+        return False
+    name_tokens = recipient_tokens - _GREETING_TITLE_TOKENS
+    return bool(candidate_tokens & name_tokens) or candidate_tokens <= _GREETING_TITLE_TOKENS
+
+
+def _bare_title_greeting_present(line: str, recipient: str) -> bool:
+    """Detect title greetings without treating ordinary prose as salutations.
+
+    A broad ``Professor ... .`` regex rejected legitimate sentences such as
+    ``Professor Smith recommended that I contact you.``.  Bound the candidate
+    to trusted recipient/title tokens.  A comma followed by a relative clause
+    (``Professor Smith, who supervised ...``) is also prose, not a greeting.
+    Mismatched names still fail closed when the remaining clause has the usual
+    first-person greeting shape or when the title line stands alone.
+    """
+    recipient_tokens = _greeting_name_tokens(recipient)
+    allowed = recipient_tokens | _GREETING_TITLE_TOKENS
+    name_tokens = recipient_tokens - _GREETING_TITLE_TOKENS
+
+    def looks_like_titled_name(candidate: str) -> bool:
+        remainder = re.sub(
+            r"(?i)^(?:professor|prof\.?|dr\.?)\s+",
+            "",
+            candidate.strip(),
+            count=1,
+        )
+        words = [word for word in re.split(r"\s+", remainder) if word]
+        if not 1 <= len(words) <= 5:
+            return False
+        for word in words:
+            letters = re.sub(r"[^\w]", "", word, flags=re.UNICODE)
+            if not letters:
+                return False
+            if letters.casefold() in {"jr", "sr", "phd", "md", "cfa"}:
+                continue
+            first_alpha = next((char for char in word if char.isalpha()), "")
+            if not first_alpha or not first_alpha.isupper():
+                return False
+        return True
+
+    for match in _BARE_TITLE_CANDIDATE_RE.finditer(line):
+        candidate_tokens = _greeting_name_tokens(match.group("candidate"))
+        if not candidate_tokens:
+            continue
+        tail = line[match.end():].lstrip()
+        if re.match(r"(?i)^(?:who|whose|whom|which|that|and|but)\b", tail):
+            continue
+        trusted_shape = (
+            candidate_tokens <= allowed
+            and (
+                bool(candidate_tokens & name_tokens)
+                or candidate_tokens <= _GREETING_TITLE_TOKENS
+            )
+        )
+        greeting_tail = looks_like_titled_name(match.group("candidate")) and (
+            not tail
+            or bool(
+                re.match(r"(?i)^(?:i|i['’]m|my|we|our|thank|hope)\b", tail)
+            )
+        )
+        if trusted_shape or greeting_tail:
+            return True
+    return False
 
 
 def _is_opportunity_contact_brief(prof_brief: str) -> bool:
@@ -501,30 +644,69 @@ def _enforce_brief_greeting(email_text: str | None, prof_brief: str) -> str | No
         (index for index, line in enumerate(lines) if _SUBJECT_LINE_RE.match(line)),
         None,
     )
-    salutation_start = (subject_index + 1) if subject_index is not None else 0
-    salutation_end = min(len(lines), salutation_start + 6)
-    salutation_indices = [
-        index
-        for index in range(salutation_start, salutation_end)
-        if _SALUTATION_RE.fullmatch(lines[index])
-    ]
-    if salutation_indices:
-        first = salutation_indices[0]
-        lines[first] = greeting
-        for duplicate in reversed(salutation_indices[1:]):
-            del lines[duplicate]
-        return "\n".join(lines)
+    body_start = (subject_index + 1) if subject_index is not None else 0
+    body_lines = lines[body_start:]
 
-    if subject_index is None:
-        return f"{greeting}\n\n{email_text.strip()}"
-    body_index = subject_index + 1
-    while body_index < len(lines) and not lines[body_index].strip():
-        body_index += 1
-    return "\n".join(
-        lines[: subject_index + 1]
-        + ["", greeting, ""]
-        + lines[body_index:]
+    exact_prefix = re.compile(
+        rf"^{_GREETING_WRAPPER_PREFIX}{re.escape(greeting)}"
+        r"[ \t]*(?:\*{1,2})?(?:[ \t]+(?P<tail>\S.*))?[ \t]*$",
+        re.IGNORECASE,
     )
+    first_content = next(
+        (index for index, line in enumerate(body_lines) if line.strip()),
+        None,
+    )
+    if first_content is not None:
+        first_line = body_lines[first_content]
+        exact = exact_prefix.fullmatch(first_line)
+        if exact:
+            # Exact matching consumes the complete escaped recipient, including
+            # commas/suffixes, before preserving an inline first sentence.
+            tail = (exact.group("tail") or "").strip()
+            body_lines[first_content] = tail
+        elif (
+            _SAFE_STANDALONE_NEUTRAL_RE.fullmatch(first_line)
+            or _safe_wrong_dear_is_greeting_only(first_line, recipient)
+        ):
+            # A nameless neutral greeting or a recipient-token-bounded wrong
+            # title is safe to replace.  Ambiguous Dear lines fail closed
+            # below rather than sacrificing inline body text.
+            body_lines[first_content] = ""
+
+    while body_lines and not body_lines[0].strip():
+        body_lines.pop(0)
+
+    # After the single permitted leading greeting is removed, any salutation
+    # shape is late, duplicated, embedded, or ambiguous.  Do not guess which
+    # comma belongs to a recipient and which begins the body.
+    for line in body_lines:
+        # Scan the semantic line after removing only recognized leading
+        # quote/list/emphasis wrappers.  The original line remains untouched;
+        # this prevents Markdown from bypassing the invariant without making
+        # us rewrite ordinary body formatting.
+        scan_line = _GREETING_SCAN_PREFIX_RE.sub("", line, count=1)
+        scan_line = _GREETING_SCAN_SUFFIX_RE.sub("", scan_line, count=1)
+        if (
+            _DEAR_ANYWHERE_RE.search(scan_line)
+            or _NAMED_NEUTRAL_GREETING_RE.search(scan_line)
+            or _GOOD_DAY_GREETING_RE.search(scan_line)
+            or _bare_title_greeting_present(scan_line, recipient)
+        ):
+            return None
+
+    head = lines[: subject_index + 1] if subject_index is not None else []
+    rendered = "\n".join(
+        head
+        + ([""] if head else [])
+        + [greeting]
+        + body_lines
+    )
+    trusted_count = sum(
+        line.strip() == greeting for line in rendered.splitlines()
+    )
+    if trusted_count != 1:
+        return None
+    return rendered
 
 
 def _base_rules(
@@ -1215,7 +1397,7 @@ def _pipeline_generate(
     # not, the prompt's key-sentence instruction switches to the honest
     # variant — asking for "ONE specific aspect of THIS lab's work" that was
     # never provided is an order to fabricate homework.
-    has_target_data = bool(_professor_anchors(p, opp))
+    has_target_data = has_source_backed_target_evidence(opp, p)
     if on_stage:
         on_stage("drafting")
     n = _ndraft_count()
@@ -1401,20 +1583,36 @@ COLD_EMAIL_PIPELINE_VERSION = "w12.1"
 # lowercase invented area ("your work on machine learning"), so when there is
 # nothing to ground ANY such claim, the claim shape itself is the fabrication.
 _UNGROUNDED_RESEARCH_CLAIM_RE = re.compile(
-    r"\byour (?:recent )?(?:work|research|scholarship|studies)\s+(?:on|in|about|regarding)\b",
+    r"(?:"
+    # Canonical claim: "your research/work on X".
+    r"\byour (?:recent )?(?:work|research|scholarship|studies)\s+"
+    r"(?:on|in|about|regarding)\b"
+    r"|"
+    # Pre-modified attribution: "your machine learning research". Exclude
+    # generic asks such as "your current or upcoming research openings".
+    r"\byour(?:\s+(?:recent|current|ongoing))?"
+    r"(?:\s+[a-z][a-z0-9-]*){1,6}\s+"
+    r"(?:work|research|scholarship|studies)\b"
+    r"(?!\s+(?:openings?|opportunities|positions?|group|lab)\b)"
+    r"|"
+    # Topic ownership can also be phrased as a focus rather than work.
+    r"\byour(?:\s+(?:lab|group|team)(?:['’]s)?)?\s+focus\s+"
+    r"(?:on|in|about|regarding)\b"
+    r")",
     re.IGNORECASE,
 )
 
 
-def _ungrounded_research_claim(parts: dict, body: str) -> bool:
+def _ungrounded_research_claim(
+    parts: dict,
+    body: str,
+    opp: dict | None = None,
+) -> bool:
     """True when ``body`` claims familiarity with the professor's research
     while the record carries NO research signal to ground any such claim
     (W12). The vocabulary-level gate can't see a lowercase invented area
     ("your work on machine learning"), so the claim SHAPE is the fabrication."""
-    has_signal = bool(
-        parts.get("research_area") or parts.get("research_topic")
-        or parts.get("research_areas_raw") or parts.get("recent_works")
-    )
+    has_signal = has_source_backed_target_evidence(opp or {}, parts)
     return not has_signal and bool(_UNGROUNDED_RESEARCH_CLAIM_RE.search(body))
 
 
@@ -1462,7 +1660,23 @@ def _run_engine(
     safe_opp = _contact_safe_opportunity(opp)
 
     if request.engine == "ai":
-        if not is_configured():
+        # A faculty contact with no source-backed target signal cannot support
+        # professor-side personalization. Natural-language attribution has an
+        # open-ended surface ("your focus", "your group applies", "work in
+        # your lab", ...), so trying to enumerate every fabricated shape is
+        # not a trust boundary. Fail closed before provider I/O and serve the
+        # honest deterministic inquiry instead.
+        preflight_parts = _common_parts(
+            profile_dict,
+            safe_opp,
+            resume_bullets=request.resume_bullets,
+        )
+        no_target_faculty = bool(preflight_parts.get("is_faculty")) and not (
+            has_source_backed_target_evidence(safe_opp, preflight_parts)
+        )
+        if no_target_faculty:
+            fallback_reason = "insufficient_evidence"
+        elif not is_configured():
             fallback_reason = "not_configured"
         else:
             # Belt over the whole pipeline: "callers always get a usable
@@ -1499,7 +1713,7 @@ def _run_engine(
                 # topic, no raw research text, no verified works), any "your
                 # work on X" claim is invented certainty the vocabulary gate
                 # can't catch (lowercase prose) — reject the draft shape itself.
-                if passed and _ungrounded_research_claim(parts, ai_body):
+                if passed and _ungrounded_research_claim(parts, ai_body, safe_opp):
                     passed = False
                     fabricated = ["ungrounded research claim"]
                 # Second provenance gate: a first-person competence claim must
@@ -1543,9 +1757,10 @@ def _run_engine(
     lab_type = _detect_lab_type(safe_opp)
     # From the SAFE opportunity + the same parts the drafts were built from,
     # so this answer and the draft describe the same evidence.
-    anchors = _professor_anchors(
-        _common_parts(profile_dict, safe_opp, resume_bullets=request.resume_bullets),
+    response_parts = _common_parts(
+        profile_dict,
         safe_opp,
+        resume_bullets=request.resume_bullets,
     )
 
     return ColdEmailResponse(
@@ -1561,7 +1776,11 @@ def _run_engine(
         style=request.style if method == "ai" else None,
         recommended_style=_recommended_style(lab_type),
         fallback_reason=fallback_reason,
-        grounding="specific" if anchors else "no_target_data",
+        grounding=(
+            "specific"
+            if has_source_backed_target_evidence(safe_opp, response_parts)
+            else "no_target_data"
+        ),
         # W12 draft provenance: a draft is traceable to the corpus + code that
         # produced it, and carries how current its source record was. The
         # client cache keys on these so a changed corpus invalidates cached
@@ -1724,7 +1943,10 @@ async def generate_email_variants(
         # opportunity, one value for the whole response.
         "grounding": (
             "specific"
-            if _professor_anchors(_common_parts(profile_dict, safe_opp), safe_opp)
+            if has_source_backed_target_evidence(
+                safe_opp,
+                _common_parts(profile_dict, safe_opp),
+            )
             else "no_target_data"
         ),
         # W12 draft provenance (same contract as /cold-email).
@@ -1761,39 +1983,114 @@ class EmailRefineRequest(BaseModel):
         return [str(b)[:500] for b in v[:12] if str(b).strip()]
 
 
-def _refine_evidence_corpus(request: EmailRefineRequest) -> str:
-    """Ground truth a refined draft may draw vocabulary from.
+def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | None:
+    """Return the same safe opportunity/parts/brief used by generation.
 
-    Profile + opportunity are the same single source of truth as generate.
-    Both the user's free-text instruction *and the existing draft* are
-    deliberately EXCLUDED. Treating ``current_body`` as evidence would let an
-    unsupported claim become self-authenticating after one edit: a student
-    could paste "I am a PyTorch expert", ask for a warmer tone, and the old
-    implementation would whitelist PyTorch merely because it was already in
-    the draft. A real skill belongs in the profile / resume bullets, where it
-    is checked consistently across generation and refinement.
+    The user's instruction and current draft are deliberately excluded from
+    evidence.  A pasted unsupported claim cannot authenticate itself after one
+    edit; real facts must come from the profile/resume or the contact-safe
+    opportunity record.
     """
-    corpus = ""
-    if request.profile is not None and request.opportunity_id:
-        opp = release_visible_opportunity_by_id(
-            load_opportunities_by_id(),
-            request.opportunity_id,
-        )
-        if opp:
-            if faculty_availability_status(opp) == "not_accepting_undergraduates":
-                return ""
-            safe_opp = _contact_safe_opportunity(opp)
-            parts = _common_parts(
-                request.profile.model_dump(),
-                safe_opp,
-                resume_bullets=request.resume_bullets,
+    if opp is None:
+        return None
+    safe_opp = _contact_safe_opportunity(opp)
+    # ``profile`` remains optional for legacy callers, but omitting it must not
+    # disable opportunity-side trust checks.  Empty student facts are a safe
+    # input to ``_common_parts`` and still let the route enforce no-target and
+    # trusted-recipient invariants before provider I/O.
+    profile_dict = request.profile.model_dump() if request.profile is not None else {}
+    parts = _common_parts(
+        profile_dict,
+        safe_opp,
+        resume_bullets=request.resume_bullets,
+    )
+    return {
+        "safe_opp": safe_opp,
+        "profile_dict": profile_dict,
+        "parts": parts,
+        "corpus": _build_email_corpus(parts, safe_opp),
+        "prof_brief": _render_professor_brief(parts, safe_opp),
+    }
+
+
+def _safe_refine_template_body(context: dict) -> str:
+    """Return a deterministic body without inventing missing sender facts.
+
+    Legacy refine callers may provide an opportunity id but omit ``profile``.
+    The normal template defaults an empty profile to a fictional ``Student``
+    at ``UIUC``; that is not a safe recovery path.  With no trusted name we
+    instead use a recipient-bound, identity-neutral inquiry.  Named profiles
+    retain the established deterministic template.
+    """
+    profile_dict = context["profile_dict"]
+    if str(profile_dict.get("name") or "").strip():
+        template = generate_cold_email(profile_dict, context["safe_opp"])
+        _subject, body = _extract_subject_and_body(template)
+        return body
+
+    recipient = _brief_recipient(context["prof_brief"])
+    greeting = f"Dear {recipient}," if recipient else "Hello,"
+    return (
+        f"{greeting}\n\n"
+        "I am reaching out to ask whether you have any current or upcoming "
+        "research openings. If so, I would appreciate learning the best way "
+        "to inquire and what preparation would be useful.\n\n"
+        "Thank you for your time."
+    )
+
+
+def _local_refine_fallback(
+    request: EmailRefineRequest,
+    safe_body: str,
+    context: dict | None,
+    *,
+    fallback_reason: str | None = None,
+    use_template: bool = False,
+) -> dict:
+    """Deterministic edit with the same greeting/redaction output belts.
+
+    ``use_template`` is reserved for no-target faculty contacts: the current
+    browser draft may predate the evidence boundary, so rebuild the honest
+    deterministic inquiry instead of preserving an unsupported target claim.
+    """
+    source_body = safe_body
+    if use_template and context is not None:
+        source_body = _safe_refine_template_body(context)
+    result = _local_refine(source_body, request.instruction)
+    candidate = redact_embedded_emails(result["body"])
+    if context is not None:
+        normalized = _enforce_brief_greeting(candidate, context["prof_brief"])
+        if normalized is None:
+            # The user's current body can itself contain an ambiguous greeting.
+            # A freshly generated template is trusted and always recoverable.
+            template_body = _safe_refine_template_body(context)
+            retry = _local_refine(template_body, request.instruction)
+            retry_candidate = redact_embedded_emails(retry["body"])
+            normalized = _enforce_brief_greeting(
+                retry_candidate,
+                context["prof_brief"],
             )
-            corpus = _build_email_corpus(parts, safe_opp)
-    return corpus
+            result = retry
+            # If even the deterministic edit cannot satisfy the parser (for
+            # example after a future edit-op change), discard the edit and
+            # return the untouched generated template.  Never fall back to the
+            # first, already-rejected browser body.
+            candidate = (
+                normalized
+                if normalized is not None
+                else redact_embedded_emails(template_body)
+            )
+        else:
+            candidate = normalized
+    result["body"] = redact_embedded_emails(candidate)
+    if fallback_reason is not None:
+        result["fallback_reason"] = fallback_reason
+    return result
 
 
 @router.post("/cold-email/refine")
 async def refine_email(request: EmailRefineRequest):
+    opp: dict | None = None
     if request.opportunity_id:
         opp = release_visible_opportunity_by_id(
             load_opportunities_by_id(),
@@ -1807,11 +2104,29 @@ async def refine_email(request: EmailRefineRequest):
     # text to a provider: remove any visible/encoded/obfuscated address before
     # both the remote editor and every local fallback path see it.
     safe_body = redact_embedded_emails(request.current_body)
+    context = _refine_context(request, opp)
+
+    if (
+        context is not None
+        and context["parts"].get("is_faculty")
+        and not has_source_backed_target_evidence(
+            context["safe_opp"],
+            context["parts"],
+        )
+    ):
+        # No professor-specific source evidence means there is nothing a paid
+        # editor may safely personalize.  Do not call the provider; rebuild the
+        # honest template and apply only deterministic tone operations.
+        return _local_refine_fallback(
+            request,
+            safe_body,
+            context,
+            fallback_reason="insufficient_evidence",
+            use_template=True,
+        )
 
     if not is_configured():
-        result = _local_refine(safe_body, request.instruction)
-        result["body"] = redact_embedded_emails(result["body"])
-        return result
+        return _local_refine_fallback(request, safe_body, context)
 
     messages = [
         {"role": "system", "content": (
@@ -1840,19 +2155,39 @@ async def refine_email(request: EmailRefineRequest):
         logger.warning("cold-email refine: model call timed out; using local edit")
         edited = None
     if edited is None:
-        result = _local_refine(safe_body, request.instruction)
-        result["body"] = redact_embedded_emails(result["body"])
-        return result
+        return _local_refine_fallback(request, safe_body, context)
 
-    corpus = _refine_evidence_corpus(request)
+    edited = redact_embedded_emails(edited)
+    if context is not None:
+        edited = _enforce_brief_greeting(edited, context["prof_brief"])
+        if edited is None:
+            return _local_refine_fallback(
+                request,
+                safe_body,
+                context,
+                fallback_reason="fabrication",
+            )
+    corpus = context["corpus"] if context is not None else ""
     passed, _fabricated = validate_no_fabrication(
         edited, corpus, extra_allow=_EMAIL_SCAFFOLDING, policy=LENIENT_PROSE,
     )
+    if (
+        passed
+        and context is not None
+        and _ungrounded_research_claim(
+            context["parts"],
+            edited,
+            context["safe_opp"],
+        )
+    ):
+        passed = False
     if not passed:
-        result = _local_refine(safe_body, request.instruction)
-        result["body"] = redact_embedded_emails(result["body"])
-        result["fallback_reason"] = "fabrication"
-        return result
+        return _local_refine_fallback(
+            request,
+            safe_body,
+            context,
+            fallback_reason="fabrication",
+        )
     _log_grounding_shadow(edited, corpus)
     return {"body": redact_embedded_emails(edited), "method": "llm"}
 

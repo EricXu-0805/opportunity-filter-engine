@@ -995,7 +995,10 @@ class TestColdEmailEngine:
         import backend.routes.cold_email as ce_module
 
         opportunity_id = "faculty-not-accepting-undergraduates"
-        source_text = "Not accepting undergraduate researchers at this time."
+        source_text = (
+            "Professor Nelson has retired and is no longer recruiting "
+            "undergraduate or graduate students to his lab."
+        )
         opportunity = {
             "id": opportunity_id,
             "source_type": "faculty_research",
@@ -1147,6 +1150,112 @@ class TestColdEmailEngine:
         assert body["method"] == "ai"
         assert body["fallback_reason"] is None
 
+    def test_signal_less_faculty_provider_claim_falls_back_through_endpoint(
+        self, sample_profile_req, monkeypatch
+    ):
+        """Mutation lock for the real route -> engine -> final target gate.
+
+        The invented topic is present on the student side, so the union token
+        corpus alone can allow its words. A signal-less faculty contact still
+        cannot turn that into "your work on machine learning".
+        """
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-no-source-research-signal"
+        opportunity = {
+            "id": opportunity_id,
+            "source_type": "faculty_research",
+            "title": "David E. Smith",
+            "pi_name": "David E. Smith",
+            "organization": "Test University",
+            "department": "Chemistry",
+            "description_raw": "Faculty research profile for David E. Smith.",
+            "description_clean": "Faculty research profile for David E. Smith.",
+            "keywords": [],
+            "eligibility": {},
+            "application": {},
+            "metadata": {"is_active": True, "research_areas_raw": ""},
+        }
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opportunity},
+        )
+        provider_calls = []
+
+        def attempted_provider(*args, **kwargs):
+            provider_calls.append(True)
+            return (
+                "Subject: Research inquiry\n\n"
+                "Dear David E. Smith,\n"
+                "Your work on machine learning closely matches my interests.\n"
+                "Best,\nTest"
+            )
+
+        monkeypatch.setattr(ce_module, "_pipeline_generate", attempted_provider)
+
+        response = client.post(
+            "/api/cold-email",
+            json={
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+                "engine": "ai",
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "template"
+        assert body["fallback_reason"] == "insufficient_evidence"
+        assert body["grounding"] == "no_target_data"
+        assert "your work on machine learning" not in body["body"].lower()
+        assert provider_calls == []
+
+    def test_generic_only_real_faculty_shape_variants_report_no_target_data(
+        self,
+        sample_profile_req,
+        monkeypatch,
+    ):
+        """The variants endpoint uses evidence existence, not long scoring
+        anchors.  This mirrors current record faculty-asu-cs-09aeec6f."""
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-asu-cs-09aeec6f"
+        opportunity = {
+            "id": opportunity_id,
+            "source_type": "faculty_research",
+            "title": "Yingzhen Yang",
+            "pi_name": "Yingzhen Yang",
+            "organization": "Arizona State University",
+            "department": "School of Computing and Augmented Intelligence",
+            "description_raw": "Faculty research profile for Yingzhen Yang.",
+            "description_clean": "Faculty research profile for Yingzhen Yang.",
+            "keywords": ["Machine Learning"],
+            "eligibility": {},
+            "application": {},
+            "metadata": {
+                "is_active": True,
+                "faculty_title": "Assistant Professor",
+                "research_areas_raw": "",
+            },
+        }
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opportunity},
+        )
+        response = client.post(
+            "/api/cold-email/variants",
+            json={
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["grounding"] == "no_target_data"
+
 
 class TestColdEmailStyle:
     """A: the cold-email tone picker — a `style` voice overlay plus a
@@ -1280,6 +1389,34 @@ class TestColdEmailRefineGrounding:
         monkeypatch.setattr(ce_module, "is_configured", lambda: True)
         monkeypatch.setattr(ce_module, "chat_completion", lambda *a, **k: edited_text)
 
+    @staticmethod
+    def _faculty(
+        opportunity_id,
+        *,
+        keywords,
+        research_areas_raw="",
+        faculty_title="Senior Lecturer",
+        pi_name="Jane Doe",
+    ):
+        return {
+            "id": opportunity_id,
+            "source_type": "faculty_research",
+            "title": pi_name,
+            "pi_name": pi_name,
+            "organization": "Test University",
+            "department": "School of Computing",
+            "description_raw": f"Faculty research profile for {pi_name}.",
+            "description_clean": f"Faculty research profile for {pi_name}.",
+            "keywords": keywords,
+            "eligibility": {},
+            "application": {},
+            "metadata": {
+                "is_active": True,
+                "faculty_title": faculty_title,
+                "research_areas_raw": research_areas_raw,
+            },
+        }
+
     def test_refine_rejects_fabricated_edit(self, monkeypatch):
         self._configure_llm(
             monkeypatch,
@@ -1389,13 +1526,26 @@ class TestColdEmailRefineGrounding:
         assert out["fallback_reason"] == "fabrication"
 
     def test_refine_allows_profile_skill(
-        self, monkeypatch, sample_profile_req, opp_id
+        self, monkeypatch, sample_profile_req
     ):
         """A skill the student actually listed (Python) passes, because the
         profile is part of the evidence corpus."""
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-grounded-profile-skill"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["HPC"],
+            research_areas_raw="HPC",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
         self._configure_llm(
             monkeypatch,
-            self._BODY.replace(
+            self._BODY.replace("Dear Professor Lee,", "Dear Jane Doe,").replace(
                 "would love joining your lab",
                 "would love applying my Python skills in your lab",
             ),
@@ -1406,13 +1556,460 @@ class TestColdEmailRefineGrounding:
                 "current_body": self._BODY,
                 "instruction": "emphasize my Python experience",
                 "profile": sample_profile_req,
-                "opportunity_id": opp_id,
+                "opportunity_id": opportunity_id,
             },
         )
         assert resp.status_code == 200
         out = resp.json()
         assert out["method"] == "llm"
         assert "python" in out["body"].lower()
+
+    def test_no_target_faculty_refine_skips_provider_and_rebuilds_template(
+        self,
+        monkeypatch,
+        sample_profile_req,
+    ):
+        """Real-corpus analogue faculty-asu-cs-09aeec6f: its only label is
+        the generic directory bucket Machine Learning, not person-specific
+        research evidence."""
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-asu-cs-09aeec6f"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["Machine Learning"],
+            faculty_title="Assistant Professor",
+            pi_name="Yingzhen Yang",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        provider_calls: list[bool] = []
+        monkeypatch.setattr(
+            ce_module,
+            "chat_completion",
+            lambda *_a, **_k: provider_calls.append(True),
+        )
+
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Professor Yingzhen Yang,\n\n"
+                    "Your work on machine learning matches my interests.\n\n"
+                    "Best regards,\nTest"
+                ),
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "insufficient_evidence"
+        assert provider_calls == []
+        assert "your work on machine learning" not in body["body"].lower()
+
+    @pytest.mark.parametrize("bucket", ["law", "art", "LIT", "Inc"])
+    def test_generic_taxonomy_only_faculty_refine_skips_provider(
+        self,
+        monkeypatch,
+        bucket,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = f"faculty-generic-{bucket.lower()}"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=[bucket],
+            research_areas_raw=bucket,
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        provider_calls: list[bool] = []
+        monkeypatch.setattr(
+            ce_module,
+            "chat_completion",
+            lambda *_a, **_k: provider_calls.append(True),
+        )
+
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Jane Doe,\n\n"
+                    f"Your research on {bucket} matches my interests."
+                ),
+                "instruction": "make it warmer",
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "insufficient_evidence"
+        assert provider_calls == []
+        assert f"your research on {bucket}".lower() not in body["body"].lower()
+
+    def test_no_target_faculty_cannot_bypass_preflight_by_omitting_profile(
+        self,
+        monkeypatch,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-no-profile-no-target"
+        opp = self._faculty(opportunity_id, keywords=["Machine Learning"])
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        provider_calls: list[bool] = []
+        monkeypatch.setattr(
+            ce_module,
+            "chat_completion",
+            lambda *_a, **_k: provider_calls.append(True),
+        )
+
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Professor Jane Doe,\n\n"
+                    "Your work on machine learning matches my interests."
+                ),
+                "instruction": "make it warmer",
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "insufficient_evidence"
+        assert provider_calls == []
+        assert "your work on machine learning" not in body["body"].lower()
+        assert "my name is student" not in body["body"].lower()
+        assert "uiuc" not in body["body"].lower()
+        assert "undergraduate" not in body["body"].lower()
+        assert "best regards,\nstudent" not in body["body"].lower()
+        assert "Dear Jane Doe," in body["body"]
+
+    def test_refine_rejects_invented_target_claim_after_provider(
+        self,
+        monkeypatch,
+        sample_profile_req,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "program-no-specific-target"
+        opp = {
+            "id": opportunity_id,
+            "source_type": "campus_program",
+            "title": "Research contact",
+            "pi_name": "Pat Lee",
+            "organization": "Test University",
+            "department": "History",
+            "keywords": [],
+            "description_raw": "",
+            "description_clean": "",
+            "eligibility": {},
+            "application": {},
+            "metadata": {"is_active": True},
+        }
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        self._configure_llm(
+            monkeypatch,
+            (
+                "Dear Pat Lee,\n\n"
+                "Your research on machine learning aligns with my interest.\n\n"
+                "Best regards,\nTest"
+            ),
+        )
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Pat Lee,\n\nI am a CS student.\n\nBest regards,\nTest"
+                ),
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "fabrication"
+        assert "your research on machine learning" not in body["body"].lower()
+
+    def test_refine_wrong_professor_greeting_for_senior_lecturer_falls_back(
+        self,
+        monkeypatch,
+        sample_profile_req,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-senior-lecturer-hpc"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["HPC"],
+            research_areas_raw="HPC",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        self._configure_llm(
+            monkeypatch,
+            (
+                "Dear Professor Jane Doe, I am interested in HPC.\n\n"
+                "Best regards,\nTest"
+            ),
+        )
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Jane Doe,\n\nI am interested in HPC.\n\n"
+                    "Best regards,\nTest"
+                ),
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "fabrication"
+        assert body["body"].count("Dear Jane Doe,") == 1
+        assert "Professor Jane Doe" not in body["body"]
+
+    @pytest.mark.parametrize(
+        "wrong_line",
+        [
+            "I hope you are well. Professor Smith, I am a student.",
+            "I hope you are well. Good morning, Professor Smith,",
+            "**Professor Smith,**",
+            "> Good morning, Professor Smith,",
+            "**Salutations, Professor Smith,**",
+        ],
+    )
+    def test_generation_rejects_embedded_or_wrapped_rank_greeting(
+        self,
+        monkeypatch,
+        sample_profile_req,
+        wrong_line,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-senior-lecturer-greeting-generation"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["HPC"],
+            research_areas_raw="HPC",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        monkeypatch.setattr(ce_module, "is_configured", lambda: True)
+        monkeypatch.setattr(
+            ce_module,
+            "chat_completion",
+            lambda *_a, **_k: (
+                "Subject: HPC inquiry\n\n"
+                "Dear Jane Doe,\n"
+                f"{wrong_line}\n"
+                "I am interested in HPC.\n\nBest regards,\nEric"
+            ),
+        )
+
+        response = client.post(
+            "/api/cold-email",
+            json={
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+                "engine": "ai",
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "template"
+        assert body["fallback_reason"] == "unavailable"
+        assert wrong_line not in body["body"]
+        assert "Professor Smith" not in body["body"]
+
+    @pytest.mark.parametrize(
+        "wrong_line",
+        [
+            "I hope you are well. Dr. Smith — I am a student.",
+            "I hope you are well. Hello, Professor Smith, I am a student.",
+            "- Dr. Smith:",
+            "I hope you are well. Good day, Professor Smith, I am a student.",
+        ],
+    )
+    def test_refine_rejects_embedded_or_wrapped_rank_greeting(
+        self,
+        monkeypatch,
+        sample_profile_req,
+        wrong_line,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-senior-lecturer-greeting-refine"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["CFD"],
+            research_areas_raw="CFD",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        self._configure_llm(
+            monkeypatch,
+            (
+                "Dear Jane Doe,\n\n"
+                f"{wrong_line}\n"
+                "I am interested in CFD.\n\nBest regards,\nEric"
+            ),
+        )
+
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Jane Doe,\n\nI am interested in CFD.\n\n"
+                    "Best regards,\nEric"
+                ),
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "fabrication"
+        assert wrong_line not in body["body"]
+        assert "Professor Smith" not in body["body"]
+
+    def test_refine_grounded_target_and_exact_greeting_stays_llm(
+        self,
+        monkeypatch,
+        sample_profile_req,
+    ):
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-senior-lecturer-cfd"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["CFD"],
+            research_areas_raw="CFD",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        self._configure_llm(
+            monkeypatch,
+            (
+                "Dear Jane Doe,\n\n"
+                "Your research on CFD aligns with my interest.\n\n"
+                "Best regards,\nTest"
+            ),
+        )
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": (
+                    "Dear Jane Doe,\n\nI am interested in CFD.\n\n"
+                    "Best regards,\nTest"
+                ),
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "llm"
+        assert body["body"].count("Dear Jane Doe,") == 1
+        assert "your research on cfd" in body["body"].lower()
+
+    def test_refine_double_greeting_parse_failure_returns_untouched_template(
+        self,
+        monkeypatch,
+        sample_profile_req,
+    ):
+        """Mutation lock: if both the provider and deterministic edit fail the
+        greeting parser, the already-rejected browser/provider candidate must
+        never be written back."""
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-greeting-parser-failure"
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["AMO"],
+            research_areas_raw="AMO",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
+        self._configure_llm(
+            monkeypatch,
+            "Dear Professor Jane Doe, I invented this greeting.",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "_enforce_brief_greeting",
+            lambda *_args, **_kwargs: None,
+        )
+        response = client.post(
+            "/api/cold-email/refine",
+            json={
+                "current_body": "Dear Professor Wrong, unsafe browser body.",
+                "instruction": "make it warmer",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["method"] == "local"
+        assert body["fallback_reason"] == "fabrication"
+        assert "Professor Wrong" not in body["body"]
+        assert "invented this greeting" not in body["body"]
+        assert "Dear Jane Doe," in body["body"]
 
 
 class TestColdEmailSubjectParsing:

@@ -34,7 +34,13 @@ export function buildOpportunityOgFacts(
   const recordKind = opportunityRecordKind(opportunity);
   const isFacultyContact = recordKind === 'faculty_contact';
   const isListing = recordKind === 'listing';
-  const deadlineDays = isListing ? daysUntil(opportunity.deadline, nowMs) : null;
+  // Our own estimate, not the source's date: every other surface greys it out
+  // ("· Estimated") and refuses an urgency countdown. A share card that says
+  // "Due in 2d" on a date we derived is the same claim, minus the caveat.
+  const deadlineIsEstimate = opportunity.deadline_is_estimate === true;
+  const deadlineDays = isListing && !deadlineIsEstimate
+    ? daysUntil(opportunity.deadline, nowMs)
+    : null;
 
   return {
     title: opportunity.title,
@@ -53,7 +59,9 @@ export function buildOpportunityOgFacts(
       && opportunity.eligibility?.international_friendly === 'yes',
     daysUntilDeadline: deadlineDays,
     deadlineLabel: isListing && opportunity.deadline
-      ? `Deadline: ${opportunity.deadline}`
+      ? deadlineIsEstimate
+        ? `Estimated deadline: ${opportunity.deadline}`
+        : `Deadline: ${opportunity.deadline}`
       : null,
     footer: isFacultyContact
       ? 'Explore research and faculty contacts'

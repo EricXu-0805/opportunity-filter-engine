@@ -139,9 +139,16 @@ class TestUngroundedResearchClaim:
             self._NO_SIGNAL, "I have followed your research in coastal ecology.")
 
     def test_claim_with_signal_is_allowed_for_vocab_gate_to_judge(self):
-        parts = dict(self._NO_SIGNAL, research_area="machine learning")
-        body = "I was fascinated by your work on machine learning systems."
+        parts = dict(self._NO_SIGNAL, research_area="graph neural networks")
+        body = "I was fascinated by your work on graph neural networks."
         assert not _ungrounded_research_claim(parts, body)
+
+    def test_generic_bucket_is_not_source_evidence(self):
+        parts = dict(self._NO_SIGNAL, research_area="Machine Learning")
+        assert _ungrounded_research_claim(
+            parts,
+            "I was fascinated by your work on machine learning systems.",
+        )
 
     def test_verified_works_count_as_signal(self):
         parts = dict(self._NO_SIGNAL, recent_works=[{"title": "A Paper", "year": 2026}])

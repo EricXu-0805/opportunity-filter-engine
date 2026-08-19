@@ -19,6 +19,7 @@ from src.recommender.cold_email import (
     _build_concise,
     _common_parts,
     _infer_research_area,
+    _infer_research_topic,
     _match_skills_to_tasks,
     _p1_research_hook,
     _p2_skills_applied,
@@ -27,6 +28,7 @@ from src.recommender.cold_email import (
     _subject,
     generate_cold_email,
     generate_variants,
+    has_source_backed_target_evidence,
 )
 
 
@@ -152,7 +154,14 @@ class TestP1ResearchHookCE7:
     def test_no_topic_signal_keeps_the_lab_hook(self):
         h = _hook(lab=_LAB, interests="machine learning")
         assert _LAB in h
-        assert "my background in machine learning is closely related" in h
+        assert "student interested in machine learning" in h
+        assert "closely related" not in h
+
+    def test_no_topic_signal_never_claims_a_cross_domain_relationship(self):
+        h = _hook(lab="Smith Chemistry Lab", interests="medieval poetry")
+        assert "student interested in medieval poetry" in h
+        assert "closely related" not in h
+        assert "align" not in h
 
 
 class TestP1ResearchHookCE2:
@@ -1734,6 +1743,45 @@ class TestInsufficientEvidenceExplicitEG4:
         resp = ce._run_engine(req, self._RICH_OPP, req.profile.model_dump(), False)
         assert resp.grounding == "specific"
 
+    def test_short_source_terms_allow_provider_and_report_specific(
+        self,
+        monkeypatch,
+    ):
+        import backend.routes.cold_email as ce
+
+        req = self._req().model_copy(update={"engine": "ai"})
+        provider_calls: list[str] = []
+
+        def provider(_profile, opp, *_args, **_kwargs):
+            term = opp["keywords"][0]
+            provider_calls.append(term)
+            return (
+                f"Subject: {term} research inquiry\n\n"
+                "Dear Pat Lee,\n\n"
+                f"Your research on {term} interests me.\n\n"
+                "Best regards,\nEric"
+            )
+
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setattr(ce, "_pipeline_generate", provider)
+        for term in ("HPC", "CFD", "AMO"):
+            opp = {
+                **self._BARE_OPP,
+                "source_type": "faculty_research",
+                "keywords": [term],
+            }
+            parts = _common_parts(req.profile.model_dump(), opp)
+            assert has_source_backed_target_evidence(opp, parts) is True
+            response = ce._run_engine(
+                req,
+                opp,
+                req.profile.model_dump(),
+                False,
+            )
+            assert response.method == "ai"
+            assert response.grounding == "specific"
+        assert provider_calls == ["HPC", "CFD", "AMO"]
+
     def test_prompt_drops_specific_aspect_demand_without_data(self):
         from backend.routes.cold_email import _base_rules
         rules = _base_rules(False, has_target_data=False)
@@ -1768,3 +1816,480 @@ class TestInsufficientEvidenceExplicitEG4:
         assert systems, "the draft stage ran"
         assert "do not imply familiarity" in systems[0]
         assert "name ONE specific aspect" not in systems[0]
+
+
+class TestConstructedFacultySummaryIsNotEvidence:
+    """A faculty row's description is OUR prose, not the professor's.
+
+    ``neutralize_unverified_faculty_claims`` rewrites description_raw/clean on
+    every faculty_research row from identity fields, and that rewritten record
+    is what the server serves. Any consumer that mines the description for a
+    research signal is therefore quoting our own boilerplate back to the
+    professor as their work — and, worse, satisfying the anti-fabrication
+    gates that exist to catch exactly that.
+    """
+
+    @staticmethod
+    def _served(**overrides) -> dict:
+        """A faculty record after the loader pass the API actually applies."""
+        from backend.data_loader import _sanitize_opportunity
+
+        opp = {
+            "id": "faculty-test-1",
+            "source_type": "faculty_research",
+            "pi_name": "David E. Smith",
+            "department": "Chemistry",
+            "organization": "University of Illinois",
+            "title": "Research with Prof. David E. Smith",
+            "description_raw": "Prof. Smith studies catalysis.",
+            "description_clean": "Prof. Smith studies catalysis.",
+            "keywords": [],
+            "eligibility": {},
+            "application": {},
+            "metadata": {},
+        }
+        opp.update(overrides)
+        _sanitize_opportunity(opp)
+        return opp
+
+    _PROFILE = {
+        "name": "Eric", "year": "sophomore", "major": "Chemistry",
+        "school": "UIUC", "hard_skills": ["Python"],
+        "research_interests_text": "machine learning for chemistry",
+    }
+
+    def test_summary_is_not_mined_as_a_research_topic(self):
+        opp = self._served()
+        assert "Faculty research profile" in opp["description_clean"]
+        assert _infer_research_topic(opp) == ""
+        assert _infer_research_area(opp) == ""
+
+    def test_template_never_quotes_the_summary_back_as_their_research(self):
+        body = generate_cold_email(dict(self._PROFILE), self._served())
+        assert "Faculty research profile" not in body
+        assert "research profile for" not in body.lower()
+
+    def test_source_stated_research_areas_are_still_used(self):
+        opp = self._served(
+            metadata={"research_areas_raw": "catalysis for sustainable ammonia synthesis"},
+        )
+        assert _infer_research_topic(opp) == "catalysis for sustainable ammonia synthesis"
+        body = generate_cold_email(dict(self._PROFILE), opp)
+        assert "catalysis for sustainable ammonia synthesis" in body
+
+    def test_signal_less_faculty_row_gets_the_no_target_data_prompt(self):
+        from backend.routes.cold_email import (
+            _build_email_corpus,
+            _professor_anchors,
+            _render_professor_brief,
+        )
+
+        opp = self._served()
+        profile = {**self._PROFILE, "hard_skills": ["Chemistry"]}
+        parts = _common_parts(profile, opp)
+        assert _professor_anchors(parts, opp) == []
+        assert parts["opp_desc"] == ""
+        assert parts["matching_skills"] == []
+        assert "Faculty research profile" not in _render_professor_brief(parts, opp)
+        assert "Faculty research profile" not in _build_email_corpus(parts, opp)
+
+    def test_source_stated_areas_still_count_as_target_data(self):
+        from backend.routes.cold_email import (
+            _build_email_corpus,
+            _professor_anchors,
+            _render_professor_brief,
+        )
+
+        opp = self._served(
+            metadata={
+                "research_areas_raw": (
+                    "Python-enabled catalysis for sustainable ammonia synthesis"
+                ),
+            },
+        )
+        parts = _common_parts(dict(self._PROFILE), opp)
+        assert _professor_anchors(parts, opp)
+        assert parts["matching_skills"] == ["Python"]
+        assert "Python-enabled catalysis" in _render_professor_brief(parts, opp)
+        assert "python-enabled catalysis" in _build_email_corpus(parts, opp)
+
+    def test_generic_directory_bucket_is_not_personalization_evidence(
+        self,
+        monkeypatch,
+    ):
+        import backend.routes.cold_email as ce
+        from backend.schemas import ColdEmailRequest, ProfileRequest
+
+        # Current corpus analogue: faculty-asu-cs-09aeec6f carries only the
+        # directory bucket ``Machine Learning`` and no raw area or verified
+        # work.  It may remain a ranking anchor, but it cannot authorize paid
+        # professor-specific prose.
+        opp = self._served(
+            title="Yingzhen Yang",
+            pi_name="Yingzhen Yang",
+            department="School of Computing and Augmented Intelligence",
+            keywords=["Machine Learning"],
+            metadata={"faculty_title": "Assistant Professor", "research_areas_raw": ""},
+        )
+        request = ColdEmailRequest(
+            profile=ProfileRequest(
+                name="Eric",
+                home_school="uiuc",
+                school="UIUC",
+                year="sophomore",
+                major="Computer Science",
+                research_interests_text="machine learning",
+            ),
+            opportunity_id=opp["id"],
+            engine="ai",
+        )
+        parts = _common_parts(request.profile.model_dump(), opp)
+        assert ce._professor_anchors(parts, opp), "scoring anchors remain separate"
+        assert has_source_backed_target_evidence(opp, parts) is False
+
+        provider_calls: list[bool] = []
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setattr(
+            ce,
+            "_pipeline_generate",
+            lambda *_a, **_k: provider_calls.append(True),
+        )
+        response = ce._run_engine(
+            request,
+            opp,
+            request.profile.model_dump(),
+            False,
+        )
+
+        assert provider_calls == []
+        assert response.method == "template"
+        assert response.fallback_reason == "insufficient_evidence"
+        assert response.grounding == "no_target_data"
+
+    def test_faculty_lab_type_ignores_constructed_description(self):
+        from src.recommender.cold_email import _detect_lab_type
+
+        opp = self._served(
+            department="General Studies",
+            title="David E. Smith",
+            description_raw="Genomics molecular biology wet lab",
+            description_clean="Genomics molecular biology wet lab",
+        )
+        # The loader replaces the description with product prose. Neither that
+        # prose nor a stale pre-projection description may become research
+        # evidence for template routing.
+        assert _detect_lab_type(opp) == "dry"
+
+    def test_provider_invented_target_claim_falls_back_at_final_engine_gate(
+        self, monkeypatch
+    ):
+        import backend.routes.cold_email as ce
+        from backend.schemas import ColdEmailRequest, ProfileRequest
+
+        # "machine learning" is present on the STUDENT side, so the union
+        # vocabulary gate alone can allow the words. The final target-shape
+        # gate must still reject claiming it is the professor's work when the
+        # faculty record has no source-backed target signal.
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        request = ColdEmailRequest(
+            profile=ProfileRequest(
+                name="Eric",
+                home_school="uiuc",
+                school="UIUC",
+                year="sophomore",
+                major="Chemistry",
+                hard_skills=[{"name": "Python", "level": "experienced"}],
+                research_interests_text="machine learning for chemistry",
+            ),
+            opportunity_id="faculty-test-1",
+            engine="ai",
+        )
+
+        invented_claims = (
+            "Your work on machine learning is closely related to my interests.",
+            "Your machine learning research closely aligns with my interests.",
+            "I was drawn to your machine learning research.",
+            "Your focus on machine learning caught my attention.",
+        )
+        provider_calls = []
+        for claim in invented_claims:
+            invented = (
+                "Subject: Research inquiry\n\n"
+                "Dear David E. Smith,\n\n"
+                f"{claim}\n\n"
+                "Best regards,\nEric"
+            )
+            def attempted_provider(*args, _invented=invented, **kwargs):
+                provider_calls.append(_invented)
+                return _invented
+
+            monkeypatch.setattr(ce, "_pipeline_generate", attempted_provider)
+            response = ce._run_engine(
+                request,
+                self._served(),
+                request.profile.model_dump(),
+                False,
+            )
+
+            assert response.method == "template", claim
+            assert response.fallback_reason == "insufficient_evidence", claim
+            assert response.grounding == "no_target_data", claim
+            assert claim.lower() not in response.body.lower()
+        assert provider_calls == []
+
+
+class TestBriefGreetingIsAnOutputInvariant:
+    """The trusted recipient must survive real model output drift.
+
+    _SUBJECT_LINE_RE in the same module already tolerates markdown bold with
+    the comment that this drift is real in production. The salutation regex
+    did not, so a bolded "**Dear Professor Smith,**" was not recognised as a
+    salutation: the trusted greeting got inserted above it and the untrusted
+    honorific stayed in the body — the exact "call a Senior Lecturer Professor"
+    failure the trusted greeting exists to prevent.
+    """
+
+    BRIEF = "OPPORTUNITY CONTACT:\n- Recipient: Jane Smith\n"
+
+    @staticmethod
+    def _run(draft: str, brief: str) -> str | None:
+        from backend.routes.cold_email import _enforce_brief_greeting
+
+        return _enforce_brief_greeting(draft, brief)
+
+    def test_plain_wrong_title_salutation_is_safely_replaced(self):
+        out = self._run(
+            "Subject: Research Interest\n\nDear Professor Smith,\n\nI am a student.",
+            self.BRIEF,
+        )
+        assert out is not None
+        assert out.count("Dear Jane Smith,") == 1
+        assert "Professor Smith" not in out
+
+    def test_bolded_wrong_title_salutation_is_safely_replaced(self):
+        out = self._run(
+            "**Subject: Research Interest**\n\n**Dear Professor Smith,**\n\nI am a student.",
+            self.BRIEF,
+        )
+        assert out is not None
+        assert out.count("Dear Jane Smith,") == 1
+        assert "Professor Smith" not in out
+
+    def test_italicised_wrong_title_salutation_is_safely_replaced(self):
+        out = self._run(
+            "Subject: Research Interest\n\n*Dear Prof. Smith,*\n\nI am a student.",
+            self.BRIEF,
+        )
+        assert out is not None
+        assert out.count("Dear Jane Smith,") == 1
+        assert "Prof. Smith" not in out
+
+    def test_unspecified_recipient_keeps_exact_nameless_greeting(self):
+        out = self._run(
+            "Subject: Inquiry\n\nHello,\n\nI am a student.",
+            "OPPORTUNITY CONTACT:\n- Recipient: (unspecified)\n",
+        )
+        assert out is not None
+        assert "Hello," in out
+        assert "Professor Smith" not in out
+
+    def test_exact_inline_salutation_preserves_the_first_sentence(self):
+        out = self._run(
+            "Subject: Inquiry\n\n"
+            "**Dear Jane Smith,** I hope your semester is going well.\n"
+            "I am a student.",
+            self.BRIEF,
+        )
+        assert out is not None
+        assert out.count("Dear Jane Smith,") == 1
+        assert "Professor Smith" not in out
+        assert "I hope your semester is going well." in out
+
+    def test_late_and_duplicate_salutations_fail_closed(self):
+        out = self._run(
+            "Subject: Inquiry\n\n"
+            "I hope your semester is going well.\n\n"
+            "Dear Professor Smith,\n"
+            "Dear Dr. Smith, I am a chemistry student.\n",
+            self.BRIEF,
+        )
+        assert out is None
+
+    def test_verified_professor_recipient_keeps_the_earned_honorific(self):
+        out = self._run(
+            "Subject: Inquiry\n\nDear Professor Jane Smith, I am a student.",
+            "FACULTY CONTACT PROFILE:\n- Recipient: Professor Jane Smith\n",
+        )
+        assert out is not None
+        assert out.count("Dear Professor Jane Smith,") == 1
+        assert "I am a student." in out
+
+    def test_ambiguous_unpunctuated_dear_line_fails_closed(self):
+        out = self._run(
+            "Subject: Inquiry\n\nDear Professor Smith I hope you are well\nBody.",
+            self.BRIEF,
+        )
+        assert out is None
+
+    def test_markdown_quote_and_list_wrong_title_greetings_are_safely_replaced(self):
+        for provider_greeting in (
+            "> **Dear Professor Smith,**",
+            "- **Dear Professor Smith,**",
+            "* **Dear Professor Smith,**",
+        ):
+            out = self._run(
+                f"Subject: Inquiry\n\n{provider_greeting}\nI am a student.",
+                self.BRIEF,
+            )
+            assert out is not None
+            assert out.count("Dear Jane Smith,") == 1
+            assert "Professor Smith" not in out
+
+    def test_embedded_wrong_greeting_fails_closed(self):
+        out = self._run(
+            "Subject: Inquiry\n\n"
+            "I hope you are well. Dear Professor Smith, I am a student.",
+            self.BRIEF,
+        )
+        assert out is None
+
+    def test_exact_trusted_greeting_supports_comma_credentials_without_leaking_suffix(self):
+        brief = "FACULTY CONTACT PROFILE:\n- Recipient: Vijay Chopra, Ph.D. CFA\n"
+        out = self._run(
+            "Subject: Inquiry\n\n"
+            "**Dear Vijay Chopra, Ph.D. CFA,** I am interested in your work.",
+            brief,
+        )
+        assert out is not None
+        assert out.count("Dear Vijay Chopra, Ph.D. CFA,") == 1
+        assert "Ph.D. CFA, I am" not in out
+        assert "I am interested in your work." in out
+
+    def test_exact_trusted_greeting_supports_junior_suffix(self):
+        brief = "FACULTY CONTACT PROFILE:\n- Recipient: Martin Davis, Jr.\n"
+        out = self._run(
+            "Subject: Inquiry\n\nDear Martin Davis, Jr., I am a student.",
+            brief,
+        )
+        assert out is not None
+        assert out.count("Dear Martin Davis, Jr.,") == 1
+        assert "I am a student." in out
+
+    def test_untrusted_suffix_cannot_be_reinterpreted_as_body_text(self):
+        assert self._run(
+            "Subject: Inquiry\n\nDear Jane Smith,Jr., I am a student.",
+            self.BRIEF,
+        ) is None
+
+    def test_wrong_inline_dear_fails_closed_instead_of_guessing_at_comma(self):
+        assert self._run(
+            "Subject: Inquiry\n\nDear Professor Smith, I am a student.",
+            self.BRIEF,
+        ) is None
+
+    def test_wrong_dear_line_with_body_is_never_silently_deleted(self):
+        for line in (
+            "Dear Professor Smith, I hope your semester is going well,",
+            "Dear Professor Smith, thank you for your time,",
+        ):
+            assert self._run(
+                f"Subject: Inquiry\n\n{line}\nContinuation.",
+                self.BRIEF,
+            ) is None
+
+    def test_bare_professor_or_doctor_greeting_fails_closed(self):
+        for provider_greeting in ("Professor Smith,", "Prof. Smith:", "Dr. Smith,"):
+            assert self._run(
+                f"Subject: Inquiry\n\n{provider_greeting}\nI am a student.",
+                self.BRIEF,
+            ) is None
+
+    def test_named_neutral_greetings_fail_closed(self):
+        for provider_greeting in (
+            "Hi Jane,",
+            "Hello Jane Smith:",
+            "Greetings Dr. Smith!",
+            "Hi Professor Smith —",
+            "Hello Professor Smith –",
+            "Greetings Professor Smith;",
+            "Hi Professor Smith.",
+            "Hello Professor Smith",
+        ):
+            assert self._run(
+                f"Subject: Inquiry\n\n{provider_greeting}\nI am a student.",
+                self.BRIEF,
+            ) is None
+
+    def test_embedded_or_late_named_neutral_greetings_fail_closed(self):
+        for line in (
+            "I hope you are well. Hi Professor Smith, I am a student.",
+            "I hope you are well. Hello Dr. Smith — I am a student.",
+            "Body first. Greetings Professor Smith – next sentence.",
+            "Body first. Hi Professor Smith; next sentence.",
+            "Body first. Hello Professor Smith.",
+            "Body first. Greetings Professor Smith",
+            "I hope you are well. Hello, Professor Smith, I am a student.",
+            "I hope you are well. Hi, Dr. Smith — I am a student.",
+            "Body first. Greetings, Professor Smith; next sentence.",
+            "Body first. Good morning, Professor Smith, next sentence.",
+            "Body first. Salutations, Professor Smith, next sentence.",
+            "Body first. Good day, Professor Smith, next sentence.",
+        ):
+            assert self._run(
+                f"Subject: Inquiry\n\n{line}",
+                self.BRIEF,
+            ) is None
+
+    def test_embedded_or_standalone_bare_title_greetings_fail_closed(self):
+        for line in (
+            "I hope you are well. Professor Smith, I am a student.",
+            "I hope you are well. Dr. Smith — I am a student.",
+            "Body first. Prof. Smith; next sentence.",
+            "Professor Smith",
+            "Dr. Smith",
+        ):
+            assert self._run(
+                f"Subject: Inquiry\n\n{line}",
+                self.BRIEF,
+            ) is None
+
+    def test_markdown_wrapped_title_greetings_fail_closed(self):
+        for line in (
+            "**Professor Smith,**",
+            "> Good morning, Professor Smith,",
+            "- Dr. Smith:",
+            "* **Hello, Professor Smith,**",
+            "**Salutations, Professor Smith,**",
+            "> Good day, Professor Smith,",
+        ):
+            assert self._run(
+                f"Subject: Inquiry\n\n{line}\nI am a student.",
+                self.BRIEF,
+            ) is None
+
+    def test_non_salutation_professor_reference_is_preserved(self):
+        for sentence in (
+            "I previously worked with Professor Smith, and learned microscopy.",
+            "Professor Smith recommended that I contact you.",
+            "Professor Smith's work shaped my interest.",
+            "Professor Smith taught my microscopy course.",
+            "Professor Smith, who supervised my project, recommended your group.",
+        ):
+            out = self._run(
+                f"Subject: Inquiry\n\n{sentence}",
+                self.BRIEF,
+            )
+            assert out is not None, sentence
+            assert sentence in out
+
+    def test_embedded_dear_with_any_punctuation_fails_closed(self):
+        for punctuation in (",", ":", ";", "!", "—", "–", "."):
+            assert self._run(
+                "Subject: Inquiry\n\n"
+                f"I hope you are well. Dear Professor Smith{punctuation} Body.",
+                self.BRIEF,
+            ) is None
+        assert self._run(
+            "Subject: Inquiry\n\nI hope you are well. Dear Professor Smith",
+            self.BRIEF,
+        ) is None

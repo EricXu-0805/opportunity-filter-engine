@@ -16,7 +16,13 @@ export function buildOpportunityJsonLd(opp: Opportunity): Record<string, unknown
     title: opp.title,
     description: opp.description_clean || opp.description_raw || '',
     datePosted: opp.posted_date,
-    validThrough: opp.deadline,
+    // validThrough is a machine-readable assertion to search engines that the
+    // posting closes on this date. Our NSF REU dates are derived from the award
+    // start month, so publishing one as validThrough turns our estimate into
+    // someone else's fact.
+    ...(opp.deadline && opp.deadline_is_estimate !== true
+      ? { validThrough: opp.deadline }
+      : {}),
     employmentType: opp.opportunity_type === 'research' ? 'PART_TIME' : 'INTERN',
     hiringOrganization: {
       '@type': 'Organization',

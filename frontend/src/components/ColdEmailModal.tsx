@@ -120,14 +120,16 @@ function isStudentNameRequiredError(err: unknown): boolean {
   );
 }
 
-// R72-A: pick the right fallback hint. 'fabrication' (the AI invented an
-// unverifiable detail and was rejected) gets a distinct message — the old
-// "no provider configured" line would be misleading since AI *is* wired.
+// R72-A: pick the truthful fallback outcome for both generation and refine.
+// 'fabrication' means a model result was rejected; 'insufficient_evidence'
+// means the evidence gate rebuilt a safe template without running AI. Neither
+// may be described as a provider outage or a routine local tone edit.
 function aiFallbackMessage(
   reason: ColdEmailFallbackReason | null | undefined,
   t: Replier,
 ): string {
   if (reason === 'fabrication') return t('coldEmail.aiFallbackFabrication');
+  if (reason === 'insufficient_evidence') return t('coldEmail.aiFallbackInsufficientEvidence');
   if (reason === 'not_configured') return t('coldEmail.aiFallback');
   return t('coldEmail.aiFallbackGeneric');
 }
@@ -385,6 +387,8 @@ export default function ColdEmailModal({
       setBody('');
       setRecipient('');
       setRecipientStatus('unavailable');
+      setGrounding('specific');
+      setFreshness('unknown');
       setCopied(false);
       setCopyFailed(false);
       setError(null);
@@ -560,7 +564,10 @@ export default function ColdEmailModal({
       // Best-effort: a failure just falls back to skills/coursework-only
       // grounding. Re-extracts when the résumé text changes (stale-cache fix).
       const resumeText = profile.resume_text ?? '';
-      if (resumeBulletsRef.current === null || resumeBulletsRef.current.forText !== resumeText) {
+      if (
+        grounding !== 'no_target_data'
+        && (resumeBulletsRef.current === null || resumeBulletsRef.current.forText !== resumeText)
+      ) {
         try {
           resumeBulletsRef.current = {
             forText: resumeText,
@@ -572,7 +579,13 @@ export default function ColdEmailModal({
           resumeBulletsRef.current = { forText: resumeText, bullets: [] };
         }
       }
-      const bullets = resumeBulletsRef.current.bullets;
+      // No target-side research facts means the backend will deliberately
+      // serve its honest insufficient-evidence template.  Resume extraction
+      // cannot improve that target grounding, so skip this separate provider
+      // path for both automatic and user-triggered AI attempts.
+      const bullets = grounding === 'no_target_data'
+        ? []
+        : (resumeBulletsRef.current?.bullets ?? []);
       const opts = {
         engine: 'ai' as const,
         style,
@@ -622,7 +635,7 @@ export default function ColdEmailModal({
       setAiLoading(false);
       setAiStage(null);
     }
-  }, [aiLoading, missingStudentName, variants.length, profile, opportunityId, labType, t]);
+  }, [aiLoading, missingStudentName, variants.length, profile, opportunityId, labType, grounding, t]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -665,9 +678,11 @@ export default function ColdEmailModal({
           content:
             result.method === 'llm'
               ? t('coldEmail.doneLlm')
-              : result.fallback_reason === 'fabrication'
-                ? t('coldEmail.refineFabrication')
-                : t('coldEmail.doneFallback'),
+              : result.fallback_reason === 'insufficient_evidence'
+                ? aiFallbackMessage('insufficient_evidence', t)
+                : result.fallback_reason === 'fabrication'
+                  ? t('coldEmail.refineFabrication')
+                  : t('coldEmail.doneFallback'),
         };
         return updated;
       });

@@ -14,6 +14,7 @@ export type FieldKey =
 export interface SourceRow {
   source: string;
   total: number;
+  listing_total?: number;
   empty_majors?: number;
   empty_keywords?: number;
   empty_description?: number;
@@ -47,6 +48,7 @@ export interface AdminResponse {
 export interface HistoryEntry {
   t: string;
   total: number;
+  listing_total?: number;
   empty_majors?: number;
   empty_keywords?: number;
   missing_deadline?: number;

@@ -16,7 +16,7 @@ import { SourceTable } from './SourceTable';
 import { StatCard } from './StatCard';
 import { TrendChart } from './TrendChart';
 import { WorstFieldsSection } from './WorstFieldsSection';
-import { diff } from './admin-utils';
+import { diff, listingPct, listingScopedHistory } from './admin-utils';
 import type {
   AdminResponse,
   CollectorHistoryEntry,
@@ -87,6 +87,8 @@ export function AdminDashboard({
   onConfirmOrder: (id: string) => Promise<void>;
   t: TFunc;
 }) {
+  const comparableHistory = listingScopedHistory(history);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -166,19 +168,19 @@ export function AdminDashboard({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-10 mb-8">
               <StatCard label={t('admin.totalRecords')} value={data.total} color="blue" />
-              <StatCard label={t('admin.emptyMajors')} value={data.global.empty_majors || 0} color={(data.global.empty_majors || 0) > 50 ? 'amber' : 'green'} pct={data.total ? ((data.global.empty_majors || 0) / data.total * 100) : 0} delta={diff('empty_majors', data, previousSnapshot)} active={activeFieldFilter === 'empty_majors'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'empty_majors' ? null : 'empty_majors')} />
-              <StatCard label={t('admin.emptyKeywords')} value={data.global.empty_keywords || 0} color={(data.global.empty_keywords || 0) > 50 ? 'amber' : 'green'} pct={data.total ? ((data.global.empty_keywords || 0) / data.total * 100) : 0} delta={diff('empty_keywords', data, previousSnapshot)} active={activeFieldFilter === 'empty_keywords'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'empty_keywords' ? null : 'empty_keywords')} />
-              <StatCard label={t('admin.rollingDeadline')} value={data.global.rolling_deadline || 0} color="green" pct={data.total ? ((data.global.rolling_deadline || 0) / data.total * 100) : 0} hint="legitimate" />
-              <StatCard label={t('admin.missingDeadline')} value={data.global.missing_deadline || 0} color={(data.global.missing_deadline || 0) > 100 ? 'amber' : 'gray'} pct={data.total ? ((data.global.missing_deadline || 0) / data.total * 100) : 0} delta={diff('missing_deadline', data, previousSnapshot)} active={activeFieldFilter === 'missing_deadline'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'missing_deadline' ? null : 'missing_deadline')} />
+              <StatCard label={t('admin.emptyMajors')} value={data.global.empty_majors || 0} color={(data.global.empty_majors || 0) > 50 ? 'amber' : 'green'} pct={listingPct('empty_majors', data)} delta={diff('empty_majors', data, previousSnapshot)} active={activeFieldFilter === 'empty_majors'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'empty_majors' ? null : 'empty_majors')} />
+              <StatCard label={t('admin.emptyKeywords')} value={data.global.empty_keywords || 0} color={(data.global.empty_keywords || 0) > 50 ? 'amber' : 'green'} pct={listingPct('empty_keywords', data)} delta={diff('empty_keywords', data, previousSnapshot)} active={activeFieldFilter === 'empty_keywords'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'empty_keywords' ? null : 'empty_keywords')} />
+              <StatCard label={t('admin.rollingDeadline')} value={data.global.rolling_deadline || 0} color="green" pct={listingPct('rolling_deadline', data)} hint="legitimate" />
+              <StatCard label={t('admin.missingDeadline')} value={data.global.missing_deadline || 0} color={(data.global.missing_deadline || 0) > 100 ? 'amber' : 'gray'} pct={listingPct('missing_deadline', data)} delta={diff('missing_deadline', data, previousSnapshot)} active={activeFieldFilter === 'missing_deadline'} onClick={() => setActiveFieldFilter(activeFieldFilter === 'missing_deadline' ? null : 'missing_deadline')} />
               <StatCard label={t('admin.pastDeadline')} value={data.global.past_deadline || 0} color="gray" />
               <StatCard label={t('admin.flaggedInactive')} value={data.global.flagged_inactive || 0} color="gray" delta={diff('flagged_inactive', data, previousSnapshot)} />
               <StatCard label={t('admin.shortDescription')} value={data.global.short_description || 0} color="gray" />
             </div>
 
-            {history.length > 1 ? (
+            {comparableHistory.length > 1 ? (
               <section className="mb-10">
                 <h2 className="text-[15px] font-semibold text-gray-900 mb-3">{t('admin.trendTitle')}</h2>
-                <TrendChart history={history} />
+                <TrendChart history={comparableHistory} />
               </section>
             ) : (
               <p className="mb-8 text-[12px] text-gray-400 italic">{t('admin.trendEmpty')}</p>

@@ -194,10 +194,38 @@ _FACULTY_RESTRICTION_MARKER = "faculty_citizenship_restriction_stated"
 _FACULTY_NOT_ACCEPTING_MARKER = "faculty_not_accepting_undergraduates_stated"
 _FACULTY_RESEARCH_INACTIVE_MARKER = "faculty_research_inactive_stated"
 _FACULTY_AVAILABILITY_STATUS_MARKER = "faculty_availability_status"
+_FACULTY_AVAILABILITY_SCAN_VERSION_MARKER = "faculty_availability_scan_version"
+_FACULTY_AVAILABILITY_SCAN_VERSION = 1
+# The verb set is corpus-derived, not speculative.  Keep the object bounded so
+# an unrelated later mention of students cannot turn a general negation into
+# an outreach block. Object semantics are checked separately below: explicit
+# undergraduate language, generic students, or applications count; a
+# graduate-only object does not.
 _FACULTY_NOT_ACCEPTING_RE = re.compile(
-    r"\b(?:not|no\s+longer)\s+(?:(?:currently|now)\s+)?"
-    r"(?:accepting|taking)\s+(?:(?:any|additional|new)\s+)*"
-    r"(?:undergraduates?|undergraduate\s+(?:students?|researchers?)|students?)\b",
+    r"\b(?:"
+    r"(?:not|no\s+longer)\s+(?:(?:currently|now)\s+)?"
+    r"(?:accept(?:ing)?|tak(?:e|ing)(?:\s+on)?|recruit(?:ing)?|admit(?:ting)?)"
+    r"|does(?:\s+not|n['’]t)\s+(?:(?:currently|now)\s+)?"
+    r"(?:accept|take(?:\s+on)?|recruit|admit)"
+    r")\b(?P<object>[^).;:\n]{0,160})",
+    re.IGNORECASE,
+)
+_FACULTY_UNDERGRAD_OBJECT_RE = re.compile(
+    r"\b(?:undergrads?|undergraduates?|undergraduate\s+"
+    r"(?:students?|researchers?|applicants?|applications?))\b",
+    re.IGNORECASE,
+)
+_FACULTY_STUDENT_OBJECT_RE = re.compile(r"\bstudents?\b", re.IGNORECASE)
+_FACULTY_APPLICATION_OBJECT_RE = re.compile(r"\bapplications?\b", re.IGNORECASE)
+_FACULTY_GRAD_ONLY_STUDENT_RE = re.compile(
+    r"\b(?:(?:new|additional|prospective|doctoral)\s+)*"
+    r"(?:grad|graduate|doctoral|ph\.?d\.?|masters?|master['’]s)"
+    r"(?:(?:\s+|-)(?:degree|research))?(?:\s+|-)"
+    r"(?:students?|researchers?|applicants?)\b",
+    re.IGNORECASE,
+)
+_FACULTY_GRAD_TERM_RE = re.compile(
+    r"\b(?:grad|graduate|doctoral|ph\.?d\.?|masters?|master['’]s)\b",
     re.IGNORECASE,
 )
 _FACULTY_RESEARCH_INACTIVE_RE = re.compile(
@@ -239,11 +267,21 @@ def faculty_availability_status(record: dict) -> str:
     metadata = record.get("metadata") or {}
     canonical_status = metadata.get(_FACULTY_AVAILABILITY_STATUS_MARKER)
     if canonical_status in {
-        "unknown",
         "not_accepting_undergraduates",
         "research_inactive",
     }:
         return canonical_status
+    if (
+        canonical_status == "unknown"
+        and metadata.get(_FACULTY_AVAILABILITY_SCAN_VERSION_MARKER)
+        == _FACULTY_AVAILABILITY_SCAN_VERSION
+    ):
+        # The current neutralizer already scanned the bounded raw candidates.
+        # This matters on the 127k-row faculty hot path: public projection may
+        # call the helper again, and a versioned negative result is safe to
+        # reuse in O(1). Legacy/stale `unknown` markers have no current version
+        # and deliberately fall through to a fresh scan below.
+        return "unknown"
     if metadata.get(_FACULTY_NOT_ACCEPTING_MARKER) is True:
         return "not_accepting_undergraduates"
     if metadata.get(_FACULTY_RESEARCH_INACTIVE_MARKER) is True:
@@ -265,7 +303,7 @@ def faculty_availability_status(record: dict) -> str:
         candidates.extend(keywords[:20])
     if any(
         isinstance(value, str)
-        and _FACULTY_NOT_ACCEPTING_RE.search(value) is not None
+        and _faculty_not_accepting_undergraduates(value)
         for value in candidates
     ):
         return "not_accepting_undergraduates"
@@ -276,6 +314,39 @@ def faculty_availability_status(record: dict) -> str:
     ):
         return "research_inactive"
     return "unknown"
+
+
+def _faculty_not_accepting_undergraduates(text: str) -> bool:
+    """Classify a bounded source excerpt without blocking graduate-only text.
+
+    Faculty pages use several equivalent formulations: ``no longer
+    recruiting``, ``does not accept``, ``not taking on``, and ``not accepting
+    applications``.  The negative action alone is insufficient; it must govern
+    an undergraduate/generic-student/application object.  Removing explicit
+    graduate-only noun phrases before looking for a generic ``student`` keeps
+    graduate admissions notices from suppressing undergraduate contact.
+    """
+    for match in _FACULTY_NOT_ACCEPTING_RE.finditer(text):
+        target = match.group("object") or ""
+        # A later contrast belongs to a different claim: "not accepting
+        # graduate students, but welcoming undergraduates" is graduate-only
+        # negative evidence and must not be inverted into an undergrad block.
+        target = re.split(r"\b(?:but|however|although|while)\b", target, maxsplit=1)[0]
+        if _FACULTY_UNDERGRAD_OBJECT_RE.search(target):
+            return True
+
+        without_grad_students = _FACULTY_GRAD_ONLY_STUDENT_RE.sub("", target)
+        if _FACULTY_STUDENT_OBJECT_RE.search(without_grad_students):
+            return True
+
+        if _FACULTY_APPLICATION_OBJECT_RE.search(target):
+            # "Not accepting applications this semester" is an attested
+            # faculty-profile status.  But an explicitly graduate/PhD/master's
+            # applications notice says nothing about undergraduate outreach.
+            if _FACULTY_GRAD_TERM_RE.search(target):
+                continue
+            return True
+    return False
 
 
 def faculty_availability_is_source_negative(record: dict) -> bool:
@@ -300,6 +371,15 @@ def faculty_safe_eligibility(record: dict) -> dict:
 
     restriction_is_stated = faculty_restriction_is_source_stated(record)
     restriction_excerpt = eligibility.get("eligibility_text_raw")
+    # The loader canonicalizes the restriction into a metadata marker and then
+    # drops the raw excerpt, so a second projection of the same record has no
+    # excerpt to read. Fall back to the note this branch already preserved
+    # instead of stringifying None over the one fact it exists to keep.
+    restriction_note = (
+        restriction_excerpt
+        if isinstance(restriction_excerpt, str) and restriction_excerpt.strip()
+        else eligibility.get("work_auth_notes")
+    )
     safe = {
         "preferred_year": ["unknown"],
         "min_gpa": None,
@@ -310,8 +390,8 @@ def faculty_safe_eligibility(record: dict) -> dict:
         "international_friendly": "no" if restriction_is_stated else "unknown",
         "citizenship_required": True if restriction_is_stated else None,
         "work_auth_notes": (
-            str(restriction_excerpt).strip()[:500]
-            if restriction_is_stated
+            str(restriction_note).strip()[:500]
+            if restriction_is_stated and isinstance(restriction_note, str)
             else ""
         ),
     }
@@ -413,6 +493,9 @@ def neutralize_unverified_faculty_claims(record: dict) -> dict:
     metadata = record.setdefault("metadata", {})
     if isinstance(metadata, dict):
         metadata[_FACULTY_AVAILABILITY_STATUS_MARKER] = availability_status
+        metadata[_FACULTY_AVAILABILITY_SCAN_VERSION_MARKER] = (
+            _FACULTY_AVAILABILITY_SCAN_VERSION
+        )
         if availability_status == "not_accepting_undergraduates":
             metadata[_FACULTY_NOT_ACCEPTING_MARKER] = True
         else:

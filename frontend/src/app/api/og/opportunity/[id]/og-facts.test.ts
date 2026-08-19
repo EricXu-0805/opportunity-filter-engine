@@ -85,3 +85,37 @@ describe('opportunity OG truth boundary', () => {
     });
   });
 });
+
+describe('estimated deadlines are never stated as hard on a share card', () => {
+  // 749 corpus records carry deadline_is_estimate (all NSF REU rows, whose
+  // date src/collectors/nsf_reu.py derives from the award start month). Every
+  // other surface suppresses it — DeadlineBadge greys it to "· Estimated",
+  // DetailSections prints "Estimated", getDeadlineUrgency refuses 'urgent' —
+  // and this card is minted from the same detail page.
+  const estimated = { source_type: 'summer_program', deadline: '2026-08-20', deadline_is_estimate: true };
+
+  it('does not emit a countdown the route renders as a Due-in chip', () => {
+    const facts = buildOpportunityOgFacts(
+      opportunity(estimated as never),
+      Date.parse('2026-08-18T00:00:00Z'),
+    );
+    expect(facts.daysUntilDeadline).toBeNull();
+  });
+
+  it('labels the date as an estimate rather than a deadline', () => {
+    const facts = buildOpportunityOgFacts(
+      opportunity(estimated as never),
+      Date.parse('2026-08-18T00:00:00Z'),
+    );
+    expect(facts.deadlineLabel).toBe('Estimated deadline: 2026-08-20');
+  });
+
+  it('still states a confirmed deadline as fact', () => {
+    const facts = buildOpportunityOgFacts(
+      opportunity({ source_type: 'summer_program', deadline: '2026-08-20' } as never),
+      Date.parse('2026-08-18T00:00:00Z'),
+    );
+    expect(facts.daysUntilDeadline).toBe(2);
+    expect(facts.deadlineLabel).toBe('Deadline: 2026-08-20');
+  });
+});

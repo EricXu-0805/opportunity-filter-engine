@@ -23,6 +23,7 @@ from src.evidence import (
     faculty_availability_is_source_negative,
     faculty_availability_status,
     faculty_safe_eligibility,
+    faculty_safe_public_record,
 )
 from src.matcher import ranker as ranker_module
 from src.matcher.ranker import rank_opportunity, score_upside
@@ -254,6 +255,46 @@ def test_loader_preserves_only_source_stated_restrictions_not_review_flags():
             "not currently accepting undergraduate students or researchers",
         ),
         (
+            # Verbatim from faculty-mcb-0c3fca33, live and is_active in the
+            # served corpus: "accepting/taking" alone let a retired professor
+            # through every availability gate.
+            "Professor Nelson has retired from the university and is no longer "
+            "recruiting undergraduate or graduate students to his lab.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
+            "This lab is not accepting applications this semester.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
+            "The group is not accepting new applications at this time.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
+            "This faculty member does not accept applications from undergraduate students.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
+            "The lab is not taking on undergraduate researchers this year.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
+            "The group is not admitting students this semester.",
+            "not_accepting_undergraduates",
+            "faculty_not_accepting",
+            "not currently accepting undergraduate students or researchers",
+        ),
+        (
             "This faculty member is not currently research active.",
             "research_inactive",
             None,
@@ -320,8 +361,24 @@ def test_source_stated_faculty_unavailability_survives_loader_and_blocks_actions
         assert cold_email_routes._assert_outreach_allowed(loaded) is None
 
 
-def test_graduate_only_unavailability_does_not_suppress_undergraduate_contact():
-    text = "I am not accepting graduate students at this time."
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I am not accepting graduate students at this time.",
+        # Both attested in the served corpus, both graduate-only: widening the
+        # verb set must not start blocking undergraduate outreach on them.
+        "NO LONGER TAKING NEW GRADUATE STUDENTS",
+        "I am not admitting new graduate students for Fall 2025 admission.",
+        "Not currently accepting doctoral graduate students",
+        "This lab does not accept graduate applications.",
+        "Not accepting applications from graduate students this semester.",
+        "Not accepting graduate-student applications this semester.",
+        "Not accepting grad students this semester.",
+        "Not accepting grad-student applications this semester.",
+        "Not accepting graduate students, but welcoming undergraduate researchers.",
+    ],
+)
+def test_graduate_only_unavailability_does_not_suppress_undergraduate_contact(text):
     record = _legacy_faculty(
         description_raw=text,
         description_clean=text,
@@ -334,6 +391,65 @@ def test_graduate_only_unavailability_does_not_suppress_undergraduate_contact():
     assert faculty_availability_status(loaded) == "unknown"
     assert loaded["metadata"]["faculty_availability_status"] == "unknown"
     assert loaded["faculty_availability_status"] == "unknown"
+
+
+@pytest.mark.parametrize(
+    "eligibility_text_raw",
+    [
+        (
+            "Research opportunity with Professor of Nutritional Sciences Richard "
+            "Eisenstein in the Department of Nutritional Sciences at University of "
+            "Wisconsin-Madison. Research areas: Cellular and Genetic Toxicology. "
+            "Iron. Regulation of iron metabolism. Molecular regulation of the "
+            "synthesis of iron transport and storage proteins (not currently taking "
+            "grad students) Contact the professor directly to inquire about "
+            "undergraduate research positions in their lab."
+        ),
+        (
+            "Research opportunity with Professor of Nutritional Sciences Guy "
+            "Groblewski in the Department of Nutritional Sciences at University of "
+            "Wisconsin-Madison. Research areas: Intracellular signal transduction "
+            "and membrane/protein trafficking in gastrointestinal epithelial cells "
+            "(not currently taking grad students) Contact the professor directly to "
+            "inquire about undergraduate research positions in their lab."
+        ),
+        (
+            "Research opportunity with Professor of Nutritional Sciences Huichuan "
+            "Lai in the Department of Nutritional Sciences at University of "
+            "Wisconsin-Madison. Research areas: Precision nutrition in cystic "
+            "fibrosis: clinical and epidemiological studies linking nutrition and "
+            "disease outcomes (not currently taking grad students) Contact the "
+            "professor directly to inquire about undergraduate research positions "
+            "in their lab."
+        ),
+        (
+            "Research opportunity with Associate Professor of Nutritional Sciences "
+            "Beth Olson in the Department of Nutritional Sciences at University of "
+            "Wisconsin-Madison. Research areas: Breastfeeding support for low-income "
+            "and working women, improving infant feeding practices in low income "
+            "families (not currently taking grad students) Contact the professor "
+            "directly to inquire about undergraduate research positions in their lab."
+        ),
+    ],
+)
+def test_real_wisc_constructed_grad_only_text_does_not_block_undergrad_outreach(
+    eligibility_text_raw,
+):
+    """The four current Wisc rows put a graduate-only note in parentheses
+    before constructed undergraduate-outreach prose.  The bounded classifier
+    must stop at the closing parenthesis instead of borrowing the later word
+    ``undergraduate`` as the negative object's target."""
+    raw = _legacy_faculty(
+        description_raw=eligibility_text_raw,
+        description_clean=eligibility_text_raw,
+        eligibility={"eligibility_text_raw": eligibility_text_raw},
+        metadata={"research_areas_raw": eligibility_text_raw},
+    )
+    assert faculty_availability_status(raw) == "unknown"
+
+    loaded = data_loader._sanitize_opportunity(deepcopy(raw))
+    assert loaded["faculty_availability_status"] == "unknown"
+    assert loaded["metadata"]["faculty_availability_scan_version"] == 1
 
 
 def test_keyword_only_source_unavailability_is_preserved_and_blocks_outreach():
@@ -350,6 +466,51 @@ def test_keyword_only_source_unavailability_is_preserved_and_blocks_outreach():
     with pytest.raises(HTTPException) as exc_info:
         cold_email_routes._assert_outreach_allowed(loaded)
     assert exc_info.value.status_code == 409
+
+
+def test_stale_cached_unknown_is_rescanned_and_upgraded():
+    """Old cache markers predate the expanded source vocabulary. They must not
+    pin a now-detectable refusal to unknown forever."""
+    source_text = "Not accepting applications this semester."
+    raw = _legacy_faculty(
+        description_raw=source_text,
+        description_clean=source_text,
+        metadata={
+            "faculty_availability_status": "unknown",
+            "research_areas_raw": source_text,
+        },
+    )
+    assert faculty_availability_status(raw) == "not_accepting_undergraduates"
+
+    loaded = data_loader._sanitize_opportunity(deepcopy(raw))
+    assert loaded["faculty_availability_status"] == "not_accepting_undergraduates"
+    assert loaded["metadata"]["faculty_availability_scan_version"] == 1
+
+
+def test_current_version_cached_unknown_short_circuits_rescan(monkeypatch):
+    """A current neutralizer pass closes the 127k-row hot path in O(1)."""
+    loaded = data_loader._sanitize_opportunity(
+        _legacy_faculty(
+            description_raw="Research in archival methods.",
+            description_clean="Research in archival methods.",
+            keywords=["archival methods"],
+            metadata={"research_areas_raw": "archival methods"},
+        ),
+    )
+    assert loaded["faculty_availability_status"] == "unknown"
+    assert loaded["metadata"]["faculty_availability_scan_version"] == 1
+
+    import src.evidence as evidence_module
+
+    def boom(_text):
+        raise AssertionError("current-version unknown must not rescan raw candidates")
+
+    monkeypatch.setattr(
+        evidence_module,
+        "_faculty_not_accepting_undergraduates",
+        boom,
+    )
+    assert faculty_availability_status(loaded) == "unknown"
 
 
 def test_source_restriction_overrides_contradictory_legacy_defaults():
@@ -675,3 +836,40 @@ def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
     assert stats["faculty_contact_total"] == 1
     opportunity_routes._stats_cache = None
     opportunity_routes._stats_cache_time = 0
+
+
+def test_citizenship_restriction_note_survives_a_second_projection():
+    """The loader canonicalizes the restriction and drops the raw excerpt; the
+    route projection then runs again on that record. Reading the excerpt with
+    no fallback stringified ``None`` over the preserved note, so the one fact
+    this branch exists to keep — why the record is US-only — was replaced by
+    the literal text "None"."""
+    excerpt = "U.S. citizenship is required for this project."
+    record = _legacy_faculty(
+        eligibility={
+            "international_friendly": "yes",
+            "eligibility_text_raw": excerpt,
+        },
+    )
+    loaded = data_loader._sanitize_opportunity(deepcopy(record))
+    assert loaded["eligibility"]["international_friendly"] == "no"
+    assert loaded["eligibility"]["citizenship_required"] is True
+    assert loaded["eligibility"]["work_auth_notes"] == excerpt
+    assert "eligibility_text_raw" not in loaded["eligibility"]
+
+    # Idempotent: the same record projected again keeps the same facts.
+    projected = faculty_safe_public_record(loaded)
+    assert projected["eligibility"]["international_friendly"] == "no"
+    assert projected["eligibility"]["citizenship_required"] is True
+    assert projected["eligibility"]["work_auth_notes"] == excerpt
+
+    again = faculty_safe_public_record(projected)
+    assert again["eligibility"]["work_auth_notes"] == excerpt
+
+    # A present-but-empty legacy raw field must not erase a bounded note.
+    with_empty_raw = deepcopy(projected)
+    with_empty_raw["eligibility"]["eligibility_text_raw"] = ""
+    assert (
+        faculty_safe_public_record(with_empty_raw)["eligibility"]["work_auth_notes"]
+        == excerpt
+    )

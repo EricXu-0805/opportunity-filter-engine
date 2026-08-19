@@ -301,7 +301,8 @@ export type ColdEmailFallbackReason =
   | 'not_configured'
   | 'unavailable'
   | 'invalid_output'
-  | 'fabrication';
+  | 'fabrication'
+  | 'insufficient_evidence';
 
 export interface ColdEmailResponse {
   subject: string;

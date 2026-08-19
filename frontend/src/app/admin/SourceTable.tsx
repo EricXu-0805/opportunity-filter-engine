@@ -2,11 +2,25 @@
 
 import type { SourceRow, TFunc } from './types';
 
-function Cell({ v, total, mute }: { v: number; total: number; mute?: boolean }) {
+function Cell({ v, listingTotal }: { v: number; listingTotal?: number }) {
   if (v === 0) return <span className="text-gray-300">0</span>;
-  const pct = total ? (v / total * 100) : 0;
-  const cls = mute ? 'text-gray-500' : pct > 30 ? 'text-amber-700 font-semibold' : 'text-gray-700';
-  return <span className={cls}>{v} <span className="text-[10px] opacity-60">({pct.toFixed(0)}%)</span></span>;
+  // Legacy responses do not carry a denominator compatible with these
+  // listing-only counters. Show the count, but do not recreate the old lie by
+  // dividing it by a mixed faculty + listing total.
+  const pct = typeof listingTotal === 'number' && listingTotal > 0
+    ? (v / listingTotal * 100)
+    : null;
+  const cls = pct !== null && pct > 30
+    ? 'text-amber-700 font-semibold'
+    : 'text-gray-700';
+  return (
+    <span className={cls}>
+      {v}
+      {pct !== null && (
+        <> <span className="text-[10px] opacity-60">({pct.toFixed(0)}%)</span></>
+      )}
+    </span>
+  );
 }
 
 export function SourceTable({ rows, t }: { rows: SourceRow[]; t: TFunc }) {
@@ -33,10 +47,10 @@ export function SourceTable({ rows, t }: { rows: SourceRow[]; t: TFunc }) {
               <tr key={row.source} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">{row.source}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-600">{row.total}</td>
-                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_majors || 0} total={row.total} /></td>
-                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_keywords || 0} total={row.total} /></td>
+                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_majors || 0} listingTotal={row.listing_total} /></td>
+                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_keywords || 0} listingTotal={row.listing_total} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-emerald-600">{row.rolling_deadline || 0}</td>
-                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.missing_deadline || 0} total={row.total} mute /></td>
+                <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.missing_deadline || 0} listingTotal={row.listing_total} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-500">{row.past_deadline || 0}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-500">{row.flagged_inactive || 0}</td>
               </tr>
@@ -53,13 +67,13 @@ export function SourceTable({ rows, t }: { rows: SourceRow[]; t: TFunc }) {
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
               <dt className="text-gray-500">{cols.emptyMajors}</dt>
-              <dd className="text-right tabular-nums"><Cell v={row.empty_majors || 0} total={row.total} /></dd>
+              <dd className="text-right tabular-nums"><Cell v={row.empty_majors || 0} listingTotal={row.listing_total} /></dd>
               <dt className="text-gray-500">{cols.emptyKeywords}</dt>
-              <dd className="text-right tabular-nums"><Cell v={row.empty_keywords || 0} total={row.total} /></dd>
+              <dd className="text-right tabular-nums"><Cell v={row.empty_keywords || 0} listingTotal={row.listing_total} /></dd>
               <dt className="text-gray-500">{cols.rolling}</dt>
               <dd className="text-right tabular-nums text-emerald-600">{row.rolling_deadline || 0}</dd>
               <dt className="text-gray-500">{cols.missingDeadline}</dt>
-              <dd className="text-right tabular-nums"><Cell v={row.missing_deadline || 0} total={row.total} mute /></dd>
+              <dd className="text-right tabular-nums"><Cell v={row.missing_deadline || 0} listingTotal={row.listing_total} /></dd>
               <dt className="text-gray-500">{cols.past}</dt>
               <dd className="text-right tabular-nums text-gray-500">{row.past_deadline || 0}</dd>
               <dt className="text-gray-500">{cols.inactive}</dt>

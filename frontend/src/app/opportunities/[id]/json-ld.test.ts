@@ -47,3 +47,26 @@ describe('opportunity structured data truth boundary', () => {
     });
   });
 });
+
+describe('estimated deadlines never become a schema.org validThrough', () => {
+  it('omits validThrough when the date is our own estimate', () => {
+    const jsonLd = buildOpportunityJsonLd(
+      opportunity({
+        source_type: 'summer_program',
+        deadline: '2026-08-20',
+        deadline_is_estimate: true,
+      } as never),
+    );
+    expect(jsonLd).not.toBeNull();
+    expect(Object.hasOwn(jsonLd!, 'validThrough')).toBe(false);
+    expect(jsonLd!.validThrough).toBeUndefined();
+    expect(JSON.stringify(jsonLd)).not.toContain('validThrough');
+  });
+
+  it('still publishes a source-stated deadline', () => {
+    const jsonLd = buildOpportunityJsonLd(
+      opportunity({ source_type: 'summer_program', deadline: '2026-08-20' } as never),
+    );
+    expect(jsonLd!.validThrough).toBe('2026-08-20');
+  });
+});
