@@ -4562,6 +4562,25 @@ class TestBillableClass:
                 )
                 assert (klass == "llm") is route_calls_provider, (raw, path)
 
+    def test_a_repeated_llm_param_bills_the_value_the_route_will_use(self):
+        """Last occurrence wins, in both places, and that has to stay true.
+
+        Starlette's QueryParams.get returns the LAST value for a repeated key,
+        and FastAPI resolves a scalar query parameter through that same call —
+        so ?llm=false&llm=yes runs the refine. The agreement holds only because
+        the ceiling reads the parameter exactly the way the route does; a
+        refactor to getlist()[0] here would reopen the unmetered path under a
+        new spelling.
+        """
+        from backend.main import _billable_class
+
+        assert _billable_class(
+            self._req(query=b"llm=false&llm=yes"), "/api/matches/view",
+        ) == "llm"
+        assert _billable_class(
+            self._req(query=b"llm=yes&llm=false"), "/api/matches/view",
+        ) is None
+
     def test_email_and_chat_classes_unchanged(self):
         from backend.main import _billable_class
 
