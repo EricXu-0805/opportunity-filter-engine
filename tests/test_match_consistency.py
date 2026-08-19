@@ -1345,7 +1345,7 @@ class TestLlmRerankCanonicalOrder:
         lookup = {r.opportunity_id: _opp(r.opportunity_id) for r in results}
         out = m_module.llm_rerank(
             {"research_interests_text": "tie-break-query"}, results, lookup
-        )
+        ).results
         assert [r.opportunity_id for r in out] == ["a-live", "b-live", "c-dead"]
 
 

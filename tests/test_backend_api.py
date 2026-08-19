@@ -4784,6 +4784,10 @@ class TestLlmDayCeilingAndDegrade:
         r = client.post("/api/matches?llm=true", json=sample_profile_req)
         assert r.status_code == 200, r.text
         assert not called
+        # Absent reasons are weak evidence — a refined list whose every card
+        # scored below _LLM_REASON_POSITIVE_MIN looks identical. The response
+        # states the mode outright, so assert that instead.
+        assert r.json()["ai_refined"] is False
         assert all(item.get("ai_reason") is None for item in r.json()["results"])
 
     def test_a_spent_day_still_refuses_the_endpoints_that_have_no_fallback(
