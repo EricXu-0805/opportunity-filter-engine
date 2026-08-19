@@ -117,6 +117,7 @@ function response(
       starred: 0,
     },
     view_id: `view-${id}`,
+    ai_refined: false,
     ...overrides,
   };
 }
@@ -321,5 +322,144 @@ describe('useResultsData', () => {
 
     await waitFor(() => expect(mocks.writeMatchCache).toHaveBeenCalledTimes(1));
     expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(u1Token);
+  });
+
+  it('paints the rule ranking first and swaps in the refined one when it lands', async () => {
+    // A first refined page is about twenty seconds and four of them are the
+    // rule ranking the refine has to run before it can call the model. The
+    // student reads that ranking while the rest happens.
+    let resolveRefine: ((value: MatchesResponse) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      (_profile, _view, options: { llm: boolean }) => (options.llm
+        ? new Promise<MatchesResponse>((resolve) => { resolveRefine = resolve; })
+        : Promise.resolve(response('rule'))),
+    );
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(
+      () => expect(result.current.data?.result_set_id).toBe('set-rule'),
+      { timeout: 4000 },
+    );
+    expect(result.current.loading).toBe(false);
+    expect(result.current.refining).toBe(true);
+    expect(result.current.refined).toBe(false);
+    // The refined snapshot owns the cursor chain; paging off an interim list
+    // would page a result set that is about to be replaced.
+    expect(result.current.paginationReady).toBe(false);
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRefine?.(response('ai', { ai_refined: true }));
+    });
+
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-ai'));
+    expect(result.current.refining).toBe(false);
+    expect(result.current.refined).toBe(true);
+    expect(result.current.paginationReady).toBe(true);
+    expect(mocks.writeMatchCache).toHaveBeenCalledTimes(1);
+    expect(mocks.writeMatchCache.mock.calls[0][2].result_set_id).toBe('set-ai');
+  });
+
+  it('spends no second ranking when the refine answers straight away', async () => {
+    // A warm server snapshot needs no help, and a rule ranking fired behind a
+    // request that already returned is pure server cost. This is the shape that
+    // once took the E2E job from seven minutes to past its timeout.
+    mocks.getMatchView.mockResolvedValue(response('warm', { ai_refined: true }));
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-warm'));
+    await new Promise((resolve) => { setTimeout(resolve, 900); });
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    expect(result.current.refining).toBe(false);
+    expect(result.current.refined).toBe(true);
+  });
+
+  it('does not make a warm load wait out the interim timer', async () => {
+    // The timer exists for the cold case. Awaiting it unconditionally would
+    // add its full interval to every AI-on first page, warm ones included —
+    // slower than doing nothing at all, and it holds the request closure alive
+    // that long after an unmount.
+    mocks.getMatchView.mockResolvedValue(response('warm'));
+
+    const started = Date.now();
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-warm'));
+
+    expect(Date.now() - started).toBeLessThan(400);
+  });
+
+  it('believes the server over the request when the refine silently degraded', async () => {
+    // The request asked for a refine and got 200 with a complete list back.
+    // Nothing in the results distinguishes a degraded pass from a real one —
+    // the provider being unconfigured, the day budget degrading the call, and
+    // an unusable batch all return the rule ranking. Only ai_refined does.
+    mocks.getMatchView.mockResolvedValue(response('degraded', { ai_refined: false }));
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-degraded'));
+    expect(result.current.refined).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('leaves the rule list up and claims nothing when the refine fails', async () => {
+    // The interim list is a real, complete answer and stays. What it must not
+    // do is inherit the badge for work that failed.
+    let rejectRefine: ((reason: Error) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      (_profile, _view, options: { llm: boolean }) => (options.llm
+        ? new Promise<MatchesResponse>((_resolve, reject) => { rejectRefine = reject; })
+        : Promise.resolve(response('rule'))),
+    );
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.refining).toBe(true), { timeout: 4000 });
+    await act(async () => { rejectRefine?.(new Error('provider down')); });
+
+    await waitFor(() => expect(result.current.refineFailed).toBe(true));
+    // NOT `error`: the results page renders its list under
+    // `!loading && !error && data`, so setting error here would hide a list
+    // that loaded correctly because an enhancement to it did not.
+    expect(result.current.error).toBeNull();
+    expect(result.current.data?.result_set_id).toBe('set-rule');
+    expect(result.current.refining).toBe(false);
+    expect(result.current.refined).toBe(false);
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('still fails the page when there is no list to keep', async () => {
+    // No interim painted means nothing loaded, and a student staring at an
+    // empty page has to be told why.
+    mocks.getMatchView.mockRejectedValue(new Error('provider down'));
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.error).toBe('results.loadFailed'));
+    expect(result.current.data).toBeNull();
+    expect(result.current.refineFailed).toBe(false);
+  });
+
+  it('skips the interim request when the cache already painted', async () => {
+    // Nothing to wait in front of, so the extra server-side ranking would buy
+    // the student nothing.
+    mocks.readMatchCache.mockReturnValue(response('cached'));
+    let resolveRefine: ((value: MatchesResponse) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      () => new Promise<MatchesResponse>((resolve) => { resolveRefine = resolve; }),
+    );
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => { setTimeout(resolve, 900); });
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    expect(mocks.getMatchView.mock.calls[0][2].llm).toBe(true);
+    expect(result.current.refining).toBe(false);
+
+    await act(async () => { resolveRefine?.(response('ai')); });
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-ai'));
   });
 });

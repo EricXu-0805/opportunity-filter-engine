@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ResultsHeader } from './ResultsHeader';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
@@ -9,6 +9,15 @@ const { sendMatchesEmailMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/api', () => ({
   sendMatchesEmail: sendMatchesEmailMock,
+}));
+
+// The badge logic is what these tests are about, not the release gate that
+// currently hides it: match_ai_refine is closed on main, so an unmocked scope
+// would make every badge assertion pass for the wrong reason. Same framing
+// CompareTable.test.tsx uses.
+const releaseScopeRef = vi.hoisted(() => ({ matchAiRefine: false }));
+vi.mock('@/lib/release-scope', () => ({
+  RELEASE_SCOPE: releaseScopeRef,
 }));
 
 vi.mock('@/components/EmailMeButton', () => ({
@@ -27,7 +36,10 @@ beforeEach(() => {
   sendMatchesEmailMock.mockResolvedValue({ ok: true, count: 6 });
 });
 
-function renderHeader(fieldRelevantCount: number) {
+function renderHeader(
+  fieldRelevantCount: number,
+  overrides: Partial<React.ComponentProps<typeof ResultsHeader>> = {},
+) {
   const data = {
     total: 5,
     high_priority: 1,
@@ -41,6 +53,9 @@ function renderHeader(fieldRelevantCount: number) {
     <ResultsHeader
       loading={false}
       showSlowHint={false}
+      refining={false}
+      refined={false}
+      refineFailed={false}
       data={data}
       filteredTotal={0}
       counts={{ all: 5 }}
@@ -52,6 +67,7 @@ function renderHeader(fieldRelevantCount: number) {
       onExport={() => {}}
       loadEmailMatches={async () => []}
       t={t}
+      {...overrides}
     />,
   );
 }
@@ -143,6 +159,9 @@ describe('ResultsHeader email payload', () => {
       <ResultsHeader
         loading={false}
         showSlowHint={false}
+        refining={false}
+        refined={false}
+        refineFailed={false}
         data={data}
         filteredTotal={matches.length}
         counts={{ all: matches.length }}
@@ -172,5 +191,44 @@ describe('ResultsHeader email payload', () => {
       ['unknown', null],
       ['unknown', null],
     ]);
+  });
+});
+
+describe('ResultsHeader refine state', () => {
+  // Opened only here. The badge logic has to be right for the release that
+  // reopens the flag, and main's own test asserts the control stays hidden
+  // while it is closed — a file-wide override would make that pass vacuously.
+  beforeEach(() => { releaseScopeRef.matchAiRefine = true; });
+  afterEach(() => { releaseScopeRef.matchAiRefine = false; });
+
+  it('does not call a list AI-refined while the refine is still running', () => {
+    renderHeader(0, { semanticRerank: true, refining: true });
+    expect(screen.getByText('results.aiRefining')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+  });
+
+  it('claims the AI badge once the refined list is the one on screen', () => {
+    renderHeader(0, { semanticRerank: true, refining: false, refined: true });
+    expect(screen.getByText('results.aiBadge')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiRefining')).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when the refine failed, instead of a silent downgrade', () => {
+    renderHeader(0, { semanticRerank: true, refining: false, refined: false, refineFailed: true });
+    expect(screen.getByText('results.refineFailed')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+  });
+
+  it('wears no badge at all when the refine was asked for and never arrived', () => {
+    // The rule list is a real answer and stays on screen. What it is not is an
+    // AI-refined one, and the toggle being on is not evidence that it is.
+    renderHeader(0, { semanticRerank: true, refining: false, refined: false });
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+    expect(screen.queryByText('results.aiRefining')).not.toBeInTheDocument();
+  });
+
+  it('locks the toggle mid-refine so a click cannot land between two answers', () => {
+    renderHeader(0, { semanticRerank: true, refining: true });
+    expect(screen.getByTestId('semantic-toggle')).toBeDisabled();
   });
 });

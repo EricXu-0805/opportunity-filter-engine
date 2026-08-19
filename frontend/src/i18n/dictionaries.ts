@@ -2755,6 +2755,8 @@ export const en = {
     fieldMatchesOne: '1 strong match in your field',
     thinInventory: 'few openings in your field right now — ranked by relevance',
     aiBadge: 'AI',
+    aiRefining: 'AI refining…',
+    refineFailed: 'AI refinement did not finish — this is the standard ranking.',
     tabs: {
       all: 'All',
       highPriority: 'High Priority',
@@ -7170,6 +7172,8 @@ export const zh = {
     fieldMatchesOne: '你的方向有 1 个强匹配',
     thinInventory: '你的方向目前对口机会较少 —— 已按相关度排序',
     aiBadge: 'AI',
+    aiRefining: 'AI 精排中…',
+    refineFailed: 'AI 精排没跑完 —— 这是常规排序结果。',
     tabs: {
       all: '全部',
       highPriority: '高优先级',
