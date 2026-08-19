@@ -9,6 +9,7 @@ Covers features added across recent iterations:
 """
 
 import json
+import math
 import os
 import sys
 import time
@@ -291,6 +292,63 @@ class TestLLMRerank:
         from backend.routes.matches import _parse_score_map
         deep = '{"0":' * 2000 + "1" + "}" * 2000
         assert _parse_score_map(deep, 1) is None
+
+    def test_every_candidate_keeps_its_own_verdict_across_batches(self, monkeypatch):
+        # The model numbers candidates from 0 WITHIN each call, so the caller
+        # has to re-offset before it can name an opportunity. Splitting the
+        # slice into more calls makes that arithmetic run more often, and a
+        # wrong offset is silent: every card still gets a sentence, just
+        # somebody else's. Echo each candidate's own text back as its reason so
+        # a misattribution cannot look like a pass.
+        from backend.routes import matches
+
+        calls = []
+
+        def fake_completion(messages, **kwargs):
+            listing = messages[1]["content"].split("OPPORTUNITIES:\n", 1)[1]
+            areas = [line.split(". ", 1)[1] for line in listing.splitlines()]
+            calls.append(areas)
+            return json.dumps({str(j): {"s": 50, "r": area} for j, area in enumerate(areas)})
+
+        monkeypatch.setattr(matches, "chat_completion", fake_completion)
+        monkeypatch.setattr(matches, "_LLM_RERANK_BATCH", 5)
+        cand = [(f"id-{i}", f"area-{i}") for i in range(20)]
+
+        out = matches._llm_score_candidates("student interests", cand)
+
+        assert len(calls) == 4
+        assert all(len(areas) == 5 for areas in calls)
+        assert out == {f"id-{i}": {"s": 50.0, "r": f"area-{i}"} for i in range(20)}
+
+    def test_one_failed_batch_costs_only_its_own_candidates(self, monkeypatch):
+        # Splitting the slice divides the blast radius as well as the wait: a
+        # reply the parser cannot use must drop those candidates back to their
+        # rule score, not discard the calls that succeeded.
+        from backend.routes import matches
+
+        def fake_completion(messages, **kwargs):
+            listing = messages[1]["content"].split("OPPORTUNITIES:\n", 1)[1]
+            areas = [line.split(". ", 1)[1] for line in listing.splitlines()]
+            if "area-7" in areas:
+                return "the model apologised instead"
+            return json.dumps({str(j): {"s": 50, "r": area} for j, area in enumerate(areas)})
+
+        monkeypatch.setattr(matches, "chat_completion", fake_completion)
+        monkeypatch.setattr(matches, "_LLM_RERANK_BATCH", 5)
+        cand = [(f"id-{i}", f"area-{i}") for i in range(20)]
+
+        out = matches._llm_score_candidates("student interests", cand)
+
+        assert set(out) == {f"id-{i}" for i in range(20)} - {f"id-{i}" for i in range(5, 10)}
+
+    def test_the_shipped_slice_runs_in_one_wave(self):
+        # The split only shortens the wait if every call is in flight at once.
+        # _llm_score_candidates caps its pool at 4 workers, so a batch size that
+        # cuts the slice into more than 4 pieces queues the remainder and the
+        # student waits two rounds instead of one.
+        from backend.routes.matches import _LLM_RERANK_BATCH, _LLM_RERANK_TOPK
+
+        assert math.ceil(_LLM_RERANK_TOPK / _LLM_RERANK_BATCH) <= 4
 
     def test_route_survives_rerank_crash(self, monkeypatch):
         # Belt at the route: even if the rerank machinery itself raises, the
