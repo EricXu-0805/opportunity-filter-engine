@@ -76,7 +76,8 @@ import {
 } from './types';
 import {
   readInitialFiltersFromUrl,
-  readInitialSemanticRerank,
+  readSemanticRerankUrlPin,
+  resolveSemanticRerank,
   useResultsUrlSync,
 } from './use-results-url';
 import { useHighlightSet } from './use-highlight-set';
@@ -154,10 +155,26 @@ function ResultsContent() {
   const debouncedQuery = useDebounce(searchQuery, 250);
   const [filters, setFilters] = useState<Filters>(initialUrl.filters);
   const [sortBy, setSortBy] = useState<SortKey>(initialUrl.sortBy);
-  const [semanticRerank, setSemanticRerank] = useState<boolean>(() =>
-    readInitialSemanticRerank(searchParams),
+  // Derived, not pinned in state. Local ownership is established asynchronously,
+  // so the stored preference is unreadable on the first render — a useState
+  // initializer would freeze that "unreadable" into an off for the whole visit,
+  // and the on-by-default would never reach anyone. These two hooks resettle
+  // when ownership lands (and when the toggle below writes), so the value
+  // follows.
+  const [semanticUrlPin, setSemanticUrlPin] = useState<boolean | null>(() =>
+    readSemanticRerankUrlPin(searchParams),
   );
-  useResultsUrlSync({ activeTab, debouncedQuery, filters, sortBy, semanticRerank });
+  const semanticPrefExists = useHasLocalStorageKey(STORAGE_KEYS.SEMANTIC_RERANK);
+  const semanticPrefValue = useLocalStorageJSON<string>(STORAGE_KEYS.SEMANTIC_RERANK);
+  const semanticRerank = resolveSemanticRerank(
+    semanticUrlPin,
+    semanticPrefExists,
+    semanticPrefValue,
+  );
+  const semanticSettled = semanticUrlPin !== null || semanticPrefExists !== undefined;
+  useResultsUrlSync({
+    activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
+  });
 
   const highlightSet = useHighlightSet(searchParams);
   useSavedSearchAck(searchParams, highlightSet);
@@ -373,7 +390,9 @@ function ResultsContent() {
 
   const toggleSemantic = useCallback((next: boolean) => {
     if (!RELEASE_SCOPE.matchAiRefine) return;
-    setSemanticRerank(next);
+    // Release the arrival URL's pin: a student who followed a ?ai=0 share link
+    // and then switched the toggle on means it for this visit.
+    setSemanticUrlPin(null);
     writeLocalStorageJSON(STORAGE_KEYS.SEMANTIC_RERANK, next ? '1' : '0', captureOwnerToken());
     setData(null);
     setPage(1);

@@ -132,6 +132,23 @@ describe('useResultsData', () => {
     mocks.readMatchCache.mockReturnValue(null);
   });
 
+  it('forwards the AI-refine choice into the request, both ways', async () => {
+    // The hop that was missing: semanticRerank keyed the cache and nothing
+    // else, so /matches/view always answered deterministically no matter what
+    // the toggle said. Assert the flag reaches the call, not just the key.
+    mocks.getMatchView.mockResolvedValue(response('a'));
+    const { rerender } = renderHook(
+      ({ llm }) => useResultsData(profile, llm, baseView, 1, t),
+      { initialProps: { llm: true } },
+    );
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    expect(mocks.getMatchView.mock.calls[0][2].llm).toBe(true);
+
+    rerender({ llm: false });
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(2));
+    expect(mocks.getMatchView.mock.calls[1][2].llm).toBe(false);
+  });
+
   it('aborts the obsolete request and ignores its late response', async () => {
     const resolvers: Array<(value: MatchesResponse) => void> = [];
     const signals: AbortSignal[] = [];

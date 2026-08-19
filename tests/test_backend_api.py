@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import time
+import types
 
 import pytest
 from fastapi.testclient import TestClient
@@ -3567,6 +3568,203 @@ class TestClientIpTrustAndGlobalCeiling:
             headers={"x-forwarded-for": "9.9.9.250"},
         )
         assert r.status_code == 429
+
+
+class _StubOpenAI:
+    """The `openai` module shape chat_completion uses, with no network."""
+
+    def __init__(self, reply):
+        self._reply = reply
+        outer = self
+
+        class _Completions:
+            def create(self, **_kwargs):
+                if isinstance(outer._reply, Exception):
+                    raise outer._reply
+                message = types.SimpleNamespace(content=outer._reply)
+                return types.SimpleNamespace(
+                    choices=[types.SimpleNamespace(message=message)]
+                )
+
+        class _Client:
+            def __init__(self, **_kwargs):
+                self.chat = types.SimpleNamespace(completions=_Completions())
+
+        self.OpenAI = _Client
+
+
+class TestLlmDayCeilingAndDegrade:
+    """The per-minute ceiling bounds a burst, not a drip. A day ceiling bounds
+    the drip — counted in provider completions, not HTTP requests, because the
+    match snapshot and the rerank cache absorb most requests without spending
+    anything. And on the matching routes a spent budget must serve the rule
+    ranking rather than refuse: a 429 denies a student results the server
+    already computed for free."""
+
+    @staticmethod
+    def _arm(monkeypatch):
+        from backend import main as main_mod
+        from backend.lib import llm_budget
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
+        main_mod._last_purge = 0.0
+        llm_budget.reset_for_tests()
+        return main_mod
+
+    def test_degradable_covers_the_matching_routes_only(self):
+        from backend.main import _llm_degradable
+
+        assert _llm_degradable("/api/matches")
+        assert _llm_degradable("/api/matches/view")
+        assert _llm_degradable("/api/matches/abc123/explain")
+        # The completion IS the product here — there is nothing to serve instead.
+        assert not _llm_degradable("/api/cold-email")
+        assert not _llm_degradable("/api/tailor")
+        assert not _llm_degradable("/api/opportunities/abc123/chat")
+
+    def test_the_view_route_draws_on_the_llm_ceiling_when_refine_is_on(self):
+        from backend.main import _billable_class
+
+        def _req(query=b""):
+            from starlette.requests import Request
+
+            return Request(
+                {"type": "http", "method": "POST", "headers": [], "query_string": query}
+            )
+
+        # This is the route the results page calls; if it did not draw on the
+        # cap, the cap would not see the product's main paid path at all.
+        assert _billable_class(_req(b"llm=true"), "/api/matches/view") == "llm"
+        assert _billable_class(_req(), "/api/matches/view") is None
+
+    def test_paging_a_cached_snapshot_costs_nothing(
+        self, monkeypatch, sample_profile_req
+    ):
+        import datetime as _dt
+
+        from backend.lib import llm_budget
+
+        self._arm(monkeypatch)
+        body = {
+            "profile": sample_profile_req,
+            "view": {
+                "tab": "all", "search_query": "", "paid": "", "intl": "",
+                "source": "", "on_campus": "", "deadline": "", "min_score": 0,
+                "scope": "", "sort_by": "score", "show_dismissed": False,
+                "favorite_ids": [], "dismissed_ids": [],
+                "today": _dt.date.today().isoformat(),
+            },
+            "page_size": 4,
+        }
+        for _ in range(5):
+            r = client.post("/api/matches/view?llm=true", json=body)
+            assert r.status_code == 200, r.text
+        # No provider is configured in tests, so nothing should have been
+        # recorded — and five identical requests must not read as five
+        # completions even when one is. Counting requests here would have
+        # burned five of the day's allowance for at most one real call.
+        assert llm_budget.spent() == 0
+
+    def test_a_spent_day_serves_the_rule_ranking_not_a_429(
+        self, monkeypatch, sample_profile_req
+    ):
+        from backend.lib import llm_budget
+        from backend.routes import matches as matches_mod
+
+        self._arm(monkeypatch)
+        monkeypatch.setenv("OFE_GLOBAL_LLM_PER_DAY", "1")
+        llm_budget.spend()
+        assert llm_budget.exhausted()
+
+        called = []
+
+        def _never(*args, **kwargs):
+            called.append(1)
+            raise AssertionError("paid rerank ran past the day ceiling")
+
+        monkeypatch.setattr(matches_mod, "llm_rerank", _never)
+
+        r = client.post("/api/matches?llm=true", json=sample_profile_req)
+        assert r.status_code == 200, r.text
+        assert not called
+        assert all(item.get("ai_reason") is None for item in r.json()["results"])
+
+    def test_a_spent_day_still_refuses_the_endpoints_that_have_no_fallback(
+        self, monkeypatch
+    ):
+        from backend.lib import llm_budget
+
+        self._arm(monkeypatch)
+        monkeypatch.setenv("OFE_GLOBAL_LLM_PER_DAY", "0")
+        assert llm_budget.exhausted()
+
+        r = client.post("/api/opportunities/nope/chat", json={"message": "hi"})
+        assert r.status_code == 429
+
+    def test_the_counter_resets_on_the_utc_date_roll(self, monkeypatch):
+        from backend.lib import llm_budget
+
+        llm_budget.reset_for_tests()
+        monkeypatch.setenv("OFE_GLOBAL_LLM_PER_DAY", "1")
+        llm_budget.spend()
+        assert llm_budget.exhausted()
+
+        monkeypatch.setattr(llm_budget, "_day", "1999-01-01")
+        assert llm_budget.spent() == 0
+        assert not llm_budget.exhausted()
+
+    def test_an_unconfigured_provider_spends_nothing(self, monkeypatch):
+        from backend.lib import llm, llm_budget
+
+        llm_budget.reset_for_tests()
+        monkeypatch.setattr(llm, "_resolve", lambda _pid=None: None)
+        assert llm.chat_completion([{"role": "user", "content": "hi"}]) is None
+        # Nothing left the machine, so nothing may be charged against the day.
+        assert llm_budget.spent() == 0
+
+    def test_a_completion_that_reaches_the_provider_is_charged(self, monkeypatch):
+        # Without this, deleting the spend() call at the provider boundary
+        # leaves every other test in this class green: they all set the counter
+        # by hand. The counter is only worth anything if something increments it.
+        from backend.lib import llm, llm_budget
+
+        llm_budget.reset_for_tests()
+        monkeypatch.setattr(
+            llm,
+            "_resolve",
+            lambda _pid=None: llm._ResolvedProvider(
+                pid="openrouter",
+                api_key="test-key",
+                base_url="https://example.invalid/v1",
+                model="test/model",
+            ),
+        )
+        monkeypatch.setitem(sys.modules, "openai", _StubOpenAI("hello"))
+        assert llm.chat_completion([{"role": "user", "content": "hi"}]) == "hello"
+        assert llm_budget.spent() == 1
+
+    def test_every_retry_of_a_failing_call_is_charged(self, monkeypatch):
+        # A retry is a second request the provider may bill for. The ceiling has
+        # to fail toward under-spending, so both attempts count.
+        from backend.lib import llm, llm_budget
+
+        llm_budget.reset_for_tests()
+        monkeypatch.setattr(llm, "_RETRY_BASE_DELAY_SECONDS", 0)
+        monkeypatch.setattr(
+            llm,
+            "_resolve",
+            lambda _pid=None: llm._ResolvedProvider(
+                pid="openrouter",
+                api_key="test-key",
+                base_url="https://example.invalid/v1",
+                model="test/model",
+            ),
+        )
+        monkeypatch.setitem(sys.modules, "openai", _StubOpenAI(RuntimeError("boom")))
+        assert llm.chat_completion([{"role": "user", "content": "hi"}]) is None
+        assert llm_budget.spent() == llm._MAX_ATTEMPTS
 
 
 class TestMatchesHomeSchool:

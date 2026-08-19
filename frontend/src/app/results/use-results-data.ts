@@ -137,6 +137,7 @@ export function useResultsData(
         const result = await getMatchView(profile, view, {
           cursor: cursor ?? null,
           pageSize: MATCH_VIEW_PAGE_SIZE,
+          llm: semanticRerank,
           signal: controller.signal,
         });
         if (!active) return;

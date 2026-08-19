@@ -348,10 +348,15 @@ export async function getMatchView(
   options: {
     cursor?: string | null;
     pageSize?: number;
+    llm?: boolean;
     signal?: AbortSignal;
   } = {},
 ): Promise<MatchesResponse> {
-  return request<MatchesResponse>('/matches/view', {
+  // Same two gates getMatches applies, and in the query string for the same
+  // reason the route documents: the server's spend backstop reads the query,
+  // not the body.
+  const llm = RELEASE_SCOPE.matchAiRefine && options.llm === true;
+  return request<MatchesResponse>(`/matches/view?llm=${llm ? 'true' : 'false'}`, {
     method: 'POST',
     body: JSON.stringify({
       profile: toProfileRequest(profile),

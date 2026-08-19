@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import {
   readInitialFiltersFromUrl,
-  readInitialSemanticRerank,
+  readSemanticRerankUrlPin,
+  resolveSemanticRerank,
   useResultsUrlSync,
 } from './use-results-url';
 
@@ -89,31 +90,44 @@ describe('readInitialFiltersFromUrl', () => {
   );
 });
 
-describe('readInitialSemanticRerank', () => {
-  beforeEach(() => {
-    localStorage.clear();
+describe('readSemanticRerankUrlPin', () => {
+  it('reads both explicit values and no opinion at all', () => {
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=1'))).toBe(true);
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=0'))).toBe(false);
+    expect(readSemanticRerankUrlPin(new URLSearchParams(''))).toBe(null);
+    expect(readSemanticRerankUrlPin(new URLSearchParams('ai=yes'))).toBe(null);
+  });
+});
+
+describe('resolveSemanticRerank', () => {
+  it('lets the URL win over the stored preference in both directions', () => {
+    // A share link has to reproduce what the sender saw, not what the recipient
+    // last chose.
+    expect(resolveSemanticRerank(true, true, '0')).toBe(true);
+    expect(resolveSemanticRerank(false, true, '1')).toBe(false);
   });
 
-  it('prefers ?ai=1 over a stored off preference', () => {
-    // The URL wins over localStorage in both directions: a share link has to
-    // reproduce what the sender saw, not what the recipient last chose.
-    localStorage.setItem('ofe_semantic_rerank', '0');
-    expect(readInitialSemanticRerank(new URLSearchParams('ai=1'))).toBe(true);
+  it('turns AI refine on for a student who has never chosen', () => {
+    // The reason line on the card is the differentiator. A student who does not
+    // know the toggle exists must still get it.
+    expect(resolveSemanticRerank(null, false, null)).toBe(true);
   });
 
-  it('prefers ?ai=0 over localStorage', () => {
-    localStorage.setItem('ofe_semantic_rerank', '1');
-    expect(readInitialSemanticRerank(new URLSearchParams('ai=0'))).toBe(false);
+  it('honors a stored choice in both directions', () => {
+    expect(resolveSemanticRerank(null, true, '0')).toBe(false);
+    expect(resolveSemanticRerank(null, true, '1')).toBe(true);
   });
 
-  it('ignores a stale enabled preference in localStorage', () => {
-    localStorage.setItem('ofe_semantic_rerank', '1');
-    localStorage.setItem('ofe_semantic_rerank_opt_in_v1', '1');
-    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
+  it('stays off while the stored preference is unreadable', () => {
+    // `undefined` is "ownership is not confirmed yet", which is not "nothing was
+    // stored". Reading it as absent would turn the pass back on for a student
+    // who had already opted out — and spend on them — during every first render.
+    expect(resolveSemanticRerank(null, undefined, null)).toBe(false);
+    expect(resolveSemanticRerank(null, undefined, '1')).toBe(false);
   });
 
-  it('defaults to deterministic matching', () => {
-    expect(readInitialSemanticRerank(new URLSearchParams(''))).toBe(false);
+  it('still lets an explicit URL through before the preference is readable', () => {
+    expect(resolveSemanticRerank(true, undefined, null)).toBe(true);
   });
 });
 
@@ -151,8 +165,8 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
       scope: '' as const,
     },
     sortBy: 'score' as const,
-    // Deterministic matching is the accepted release path.
     semanticRerank: false,
+    semanticSettled: true,
   };
 
   it('omits ?tab= when activeTab is the new default "high_priority"', () => {
@@ -203,5 +217,22 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
     // only the fallback when the URL is silent.
     renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticRerank: true }));
     expect(lastUrl()).toBe('/results?ai=1');
+  });
+
+  it('writes no ?ai= at all until the preference is readable', () => {
+    // The unreadable window is not an opt-out. Stamping ?ai=0 during it would
+    // survive into the address bar, and the next load would read that back as
+    // an explicit URL pin — a transient unknown promoted to a permanent no.
+    renderHook(() => useResultsUrlSync({ ...EMPTY_STATE, semanticSettled: false }));
+    expect(lastUrl()).toBe('/results');
+  });
+
+  it('still writes the other facets while the preference is unreadable', () => {
+    renderHook(() => useResultsUrlSync({
+      ...EMPTY_STATE,
+      activeTab: 'all',
+      semanticSettled: false,
+    }));
+    expect(lastUrl()).toBe('/results?tab=all');
   });
 });

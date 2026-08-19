@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from backend.data_loader import (
     corpus_version,
@@ -923,10 +923,9 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
             responsiveness,
         )
 
-    # Dormant/MTP path: keep the complete result list because a future accepted
-    # LLM blend may move records across percentile buckets. The public release
-    # cannot enter this branch (feature_enabled("match_ai_refine") is
-    # source-controlled false).
+    # Refine path: keep the complete result list because the LLM blend moves
+    # records across percentile buckets, so the buckets have to be recomputed
+    # from the whole set rather than patched on the visible slice.
     try:
         results = await asyncio.to_thread(
             _rank_all_for_generation,
@@ -950,10 +949,10 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         if opportunity.get("id")
     }
 
-    # LLM rerank (default-on, OpenRouter). Runs after the rule rank; a strict
-    # no-op when OpenRouter is unconfigured or any call fails, so the rule
-    # order holds. The belt honors the same contract: rerank machinery must
-    # never turn the default /matches route into a 5xx.
+    # LLM rerank (OpenRouter). Runs after the rule rank; a strict no-op when
+    # OpenRouter is unconfigured or any call fails, so the rule order holds. The
+    # belt honors the same contract: rerank machinery must never turn the
+    # /matches route into a 5xx.
     if llm:
         try:
             # Bounded AI pool, not the unbounded default executor: the rerank
@@ -1222,8 +1221,23 @@ def _apply_match_view(
     return filtered, view_counts, source_facets, scope_available, deadline_counts
 
 
+def _ai_pass_allowed(request: Request, llm: bool) -> bool:
+    """Whether this request may run the paid rerank.
+
+    Three gates, all of which must hold: the client asked, the release accepts
+    the feature, and the day's provider budget is not spent. The third is set
+    by the rate-limit middleware, which lets the request through unbilled
+    rather than refusing it — a student past the ceiling gets the rule ranking,
+    which is a real answer, instead of a 429, which is not.
+    """
+    if not llm or not feature_enabled("match_ai_refine"):
+        return False
+    return not getattr(request.state, "llm_budget_exhausted", False)
+
+
 @router.post("/matches", response_model=MatchesResponse)
 async def get_matches(
+    request: Request,
     profile: ProfileRequest,
     limit: int = Query(
         default=DEFAULT_RESULTS_PER_PAGE,
@@ -1247,10 +1261,11 @@ async def get_matches(
     and to the number of items a full offset traversal returns. low_fit is
     counted separately and never returned.
 
-    Deterministic matching is the public default. The bounded OpenRouter refine
-    pass only runs when the feature has passed release acceptance and the caller
-    explicitly sends ``llm=true``. URL manipulation cannot promote the dormant
-    feature.
+    Deterministic matching is what a caller gets by default. The bounded
+    OpenRouter refine pass runs only when the feature has passed release
+    acceptance, the caller explicitly sends ``llm=true``, and the day's provider
+    budget is unspent — see ``_ai_pass_allowed``. A caller past the budget is
+    served the rule ranking, not an error.
     """
     decoded_cursor: tuple[str, int] | None = None
     if cursor is not None:
@@ -1276,7 +1291,7 @@ async def get_matches(
             ) from exc
 
     profile_dict = _normalized_profile(profile)
-    use_llm = llm and feature_enabled("match_ai_refine")
+    use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     opp_lookup = snap.opportunities_by_id
 
@@ -1322,17 +1337,32 @@ async def get_matches(
 
 
 @router.post("/matches/view", response_model=MatchesResponse)
-async def get_match_view(request: MatchViewRequest):
+async def get_match_view(
+    request: Request,
+    body: MatchViewRequest,
+    llm: bool = Query(default=False),
+):
     """Return one exact filtered/sorted page over the canonical Match snapshot.
 
     Counts, facets, empty-state truth and pagination all derive from the
     complete visible universe. The browser therefore never treats a bounded
     response page as if it were the full result set.
+
+    ``llm`` honors the same refine pass /matches does, and must: this is the
+    route the results page actually calls. It used to pass a hardcoded False,
+    so the AI toggle moved the cache key and the header copy while the list
+    itself stayed deterministic and no card ever carried an ``ai_reason``. It
+    also put this route and /matches/{id}/explain on different snapshots, which
+    is exactly the disagreement explain's consistency contract forbids.
+
+    In the query string rather than the body so the rate-limit middleware can
+    see it — a body field is unreadable at that layer, and an unreadable paid
+    class is an unbounded one.
     """
     decoded_cursor: tuple[str, str, int] | None = None
-    if request.cursor is not None:
+    if body.cursor is not None:
         try:
-            decoded_cursor = _decode_match_view_cursor(request.cursor)
+            decoded_cursor = _decode_match_view_cursor(body.cursor)
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
@@ -1343,10 +1373,10 @@ async def get_match_view(request: MatchViewRequest):
                 },
             ) from exc
 
-    profile_dict = _normalized_profile(request.profile)
-    snap = await _get_or_compute_snapshot(profile_dict, False)
+    profile_dict = _normalized_profile(body.profile)
+    snap = await _get_or_compute_snapshot(profile_dict, _ai_pass_allowed(request, llm))
     opportunities_by_id = snap.opportunities_by_id
-    view_id = _match_view_id(request.view)
+    view_id = _match_view_id(body.view)
     page_offset = 0
     if decoded_cursor is not None:
         cursor_result_set_id, cursor_view_id, page_offset = decoded_cursor
@@ -1372,10 +1402,10 @@ async def get_match_view(request: MatchViewRequest):
     ) = _apply_match_view(
         snap.visible,
         opportunities_by_id,
-        request.view,
+        body.view,
         profile_dict.get("home_school") or "uiuc",
     )
-    page = filtered[page_offset:page_offset + request.page_size]
+    page = filtered[page_offset:page_offset + body.page_size]
     page_response = [
         _match_result_response(result, opportunities_by_id) for result in page
     ]
@@ -1539,6 +1569,7 @@ _EXCLUSION_GAP_TEXT = {
 
 @router.post("/matches/{opportunity_id}/explain")
 async def get_match_explanation(
+    request: Request,
     opportunity_id: str,
     profile: ProfileRequest,
     llm: bool = Query(default=False),
@@ -1565,7 +1596,7 @@ async def get_match_explanation(
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
     profile_dict = _normalized_profile(profile)
-    use_llm = llm and feature_enabled("match_ai_refine")
+    use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None

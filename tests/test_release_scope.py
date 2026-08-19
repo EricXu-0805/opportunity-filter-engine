@@ -523,6 +523,7 @@ def test_hidden_fellowship_id_is_rejected_by_dormant_target_consumers(scope_clos
     with pytest.raises(HTTPException) as explain_error:
         asyncio.run(
             matches_module.get_match_explanation(
+                Request({"type": "http", "method": "POST", "headers": []}),
                 hidden["id"],
                 ProfileRequest(),
                 llm=False,
