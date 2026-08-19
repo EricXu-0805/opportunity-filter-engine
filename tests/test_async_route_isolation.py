@@ -226,7 +226,7 @@ def test_match_cache_hit_does_not_block_live_while_scorer_holds_generation_lock(
 
 def test_matches_llm_rerank_does_not_block_live(monkeypatch, profile):
     fake, gate = _gated(
-        lambda _profile, results, _lookup: results
+        lambda _profile, results, _lookup: matches.RerankOutcome(results, True)
     )
     _fake_matches_corpus(monkeypatch, "threaded-rerank")
     monkeypatch.setattr(matches, "llm_rerank", fake)

@@ -360,22 +360,39 @@ def _llm_score_candidates(query: str, cand: list[tuple[str, str]]) -> dict[str, 
     return out if any_ok else None
 
 
+@dataclass
+class RerankOutcome:
+    """What the refine pass actually did, not what was asked of it.
+
+    ``applied`` is the server's attestation: true only when the model returned
+    usable judgements for at least one of THESE candidates. Every degrade —
+    provider unconfigured, empty interests, a batch that would not parse, a
+    reply naming none of the ids we sent — leaves it false while ``results``
+    still holds a complete rule ranking. Surfaces render the AI badge from this
+    and never from the request flag, because the request flag says what the
+    student asked for and this says what they got.
+    """
+
+    results: list
+    applied: bool
+
+
 def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
-               weight=_LLM_RERANK_WEIGHT):
+               weight=_LLM_RERANK_WEIGHT) -> RerankOutcome:
     """Re-rank the top ``top_k`` rule-ranked results with an LLM relevance pass.
 
     Blend: ``final = (1 - w) * rule_score + w * llm_score``. Mutates ``results``
-    in place and returns the re-sorted list. No-op (returns ``results``
-    unchanged) when OpenRouter is unconfigured, the profile has no interests,
-    or every LLM batch fails — the rule ranking is always the floor.
+    in place and returns them alongside whether the pass applied. A strict
+    no-op when OpenRouter is unconfigured, the profile has no interests, or
+    every LLM batch fails — the rule ranking is always the floor.
     """
     if not results or top_k <= 0 or weight <= 0:
-        return results
+        return RerankOutcome(results, False)
     if _resolve("openrouter") is None:
-        return results
+        return RerankOutcome(results, False)
     query = _profile_query_text(profile)
     if not query.strip():
-        return results
+        return RerankOutcome(results, False)
 
     top = results[:min(top_k, len(results))]
     cand: list[tuple[str, str]] = []
@@ -426,7 +443,7 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     if scores is None:
         scores = _llm_score_candidates(query, cand)
         if scores is None:
-            return results
+            return RerankOutcome(results, False)
         # Bounded hygiene: this cache is a process-global keyed by query + model
         # + candidate set, so a long-lived server could accumulate entries
         # unboundedly. The real cost ceiling is the paid OpenRouter call per
@@ -494,7 +511,9 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     # rank_all established — equal-score bands could reorder between requests.
     results.sort(key=canonical_sort_key)
     _assign_buckets(results)
-    return results
+    # A reply that named none of the ids we sent leaves `rated` empty: parsed,
+    # paid for, and worth nothing to this student. That is not a refined list.
+    return RerankOutcome(results, bool(rated))
 
 
 # ── Canonical match snapshots ────────────────────────────────────────────────
@@ -534,6 +553,11 @@ class _MatchSnapshot:
     opportunities_by_id: dict[str, dict]  # compact visible cards, same generation
     buckets: dict[str, int]
     field_relevant_count: int
+    # Whether the paid refine actually produced judgements for THIS snapshot.
+    # A rule snapshot is False; a refine that degraded to the rule order is
+    # also False. Every response built from this snapshot reports it, so no
+    # surface has to infer the mode from the request flag.
+    refined: bool = False
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
@@ -1009,18 +1033,21 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     # OpenRouter is unconfigured or any call fails, so the rule order holds. The
     # belt honors the same contract: rerank machinery must never turn the
     # /matches route into a 5xx.
+    refined = False
     if llm:
         try:
             # Bounded AI pool, not the unbounded default executor: the rerank
             # fans out paid provider calls, so saturation/timeout must degrade
             # to the rule order instead of queueing behind an outage.
-            results = await run_blocking(
+            outcome = await run_blocking(
                 llm_rerank,
                 profile_dict,
                 results,
                 opp_lookup,
                 timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS,
             )
+            results = outcome.results
+            refined = outcome.applied
             # llm_rerank re-sorts and re-buckets, which discards the explore-mode
             # diversity ordering rank_all applied. Re-interleave the top bands so an
             # exploring student keeps breadth across areas/types after the rerank.
@@ -1054,6 +1081,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         },
         buckets=buckets,
         field_relevant_count=field_relevant_count,
+        refined=refined,
     )
     return _store_snapshot(key, snap)
 
@@ -1404,6 +1432,7 @@ async def get_matches(
         field_relevant_count=snap.field_relevant_count,
         thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
         matcher_version=MATCHER_VERSION,
+        ai_refined=snap.refined,
         returned_count=len(page_response),
         has_more=has_more,
         next_cursor=(
@@ -1503,6 +1532,7 @@ async def get_match_view(
         field_relevant_count=snap.field_relevant_count,
         thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
         matcher_version=MATCHER_VERSION,
+        ai_refined=snap.refined,
         returned_count=len(page_response),
         has_more=has_more,
         next_cursor=(

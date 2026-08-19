@@ -745,6 +745,42 @@ class TestServerMatchView:
         assert client.post("/api/matches/view", json=request).status_code == 200
         assert seen == [True, False, False]
 
+    def test_the_response_reports_the_mode_it_got_not_the_one_asked_for(
+        self, snapshot_env, monkeypatch
+    ):
+        """?llm=true is a request; ai_refined is what happened.
+
+        Every degrade — provider unconfigured, budget exhausted, an unusable
+        batch — leaves a complete rule ranking behind, so the results cannot
+        be told apart from a refined set by looking at them. Without an
+        attestation the client badge has nothing to read but the request flag,
+        and claims a paid pass that never ran.
+        """
+        from backend.routes import matches as matches_mod
+
+        request = self._request(_profile())
+
+        monkeypatch.setattr(matches_mod, "_resolve", lambda *a, **k: None)
+        matches_mod._match_snapshots.clear()
+        degraded = client.post("/api/matches/view?llm=true", json=request)
+        assert degraded.status_code == 200
+        assert degraded.json()["ai_refined"] is False
+
+        def _applied(profile, results, lookup, **kwargs):
+            for result in results[:1]:
+                result.ai_reason = "Named their imaging work."
+            return matches_mod.RerankOutcome(results, True)
+
+        monkeypatch.setattr(matches_mod, "llm_rerank", _applied)
+        matches_mod._match_snapshots.clear()
+        refined = client.post("/api/matches/view?llm=true", json=request)
+        assert refined.status_code == 200
+        assert refined.json()["ai_refined"] is True
+
+        matches_mod._match_snapshots.clear()
+        rule_only = client.post("/api/matches/view?llm=false", json=request)
+        assert rule_only.json()["ai_refined"] is False
+
     def test_unfiltered_cursor_walk_equals_canonical_visible_universe(
         self, snapshot_env
     ):
@@ -1309,7 +1345,7 @@ class TestLlmRerankCanonicalOrder:
         lookup = {r.opportunity_id: _opp(r.opportunity_id) for r in results}
         out = m_module.llm_rerank(
             {"research_interests_text": "tie-break-query"}, results, lookup
-        )
+        ).results
         assert [r.opportunity_id for r in out] == ["a-live", "b-live", "c-dead"]
 
 

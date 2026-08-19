@@ -30,6 +30,7 @@ init_sentry()
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import TypeAdapter, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -212,6 +213,34 @@ _EMAIL_SEND_PATHS = frozenset(
 )
 
 
+# The same adapter FastAPI uses for a ``bool`` query parameter.
+_BOOL_QUERY = TypeAdapter(bool)
+
+
+def _query_flag_true(request: Request, name: str) -> bool:
+    """Whether the route's own ``bool`` parameter will read this value as true.
+
+    The match routes declare ``llm: bool``, so FastAPI accepts every spelling
+    pydantic does — ``yes``, ``on``, ``y`` and ``t`` as well as ``1`` and
+    ``true``. This function decides which requests draw on the paid ceilings,
+    and a spelling it fails to recognise is not merely mis-counted: an
+    unclassified request skips the whole ceiling block below, so it reaches the
+    provider with neither the per-minute bucket nor the day-budget degrade
+    applied, while llm_budget still spends. ``?llm=yes`` was an unmetered paid
+    path on a key that cannot be revoked.
+
+    Parsed with the adapter itself rather than a second list of spellings,
+    because a second list is a thing that drifts away from the first.
+    """
+    raw = request.query_params.get(name)
+    if raw is None:
+        return False
+    try:
+        return _BOOL_QUERY.validate_python(raw)
+    except ValidationError:
+        return False
+
+
 def _billable_class(request: Request, path: str) -> str | None:
     """Which global ceiling this request draws on — "llm", "email", or None for
     the cheap reads (list/stat/detail GETs, status probes) that must never be
@@ -235,7 +264,7 @@ def _billable_class(request: Request, path: str) -> str | None:
     if path.startswith("/api/matches/") and path.endswith("/explain"):
         if (
             feature_enabled("match_ai_refine")
-            and request.query_params.get("llm", "").lower() in ("1", "true")
+            and _query_flag_true(request, "llm")
         ):
             return "llm"
         return None
@@ -248,7 +277,7 @@ def _billable_class(request: Request, path: str) -> str | None:
     if (
         path in ("/api/matches", "/api/matches/view")
         and feature_enabled("match_ai_refine")
-        and request.query_params.get("llm", "").lower() in ("1", "true")
+        and _query_flag_true(request, "llm")
     ):
         return "llm"
     return None
