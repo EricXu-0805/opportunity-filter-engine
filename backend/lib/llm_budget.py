@@ -28,9 +28,22 @@ import os
 import threading
 import time
 
-# Provider completions per UTC day. At two calls per fresh match refine, the
-# default buys roughly 750 first-time profiles a day and still bounds a runaway.
-DEFAULT_PER_DAY = 1500
+# Provider completions per UTC day.
+#
+# Priced from OpenRouter's public rate for the rerank model
+# (anthropic/claude-sonnet-5: $2/M prompt, $10/M completion) against a measured
+# payload: two calls and roughly $0.012 per fresh match refine, and that is a
+# floor — the reconstruction could not see research_areas_raw or recent works,
+# and each candidate may carry up to 600 characters against the ~220 observed.
+# Call it $0.012-0.02.
+#
+# 400 completions is therefore about 200 fresh profiles and $2.40-4.00 a day,
+# far above real traffic and a bounded loss if something runs away. The key
+# this spends belongs to a professor and cannot be revoked, which is the whole
+# reason the ceiling is low rather than comfortable. Raise it on Render when
+# real traffic justifies it; going over degrades to the rule ranking, it does
+# not error.
+DEFAULT_PER_DAY = 400
 
 _lock = threading.Lock()
 _day = ""

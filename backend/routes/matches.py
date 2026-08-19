@@ -423,15 +423,43 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
             _llm_rerank_cache.clear()
         _llm_rerank_cache[cache_key] = scores
 
-    for r in top:
-        llm = scores.get(r.opportunity_id)
-        if llm is None:
-            continue
-        r.final_score = round(
-            max(0.0, min(100.0, (1 - weight) * r.final_score + weight * llm["s"])), 1
-        )
-        if llm.get("r"):
-            r.ai_reason = llm["r"]
+    # The two scores are not on the same scale, and blending them raw is what
+    # made this pass destructive. Across a candidate set the rule score spans
+    # about ten points — 83.8..93.7 on a measured UIUC ECE profile — while the
+    # model answers on the full 0..100. At w=0.35 the model therefore moves a
+    # card up to 35 points against a signal whose entire spread is 10. That is
+    # not refinement, it is replacement, and only for the K cards it was shown:
+    # a card the model scored below ~50 (moderately related, not irrelevant)
+    # landed past rank 100, behind eighty cards it never looked at, which took
+    # its place carrying no reason line at all. Fourteen of every twenty paid
+    # judgements were discarded that way.
+    #
+    # So map the model's scores onto the rule scores THIS candidate set already
+    # holds, then blend. rank_all decides membership and the score band; the
+    # model decides the order inside it. Because both terms then lie within
+    # [band_lo, band_hi] and band_lo is by construction >= the best score below
+    # the slice, no evaluated card can fall behind an unevaluated one — the
+    # model is never asked to outrank something it was not shown.
+    rated = [(r, scores[r.opportunity_id]) for r in top if r.opportunity_id in scores]
+    if rated:
+        band = [r.final_score for r, _ in rated]
+        band_lo, band_hi = min(band), max(band)
+        judged = [llm["s"] for _, llm in rated]
+        judged_lo, judged_hi = min(judged), max(judged)
+        spread = judged_hi - judged_lo
+        for r, llm in rated:
+            # A model that separated nothing gets no say: rescaling a flat set
+            # would be dividing by zero, and there is no order to express.
+            mapped = (
+                band_lo + (llm["s"] - judged_lo) / spread * (band_hi - band_lo)
+                if spread > 0
+                else r.final_score
+            )
+            r.final_score = round(
+                max(0.0, min(100.0, (1 - weight) * r.final_score + weight * mapped)), 1
+            )
+            if llm.get("r"):
+                r.ai_reason = llm["r"]
 
     # Canonical order: the blend creates/moves ties, and a bare score sort
     # silently dropped the actionable-first + unique-id tie-break contract

@@ -337,10 +337,79 @@ class TestLLMRerank:
         # LLM rates the lowest rule-scored candidate as the best topical fit.
         monkeypatch.setattr(matches, "chat_completion",
                             lambda *a, **k: '{"0": 0, "1": 0, "2": 100}')
-        results = self._results([("a", 80), ("b", 70), ("c", 60)])
+        # A realistic band: rank_all bunches its top slice inside a few points,
+        # so the model's judgement decides the order there.
+        results = self._results([("a", 86.0), ("b", 85.5), ("c", 85.0)])
         out = matches.llm_rerank({"research_interests_text": "unique-query-xyz"}, results,
                                  self._lookup(["a", "b", "c"]))
         assert out[0].opportunity_id == "c"  # promoted by the LLM signal
+
+    def test_a_demoted_card_never_falls_behind_one_the_model_never_saw(
+        self, monkeypatch
+    ):
+        """The bug this pass shipped with.
+
+        Blending a 0..100 model score against a rule score whose whole top-20
+        spread is ten points let the model fling a candidate past a hundred
+        records it was never shown — which then took its place carrying no
+        reason line. The model may reorder the slice it was given; it may not
+        rank a card against one it never saw.
+        """
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        # The model likes the second candidate and despises the first.
+        monkeypatch.setattr(matches, "chat_completion",
+                            lambda *a, **k: '{"0": 2, "1": 98}')
+        # Two evaluated, one unevaluated tail record just below them.
+        results = self._results([("a", 93.0), ("b", 92.0), ("tail", 91.9)])
+        out = matches.llm_rerank(
+            {"research_interests_text": "band-guard-query"},
+            results,
+            self._lookup(["a", "b", "tail"]),
+            top_k=2,
+        )
+        order = [r.opportunity_id for r in out]
+        assert order[:2] == ["b", "a"], order   # the model reordered the slice
+        assert order[2] == "tail"              # and could not eject either card
+        by_id = {r.opportunity_id: r for r in out}
+        assert by_id["a"].final_score >= by_id["tail"].final_score
+
+    def test_a_flat_verdict_leaves_the_rule_order_untouched(self, monkeypatch):
+        # Identical scores express no ordering, and rescaling them would divide
+        # by zero. Nothing to say means nothing changes.
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(matches, "chat_completion",
+                            lambda *a, **k: '{"0": 70, "1": 70, "2": 70}')
+        results = self._results([("a", 86.0), ("b", 85.5), ("c", 85.0)])
+        out = matches.llm_rerank({"research_interests_text": "flat-verdict-query"}, results,
+                                 self._lookup(["a", "b", "c"]))
+        assert [r.opportunity_id for r in out] == ["a", "b", "c"]
+        assert [r.final_score for r in out] == [86.0, 85.5, 85.0]
+
+    def test_a_reason_still_reaches_every_card_the_model_scored(self, monkeypatch):
+        # Coverage is the point of keeping the slice together: whatever the
+        # model rated stays on the page carrying what it said.
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "chat_completion",
+            lambda *a, **k: '{"0": {"s": 20, "r": "Weakly related: shares only methods."},'
+                            ' "1": {"s": 95, "r": "Directly on your stated topic."}}',
+        )
+        results = self._results([("a", 90.0), ("b", 89.0), ("tail", 88.0)])
+        out = matches.llm_rerank(
+            {"research_interests_text": "coverage-query"},
+            results,
+            self._lookup(["a", "b", "tail"]),
+            top_k=2,
+        )
+        rated = [r for r in out if r.opportunity_id in ("a", "b")]
+        assert all(r.ai_reason for r in rated)
+        assert [r.opportunity_id for r in out][:2] == ["b", "a"]
 
     def test_attaches_ai_reason_to_reranked_results(self, monkeypatch):
         from backend.routes import matches
