@@ -235,6 +235,13 @@ class MatchesResponse(BaseModel):
     # (src.matcher.config.MATCHER_VERSION). Clients key their caches on it so
     # results from two matcher generations can never silently coexist.
     matcher_version: str = ""
+    # Server attestation of the EFFECTIVE match mode: true only when the paid
+    # refine actually produced judgements for this result set. The client asks
+    # for a mode with ?llm=; this reports the one it got. They differ whenever
+    # the provider is unconfigured, the day budget degraded the request, or a
+    # batch came back unusable — and a badge that reads the request instead of
+    # this one claims work that never happened.
+    ai_refined: bool = False
     # Bounded paging contract. ``total`` remains the complete visible
     # universe; these fields describe only this response window.
     returned_count: int = 0

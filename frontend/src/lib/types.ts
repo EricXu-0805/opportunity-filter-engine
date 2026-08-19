@@ -253,6 +253,11 @@ export interface MatchesResponse {
   // Version of the matching logic + tunables that produced this response.
   // Cache keys include it so two matcher generations can never coexist.
   matcher_version?: string;
+  // Server attestation of the mode this result set was actually produced in.
+  // Absent or false means no paid refine judged these cards, whatever the
+  // request asked for — surfaces that claim AI must read this, never the
+  // toggle, because every degrade still returns a complete rule ranking.
+  ai_refined?: boolean;
   // Bounded, generation-safe paging metadata.
   returned_count?: number;
   has_more?: boolean;
