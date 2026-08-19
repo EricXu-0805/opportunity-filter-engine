@@ -1002,3 +1002,55 @@ def test_pre_llc_migration_revokes_direct_order_inserts():
         "FROM anon, authenticated"
     ) in migration
     assert "public.waitlist" not in migration.lower()
+
+
+def test_hidden_mtp_migration_closes_browser_data_api_and_preserves_server():
+    migration = (
+        Path(__file__).parents[1]
+        / "supabase"
+        / "migrations"
+        / "20260819164641_disable_unaccepted_mtp_data_api.sql"
+    ).read_text()
+    normalized = " ".join(migration.split())
+    policies = {
+        "resume_renovations": (
+            "resume_renovations_select_own",
+            "resume_renovations_insert_own",
+            "resume_renovations_update_own",
+            "resume_renovations_delete_own",
+        ),
+        "resume_renovation_versions": (
+            "resume_renovation_versions_select_own",
+            "resume_renovation_versions_insert_own",
+        ),
+        "professor_follows": (
+            "professor_follows_select_own",
+            "professor_follows_insert_own",
+            "professor_follows_delete_own",
+        ),
+        "professor_update_reads": (
+            "professor_update_reads_select_own",
+            "professor_update_reads_insert_own",
+            "professor_update_reads_update_own",
+        ),
+    }
+    for table, names in policies.items():
+        for name in names:
+            assert (
+                f'DROP POLICY IF EXISTS "{name}" ON public.{table}'
+                in normalized
+            )
+
+    tables = (
+        "public.resume_renovations, public.resume_renovation_versions, "
+        "public.professor_follows, public.professor_update_reads"
+    )
+    assert (
+        f"REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE {tables} "
+        "FROM PUBLIC, anon, authenticated"
+    ) in normalized
+    assert (
+        f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {tables} "
+        "TO service_role"
+    ) in normalized
+    assert "DROP TABLE" not in normalized.upper()

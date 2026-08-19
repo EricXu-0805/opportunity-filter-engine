@@ -37,7 +37,7 @@ echo "==> load test stubs"
 "${PSQL[@]}" -f "$HERE/_stubs.sql"
 
 echo "==> load migrations (effective prod schema; 004 superseded by 006)"
-for f in "$MIGRATIONS"/0*.sql; do
+for f in "$MIGRATIONS"/*.sql; do
   base="$(basename "$f")"
   case "$base" in
     004_*) echo "    skip $base (superseded by 006)"; continue ;;
@@ -58,6 +58,26 @@ for f in "$MIGRATIONS"/0*.sql; do
       "GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles, public.profile_versions TO PUBLIC, anon, authenticated"
     "${PSQL[@]}" -c \
       "GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles, public.profile_versions TO service_role"
+  fi
+  if [[ "$base" == "20260819164641_disable_unaccepted_mtp_data_api.sql" ]]; then
+    # Mirror Supabase's managed browser grants before the capability-close
+    # migration.  Seed one row per table first so the post-migration contract
+    # also proves that closing access preserves existing data.
+    "${PSQL[@]}" -c \
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON public.resume_renovations, public.resume_renovation_versions, public.professor_follows, public.professor_update_reads TO PUBLIC, anon, authenticated, service_role"
+    "${PSQL[@]}" -c "
+      INSERT INTO public.resume_renovations
+        (device_id, opportunity_id, doc, base_snapshot)
+      VALUES ('acl-preserve-device', 'acl-preserve-opportunity', '{}'::jsonb, '{}'::jsonb);
+      INSERT INTO public.resume_renovation_versions
+        (device_id, opportunity_id, doc)
+      VALUES ('acl-preserve-device', 'acl-preserve-opportunity', '{}'::jsonb);
+      INSERT INTO public.professor_follows
+        (device_id, professor_id, professor_name, school)
+      VALUES ('acl-preserve-device', 'prof:v1:uiuc:eeeeeeeeeeeeeeeeeeee', 'Preserved Faculty', 'uiuc');
+      INSERT INTO public.professor_update_reads
+        (device_id, professor_id, last_read_event_id)
+      VALUES ('acl-preserve-device', 'prof:v1:uiuc:eeeeeeeeeeeeeeeeeeee', 'prof-event:v1:eeeeeeeeeeeeeeeeeeeeeeee');"
   fi
   echo "    apply $base"
   "${PSQL[@]}" -f "$f"
@@ -80,6 +100,9 @@ echo "==> run merge_grant_replay_test.sql"
 
 echo "==> run profile_save_cas_test.sql"
 "${PSQL[@]}" -f "$HERE/profile_save_cas_test.sql"
+
+echo "==> run hidden_capabilities_acl_test.sql"
+"${PSQL[@]}" -f "$HERE/hidden_capabilities_acl_test.sql"
 
 # 027's advisory lock only matters under real concurrency, which a single
 # psql session cannot demonstrate: advisory locks are re-entrant per session,
