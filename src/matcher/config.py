@@ -182,7 +182,16 @@ RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 2.0)
 # changes conclusions and must therefore change MATCHER_VERSION.
 LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5")
 LLM_RERANK_TOPK = int(_env_float("OFE_LLM_RERANK_TOPK", 20))
-LLM_RERANK_BATCH = int(_env_float("OFE_LLM_RERANK_BATCH", 10))
+# Candidates per provider call. The batches run concurrently, so this is the
+# refine pass's wall-clock knob, not a cost knob: the candidate payload is
+# split across the calls rather than duplicated, and only the system prompt and
+# the student's interest text repeat (~450 tokens, well under a cent per extra
+# call). Ten candidates means ten 25-word sentences from one completion, and
+# output tokens are what the student waits on — measured at about 12 of the 18
+# seconds a cold refine took. Five halves the longest call without changing any
+# judgement: the prompt asks for an absolute 0-100 topical fit, so a candidate
+# is scored the same whether it sits beside four peers or nine.
+LLM_RERANK_BATCH = int(_env_float("OFE_LLM_RERANK_BATCH", 5))
 # How much of the ORDER inside the reranked slice comes from the model. The
 # number moved with the scale it acts on: the pass used to blend a raw 0..100
 # model score against rule scores whose whole top-20 spread is about ten

@@ -37,13 +37,20 @@ import time
 # and each candidate may carry up to 600 characters against the ~220 observed.
 # Call it $0.012-0.02.
 #
-# 400 completions is therefore about 200 fresh profiles and $2.40-4.00 a day,
-# far above real traffic and a bounded loss if something runs away. The key
-# this spends belongs to a professor and cannot be revoked, which is the whole
-# reason the ceiling is low rather than comfortable. Raise it on Render when
-# real traffic justifies it; going over degrades to the rule ranking, it does
-# not error.
-DEFAULT_PER_DAY = 400
+# The unit is completions, and a fresh refine is four of them, not two: the
+# rerank splits its twenty candidates five to a call so the student waits on
+# the longest call rather than a single long one (src/matcher/config.py:
+# LLM_RERANK_BATCH). Splitting divides the candidate payload instead of
+# duplicating it, so the dollar figure per profile barely moves — only the
+# system prompt and the interest text repeat.
+#
+# 800 completions is therefore about 200 fresh profiles and roughly $2.70-4.60
+# a day, far above real traffic and a bounded loss if something runs away. The
+# key this spends belongs to a professor and cannot be revoked, which is the
+# whole reason the ceiling is priced in profiles rather than left comfortable.
+# Raise it on Render when real traffic justifies it; going over degrades to the
+# rule ranking, it does not error.
+DEFAULT_PER_DAY = 800
 
 _lock = threading.Lock()
 _day = ""
