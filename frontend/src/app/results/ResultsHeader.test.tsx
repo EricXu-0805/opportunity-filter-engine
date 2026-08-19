@@ -27,7 +27,10 @@ beforeEach(() => {
   sendMatchesEmailMock.mockResolvedValue({ ok: true, count: 6 });
 });
 
-function renderHeader(fieldRelevantCount: number) {
+function renderHeader(
+  fieldRelevantCount: number,
+  overrides: Partial<React.ComponentProps<typeof ResultsHeader>> = {},
+) {
   const data = {
     total: 5,
     high_priority: 1,
@@ -41,6 +44,9 @@ function renderHeader(fieldRelevantCount: number) {
     <ResultsHeader
       loading={false}
       showSlowHint={false}
+      refining={false}
+      refined={false}
+      refineFailed={false}
       data={data}
       filteredTotal={0}
       counts={{ all: 5 }}
@@ -52,6 +58,7 @@ function renderHeader(fieldRelevantCount: number) {
       onExport={() => {}}
       loadEmailMatches={async () => []}
       t={t}
+      {...overrides}
     />,
   );
 }
@@ -172,5 +179,38 @@ describe('ResultsHeader email payload', () => {
       ['unknown', null],
       ['unknown', null],
     ]);
+  });
+});
+
+describe('ResultsHeader refine state', () => {
+  it('does not call a list AI-refined while the refine is still running', () => {
+    renderHeader(0, { semanticRerank: true, refining: true });
+    expect(screen.getByText('results.aiRefining')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+  });
+
+  it('claims the AI badge once the refined list is the one on screen', () => {
+    renderHeader(0, { semanticRerank: true, refining: false, refined: true });
+    expect(screen.getByText('results.aiBadge')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiRefining')).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when the refine failed, instead of a silent downgrade', () => {
+    renderHeader(0, { semanticRerank: true, refining: false, refined: false, refineFailed: true });
+    expect(screen.getByText('results.refineFailed')).toBeInTheDocument();
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+  });
+
+  it('wears no badge at all when the refine was asked for and never arrived', () => {
+    // The rule list is a real answer and stays on screen. What it is not is an
+    // AI-refined one, and the toggle being on is not evidence that it is.
+    renderHeader(0, { semanticRerank: true, refining: false, refined: false });
+    expect(screen.queryByText('results.aiBadge')).not.toBeInTheDocument();
+    expect(screen.queryByText('results.aiRefining')).not.toBeInTheDocument();
+  });
+
+  it('locks the toggle mid-refine so a click cannot land between two answers', () => {
+    renderHeader(0, { semanticRerank: true, refining: true });
+    expect(screen.getByTestId('semantic-toggle')).toBeDisabled();
   });
 });

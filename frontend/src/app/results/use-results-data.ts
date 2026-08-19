@@ -19,6 +19,10 @@ import type { MatchesResponse, ProfileData } from '@/lib/types';
 import type { TFunc } from './types';
 
 const MATCH_VIEW_PAGE_SIZE = 50;
+/** How long the refine gets to answer before a rule-ranked list is fetched to
+ *  fill the wait. Long enough that a warm server snapshot never triggers the
+ *  extra ranking, short enough to be invisible next to a cold twenty seconds. */
+const INTERIM_PAINT_AFTER_MS = 600;
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
@@ -27,6 +31,13 @@ interface UseResultsDataResult {
   error: string | null;
   showSlowHint: boolean;
   paginationReady: boolean;
+  /** A rule-ranked list is on screen and the paid refine is still running. */
+  refining: boolean;
+  /** The list on screen came back from a refine that succeeded. Not the same
+   *  question as "the student asked for one": the interim rule list and a
+   *  failed refine both leave this false, and the AI badge is a claim about
+   *  the list, not about the toggle. */
+  refined: boolean;
 }
 
 interface CursorState {
@@ -36,6 +47,14 @@ interface CursorState {
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function isCompleteView(result: MatchesResponse): boolean {
+  return result.contract_version === MATCH_VIEW_CONTRACT_VERSION
+    && typeof result.filtered_total === 'number'
+    && !!result.view_counts
+    && typeof result.view_start === 'number'
+    && hasValidMatchResultIdentity(result.results);
 }
 
 /** One exact server-side results page.
@@ -59,6 +78,8 @@ export function useResultsData(
   const [error, setError] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [paginationReady, setPaginationReady] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [refined, setRefined] = useState(false);
   // Empty until the AI-refine preference is readable, which suppresses the
   // fetch below. `semanticRerank` is part of this key, and local ownership is
   // established asynchronously, so firing before it settles sends one request
@@ -119,6 +140,9 @@ export function useResultsData(
     setLoading(true);
     setError(null);
     setPaginationReady(false);
+    setRefining(false);
+    setRefined(false);
+    let painted = false;
     if (page === 1) {
       const cached = readMatchCache(cacheKey, semanticRerank);
       if (cached?.contract_version === MATCH_VIEW_CONTRACT_VERSION) {
@@ -128,6 +152,10 @@ export function useResultsData(
         // NOT trusted: local cache lives seven days while the server snapshot
         // lives minutes, so pagination stays locked until the live response.
         setLoading(false);
+        painted = true;
+        // Only a refined result is ever written under a refined cache key, so
+        // a hit here is a refined list, not merely a requested one.
+        setRefined(semanticRerank);
         trackOnce('matches_generated', {
           llm: semanticRerank,
           cached: true,
@@ -140,21 +168,60 @@ export function useResultsData(
     /* eslint-enable react-hooks/set-state-in-effect */
 
     (async () => {
+      const request = getMatchView(profile, view, {
+        cursor: cursor ?? null,
+        pageSize: MATCH_VIEW_PAGE_SIZE,
+        llm: semanticRerank,
+        signal: controller.signal,
+      });
+      let requestSettled = false;
+      const markSettled = () => { requestSettled = true; };
+      request.then(markSettled, markSettled);
+
       try {
-        const result = await getMatchView(profile, view, {
-          cursor: cursor ?? null,
-          pageSize: MATCH_VIEW_PAGE_SIZE,
-          llm: semanticRerank,
-          signal: controller.signal,
-        });
+        // A first-ever refined page costs about twenty seconds, and roughly
+        // four of them are the rule ranking the refine has to run before it can
+        // call the model at all. Ask for that ranking on its own as well: it is
+        // a real, complete answer, and it puts a list on screen in a quarter of
+        // the time. The refined list replaces it when it arrives.
+        //
+        // Only when the refine is actually slow, though. A warm server snapshot
+        // answers in a fraction of INTERIM_PAINT_AFTER_MS, and firing a second
+        // full ranking behind a request that already returned would spend real
+        // server time to save nothing — the failure mode that once took the E2E
+        // job from seven minutes to past its timeout. So the refine goes out
+        // first and the interim only follows if it is still outstanding.
+        //
+        // Skipped when the cache already painted (nothing to wait in front of)
+        // and past page one (the refined snapshot owns the cursor chain).
+        if (semanticRerank && page === 1 && !painted) {
+          await new Promise((resolve) => setTimeout(resolve, INTERIM_PAINT_AFTER_MS));
+          if (active && !requestSettled) {
+            try {
+              const ruleOnly = await getMatchView(profile, view, {
+                cursor: null,
+                pageSize: MATCH_VIEW_PAGE_SIZE,
+                llm: false,
+                signal: controller.signal,
+              });
+              // Re-check: the refine can land while the interim is in flight,
+              // and the refined list must never be overwritten by the rule one.
+              if (active && !requestSettled && isCompleteView(ruleOnly)) {
+                setData(ruleOnly);
+                setLoading(false);
+                setRefining(true);
+                painted = true;
+              }
+            } catch {
+              // An optimization the student never asked for. Say nothing and
+              // let the real request below report whatever is actually wrong.
+            }
+          }
+        }
+
+        const result = await request;
         if (!active) return;
-        if (
-          result.contract_version !== MATCH_VIEW_CONTRACT_VERSION
-          || typeof result.filtered_total !== 'number'
-          || !result.view_counts
-          || typeof result.view_start !== 'number'
-          || !hasValidMatchResultIdentity(result.results)
-        ) {
+        if (!isCompleteView(result)) {
           throw new ApiError(
             502,
             'MATCH_CONTRACT_MISMATCH',
@@ -163,6 +230,7 @@ export function useResultsData(
           );
         }
         setData(result);
+        setRefined(semanticRerank);
         if (result.has_more && result.next_cursor) {
           cursorsRef.current.byPage.set(page + 1, result.next_cursor);
         } else {
@@ -185,7 +253,10 @@ export function useResultsData(
             : t('results.loadFailed'),
         );
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setRefining(false);
+        }
       }
     })();
 
@@ -195,5 +266,5 @@ export function useResultsData(
     };
   }, [profile, semanticRerank, view, page, requestKey, t]);
 
-  return { data, setData, loading, error, showSlowHint, paginationReady };
+  return { data, setData, loading, error, showSlowHint, paginationReady, refining, refined };
 }

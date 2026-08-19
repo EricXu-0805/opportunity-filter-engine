@@ -12,6 +12,10 @@ import type { Tab, TFunc } from './types';
 export interface ResultsHeaderProps {
   loading: boolean;
   showSlowHint: boolean;
+  /** Rule-ranked list on screen, paid refine still running. */
+  refining: boolean;
+  /** The list on screen came back refined. */
+  refined: boolean;
   data: MatchesResponse | null;
   filteredTotal: number;
   counts: { all: number };
@@ -29,6 +33,8 @@ export interface ResultsHeaderProps {
 export function ResultsHeader({
   loading,
   showSlowHint,
+  refining,
+  refined,
   data,
   filteredTotal,
   counts,
@@ -61,10 +67,22 @@ export function ResultsHeader({
               ? (
                 <>
                   {t('results.rankedFor', { count: counts.all })}
-                  {RELEASE_SCOPE.matchAiRefine && semanticRerank && (
-                    <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-50 text-violet-700 align-middle">
-                      <Sparkles className="w-2.5 h-2.5" aria-hidden="true" />
-                      {t('results.aiBadge')}
+                  {RELEASE_SCOPE.matchAiRefine && (refining || refined) && (
+                    // The badge describes the list underneath it, not the
+                    // toggle beside it. While the refine runs the student is
+                    // reading the rule ranking, and if the refine never
+                    // returns they keep reading it — neither is an AI-refined
+                    // list, so neither may wear the badge that says so.
+                    <span
+                      className={`ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold align-middle ${
+                        refining ? 'bg-gray-100 text-gray-500' : 'bg-violet-50 text-violet-700'
+                      }`}
+                    >
+                      <Sparkles
+                        className={`w-2.5 h-2.5${refining ? ' animate-pulse' : ''}`}
+                        aria-hidden="true"
+                      />
+                      {refining ? t('results.aiRefining') : t('results.aiBadge')}
                     </span>
                   )}
                 </>
@@ -90,7 +108,7 @@ export function ResultsHeader({
       </div>
       <div className="flex items-center gap-2">
         {RELEASE_SCOPE.matchAiRefine && (
-          <SemanticToggle value={semanticRerank} onChange={onSemanticChange} disabled={loading} t={t} />
+          <SemanticToggle value={semanticRerank} onChange={onSemanticChange} disabled={loading || refining} t={t} />
         )}
         {!loading && data && (
           <button
