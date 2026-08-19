@@ -227,6 +227,11 @@ _LLM_RERANK_TOPK = LLM_RERANK_TOPK
 _LLM_RERANK_BATCH = LLM_RERANK_BATCH
 _LLM_RERANK_WEIGHT = LLM_RERANK_WEIGHT
 _LLM_RERANK_CACHE_MAX = LLM_RERANK_CACHE_MAX
+
+# The midpoint of the scale the rerank prompt defines ("0 (unrelated) to 100
+# (perfect)"). At or above it the model's sentence is a recommendation and
+# leads the card; below it the sentence is a concern and joins reasons_gap.
+_LLM_REASON_POSITIVE_MIN = 50.0
 _LLM_REASON_MAX_CHARS = 220
 _llm_rerank_cache: dict[str, dict[str, dict]] = {}
 
@@ -458,8 +463,24 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
             r.final_score = round(
                 max(0.0, min(100.0, (1 - weight) * r.final_score + weight * mapped)), 1
             )
-            if llm.get("r"):
-                r.ai_reason = llm["r"]
+            reason = llm.get("r")
+            if not reason:
+                continue
+            # The model was asked why this connects to the student's interests.
+            # For a candidate it rates in the bottom half of its own scale it
+            # answers why it does NOT — "Focuses on LLM efficiency and GPU
+            # systems, not medical imaging" — which is true, useful, and wrong
+            # for the card's lead line: that renders as an indigo highlight
+            # behind a Sparkles icon, so a refusal arrives dressed as a
+            # recommendation. The card already has an amber "Potential
+            # concerns" list built for exactly this sentence. 50 is the
+            # midpoint the prompt itself defines, 0 unrelated to 100 perfect,
+            # not a tuned threshold.
+            if llm["s"] < _LLM_REASON_POSITIVE_MIN:
+                if reason not in r.reasons_gap:
+                    r.reasons_gap.append(reason)
+            else:
+                r.ai_reason = reason
 
     # Canonical order: the blend creates/moves ties, and a bare score sort
     # silently dropped the actionable-first + unique-id tie-break contract
