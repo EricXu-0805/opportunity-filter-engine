@@ -171,7 +171,20 @@ function ResultsContent() {
     semanticPrefExists,
     semanticPrefValue,
   );
-  const semanticSettled = semanticUrlPin !== null || semanticPrefExists !== undefined;
+  // A browser that refuses storage answers `undefined` forever (Safari private
+  // mode, a blocked third-party context), so waiting on it unconditionally
+  // would spin a skeleton for the whole visit. Bound the wait and proceed with
+  // whatever is known — resolveSemanticRerank reads an unknown preference as
+  // off, so the student gets the deterministic list rather than a spinner.
+  const [semanticSettleTimedOut, setSemanticSettleTimedOut] = useState(false);
+  useEffect(() => {
+    if (semanticPrefExists !== undefined) return;
+    const timer = setTimeout(() => setSemanticSettleTimedOut(true), 1500);
+    return () => clearTimeout(timer);
+  }, [semanticPrefExists]);
+  const semanticSettled = semanticUrlPin !== null
+    || semanticPrefExists !== undefined
+    || semanticSettleTimedOut;
   useResultsUrlSync({
     activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
   });
@@ -302,6 +315,7 @@ function ResultsContent() {
     matchView,
     page,
     t,
+    semanticSettled,
   );
 
   // Facets are derived from the complete canonical snapshot by the backend,

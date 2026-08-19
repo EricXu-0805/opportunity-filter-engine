@@ -51,17 +51,24 @@ export function useResultsData(
   view: MatchViewRequestState,
   page: number,
   t: TFunc,
+  /** False while the AI-refine preference is still unreadable. See requestKey. */
+  preferenceSettled: boolean,
 ): UseResultsDataResult {
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [paginationReady, setPaginationReady] = useState(false);
+  // Empty until the AI-refine preference is readable, which suppresses the
+  // fetch below. `semanticRerank` is part of this key, and local ownership is
+  // established asynchronously, so firing before it settles sends one request
+  // under the wrong answer and a second one the moment the right answer
+  // arrives — two full rankings per page load, server-side, for one page.
   const requestKey = useMemo(
-    () => profile
+    () => profile && preferenceSettled
       ? `${hashProfile(profile)}:${semanticRerank ? '1' : '0'}:${JSON.stringify(view)}`
       : '',
-    [profile, semanticRerank, view],
+    [profile, preferenceSettled, semanticRerank, view],
   );
   const cursorsRef = useRef<CursorState>({
     requestKey: '',
