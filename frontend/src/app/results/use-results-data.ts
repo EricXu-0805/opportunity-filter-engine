@@ -38,6 +38,11 @@ interface UseResultsDataResult {
    *  failed refine both leave this false, and the AI badge is a claim about
    *  the list, not about the toggle. */
   refined: boolean;
+  /** The refine failed but a rule-ranked list is on screen. Deliberately not
+   *  `error`: the page hides the list whenever `error` is set, and hiding a
+   *  list that loaded because an enhancement to it did not is worse than what
+   *  the student had before the enhancement existed. */
+  refineFailed: boolean;
 }
 
 interface CursorState {
@@ -80,6 +85,7 @@ export function useResultsData(
   const [paginationReady, setPaginationReady] = useState(false);
   const [refining, setRefining] = useState(false);
   const [refined, setRefined] = useState(false);
+  const [refineFailed, setRefineFailed] = useState(false);
   // Empty until the AI-refine preference is readable, which suppresses the
   // fetch below. `semanticRerank` is part of this key, and local ownership is
   // established asynchronously, so firing before it settles sends one request
@@ -142,7 +148,13 @@ export function useResultsData(
     setPaginationReady(false);
     setRefining(false);
     setRefined(false);
+    setRefineFailed(false);
     let painted = false;
+    // Tracked apart from `painted`: a cache paint that then fails live
+    // validation keeps its existing behavior (error, list hidden) because the
+    // cached list may be a stale generation. An interim rule list cannot be
+    // stale — it came from this same request cycle.
+    let interimPainted = false;
     if (page === 1) {
       const cached = readMatchCache(cacheKey, semanticRerank);
       if (cached?.contract_version === MATCH_VIEW_CONTRACT_VERSION) {
@@ -211,6 +223,7 @@ export function useResultsData(
                 setLoading(false);
                 setRefining(true);
                 painted = true;
+                interimPainted = true;
               }
             } catch {
               // An optimization the student never asked for. Say nothing and
@@ -247,11 +260,15 @@ export function useResultsData(
         });
       } catch (caught) {
         if (!active || isAbort(caught)) return;
-        setError(
-          caught instanceof ApiError
-            ? caught.message
-            : t('results.loadFailed'),
-        );
+        if (interimPainted) {
+          setRefineFailed(true);
+        } else {
+          setError(
+            caught instanceof ApiError
+              ? caught.message
+              : t('results.loadFailed'),
+          );
+        }
       } finally {
         if (active) {
           setLoading(false);
@@ -266,5 +283,7 @@ export function useResultsData(
     };
   }, [profile, semanticRerank, view, page, requestKey, t]);
 
-  return { data, setData, loading, error, showSlowHint, paginationReady, refining, refined };
+  return {
+    data, setData, loading, error, showSlowHint, paginationReady, refining, refined, refineFailed,
+  };
 }

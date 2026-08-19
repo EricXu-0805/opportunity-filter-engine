@@ -388,11 +388,27 @@ describe('useResultsData', () => {
     await waitFor(() => expect(result.current.refining).toBe(true), { timeout: 4000 });
     await act(async () => { rejectRefine?.(new Error('provider down')); });
 
-    await waitFor(() => expect(result.current.error).toBe('results.loadFailed'));
+    await waitFor(() => expect(result.current.refineFailed).toBe(true));
+    // NOT `error`: the results page renders its list under
+    // `!loading && !error && data`, so setting error here would hide a list
+    // that loaded correctly because an enhancement to it did not.
+    expect(result.current.error).toBeNull();
     expect(result.current.data?.result_set_id).toBe('set-rule');
     expect(result.current.refining).toBe(false);
     expect(result.current.refined).toBe(false);
     expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('still fails the page when there is no list to keep', async () => {
+    // No interim painted means nothing loaded, and a student staring at an
+    // empty page has to be told why.
+    mocks.getMatchView.mockRejectedValue(new Error('provider down'));
+
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true));
+
+    await waitFor(() => expect(result.current.error).toBe('results.loadFailed'));
+    expect(result.current.data).toBeNull();
+    expect(result.current.refineFailed).toBe(false);
   });
 
   it('skips the interim request when the cache already painted', async () => {

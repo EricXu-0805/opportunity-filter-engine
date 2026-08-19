@@ -16,6 +16,8 @@ export interface ResultsHeaderProps {
   refining: boolean;
   /** The list on screen came back refined. */
   refined: boolean;
+  /** The refine failed; the rule-ranked list on screen is what the student gets. */
+  refineFailed: boolean;
   data: MatchesResponse | null;
   filteredTotal: number;
   counts: { all: number };
@@ -35,6 +37,7 @@ export function ResultsHeader({
   showSlowHint,
   refining,
   refined,
+  refineFailed,
   data,
   filteredTotal,
   counts,
@@ -97,6 +100,12 @@ export function ResultsHeader({
             {data.thin_inventory && (
               <span className="ml-1.5 font-normal text-gray-400">· {t('results.thinInventory')}</span>
             )}
+          </p>
+        )}
+        {!loading && refineFailed && (
+          <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+            {t('results.refineFailed')}
           </p>
         )}
         {loading && showSlowHint && (
