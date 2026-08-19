@@ -309,6 +309,9 @@ function ResultsContent() {
     error,
     showSlowHint,
     paginationReady,
+    refining,
+    refined,
+    refineFailed,
   } = useResultsData(
     profile,
     semanticRerank,
@@ -754,6 +757,9 @@ function ResultsContent() {
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
+        refining={refining}
+        refined={refined}
+        refineFailed={refineFailed}
         data={data}
         filteredTotal={filteredTotal}
         counts={counts}

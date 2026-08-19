@@ -350,6 +350,56 @@ class TestLLMRerank:
 
         assert math.ceil(_LLM_RERANK_TOPK / _LLM_RERANK_BATCH) <= 4
 
+    def test_a_pass_that_never_reached_the_provider_says_so(self, monkeypatch):
+        # Every degrade leaves a complete rule ranking behind, which is exactly
+        # why it cannot be detected from the results: they look like an answer
+        # because they ARE one. The mode has to be reported, not inferred.
+        from backend.routes import matches
+
+        results = self._results([("a", 80), ("b", 70)])
+        lookup = self._lookup(["a", "b"])
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: None)
+        assert matches.llm_rerank({"research_interests_text": "ml"}, results, lookup).applied is False
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        assert matches.llm_rerank({"research_interests_text": "   "}, results, lookup).applied is False
+
+        monkeypatch.setattr(matches, "chat_completion", lambda *a, **k: None)
+        assert matches.llm_rerank({"research_interests_text": "ml"}, results, lookup).applied is False
+
+    def test_a_reply_naming_none_of_our_candidates_is_not_a_refined_list(self, monkeypatch):
+        # Parsed, paid for, and worth nothing to this student: the scores came
+        # back keyed to nothing we sent, so no card was judged.
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "_llm_score_candidates",
+            lambda _query, _cand: {"someone-else": {"s": 90, "r": "not ours"}},
+        )
+        outcome = matches.llm_rerank(
+            {"research_interests_text": "empty-rated-query"},
+            self._results([("a", 80), ("b", 70)]),
+            self._lookup(["a", "b"]),
+        )
+        assert outcome.applied is False
+
+    def test_a_pass_that_judged_the_candidates_attests_that_it_ran(self, monkeypatch):
+        from backend.routes import matches
+
+        monkeypatch.setattr(matches, "_resolve", lambda *a, **k: object())
+        monkeypatch.setattr(
+            matches, "chat_completion",
+            lambda *a, **k: '{"0": {"s": 90, "r": "Their imaging work fits."}, "1": {"s": 40}}',
+        )
+        outcome = matches.llm_rerank(
+            {"research_interests_text": "attestation-query"},
+            self._results([("a", 80), ("b", 70)]),
+            self._lookup(["a", "b"]),
+        )
+        assert outcome.applied is True
+
     def test_route_survives_rerank_crash(self, monkeypatch):
         # Belt at the route: even if the rerank machinery itself raises, the
         # default-on /matches serves the rule order — never a 5xx.
@@ -376,7 +426,7 @@ class TestLLMRerank:
         results = self._results([("a", 80), ("b", 70)])
         before = [r.final_score for r in results]
         out = matches.llm_rerank({"research_interests_text": "ml"}, results,
-                                 self._lookup(["a", "b"]))
+                                 self._lookup(["a", "b"])).results
         assert [r.final_score for r in out] == before
 
     def test_noop_on_llm_failure(self, monkeypatch):
@@ -386,7 +436,7 @@ class TestLLMRerank:
         results = self._results([("a", 80), ("b", 70)])
         before = [r.final_score for r in results]
         out = matches.llm_rerank({"research_interests_text": "ml"}, results,
-                                 self._lookup(["a", "b"]))
+                                 self._lookup(["a", "b"])).results
         assert [r.final_score for r in out] == before  # rule order held
 
     def test_blends_and_reorders_on_scores(self, monkeypatch):
@@ -399,7 +449,7 @@ class TestLLMRerank:
         # so the model's judgement decides the order there.
         results = self._results([("a", 86.0), ("b", 85.5), ("c", 85.0)])
         out = matches.llm_rerank({"research_interests_text": "unique-query-xyz"}, results,
-                                 self._lookup(["a", "b", "c"]))
+                                 self._lookup(["a", "b", "c"])).results
         assert out[0].opportunity_id == "c"  # promoted by the LLM signal
 
     def test_a_demoted_card_never_falls_behind_one_the_model_never_saw(
@@ -426,7 +476,7 @@ class TestLLMRerank:
             results,
             self._lookup(["a", "b", "tail"]),
             top_k=2,
-        )
+        ).results
         order = [r.opportunity_id for r in out]
         assert order[:2] == ["b", "a"], order   # the model reordered the slice
         assert order[2] == "tail"              # and could not eject either card
@@ -443,7 +493,7 @@ class TestLLMRerank:
                             lambda *a, **k: '{"0": 70, "1": 70, "2": 70}')
         results = self._results([("a", 86.0), ("b", 85.5), ("c", 85.0)])
         out = matches.llm_rerank({"research_interests_text": "flat-verdict-query"}, results,
-                                 self._lookup(["a", "b", "c"]))
+                                 self._lookup(["a", "b", "c"])).results
         assert [r.opportunity_id for r in out] == ["a", "b", "c"]
         assert [r.final_score for r in out] == [86.0, 85.5, 85.0]
 
@@ -465,7 +515,7 @@ class TestLLMRerank:
         )
         results = self._results([("a", 90.0), ("b", 89.0)])
         out = matches.llm_rerank({"research_interests_text": "polarity-query"}, results,
-                                 self._lookup(["a", "b"]))
+                                 self._lookup(["a", "b"])).results
         by_id = {r.opportunity_id: r for r in out}
         assert by_id["a"].ai_reason is None
         assert "Focuses on GPU systems, not medical imaging." in by_id["a"].reasons_gap
@@ -485,7 +535,7 @@ class TestLLMRerank:
         results = self._results([("a", 90.0), ("b", 89.0)])
         results[0].reasons_gap.append("Not your field.")
         out = matches.llm_rerank({"research_interests_text": "dup-query"}, results,
-                                 self._lookup(["a", "b"]))
+                                 self._lookup(["a", "b"])).results
         by_id = {r.opportunity_id: r for r in out}
         assert by_id["a"].reasons_gap.count("Not your field.") == 1
 
@@ -506,7 +556,7 @@ class TestLLMRerank:
             results,
             self._lookup(["a", "b", "tail"]),
             top_k=2,
-        )
+        ).results
         rated = [r for r in out if r.opportunity_id in ("a", "b")]
         # Whatever the model rated keeps what it said — as the lead line when
         # it recommends, as a concern when it does not. Neither is dropped.
@@ -523,7 +573,7 @@ class TestLLMRerank:
         )
         results = self._results([("a", 80), ("b", 70)])
         out = matches.llm_rerank({"research_interests_text": "reason-attach-query"}, results,
-                                 self._lookup(["a", "b"]))
+                                 self._lookup(["a", "b"])).results
         by_id = {r.opportunity_id: r for r in out}
         assert by_id["a"].ai_reason == "Their vision-transformer work matches your CV interest."
         assert by_id["b"].ai_reason is None  # empty reason → not attached
@@ -4495,6 +4545,55 @@ class TestBillableClass:
 
         assert _billable_class(self._req(query=b"llm=true"), "/api/matches") == "llm"
 
+    def test_billing_agrees_with_the_route_for_every_bool_spelling(self):
+        """The ceiling must classify exactly what the route will do.
+
+        The routes declare ``llm: bool``, so FastAPI accepts yes/on/y/t as
+        well as 1/true. A spelling the ceiling fails to recognise is not
+        merely mis-counted — an unclassified request skips the entire ceiling
+        block, reaching the provider with neither the per-minute bucket nor
+        the day-budget degrade applied. Asserted against pydantic's own
+        adapter rather than a list of spellings, because a list here is the
+        second copy that drifts.
+        """
+        from pydantic import TypeAdapter, ValidationError
+
+        from backend.main import _billable_class
+
+        adapter = TypeAdapter(bool)
+        for raw in ("1", "true", "True", "TRUE", "yes", "YES", "on", "y", "t",
+                    "0", "false", "no", "off", "", "banana"):
+            try:
+                route_calls_provider = adapter.validate_python(raw)
+            except ValidationError:
+                # FastAPI 422s before the handler runs, so nothing is spent.
+                route_calls_provider = False
+            for path in ("/api/matches", "/api/matches/view",
+                         "/api/matches/abc123/explain"):
+                klass = _billable_class(
+                    self._req(query=f"llm={raw}".encode()), path,
+                )
+                assert (klass == "llm") is route_calls_provider, (raw, path)
+
+    def test_a_repeated_llm_param_bills_the_value_the_route_will_use(self):
+        """Last occurrence wins, in both places, and that has to stay true.
+
+        Starlette's QueryParams.get returns the LAST value for a repeated key,
+        and FastAPI resolves a scalar query parameter through that same call —
+        so ?llm=false&llm=yes runs the refine. The agreement holds only because
+        the ceiling reads the parameter exactly the way the route does; a
+        refactor to getlist()[0] here would reopen the unmetered path under a
+        new spelling.
+        """
+        from backend.main import _billable_class
+
+        assert _billable_class(
+            self._req(query=b"llm=false&llm=yes"), "/api/matches/view",
+        ) == "llm"
+        assert _billable_class(
+            self._req(query=b"llm=yes&llm=false"), "/api/matches/view",
+        ) is None
+
     def test_email_and_chat_classes_unchanged(self):
         from backend.main import _billable_class
 
@@ -4717,6 +4816,10 @@ class TestLlmDayCeilingAndDegrade:
         r = client.post("/api/matches?llm=true", json=sample_profile_req)
         assert r.status_code == 200, r.text
         assert not called
+        # Absent reasons are weak evidence — a refined list whose every card
+        # scored below _LLM_REASON_POSITIVE_MIN looks identical. The response
+        # states the mode outright, so assert that instead.
+        assert r.json()["ai_refined"] is False
         assert all(item.get("ai_reason") is None for item in r.json()["results"])
 
     def test_a_spent_day_still_refuses_the_endpoints_that_have_no_fallback(
