@@ -229,7 +229,16 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # requirement anyone stated, so missing it no longer costs anything; and an
 # unrecognised field name is scored as unknown rather than as a cross-domain
 # clash. Both were charging a penalty for a fact the source never carried.
-_MATCHER_VERSION_BASE = "6"
+# 7: target truth — a record that states its listing is closed, or that it is
+# published as reference material, leaves the candidate universe entirely.
+# Removing 861 phantom rows also moves the percentile bucket cutoffs, so every
+# cached ranking from version 6 describes a universe that no longer exists.
+# 8: records whose source_type was never reviewed are no longer actionable, so
+# they leave the ranked universe entirely. The fingerprint below cannot see
+# this — the change is in `target_truth`, not in a weight — so the base is what
+# has to move, or a cached v7 conclusion would keep serving the 26 rows this
+# removed.
+_MATCHER_VERSION_BASE = "8"
 
 
 def _matcher_fingerprint() -> str:

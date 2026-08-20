@@ -70,7 +70,7 @@ def _opp(
         "department": "Computer Science",
         "opportunity_type": "research",
         "source": "uiuc_faculty",
-        "source_type": "faculty",
+        "source_type": "faculty_research",
         "pi_name": "Jane Doe",
         "lab_or_program": "ML Lab",
         "contact_email": email,
@@ -460,7 +460,9 @@ class TestDetailRevealGate:
         assert body["contact_email_status"] == anon["contact_email_status"]
 
     def test_pi_email_stays_redacted(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/verified", headers=AUTH).json()
+        response = client.get("/api/opportunities/verified", headers=AUTH)
+        assert response.status_code == 200, response.text
+        body = response.json()
         assert "pi_email" not in body
 
 

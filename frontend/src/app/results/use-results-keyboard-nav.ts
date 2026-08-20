@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import type { MatchResult } from '@/lib/types';
-import { opportunityDestination } from '@/lib/match-utils';
 
 export interface UseResultsKeyboardNavParams {
   paginated: MatchResult[];
@@ -83,8 +82,13 @@ export function useResultsKeyboardNav({
       } else if (e.key === 'Enter' && focusedIdx >= 0) {
         e.preventDefault();
         const match = paginated[focusedIdx];
-        const url = match ? opportunityDestination(match.opportunity) : undefined;
-        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        // Enter opens the in-app detail page, for every record and every
+        // posture. It used to jump straight out to an external destination,
+        // which made a keyboard press an unlabelled Apply — the one action
+        // that must come from a control the user can read first.
+        if (match) {
+          window.location.assign(`/opportunities/${encodeURIComponent(match.opportunity.id)}`);
+        }
       }
     }
     document.addEventListener('keydown', onKeyDown);

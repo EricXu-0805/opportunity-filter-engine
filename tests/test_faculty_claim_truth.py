@@ -831,7 +831,12 @@ def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
     assert coverage["faculty_contacts"] == {"uiuc": 1}
 
     stats = asyncio.run(opportunity_routes.get_stats())
-    assert stats["total"] == 2
+    # `total` is the user-facing discovery count — what a student could act on
+    # today — so inactive, closed and reference-only records are excluded. It
+    # previously counted the deactivated listing too, which advertised stock
+    # nobody could apply to. Historical inventory, if Admin ever needs it,
+    # belongs in a separately named field, never folded back into this one.
+    assert stats["total"] == 1
     assert stats["active"] == 1
     assert stats["faculty_contact_total"] == 1
     opportunity_routes._stats_cache = None

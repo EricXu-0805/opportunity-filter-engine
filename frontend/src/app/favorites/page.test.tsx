@@ -103,7 +103,27 @@ import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
 function baseHookResult(overrides: Record<string, unknown> = {}) {
   return {
-    serverOpportunities: [{ id: 'opp-1', title: 'Opp One' }],
+    // A saved record that is still live carries the server's truth; the page
+    // gates its modals on it.
+    serverOpportunities: [{
+      id: 'opp-1',
+      title: 'Opp One',
+      // A confirmed listing: reviewed source type plus the wire kind the
+      // server sends with it. An unreviewed one is no longer actionable, so
+      // this fixture would otherwise be a dead row and every modal assertion
+      // would measure the refusal path.
+      source_type: 'campus_program',
+      record_kind: 'listing',
+      target_truth: {
+        listing_state: 'open',
+        reference_only: false,
+        actionable: true,
+        accepting_state: 'accepting',
+        reason_code: null,
+        verified_at: null,
+        expires_at: null,
+      },
+    }],
     loading: false,
     error: false,
     retry: () => {},
@@ -199,5 +219,84 @@ describe('FavoritesPage — TailorModal is keyed by identityGeneration (C1-R2B)'
 
     expect(await screen.findByTestId('mock-tailor-modal')).toBeTruthy();
     expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-9');
+  });
+});
+
+describe('an open Tailor modal is re-checked on every render, not only at open', () => {
+  const HISTORICAL = {
+    listing_state: 'closed',
+    reference_only: true,
+    actionable: false,
+    accepting_state: 'not_accepting',
+    reason_code: 'listing_closed',
+    verified_at: null,
+    expires_at: null,
+  } as const;
+
+  const ACTIONABLE = {
+    listing_state: 'open',
+    reference_only: false,
+    actionable: true,
+    accepting_state: 'accepting',
+    reason_code: null,
+    verified_at: null,
+    expires_at: null,
+  } as const;
+
+  function withTarget(target: Record<string, unknown> | null) {
+    return baseHookResult({
+      ownerReady: true,
+      ownerScopeKey: 'owner-9',
+      identityGeneration: 1,
+      serverOpportunities: target ? [target] : [],
+    });
+  }
+
+  const live = () => ({
+    id: 'opp-1', title: 'Opp One',
+    source_type: 'campus_program', record_kind: 'listing',
+    target_truth: { ...ACTIONABLE },
+  });
+
+  const DEGRADED: [string, unknown][] = [
+    ['historical', HISTORICAL],
+    ['null truth', null],
+    ['malformed truth', { listing_state: 'open' }],
+  ];
+
+  it.each(DEGRADED)('unmounts the modal when the target becomes %s', async (_label, truth) => {
+    // The modal opened while the target was live. A refresh then closed it —
+    // same identity, so nothing remounts and no callback runs again. Checking
+    // only at open time would leave a Tailor session attached to a target the
+    // server has already started refusing.
+    setProfile();
+    mockHookState.current = withTarget(live());
+    const { rerender } = render(<FavoritesPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Tailor Opp One' }));
+    expect(await screen.findByTestId('mock-tailor-modal')).toBeTruthy();
+
+    // Same record, same confirmed kind — only the truth degrades, so the
+    // unmount can only be attributed to the truth.
+    mockHookState.current = withTarget({
+      id: 'opp-1', title: 'Opp One',
+      source_type: 'campus_program', record_kind: 'listing',
+      target_truth: truth,
+    });
+    rerender(<FavoritesPage />);
+
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+  });
+
+  it('unmounts the modal when the target disappears from the corpus', async () => {
+    setProfile();
+    mockHookState.current = withTarget(live());
+    const { rerender } = render(<FavoritesPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Tailor Opp One' }));
+    expect(await screen.findByTestId('mock-tailor-modal')).toBeTruthy();
+
+    mockHookState.current = withTarget(null);
+    rerender(<FavoritesPage />);
+
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
   });
 });

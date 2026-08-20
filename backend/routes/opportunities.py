@@ -13,7 +13,11 @@ from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, run_blocking
-from backend.lib.contact_visibility import STATUS_REVEALED, contact_email_status
+from backend.lib.contact_visibility import (
+    STATUS_REVEALED,
+    STATUS_UNAVAILABLE,
+    contact_email_status,
+)
 from backend.lib.corpus_freshness import corpus_last_updated_at
 from backend.lib.llm import (
     chat_completion,
@@ -24,6 +28,7 @@ from backend.lib.llm import (
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_projection import (
+    project_public_opportunity_payload,
     redact_embedded_emails,
     sanitize_public_urls,
 )
@@ -34,6 +39,10 @@ from backend.lib.release_scope import (
     release_visible_opportunity_by_id,
 )
 from backend.lib.supabase_auth import authenticated_uid
+from backend.lib.target_actionability import (
+    actionable_opportunities,
+    assert_target_actionable,
+)
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
 from src.evidence import (
@@ -43,6 +52,7 @@ from src.evidence import (
     faculty_safe_lab_or_program,
     faculty_safe_public_record,
     is_professor_rank,
+    target_truth,
 )
 from src.tracking.professor_profiles import canonical_professor_id
 
@@ -50,6 +60,54 @@ router = APIRouter()
 logger = logging.getLogger("ofe.opportunities")
 
 REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
+
+# The exact release scope the current frontend build sends on every server-side
+# detail fetch (frontend/src/lib/release-scope.ts). It doubles as a capability
+# declaration: a client sending precisely this string is the build that can read
+# a `target_truth` and refuse to offer an action on a historical record.
+#
+# The rollout is what forces this. Vercel and Render deploy independently, so an
+# older bundle — one that renders a surviving source URL as "Apply" on a record
+# this contract has already retired — keeps asking this endpoint for detail
+# throughout the window. There is nowhere to put the truth such a client would
+# honour, so a non-actionable record is refused to it rather than served in a
+# shape it will misread.
+#
+# What this cannot do is revoke a link an old tab has ALREADY painted. That is a
+# release-governance stop, not something to solve by weakening the gate.
+#
+# Matched in full, never by suffix or substring: `endswith("-target-truth-v2")`
+# would accept a scope string this build has never heard of.
+CURRENT_TRUTH_AWARE_SCOPE = (
+    "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2"
+)
+
+_TRUTH_CAPABILITY_REQUIRED = {
+    "code": "TARGET_TRUTH_CAPABILITY_REQUIRED",
+    "reason": "target_truth_v2_required",
+    "message": "Refresh JoinALab to view this historical record safely.",
+    "retryable": False,
+}
+# Carried on the exception itself. FastAPI builds a fresh response for a raised
+# HTTPException, so anything written to the injected `Response` before raising is
+# discarded — and a shared cache would then be free to keep this refusal for a
+# client that reloads into the new build a second later.
+_TRUTH_CAPABILITY_HEADERS = {
+    "Cache-Control": "private, no-store, max-age=0",
+    "Pragma": "no-cache",
+    "Vary": "Authorization",
+}
+
+
+def _truth_aware_client(request: Request) -> bool:
+    """Whether the caller declared it can read a target truth.
+
+    Reads the whole repeated-parameter list rather than one value: a proxy, a
+    retry layer or a hand-edited URL can send `_release_scope` twice, and "one
+    of them was right" is not the claim being made here.
+    """
+    scopes = request.query_params.getlist("_release_scope")
+    return len(scopes) == 1 and scopes[0] == CURRENT_TRUTH_AWARE_SCOPE
 
 _stats_cache: dict | None = None
 _stats_cache_time: float = 0
@@ -70,7 +128,13 @@ def _tri_state(value: object) -> str:
 
 
 def _public_payload(value):
-    """Copy one response through the shared contact and URL boundary."""
+    """Copy one response through the shared contact and URL boundary.
+
+    The generic one, for every response that is not a single opportunity —
+    stats blocks, upcoming envelopes, roadmap fragments. An opportunity-shaped
+    payload goes through `project_public_opportunity_payload` instead, which
+    applies this same boundary and then the truth contract on top of it.
+    """
     return redact_embedded_emails(sanitize_public_urls(value))
 
 
@@ -97,7 +161,12 @@ def _redact(opp: dict) -> dict:
         out["metadata"] = {
             k: v for k, v in md.items() if k not in _UNVERIFIED_PUBLICATION_KEYS
         }
-    return _public_payload(out)
+    # Historical targets stay readable — a saved link must keep working — so
+    # detail answers 200 and carries the truth that lets every surface refuse
+    # to offer an action on it. The projector owns the contact/URL boundary,
+    # the envelope and the neutralization; this function only decides which
+    # fields a detail response starts from.
+    return project_public_opportunity_payload(out, opp)
 
 
 # Heavy fields the browse-list cards never render — the raw HTML scrape and the
@@ -112,7 +181,9 @@ def _list_card(opp: dict) -> dict:
     honest = displayed_title(opp)
     if honest != out.get("title"):
         out["title"] = honest
-    return _public_payload(out)
+    # _LIST_DROP removes `metadata`, so the card would otherwise carry no
+    # activity signal at all — the truth has to travel as its own field.
+    return project_public_opportunity_payload(out, opp)
 
 
 @router.get("/opportunities")
@@ -131,7 +202,7 @@ async def list_opportunities(
     # so offset paging here is a deterministic total order: same filters + same
     # corpus generation → same pages, no duplicates, no omissions.
     opportunities = [
-        o for o in release_visible_opportunities(load_opportunities())
+        o for o in actionable_opportunities(release_visible_opportunities(load_opportunities()))
         if (o.get("metadata") or {}).get("is_active") is not False
     ]
 
@@ -198,7 +269,7 @@ async def opportunity_coverage():
     """
     counts: Counter[str] = Counter()
     faculty_contacts: Counter[str] = Counter()
-    for o in release_visible_opportunities(load_opportunities()):
+    for o in actionable_opportunities(release_visible_opportunities(load_opportunities())):
         if (o.get("metadata") or {}).get("is_active") is False:
             continue
         slug = (o.get("source") or "").split("_", 1)[0]
@@ -246,7 +317,7 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     Useful for building a calendar / "what's due soon" widget without
     re-ranking the full corpus per request.
     """
-    records = release_visible_opportunities(load_opportunities())
+    records = actionable_opportunities(release_visible_opportunities(load_opportunities()))
     opportunities = [
         opportunity
         for opportunity in records
@@ -317,7 +388,7 @@ async def get_similar_opportunities(
     source_org = (source.get("organization") or "").lower()
 
     scored: list[tuple[float, dict]] = []
-    for opp in release_visible_opportunities(load_opportunities()):
+    for opp in actionable_opportunities(release_visible_opportunities(load_opportunities())):
         if opp.get("id") == opportunity_id:
             continue
         if not (opp.get("metadata") or {}).get("is_active", True):
@@ -362,6 +433,7 @@ async def get_similar_opportunities(
 @router.get("/opportunities/{opportunity_id}")
 async def get_opportunity(
     opportunity_id: str,
+    request: Request,
     response: Response,
     authorization: str | None = Header(default=None),
 ):
@@ -383,17 +455,40 @@ async def get_opportunity(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    truth = target_truth(opp)
+    # Before the projection and before the auth lookup: a refused record is
+    # never assembled, and a credential cannot buy the capability — a token says
+    # who is asking, never what their build can parse. After the id and
+    # resolution checks, so a typo is still answered as a typo rather than as
+    # "refresh JoinALab".
+    if not truth.actionable and not _truth_aware_client(request):
+        raise HTTPException(
+            status_code=409,
+            detail=_TRUTH_CAPABILITY_REQUIRED,
+            headers=_TRUTH_CAPABILITY_HEADERS,
+        )
     detail = _redact(opp)
-    # W10b auth-gated contact reveal: a signed-in (non-anonymous) session gets
-    # the verified-provenance contact email back; everyone else — including a
-    # stale/expired token — gets the SAME anonymous shape plus the status flag
-    # the UI renders as a sign-in affordance. Degrade, never 401.
-    status, email = contact_email_status(
-        opp, authenticated=await authenticated_uid(authorization) is not None,
-    )
-    detail["contact_email_status"] = status
-    if status == STATUS_REVEALED:
-        detail["contact_email"] = email
+    # Revealing a contact is an action on the target, not a display detail: it
+    # ends in a mailto and, for a signed-out visitor, in a sign-in prompt whose
+    # only purpose is to unlock it. A closed listing stays readable, but there
+    # is nothing here to write to — so it reports `unavailable`, carries no
+    # address, and never reaches the auth lookup. Checked before
+    # authenticated_uid so a historical record costs no network call either.
+    if truth.actionable:
+        # W10b auth-gated contact reveal: a signed-in (non-anonymous) session
+        # gets the verified-provenance contact email back; everyone else —
+        # including a stale/expired token — gets the SAME anonymous shape plus
+        # the status flag the UI renders as a sign-in affordance. Degrade,
+        # never 401.
+        status, email = contact_email_status(
+            opp, authenticated=await authenticated_uid(authorization) is not None,
+        )
+        detail["contact_email_status"] = status
+        if status == STATUS_REVEALED:
+            detail["contact_email"] = email
+    else:
+        detail["contact_email_status"] = STATUS_UNAVAILABLE
+        detail.pop("contact_email", None)
     # The record-scoped follow/tracking id is a Professor Signals capability,
     # not part of the public faculty-contact profile.  Strip a poisoned/stale
     # corpus value as well as declining to derive a fresh one while the MTP
@@ -413,7 +508,7 @@ async def get_stats():
     if _stats_cache and now - _stats_cache_time < _STATS_TTL:
         return _stats_cache
 
-    records = release_visible_opportunities(load_opportunities())
+    records = actionable_opportunities(release_visible_opportunities(load_opportunities()))
     opportunities = [
         opportunity
         for opportunity in records
@@ -760,6 +855,10 @@ async def chat_with_opportunity(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    # Before the prompt is built and before any provider call: a closed listing
+    # is still readable, but answering questions *about acting on it* is the
+    # action.
+    assert_target_actionable(opp)
 
     # Ask AI is currently outside the release scope, but its dormant route must
     # already obey the same contact boundary before it can ever be enabled.

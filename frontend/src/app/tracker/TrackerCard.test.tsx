@@ -17,17 +17,79 @@ import type { TFunc } from '@/app/favorites/types';
 
 const t: TFunc = ((key: string) => key) as TFunc;
 
-const opp = { id: 'o1', title: 'Test Lab', url: 'https://example.com' };
+// Canonical builders, one per shape. Spreading a listing fixture and
+// overriding only `source_type` produces a record the backend cannot emit —
+// faculty kind wearing a listing's (open, accepting) truth — and a test built
+// on an impossible record proves nothing about a real one.
+const LIVE_LISTING_TRUTH = {
+  listing_state: 'open', reference_only: false, actionable: true,
+  accepting_state: 'accepting', reason_code: null,
+  verified_at: null, expires_at: null,
+} as const;
+
+// A directory page states no listing and no acceptance, so both are unknown.
+const LIVE_FACULTY_TRUTH = {
+  listing_state: 'unknown', reference_only: false, actionable: true,
+  accepting_state: 'unknown', reason_code: null,
+  verified_at: null, expires_at: null,
+} as const;
+
+const CLOSED_TRUTH = {
+  listing_state: 'closed', reference_only: false, actionable: false,
+  accepting_state: 'not_accepting', reason_code: 'listing_closed',
+  verified_at: null, expires_at: null,
+} as const;
+
+const REFERENCE_TRUTH = {
+  listing_state: 'unknown', reference_only: true, actionable: false,
+  accepting_state: 'unknown', reason_code: 'reference_only',
+  verified_at: null, expires_at: null,
+} as const;
+
+function liveListing(fields: Record<string, unknown> = {}) {
+  return {
+    id: 'o1', title: 'Test Lab', url: 'https://example.com',
+    source_type: 'campus_program', record_kind: 'listing',
+    target_truth: { ...LIVE_LISTING_TRUTH },
+    ...fields,
+  };
+}
+
+function liveFaculty(fields: Record<string, unknown> = {}) {
+  return {
+    id: 'o1', title: 'Prof. Rivera', url: 'https://faculty.example/profile',
+    source_type: 'faculty_research', record_kind: 'faculty_contact',
+    target_truth: { ...LIVE_FACULTY_TRUTH },
+    ...fields,
+  };
+}
+
+function deadListing(truth: unknown, fields: Record<string, unknown> = {}) {
+  return {
+    id: 'o1', title: 'Test Lab', url: 'https://example.com',
+    source_type: 'campus_program', record_kind: 'listing',
+    target_truth: truth,
+    ...fields,
+  };
+}
+
+// A record nobody has reviewed: an unreviewed source type, the wire kind to
+// match, and no truth at all.
+function unknownKind(fields: Record<string, unknown> = {}) {
+  return {
+    id: 'o1', title: 'Test Lab', url: 'https://example.com',
+    source_type: 'departmental_newsletter', record_kind: 'unknown',
+    ...fields,
+  };
+}
+
+const opp = liveListing();
 
 describe('TrackerCard faculty trust boundary', () => {
   it('never renders a legacy faculty deadline as an opening deadline', () => {
     render(
       <TrackerCard
-        opp={{
-          ...opp,
-          source_type: 'faculty_research',
-          deadline: '2099-12-31',
-        }}
+        opp={liveFaculty({ deadline: '2099-12-31' })}
         status="applied"
         draft=""
         onDraftChange={() => {}}
@@ -315,5 +377,95 @@ describe('TrackerCard — status/reminder controls (exclusive channel)', () => {
     );
     expect(screen.getByText('tracker.statusSaveError')).toBeInTheDocument();
     expect(screen.getByText('tracker.notesSaveError')).toBeInTheDocument();
+  });
+});
+
+describe('TrackerCard — a reminder is only offered where one would be delivered', () => {
+  const PRESETS = ['tracker.remind3', 'tracker.remind7', 'tracker.remind14'];
+
+  function renderCard(
+    opportunity: Record<string, unknown>,
+    status: 'contacted' | 'applied' | 'rejected',
+    onSetReminder = () => {},
+  ) {
+    return render(
+      <TrackerCard
+        opp={opportunity as never}
+        status={status}
+        remindAt={opportunity.remindAt as string | undefined}
+        draft=""
+        onDraftChange={() => {}}
+        onChangeStatus={() => {}}
+        onSaveNotes={() => {}}
+        onSetReminder={onSetReminder}
+        t={t}
+      />,
+    );
+  }
+
+  it('a current listing shows its deadline and the presets', () => {
+    renderCard(liveListing({ deadline: '2099-12-31' }), 'applied');
+    expect(screen.getByText('2099-12-31')).toBeInTheDocument();
+    for (const key of PRESETS) expect(screen.getByText(key)).toBeInTheDocument();
+    expect(screen.queryByText('tracker.reminderUnavailable')).toBeNull();
+  });
+
+  it('a live faculty contact gets the presets and no deadline', () => {
+    // The majority case for reminders, and the one a listing-shaped gate
+    // would have removed the feature from entirely.
+    renderCard(liveFaculty({ deadline: '2099-12-31' }), 'contacted');
+    for (const key of PRESETS) expect(screen.getByText(key)).toBeInTheDocument();
+    expect(screen.queryByText('2099-12-31')).toBeNull();
+    expect(screen.queryByText('tracker.reminderUnavailable')).toBeNull();
+  });
+
+  it('a rejected row on a live listing gets no presets — the cron never selects it', () => {
+    renderCard(liveListing(), 'rejected');
+    for (const key of PRESETS) expect(screen.queryByText(key)).toBeNull();
+    // The copy is about the state, not the target: this listing is perfectly
+    // live, and it is the status that makes the reminder undeliverable.
+    expect(screen.getByText('tracker.reminderUnavailable')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['closed', deadListing(CLOSED_TRUTH, { deadline: '2099-12-31' })],
+    ['reference-only', deadListing(REFERENCE_TRUTH, { deadline: '2099-12-31' })],
+    ['unreviewed kind', unknownKind({ deadline: '2099-12-31' })],
+  ])('a %s target shows no stale deadline and no presets', (_label, opportunity) => {
+    renderCard(opportunity, 'applied');
+    expect(screen.queryByText('2099-12-31')).toBeNull();
+    for (const key of PRESETS) expect(screen.queryByText(key)).toBeNull();
+    expect(screen.getByText('tracker.reminderUnavailable')).toBeInTheDocument();
+  });
+
+  it('an existing reminder on a closed target keeps its date and Clear, and says it will not send', () => {
+    // All three at once. Folding the warning into the no-reminder branch
+    // meant the case that most needs it — a date the student can see, which
+    // will never fire — was the only one that never showed it.
+    const onSetReminder = vi.fn();
+    renderCard(
+      deadListing(CLOSED_TRUTH, { remindAt: '2030-01-01' }),
+      'applied',
+      onSetReminder,
+    );
+    expect(screen.getByText(/2030-01-01/)).toBeInTheDocument();
+    expect(screen.getByText('tracker.reminderWontSend')).toBeInTheDocument();
+    expect(screen.queryByText('tracker.reminderUnavailable')).toBeNull();
+    for (const key of PRESETS) expect(screen.queryByText(key)).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('tracker.clearReminder'));
+    expect(onSetReminder).toHaveBeenCalledWith('o1', null);
+  });
+
+  it('links to source_url in preference to url, whatever the posture', () => {
+    const { container } = renderCard(
+      deadListing(CLOSED_TRUTH, {
+        source_url: 'https://example.edu/scraped',
+        url: 'https://example.edu/display',
+      }),
+      'applied',
+    );
+    expect(container.querySelector('a')?.getAttribute('href'))
+      .toBe('https://example.edu/scraped');
   });
 });

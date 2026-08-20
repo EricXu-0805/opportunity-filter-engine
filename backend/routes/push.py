@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 from datetime import UTC, date, datetime
@@ -25,6 +26,7 @@ from backend.routes.email import (
     build_idempotency_key,
     classify_send_failure,
 )
+from src.evidence import target_truth
 
 router = APIRouter()
 logger = logging.getLogger("ofe.push")
@@ -286,8 +288,26 @@ _AMBIGUOUS_OUTCOME = "ambiguous"
 
 
 def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
-    url = f"{FRONTEND_BASE}/opportunities/{opportunity_id}"
-    subject = "Reminder: follow up on your application"
+    """The reminder the student set, and nothing about the target's status.
+
+    Every word here used to assert an application: "follow up on your
+    application", "the reminder you set on an application", and a link to the
+    opportunity page. A reminder can be set on a faculty profile — where no
+    application exists — and a listing can close between the reminder being
+    set and the cron firing, so the mail arrived describing an application
+    that had either never existed or had already ended.
+
+    The one thing this job knows for certain is that the student asked to be
+    reminded, so that is all it says, and it sends them to their own tracker
+    rather than to a target whose current state it has not read.
+    Nor "today": the cron selects remind_at <= today, and a failed or
+    ambiguous delivery is retried on a later run, so a reminder set for Monday
+    can honestly arrive on Wednesday.
+
+    `opportunity_id` is unused now and kept as the caller's identity argument.
+    """
+    url = f"{FRONTEND_BASE}/tracker"
+    subject = "Your follow-up reminder is due"
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
   <tr><td style="height:4px;background:#4f46e5;font-size:0;line-height:0">&nbsp;</td></tr>
@@ -296,20 +316,20 @@ def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
     <div style="font-size:12px;color:#9ca3af;margin-top:2px">Research opportunity matching</div>
     <h1 style="font-size:22px;margin:24px 0 6px;color:#111827">{subject}</h1>
     <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
-      The follow-up reminder you set on an application is due today.
+      A follow-up reminder you set in JoinALab is due. Open your tracker to review it.
     </p>
-    <a href="{url}" style="display:inline-block;margin-top:8px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">View the opportunity</a>
+    <a href="{url}" style="display:inline-block;margin-top:8px;padding:11px 22px;background:#4f46e5;color:white;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">Open your tracker</a>
     <p style="margin-top:28px;color:#9ca3af;font-size:11px">
-      You set this reminder in JoinALab · <a href="{FRONTEND_BASE}/favorites" style="color:#4f46e5">Manage your tracker</a>
+      You set this reminder in JoinALab · <a href="{url}" style="color:#4f46e5">Manage your tracker</a>
     </p>
   </td></tr>
 </table>
 </body></html>"""
     text = (
         f"{subject}\n\n"
-        "The follow-up reminder you set on an application is due today.\n"
+        "A follow-up reminder you set in JoinALab is due. Open your tracker to review it.\n"
         f"{url}\n\n"
-        f"---\nSent from JoinALab · {FRONTEND_BASE}/favorites\n"
+        f"---\nSent from JoinALab · {url}\n"
     )
     return subject, html, text
 
@@ -417,10 +437,15 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         sendable_due = []
         for row in due:
             opportunity_id = row["opportunity_id"]
-            if release_visible_opportunity_by_id(
+            target = release_visible_opportunity_by_id(
                 opportunity_lookup,
                 opportunity_id,
-            ) is None:
+            )
+            # Same reasoning one step further: a reminder can also outlive the
+            # listing itself. The row stays, but nudging a student toward a
+            # target that closed since they saved it is the push equivalent of
+            # showing an Apply button on a dead posting.
+            if target is None or not target_truth(target).actionable:
                 skipped += 1
                 continue
             sendable_due.append(row)
@@ -493,11 +518,28 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
             # service. That is what makes the at-least-once retry above safe.
             topic = derive_push_topic(f"reminder-{opportunity_id}")
             for sub in list(subs_by_device.get(device_id, [])):
-                payload = (
-                    '{"title":"Reminder due","body":"You set a follow-up reminder for an application.",'
-                    f'"url":"/opportunities/{row["opportunity_id"]}","tag":"reminder-{row["opportunity_id"]}"'
-                    "}"
-                )
+                # Neutral for the same reason as the email above: a reminder
+                # can be set on a faculty profile, and a listing can close
+                # before the cron fires. The `tag` keeps its per-target
+                # identity — that is what collapses duplicates — while the
+                # copy and the link say only what this job actually knows.
+                # json.dumps, not string concatenation. The old literal
+                # interpolated an opportunity id straight into a JSON body:
+                # an id carrying a quote or a backslash produced a payload the
+                # service worker cannot parse, and the notification is simply
+                # lost. The tag keeps its per-target identity — that is what
+                # collapses duplicates — while the copy and the link say only
+                # what this job actually knows.
+                payload = json.dumps({
+                    "title": "Reminder: follow up",
+                    # Not "due today". The query is remind_at <= today, and a
+                    # failed or ambiguous delivery is retried on later runs —
+                    # so a reminder set for Monday can legitimately arrive on
+                    # Wednesday, and "today" would be false when it does.
+                    "body": "Your follow-up reminder is due.",
+                    "url": "/tracker",
+                    "tag": f"reminder-{opportunity_id}",
+                })
                 sub_params = {
                     "device_id": f"eq.{device_id}",
                     "endpoint": f"eq.{sub['endpoint']}",

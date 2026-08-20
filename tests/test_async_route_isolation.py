@@ -22,6 +22,7 @@ from backend.lib import blocking
 from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
 from backend.main import app
 from backend.routes import cold_email, import_text, import_url, matches, opportunities, tailor
+from src.evidence import record_kind, target_truth
 
 
 @pytest.fixture
@@ -41,7 +42,26 @@ def profile() -> dict:
 
 @pytest.fixture
 def opportunity_id() -> str:
-    return data_loader.load_opportunities()[0]["id"]
+    """A target the action routes will actually let through to the worker.
+
+    Positional selection is what broke here. `load_opportunities()[0]` is
+    deterministically `0088a9eb2812c2f4`, one of the 26 rows with no
+    `source_type`: its kind is unreviewed, so the truth contract refuses it and
+    every chat / cold-email / tailor / refine / explain / bullet probe below
+    gets a 409 BEFORE the gated blocking call is ever reached. The isolation
+    assertions would then be measuring a refusal path, not executor isolation.
+
+    Selected by property so a corpus refresh that reorders the file cannot
+    silently reintroduce that, and raising rather than falling back — a
+    positional fallback is exactly the failure mode being removed.
+    """
+    for record in data_loader.load_opportunities():
+        if record_kind(record) == "listing" and target_truth(record).actionable:
+            return record["id"]
+    raise AssertionError(
+        "no actionable listing in the corpus: these isolation probes need a "
+        "target the action routes admit, and there is none to select",
+    )
 
 
 class _Gate:
@@ -142,6 +162,11 @@ def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> list[dict]:
         "id": opportunity_id,
         "title": "Threaded rerank opportunity",
         "organization": "Example Lab",
+        # A REVIEWED source type. Without one this row's kind is unreviewed,
+        # so `actionable_opportunities` strips it out and the route reaches
+        # the scorer with an EMPTY candidate set — still answering 200, which
+        # is why asserting on the status code alone cannot see it.
+        "source_type": "campus_program",
         "opportunity_type": "research",
         "audience": "open",
         "school": "uiuc",
@@ -151,6 +176,20 @@ def _fake_matches_corpus(monkeypatch, opportunity_id: str) -> list[dict]:
         "application": {},
         "metadata": {"is_active": True},
     }
+    # The invariant this fixture exists to guarantee, asserted rather than
+    # assumed. Every test below drives the route to a stubbed scorer seam and
+    # then checks a 200 and a probe timing — none of which changes if the row
+    # is silently filtered out on the way. So a fixture that stopped being an
+    # actionable listing would go on "passing" while measuring a ranking of
+    # nothing. Checked here, once, where the row is built.
+    assert record_kind(opp) == "listing", (
+        "the synthetic row must be a reviewed listing, or "
+        "actionable_opportunities removes it before the scorer seam"
+    )
+    assert target_truth(opp).actionable, (
+        "the synthetic row must be actionable, or the route ranks an empty "
+        "candidate set and still answers 200"
+    )
     corpus = [opp]
     monkeypatch.setattr(
         matches,
@@ -290,13 +329,17 @@ def test_cold_email_variants_do_not_block_live(monkeypatch, profile, opportunity
     assert response.json()["variants"]
 
 
-def test_cold_email_refine_does_not_block_live(monkeypatch):
+def test_cold_email_refine_does_not_block_live(monkeypatch, opportunity_id):
     fake, gate = _gated(lambda *_args, **_kwargs: None)
     monkeypatch.setattr(cold_email, "is_configured", lambda: True)
     monkeypatch.setattr(cold_email, "chat_completion", fake)
     response = _run_probe(
         "/api/cold-email/refine",
-        {"current_body": "Dear Professor,\nHello.\nBest,\nStudent", "instruction": "concise"},
+        {
+            "current_body": "Dear Professor,\nHello.\nBest,\nStudent",
+            "instruction": "concise",
+            "opportunity_id": opportunity_id,
+        },
         gate,
     )
     assert response.json()["method"] == "local"

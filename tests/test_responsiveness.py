@@ -192,6 +192,7 @@ _SIGNALS = {"opp-1": {"contacted_n": 3, "replied_n": 2}}
 def _opp(opp_id="opp-1"):
     return {
         "id": opp_id,
+        "source_type": "faculty_research",
         "opportunity_type": "research",
         "title": "Vision Lab RA",
         "keywords": ["machine learning"],

@@ -1,42 +1,32 @@
+import { opportunityRecordKind } from './record-kind';
+import {
+  opportunityApplicationUrl,
+  opportunitySourceUrl,
+  targetPosture,
+  targetStatusReason,
+} from './target-truth';
 import type { MatchResult } from './types';
 
+// One line per reason, none of them implying the others. A closed listing was
+// open once; a reference record never was; a professor not taking
+// undergraduates said nothing about any posting; a deactivated row states
+// only that we stopped carrying it.
+const CSV_STATUS = {
+  listing_closed: 'Closed listing — no longer accepting applications',
+  reference_only: 'Reference record — not an open listing',
+  faculty_not_accepting: 'Faculty profile states not accepting undergraduates',
+  inactive: 'Inactive — no longer carried in the catalog',
+  record_kind_unverified: 'Record type unverified — not presented as an open listing',
+  status_unverified: 'Status unverified — check the source',
+} as const;
+
 export type DeadlineUrgency = 'passed' | 'urgent' | 'soon' | 'later' | null;
-export type OpportunityRecordKind = 'faculty_contact' | 'listing' | 'unknown';
 
-// Every value currently emitted by the canonical collectors for a real
-// listing. New collector kinds must be reviewed and added explicitly; a
-// missing, stale, or unfamiliar source type cannot prove that a job/program
-// opening exists.
-const LISTING_SOURCE_TYPES = new Set([
-  'campus_announcement',
-  'campus_career',
-  'campus_department',
-  'campus_lab',
-  'campus_program',
-  'external',
-  'external_reu',
-  'internship',
-  'job',
-  'manual',
-  'rss',
-  'summer_program',
-  'ucb_announcement',
-  'ucb_career',
-  'ucb_department',
-  'ucb_lab',
-  'ucb_program',
-  'uiuc_research',
-]);
-
-export function opportunityRecordKind(
-  opp: { source_type?: string | null },
-): OpportunityRecordKind {
-  if (opp.source_type === 'faculty_research') return 'faculty_contact';
-  if (typeof opp.source_type === 'string' && LISTING_SOURCE_TYPES.has(opp.source_type)) {
-    return 'listing';
-  }
-  return 'unknown';
-}
+// Record-kind lives in its own module so target-truth can share the single
+// listing-source list without importing this one. Re-exported because the
+// existing callers import it from here.
+export type { OpportunityRecordKind } from './record-kind';
+export { opportunityRecordKind };
 
 export function daysUntil(deadline: string | undefined, now: Date = new Date()): number | null {
   if (!deadline) return null;
@@ -94,19 +84,12 @@ export function facultySafeInternational(
  * rows are directory/contact profiles, so a stale `application_url` must
  * never outrank their canonical profile URL at any client boundary.
  */
-export function opportunityDestination(
-  opp: {
-    source_type?: string;
-    application?: { application_url?: string | null };
-    url?: string;
-    source_url?: string;
-  },
-): string | undefined {
-  if (opportunityRecordKind(opp) !== 'listing') {
-    return opp.url || opp.source_url;
-  }
-  return opp.application?.application_url || opp.url || opp.source_url;
-}
+// opportunityDestination used to live here. It resolved one URL for every
+// purpose by falling back from application_url through url/source_url, which
+// meant a reference page could be rendered under an Apply label. It is
+// replaced by the deliberately fallback-free pair in ./target-truth:
+// opportunityApplicationUrl (Apply, or nothing) and opportunitySourceUrl
+// (always readable). Do not reintroduce a combined resolver.
 
 const SEARCH_ALIASES: Record<string, string[]> = {
   ml: ['machine learning'],
@@ -152,22 +135,44 @@ export function expandSearchAliases(query: string): string[] {
 export function matchesToCSV(matches: MatchResult[]): string {
   const header = [
     'Title', 'Organization', 'Type', 'Paid', 'Location / faculty affiliation', 'Deadline',
-    'International Friendly', 'Score', 'Bucket', 'URL',
+    'International Friendly', 'Score', 'Bucket', 'Status', 'URL',
   ];
   const rows = matches.map((m) => {
     const recordKind = opportunityRecordKind(m.opportunity);
-    const listing = recordKind === 'listing';
+    const posture = targetPosture(m.opportunity);
+    // A spreadsheet is read months later with none of the page's context, so
+    // every opening-shaped column is blanked unless the row is a listing we
+    // still call actionable, and the Status column says why it was blanked.
+    const openListing = recordKind === 'listing' && posture === 'actionable';
+    // A spreadsheet column is read as fact months later, so this one says what
+    // is actually known. "Open" for anything actionable called a faculty
+    // directory row an opening; "Historical — no longer open" said all four
+    // refusals were once open, which is false for a reference record and for a
+    // professor who simply is not taking undergraduates.
+    const status = posture === 'actionable'
+      ? openListing
+        ? 'Open listing'
+        : recordKind === 'faculty_contact'
+          ? 'Faculty contact — opening not confirmed'
+          : 'Record type unconfirmed — check the source'
+      : CSV_STATUS[targetStatusReason(m.opportunity) ?? 'status_unverified'];
     return [
       m.opportunity.title,
       m.opportunity.organization ?? '',
-      listing ? m.opportunity.opportunity_type : recordKind,
-      listing ? m.opportunity.paid : '',
+      openListing ? m.opportunity.opportunity_type : recordKind,
+      openListing ? m.opportunity.paid : '',
       m.opportunity.location ?? '',
-      listing ? m.opportunity.deadline ?? '' : '',
+      openListing ? m.opportunity.deadline ?? '' : '',
       facultySafeInternational(m.opportunity) ?? '',
       m.final_score.toFixed(1),
       m.bucket,
-      opportunityDestination(m.opportunity) || '',
+      status,
+      // Apply link when there is one to give, otherwise the source page. An
+      // exported spreadsheet outlives the session, so a row must not hand
+      // someone a reference page under a column they read as "where to apply".
+      opportunityApplicationUrl(m.opportunity)
+        || opportunitySourceUrl(m.opportunity)
+        || '',
     ];
   });
   const escape = (v: string) => {

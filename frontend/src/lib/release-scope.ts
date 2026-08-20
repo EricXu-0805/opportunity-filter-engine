@@ -44,7 +44,7 @@ export const RELEASE_SCOPE = Object.freeze({
 // cached discovery response minted while they were public must not survive the
 // deployment boundary and reintroduce them into any release surface.
 export const PUBLIC_RELEASE_CACHE_VERSION =
-  'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1';
+  'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2';
 
 /** Match a hidden Fellowship preference even when stale storage was written
  * by an older client with different casing or stray whitespace. */

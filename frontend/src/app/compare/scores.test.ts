@@ -54,6 +54,7 @@ function row(id: string, finalScore: number | null, inputIndex: number): Compare
       reasons_gap: [],
       explanation: '',
       method: 'local',
+      matcher_version: 'test-matcher-v1',
     },
   };
 }

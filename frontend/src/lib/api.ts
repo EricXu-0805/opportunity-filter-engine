@@ -889,8 +889,11 @@ export async function getEmailVariants(
 export async function refineEmail(
   currentBody: string,
   instruction: string,
-  profile?: ProfileData,
-  opportunityId?: string,
+  profile: ProfileData | undefined,
+  // Required: refine rewrites a draft against one target's evidence, and the
+  // server resolves that target before it will spend anything. Optional here
+  // only ever meant "send null and hope"; the modal has always had the id.
+  opportunityId: string,
   options: { resumeBullets?: string[] } = {},
 ): Promise<{ body: string; method: string; fallback_reason?: string }> {
   return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
@@ -899,7 +902,7 @@ export async function refineEmail(
       current_body: currentBody,
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
-      opportunity_id: opportunityId ?? null,
+      opportunity_id: opportunityId,
       // The student's real resume bullets keep experience claims grounded when
       // a refine instruction asks to emphasize them (additive + optional).
       ...(options.resumeBullets && options.resumeBullets.length > 0
@@ -1116,8 +1119,23 @@ export async function getUpcomingDeadlines(days = 30): Promise<UpcomingResponse>
   return request<UpcomingResponse>(`/opportunities/upcoming?days=${days}`);
 }
 
+/**
+ * One mailed match. `opportunity_id` is the only field the new backend reads —
+ * it rehydrates title, link, organization, source and deadline from the
+ * canonical record, because a digest outlives the tab that asked for it and a
+ * client-supplied claim would sit in an inbox under our name with nothing
+ * behind it.
+ *
+ * ROLLOUT BRIDGE — keep sending the legacy fields for now.
+ * Vercel and Render deploy independently and the frontend usually lands first,
+ * so for one release we send both shapes: an OLD backend still renders from
+ * title/url/..., and the NEW backend accepts them and throws them away. The
+ * follow-up PR, once both sides are on the same SHA, drops them here and
+ * forbids them there. Removing them earlier breaks the deploy window.
+ */
 export interface EmailMatchItem {
-  title: string;
+  opportunity_id: string;
+  title?: string;
   url?: string;
   score?: number;
   source?: string;
@@ -1137,14 +1155,19 @@ export async function sendMatchesEmail(
   });
 }
 
+/**
+ * One saved row: which target, plus the notes and status the user owns.
+ * The describing fields are the same ROLLOUT BRIDGE as EmailMatchItem.
+ */
 export interface EmailFavoriteItem {
-  title: string;
+  opportunity_id: string;
+  notes?: string;
+  status?: string;
+  title?: string;
   url?: string;
   score?: number;
   source?: string;
   deadline?: string | null;
-  notes?: string;
-  status?: string;
   record_kind?: 'listing' | 'faculty_contact' | 'unknown';
 }
 

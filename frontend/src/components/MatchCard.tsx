@@ -38,8 +38,15 @@ import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scop
 import {
   facultySafeInternational,
   getDeadlineUrgency,
-  opportunityDestination,
+  opportunityRecordKind,
 } from '@/lib/match-utils';
+import {
+  opportunityApplicationUrl,
+  opportunitySourceUrl,
+  targetPosture,
+  targetStatusReason,
+  type TargetStatusReason,
+} from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
@@ -141,6 +148,29 @@ function scopeChipText(chip: ScopeChip, t: (key: string, vars?: Record<string, s
   return chip.host ? t('card.scope.openWithHost', { host: chip.host }) : t('card.scope.open');
 }
 
+/** The one sentence a card may say about a target it cannot offer.
+ *
+ * Two of these point at labels the card already carries for a different
+ * reason — the faculty stop and the unreviewed-kind label — so those cases
+ * skip the badge rather than print the same sentence twice; see
+ * `showStatusReason` below. The other four had no expression here at all: a
+ * closed listing used to announce itself only through a red "Deadline passed"
+ * countdown, which is exactly the offer term that no longer renders.
+ *
+ * The `compare.` keys are borrowed deliberately. They are the same claims,
+ * already written and already translated, and this batch is scoped to three
+ * files — adding `card.status.*` means editing the dictionaries, which is a
+ * rename worth doing on its own rather than smuggling in here.
+ */
+const CARD_STATUS_KEY: Record<TargetStatusReason, string> = {
+  listing_closed: 'compare.status.closed',
+  reference_only: 'compare.status.reference',
+  faculty_not_accepting: 'card.facultyNotAcceptingUndergraduates',
+  inactive: 'compare.status.inactive',
+  record_kind_unverified: 'card.recordTypeUnconfirmed',
+  status_unverified: 'compare.status.unverified',
+};
+
 const URGENCY_BORDER: Record<string, string> = {
   urgent: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-red-400 before:rounded-l-2xl',
   soon: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-amber-400 before:rounded-l-2xl',
@@ -161,18 +191,45 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const { t } = useT();
 
   const { opportunity: opp } = match;
-  const isFaculty = opp.source_type === 'faculty_research';
+  // Three kinds, not two. `!isFaculty` treated an unreviewed source_type as a
+  // listing, so a record we have never confirmed IS one showed a pay badge, a
+  // deadline countdown, "New", and application requirements — every term of an
+  // offer, on a row whose type we cannot vouch for. Being actionable is not
+  // the same as being a confirmed listing.
+  const recordKind = opportunityRecordKind(opp);
+  const isFaculty = recordKind === 'faculty_contact';
+  const isConfirmedListing = recordKind === 'listing';
+  // Two independent facts, and every term of an offer needs both of them.
+  // Kind alone still printed a pay badge, an audience chip and a deadline
+  // countdown on a posting the server had already stopped calling actionable
+  // — the card said "closed" nowhere and "$32/hr, due Friday" twice. The CSV
+  // export already draws the line exactly here (lib/match-utils `openListing`);
+  // this is the card agreeing with the spreadsheet it exports.
+  const posture = targetPosture(opp);
+  const isCurrentListing = isConfirmedListing && posture === 'actionable';
   const facultyUnavailable = isFaculty
     && opp.faculty_availability_status === 'not_accepting_undergraduates';
+  const statusReason = posture === 'actionable' ? null : targetStatusReason(opp);
+  // Skipped only where a badge below already states this exact sentence.
+  const showStatusReason = statusReason !== null
+    && !(statusReason === 'faculty_not_accepting' && facultyUnavailable)
+    && !(statusReason === 'record_kind_unverified' && !isConfirmedListing && !isFaculty);
   const compensation = cleanCompensation(opp.compensation_details);
   const tier = getBucketLabel(match.bucket, t);
   const effectiveIntl = facultySafeInternational(opp) ?? 'unknown';
   const intl = getIntlBadge(effectiveIntl, t);
   const paid = getPaidBadge(opp.paid, t);
   // Home-campus records get no chip (the majority — avoid noise); only
-  // open/unknown/foreign-campus records carry the host+audience chip.
-  const scopeChip = scopeChipFor(opp, homeSchoolOf(profile ?? null));
-  const urgency = isFaculty
+  // open/unknown/foreign-campus records carry the host+audience chip. Who may
+  // apply is a term of an application, so a target with no current application
+  // has no audience to state — including a faculty row, whose `audience` came
+  // from the collector and was never about an opening.
+  const scopeChip = isCurrentListing
+    ? scopeChipFor(opp, homeSchoolOf(profile ?? null))
+    : null;
+  // Urgency is a claim about an application window. Only a record we have
+  // confirmed IS an application, and still call live, makes it.
+  const urgency = !isCurrentListing
     ? null
     : getDeadlineUrgency(
         opp.deadline,
@@ -184,10 +241,13 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   // A faculty record's application_url is a directory page, not an application
   // form. Keep drafting and opening that page as separate actions: neither one
   // proves contact, and the page must never be labelled "Apply Now".
-  const applyUrl = isFaculty ? undefined : opp.application?.application_url;
-  const facultyPageUrl = isFaculty ? opportunityDestination(opp) : undefined;
-  const sourcePageUrl = !isFaculty && !applyUrl ? opportunityDestination(opp) : undefined;
-  const showApplyNow = !!applyUrl && !isFaculty;
+  // opportunityApplicationUrl folds in both facts: the record must be a
+  // listing AND the server must still call it actionable. Faculty rows and
+  // closed listings therefore fall through to the source link below.
+  const applyUrl = opportunityApplicationUrl(opp);
+  const facultyPageUrl = isFaculty ? opportunitySourceUrl(opp) : undefined;
+  const sourcePageUrl = !isFaculty && !applyUrl ? opportunitySourceUrl(opp) : undefined;
+  const showApplyNow = !!applyUrl;
   const emailIsPrimary = isFaculty || !showApplyNow;
 
   return (
@@ -244,14 +304,30 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 mb-5">
-          {!isFaculty && isNew && (
+          {isCurrentListing && isNew && (
             <Badge variant="orange" dot>
               <BellRing className="w-3 h-3" />
               {t('results.newMatchBadge')}
             </Badge>
           )}
-          {!isFaculty && isNewPosting(opp) && <Badge variant="green" dot>{t('badges.new')}</Badge>}
-          <Badge variant="indigo">{opp.opportunity_type}</Badge>
+          {isCurrentListing && isNewPosting(opp) && (
+            <Badge variant="green" dot>{t('badges.new')}</Badge>
+          )}
+          {/* The type is the record's own claim about what it is, and we
+              publish it only where it describes something still on offer. An
+              unreviewed record gets a badge saying exactly that instead; a
+              closed one gets its reason below. */}
+          {isCurrentListing && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
+          {!isConfirmedListing && !isFaculty && (
+            <Badge variant="gray">{t('card.recordTypeUnconfirmed')}</Badge>
+          )}
+          {/* Why this target is not one to act on. Without it a closed listing
+              said so nowhere at all: its only signal used to be the red
+              "Deadline passed" countdown, which is itself an offer term and no
+              longer renders. */}
+          {showStatusReason && statusReason && (
+            <Badge variant="red">{t(CARD_STATUS_KEY[statusReason])}</Badge>
+          )}
           {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
             <Badge variant="orange">{t('card.facultyContactUnconfirmed')}</Badge>
           )}
@@ -261,11 +337,16 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
             <Badge variant="red">{t('card.facultyResearchInactive')}</Badge>
           )}
-          <Badge variant={intl.variant} dot>
-            <Globe className="w-3 h-3" />
-            {intl.label}
-          </Badge>
-          {!isFaculty && (
+          {/* Who may apply, and whether it pays, are terms of an application.
+              A record whose type we have not confirmed — or that we no longer
+              call live — has no application to state terms for. */}
+          {isCurrentListing && (
+            <Badge variant={intl.variant} dot>
+              <Globe className="w-3 h-3" />
+              {intl.label}
+            </Badge>
+          )}
+          {isCurrentListing && (
             <Badge variant={paid.variant} dot>
               <DollarSign className="w-3 h-3" />
               {paid.label}
@@ -278,7 +359,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {scopeChipText(scopeChip, t)}
             </Badge>
           )}
-          {!isFaculty && opp.deadline && (() => {
+          {isCurrentListing && opp.deadline && (() => {
             // An estimated date (NSF projected deadlines) must never yield a
             // confident "Deadline passed" / countdown claim — always the
             // neutral gray date with an explicit estimate marker.
@@ -315,7 +396,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           </p>
         )}
 
-        {!isFaculty && (compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
+        {isCurrentListing && (compensation || opp.duration || opp.application?.requires_resume === 'yes' || opp.application?.requires_recommendation === 'yes') && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-gray-400 mb-4">
             {compensation && (
               <span className="inline-flex items-center gap-1">
@@ -390,10 +471,10 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.applyNow')}
             </a>
           ) : null}
-          {!facultyUnavailable && (
+          {posture === 'actionable' && !facultyUnavailable && (
             <button
               type="button"
-              onClick={() => onDraftEmail(opp.id)}
+              onClick={() => { if (posture === 'actionable') onDraftEmail(opp.id); }}
               className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
                 emailIsPrimary
                   ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
@@ -406,10 +487,14 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.draftEmail')}
             </button>
           )}
-          {profile && (
+          {profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => { if (ownerReady) setTailorOpen(true); }}
+              // The posture check is repeated in the handler on purpose: a
+              // control that is merely not rendered is safe, but a callback
+              // reachable some other way (a retained ref, a future refactor
+              // that keeps the button and disables it) must refuse too.
+              onClick={() => { if (ownerReady && posture === 'actionable') setTailorOpen(true); }}
               disabled={!ownerReady}
               aria-busy={!ownerReady}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
@@ -418,10 +503,10 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               {t('card.tailorResume')}
             </button>
           )}
-          {RELEASE_SCOPE.resumeRenovate && profile && (
+          {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => setRenovationOpen(true)}
+              onClick={() => { if (posture === 'actionable') setRenovationOpen(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -553,7 +638,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </div>
             )}
 
-            {!isFaculty && opp.eligibility?.skills_required?.length > 0 && (
+            {isCurrentListing && opp.eligibility?.skills_required?.length > 0 && (
               <div className="pt-1">
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">
                   {t('favorites.requiredSkills')}
@@ -568,11 +653,15 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </div>
             )}
 
-            {RELEASE_SCOPE.roadmap && profile && !gaps && (
+            {RELEASE_SCOPE.roadmap && profile && posture === 'actionable' && !gaps && (
               <button
                 type="button"
                 disabled={gapLoading}
                 onClick={async () => {
+                  // The server refuses this target with a 409 anyway; not
+                  // calling is the difference between a clean no-op and a
+                  // spinner that ends in an error the user cannot act on.
+                  if (posture !== 'actionable') return;
                   setGapLoading(true);
                   try {
                     const data = await getGapAnalysis(profile, opp.id);
@@ -660,7 +749,10 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         )}
       </div>
     </div>
-    {profile && (
+    {/* Not mounted at all for a historical or unverified target. A modal that
+        exists but is closed still ships its effects, its prefetches and a
+        `isOpen` prop one state change away from opening. */}
+    {profile && posture === 'actionable' && (
       <TailorModal
         isOpen={tailorOpen}
         onClose={() => setTailorOpen(false)}
@@ -671,7 +763,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         ownerScopeKey={ownerScopeKey}
       />
     )}
-    {RELEASE_SCOPE.resumeRenovate && profile && (
+    {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
       <ResumeRenovationModal
         isOpen={renovationOpen}
         onClose={() => setRenovationOpen(false)}

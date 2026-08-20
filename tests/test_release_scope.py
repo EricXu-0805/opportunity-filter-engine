@@ -472,6 +472,7 @@ def _fellowship_release_corpus() -> list[dict]:
     deadline = (date.today() + timedelta(days=5)).isoformat()
     common = {
         "organization": "Example University",
+        "source_type": "campus_program",
         "deadline": deadline,
         "keywords": ["machine learning", "vision"],
         "metadata": {"is_active": True},
@@ -986,6 +987,121 @@ def test_unprovable_reminder_is_kept_but_never_sent(
     assert len(requests) == 1
     assert patches == []
     assert sends == []
+
+
+@pytest.mark.parametrize(
+    ("shape", "metadata"),
+    [
+        ("closed_active", {"urap_status": "closed", "is_active": True}),
+        ("reference_only", {"reference_only": True, "is_active": True}),
+        ("inactive", {"is_active": False}),
+    ],
+)
+def test_non_actionable_reminder_is_kept_but_never_sent(shape, metadata, monkeypatch):
+    """A reminder can outlive the listing, not just the release surface.
+
+    The target stays fully release-visible — the student saved it and can still
+    open it. What changed is whether it can be acted on. Nudging them toward it
+    is the push-channel version of showing an Apply button on a dead posting.
+
+    The assertion is deliberately not just ``sent == 0``: that survives a guard
+    moved *after* the subscription read, the incident write, or the send
+    attempt. Instead the only network call allowed is the initial interactions
+    GET, and every mutating verb and both delivery channels are tripwires — so
+    a guard pushed one step later fails here rather than quietly costing a
+    write.
+    """
+    target = {
+        "id": f"reminder-target-{shape}",
+        "source": "ucb_urap_projects",
+        "source_type": "ucb_program",
+        "title": "Past URAP project",
+        "metadata": metadata,
+    }
+    due = [{
+        "device_id": "non-actionable-device",
+        "opportunity_id": target["id"],
+        "remind_at": "2020-01-01",
+        "interaction_type": "applied",
+        "notes": "",
+    }]
+    gets: list[str] = []
+
+    class Response:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return due
+
+        def raise_for_status(self):
+            return None
+
+    def forbidden(verb):
+        async def _call(url, **_kwargs):
+            raise AssertionError(
+                f"{verb} {url} ran for a non-actionable reminder — the guard "
+                "must precede every write and delivery attempt",
+            )
+        return _call
+
+    class Client:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_exc):
+            return False
+
+        async def get(self, url, **_kwargs):
+            gets.append(url)
+            return Response()
+
+        patch = forbidden("PATCH")
+        post = forbidden("POST")
+        delete = forbidden("DELETE")
+
+    async def forbidden_send(*_args, **_kwargs):
+        raise AssertionError("a non-actionable reminder must never be delivered")
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "AsyncClient", Client)
+    monkeypatch.setattr(
+        push_module, "load_opportunities_by_id", lambda: {target["id"]: target},
+    )
+    monkeypatch.setattr(push_module, "send_webpush_safely", forbidden_send)
+    monkeypatch.setattr(push_module, "_send_via_resend", forbidden_send)
+    for name, value in {
+        "CRON_SECRET": "release-contract-cron",
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "service-key",
+        "VAPID_PRIVATE_KEY": "private-key",
+        "VAPID_PUBLIC_KEY": "public-key",
+        "VAPID_SUBJECT": "mailto:ops@example.com",
+        "RESEND_API_KEY": "resend-key",
+        "RESEND_FROM_EMAIL": "from@example.com",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    response = client.get(
+        "/api/cron/reminders",
+        headers={"Authorization": "Bearer release-contract-cron"},
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["due"] == 1
+    assert body["skipped"] == 1
+    assert body["sent"] == 0
+    assert body["emailed"] == 0
+    assert body["pruned"] == 0
+    # Exactly one network call: reading the due interactions. Anything more
+    # means work happened after the target was already known to be dead.
+    assert len(gets) == 1, f"unexpected extra reads: {gets}"
+    assert "interactions" in gets[0]
 
 
 def test_pre_llc_migration_revokes_direct_order_inserts():

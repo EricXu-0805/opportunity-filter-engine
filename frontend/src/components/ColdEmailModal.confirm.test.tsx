@@ -24,6 +24,7 @@
  * means here exactly what it means in the browser.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useLayoutEffect, type ComponentProps } from 'react';
 import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
@@ -204,7 +205,30 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderModal(oppId = 'opp-A') {
+// This whole file is the confirm-flow harness, and it reads the reminder
+// prompt as its "confirmed" signal — so its target has to be one the
+// reminders cron would actually send for. Supplied here and nowhere else:
+// a ColdEmail test that does not care about reminders omits the prop and
+// correctly gets no follow-up controls at all.
+// NonNullable, so the builder returns a value that can be spread and mutated
+// without casts; call sites that need "no provable target" pass undefined
+// explicitly through the `| undefined` parameter types below.
+type ReminderTarget = NonNullable<ComponentProps<typeof ColdEmailModal>['reminderTarget']>;
+
+function liveListingTarget(id = 'opp-A'): ReminderTarget {
+  return {
+    id,
+    source_type: 'campus_program',
+    record_kind: 'listing',
+    target_truth: {
+      listing_state: 'open', reference_only: false, actionable: true,
+      accepting_state: 'accepting', reason_code: null,
+      verified_at: null, expires_at: null,
+    },
+  };
+}
+
+function renderModal(oppId = 'opp-A', target: ReminderTarget | undefined = liveListingTarget(oppId)) {
   const onClose = vi.fn();
   const utils = render(
     <ColdEmailModal
@@ -213,17 +237,20 @@ function renderModal(oppId = 'opp-A') {
       opportunityId={oppId}
       opportunityTitle="REU"
       profile={profile}
+      reminderTarget={target}
     />,
   );
-  const show = (open: boolean, id: string) => utils.rerender(
-    <ColdEmailModal
-      isOpen={open}
-      onClose={onClose}
-      opportunityId={id}
-      opportunityTitle="REU"
-      profile={profile}
-    />,
-  );
+  const show = (open: boolean, id: string, next: ReminderTarget | undefined = liveListingTarget(id)) =>
+    utils.rerender(
+      <ColdEmailModal
+        isOpen={open}
+        onClose={onClose}
+        opportunityId={id}
+        opportunityTitle="REU"
+        profile={profile}
+        reminderTarget={next}
+      />,
+    );
   return { ...utils, onClose, show };
 }
 
@@ -702,5 +729,254 @@ describe('ColdEmailModal — source freshness', () => {
       screen.queryByTestId('freshness-notice'),
       'a retired A must not make a live B look retired',
     ).toBeNull();
+  });
+});
+
+describe('ColdEmailModal — a follow-up reminder is only offered where one would be delivered', () => {
+  const LIVE_LISTING_TARGET = liveListingTarget();
+  const LIVE_FACULTY_TARGET: ReminderTarget = {
+    id: 'opp-A',
+    source_type: 'faculty_research',
+    record_kind: 'faculty_contact',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null,
+      verified_at: null, expires_at: null,
+    },
+  };
+  const CLOSED_TARGET: ReminderTarget = {
+    ...liveListingTarget(),
+    target_truth: {
+      listing_state: 'closed', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    },
+  };
+
+  function renderWith(target: ReminderTarget | undefined) {
+    return render(
+      <ColdEmailModal
+        isOpen
+        onClose={vi.fn()}
+        opportunityId="opp-A"
+        opportunityTitle="REU"
+        profile={profile}
+        reminderTarget={target}
+      />,
+    );
+  }
+
+  async function confirmWith(target: ReminderTarget | undefined, status: string) {
+    renderWith(target);
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0, { type: status, last_contacted_at: '2026-08-06T12:00:00.000Z' });
+  }
+
+  // The migration creates 'contacted'; the RPC is an upsert that PRESERVES
+  // whatever status the row already had, so all three of these can come back
+  // from a perfectly real send.
+  it.each(['contacted', 'applied', 'replied', 'interviewing'])(
+    'a %s row on a live listing gets the prompt, and a chip writes the reminder',
+    async (status) => {
+      await confirmWith(LIVE_LISTING_TARGET, status);
+
+      expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.reminderUnavailable')).toBeNull();
+
+      fireEvent.click(screen.getByText('coldEmail.remind7'));
+      await settle(updateCalls[0], () => updateCalls[0].resolve());
+      expect(updateInteractionDetailsMock).toHaveBeenCalledTimes(1);
+      expect(updateInteractionDetailsMock.mock.calls[0][1])
+        .toEqual({ remind_at: expect.any(String) });
+    },
+  );
+
+  it('a live faculty contact gets it too — that is what most reminders are set on', async () => {
+    await confirmWith(LIVE_FACULTY_TARGET, 'contacted');
+    expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a rejected row', LIVE_LISTING_TARGET, 'rejected'],
+    ['a dismissed row', LIVE_LISTING_TARGET, 'dismissed'],
+    ['a closed target', CLOSED_TARGET, 'contacted'],
+    ['no provable target', undefined, 'contacted'],
+  ])('%s gets no reminder UI at all and writes nothing', async (_label, target, status) => {
+    await confirmWith(target, status);
+
+    // The whole block, not just the chips: offering "want a reminder?" and
+    // then having nothing to offer is the same false capability, earlier.
+    expect(await screen.findByText('coldEmail.reminderUnavailable')).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.remindPrompt')).toBeNull();
+    expect(screen.queryByText(/^coldEmail\.reminderSet/)).toBeNull();
+    expect(screen.queryByText('coldEmail.remind3')).toBeNull();
+    expect(screen.queryByText('coldEmail.remind7')).toBeNull();
+    expect(screen.queryByText('coldEmail.remind14')).toBeNull();
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+  });
+
+  it('a live target for a DIFFERENT id proves nothing about this one', async () => {
+    // A results list mid-swap, or a favorites modal whose id moved on, hands
+    // over a perfectly live record that describes something else entirely.
+    renderWith(liveListingTarget('opp-OTHER'));
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0);
+
+    expect(await screen.findByText('coldEmail.reminderUnavailable')).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.remindPrompt')).toBeNull();
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+  });
+
+  it('the write refuses even when the rendered chip is stale — the sink is not the DOM', async () => {
+    // The tripwire for the handler gate specifically. One mutable target
+    // object: confirm while it is live, keep the rendered chip, then mutate
+    // that same object to closed WITHOUT a rerender. React never repaints,
+    // so the chip is still on screen and still clickable — exactly the state
+    // a DOM-only gate cannot see. Deleting the check inside setFollowUp
+    // leaves every other assertion in this file green.
+    const target = liveListingTarget();
+    renderWith(target);
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0);
+    const chip = await screen.findByText('coldEmail.remind7');
+
+    target.target_truth = {
+      listing_state: 'closed', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    };
+
+    fireEvent.click(chip);
+
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^coldEmail\.reminderSet/)).toBeNull();
+  });
+
+  it('the write refuses a stale chip whose target IDENTITY moved, not just its truth', async () => {
+    // The parallel tripwire. The mismatched-id case above only exercises the
+    // render gate; with the DOM gate intact, deleting the id check inside
+    // setFollowUp would survive it. Mutating the same object's id without a
+    // rerender leaves a chip on screen that was drawn for opp-A while the
+    // record now describes something else.
+    const target = liveListingTarget();
+    renderWith(target);
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0);
+    const chip = await screen.findByText('coldEmail.remind7');
+
+    target.id = 'opp-OTHER';
+    fireEvent.click(chip);
+
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^coldEmail\.reminderSet/)).toBeNull();
+  });
+
+  it('A confirmed, then rerendered onto live B: B shows nothing of A and writes nothing', async () => {
+    // WHAT THIS PROVES, precisely: after a target switch, B carries none of
+    // A's session and no reminder is written for it.
+    //
+    // WHAT IT DOES NOT PROVE: that the id stamps (`contactedForId` /
+    // `confirmedForId`) are what achieve it. Removing both leaves this test
+    // green, and so does the commit probe below. Under act() — which RTL
+    // wraps `rerender` in — React flushes the previous commit's passive
+    // cleanup BEFORE the next render begins, so the one-commit window the
+    // stamps exist to close cannot be reached from here at all. The probe is
+    // kept because it is the strongest observation available (a layout effect
+    // sees each commit before that commit's passive effects), and it
+    // documents the limit rather than hiding it.
+    //
+    // The stamps stay: they make the state unusable by construction instead
+    // of by scheduling, which is the right shape whether or not a test in
+    // this harness can see the difference. Their evidence level is
+    // "reasoned, not test-killed" — recorded as such in the ledger.
+    const commits: string[] = [];
+    function CommitProbe() {
+      useLayoutEffect(() => { commits.push(document.body.textContent ?? ''); });
+      return null;
+    }
+
+    const onClose = vi.fn();
+    const view = render(
+      <>
+        <ColdEmailModal
+          isOpen onClose={onClose} opportunityId="opp-A" opportunityTitle="REU"
+          profile={profile} reminderTarget={liveListingTarget('opp-A')}
+        />
+        <CommitProbe />
+      </>,
+    );
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0);
+    expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+
+    commits.length = 0;
+    view.rerender(
+      <>
+        <ColdEmailModal
+          isOpen onClose={onClose} opportunityId="opp-B" opportunityTitle="REU"
+          profile={profile} reminderTarget={liveListingTarget('opp-B')}
+        />
+        <CommitProbe />
+      </>,
+    );
+
+    // The very first commit after the id changed — before any cleanup ran.
+    expect(commits.length).toBeGreaterThan(0);
+    expect(commits[0]).not.toContain('coldEmail.remindPrompt');
+    expect(commits[0]).not.toContain('coldEmail.reminderUnavailable');
+    expect(commits[0]).not.toContain('coldEmail.remind7');
+    expect(commits[0]).not.toContain('coldEmail.sentQuestion');
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+
+    // And B still earns its own strip and its own confirmation afterwards.
+    await openedOn('opp-B');
+    await reachConfirmStrip();
+    expect(screen.getByText('coldEmail.sentQuestion')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(1);
+    expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+    expect(confirmCalls).toHaveLength(2);
+  });
+
+  it('a confirmed status never carries across a target change', async () => {
+    // The confirmed status is per-target state. Left behind, A's 'contacted'
+    // would decide whether B may take a reminder before B has been confirmed
+    // at all.
+    const onClose = vi.fn();
+    const utils = render(
+      <ColdEmailModal
+        isOpen onClose={onClose} opportunityId="opp-A" opportunityTitle="REU"
+        profile={profile} reminderTarget={LIVE_LISTING_TARGET}
+      />,
+    );
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await resolveConfirm(0);
+    expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+
+    utils.rerender(
+      <ColdEmailModal
+        isOpen onClose={onClose} opportunityId="opp-B" opportunityTitle="REU"
+        profile={profile}
+        reminderTarget={liveListingTarget('opp-B')}
+      />,
+    );
+    await openedOn('opp-B');
+
+    // B is unconfirmed, so there is no reminder surface of any kind yet.
+    expect(screen.queryByText('coldEmail.remindPrompt')).toBeNull();
+    expect(screen.queryByText('coldEmail.remind7')).toBeNull();
+    expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
   });
 });

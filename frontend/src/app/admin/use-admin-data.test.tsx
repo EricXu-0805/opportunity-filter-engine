@@ -33,6 +33,8 @@ let ticketRow: Ticket;
 let ticketEvents: { actor: string; action: string; created_at: string }[];
 let incidentRow: OpsIncident;
 let mainStatus: { status: number; error?: string } | null;
+let historyRows: Record<string, unknown>[];
+let mainData: Record<string, unknown> | null;
 let feedbackListStatus: { status: number; error?: string } | null;
 let ticketPatchStatus: { status: number; error?: string } | null;
 
@@ -43,12 +45,14 @@ function install() {
     calls.push({ path, init });
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
 
-    if (path.startsWith('/admin/data-quality/history')) return { status: 200, data: { history: [] } };
+    if (path.startsWith('/admin/data-quality/history')) {
+      return { status: 200, data: { history: historyRows } };
+    }
     if (path.startsWith('/admin/data-quality')) {
       if (mainStatus) return mainStatus;
       return {
         status: 200,
-        data: {
+        data: mainData ?? {
           total: 10,
           global: {},
           sources: [],
@@ -130,6 +134,8 @@ function install() {
 beforeEach(() => {
   calls.length = 0;
   mainStatus = null;
+  historyRows = [];
+  mainData = null;
   feedbackListStatus = null;
   ticketPatchStatus = null;
   ticketRow = {
@@ -360,5 +366,62 @@ describe('W15: a disabled console is one condition, not many failures', () => {
     // This file's t() mock returns the bare key, so assert on that; the
     // interpolated reason is covered by FeedbackSection.test.tsx.
     expect(await screen.findByText('admin.tickets.loadFailed')).toBeInTheDocument();
+  });
+});
+
+describe('previousSnapshot is wired through the hook, not just implemented in utils', () => {
+  // findPreviousSnapshot has direct unit coverage, but the hook could stop
+  // calling it — or go back to history[-2] — and every one of those unit
+  // tests would stay green. This asserts the delta an operator actually sees.
+  const SCOPE = 'reviewed-record-kind-v1';
+
+  it('renders the delta against the last strictly-earlier same-scope entry', async () => {
+    mainData = {
+      total: 30,
+      quality_scope: SCOPE,
+      global: { listing_total: 10, empty_majors: 7 },
+      sources: [],
+      worst_fields: [],
+      generated_at: '2026-08-04T10:00:00+00:00',
+    };
+    historyRows = [
+      // Legacy: has the denominator, not the marker. Never a baseline.
+      { t: '2026-08-01T10:00:00+00:00', total: 30, listing_total: 10, empty_majors: 999 },
+      // T1 — the one true answer.
+      { t: '2026-08-02T10:00:00+00:00', total: 30, listing_total: 10, empty_majors: 4, quality_scope: SCOPE },
+      // T2 — the CURRENT snapshot, already appended by the backend. Sharing
+      // the timestamp means comparing it with itself: zero delta.
+      { t: '2026-08-04T10:00:00+00:00', total: 30, listing_total: 10, empty_majors: 7, quality_scope: SCOPE },
+      // A scope this build does not know, newer still.
+      { t: '2026-08-05T10:00:00+00:00', total: 30, listing_total: 10, empty_majors: 0, quality_scope: 'reviewed-record-kind-v2' },
+    ];
+
+    await mount();
+
+    // 7 now vs 4 at T1 → +3. history[-2] would pick T1 only by luck here, so
+    // the self-entry at T2 and the future row after it are what make this
+    // discriminating: a raw index lands on T2 (delta 0) or the v2 row.
+    expect(await screen.findByText('▲ +3')).toBeInTheDocument();
+    expect(screen.queryByText('▲ +7')).not.toBeInTheDocument();
+  });
+
+  it('shows no delta at all when the current response is out of scope', async () => {
+    mainData = {
+      total: 30,
+      global: { listing_total: 10, empty_majors: 7 },
+      sources: [],
+      worst_fields: [],
+      generated_at: '2026-08-04T10:00:00+00:00',
+    };
+    historyRows = [
+      { t: '2026-08-02T10:00:00+00:00', total: 30, listing_total: 10, empty_majors: 4, quality_scope: SCOPE },
+    ];
+
+    await mount();
+
+    // No delta of ANY kind — asserted on the arrow, so a leak through some
+    // other baseline cannot slip past a single hard-coded number.
+    expect(screen.queryByText('▲ +3')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^[▲▼]/)).not.toBeInTheDocument();
   });
 });

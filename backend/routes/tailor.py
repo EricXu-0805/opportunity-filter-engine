@@ -47,6 +47,7 @@ from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.target_actionability import assert_target_actionable
 from backend.schemas import (
     BulletOptimizeRequest,
     BulletOptimizeResponse,
@@ -602,6 +603,7 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
 
     if not request.original_bullets:
         return TailorResponse(
@@ -1060,6 +1062,7 @@ async def renovate_resume(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
 
     sections = request.sections
     if not sections or not any(s.bullets for s in sections):
@@ -1255,6 +1258,7 @@ async def optimize_bullet(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
 
     current = request.current_text.strip()
     if not current:

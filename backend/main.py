@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import sys
+import threading
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -25,6 +26,7 @@ from backend.lib import llm_budget
 from backend.lib.build_info import BUILD_VERSION, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
+from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 
 init_sentry()
 
@@ -292,13 +294,85 @@ def _rate_limited(window: int) -> Response:
     )
 
 
+class _RateSlot:
+    """One reservation in a rate bucket, identified by object identity.
+
+    A bare timestamp cannot be refunded safely: two requests arriving in the
+    same clock tick produce equal floats, so removing "the" float can retire
+    the slot belonging to the request that *succeeded* and leave the refused
+    one counted. The slot object is its own token — it defines no ``__eq__``,
+    so ``list.remove`` falls back to identity and can only ever drop the entry
+    this request appended. Do not add equality to this class.
+    """
+
+    __slots__ = ("timestamp",)
+
+    def __init__(self, timestamp: float) -> None:
+        self.timestamp = timestamp
+
+
+# Guards the read-modify-write on both bucket dicts. Only ever held across
+# synchronous statements — never across an await.
+_rate_lock = threading.Lock()
+
+
+def _slot_time(entry: object) -> float:
+    """Window position of a bucket entry, slot or bare float.
+
+    Tests seed buckets with plain timestamps to simulate a full window, and
+    that is a legitimate way to describe "n requests already happened".
+    """
+    return entry.timestamp if isinstance(entry, _RateSlot) else float(entry)  # type: ignore[arg-type]
+
+
+def _refused_before_work(response: Response) -> bool:
+    """Whether the handler rejected the request without spending anything.
+
+    Consumes the marker as it reads it: the header is an internal channel from
+    the refusal site to this middleware, and a client that could see it would
+    be reading an undocumented field we never promised to keep.
+
+    Two shapes qualify. 422 is request validation — a malformed email or a
+    duplicated id never reaches a provider, a mailbox or the database. And any
+    status carrying ``REFUSED_BEFORE_WORK_HEADER``, which refusal sites set
+    when they return before the first irreversible step.
+
+    Deliberately not "any 4xx": a 409 raised *after* a provider call has
+    already cost real money, and refunding it would uncap spend for a caller
+    who simply retries into the same conflict.
+    """
+    marked = response.headers.get(REFUSED_BEFORE_WORK_HEADER) is not None
+    if marked:
+        del response.headers[REFUSED_BEFORE_WORK_HEADER]
+    return marked or response.status_code == 422
+
+
+def _release_reservation(bucket: list, slot: _RateSlot) -> None:
+    """Return this request's own slot, never someone else's.
+
+    Missing is normal rather than exceptional: a handler slower than the window
+    lets a later request's prune retire our slot first, and there is nothing to
+    refund once the window has already moved past it.
+    """
+    try:
+        bucket.remove(slot)
+    except ValueError:
+        pass
+
+
 RATE_LIMIT_DISABLED = os.environ.get("OFE_DISABLE_RATE_LIMIT") == "1"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if RATE_LIMIT_DISABLED:
-            return await call_next(request)
+            # Still consume the marker. It is an internal signal between the
+            # truth guard and this middleware; leaking it to clients when rate
+            # limiting happens to be off would publish an undocumented field
+            # that a client could start branching on.
+            response = await call_next(request)
+            _refused_before_work(response)
+            return response
 
         global _last_purge
         client_ip = _client_ip(request)
@@ -309,57 +383,92 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Preserve buckets for the longest configured window. The old fixed
             # 120-second cutoff silently reset one-hour quotas (e.g. the 3/3600
             # email sends) on the five-minute cleanup cadence.
-            stale = [
-                k for k, ts in _rate_buckets.items()
-                if not ts or ts[-1] < now - MAX_RATE_WINDOW
-            ]
-            for k in stale:
-                del _rate_buckets[k]
-            _last_purge = now
+            with _rate_lock:
+                stale = [
+                    k for k, ts in _rate_buckets.items()
+                    if not ts or _slot_time(ts[-1]) < now - MAX_RATE_WINDOW
+                ]
+                for k in stale:
+                    del _rate_buckets[k]
+                _last_purge = now
 
         limit_key = _rate_limit_key(path)
         max_requests, window = RATE_LIMITS.get(limit_key, DEFAULT_RATE)
         bucket_key = f"{client_ip}:{limit_key}"
-
-        _rate_buckets[bucket_key] = [
-            t for t in _rate_buckets[bucket_key] if t > now - window
-        ]
-
-        if len(_rate_buckets[bucket_key]) >= max_requests:
-            return _rate_limited(window)
-
-        # Second-tier GLOBAL ceiling on the billable (paid-LLM / email) endpoints:
-        # bounds total spend even when the per-IP key is evaded or spread across
-        # many real IPs, which the per-IP cap alone cannot.
         klass = _billable_class(request, path)
-        if klass is not None:
-            gwindow, gmax = (
-                (60, GLOBAL_LLM_PER_MIN) if klass == "llm" else (3600, GLOBAL_EMAIL_PER_HOUR)
-            )
-            _global_buckets[klass] = [
-                t for t in _global_buckets[klass] if t > now - gwindow
-            ]
-            over_window = len(_global_buckets[klass]) >= gmax
-            over_day = klass == "llm" and llm_budget.exhausted()
-            if over_window or over_day:
-                logger.warning(
-                    "Global %s ceiling reached (%s) — %s; possible abuse or viral spike",
-                    klass,
-                    f"{gmax}/{gwindow}s" if over_window
-                    else f"{llm_budget.spent()}/{llm_budget.limit()} completions today",
-                    "degrading" if _llm_degradable(path) else "throttling",
-                )
-                if klass == "llm" and _llm_degradable(path):
-                    # Through, but told to skip the paid pass. The rule ranking
-                    # is a real answer; a 429 is not.
-                    request.state.llm_budget_exhausted = True
-                else:
-                    return _rate_limited(gwindow)
-            else:
-                _global_buckets[klass].append(now)
+        global_slot = _RateSlot(now)
+        global_reserved = False
 
-        _rate_buckets[bucket_key].append(now)
+        # One short critical section covering prune, count and reserve. Split
+        # across separate sections, two requests could each pass the count and
+        # then both append, admitting max_requests + 1. Nothing here awaits:
+        # holding a threading lock across an await would park the event loop
+        # while the lock is held. `call_next` is deliberately outside.
+        with _rate_lock:
+            _rate_buckets[bucket_key] = [
+                t for t in _rate_buckets[bucket_key] if _slot_time(t) > now - window
+            ]
+
+            if len(_rate_buckets[bucket_key]) >= max_requests:
+                return _rate_limited(window)
+
+            # Counted here, before the global decision, because the per-IP
+            # bucket counts *arrivals*. Appending after the global check would
+            # mean a client hammering a saturated global ceiling accrues
+            # nothing per-IP and never reaches its own cap — unmetered abuse
+            # for exactly as long as the ceiling stays full.
+            _rate_buckets[bucket_key].append(now)
+
+            # Second-tier GLOBAL ceiling on the billable (paid-LLM / email) endpoints:
+            # bounds total spend even when the per-IP key is evaded or spread across
+            # many real IPs, which the per-IP cap alone cannot.
+            if klass is not None:
+                gwindow, gmax = (
+                    (60, GLOBAL_LLM_PER_MIN) if klass == "llm" else (3600, GLOBAL_EMAIL_PER_HOUR)
+                )
+                _global_buckets[klass] = [
+                    t for t in _global_buckets[klass] if _slot_time(t) > now - gwindow
+                ]
+                over_window = len(_global_buckets[klass]) >= gmax
+                over_day = klass == "llm" and llm_budget.exhausted()
+                if over_window or over_day:
+                    logger.warning(
+                        "Global %s ceiling reached (%s) — %s; possible abuse or viral spike",
+                        klass,
+                        f"{gmax}/{gwindow}s" if over_window
+                        else f"{llm_budget.spent()}/{llm_budget.limit()} completions today",
+                        "degrading" if _llm_degradable(path) else "throttling",
+                    )
+                    if klass == "llm" and _llm_degradable(path):
+                        # Through, but told to skip the paid pass. The rule ranking
+                        # is a real answer; a 429 is not.
+                        request.state.llm_budget_exhausted = True
+                    else:
+                        return _rate_limited(gwindow)
+                else:
+                    _global_buckets[klass].append(global_slot)
+                    global_reserved = True
+
         response = await call_next(request)
+        # Refund the GLOBAL ceiling only, and only when nothing was spent. The
+        # two buckets measure different things and must not be refunded alike:
+        #
+        #   per-IP is abuse control. A client hammering closed ids is still
+        #   hammering us, and every arriving request costs a lookup. Refunding
+        #   it would hand an attacker an unmetered endpoint, so a stream of bad
+        #   requests should reach 429 — that is the limiter working.
+        #
+        #   global is a spend ceiling on paid LLM calls and outbound mail. No
+        #   provider was reached, so there is nothing to bill, and holding the
+        #   slot would let one client's stale ids exhaust every other user's
+        #   budget.
+        #
+        # Released only where it was actually taken: the degraded-LLM path
+        # reserves no global slot, and popping one there would refund a request
+        # that a *different* caller is still holding.
+        if _refused_before_work(response) and global_reserved:
+            with _rate_lock:
+                _release_reservation(_global_buckets[klass], global_slot)
         return response
 
 

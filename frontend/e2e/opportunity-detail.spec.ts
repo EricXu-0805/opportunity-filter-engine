@@ -35,14 +35,24 @@ test.describe('Opportunity detail page', () => {
     expect(ogTitle!.length).toBeGreaterThan(0);
   });
 
-  test('includes JSON-LD JobPosting schema', async ({ page }) => {
-    await page.goto(`/opportunities/${KNOWN_ID}`);
-    const ld = await page.locator('script[type="application/ld+json"]').textContent();
-    expect(ld).toBeTruthy();
-    const parsed = JSON.parse(ld!);
-    expect(parsed['@type']).toBe('JobPosting');
-    expect(parsed.title).toBeTruthy();
-    expect(parsed.hiringOrganization?.name).toBeTruthy();
+  test('publishes no opportunity JSON-LD until source-backed schema prerequisites exist', async ({ page }) => {
+    // The real sink, in a real browser: whatever the builder returns, THIS is
+    // what a crawler receives. The page used to ship a JobPosting asserting an
+    // employment classification, a USD/HOUR salary and a US address that no
+    // record supported, so structured data is off entirely until an explicit
+    // employment classification, a structured numeric amount/currency/unit and
+    // a source-backed organization/address/country exist.
+    const response = await page.goto(`/opportunities/${KNOWN_ID}`);
+
+    // The page must genuinely render. A 404 or an empty shell would satisfy
+    // the count assertion below for entirely the wrong reason.
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // Not "the @type is no longer JobPosting" — that would still pass if the
+    // page emitted some other invented schema type. No opportunity JSON-LD
+    // block of any kind, so the payload is never parsed at all.
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   });
 
   test('shows apply/share/star action buttons', async ({ page }) => {

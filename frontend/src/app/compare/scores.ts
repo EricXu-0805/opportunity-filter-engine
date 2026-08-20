@@ -27,13 +27,34 @@ export interface CanonicalMatchSummary {
   reasons_gap: string[];
   explanation: string;
   method: 'llm' | 'local';
+  /**
+   * The matcher generation that produced this verdict.
+   *
+   * Carried on the summary, not dropped at the boundary, because the table is
+   * assembled from several independent responses: without it two rows scored
+   * by different generations sit side by side and the numbers are not
+   * comparable, which is the one thing this page exists to do.
+   */
+  matcher_version: string;
 }
 
 export interface CompareRow {
   opp: Opportunity;
   factors: AxisScores;
   match: CanonicalMatchSummary | null;
-  status: 'ready' | 'error';
+  /**
+   * `excluded` is its own state, not a flavour of `error`.
+   *
+   * A 200 carrying `in_results: false` is the server saying "I scored this,
+   * and it is not in your results" — cross-school, citizenship-restricted,
+   * below threshold. The number is real and describes a target the student
+   * cannot act on through this product, so showing it beside two live matches
+   * would rank a non-option against options. `error` means we have no answer;
+   * this means we have one and it is "not here".
+   */
+  status: 'ready' | 'error' | 'excluded';
+  /** Generation that produced `match`, used to reject a mixed table. */
+  matcherVersion?: string;
   /** Original selection order, used only to keep unavailable rows stable. */
   inputIndex: number;
 }

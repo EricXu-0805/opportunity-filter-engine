@@ -16,7 +16,7 @@ import { SourceTable } from './SourceTable';
 import { StatCard } from './StatCard';
 import { TrendChart } from './TrendChart';
 import { WorstFieldsSection } from './WorstFieldsSection';
-import { diff, listingPct, listingScopedHistory } from './admin-utils';
+import { diff, isCurrentQualityScope, listingPct, listingScopedHistory } from './admin-utils';
 import type {
   AdminResponse,
   CollectorHistoryEntry,
@@ -87,7 +87,11 @@ export function AdminDashboard({
   onConfirmOrder: (id: string) => Promise<void>;
   t: TFunc;
 }) {
-  const comparableHistory = listingScopedHistory(history);
+  // Gated on the CURRENT response too, not just on each entry. After a
+  // rollback — or mid-deploy, with an old backend answering — the disk still
+  // holds new-scope history, and plotting it under legacy cards would put two
+  // different populations on one axis and call the step between them a trend.
+  const comparableHistory = isCurrentQualityScope(data) ? listingScopedHistory(history) : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -175,6 +179,25 @@ export function AdminDashboard({
               <StatCard label={t('admin.pastDeadline')} value={data.global.past_deadline || 0} color="gray" />
               <StatCard label={t('admin.flaggedInactive')} value={data.global.flagged_inactive || 0} color="gray" delta={diff('flagged_inactive', data, previousSnapshot)} />
               <StatCard label={t('admin.shortDescription')} value={data.global.short_description || 0} color="gray" />
+              {/* Rendered only under the exact current scope AND only when
+                  the number is actually present. A legacy response never
+                  measured this, and a future one measured it by rules this
+                  build cannot see; printing either would report a review
+                  queue nobody here counted. Not a defect count — these
+                  records are in neither population, so they get their own
+                  card rather than inflating one. */}
+              {isCurrentQualityScope(data)
+                && typeof data.unreviewed_record_kind?.total === 'number' && (
+                <StatCard
+                  label={t('admin.unreviewedRecordKind')}
+                  value={data.unreviewed_record_kind.total}
+                  // Amber while the queue has anything in it: these records
+                  // are excluded from every quality figure on this page, so a
+                  // grey number would read as "nothing to do here" about the
+                  // one count that is asking for work.
+                  color={data.unreviewed_record_kind.total > 0 ? 'amber' : 'green'}
+                />
+              )}
             </div>
 
             {comparableHistory.length > 1 ? (
@@ -186,7 +209,7 @@ export function AdminDashboard({
               <p className="mb-8 text-[12px] text-gray-400 italic">{t('admin.trendEmpty')}</p>
             )}
 
-            <SourceTable rows={data.sources} t={t} />
+            <SourceTable rows={data.sources} qualityScope={data.quality_scope} t={t} />
 
             <WorstFieldsSection
               rows={filteredWorstFields}

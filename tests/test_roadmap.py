@@ -13,6 +13,7 @@ client = TestClient(app)
 
 def _opp(required=None, preferred=None, *, is_active=True):
     return {
+        "source_type": "campus_program",
         "eligibility": {"skills_required": required or [], "skills_preferred": preferred or []},
         "metadata": {"is_active": is_active},
     }
@@ -232,6 +233,70 @@ def test_roadmap_excludes_inactive_and_unverified_records_from_skill_evidence(mo
     assert body["inactive_targets"] == 1
     assert body["unverified_targets"] == 1
     assert body["unresolved_targets"] == 1
+    assert [skill["skill"] for skill in body["skills"]] == ["Python"]
+
+
+def test_roadmap_keeps_its_stricter_activity_policy_for_unknown_records(monkeypatch):
+    """Target truth must not promote legacy records into plannable targets.
+
+    General actionability treats an unstamped record as usable — it is the
+    unstamped majority of the corpus. Planning is stricter and always has been:
+    only an explicit `metadata.is_active is True` is resolved. Folding the two
+    together would turn every record that merely fails to say it is inactive
+    into a confirmed 30-day plan target.
+    """
+    absent_key = _opp(required=["Python"])
+    absent_key["metadata"].pop("is_active")
+    monkeypatch.setattr(
+        roadmap_route,
+        "load_opportunities_by_id",
+        lambda: {
+            "absent_key": absent_key,
+            "explicit_none": _opp(required=["Kubernetes"], is_active=None),
+            "explicit_true": _opp(required=["Rust"], is_active=True),
+        },
+    )
+
+    body = client.post(
+        "/api/roadmap",
+        json={
+            "profile": {"home_school": "uiuc", "hard_skills": []},
+            "opportunity_ids": ["absent_key", "explicit_none", "explicit_true"],
+        },
+    ).json()
+
+    assert body["resolved_targets"] == 1
+    assert body["unverified_targets"] == 2
+    assert body["inactive_targets"] == 0
+    assert [skill["skill"] for skill in body["skills"]] == ["Rust"]
+
+
+def test_roadmap_blocks_a_closed_listing_that_still_claims_to_be_active(monkeypatch):
+    """The live shape of the 861 URAP rows: closed status, is_active True."""
+    closed = _opp(required=["Fortran"], is_active=True)
+    closed["source"] = "ucb_urap_projects"
+    closed["source_type"] = "ucb_program"
+    closed["metadata"]["urap_status"] = "closed"
+    monkeypatch.setattr(
+        roadmap_route,
+        "load_opportunities_by_id",
+        lambda: {
+            "closed": closed,
+            "open": _opp(required=["Python"], is_active=True),
+        },
+    )
+
+    body = client.post(
+        "/api/roadmap",
+        json={
+            "profile": {"home_school": "uiuc", "hard_skills": []},
+            "opportunity_ids": ["closed", "open"],
+        },
+    ).json()
+
+    assert body["resolved_targets"] == 1
+    assert body["inactive_targets"] == 1
+    assert body["unverified_targets"] == 0
     assert [skill["skill"] for skill in body["skills"]] == ["Python"]
 
 

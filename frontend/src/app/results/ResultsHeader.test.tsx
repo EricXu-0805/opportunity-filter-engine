@@ -20,12 +20,20 @@ vi.mock('@/lib/release-scope', () => ({
   RELEASE_SCOPE: releaseScopeRef,
 }));
 
+// The header's own onSend, captured off the button. Driving it directly is
+// what lets a test AWAIT the outcome: the click path fires and forgets, so a
+// rejection there is neither observable nor consumed, and swallowing it in
+// the stub would hide the same failure it is supposed to prove.
+const captured = vi.hoisted(() => ({
+  onSend: null as null | ((email: string) => Promise<unknown>),
+}));
 vi.mock('@/components/EmailMeButton', () => ({
-  default: ({ onSend }: { onSend: (email: string) => Promise<unknown> }) => (
-    <button type="button" onClick={() => void onSend('student@example.com')}>
+  default: ({ onSend }: { onSend: (email: string) => Promise<unknown> }) => {
+    captured.onSend = onSend;
+    return <button type="button" onClick={() => void onSend('student@example.com')}>
       mock-email
-    </button>
-  ),
+    </button>;
+  },
 }));
 
 const t = (k: string, vars?: Record<string, string | number>) =>
@@ -34,6 +42,9 @@ const t = (k: string, vars?: Record<string, string | number>) =>
 beforeEach(() => {
   sendMatchesEmailMock.mockReset();
   sendMatchesEmailMock.mockResolvedValue({ ok: true, count: 6 });
+  // Cleared, so a test that never rendered the button cannot drive the
+  // previous test's onSend and assert against the wrong header.
+  captured.onSend = null;
 });
 
 function renderHeader(
@@ -96,6 +107,60 @@ describe('ResultsHeader strong-match header', () => {
 });
 
 describe('ResultsHeader email payload', () => {
+  it('sends nothing at all when the loader refuses the page', async () => {
+    // The whole chain, not the formatter: onSend awaits loadEmailMatches
+    // before it builds a single item, and the loader throws
+    // MATCH_CONTRACT_MISMATCH for a page it cannot vouch for — an
+    // unnegotiated wire version, a row with no truth, a closed target. If
+    // that rejection did not stop the send, a digest goes out under our name
+    // built from rows the results page itself refused to render.
+    const loadEmailMatches = vi.fn().mockRejectedValue(
+      new Error('Match results need to be refreshed. Please retry.'),
+    );
+    renderHeader(0, { filteredTotal: 3, counts: { all: 3 }, loadEmailMatches });
+
+    // THIS render's handler, not a leftover. beforeEach nulls it; asserting
+    // it came back says the button was rendered and the prop assigned, so
+    // deleting either fails here instead of silently re-running the previous
+    // test's onSend against the previous test's loader.
+    expect(captured.onSend).not.toBeNull();
+
+    // Awaited, not clicked. The rejection has to be observed to be asserted
+    // on — and it must still be a rejection when it leaves onSend: a header
+    // that caught it internally would report a send that never happened.
+    await expect(captured.onSend!('student@example.com')).rejects.toThrow(
+      'Match results need to be refreshed. Please retry.',
+    );
+
+    expect(loadEmailMatches).toHaveBeenCalledTimes(1);
+    expect(sendMatchesEmailMock).toHaveBeenCalledTimes(0);
+  });
+
+  it('sends once when the loader hands back a page it vouched for', async () => {
+    // The positive control for the assertion above, through the same seam:
+    // without it, a header that never sends anything at all — or one whose
+    // onSend always rejects — would pass the refusal test.
+    const loadEmailMatches = vi.fn().mockResolvedValue([{
+      final_score: 91,
+      opportunity: {
+        id: 'opp-live-1',
+        title: 'A real listing',
+        source_type: 'campus_program',
+        deadline: '2026-09-02',
+      },
+    }] as unknown as MatchResult[]);
+    renderHeader(0, { filteredTotal: 1, counts: { all: 1 }, loadEmailMatches });
+
+    expect(captured.onSend).not.toBeNull();
+    await expect(captured.onSend!('student@example.com')).resolves.toEqual({
+      ok: true, count: 6,
+    });
+
+    expect(sendMatchesEmailMock).toHaveBeenCalledTimes(1);
+    const [item] = sendMatchesEmailMock.mock.calls[0][1] as Array<Record<string, unknown>>;
+    expect(item.opportunity_id).toBe('opp-live-1');
+  });
+
   it('fails closed when the producer cannot prove a listing record', async () => {
     const data = {
       total: 6,
@@ -191,6 +256,58 @@ describe('ResultsHeader email payload', () => {
       ['unknown', null],
       ['unknown', null],
     ]);
+  });
+
+  it('sends BOTH the id and the legacy fields during the split deploy', async () => {
+    // Kills the "changed the type but not the payload" mutant in both
+    // directions. Without opportunity_id a NEW backend 422s; without title a
+    // still-running OLD backend 422s, and Vercel usually deploys first.
+    const data = { total: 1, high_priority: 1, good_match: 0, reach: 0, low_fit: 0 } as never;
+    const matches = [{
+      final_score: 91,
+      opportunity: {
+        id: 'opp-bridge-1',
+        title: 'A real listing',
+        source_type: 'campus_program',
+        url: 'https://example.edu/listing',
+        source: 'uiuc_program',
+        organization: 'UIUC',
+        deadline: '2026-09-02',
+      },
+    }] as unknown as MatchResult[];
+
+    render(
+      <ResultsHeader
+        loading={false}
+        showSlowHint={false}
+        refining={false}
+        refined={false}
+        refineFailed={false}
+        data={data}
+        filteredTotal={1}
+        counts={{ all: 1 }}
+        favs={new Set<string>()}
+        activeTab="all"
+        semanticRerank={false}
+        onSemanticChange={() => {}}
+        onOpenHelp={() => {}}
+        onExport={() => {}}
+        loadEmailMatches={async () => matches}
+        t={t}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock-email' }));
+
+    await waitFor(() => expect(sendMatchesEmailMock).toHaveBeenCalledOnce());
+    const [item] = sendMatchesEmailMock.mock.calls[0][1] as Array<Record<string, unknown>>;
+    expect(item.opportunity_id).toBe('opp-bridge-1');
+    expect(item.title).toBe('A real listing');
+    expect(item.url).toBe('https://example.edu/listing');
+    expect(item.source).toBe('uiuc_program');
+    expect(item.record_kind).toBe('listing');
+    // The old backend also reads the subject hint.
+    expect(sendMatchesEmailMock.mock.calls[0][2]).toBeTruthy();
   });
 });
 

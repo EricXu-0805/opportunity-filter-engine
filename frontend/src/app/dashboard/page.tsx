@@ -23,9 +23,10 @@ import PushToggle from '@/components/PushToggle';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getShortlistOpportunities, getStats } from '@/lib/api';
-import { daysUntil } from '@/lib/match-utils';
+import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { collectReminders, type ReminderInfo } from '@/lib/reminders';
+import { targetPosture } from '@/lib/target-truth';
+import { canDeliverReminder, collectReminders, type ReminderInfo } from '@/lib/reminders';
 import { getFavorites, getInteractionsFull } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 import { useAuthUid } from '@/lib/use-auth-uid';
@@ -34,6 +35,23 @@ import { ProfessorUpdatesSection } from './ProfessorUpdatesSection';
 
 type Replier = (key: string, vars?: Record<string, string | number>) => string;
 type LoadStatus = 'loading' | 'ready' | 'error';
+
+/** How many reminders the preview shows. Applied AFTER the deliverability
+ *  partition, never before — see loadTracker. */
+const REMINDER_PREVIEW_LIMIT = 5;
+
+/**
+ * Whether a record is a listing this build still calls live.
+ *
+ * The batch endpoint hands back loose records, so this narrows once and both
+ * consumers below read the same answer: the saved-deadline inbox, and the
+ * type label on a tracked row. Both were saying things about an offer.
+ */
+function isCurrentListing(opportunity: Record<string, unknown>): boolean {
+  const record = opportunity as Parameters<typeof targetPosture>[0];
+  return opportunityRecordKind(record) === 'listing'
+    && targetPosture(record) === 'actionable';
+}
 
 const STATUS_CONFIG: Record<InteractionType, { labelKey: string; icon: React.ElementType; color: string; bg: string }> = {
   contacted: { labelKey: 'tracker.status.contacted', icon: Send, color: 'text-sky-600', bg: 'bg-sky-50' },
@@ -174,8 +192,12 @@ export default function DashboardPage() {
         const items = opportunities
           .filter((opportunity) => {
             const id = typeof opportunity.id === 'string' ? opportunity.id : '';
+            // A date on this page is an instruction: act before it. Excluding
+            // only faculty rows meant a listing that closed after it was saved
+            // still counted down here — the one surface a student checks
+            // precisely to decide what to do this week.
             return favoriteIds.has(id)
-              && opportunity.source_type !== 'faculty_research'
+              && isCurrentListing(opportunity)
               && typeof opportunity.deadline === 'string';
           })
           .map((opportunity): FavoriteDeadline | null => {
@@ -220,7 +242,15 @@ export default function DashboardPage() {
       if (cancelled) return;
 
       const allReminders = collectReminders(interactions);
-      const reminderItems = allReminders.slice(0, 5);
+      // 'dismissed' is the hide-everywhere status: Tracker excludes it from
+      // every column and collectReminders drops it. This section was the one
+      // place it still appeared, rebuilt straight from the raw interactions
+      // map — so a target the student explicitly put away came back on the
+      // page they see first.
+      const visible = Array.from(interactions.entries())
+        .filter(([, record]) => record.type !== 'dismissed');
+      const visibleIds = visible.map(([id]) => id);
+      const visibleIdSet = new Set(visibleIds);
 
       if (interactions.size === 0) {
         setTracker({ status: 'ready', items: [], unavailableCount: 0 });
@@ -231,24 +261,21 @@ export default function DashboardPage() {
       }
 
       try {
-        const trackedIds = Array.from(interactions.keys());
-        const { opportunities, unavailableIds } = await getShortlistOpportunities(trackedIds);
+        const { opportunities, unavailableIds } = await getShortlistOpportunities(visibleIds);
         if (cancelled) return;
         const byId = new Map(
           opportunities
-            .filter((o) => typeof o.id === 'string' && interactions.has(o.id as string))
+            .filter((o) => typeof o.id === 'string' && visibleIdSet.has(o.id as string))
             .map((o) => [o.id as string, o]),
         );
         // A tracked opportunity the corpus can no longer resolve still shows
         // its real status/notes below — but "Unknown opportunity" is a title
         // placeholder, not an explanation. Count them so the section can say
         // what actually happened.
-        const unavailableSet = new Set(unavailableIds);
         setTracker({
           status: 'ready',
           unavailableCount: unavailableIds.length,
-          items: trackedIds.map((id) => {
-            const record = interactions.get(id)!;
+          items: visible.map(([id, record]) => {
             const opportunity = byId.get(id);
             return {
               id,
@@ -256,7 +283,12 @@ export default function DashboardPage() {
               organization: typeof opportunity?.organization === 'string'
                 ? opportunity.organization
                 : undefined,
-              opportunity_type: typeof opportunity?.opportunity_type === 'string'
+              // The record's own claim about what it is, published only where
+              // it still describes something on offer. The student's status,
+              // notes and reminder below are their own record of their own
+              // process and travel whatever the target's posture.
+              opportunity_type: opportunity && isCurrentListing(opportunity)
+                && typeof opportunity.opportunity_type === 'string'
                 ? opportunity.opportunity_type
                 : undefined,
               status: record.type,
@@ -265,14 +297,35 @@ export default function DashboardPage() {
             };
           }),
         });
+        // Partitioned over ALL reminders, then sliced. Slicing first meant
+        // five undeliverable rows at the top hid the sixth, which was the
+        // only one that would actually fire — the student's real next action,
+        // pushed off the page by rows asserting notifications that never
+        // arrive.
+        //
+        // The cron sends for a target it still calls actionable. Posture, not
+        // current-listing: a live faculty contact is what most reminders are
+        // set on, and the cron does send for those.
+        const deliverableAll = allReminders.filter((item) => {
+          const opportunity = byId.get(item.opportunityId);
+          return canDeliverReminder(
+            opportunity as Parameters<typeof canDeliverReminder>[0],
+            interactions.get(item.opportunityId)?.type,
+          );
+        });
+        const deliverable = deliverableAll.slice(0, REMINDER_PREVIEW_LIMIT);
         setReminders({
           status: 'ready',
-          total: allReminders.length,
+          // "N pending" counts what will actually be delivered. Counting every
+          // stored reminder told the student a number of notifications were
+          // coming, some of which never would.
+          total: deliverableAll.length,
           detailsUnavailable: false,
-          // Scoped to the reminders actually rendered — a note about rows the
-          // student cannot see here would be noise.
-          unavailableCount: reminderItems.filter((i) => unavailableSet.has(i.opportunityId)).length,
-          items: reminderItems.map((item) => {
+          // Every reminder that will not fire, whether its target is closed,
+          // unreviewed, or could not be resolved at all. They are not "due",
+          // and they are not lost either — the note points at the tracker.
+          unavailableCount: allReminders.length - deliverableAll.length,
+          items: deliverable.map((item) => {
             const opportunity = byId.get(item.opportunityId);
             return {
               ...item,
@@ -293,7 +346,10 @@ export default function DashboardPage() {
           // The lookup failed wholesale — that is the `detailsUnavailable`
           // state below, not a claim about specific missing records.
           unavailableCount: 0,
-          items: Array.from(interactions.entries()).map(([id, record]) => ({
+          // `visible`, not the raw map: the same hide-everywhere rule applies
+          // when the lookup fails. A failed corpus read is no reason to
+          // resurrect a target the student put away.
+          items: visible.map(([id, record]) => ({
             id,
             status: record.type,
             notes: record.notes,
@@ -302,10 +358,13 @@ export default function DashboardPage() {
         });
         setReminders({
           status: 'ready',
-          items: reminderItems,
-          total: allReminders.length,
+          // The batch lookup failed wholesale, so NO target's posture is
+          // known — and the cron fails closed on exactly that. None of these
+          // can be presented as due; they all need review in the tracker.
+          items: [],
+          total: 0,
           detailsUnavailable: true,
-          unavailableCount: 0,
+          unavailableCount: allReminders.length,
         });
       }
     }
@@ -863,7 +922,11 @@ function ReminderContent({
       />
     );
   }
-  if (state.items.length === 0) {
+  {/* "No reminders set" only when that is actually true. Returning it on an
+      empty item list swallowed the needs-review note in the one case it
+      matters most: every reminder the student has is on a target the cron
+      will skip, so the page would say they had set none. */}
+  if (state.items.length === 0 && state.unavailableCount === 0) {
     return (
       <div className="px-6 py-9 text-center">
         <BellRing className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
@@ -882,11 +945,22 @@ function ReminderContent({
         </p>
       )}
       {state.unavailableCount > 0 && (
-        <UnavailableNote
-          count={state.unavailableCount}
-          messageKey="dashboard.unavailable.tracked"
-          t={t}
-        />
+        // Its own note, not the shared UnavailableNote. Two reasons: the copy
+        // is different (these mostly resolved fine — they are closed,
+        // unreviewed, or in a status the cron does not select, which is not
+        // "couldn't be loaded"), and the sentence tells the student to open
+        // their tracker, which has to be an actual link rather than an
+        // instruction they cannot follow.
+        <p
+          data-testid="dashboard-reminders-needs-review"
+          className="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-6 py-2 text-[11px] text-amber-700"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>{t('dashboard.reminders.needsReview', { count: state.unavailableCount })}</span>
+          <Link href="/tracker" className="font-semibold underline underline-offset-2">
+            {t('dashboard.trackerSection.openBoard')}
+          </Link>
+        </p>
       )}
       <ul className="divide-y divide-gray-50">
         {state.items.map((item) => (

@@ -24,11 +24,25 @@ vi.mock('@/lib/api', () => ({
 import MatchCard from './MatchCard';
 import type { MatchResult, Opportunity, MatchBucket, ProfileData } from '@/lib/types';
 
+// Cards gate every action on the server-stamped target truth, so the default
+// fixture carries the shape a live record has. Tests for a closed, reference
+// or unverified record override it explicitly.
+export const ACTIONABLE_TRUTH = {
+  listing_state: 'open',
+  reference_only: false,
+  actionable: true,
+  accepting_state: 'accepting',
+  reason_code: null,
+  verified_at: null,
+  expires_at: null,
+} as const;
+
 function makeOpp(overrides: Partial<Opportunity> = {}): Opportunity {
   return {
     id: 'opp-1',
     title: 'Test Opportunity',
     organization: 'UIUC CS',
+    target_truth: { ...ACTIONABLE_TRUTH },
     source_type: 'campus_program',
     opportunity_type: 'Research',
     paid: 'yes',
@@ -682,7 +696,11 @@ describe('MatchCard', () => {
       expect(screen.queryByText('badges.new')).toBeNull();
       expect(screen.queryByText('2099-12-31')).toBeNull();
       expect(screen.queryByText('badges.intlOk')).toBeNull();
-      expect(screen.getByText('badges.intlVerify')).toBeInTheDocument();
+      // No eligibility badge at all now, not even the degraded "verify" one.
+      // Who may apply is a term of an application, and a directory row is not
+      // one — "verify your international eligibility" on a faculty contact
+      // still implies there is something to be eligible for.
+      expect(screen.queryByText('badges.intlVerify')).toBeNull();
       fireEvent.click(screen.getByText('card.showDetails'));
       expect(screen.queryByText('FAKE_REQUIRED_SKILL')).toBeNull();
     });
@@ -835,5 +853,409 @@ describe('MatchCard', () => {
       );
       expect(screen.queryByText(SCOPE_KEYS)).toBeNull();
     });
+  });
+});
+
+describe('MatchCard target-truth postures', () => {
+  const HISTORICAL = {
+    listing_state: 'closed',
+    reference_only: true,
+    actionable: false,
+    accepting_state: 'not_accepting',
+    reason_code: 'listing_closed',
+    verified_at: null,
+    expires_at: null,
+  } as const;
+
+  const POSTURES: [string, unknown][] = [
+    ['historical', HISTORICAL],
+    ['unknown (missing)', undefined],
+    ['unknown (null)', null],
+    ['unknown (malformed)', { listing_state: 'open' }],
+    ['unknown (self-contradicting)', { ...HISTORICAL, actionable: true }],
+    // The live side of the canonical table. Both of these claim `actionable`
+    // and pass every "obviously contradictory" check, which is exactly why
+    // they used to unlock the full CTA set: Apply, Draft Email, Tailor.
+    ['unknown (open but not accepting-stated)', {
+      ...ACTIONABLE_TRUTH, listing_state: 'open', accepting_state: 'unknown',
+    }],
+    ['unknown (unstamped yet claiming to accept)', {
+      ...ACTIONABLE_TRUTH, listing_state: 'unknown', accepting_state: 'accepting',
+    }],
+  ];
+
+  function renderWith(truth: unknown, onDraftEmail = () => {}) {
+    const overrides: Record<string, unknown> = {
+      source_type: 'campus_program',
+      url: 'https://example.edu/source',
+      application: {
+        application_effort: 'low',
+        requires_resume: 'yes',
+        contact_method: 'email',
+        application_url: 'https://example.edu/apply',
+      },
+    };
+    if (truth === undefined) overrides.target_truth = undefined;
+    else overrides.target_truth = truth;
+    const opp = makeOpp(overrides as never);
+    if (truth === undefined) delete (opp as unknown as Record<string, unknown>).target_truth;
+    return render(
+      <MatchCard
+        match={{ ...makeMatch(), opportunity: opp }}
+        profile={PROFILE}
+        onDraftEmail={onDraftEmail}
+        ownerReady
+      />,
+    );
+  }
+
+  it.each(POSTURES)('offers no action controls for a %s target', (_label, truth) => {
+    renderWith(truth);
+    // Absent from the accessibility tree, not merely styled away: a disabled
+    // or visually-hidden control is still announced and still focusable.
+    for (const label of ['card.applyNow', 'card.draftEmail', 'card.tailorResume']) {
+      expect(screen.queryByText(label)).toBeNull();
+      expect(screen.queryByRole('button', { name: label })).toBeNull();
+      expect(screen.queryByRole('link', { name: label })).toBeNull();
+    }
+  });
+
+  it.each(POSTURES)('never links the apply URL for a %s target', (_label, truth) => {
+    const { container } = renderWith(truth);
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(hrefs.some((href) => href?.includes('/apply'))).toBe(false);
+  });
+
+  it.each(POSTURES)('still lets the user read the source of a %s target', (_label, truth) => {
+    const { container } = renderWith(truth);
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(hrefs).toContain('https://example.edu/source');
+  });
+
+  describe('being actionable is not the same as being a confirmed listing', () => {
+    // Every offer term populated and poisonous. The record is live — the
+    // server vouches for it — but we have never confirmed it IS a listing, so
+    // there is no application whose terms these could be.
+    const OFFER_POISON = {
+      paid: 'yes',
+      compensation_details: 'POISON $32/hr',
+      duration: 'POISON 12 weeks',
+      opportunity_type: 'POISON_TYPE',
+      deadline: '2099-12-31',
+      deadline_is_estimate: false,
+      posted_date: '2099-01-01',
+      eligibility: {
+        international_friendly: 'yes',
+        preferred_year: [], majors: [],
+        skills_required: ['POISON_REQUIRED_SKILL'],
+        citizenship_required: null,
+      },
+      application: {
+        application_effort: 'low',
+        requires_resume: 'yes',
+        requires_recommendation: 'yes',
+        contact_method: 'email',
+      },
+      url: 'https://example.edu/source',
+    };
+
+    function renderKind(sourceType: string | undefined) {
+      const overrides: Record<string, unknown> = {
+        ...OFFER_POISON,
+        source_type: sourceType,
+        target_truth: { ...ACTIONABLE_TRUTH },
+      };
+      const opp = makeOpp(overrides as never);
+      if (sourceType === undefined) {
+        delete (opp as unknown as Record<string, unknown>).source_type;
+      }
+      return render(
+        <MatchCard
+          match={{ ...makeMatch(), opportunity: opp }}
+          profile={PROFILE}
+          onDraftEmail={() => {}}
+          ownerReady
+        />,
+      );
+    }
+
+    const OFFER_TEXT = [
+      'POISON $32/hr', 'POISON 12 weeks', 'POISON_TYPE', '2099-12-31',
+      'badges.dueInDays', 'badges.new', 'results.newMatchBadge',
+      'badges.intlOk', 'badges.paid',
+    ];
+
+    it('shows no offer terms for a live record of unreviewed kind', () => {
+      renderKind(undefined);
+
+      for (const text of OFFER_TEXT) {
+        expect(screen.queryByText(text)).toBeNull();
+      }
+      // It says what it does not know, instead of borrowing the record's own
+      // unreviewed type claim.
+      expect(screen.getByText('card.recordTypeUnconfirmed')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.queryByText('POISON_REQUIRED_SKILL')).toBeNull();
+    });
+
+    it('shows no listing terms for a live faculty profile', () => {
+      renderKind('faculty_research');
+
+      for (const text of OFFER_TEXT) {
+        expect(screen.queryByText(text)).toBeNull();
+      }
+      expect(screen.getByText('card.facultyContactUnconfirmed')).toBeInTheDocument();
+      expect(screen.queryByText('card.recordTypeUnconfirmed')).toBeNull();
+    });
+
+    it('keeps every listing term for a confirmed listing', () => {
+      // The control. Without it, hiding everything unconditionally would pass
+      // both tests above.
+      renderKind('campus_program');
+
+      expect(screen.getByText('POISON_TYPE')).toBeInTheDocument();
+      expect(screen.getByText('POISON $32/hr')).toBeInTheDocument();
+      expect(screen.getByText('POISON 12 weeks')).toBeInTheDocument();
+      expect(screen.getByText('badges.intlOk')).toBeInTheDocument();
+      expect(screen.queryByText('card.recordTypeUnconfirmed')).toBeNull();
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('POISON_REQUIRED_SKILL')).toBeInTheDocument();
+    });
+  });
+
+  describe('a listing whose kind is known but which is no longer current', () => {
+    // Every offer term populated and poisonous. Unlike the unreviewed-kind
+    // block above, there is no doubt about what this record IS: it is a
+    // campus_program, a listing, and the poison below is a faithful copy of
+    // what a listing carries. The only thing that changed is that the server
+    // stopped calling it actionable — which is the whole of the claim these
+    // terms make.
+    const OFFER_POISON = {
+      source_type: 'campus_program',
+      school: 'ucb',
+      audience: 'open',
+      paid: 'yes',
+      compensation_details: 'POISON $32/hr',
+      duration: 'POISON 12 weeks',
+      opportunity_type: 'POISON_TYPE',
+      deadline: '2099-12-31',
+      deadline_is_estimate: false,
+      // Yesterday, not a date in 2099. A future posted_date does satisfy
+      // isNewPosting today — `Date.now() - future` is negative, which is
+      // trivially under the fourteen-day window — but only by accident of
+      // sign, and nothing pinned it. Any future hardening against posted
+      // dates in the future would flip it to false and quietly retire the
+      // "New" half of these assertions without failing anything.
+      posted_date: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+      description_clean: 'POISON apply by Friday, stipend paid monthly',
+      eligibility: {
+        international_friendly: 'yes',
+        preferred_year: [], majors: [],
+        skills_required: ['POISON_REQUIRED_SKILL'],
+        citizenship_required: null,
+      },
+      application: {
+        application_effort: 'low',
+        requires_resume: 'yes',
+        requires_recommendation: 'yes',
+        contact_method: 'email',
+        application_url: 'https://example.edu/apply',
+      },
+      url: 'https://example.edu/source',
+    };
+
+    // The full set, named one by one rather than sampled: "New" and the
+    // posted-date "new" badge, the type, who may apply, whether it pays, the
+    // date and both of its urgency phrasings, the money, the duration, both
+    // application requirements, the audience chip, and the description the
+    // card has never republished (pinned so it stays that way).
+    const OFFER_TEXT = [
+      'POISON_TYPE', 'POISON $32/hr', 'POISON 12 weeks',
+      '2099-12-31', 'badges.dueInDays', 'badges.deadlinePassed',
+      'badges.estimated',
+      'badges.new', 'results.newMatchBadge',
+      'badges.intlOk', 'badges.paid',
+      'card.resumeRequired', 'card.recLetterNeeded',
+      'card.scope.openWithHost:UC Berkeley',
+      'POISON apply by Friday, stipend paid monthly',
+    ];
+
+    // Every non-actionable shape a KNOWN listing can arrive in, paired with
+    // the one sentence it is allowed to say. Four rows, four sentences: a
+    // closed posting, a reference record, a deactivated row and a truth we
+    // could not read are four different facts about a student's options.
+    const DEAD: Array<[string, unknown, string]> = [
+      ['closed', {
+        listing_state: 'closed', reference_only: false, actionable: false,
+        accepting_state: 'not_accepting', reason_code: 'listing_closed',
+        verified_at: null, expires_at: null,
+      }, 'compare.status.closed'],
+      ['reference-only', {
+        listing_state: 'unknown', reference_only: true, actionable: false,
+        accepting_state: 'unknown', reason_code: 'reference_only',
+        verified_at: null, expires_at: null,
+      }, 'compare.status.reference'],
+      ['inactive', {
+        listing_state: 'unknown', reference_only: false, actionable: false,
+        accepting_state: 'unknown', reason_code: 'inactive',
+        verified_at: null, expires_at: null,
+      }, 'compare.status.inactive'],
+      // Not a reason the backend emits — a truth this build cannot parse.
+      // "we could not confirm this" is not "the source says it ended".
+      ['unreadable truth', { listing_state: 'open' }, 'compare.status.unverified'],
+    ];
+
+    function renderDead(truth: unknown) {
+      return render(
+        <MatchCard
+          match={{
+            ...makeMatch(),
+            opportunity: makeOpp({ ...OFFER_POISON, target_truth: truth } as never),
+          }}
+          profile={PROFILE}
+          onDraftEmail={() => {}}
+          onTrackInteraction={() => {}}
+          isNew
+          ownerReady
+        />,
+      );
+    }
+
+    it.each(DEAD)('shows no offer term for a %s listing', (_label, truth) => {
+      renderDead(truth);
+      for (const text of OFFER_TEXT) {
+        expect(screen.queryByText(text)).toBeNull();
+      }
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.queryByText('POISON_REQUIRED_SKILL')).toBeNull();
+    });
+
+    it.each(DEAD)('offers no action on a %s listing', (_label, truth) => {
+      renderDead(truth);
+      for (const label of ['card.applyNow', 'card.draftEmail', 'card.tailorResume']) {
+        expect(screen.queryByText(label)).toBeNull();
+        expect(screen.queryByRole('button', { name: label })).toBeNull();
+        expect(screen.queryByRole('link', { name: label })).toBeNull();
+      }
+    });
+
+    it.each(DEAD)('says exactly why for a %s listing', (_label, truth, key) => {
+      renderDead(truth);
+      expect(screen.getByText(key)).toBeInTheDocument();
+      // Only its own sentence. Before this the card said nothing at all here,
+      // and the temptation is to reach for "closed" for all four.
+      const others = DEAD.map(([, , k]) => k).filter((k) => k !== key);
+      for (const other of others) {
+        expect(screen.queryByText(other)).toBeNull();
+      }
+    });
+
+    it.each(DEAD)('keeps identity, score and the source link for a %s listing', (_label, truth) => {
+      const { container } = renderDead(truth);
+      expect(screen.getByText('Test Opportunity')).toBeInTheDocument();
+      expect(screen.getByText('UIUC CS')).toBeInTheDocument();
+      // The match score is a statement about fit, not about availability.
+      expect(screen.getByText('results.tabs.highPriority')).toBeInTheDocument();
+      // The user's own tracking survives — it is their record of their own
+      // process, and it outlives the target.
+      expect(screen.getByText('results.statusMenu.trigger')).toBeInTheDocument();
+      const hrefs = Array.from(container.querySelectorAll('a'))
+        .map((a) => a.getAttribute('href'));
+      expect(hrefs).toContain('https://example.edu/source');
+      expect(hrefs.some((href) => href?.includes('/apply'))).toBe(false);
+    });
+
+    it('keeps every one of those terms while the same listing IS current', () => {
+      // The control. Hiding all of it unconditionally would pass all four
+      // cases above, and would also be a product that shows nothing.
+      render(
+        <MatchCard
+          match={{
+            ...makeMatch(),
+            opportunity: makeOpp({
+              ...OFFER_POISON, target_truth: { ...ACTIONABLE_TRUTH },
+            } as never),
+          }}
+          profile={PROFILE}
+          onDraftEmail={() => {}}
+          onTrackInteraction={() => {}}
+          isNew
+          ownerReady
+        />,
+      );
+      expect(screen.getByText('POISON_TYPE')).toBeInTheDocument();
+      expect(screen.getByText('POISON $32/hr')).toBeInTheDocument();
+      expect(screen.getByText('POISON 12 weeks')).toBeInTheDocument();
+      expect(screen.getByText('badges.intlOk')).toBeInTheDocument();
+      expect(screen.getByText('results.newMatchBadge')).toBeInTheDocument();
+      // The OTHER "new": `results.newMatchBadge` comes from the isNew prop,
+      // this one from posted_date. They sit behind two separate gates in the
+      // card, so pinning one proves nothing about the other.
+      expect(screen.getByText('badges.new')).toBeInTheDocument();
+      expect(screen.getByText('card.resumeRequired')).toBeInTheDocument();
+      expect(screen.getByText('card.recLetterNeeded')).toBeInTheDocument();
+      expect(screen.getByText('card.scope.openWithHost:UC Berkeley')).toBeInTheDocument();
+      expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+      // And no reason badge, because there is nothing to explain.
+      for (const [, , key] of DEAD) {
+        expect(screen.queryByText(key)).toBeNull();
+      }
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('POISON_REQUIRED_SKILL')).toBeInTheDocument();
+    });
+
+    // The urgency band is a coloured stripe, not text, so none of the
+    // queryByText assertions above can see it. It is also the loudest claim on
+    // the card: a red rail reads as "act now" from across a page of results.
+    const BANDS: Array<[string, string, string]> = [
+      ['urgent', new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10), 'before:bg-red-400'],
+      ['soon', new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10), 'before:bg-amber-400'],
+      ['passed', '2000-01-01', 'before:bg-gray-300'],
+    ];
+
+    function renderBand(deadline: string, truth: unknown) {
+      const { container } = render(
+        <MatchCard
+          match={{
+            ...makeMatch(),
+            opportunity: makeOpp({
+              ...OFFER_POISON, deadline, target_truth: truth,
+            } as never),
+          }}
+          profile={PROFILE}
+          onDraftEmail={() => {}}
+          ownerReady
+        />,
+      );
+      return container.querySelector('div.relative')!;
+    }
+
+    it.each(BANDS)('draws the %s urgency band while the listing is current', (_label, deadline, cls) => {
+      expect(renderBand(deadline, { ...ACTIONABLE_TRUTH }).className).toContain(cls);
+    });
+
+    it.each(BANDS)('drops the %s urgency band once the listing is closed', (_label, deadline, cls) => {
+      const card = renderBand(deadline, DEAD[0][1]);
+      expect(card.className).not.toContain(cls);
+      // And not some other band instead — no band at all.
+      for (const [, , other] of BANDS) {
+        expect(card.className).not.toContain(other);
+      }
+    });
+  });
+
+  it('keeps every control for an actionable target', () => {
+    renderWith({
+      listing_state: 'open',
+      reference_only: false,
+      actionable: true,
+      accepting_state: 'accepting',
+      reason_code: null,
+      verified_at: null,
+      expires_at: null,
+    });
+    expect(screen.getByText('card.applyNow')).toBeInTheDocument();
+    expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
+    expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
   });
 });

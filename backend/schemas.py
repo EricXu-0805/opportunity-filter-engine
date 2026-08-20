@@ -249,6 +249,19 @@ class MatchesResponse(BaseModel):
     next_cursor: str | None = None
     result_set_id: str = ""
     contract_version: str = ""
+    # Announces that every row in this response carries a complete
+    # `target_truth` and that historical records have already been filtered out.
+    # Separate from `contract_version` so it can ship while the wire version
+    # stays put through a split frontend/backend deploy, and present even on an
+    # empty page — which has no rows to inspect and would otherwise be
+    # indistinguishable from an old backend's empty page.
+    #
+    # Required, with no default. An omitted marker is a page every client
+    # correctly refuses, so a default would turn a forgotten argument at a new
+    # construction site into a silent production outage instead of an error
+    # here. (An OLD backend still sends no such field at all; that is the
+    # client's absent case, and unrelated to this server's own obligation.)
+    target_truth_contract: str
     view_start: int = 0
     # Exact server-side view metadata. Optional/defaulted so the canonical
     # /matches paging endpoint and older clients remain compatible.

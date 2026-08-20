@@ -2025,11 +2025,17 @@ export async function removeInteraction(opportunityId: string, token: OwnerToken
 // (updateInteractionDetails) Cold Email confirm flow, which was TOCTOU: two
 // concurrent confirms (or a confirm racing a manual status change) could
 // interleave their reads and writes and silently downgrade an advanced
-// status back to 'applied'. See supabase/migrations/025_confirm_interaction_
+// status back to 'applied'. See supabase/migrations/027_confirm_interaction_
 // contact.sql — one INSERT ... ON CONFLICT DO UPDATE that only ever creates
-// the row as 'applied' or refreshes last_contacted_at (+ an explicitly
-// supplied remind_at); it can never touch interaction_type or notes, so an
-// existing further-along status and any notes survive byte-for-byte.
+// the row as 'contacted' (NOT 'applied': a confirmed cold-email send is an
+// outreach contact, never an application claim made on the user's behalf) or
+// refreshes last_contacted_at (+ an explicitly supplied remind_at); it can
+// never touch interaction_type or notes, so an existing further-along status
+// and any notes survive byte-for-byte.
+//
+// That preservation is why callers must read the RETURNED status rather than
+// assume 'contacted': a row already marked rejected or dismissed comes back
+// unchanged, and the reminders cron selects neither.
 export async function confirmInteractionContact(
   opportunityId: string,
   token: OwnerToken,

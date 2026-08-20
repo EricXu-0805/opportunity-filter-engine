@@ -76,7 +76,7 @@ describe('MVP public release scope', () => {
 
   it('pins a new public cache namespace for the closed capability surface', () => {
     expect(PUBLIC_RELEASE_CACHE_VERSION).toBe(
-      'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1',
+      'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2',
     );
   });
 });

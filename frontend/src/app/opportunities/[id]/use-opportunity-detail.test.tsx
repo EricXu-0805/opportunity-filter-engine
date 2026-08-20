@@ -737,12 +737,30 @@ describe('useOpportunityDetail — handleTrack is pessimistic: no fake persisted
   });
 });
 
+// A reminder suggestion is a one-click write, so it is offered only for a
+// target the reminders cron would actually send for. The bare { id, title }
+// used everywhere else in this file has no truth envelope, which resolves to
+// a posture of `unknown` — the fail-closed answer, and the right default for
+// every test that is not about suggestions. The suites below ARE about
+// suggestions, so they pass a canonical live listing.
+const LIVE_LISTING_TARGET = {
+  id: 'opp-1',
+  title: 'Test',
+  source_type: 'campus_program',
+  record_kind: 'listing',
+  target_truth: {
+    listing_state: 'open', reference_only: false, actionable: true,
+    accepting_state: 'accepting', reason_code: null,
+    verified_at: null, expires_at: null,
+  },
+} as const;
+
 describe('useOpportunityDetail — status/suggestion mutual exclusion (same account, no cross-identity switch involved)', () => {
   it('a status change that produces NO suggestion for its own transition explicitly clears a suggestion left over from an EARLIER status change', async () => {
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.trackInteraction.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
 
     // applied -> interviewing produces a thank-you suggestion.
@@ -760,7 +778,7 @@ describe('useOpportunityDetail — status/suggestion mutual exclusion (same acco
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
     await act(async () => { await result.current.handleTrack('interviewing'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
@@ -778,7 +796,7 @@ describe('useOpportunityDetail — status/suggestion mutual exclusion (same acco
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined); // 'interviewing' commits, producing a suggestion
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
     await act(async () => { await result.current.handleTrack('interviewing'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
@@ -824,7 +842,7 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('boom'));
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
 
     // Trigger a status change that produces a suggestion.
@@ -850,7 +868,7 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
 
     const { result, rerender } = renderHook(
       ({ opp }) => useOpportunityDetail(opp),
-      { initialProps: { opp: { id: 'opp-1', title: 'Test' } } },
+      { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
     );
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
     await act(async () => { await result.current.handleTrack('interviewing'); });
@@ -894,7 +912,7 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
     await act(async () => { await result.current.handleTrack('interviewing'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
@@ -1029,14 +1047,175 @@ describe('useOpportunityDetail — saveDetails is pessimistic: no fake "Saved"',
     mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('boom'));
 
-    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
     await waitFor(() => expect(result.current.interaction).toBe('applied'));
 
     // Manufacture a suggestion the same way handleTrack does, then accept it.
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
     await act(async () => { await result.current.handleTrack('replied'); });
-    if (result.current.suggestion) {
-      await act(async () => { await result.current.handleUseSuggestion(); }); // must not throw here
-    }
+    // Asserted, not guarded. This used to sit behind `if (suggestion)`, and
+    // on a target with no truth there is never a suggestion — so the body
+    // never ran and the test passed by doing nothing at all.
+    await waitFor(() => expect(result.current.suggestion).not.toBeNull());
+
+    await act(async () => { await result.current.handleUseSuggestion(); });
+    expect(result.current.suggestionError).toBe(true);
+    expect(result.current.suggestionSaving).toBe(false);
+    expect(result.current.suggestion).not.toBeNull();
+  });
+});
+
+describe('useOpportunityDetail — saveDetails is the last gate before a reminder is written', () => {
+  const CLOSED_TARGET = {
+    ...LIVE_LISTING_TARGET,
+    target_truth: {
+      listing_state: 'closed', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    },
+  } as const;
+
+  it('a same-id target that closed under the page refuses a new date but still saves the notes beside it', async () => {
+    // The closure test. `saveDetails` reads the truth envelope, so a deps
+    // array of [opp.id] would judge this against the posture captured at
+    // mount — the record's id never changed, only its truth did.
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    mocks.updateInteractionDetails.mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ opp }) => useOpportunityDetail(opp),
+      { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
+    );
+    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+
+    // Live: the date is written.
+    await act(async () => {
+      await result.current.saveDetails({ remind_at: '2030-01-01' });
+    });
+    expect(mocks.updateInteractionDetails)
+      .toHaveBeenCalledWith('opp-1', { remind_at: '2030-01-01' }, expect.anything());
+
+    mocks.updateInteractionDetails.mockClear();
+    rerender({ opp: CLOSED_TARGET as { id: string; title: string } });
+
+    // Closed: the date is stripped, the notes in the same patch survive.
+    await act(async () => {
+      await result.current.saveDetails({ notes: 'still mine', remind_at: '2030-02-02' });
+    });
+    expect(mocks.updateInteractionDetails)
+      .toHaveBeenCalledWith('opp-1', { notes: 'still mine' }, expect.anything());
+    expect(mocks.updateInteractionDetails.mock.calls[0][1]).not.toHaveProperty('remind_at');
+
+    // And clearing is still allowed — dropping a date the student set is
+    // never what this gate prevents.
+    mocks.updateInteractionDetails.mockClear();
+    await act(async () => { await result.current.saveDetails({ remind_at: null }); });
+    expect(mocks.updateInteractionDetails)
+      .toHaveBeenCalledWith('opp-1', { remind_at: null }, expect.anything());
+  });
+
+  it('a visible suggestion is withdrawn the moment the target stops being deliverable, and never comes back', async () => {
+    // The banner IS the claim — "set a reminder for this date". Leaving it up
+    // and refusing on click is the same false capability, one click later.
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    mocks.trackInteraction.mockResolvedValueOnce(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ opp }) => useOpportunityDetail(opp),
+      { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
+    );
+    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.suggestion).not.toBeNull());
+
+    // Same id, same status — only the truth changed underneath.
+    rerender({ opp: CLOSED_TARGET as { id: string; title: string } });
+    await waitFor(() => expect(result.current.suggestion).toBeNull());
+
+    // And accepting it now writes nothing, even if a retained handler runs.
+    mocks.updateInteractionDetails.mockClear();
+    await act(async () => { await result.current.handleUseSuggestion(); });
+    expect(mocks.updateInteractionDetails).not.toHaveBeenCalled();
+
+    // Back to live: the old suggestion stays gone. The status transition that
+    // produced it is long past, and resurrecting it would be the page
+    // inventing a recommendation nothing just triggered.
+    rerender({ opp: LIVE_LISTING_TARGET as { id: string; title: string } });
+    await waitFor(() => expect(result.current.suggestion).toBeNull());
+  });
+
+  it('a status write in flight while the target closes never produces a suggestion for the old truth', async () => {
+    // performStatusChange decides about a suggestion AFTER its network call
+    // returns. The captured `opp` in that closure is the record as it was
+    // when the click happened, and the boolean withdrawal effect will not
+    // re-run for a suggestion created after it already settled — so the
+    // banner would appear with nothing left to take it away.
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    let resolveTrack: (() => void) | undefined;
+    mocks.trackInteraction.mockImplementationOnce(
+      () => new Promise<void>((res) => { resolveTrack = res; }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ opp }) => useOpportunityDetail(opp),
+      { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
+    );
+    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+
+    let trackPromise!: Promise<void>;
+    act(() => { trackPromise = result.current.handleTrack('interviewing'); });
+
+    // Same id, new truth — while the write is still out.
+    rerender({ opp: CLOSED_TARGET as { id: string; title: string } });
+    await act(async () => { resolveTrack?.(); await trackPromise; });
+
+    expect(result.current.suggestion).toBeNull();
+    // The status change itself still landed — that was the student's action.
+    expect(result.current.interaction).toBe('interviewing');
+
+    // And going live again does not resurrect it.
+    rerender({ opp: LIVE_LISTING_TARGET as { id: string; title: string } });
+    await waitFor(() => expect(result.current.suggestion).toBeNull());
+  });
+
+  it('a live faculty contact keeps its suggestion — the cron sends for exactly that', async () => {
+    // The positive control. A gate written as "listing" rather than
+    // "actionable" would have removed reminders from their main use.
+    const FACULTY_TARGET = {
+      id: 'opp-1',
+      title: 'Prof. Rivera',
+      source_type: 'faculty_research',
+      record_kind: 'faculty_contact',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: true,
+        accepting_state: 'unknown', reason_code: null,
+        verified_at: null, expires_at: null,
+      },
+    } as const;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
+    mocks.trackInteraction.mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useOpportunityDetail(FACULTY_TARGET));
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('replied'); });
+
+    await waitFor(() => expect(result.current.suggestion).not.toBeNull());
+  });
+
+  it('a date-only patch on a closed target writes nothing at all', async () => {
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    mocks.updateInteractionDetails.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useOpportunityDetail(CLOSED_TARGET));
+    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+
+    let outcome: { status: string } | undefined;
+    await act(async () => {
+      outcome = await result.current.saveDetails({ remind_at: '2030-01-01' });
+    });
+
+    expect(mocks.updateInteractionDetails).not.toHaveBeenCalled();
+    // Reported as abandoned, so no caller shows "Saved" for a no-op.
+    expect(outcome).toEqual({ status: 'abandoned' });
   });
 });

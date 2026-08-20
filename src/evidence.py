@@ -38,6 +38,7 @@ reviewed records.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 # ---------------------------------------------------------------------------
@@ -631,6 +632,246 @@ def faculty_safe_public_record(record: dict) -> dict:
     if isinstance(metadata, dict):
         metadata.pop(FACULTY_MAJOR_LABELS_MARKER, None)
     return safe
+
+
+# ---------------------------------------------------------------------------
+# Target truth: may a student act on this record today?
+# ---------------------------------------------------------------------------
+
+_CLOSED_LISTING_STATUSES = frozenset({"closed", "past", "archived", "expired"})
+_OPEN_LISTING_STATUSES = frozenset({"open", "active", "recruiting"})
+
+# Source-specific status keys, in the order they are consulted. A source states
+# its own listing lifecycle; we read that rather than re-deriving one from prose.
+_LISTING_STATUS_KEYS = ("listing_status", "urap_status")
+
+# Every source_type the canonical collectors emit for a real listing. A
+# missing, stale or unreviewed value proves nothing about whether an opening
+# exists, so it resolves to "unknown" rather than defaulting to a listing.
+# Mirrors frontend/src/lib/record-kind.ts — add to both or to neither.
+_LISTING_SOURCE_TYPES = frozenset({
+    "campus_announcement",
+    "campus_career",
+    "campus_department",
+    "campus_lab",
+    "campus_program",
+    "external",
+    "external_reu",
+    "internship",
+    "job",
+    "manual",
+    "rss",
+    "summer_program",
+    "ucb_announcement",
+    "ucb_career",
+    "ucb_department",
+    "ucb_lab",
+    "ucb_program",
+    "uiuc_research",
+})
+
+
+def record_kind(record: dict) -> str:
+    """``faculty_contact`` | ``listing`` | ``unknown`` from source_type alone."""
+    source_type = record.get("source_type") if isinstance(record, dict) else None
+    if source_type == "faculty_research":
+        return "faculty_contact"
+    if isinstance(source_type, str) and source_type in _LISTING_SOURCE_TYPES:
+        return "listing"
+    return "unknown"
+
+
+# Sources whose closed records are published as reference material, stated by
+# the collector itself ("Shown as a reference for the kind of undergraduate
+# research this lab offers"). Closedness alone does not earn this: a generic
+# expired posting makes no editorial promise that it is worth reading, and
+# claiming otherwise invents one on the source's behalf.
+_REFERENCE_CONTRACT_SOURCES = frozenset({"ucb_urap_projects"})
+
+
+@dataclass(frozen=True)
+class TargetTruth:
+    """Whether a record supports action, and the evidence for that answer.
+
+    ``listing_state`` and ``reference_only`` are deliberately two dimensions.
+    A closed listing can still be worth reading — the URAP rows describe real
+    labs — and a source may publish reference material that was never a
+    listing. Collapsing them into one flag forces the product to lie about one.
+
+    ``verified_at`` / ``expires_at`` are read off the record or left ``None``.
+    A confident-looking date we invented is worse than an absent one.
+    """
+
+    listing_state: str
+    reference_only: bool
+    actionable: bool
+    accepting_state: str
+    reason_code: str | None
+    evidence_source: str | None
+    evidence_key: str | None
+    evidence_value: str | None
+    verified_at: str | None
+    expires_at: str | None
+
+
+def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
+    """The source-stated listing status and the key that decided it.
+
+    Every authoritative key is scanned, not just the first populated one. A
+    record carrying both ``listing_status='unknown'`` and
+    ``urap_status='closed'`` was previously decided by key order, so a vaguer
+    or merely unrecognised value could mask an explicit closure and let a dead
+    listing through. Any recognised closure wins; a recognised open is accepted
+    only when no key says closed; anything unrecognised decides nothing.
+    """
+    first_open: tuple[str, str] | None = None
+    for key in _LISTING_STATUS_KEYS:
+        raw = metadata.get(key)
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        value = raw.strip().lower()
+        if value in _CLOSED_LISTING_STATUSES:
+            return value, key
+        if value in _OPEN_LISTING_STATUSES and first_open is None:
+            first_open = (value, key)
+    return first_open if first_open is not None else (None, None)
+
+
+def target_truth(record: dict) -> TargetTruth:
+    """Decide, in O(1) and without touching ``record``, whether it is actionable.
+
+    Fails closed on explicit evidence only. A record that states nothing keeps
+    today's behaviour and reports ``unknown``: this contract exists to keep
+    stated-closed listings out of action flows, not to retire the unstamped
+    majority of the corpus.
+    """
+    metadata = record.get("metadata") if isinstance(record, dict) else None
+    if not isinstance(metadata, dict):
+        metadata = {}
+
+    verified_at = metadata.get("last_verified")
+    verified_at = verified_at if isinstance(verified_at, str) else None
+    expires_at = metadata.get("expires_at")
+    expires_at = expires_at if isinstance(expires_at, str) else None
+
+    status, status_key = _listing_status(metadata)
+    if status in _CLOSED_LISTING_STATUSES:
+        listing_state = "closed"
+    elif status in _OPEN_LISTING_STATUSES:
+        listing_state = "open"
+    else:
+        listing_state = "unknown"
+
+    source = record.get("source") if isinstance(record, dict) else None
+    source_publishes_reference = (
+        isinstance(source, str)
+        and source.strip().lower() in _REFERENCE_CONTRACT_SOURCES
+        and listing_state == "closed"
+    )
+    reference_marker = metadata.get("reference_only") is True
+    reference_only = reference_marker or source_publishes_reference
+
+    def _truth(
+        reason: str | None,
+        *,
+        key: str | None = None,
+        value: str | None = None,
+        source: str = "metadata",
+        listing: str | None = None,
+        accepting: str | None = None,
+    ) -> TargetTruth:
+        return TargetTruth(
+            listing_state=listing if listing is not None else listing_state,
+            reference_only=reference_only,
+            actionable=reason is None,
+            # "accepting" is a claim about the target, so it needs both a
+            # stated-open listing and a record we would actually act on. A
+            # deactivated row carrying a stale `open` status is not evidence
+            # that anyone is still taking students.
+            accepting_state=(
+                accepting
+                if accepting is not None
+                else "not_accepting"
+                if listing_state == "closed"
+                else "accepting"
+                if listing_state == "open" and reason is None
+                else "unknown"
+            ),
+            reason_code=reason,
+            evidence_source=source if reason else None,
+            evidence_key=key,
+            evidence_value=value,
+            verified_at=verified_at,
+            expires_at=expires_at,
+        )
+
+    # Most precise reason first. The fixed collector writes `urap_status=closed`
+    # AND `is_active=False` on the same past project, so letting `inactive` win
+    # would silently blur every closed listing's reason on the next refresh —
+    # same record, same closure, vaguer answer. `inactive` stays the fallback it
+    # has always been for records that state nothing more specific.
+    if listing_state == "closed":
+        return _truth("listing_closed", key=status_key, value=status)
+    if reference_marker:
+        return _truth("reference_only", key="reference_only", value="True")
+    # The person's own statement that they are not taking undergraduates. The
+    # ranker has excluded these from Match for a long time, but exclusion from
+    # a ranked list is not a contract: a direct opportunity id reaches the
+    # action routes without ever passing through ranking, so email and tailor
+    # could act on a professor who has said in writing not to ask. It belongs
+    # in the truth itself, which every action path consults.
+    #
+    # Ranked below the listing reasons and above `inactive`: a posting's own
+    # closure is the more precise statement, while `inactive` states nothing
+    # about who is accepting. `listing_state` is deliberately reported as
+    # unknown — nothing here says a posting closed, and a faculty row carrying
+    # a stale `open` status is not a listing this contract will vouch for.
+    #
+    # `research_inactive` is NOT here, and must never be folded in. "I have no
+    # active research right now" and "do not ask me" are different claims from
+    # different people; blocking the first would silently rewrite it as the
+    # second and cost students a legitimate, carefully-worded question.
+    if faculty_availability_status(record) == "not_accepting_undergraduates":
+        return _truth(
+            "faculty_not_accepting",
+            key="faculty_availability_status",
+            value="not_accepting_undergraduates",
+            source="faculty_availability",
+            listing="unknown",
+            accepting="not_accepting",
+        )
+    if metadata.get("is_active") is False:
+        return _truth("inactive", key="is_active", value="False")
+    # Last, and only once every more specific fact has had its say: we have
+    # never confirmed what this record IS.
+    #
+    # `source_type` is what tells us a row is a posting rather than a directory
+    # page, and an unreviewed one is not evidence of either. Every surface then
+    # has to decide for itself whether to show a deadline, a pay figure, an
+    # eligibility rule, an Apply button — dozens of sinks each maintaining a
+    # third state, and each one edit away from treating "we don't know" as
+    # "listing". Deciding it once, here, is what makes that impossible.
+    #
+    # Deliberately NOT `reference_only`: nobody published this as reference
+    # material, and saying so would invent an editorial claim on the source's
+    # behalf. Deliberately not the client's `status_unverified` either — that
+    # one means a payload we could not read; this is a payload we read fine,
+    # describing a record whose type nobody has reviewed.
+    if record_kind(record) == "unknown":
+        return _truth(
+            "record_kind_unverified",
+            key="source_type",
+            value=str(record.get("source_type")) if isinstance(record, dict) else None,
+            source="record_kind",
+            listing="unknown",
+            accepting="unknown",
+        )
+    return _truth(None)
+
+
+def is_actionable_target(record: dict) -> bool:
+    """Shorthand for the one question most call sites ask."""
+    return target_truth(record).actionable
 
 
 # ---------------------------------------------------------------------------

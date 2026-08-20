@@ -16,9 +16,35 @@ import {
 } from 'lucide-react';
 import Badge from '@/components/Badge';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
-import { facultySafeInternational } from '@/lib/match-utils';
+import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
+import {
+  opportunitySourceUrl,
+  targetPosture,
+  targetStatusReason,
+  type TargetStatusReason,
+} from '@/lib/target-truth';
 import { DeadlineBadge } from './DeadlineBadge';
 import { MAX_COMPARE, type Opp, type TFunc } from './types';
+
+/**
+ * Why a saved target is no longer one to act on — one sentence per reason.
+ *
+ * A shortlist is read weeks after it was built, so "this is not open any
+ * more" is not enough: the student needs to know whether a window closed,
+ * whether it was ever a listing, or whether we simply never reviewed it.
+ *
+ * The `compare.` keys are shared vocabulary, already written and translated,
+ * and MatchCard borrows the same set. Worth renaming once, for both, in a
+ * batch that owns the dictionaries.
+ */
+const SAVED_STATUS_KEY: Record<TargetStatusReason, string> = {
+  listing_closed: 'compare.status.closed',
+  reference_only: 'compare.status.reference',
+  faculty_not_accepting: 'compare.status.notAccepting',
+  inactive: 'compare.status.inactive',
+  record_kind_unverified: 'compare.status.kindUnverified',
+  status_unverified: 'compare.status.unverified',
+};
 
 export interface OpportunityCardProps {
   opp: Opp;
@@ -62,18 +88,52 @@ export function OpportunityCard({
   tailorDisabled,
   t,
 }: OpportunityCardProps) {
-  const isFaculty = opp.source_type === 'faculty_research';
+  const recordKind = opportunityRecordKind(opp);
+  const isFaculty = recordKind === 'faculty_contact';
+  // Two different questions. `serverActionable` is what the corpus says about
+  // a canonical record; `actionable` additionally lets a user's own custom
+  // import keep today's behaviour, since we never claimed a truth for it.
+  // Comparison uses the stricter one — see canSelect.
+  const isCustom = !!opp._customId;
+  const serverActionable = targetPosture(opp) === 'actionable';
+  const actionable = isCustom || serverActionable;
+  // A custom entry is the user's own note about their own target. No
+  // collector ever saw it, so we neither vouch for it nor contradict it:
+  // it keeps exactly today's rendering, and it never receives a server
+  // status label — a "status unconfirmed" badge on something typed in by
+  // hand is us reporting on our own silence as if it were a finding.
+  const showsOfferTerms = isCustom
+    || (recordKind === 'listing' && serverActionable);
+  const isActionableFaculty = !isCustom && isFaculty && serverActionable;
+  const statusReason = isCustom ? null : targetStatusReason(opp);
+  const sourceUrl = opportunitySourceUrl(opp);
   const facultyUnavailable = isFaculty
     && opp.faculty_availability_status === 'not_accepting_undergraduates';
   // R70-E: switched from inline ternaries to the shared badge-utils
   // helpers so this card stays in sync with MatchCard. The inline paid
   // ternary that used to live here had the same R70-D bug — labelling
   // paid='unknown' (1262 records) as the misleading "Unpaid".
-  const intlFriendly = facultySafeInternational(opp);
-  const intlBadge = intlFriendly ? getIntlBadge(intlFriendly, t) : null;
-  const paidBadge = !isFaculty && opp.paid ? getPaidBadge(opp.paid, t) : null;
-  const desc = opp.description_clean || opp.description_raw || '';
-  const canSelect = !isSelected && selectedSize < MAX_COMPARE;
+  // `facultySafeInternational` fails closed to "unknown" for any record whose
+  // source type this build has not reviewed — a rule about what a COLLECTOR
+  // scraped, and a good one. A custom entry was never scraped: the field is
+  // what its owner typed, so routing it through that rule answered "not
+  // disclosed" about something the student had just disclosed to themselves.
+  const intlFriendly = isCustom
+    ? opp.eligibility?.international_friendly
+    : facultySafeInternational(opp);
+  const intlBadge = showsOfferTerms && intlFriendly ? getIntlBadge(intlFriendly, t) : null;
+  const paidBadge = showsOfferTerms && opp.paid ? getPaidBadge(opp.paid, t) : null;
+  // A faculty profile's description is profile text, already projected
+  // server-side; a listing's is a pitch for something on offer. Both are
+  // withheld once we can no longer vouch for the target.
+  const desc = showsOfferTerms || isActionableFaculty
+    ? (opp.description_clean || opp.description_raw || '')
+    : '';
+  // Comparing is a decision aid for targets you could still choose between, so
+  // it uses the server's answer and NOT the custom-import escape: a record we
+  // never verified must not reach an AI comparison just because the user typed
+  // it in themselves.
+  const canSelect = serverActionable && !isSelected && selectedSize < MAX_COMPARE;
 
   return (
     <div className="relative">
@@ -110,7 +170,12 @@ export function OpportunityCard({
                     {opp.organization}
                   </span>
                 )}
-                {opp.location && (
+                {/* Same split as the detail header. A faculty row's location
+                    is where the person works — identity. A listing's is where
+                    the work would happen — a term of an offer, gone when the
+                    offer is. `showsOfferTerms` already covers a custom entry,
+                    which keeps the location its owner typed. */}
+                {opp.location && (isFaculty || showsOfferTerms) && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {isFaculty
@@ -152,7 +217,15 @@ export function OpportunityCard({
             {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
               <Badge variant="red">{t('card.facultyResearchInactive')}</Badge>
             )}
-            {opp.opportunity_type && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
+            {/* Why this one is no longer a target to act on. Skipped for the
+                faculty stop, which the red badge above already states in the
+                source's own words. */}
+            {statusReason && !(statusReason === 'faculty_not_accepting' && facultyUnavailable) && (
+              <Badge variant="red">{t(SAVED_STATUS_KEY[statusReason])}</Badge>
+            )}
+            {showsOfferTerms && opp.opportunity_type && (
+              <Badge variant="indigo">{opp.opportunity_type}</Badge>
+            )}
             {intlBadge && (
               <Badge variant={intlBadge.variant} dot>
                 <Globe className="w-3 h-3" />
@@ -165,8 +238,8 @@ export function OpportunityCard({
                 {paidBadge.label}
               </Badge>
             )}
-            {opp.source && !opp._customId && <Badge variant="gray">{opp.source}</Badge>}
-            {!isFaculty && (
+            {opp.source && !isCustom && <Badge variant="gray">{opp.source}</Badge>}
+            {showsOfferTerms && (
               <DeadlineBadge
                 deadline={opp.deadline}
                 isEstimate={opp.deadline_is_estimate ?? undefined}
@@ -177,20 +250,24 @@ export function OpportunityCard({
 
           {!selectionMode && (
             <div className="flex flex-wrap items-center gap-2">
-              {hasProfile && !opp._customId && !facultyUnavailable && (
+              {/* A saved target can close after it was saved. The card stays —
+                  that is the point of a shortlist — but drafting an email or
+                  tailoring a résumé to it are actions the server now refuses,
+                  so they leave the card entirely rather than turning grey. */}
+              {hasProfile && !opp._customId && actionable && !facultyUnavailable && (
                 <button
                   type="button"
-                  onClick={() => onOpenEmailModal(opp)}
+                  onClick={() => { if (actionable) onOpenEmailModal(opp); }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow transition-all duration-200"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {t('card.draftEmail')}
                 </button>
               )}
-              {hasProfile && !opp._customId && onOpenTailorModal && (
+              {hasProfile && !opp._customId && actionable && onOpenTailorModal && (
                 <button
                   type="button"
-                  onClick={() => onOpenTailorModal(opp)}
+                  onClick={() => { if (actionable) onOpenTailorModal(opp); }}
                   disabled={tailorDisabled}
                   aria-busy={tailorDisabled}
                   className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
@@ -199,19 +276,25 @@ export function OpportunityCard({
                   {t('card.tailorResume')}
                 </button>
               )}
-              {opp.url && (
+              {sourceUrl && (
                 <a
-                  href={opp.url}
+                  href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
                 >
-                  {opp._customId ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                  {opp._customId
+                  {isCustom ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                  {/* "View Details" promises the current details of an
+                      opening. For a target we can no longer vouch for, the
+                      link goes to a source page and says so. A faculty page
+                      is a faculty page whatever the posture. */}
+                  {isCustom
                     ? t('favorites.openSource')
                     : isFaculty
                       ? t('card.viewFacultyPage')
-                      : t('card.viewDetails')}
+                      : statusReason
+                        ? t('favorites.viewSourceRecord')
+                        : t('card.viewDetails')}
                 </a>
               )}
             </div>
@@ -256,7 +339,7 @@ export function OpportunityCard({
                   </p>
                 )}
 
-                {!isFaculty && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
+                {showsOfferTerms && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                   <div>
                     <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">{t('favorites.requiredSkills')}</span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
