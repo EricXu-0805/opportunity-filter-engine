@@ -58,15 +58,15 @@ def scope_closed(monkeypatch):
 
 ACCEPTED_FEATURES = frozenset({
     "cross_school_matching",
+})
+UNACCEPTED_FEATURES = frozenset({
+    "match_ai_refine",
     "compare",
     "fellowships",
     "resume_renovate",
     "roadmap",
     "ask_ai",
     "professor_signals",
-})
-UNACCEPTED_FEATURES = frozenset({
-    "match_ai_refine",
     "payments",
     "microsoft_school_auth",
     "concierge_pay_qr",
@@ -322,7 +322,7 @@ def test_match_ai_query_reaches_only_the_deterministic_snapshot(monkeypatch):
     assert seen_modes == [False]
 
 
-def test_match_explain_ai_query_is_local_and_bypasses_ai_cache(monkeypatch):
+def test_hidden_compare_explain_route_never_reaches_snapshot_or_ai(monkeypatch):
     opportunity = {
         "id": "release-contract-opp",
         "title": "Confirmed program listing",
@@ -357,9 +357,8 @@ def test_match_explain_ai_query_is_local_and_bypasses_ai_cache(monkeypatch):
         f"/api/matches/{opportunity['id']}/explain?llm=true",
         json={},
     )
-    assert response.status_code == 200
-    assert response.json()["method"] == "local"
-    assert seen_modes == [False]
+    assert response.status_code == 404
+    assert seen_modes == []
 
 
 def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkeypatch):
@@ -370,16 +369,110 @@ def test_hidden_professor_signals_never_reach_match_ranking(scope_closed, monkey
     assert asyncio.run(matches_module._responsiveness_for_matching()) is None
 
 
+def test_hidden_professor_signals_never_leave_public_opportunity_surfaces(monkeypatch):
+    opportunity = {
+        "id": "faculty-release-contract",
+        "title": "Faculty contact profile",
+        "organization": "Example University",
+        "source_type": "faculty_research",
+        "opportunity_type": "research",
+        "pi_name": "Jane Doe",
+        "professor_id": "poisoned-stale-professor-id",
+        "description": "Faculty research profile.",
+        "keywords": ["robotics"],
+        "eligibility": {},
+        "application": {},
+        "metadata": {"is_active": True, "school": "uiuc"},
+    }
+    peer = {
+        **opportunity,
+        "id": "faculty-release-contract-peer",
+        "pi_name": "Alex Doe",
+        "professor_id": "second-poisoned-stale-professor-id",
+    }
+    derived_id = "prof:v1:uiuc:0123456789abcdef0123"
+    corpus = [opportunity, peer]
+    monkeypatch.setattr(
+        opportunities_module,
+        "load_opportunities_by_id",
+        lambda: {item["id"]: item for item in corpus},
+    )
+    monkeypatch.setattr(
+        opportunities_module,
+        "load_opportunities",
+        lambda: corpus,
+    )
+    monkeypatch.setattr(
+        opportunities_module,
+        "canonical_professor_id",
+        lambda _opportunity: derived_id,
+    )
+
+    monkeypatch.setattr(
+        opportunities_module,
+        "feature_enabled",
+        lambda _feature: False,
+    )
+    hidden = client.get(f"/api/opportunities/{opportunity['id']}")
+    assert hidden.status_code == 200
+    assert "professor_id" not in hidden.json()
+
+    listed = client.get("/api/opportunities?limit=10")
+    assert listed.status_code == 200
+    assert all(
+        "professor_id" not in item
+        for item in listed.json()["opportunities"]
+    )
+
+    batched = client.post(
+        "/api/opportunities/batch",
+        json={"ids": [opportunity["id"], peer["id"]]},
+    )
+    assert batched.status_code == 200
+    assert all(
+        "professor_id" not in item
+        for item in batched.json()["opportunities"]
+    )
+
+    similar = client.get(f"/api/opportunities/{opportunity['id']}/similar")
+    assert similar.status_code == 200
+    assert similar.json()["opportunities"]
+    assert all(
+        "professor_id" not in item
+        for item in similar.json()["opportunities"]
+    )
+
+    monkeypatch.setattr(
+        opportunities_module,
+        "feature_enabled",
+        lambda feature: feature == "professor_signals",
+    )
+    accepted = client.get(f"/api/opportunities/{opportunity['id']}")
+    assert accepted.status_code == 200
+    assert accepted.json()["professor_id"] == derived_id
+
+
 def test_hidden_fellowship_preference_is_removed_server_side(scope_closed):
-    profile = ProfileRequest(seeking_type=["fellowship"])
+    profile = ProfileRequest(
+        seeking_type=["fellowship", " Fellowship ", "FELLOWSHIP"],
+    )
     normalized = matches_module._normalized_profile(profile)
     assert normalized["seeking_type"] == ["research", "summer_program"]
+
+    mixed = ProfileRequest(
+        seeking_type=["research", " Fellowship ", "summer_program"],
+    )
+    assert matches_module._normalized_profile(mixed)["seeking_type"] == [
+        "research",
+        "summer_program",
+    ]
 
 
 def _fellowship_release_corpus() -> list[dict]:
     deadline = (date.today() + timedelta(days=5)).isoformat()
     common = {
         "organization": "Example University",
+        "source_type": "campus_program",
         "deadline": deadline,
         "keywords": ["machine learning", "vision"],
         "metadata": {"is_active": True},
@@ -801,7 +894,12 @@ def test_saved_search_digest_cleans_hidden_pending_id_without_sending(scope_clos
     assert patches[0]["json"] == {"new_match_ids": []}
 
 
-def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeypatch):
+@pytest.mark.parametrize("target_state", ["known_hidden", "unknown"])
+def test_unprovable_reminder_is_kept_but_never_sent(
+    scope_closed,
+    monkeypatch,
+    target_state,
+):
     hidden = next(
         opportunity
         for opportunity in _fellowship_release_corpus()
@@ -856,7 +954,11 @@ def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeyp
     monkeypatch.setattr(
         push_module,
         "load_opportunities_by_id",
-        lambda: {hidden["id"]: hidden},
+        lambda: (
+            {hidden["id"]: hidden}
+            if target_state == "known_hidden"
+            else {}
+        ),
     )
     monkeypatch.setattr(push_module, "send_webpush_safely", forbidden_send)
     monkeypatch.setattr(push_module, "_send_via_resend", forbidden_send)
@@ -887,6 +989,121 @@ def test_hidden_fellowship_reminder_is_kept_but_never_sent(scope_closed, monkeyp
     assert sends == []
 
 
+@pytest.mark.parametrize(
+    ("shape", "metadata"),
+    [
+        ("closed_active", {"urap_status": "closed", "is_active": True}),
+        ("reference_only", {"reference_only": True, "is_active": True}),
+        ("inactive", {"is_active": False}),
+    ],
+)
+def test_non_actionable_reminder_is_kept_but_never_sent(shape, metadata, monkeypatch):
+    """A reminder can outlive the listing, not just the release surface.
+
+    The target stays fully release-visible — the student saved it and can still
+    open it. What changed is whether it can be acted on. Nudging them toward it
+    is the push-channel version of showing an Apply button on a dead posting.
+
+    The assertion is deliberately not just ``sent == 0``: that survives a guard
+    moved *after* the subscription read, the incident write, or the send
+    attempt. Instead the only network call allowed is the initial interactions
+    GET, and every mutating verb and both delivery channels are tripwires — so
+    a guard pushed one step later fails here rather than quietly costing a
+    write.
+    """
+    target = {
+        "id": f"reminder-target-{shape}",
+        "source": "ucb_urap_projects",
+        "source_type": "ucb_program",
+        "title": "Past URAP project",
+        "metadata": metadata,
+    }
+    due = [{
+        "device_id": "non-actionable-device",
+        "opportunity_id": target["id"],
+        "remind_at": "2020-01-01",
+        "interaction_type": "applied",
+        "notes": "",
+    }]
+    gets: list[str] = []
+
+    class Response:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return due
+
+        def raise_for_status(self):
+            return None
+
+    def forbidden(verb):
+        async def _call(url, **_kwargs):
+            raise AssertionError(
+                f"{verb} {url} ran for a non-actionable reminder — the guard "
+                "must precede every write and delivery attempt",
+            )
+        return _call
+
+    class Client:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_exc):
+            return False
+
+        async def get(self, url, **_kwargs):
+            gets.append(url)
+            return Response()
+
+        patch = forbidden("PATCH")
+        post = forbidden("POST")
+        delete = forbidden("DELETE")
+
+    async def forbidden_send(*_args, **_kwargs):
+        raise AssertionError("a non-actionable reminder must never be delivered")
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "AsyncClient", Client)
+    monkeypatch.setattr(
+        push_module, "load_opportunities_by_id", lambda: {target["id"]: target},
+    )
+    monkeypatch.setattr(push_module, "send_webpush_safely", forbidden_send)
+    monkeypatch.setattr(push_module, "_send_via_resend", forbidden_send)
+    for name, value in {
+        "CRON_SECRET": "release-contract-cron",
+        "SUPABASE_URL": "https://example.supabase.co",
+        "SUPABASE_SERVICE_ROLE_KEY": "service-key",
+        "VAPID_PRIVATE_KEY": "private-key",
+        "VAPID_PUBLIC_KEY": "public-key",
+        "VAPID_SUBJECT": "mailto:ops@example.com",
+        "RESEND_API_KEY": "resend-key",
+        "RESEND_FROM_EMAIL": "from@example.com",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    response = client.get(
+        "/api/cron/reminders",
+        headers={"Authorization": "Bearer release-contract-cron"},
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["due"] == 1
+    assert body["skipped"] == 1
+    assert body["sent"] == 0
+    assert body["emailed"] == 0
+    assert body["pruned"] == 0
+    # Exactly one network call: reading the due interactions. Anything more
+    # means work happened after the target was already known to be dead.
+    assert len(gets) == 1, f"unexpected extra reads: {gets}"
+    assert "interactions" in gets[0]
+
+
 def test_pre_llc_migration_revokes_direct_order_inserts():
     migration = (
         Path(__file__).parents[1]
@@ -901,3 +1118,55 @@ def test_pre_llc_migration_revokes_direct_order_inserts():
         "FROM anon, authenticated"
     ) in migration
     assert "public.waitlist" not in migration.lower()
+
+
+def test_hidden_mtp_migration_closes_browser_data_api_and_preserves_server():
+    migration = (
+        Path(__file__).parents[1]
+        / "supabase"
+        / "migrations"
+        / "20260819164641_disable_unaccepted_mtp_data_api.sql"
+    ).read_text()
+    normalized = " ".join(migration.split())
+    policies = {
+        "resume_renovations": (
+            "resume_renovations_select_own",
+            "resume_renovations_insert_own",
+            "resume_renovations_update_own",
+            "resume_renovations_delete_own",
+        ),
+        "resume_renovation_versions": (
+            "resume_renovation_versions_select_own",
+            "resume_renovation_versions_insert_own",
+        ),
+        "professor_follows": (
+            "professor_follows_select_own",
+            "professor_follows_insert_own",
+            "professor_follows_delete_own",
+        ),
+        "professor_update_reads": (
+            "professor_update_reads_select_own",
+            "professor_update_reads_insert_own",
+            "professor_update_reads_update_own",
+        ),
+    }
+    for table, names in policies.items():
+        for name in names:
+            assert (
+                f'DROP POLICY IF EXISTS "{name}" ON public.{table}'
+                in normalized
+            )
+
+    tables = (
+        "public.resume_renovations, public.resume_renovation_versions, "
+        "public.professor_follows, public.professor_update_reads"
+    )
+    assert (
+        f"REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLE {tables} "
+        "FROM PUBLIC, anon, authenticated"
+    ) in normalized
+    assert (
+        f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {tables} "
+        "TO service_role"
+    ) in normalized
+    assert "DROP TABLE" not in normalized.upper()

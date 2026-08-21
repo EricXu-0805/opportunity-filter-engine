@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
 import Header from './Header';
 import {
   MATCH_VIEW_CONTRACT_VERSION,
+  TARGET_TRUTH_CONTRACT,
   clearMatchCache,
   writeMatchCache,
 } from '@/lib/match-cache';
@@ -51,6 +52,10 @@ function seedMatchCache(): void {
     low_fit: 0,
     results: [],
     contract_version: MATCH_VIEW_CONTRACT_VERSION,
+    // An empty page carries no rows to inspect, so the marker is the only
+    // evidence the backend promised target truth — the cache refuses a page
+    // without it.
+    target_truth_contract: TARGET_TRUTH_CONTRACT,
   }, captureOwnerToken());
 }
 
@@ -63,12 +68,12 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('advertises the accepted Fellowships and Roadmap routes', () => {
+  it('does not advertise hidden Fellowships or Roadmap routes', () => {
     // The nav builds itself from RELEASE_SCOPE; a link the route 404s is the
     // failure this guards, in whichever direction the switch sits.
     render(<Header />);
-    expect(screen.getAllByText('nav.fellowships').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('nav.roadmap').length).toBeGreaterThan(0);
+    expect(screen.queryByText('nav.fellowships')).not.toBeInTheDocument();
+    expect(screen.queryByText('nav.roadmap')).not.toBeInTheDocument();
   });
 
   it('exposes a hamburger toggle that is initially collapsed', () => {

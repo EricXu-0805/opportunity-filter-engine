@@ -90,6 +90,7 @@ def sample_profile():
 def good_match_opportunity():
     return {
         "id": "opp-001",
+        "source_type": "uiuc_research",
         "title": "Undergraduate Research Assistant — CV Lab",
         "organization": "University of Illinois",
         "on_campus": True,
@@ -118,6 +119,7 @@ def good_match_opportunity():
 def citizenship_restricted_opportunity():
     return {
         "id": "opp-002",
+        "source_type": "external_reu",
         "title": "NSF REU — National Lab",
         "organization": "National Science Foundation",
         "on_campus": False,
@@ -1175,7 +1177,8 @@ class TestCitizenshipRequiredHonored:
 
     def _us_only(self):
         return {
-            "id": "us-only", "opportunity_type": "research", "title": "US Only Lab",
+            "id": "us-only", "source_type": "external",
+            "opportunity_type": "research", "title": "US Only Lab",
             "eligibility": {"citizenship_required": True, "international_friendly": "unknown"},
             "application": {},
         }
@@ -1635,9 +1638,10 @@ class TestSchoolScopeFilter:
     TestCrossSchoolToggle for the opt-in behavior when one is set)."""
 
     @staticmethod
-    def _opp(ident, school, audience):
+    def _opp(ident, school, audience, source_type="campus_program"):
         return {
             "id": ident,
+            "source_type": source_type,
             "title": f"Research position {ident}",
             "opportunity_type": "research",
             "school": school,
@@ -1663,7 +1667,7 @@ class TestSchoolScopeFilter:
             self._opp("uiuc-campus", "uiuc", "campus"),
             self._opp("ucb-campus", "ucb", "campus"),
             self._opp("ucb-unknown", "ucb", "unknown"),
-            self._opp("national-open", None, "open"),
+            self._opp("national-open", None, "open", source_type="external"),
         ]
 
     def _ids(self, profile, corpus):
@@ -1700,9 +1704,10 @@ class TestSchoolScopeFilter:
         # Records without school/audience (pre-migration shape) and national
         # records (school=None) are never scope-filtered.
         corpus = [
-            self._opp("national-open", None, "open"),
+            self._opp("national-open", None, "open", source_type="external"),
             {
                 "id": "legacy-untagged",
+                "source_type": "manual",
                 "title": "Legacy record",
                 "opportunity_type": "research",
                 "eligibility": {},
@@ -1721,9 +1726,16 @@ class TestCrossSchoolToggle:
     home school wins ties via the HOME_SCHOOL_AFFINITY_MAX additive bonus."""
 
     @staticmethod
-    def _opp(ident, school, audience, opportunity_type="research"):
+    def _opp(
+        ident,
+        school,
+        audience,
+        opportunity_type="research",
+        source_type="faculty_research",
+    ):
         return {
             "id": ident,
+            "source_type": source_type,
             "title": f"Research position {ident}",
             "opportunity_type": opportunity_type,
             "school": school,
@@ -1748,8 +1760,9 @@ class TestCrossSchoolToggle:
             self._opp("home-fac", "uiuc", "unknown"),
             self._opp("ucb-fac", "ucb", "unknown"),
             self._opp("stanford-summer", "stanford", "open",
-                      opportunity_type="summer_program"),
-            self._opp("national-open", None, "open"),
+                      opportunity_type="summer_program",
+                      source_type="summer_program"),
+            self._opp("national-open", None, "open", source_type="external"),
         ]
 
     def _ids(self, profile, corpus):
@@ -1882,6 +1895,7 @@ class TestExploreDiversity:
             for i in range(6):
                 opps.append({
                     "id": f"{area}-{i}",
+                    "source_type": "campus_program",
                     "title": f"{area} lab {i}",
                     "opportunity_type": "research",
                     "is_rolling": True,
@@ -2625,7 +2639,8 @@ class TestActionableTieBreak:
                 "contact_source_url": url,
                 "contact_verified_at": datetime.now(UTC).isoformat(),
             }
-        opp = {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+        opp = {"id": oid, "source_type": "faculty_research",
+               "opportunity_type": "research", "pi_name": f"P {oid}",
                "title": f"Research with Prof. P {oid}", "keywords": ["robotics"],
                "contact_email": email,
                "eligibility": {},
@@ -2692,7 +2707,8 @@ class TestEmptyInterestMajorBonus:
     under a radio-astronomy REU, separated by ~3 points of generic polish."""
 
     def _fac(self, oid, majors):
-        return {"id": oid, "opportunity_type": "research", "pi_name": f"P {oid}",
+        return {"id": oid, "source_type": "faculty_research",
+                "opportunity_type": "research", "pi_name": f"P {oid}",
                 "title": f"Research with Prof. P {oid}", "keywords": [],
                 "eligibility": {"majors": majors}, "application": {}}
 

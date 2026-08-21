@@ -1,4 +1,39 @@
-import type { InteractionRecord } from './supabase';
+import type { InteractionRecord, InteractionType } from './supabase';
+import { targetPosture } from './target-truth';
+import type { Opportunity } from './types';
+
+/**
+ * Whether the reminders cron would actually send for this row.
+ *
+ * Copied from that job's own two filters, and kept in one place because four
+ * surfaces offer to create or reschedule a reminder — the tracker board, the
+ * detail panel's date editor, the detail page's automatic suggestion, and the
+ * cold-email follow-up chips — and a copy that drifts produces the worst
+ * possible outcome: a control that accepts the click, stores the date, and
+ * then nothing ever arrives. The student stops watching for the thing itself.
+ *
+ *   1. `interaction_type=in.(contacted,applied,replied,interviewing)`
+ *   2. the target is release-visible AND still actionable
+ *
+ * The second is checked here through `targetPosture`, which is this client's
+ * reading of the same truth envelope the cron reads server-side.
+ */
+export const REMINDABLE_STATUSES: ReadonlySet<InteractionType> = new Set<InteractionType>([
+  'contacted', 'applied', 'replied', 'interviewing',
+]);
+
+type ReminderTarget = Pick<Opportunity, 'target_truth' | 'source_type'> & {
+  record_kind?: string;
+};
+
+export function canDeliverReminder(
+  target: ReminderTarget | null | undefined,
+  status: InteractionType | undefined,
+): boolean {
+  if (!target || !status) return false;
+  if (!REMINDABLE_STATUSES.has(status)) return false;
+  return targetPosture(target) === 'actionable';
+}
 
 export type ReminderStatus = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'upcoming' | null;
 
@@ -43,7 +78,18 @@ export function collectReminders(
   const out: ReminderInfo[] = [];
   interactions.forEach((rec, id) => {
     if (!rec.remind_at) return;
-    if (rec.type === 'rejected' || rec.type === 'dismissed') return;
+    // 'dismissed' is the hide-everywhere status and stays dropped here —
+    // Tracker excludes it from every column, and a dashboard note about it
+    // would resurrect something the student explicitly put away.
+    //
+    // 'rejected' is different and used to be dropped alongside it. A rejected
+    // row IS visible in Tracker, and it keeps any reminder the student set —
+    // the cron just never sends for it. Dropping it here meant that reminder
+    // was invisible on the dashboard in both directions: not counted as due
+    // (correct) and not counted as needing review (wrong), so a date the
+    // student is still looking at simply had no representation anywhere.
+    // canDeliverReminder sorts it into needs-review downstream.
+    if (rec.type === 'dismissed') return;
     const status = classifyReminder(rec.remind_at, now);
     if (!status) return;
     const days = daysUntilReminder(rec.remind_at, now);

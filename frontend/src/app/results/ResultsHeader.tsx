@@ -4,6 +4,7 @@ import { Download, Sparkles } from 'lucide-react';
 import EmailMeButton from '@/components/EmailMeButton';
 import { sendMatchesEmail } from '@/lib/api';
 import { opportunityRecordKind } from '@/lib/match-utils';
+import { opportunitySourceUrl } from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { MatchResult, MatchesResponse } from '@/lib/types';
 import { SemanticToggle } from './SemanticToggle';
@@ -148,11 +149,19 @@ export function ResultsHeader({
             }
             onSend={async (emailAddr) => {
               const top = (await loadEmailMatches()).slice(0, 50);
+              // ROLLOUT BRIDGE: `opportunity_id` is the only field the new
+              // backend reads — it rehydrates the rest from the corpus. The
+              // legacy fields stay until backend and frontend are on the same
+              // SHA, because Render may still be running the version that
+              // renders from them. See EmailMatchItem.
               const items = top.map((m) => {
                 const recordKind = opportunityRecordKind(m.opportunity);
                 return {
+                  opportunity_id: m.opportunity.id,
                   title: m.opportunity.title,
-                  url: m.opportunity.url || m.opportunity.source_url || '',
+                  // source_url first, so an old renderer cannot present an
+                  // application URL as the source link.
+                  url: opportunitySourceUrl(m.opportunity) || '',
                   score: m.final_score,
                   source: m.opportunity.source || '',
                   deadline: recordKind === 'listing'

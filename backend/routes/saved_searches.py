@@ -24,6 +24,7 @@ import os
 import re
 import time
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import HTMLResponse
@@ -33,8 +34,10 @@ from backend.lib.release_scope import (
     opportunity_visible_in_release,
     release_visible_opportunities,
 )
+from backend.lib.target_actionability import actionable_opportunities
 from backend.routes.email import (
     FRONTEND_BASE,
+    _describe,
     _enforce_recipient_quota,
     _html_escape,
     _restore_signing_secret,
@@ -44,6 +47,7 @@ from backend.routes.email import (
     classify_send_failure,
 )
 from backend.routes.push import _IncidentSink, _required_env, _verify_cron_secret
+from src.evidence import is_actionable_target
 from src.saved_searches.filter import matching_ids
 
 router = APIRouter()
@@ -183,28 +187,57 @@ def _render_digest_email(
     rows_text = []
     for i, opp in enumerate(items, 1):
         faculty_contact = opp.get("source_type") == "faculty_research"
-        title = opp.get("title") or (
+        # One describer for every digest we send, imported rather than
+        # reimplemented. `_describe` applies the exact pipeline the manual
+        # digests use — safe_public_text(neutralize_lifecycle_title(
+        # displayed_title(opp), opp)) for the title, the same organization and
+        # deadline boundary, and the research-inactive advisory. Keeping a
+        # second copy here is precisely how the two drifted: this one printed
+        # the raw title and dropped the advisory entirely.
+        described = _describe(opp)
+        # The "Untitled" fallback stays where it was — for a record with no
+        # title at all. A redacted title is still a title.
+        title = described["title"] or (
             "Untitled faculty contact" if faculty_contact else "Untitled opportunity"
         )
-        org = opp.get("organization") or ""
-        deadline = "" if faculty_contact else (opp.get("deadline") or "")
+        org = described["organization"]
+        deadline = described["deadline"] or ""
         dl_str = f" · due {deadline}" if deadline else ""
         kind_str = (
             "Faculty contact profile · current opening not confirmed"
             if faculty_contact
             else "Opportunity listing"
         )
-        detail_url = f"{FRONTEND_BASE}/opportunities/{opp.get('id', '')}"
+        # A warning, not a refusal. "I have no active research right now" is a
+        # different statement from "do not ask me": the row stays actionable
+        # and stays in the digest. What it must not do is arrive unqualified,
+        # which is exactly what this digest did while the manual one said so.
+        advisory = described["advisory"]
+        # Percent-encoded, because the id is going into a URL PATH. HTML
+        # escaping is a different job and never was one — it leaves a space or
+        # a `#` intact, and the plain-text part is not escaped at all. 217 of
+        # the visible+actionable records carry such ids (`faculty-art &
+        # design-…`, `faculty-social work-…`), so those links arrived broken
+        # or truncated at the fragment. safe='' on purpose: a `/` inside an id
+        # is data, not a path separator.
+        detail_url = f"{FRONTEND_BASE}/opportunities/{quote(str(opp.get('id', '')), safe='')}"
+        advisory_html = (
+            f'<div style="font-size:12px;color:#b45309;margin-top:4px">'
+            f'{_html_escape(advisory)}</div>'
+            if advisory else ""
+        )
         rows_html.append(
             f'<tr><td style="padding:14px 0;border-bottom:1px solid #eee">'
             f'<div style="font-size:15px;font-weight:600;margin:4px 0">'
             f'<a href="{_html_escape(detail_url)}" style="color:#4f46e5;text-decoration:none">{_html_escape(title)}</a>'
             f'</div>'
             f'<div style="font-size:12px;color:#9ca3af">{_html_escape(kind_str)} · {_html_escape(org)}{_html_escape(dl_str)}</div>'
+            f'{advisory_html}'
             f'</td></tr>'
         )
+        advisory_text = f"  {advisory}\n" if advisory else ""
         rows_text.append(
-            f"#{i} {title}\n  {kind_str} · {org}{dl_str}\n  {detail_url}\n"
+            f"#{i} {title}\n  {kind_str} · {org}{dl_str}\n{advisory_text}  {detail_url}\n"
         )
 
     overflow_html = (
@@ -269,12 +302,23 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
     corpus = load_opportunities()
     if not corpus:
         return {"status": "skipped", "reason": "no opportunities loaded"}
-    opportunities = release_visible_opportunities(corpus)
+    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+    # Ids the queue must stop carrying: hidden by release scope, or stated
+    # closed / reference-only / inactive / not-accepting by the source.
+    #
+    # Known-and-dead, not merely absent. An id the corpus no longer contains is
+    # deliberately NOT here — a shard that failed to load, or a record between
+    # refreshes, would otherwise silently empty a student's pending queue, and
+    # "we cannot see it right now" is not evidence that it ended. Those stay
+    # queued and simply do not render.
     hidden_opportunity_ids = {
         opportunity["id"]
         for opportunity in corpus
         if opportunity.get("id")
-        and not opportunity_visible_in_release(opportunity)
+        and (
+            not opportunity_visible_in_release(opportunity)
+            or not is_actionable_target(opportunity)
+        )
     }
 
     supabase_url = env["SUPABASE_URL"].rstrip("/")
@@ -390,13 +434,24 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     corpus = load_opportunities()
     if not corpus:
         return {"status": "skipped", "reason": "no opportunities loaded"}
-    opportunities = release_visible_opportunities(corpus)
+    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
     opp_by_id = {o.get("id"): o for o in opportunities if o.get("id")}
+    # Ids the queue must stop carrying: hidden by release scope, or stated
+    # closed / reference-only / inactive / not-accepting by the source.
+    #
+    # Known-and-dead, not merely absent. An id the corpus no longer contains is
+    # deliberately NOT here — a shard that failed to load, or a record between
+    # refreshes, would otherwise silently empty a student's pending queue, and
+    # "we cannot see it right now" is not evidence that it ended. Those stay
+    # queued and simply do not render.
     hidden_opportunity_ids = {
         opportunity["id"]
         for opportunity in corpus
         if opportunity.get("id")
-        and not opportunity_visible_in_release(opportunity)
+        and (
+            not opportunity_visible_in_release(opportunity)
+            or not is_actionable_target(opportunity)
+        )
     }
 
     supabase_url = env["SUPABASE_URL"].rstrip("/")
@@ -488,14 +543,6 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     skipped += 1
                     continue
 
-                # Same per-recipient mail-bomb backstop as the user-facing
-                # send endpoints; a 429 here just defers to the next run.
-                try:
-                    _enforce_recipient_quota(to_email)
-                except HTTPException:
-                    throttled += 1
-                    continue
-
                 subject, html, text = _render_digest_email(
                     row.get("name") or "Saved search", items, unsubscribe_url,
                     overflow=overflow,
@@ -504,6 +551,19 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                 # that is the whole point. A freshly generated key per attempt
                 # would make the provider treat a retry as a new email.
                 idempotency_key = build_idempotency_key("digest", sid, digest_window)
+
+                # Same per-recipient mail-bomb backstop as the user-facing send
+                # endpoints, and in the same position: last thing before the
+                # provider. Reserving above the render meant a row that failed
+                # to render, or failed to build its key, still spent a slot on
+                # a send that was never attempted — and this loop then moved on
+                # to the next row, so the loss was invisible. A 429 here just
+                # defers this row to the next run.
+                try:
+                    _enforce_recipient_quota(to_email)
+                except HTTPException:
+                    throttled += 1
+                    continue
                 try:
                     await _send_via_resend(
                         api_key=api_key, from_addr=from_addr, to=to_email,
@@ -573,6 +633,14 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     )
                     continue
                 await incidents.recover(digest_key, "digest accepted by the provider")
+                # Emptying the queue outright would also discard the ids the
+                # corpus could not resolve this run. Those were never mailed
+                # about — they are not in `matched` — so clearing them would
+                # silently drop matches a student is still waiting on because
+                # of a transient load failure on our side. They stay; every id
+                # that resolved is cleared, mailed or overflowed alike, per the
+                # existing "one digest closes the window" contract.
+                unresolved_ids = [i for i in new_ids if i not in opp_by_id]
                 # The provider accepted the send; this stamp is what prevents
                 # a duplicate digest tomorrow (throttle keys off
                 # last_digest_sent_at). Retry once on failure and record a
@@ -582,14 +650,20 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     f"{supabase_url}/rest/v1/saved_searches",
                     params={"id": f"eq.{sid}"},
                     headers=headers,
-                    json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
+                    json={
+                        "last_digest_sent_at": now.isoformat(),
+                        "new_match_ids": unresolved_ids,
+                    },
                 )
                 if patch_resp.status_code >= 400:
                     patch_resp = await client.patch(
                         f"{supabase_url}/rest/v1/saved_searches",
                         params={"id": f"eq.{sid}"},
                         headers=headers,
-                        json={"last_digest_sent_at": now.isoformat(), "new_match_ids": []},
+                        json={
+                            "last_digest_sent_at": now.isoformat(),
+                            "new_match_ids": unresolved_ids,
+                        },
                     )
                 if patch_resp.status_code >= 400:
                     errors.append(

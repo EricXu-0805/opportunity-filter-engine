@@ -17,11 +17,51 @@
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, removeUserScopedRaw, writeUserScopedRaw, type OwnerToken } from '@/lib/identity-owner';
+import { everyResultActionable } from '@/lib/target-truth';
 import type { MatchResult, MatchesResponse, Opportunity } from '@/lib/types';
 
 const KEY = STORAGE_KEYS.MATCH_RESULTS;
-const CACHE_VERSION = 'contact-trust-v1';
+// Bump when the public result-set capability boundary changes. This invalidates
+// seven-day local payloads written while fellowships and other MTP surfaces
+// were public without changing the server match-view protocol or storage key.
+// Bumped with target-truth-v2: a page cached before this build can contain
+// rows whose kind was never reviewed, which this build refuses to present as
+// listings. Reusing it would serve exactly the records the change removed.
+const CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1-target-truth-v2';
+// Exactly the wire this backend speaks — `MATCH_VIEW_CONTRACT_VERSION` in
+// backend/routes/matches.py — and nothing else. A version string nobody
+// emits is not forward compatibility; it is a promise accepted in advance
+// from a payload whose shape has never been agreed, let alone reviewed. When
+// a v4 is actually negotiated it arrives with the field changes that define
+// it, and this list is part of that change.
+//
+// Equally required is TARGET_TRUTH_CONTRACT below: a response without that
+// marker comes from a backend that makes no promise about truth, and is refused
+// whatever its version says — including an empty page, which has no rows to
+// inspect. Both are necessary; neither alone is sufficient.
+export const ACCEPTED_MATCH_VIEW_CONTRACT_VERSIONS = [
+  'match-view-v3-faculty-trust',
+] as const;
+
+/** The version this client writes into its own cache entries. */
 export const MATCH_VIEW_CONTRACT_VERSION = 'match-view-v3-faculty-trust';
+
+/** Required on every accepted response — see above. */
+// v2 adds `record_kind_unverified`. Kept as a single accepted value rather
+// than a set: a v1 page cannot contain that reason, so its rows describe a
+// universe this build no longer serves, and accepting it would mix the two.
+export const TARGET_TRUTH_CONTRACT = 'target-truth-v2';
+
+export function isAcceptedMatchViewContract(response: {
+  contract_version?: string;
+  target_truth_contract?: string;
+}): boolean {
+  return (
+    response.target_truth_contract === TARGET_TRUTH_CONTRACT
+    && (ACCEPTED_MATCH_VIEW_CONTRACT_VERSIONS as readonly string[])
+      .includes(response.contract_version ?? '')
+  );
+}
 const OBSOLETE_MATCH_KEYS = [
   'ofe_match_results',
   'ofe_match_results_v2',
@@ -50,6 +90,18 @@ const OPP_FIELDS = [
   'school', 'audience', 'source_type', 'recent_works',
   'faculty_availability_status',
   'publication_attribution_status',
+  // Both are load-bearing on a cache hit. `target_truth` is what every CTA
+  // gates on — dropping it turns a restored closed listing back into an
+  // actionable one. `source_url` is the only link a historical record may
+  // still offer, and opportunitySourceUrl reads it before `url`.
+  'target_truth', 'source_url',
+  // The server's normalization of source_type, kept beside the truth for the
+  // same reason: `readTruth` cross-checks the two, so a restored row that
+  // dropped it would be validated against only half the attestation it
+  // arrived with. Absent stays absent — an older backend never sent it — but
+  // a row that HAD it must keep it, or a wire/local mismatch this build
+  // would have refused becomes invisible on a cache hit.
+  'record_kind',
   // W11: keep the stated faculty title for rank-aware profile copy, while
   // deadline_is_estimate keeps an estimated date from rendering as hard.
   'faculty_title', 'deadline_is_estimate',
@@ -102,7 +154,12 @@ interface MatchCacheShape {
   has_more?: boolean;
   next_cursor?: string | null;
   result_set_id?: string;
-  contract_version: typeof MATCH_VIEW_CONTRACT_VERSION;
+  contract_version: string;
+  // Persisted, not re-derived: a cache entry has to answer the same question a
+  // live response does. Omitting it would make every stored page fail the
+  // marker check on read — a cache that never hits, which looks like a working
+  // guard and is really a disabled one.
+  target_truth_contract: string;
   view_start?: number;
   filtered_total?: number;
   view_counts?: MatchesResponse['view_counts'];
@@ -140,6 +197,34 @@ export function hasValidMatchResultIdentity(results: unknown): results is MatchR
     seen.add(topId);
   }
   return true;
+}
+
+/**
+ * The one question every consumer of a match page has to ask.
+ *
+ * There are four places a page can enter the app — the results hook, the cache
+ * (on write and on read), the email loader, and the CSV export — and each one
+ * used to ask its own subset. That is how a gap appears: one surface checks the
+ * contract, another checks identity, and the export checks neither. Consumers
+ * call this and nothing else.
+ *
+ * Trusted means all four at once:
+ *   1. a wire version we recognise,
+ *   2. the target-truth marker (the promise itself — readable even on an
+ *      empty page, which has no rows to inspect),
+ *   3. identity: every row's nested id matches its top-level id, no duplicates,
+ *   4. every row still actionable.
+ */
+export function isTrustedMatchViewPage(page: {
+  contract_version?: string;
+  target_truth_contract?: string;
+  results?: unknown;
+}): boolean {
+  return (
+    isAcceptedMatchViewContract(page)
+    && hasValidMatchResultIdentity(page.results)
+    && everyResultActionable(page.results as MatchResult[])
+  );
 }
 
 // Legacy (pre-v7) key names — NOT in USER_SCOPED_KEYS (only the CURRENT
@@ -198,13 +283,14 @@ function parse(): MatchCacheShape | null {
       removeUserScopedRaw(KEY, token);
       return null;
     }
-    if (c.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
-      removeUserScopedRaw(KEY, token);
-      return null;
-    }
     if (typeof c.savedAt !== 'number') return null;
     if (Date.now() - c.savedAt >= TTL_MS) return null;
-    if (!hasValidMatchResultIdentity(c.results)) {
+    // The same question the live path asks, all-or-nothing. One restored row
+    // whose truth is missing, malformed, or no longer actionable makes the
+    // whole payload unshowable: dropping it silently would leave total/bucket
+    // counts and facet numbers describing a page with one fewer card and no
+    // explanation. Refuse, clear, and re-fetch.
+    if (!isTrustedMatchViewPage(c)) {
       removeUserScopedRaw(KEY, token);
       return null;
     }
@@ -259,10 +345,17 @@ export function clearMatchCache(token: OwnerToken): boolean {
  *  landed. */
 export function writeMatchCache(hash: string, semantic: boolean, data: MatchesResponse, token: OwnerToken): boolean {
   try {
-    if (data.contract_version !== MATCH_VIEW_CONTRACT_VERSION) {
-      clearMatchCache(token);
-      return false;
-    }
+    // Validated BEFORE anything is written. Storing first and letting the read
+    // path clean up leaves a window where the only copy on the device is one
+    // we would refuse — and it means a rejected page still costs a write.
+    //
+    // Refusing means refusing, nothing more: this primitive does not also
+    // delete whatever is already stored. A bad page arriving is not evidence
+    // that the good page already on the device went bad, and a storage
+    // primitive with a hidden erase makes every caller reason about a side
+    // effect it did not ask for. Clearing on an untrusted LIVE response is the
+    // caller's decision, taken explicitly in use-results-data.
+    if (!isTrustedMatchViewPage(data)) return false;
     const results = data.results.slice(0, MAX_RESULTS).map((r) => ({
       ...r,
       opportunity: projectOpportunity(r.opportunity),
@@ -285,7 +378,12 @@ export function writeMatchCache(hash: string, semantic: boolean, data: MatchesRe
       has_more: data.has_more,
       next_cursor: data.next_cursor,
       result_set_id: data.result_set_id,
-      contract_version: MATCH_VIEW_CONTRACT_VERSION,
+      // Whatever the server said, so a cache entry stays comparable with the
+      // responses that follow it, whatever version those carry. Non-empty by
+      // construction: isAcceptedMatchViewContract already rejected anything
+      // else above.
+      contract_version: data.contract_version ?? '',
+      target_truth_contract: data.target_truth_contract ?? '',
       view_start: data.view_start,
       filtered_total: data.filtered_total,
       view_counts: data.view_counts,
@@ -340,6 +438,7 @@ export function readMatchCache(hash: string, semantic: boolean): MatchesResponse
     next_cursor: c.next_cursor,
     result_set_id: c.result_set_id,
     contract_version: c.contract_version,
+    target_truth_contract: c.target_truth_contract,
     view_start: c.view_start,
     filtered_total: c.filtered_total,
     view_counts: c.view_counts,

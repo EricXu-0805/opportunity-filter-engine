@@ -62,6 +62,22 @@ def _install_stubs(monkeypatch, *, interactions, subscriptions, gets=None,
 
     from backend.routes import push as push_mod
 
+    # Reminder delivery is release-scoped: these tests exercise transport and
+    # bookkeeping, so make their target-visibility precondition explicit.
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            row["opportunity_id"]: {
+                "id": row["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+            for row in interactions
+        },
+    )
+
     class _Resp:
         def __init__(self, data, status_code=200):
             self._data = data

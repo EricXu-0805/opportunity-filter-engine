@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { SourceTable } from './SourceTable';
+import { QUALITY_SCOPE } from './types';
 import type { SourceRow, TFunc } from './types';
 
 const columns = {
@@ -12,13 +13,17 @@ const columns = {
   missingDeadline: 'Missing deadline',
   past: 'Past',
   inactive: 'Inactive',
+  unreviewedRecordKind: 'Unreviewed type',
 };
 
 const t = ((key: string) => (
   key === 'admin.bySourceCols' ? columns : key
 )) as unknown as TFunc;
 
-function renderRow(overrides: Partial<SourceRow> = {}) {
+// The scope is REQUIRED here on purpose. With a default, a case meaning
+// "legacy" could pass `undefined` and be silently handed the current scope
+// back — the negative would be testing the positive.
+function renderRow(qualityScope: string | undefined, overrides: Partial<SourceRow> = {}) {
   render(
     <SourceTable
       rows={[{
@@ -28,14 +33,26 @@ function renderRow(overrides: Partial<SourceRow> = {}) {
         missing_deadline: 1,
         ...overrides,
       }]}
+      qualityScope={qualityScope}
       t={t}
     />,
   );
 }
 
+/** Every other numeric cell non-zero, so a `0` on screen can only be ours. */
+const ONLY_UNREVIEWED_IS_ZERO: Partial<SourceRow> = {
+  empty_majors: 4,
+  empty_keywords: 5,
+  rolling_deadline: 6,
+  missing_deadline: 7,
+  past_deadline: 8,
+  flagged_inactive: 9,
+  unreviewed_record_kind: 0,
+};
+
 describe('SourceTable listing percentages', () => {
   it('uses listing_total on desktop and mobile and alerts on a 50% defect rate', () => {
-    renderRow();
+    renderRow(QUALITY_SCOPE);
 
     const cells = screen.getAllByText((_, node) => (
       node?.tagName === 'SPAN' && node.textContent === '1 (50%)'
@@ -51,7 +68,7 @@ describe('SourceTable listing percentages', () => {
     ['legacy', undefined],
     ['zero-listing', 0],
   ])('shows an honest count without a percentage for a %s response', (_, listingTotal) => {
-    renderRow({ listing_total: listingTotal });
+    renderRow(QUALITY_SCOPE, { listing_total: listingTotal });
 
     expect(screen.queryByText(/\(\d+%\)/)).not.toBeInTheDocument();
     const counts = screen.getAllByText('1');
@@ -60,5 +77,46 @@ describe('SourceTable listing percentages', () => {
       expect(count).toHaveClass('text-gray-700');
       expect(count).not.toHaveClass('text-amber-700');
     }
+  });
+
+  it.each([
+    ['a legacy response', undefined],
+    ['a future scope this build does not know', 'reviewed-record-kind-v2'],
+  ])('shows the count without a percentage for %s, even with listing_total present', (_, scope) => {
+    // The case field-presence could never catch: the denominator is there,
+    // it just counted unreviewed records as listings.
+    renderRow(scope);
+    expect(screen.queryByText(/\(\d+%\)/)).not.toBeInTheDocument();
+    expect(screen.getAllByText('1')).toHaveLength(2);
+  });
+});
+
+describe('SourceTable unreviewed record kinds', () => {
+  it('shows the per-source count in both layouts under the current scope', () => {
+    renderRow(QUALITY_SCOPE, { unreviewed_record_kind: 3 });
+    const cells = screen.getAllByText('3');
+    expect(cells).toHaveLength(2);
+    for (const cell of cells) expect(cell).toHaveClass('text-indigo-700');
+    expect(screen.getAllByText('Unreviewed type')).toHaveLength(2);
+  });
+
+  it('shows an explicit zero when the backend sent one', () => {
+    // Every other numeric cell is non-zero, so the two zeros on screen can
+    // only be the desktop and mobile unreviewed cells.
+    renderRow(QUALITY_SCOPE, ONLY_UNREVIEWED_IS_ZERO);
+    expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(screen.queryAllByText('—')).toHaveLength(0);
+  });
+
+  it.each([
+    ['a legacy response', undefined],
+    ['a future scope this build does not know', 'reviewed-record-kind-v2'],
+  ])('shows an em dash for %s even when the row carries a number', (_, scope) => {
+    // The scope, not the field, decides. A number counted under rules this
+    // build cannot see is not a number it may print — and asserting on a row
+    // that DOES carry 99 is what kills removing the scope gate.
+    renderRow(scope, { unreviewed_record_kind: 99 });
+    expect(screen.getAllByText('—')).toHaveLength(2);
+    expect(screen.queryByText('99')).not.toBeInTheDocument();
   });
 });

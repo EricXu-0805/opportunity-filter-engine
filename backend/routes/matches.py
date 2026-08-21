@@ -33,6 +33,7 @@ from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_projection import (
+    project_public_opportunity_payload,
     redact_embedded_emails,
     sanitize_public_urls,
 )
@@ -41,6 +42,10 @@ from backend.lib.release_scope import (
     feature_enabled,
     release_visible_opportunities,
     release_visible_opportunity_by_id,
+)
+from backend.lib.target_actionability import (
+    actionable_opportunities,
+    assert_target_actionable,
 )
 from backend.routes.responsiveness import signals_map
 from backend.schemas import (
@@ -51,9 +56,9 @@ from backend.schemas import (
     ProfileRequest,
 )
 from src.evidence import (
-    faculty_contact_claims_unverified,
     faculty_safe_eligibility,
     faculty_safe_public_record,
+    record_kind,
 )
 from src.matcher.config import (
     LLM_RERANK_BATCH,
@@ -115,7 +120,13 @@ _CARD_APP_FIELDS = frozenset({
 
 
 def _public_match_payload(value):
-    """Apply the shared contact and URL boundary to a match response."""
+    """Apply the shared contact and URL boundary to a match response.
+
+    The generic one: rerank blocks, explain payloads, gap lists, the response
+    envelope. A single opportunity card goes through
+    `project_public_opportunity_payload`, which applies this same boundary and
+    then the truth contract on top of it.
+    """
     return redact_embedded_emails(sanitize_public_urls(value))
 
 
@@ -155,15 +166,54 @@ def _match_card(opp: dict) -> dict:
         # Always "verified_author_id" by construction of the gate above;
         # served so the client renders provenance without re-deriving it.
         out["publication_attribution_status"] = attribution_status(opp)
-    return _public_match_payload(out)
+    # _CARD_OPP_FIELDS excludes `metadata`, so a card carries no activity
+    # signal of its own — the truth has to travel as an explicit field or the
+    # UI has nothing to gate its CTAs on.
+    return project_public_opportunity_payload(out, opp)
 
 
 # First response is deliberately bounded. Complete counts still describe the
 # canonical universe, and the opaque cursor traverses every visible result.
 DEFAULT_RESULTS_PER_PAGE = 100
 MAX_RESULTS_PER_REQUEST = 100
+# The public wire version is v3 and STAYS v3. This is the frozen decision, not
+# a transitional state waiting for a later flip.
+#
+# A global rename has no safe moment. Vercel and Render deploy independently,
+# and a stale bundle or a tab left open for a week can speak v3 long after both
+# services are current — so any release that renames the wire refuses those
+# clients wholesale, with no recovery except a downtime window.
+#
+# What ships instead is purely additive: every row carries a complete
+# `target_truth`, historical records leave the Match universe, and the response
+# announces `target_truth_contract` below. An old client ignores the new fields
+# and keeps working; a new client keys off the marker rather than the version
+# string, so the marker — not the version — is what carries the promise.
+#
+# If a v4 wire is ever genuinely needed, it goes through explicit client
+# capability negotiation: the request declares which contracts it accepts, the
+# backend answers v4 only to a client that asked and signs the matching cursor,
+# and anything without that declaration keeps getting v3. Do not flip this
+# globally without that negotiation and the telemetry to see who is still on v3.
 MATCH_CONTRACT_VERSION = "match-page-v3-faculty-trust"
 MATCH_VIEW_CONTRACT_VERSION = "match-view-v3-faculty-trust"
+
+# The marker a new client keys off instead of the wire version. Present on every
+# response — including an empty page, which carries no rows to inspect and would
+# otherwise be indistinguishable from an old backend's empty page.
+# v2: `record_kind_unverified` joined the reason set, so the promise this
+# marker carries is strictly stronger than v1's — a v1 client's parser rejects
+# the new reason and would degrade every one of those rows to "unreadable"
+# while still trusting the page around them. Bumping the marker (not the wire
+# version) is what lets a v1 client refuse the whole page instead.
+TARGET_TRUTH_CONTRACT = "target-truth-v2"
+
+# Internal only: names the shape of a cached ranking snapshot. Bumped even
+# though the wire is not, because a snapshot computed before this change holds
+# the pre-filter universe — the closed records are still in it, and its bucket
+# thresholds were derived from a population that included them. Reusing one
+# would serve exactly the rows this release exists to remove.
+MATCH_SNAPSHOT_VERSION = "match-snapshot-v5-record-kind"
 
 # Only fields consumed by ranker.py participate in a snapshot key. Contact
 # identity/signature fields do not change ranking; including them let trivial
@@ -582,13 +632,15 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
     if not feature_enabled("fellowships"):
         seeking = [
             value for value in profile_dict.get("seeking_type", [])
-            if value != "fellowship"
+            if not (
+                isinstance(value, str)
+                and value.strip().lower() == "fellowship"
+            )
         ]
         profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
-    # Cross-school recommendation currently expands one normal profile to
-    # ~126k visible records and a ~31s first request. Keep the dormant matcher
-    # code for MTP, but fail closed at the server boundary so stale clients or
-    # crafted JSON cannot reopen an unaccepted, memory-heavy universe.
+    # Cross-school deterministic matching is accepted for this release. Keep
+    # the server-side kill switch authoritative, though: if operations disable
+    # it later, stale clients or crafted JSON must not preserve the expansion.
     if not feature_enabled("cross_school_matching"):
         profile_dict["include_cross_school"] = False
     if profile_dict.get("preferences") is None:
@@ -619,7 +671,10 @@ def _snapshot_key(
     raw = (
         f"{payload}|llm={llm}|corpus={corpus_generation or corpus_version()}"
         f"|matcher={MATCHER_VERSION}"
-        f"|contract={MATCH_CONTRACT_VERSION}"
+        # The snapshot version, not the wire version: the wire deliberately
+        # still says v3, but a snapshot from before the target-truth filter
+        # describes a universe that included the closed records.
+        f"|snapshot={MATCH_SNAPSHOT_VERSION}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -992,7 +1047,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     # Release filtering scans the full corpus and allocates a survivor list.
     # Cursor/view pages normally hit the snapshot above, so only a true miss
     # should pay that cost.
-    opportunities = release_visible_opportunities(corpus)
+    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
     responsiveness = await _responsiveness_for_matching()
     if not llm:
         return await _get_or_compute_rule_snapshot(
@@ -1171,10 +1226,15 @@ def _apply_match_view(
             source_counts[source] = source_counts.get(source, 0) + 1
         if "school" in opportunity or "audience" in opportunity:
             scope_available = True
-        is_faculty_contact = faculty_contact_claims_unverified(opportunity)
-        days_left = None if is_faculty_contact else _calendar_days_until(
+        # Three kinds, not two. Excluding only faculty left the unreviewed
+        # source types on the listing side, so a record we have never confirmed
+        # IS a listing contributed a deadline to the "due in 7 days" facet, a
+        # pay value to the paid filter, and an on-campus flag — every one of
+        # them a term of an application that may not exist.
+        is_confirmed_listing = record_kind(opportunity) == "listing"
+        days_left = _calendar_days_until(
             opportunity.get("deadline"), today,
-        )
+        ) if is_confirmed_listing else None
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1185,26 +1245,19 @@ def _apply_match_view(
 
         if not view.show_dismissed and result.opportunity_id in dismissed_ids:
             continue
-        paid = (
-            "unknown"
-            if is_faculty_contact
-            else opportunity.get("paid")
-        )
+        paid = opportunity.get("paid") if is_confirmed_listing else "unknown"
         if view.paid == "yes" and paid not in {"yes", "stipend"}:
             continue
         if view.paid == "no" and paid not in {"no", "unknown"}:
             continue
-        if (
-            view.intl == "yes"
-            and faculty_safe_eligibility(opportunity).get(
-                "international_friendly"
-            )
-            != "yes"
+        if view.intl == "yes" and (
+            not is_confirmed_listing
+            or faculty_safe_eligibility(opportunity).get("international_friendly") != "yes"
         ):
             continue
         if view.source and source != view.source:
             continue
-        on_campus = None if is_faculty_contact else opportunity.get("on_campus")
+        on_campus = opportunity.get("on_campus") if is_confirmed_listing else None
         if view.on_campus == "yes" and on_campus is not True:
             continue
         if view.on_campus == "no" and on_campus is not False:
@@ -1215,11 +1268,11 @@ def _apply_match_view(
             # opening deadline is not evidence of rolling recruitment.
             if (
                 opportunity.get("is_rolling") is not True
-                or is_faculty_contact
+                or not is_confirmed_listing
             ):
                 continue
         elif view.deadline:
-            if is_faculty_contact:
+            if not is_confirmed_listing:
                 continue
             days = _calendar_days_until(opportunity.get("deadline"), today)
             if view.deadline == "passed":
@@ -1291,13 +1344,11 @@ def _apply_match_view(
         filtered.sort(
             key=lambda result: str(
                 (
-                    None
-                    if faculty_contact_claims_unverified(
-                        opportunities_by_id.get(result.opportunity_id, {})
-                    )
-                    else opportunities_by_id.get(result.opportunity_id, {}).get(
-                        "deadline"
-                    )
+                    opportunities_by_id.get(result.opportunity_id, {}).get("deadline")
+                    if record_kind(
+                        opportunities_by_id.get(result.opportunity_id, {}),
+                    ) == "listing"
+                    else None
                 )
                 or "9999"
             )
@@ -1306,13 +1357,11 @@ def _apply_match_view(
         filtered.sort(
             key=lambda result: str(
                 (
-                    None
-                    if faculty_contact_claims_unverified(
-                        opportunities_by_id.get(result.opportunity_id, {})
-                    )
-                    else opportunities_by_id.get(result.opportunity_id, {}).get(
-                        "posted_date"
-                    )
+                    opportunities_by_id.get(result.opportunity_id, {}).get("posted_date")
+                    if record_kind(
+                        opportunities_by_id.get(result.opportunity_id, {}),
+                    ) == "listing"
+                    else None
                 )
                 or ""
             ),
@@ -1414,7 +1463,13 @@ async def get_matches(
                 detail={
                     "code": "MATCH_CURSOR_EXPIRED",
                     "message": "Match data changed. Refresh results to continue.",
-                    "retryable": True,
+                    # Not retryable: replaying the SAME cursor cannot succeed —
+                    # the snapshot it points at is gone. Marked true, the
+                    # client's generic retry layer sent it twice more before the
+                    # page could recover, costing ~4.5s and three rate-limited
+                    # requests to reach a conclusion the first response already
+                    # stated. Recovery is a fresh page-1 request, not a repeat.
+                    "retryable": False,
                 },
             )
     page = visible_results[page_offset:page_offset + limit]
@@ -1442,6 +1497,7 @@ async def get_matches(
         ),
         result_set_id=snap.result_set_id,
         contract_version=MATCH_CONTRACT_VERSION,
+        target_truth_contract=TARGET_TRUTH_CONTRACT,
         view_start=page_offset,
     )
 
@@ -1499,7 +1555,11 @@ async def get_match_view(
                 detail={
                     "code": "MATCH_CURSOR_EXPIRED",
                     "message": "Match data or filters changed. Refresh results to continue.",
-                    "retryable": True,
+                    # Same reasoning as the /matches cursor above: the snapshot
+                    # this cursor names is gone, so replaying it is three
+                    # rate-limited requests to reach the answer the first one
+                    # already gave. Recovery is a fresh page-1 request.
+                    "retryable": False,
                 },
             )
 
@@ -1542,6 +1602,7 @@ async def get_match_view(
         ),
         result_set_id=snap.result_set_id,
         contract_version=MATCH_VIEW_CONTRACT_VERSION,
+        target_truth_contract=TARGET_TRUTH_CONTRACT,
         view_start=page_offset,
         filtered_total=len(filtered),
         view_counts=view_counts,
@@ -1562,6 +1623,7 @@ async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
 
     gaps = analyze_gaps(profile.model_dump(), opp)
     return _public_match_payload(gaps)
@@ -1673,6 +1735,8 @@ def _explain_cache_put(key: str, text: str) -> None:
 # results, because…") instead of contradicting the list by omission.
 _EXCLUSION_GAP_TEXT = {
     "inactive": "No longer active — retired from your results",
+    "listing_closed": "This listing is closed and no longer recruiting — kept as reference, not in your results",
+    "reference_only": "Published as reference material rather than an open listing — not in your results",
     "other_school_campus": "Restricted to another school's own students — not in your results",
     "cross_school_hidden": "Hosted at another school — enable cross-school results to include it",
     "citizenship_restricted": "Requires US citizenship or permanent residency — excluded from your results",
@@ -1709,6 +1773,10 @@ async def get_match_explanation(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    # Ahead of the snapshot, not after it: _get_or_compute_snapshot ranks the
+    # whole universe and, with llm=true, pays a provider to do it. Refusing a
+    # closed target only after that work has run still spends the money.
+    assert_target_actionable(opp)
 
     profile_dict = _normalized_profile(profile)
     use_llm = _ai_pass_allowed(request, llm)

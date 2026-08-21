@@ -1,11 +1,28 @@
 import { ImageResponse } from 'next/og';
-import { fetchOpportunityServer } from '@/lib/api-server';
+import { fetchOpportunityDetail } from '@/lib/api-server';
 import { buildOpportunityOgFacts } from './og-facts';
 
 export const runtime = 'edge';
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
+
+/**
+ * The card states terms of an offer — Paid, On campus, "Due in 3d" — and it is
+ * an image, so nothing on it can be qualified or clicked through to a caveat.
+ * It was served `s-maxage=3600`, which let Vercel's edge keep answering with a
+ * card built from an hour-old record: the same URL that a chat app re-fetches
+ * would hand back "Paid · Due in 3d" for an hour after the listing closed.
+ *
+ * Applied to the not-found card too. It had no Cache-Control at all, which is
+ * the same bug pointing the other way — a record that appears (a slow backend
+ * recovering, a newly published row) stays "Opportunity not found" in every
+ * cache that stored the miss.
+ *
+ * Whatever the chat app that already scraped the URL has stored is beyond
+ * reach; this only stops us serving stale terms ourselves.
+ */
+const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
 
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
@@ -17,20 +34,39 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const opp = await fetchOpportunityServer(id);
+  // `fetchOpportunityDetail`, not the legacy record-or-null resolver. That one
+  // collapsed a 429, a 5xx, a dropped connection, a timeout and a malformed
+  // body into the same answer as a genuinely missing id — so the card told
+  // every sharer "Opportunity not found" about a record that exists, and the
+  // image was then cached by whatever rendered it. It also echo-checks the id,
+  // so a mismatched response can no longer render one record's card under
+  // another record's URL.
+  const outcome = await fetchOpportunityDetail(id);
 
-  if (!opp) {
+  if (outcome.status !== 'ok') {
+    // "Not found" is reserved for the backend actually saying so (400/404).
+    // Everything else is our side failing, and an image cannot be qualified
+    // later — so it says what is true: we could not load it right now.
+    const unavailable = outcome.status === 'unavailable';
     return new ImageResponse(
       (
         <div style={notFoundStyle}>
-          <div style={{ fontSize: 44, fontWeight: 700 }}>Opportunity not found</div>
+          <div style={{ fontSize: 44, fontWeight: 700 }}>
+            {unavailable ? 'Opportunity temporarily unavailable' : 'Opportunity not found'}
+          </div>
+          {unavailable ? (
+            <div style={{ fontSize: 26, color: '#6b7280', marginTop: 10 }}>
+              Please try again later
+            </div>
+          ) : null}
           <div style={{ fontSize: 22, color: '#9ca3af', marginTop: 12 }}>JoinALab</div>
         </div>
       ),
-      { width: OG_WIDTH, height: OG_HEIGHT },
+      { width: OG_WIDTH, height: OG_HEIGHT, headers: { ...NO_STORE } },
     );
   }
 
+  const opp = outcome.opportunity;
   const facts = buildOpportunityOgFacts(opp);
   const title = truncate(facts.title, 110);
   const org = facts.organization ? truncate(facts.organization, 60) : '';
@@ -167,9 +203,7 @@ export async function GET(
     {
       width: OG_WIDTH,
       height: OG_HEIGHT,
-      headers: {
-        'Cache-Control': 'public, max-age=0, s-maxage=3600, must-revalidate',
-      },
+      headers: { ...NO_STORE },
     },
   );
 }

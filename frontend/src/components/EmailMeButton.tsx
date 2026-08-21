@@ -12,6 +12,11 @@ type SendResult = { ok: boolean; count?: number };
 interface EmailMeButtonProps {
   label: string;
   title?: string;
+  /** Shown in the dialog before sending, when the digest will not carry
+   *  everything the caller has (the backend caps a digest at 50 items).
+   *  Stated up front rather than after the fact: once the mail is sent there
+   *  is nothing in it that reveals what was left out. */
+  notice?: string;
   onSend: (email: string) => Promise<SendResult>;
   disabled?: boolean;
   className?: string;
@@ -22,6 +27,7 @@ const LS_KEY = STORAGE_KEYS.EMAIL_HINT;
 export default function EmailMeButton({
   label,
   title,
+  notice,
   onSend,
   disabled,
   className,
@@ -122,6 +128,15 @@ export default function EmailMeButton({
                 <p className="text-[12px] text-gray-500">{t('email.subtitle')}</p>
               </div>
             </div>
+
+            {notice && (
+              <p
+                role="status"
+                className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900"
+              >
+                {notice}
+              </p>
+            )}
 
             <form onSubmit={submit} className="space-y-3">
               <label className="block">

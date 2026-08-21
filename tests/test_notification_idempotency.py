@@ -111,6 +111,25 @@ def _install_reminder_io(
     today: str = "2026-08-01",
 ) -> None:
     """Stub the reminder cron's Supabase, Resend and dispatcher boundaries."""
+    due_rows = [_DUE] if due is None else due
+
+    # The release boundary now requires every reminder target to resolve to a
+    # currently visible record. These delivery/idempotency tests exercise the
+    # send path, so make that precondition explicit instead of accidentally
+    # relying on whatever happens to exist in the assembled corpus.
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            row["opportunity_id"]: {
+                "id": row["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+            for row in due_rows
+        },
+    )
 
     class _Client:
         def __init__(self, *_a, **_k):
@@ -131,7 +150,7 @@ def _install_reminder_io(
                 return _Resp([])
             if "push_subscriptions" in url:
                 return _Resp([_SUB] if subscriptions is None else subscriptions)
-            return _Resp([_DUE] if due is None else due)
+            return _Resp(due_rows)
 
         async def post(self, url, json=None, **_kwargs):
             if rpcs is not None:
@@ -465,8 +484,14 @@ class TestResendIdempotencyKey:
 # ── 4. digest: idempotency, ambiguity, incidents ───────────────────────────
 
 
-_OPP_A = {"id": "opp-a", "title": "Vision Lab RA", "organization": "UIUC ECE",
-          "deadline": "2026-07-01"}
+_OPP_A = {
+    "id": "opp-a",
+    "source_type": "campus_lab",
+    "title": "Vision Lab RA",
+    "organization": "UIUC ECE",
+    "deadline": "2026-07-01",
+    "metadata": {"is_active": True},
+}
 _SID = "11111111-2222-3333-4444-555555555555"
 
 
@@ -493,6 +518,8 @@ def _set_digest_env(monkeypatch) -> None:
 
 def _install_digest_io(monkeypatch, *, rows, sends=None, rpcs=None,
                        send_impl=None, patch_status: int = 204) -> None:
+    assert ss_mod.is_actionable_target(_OPP_A)
+
     class _Client:
         def __init__(self, *_a, **_k):
             pass
@@ -636,7 +663,9 @@ class TestDigestFailureClassification:
         monkeypatch.setattr(ss_mod, "load_opportunities", lambda: [_OPP_A])
         email_mod._recipient_sends.clear()
 
-        _run_digest()
+        body = _run_digest().json()
+        assert body["ambiguous"] == 1
+        assert body["errors"]
         assert [p for p in patches if "last_digest_sent_at" in (p.get("json") or {})] == []
 
 

@@ -25,13 +25,13 @@ describe('sitemap', () => {
     }
   });
 
-  it('lists the accepted public product routes', () => {
+  it('does not advertise hidden MTP product routes', () => {
     // The sitemap builds its list from RELEASE_SCOPE for a reason: a crawler
     // pointed at a route the release gate 404s is the one place a closed
     // feature leaks to strangers who never touched the UI.
     const urls = sitemap().map((e) => e.url);
-    expect(urls).toContain(`${SITE_URL}/fellowships`);
-    expect(urls).toContain(`${SITE_URL}/roadmap`);
+    expect(urls).not.toContain(`${SITE_URL}/fellowships`);
+    expect(urls).not.toContain(`${SITE_URL}/roadmap`);
   });
 });
 

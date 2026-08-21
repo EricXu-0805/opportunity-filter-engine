@@ -10,9 +10,8 @@ import { trackOnce } from '@/lib/analytics';
 import { captureOwnerToken } from '@/lib/identity-owner';
 import { hashProfile } from '@/lib/match-utils';
 import {
-  MATCH_VIEW_CONTRACT_VERSION,
-  hasValidMatchResultIdentity,
-  readMatchCache,
+  clearMatchCache,
+  isTrustedMatchViewPage,
   writeMatchCache,
 } from '@/lib/match-cache';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
@@ -55,11 +54,12 @@ function isAbort(error: unknown): boolean {
 }
 
 function isCompleteView(result: MatchesResponse): boolean {
-  return result.contract_version === MATCH_VIEW_CONTRACT_VERSION
+  // One shared validator — see isTrustedMatchViewPage. The view-specific
+  // fields below are the only thing this surface adds.
+  return isTrustedMatchViewPage(result)
     && typeof result.filtered_total === 'number'
     && !!result.view_counts
-    && typeof result.view_start === 'number'
-    && hasValidMatchResultIdentity(result.results);
+    && typeof result.view_start === 'number';
 }
 
 /** One exact server-side results page.
@@ -77,6 +77,11 @@ export function useResultsData(
   t: TFunc,
   /** False while the AI-refine preference is still unreadable. See requestKey. */
   preferenceSettled: boolean,
+  /**
+   * Called once when a dead cursor is dropped, so the page owner can return to
+   * page 1. Optional: a caller that never paginates has nothing to reset.
+   */
+  onCursorReset?: () => void,
 ): UseResultsDataResult {
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,36 +154,23 @@ export function useResultsData(
     setRefining(false);
     setRefined(false);
     setRefineFailed(false);
-    let painted = false;
-    // Tracked apart from `painted`: a cache paint that then fails live
-    // validation keeps its existing behavior (error, list hidden) because the
-    // cached list may be a stale generation. An interim rule list cannot be
-    // stale — it came from this same request cycle.
-    let interimPainted = false;
-    if (page === 1) {
-      const cached = readMatchCache(cacheKey, semanticRerank);
-      if (cached?.contract_version === MATCH_VIEW_CONTRACT_VERSION) {
-        setData(cached);
-        // Cached metadata paints immediately, but the network request below is
-        // still mandatory generation validation. Its cursor is deliberately
-        // NOT trusted: local cache lives seven days while the server snapshot
-        // lives minutes, so pagination stays locked until the live response.
-        setLoading(false);
-        painted = true;
-        // The cached response carries the server's own attestation, so a
-        // refined cache entry says so itself rather than being inferred from
-        // the key it was filed under.
-        setRefined(cached.ai_refined === true);
-        trackOnce('matches_generated', {
-          llm: semanticRerank,
-          cached: true,
-          validated: false,
-        });
-      } else {
-        setData(null);
-      }
-    }
+    // Nothing reaches the page until THIS request cycle produces it. The
+    // stored page is good for seven days; a listing closes in one. Painting it
+    // first put a live Apply link, a pay badge, a deadline countdown and the
+    // Draft/Tailor actions on rows the server may already be refusing — and
+    // Apply is a raw external link with no server action in front of it to
+    // catch the difference, so the student learns about it from the dead form.
+    //
+    // The cache is still WRITTEN below, and still read elsewhere: Header asks
+    // whether one exists to decide where "Find Matches" goes, and Compare
+    // reads its matcher_version to keep two generations off one screen. What
+    // is gone is only the paint — this hook no longer reads it.
+    if (page === 1) setData(null);
     /* eslint-enable react-hooks/set-state-in-effect */
+    // A refine that fails AFTER the interim rule list painted keeps that list
+    // rather than replacing it with an error: the interim came from this same
+    // request cycle, so unlike the cache it cannot be a stale generation.
+    let interimPainted = false;
 
     (async () => {
       const request = getMatchView(profile, view, {
@@ -205,9 +197,12 @@ export function useResultsData(
         // job from seven minutes to past its timeout. So the refine goes out
         // first and the interim only follows if it is still outstanding.
         //
-        // Skipped when the cache already painted (nothing to wait in front of)
-        // and past page one (the refined snapshot owns the cursor chain).
-        if (semanticRerank && page === 1 && !painted) {
+        // Skipped past page one, where the refined snapshot owns the cursor
+        // chain. Deliberately NOT skipped for a cache hit any more: the cache
+        // no longer paints, so a stored page is no longer something the
+        // student is waiting in front of — it is nothing on screen, and the
+        // interim is the only thing that can fill that wait honestly.
+        if (semanticRerank && page === 1) {
           // Race, don't sleep. Awaiting the timer outright would delay every
           // warm load by the full interval as well — the timer exists for the
           // cold case only — and would leave a live timer plus this whole
@@ -236,7 +231,6 @@ export function useResultsData(
                 setData(ruleOnly);
                 setLoading(false);
                 setRefining(true);
-                painted = true;
                 interimPainted = true;
               }
             } catch {
@@ -249,6 +243,10 @@ export function useResultsData(
         const result = await request;
         if (!active) return;
         if (!isCompleteView(result)) {
+          // Drop any stored page too: whatever made this response unshowable
+          // (an old contract, a row without truth) is at least as likely to be
+          // sitting in the cache written by an earlier response.
+          clearMatchCache(cacheToken);
           throw new ApiError(
             502,
             'MATCH_CONTRACT_MISMATCH',
@@ -279,6 +277,22 @@ export function useResultsData(
         });
       } catch (caught) {
         if (!active || isAbort(caught)) return;
+        // A dead cursor is recoverable exactly once, and only from a later
+        // page: the snapshot it points at is gone, so the fix is to drop it
+        // and start over rather than surface an error the user cannot act on.
+        // Guarded against looping — a page-1 request carries no cursor, so the
+        // same code arriving there means something else is wrong and the
+        // error is shown.
+        if (
+          caught instanceof ApiError
+          && (caught.code === 'MATCH_CURSOR_INVALID' || caught.code === 'MATCH_CURSOR_EXPIRED')
+          && page > 1
+        ) {
+          cursorsRef.current.byPage.clear();
+          clearMatchCache(cacheToken);
+          onCursorReset?.();
+          return;
+        }
         if (interimPainted) {
           setRefineFailed(true);
         } else {
@@ -300,7 +314,11 @@ export function useResultsData(
       active = false;
       controller.abort();
     };
-  }, [profile, semanticRerank, view, page, requestKey, t]);
+    // onCursorReset is in the deps because the effect calls it: leaving it out
+    // captures whichever instance existed at mount, which is the classic stale
+    // closure. Callers pass a stable (useCallback) reference, so listing it
+    // does not cause a refetch.
+  }, [profile, semanticRerank, view, page, requestKey, t, onCursorReset]);
 
   return {
     data, setData, loading, error, showSlowHint, paginationReady, refining, refined, refineFailed,

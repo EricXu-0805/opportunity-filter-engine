@@ -11,10 +11,24 @@ export type FieldKey =
   | 'missing_deadline'
   | 'missing_skills';
 
+/**
+ * Which population a quality snapshot describes.
+ *
+ * Before `reviewed-record-kind-v1`, every record that was not
+ * `faculty_research` counted as a listing, so unreviewed rows inflated
+ * `listing_total` and every listing defect counter. An older payload carries
+ * `listing_total` too, which is why the marker — not the field's presence —
+ * is what decides whether two snapshots may be compared.
+ */
+export const QUALITY_SCOPE = 'reviewed-record-kind-v1';
+
 export interface SourceRow {
   source: string;
   total: number;
   listing_total?: number;
+  faculty_contacts?: number;
+  /** Records whose type nobody has reviewed: not a listing, not a contact. */
+  unreviewed_record_kind?: number;
   empty_majors?: number;
   empty_keywords?: number;
   empty_description?: number;
@@ -38,7 +52,14 @@ export interface WorstField {
 
 export interface AdminResponse {
   total: number;
+  /** Absent on a legacy response — see QUALITY_SCOPE. */
+  quality_scope?: string;
   global: Record<string, number>;
+  faculty_contacts_quality?: Record<string, number>;
+  unreviewed_record_kind?: {
+    total: number;
+    by_source: Record<string, number>;
+  };
   sources: SourceRow[];
   worst_fields: WorstField[];
   generated_at: string;
@@ -48,7 +69,10 @@ export interface AdminResponse {
 export interface HistoryEntry {
   t: string;
   total: number;
+  quality_scope?: string;
   listing_total?: number;
+  faculty_contact_total?: number;
+  unreviewed_record_kind_total?: number;
   empty_majors?: number;
   empty_keywords?: number;
   missing_deadline?: number;

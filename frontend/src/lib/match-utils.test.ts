@@ -4,7 +4,6 @@ import {
   getDeadlineUrgency,
   expandSearchAliases,
   facultySafeInternational,
-  opportunityDestination,
   opportunityRecordKind,
   matchesToCSV,
   hashProfile,
@@ -117,31 +116,11 @@ describe('opportunityRecordKind', () => {
   );
 });
 
-describe('opportunityDestination', () => {
-  it('never lets a faculty application URL override the canonical profile', () => {
-    expect(opportunityDestination({
-      source_type: 'faculty_research',
-      application: { application_url: 'https://fake.example/apply' },
-      url: 'https://real.example/faculty/ada',
-      source_url: 'https://backup.example/faculty/ada',
-    })).toBe('https://real.example/faculty/ada');
-  });
-
-  it('keeps the application portal first for a real listing', () => {
-    expect(opportunityDestination({
-      source_type: 'campus_program',
-      application: { application_url: 'https://real.example/apply' },
-      url: 'https://real.example/listing',
-    })).toBe('https://real.example/apply');
-  });
-
-  it('does not treat an untyped record URL as a verified application portal', () => {
-    expect(opportunityDestination({
-      application: { application_url: 'https://fake.example/apply' },
-      url: 'https://real.example/source',
-    })).toBe('https://real.example/source');
-  });
-});
+// The opportunityDestination cases moved to target-truth.test.ts when the
+// single resolver was split into opportunityApplicationUrl /
+// opportunitySourceUrl. Each of the three properties they pinned — a faculty
+// application_url never wins, a real listing's portal does, an untyped record
+// gets no portal — is asserted there against the split pair.
 
 describe('expandSearchAliases', () => {
   it('expands known single-term abbreviation', () => {
@@ -246,11 +225,20 @@ describe('matchesToCSV', () => {
     expect(csv).not.toContain("'ML Research Assistant");
   });
 
-  it('prefers application_url over opportunity.url', () => {
+  it('prefers application_url over opportunity.url for an actionable listing', () => {
     const csv = matchesToCSV([
       makeMatch({
         source_type: 'campus_program',
         url: 'https://old-url.com',
+        target_truth: {
+          listing_state: 'open',
+          reference_only: false,
+          actionable: true,
+          accepting_state: 'accepting',
+          reason_code: null,
+          verified_at: null,
+          expires_at: null,
+        },
         application: {
           application_effort: 'low',
           requires_resume: 'yes',
@@ -261,6 +249,190 @@ describe('matchesToCSV', () => {
     ]);
     expect(csv).toContain('"https://apply-here.com"');
     expect(csv).not.toContain('old-url');
+  });
+
+  /** The Status cell of the first data row, parsed rather than searched for. */
+  function statusCell(csv: string): string {
+    const header = csv.split('\n')[0].split(',').map((c) => c.replace(/^"|"$/g, ''));
+    const index = header.indexOf('Status');
+    const row = csv.split('\n')[1];
+    // Every cell is quoted and these fixtures contain no embedded quotes.
+    return (row.match(/"((?:[^"]|"")*)"/g) ?? [])[index]?.replace(/^"|"$/g, '') ?? '';
+  }
+
+  const LIVE_TRUTH = {
+    listing_state: 'open', reference_only: false, actionable: true,
+    accepting_state: 'accepting', reason_code: null,
+    verified_at: null, expires_at: null,
+  };
+
+  it('states the unreviewed kind in its own words, on its own shape', () => {
+    // This reason belongs only to a record whose source_type is absent, so it
+    // needs a fixture without one. Carrying it on a confirmed listing is a
+    // contradiction the parser refuses — asserted in the row below.
+    const opp = {
+      title: 'Unreviewed record',
+      source_url: 'https://source-page.com',
+      deadline: '2026-09-02',
+      paid: 'stipend',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: false,
+        accepting_state: 'unknown', reason_code: 'record_kind_unverified',
+        verified_at: null, expires_at: null,
+      },
+    };
+    const csv = matchesToCSV([makeMatch(opp as never)]);
+
+    expect(statusCell(csv)).toBe('Record type unverified — not presented as an open listing');
+    expect(csv).not.toContain('stipend');
+    expect(csv).not.toContain('2026-09-02');
+    expect(csv).toContain('https://source-page.com');
+  });
+
+  it('refuses that reason on a confirmed listing', () => {
+    const csv = matchesToCSV([makeMatch({
+      source_type: 'campus_program',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: false,
+        accepting_state: 'unknown', reason_code: 'record_kind_unverified',
+        verified_at: null, expires_at: null,
+      },
+    } as never)]);
+
+    // Hiding a real listing behind copy about our own review queue is its own
+    // false claim, so the payload is unreadable rather than believed.
+    expect(statusCell(csv)).toBe('Status unverified — check the source');
+  });
+
+  it.each([
+    ['a confirmed listing', 'campus_program', 'Open listing', true],
+    ['a faculty profile', 'faculty_research', 'Faculty contact — opening not confirmed', false],
+    // An unreviewed kind cannot be actionable any more — the truth refuses it
+    // at the source — so a payload claiming otherwise is self-contradicting
+    // and reports as unverified rather than as a live record of some third
+    // type. Its canonical shape is covered in the refusal matrix below.
+    ['an unreviewed record kind', undefined, 'Status unverified — check the source', false],
+  ])('actionable %s gets its own status, and offer columns only if it is one', (
+    _label, sourceType, status, keepsOfferColumns,
+  ) => {
+    // `actionable` is not `confirmed listing`. Calling a live faculty
+    // directory row "Open" told the reader an opening exists, which the
+    // directory page never said.
+    const csv = matchesToCSV([
+      makeMatch({
+        source_type: sourceType,
+        paid: 'stipend',
+        deadline: '2026-09-02',
+        opportunity_type: 'research',
+        source_url: 'https://source-page.com',
+        target_truth: { ...LIVE_TRUTH },
+        application: {
+          application_effort: 'low',
+          requires_resume: 'yes',
+          contact_method: 'email',
+          application_url: 'https://apply-here.com',
+        },
+      } as never),
+    ]);
+
+    expect(statusCell(csv)).toBe(status);
+    // Only a confirmed listing has terms to state, and only it may hand out
+    // an application link; everything else links the source page instead.
+    expect(csv.includes('stipend')).toBe(keepsOfferColumns);
+    expect(csv.includes('2026-09-02')).toBe(keepsOfferColumns);
+    expect(csv.includes('apply-here.com')).toBe(keepsOfferColumns);
+    expect(csv.includes('source-page.com')).toBe(!keepsOfferColumns);
+  });
+
+  it.each([
+    ['closed', {
+      listing_state: 'closed', reference_only: true, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    }, 'Closed listing — no longer accepting applications'],
+    ['reference-only', {
+      listing_state: 'unknown', reference_only: true, actionable: false,
+      accepting_state: 'unknown', reason_code: 'reference_only',
+      verified_at: null, expires_at: null,
+    }, 'Reference record — not an open listing'],
+    ['faculty-not-accepting', {
+      listing_state: 'unknown', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'faculty_not_accepting',
+      verified_at: null, expires_at: null,
+    }, 'Faculty profile states not accepting undergraduates'],
+    ['inactive', {
+      listing_state: 'unknown', reference_only: false, actionable: false,
+      accepting_state: 'unknown', reason_code: 'inactive',
+      verified_at: null, expires_at: null,
+    }, 'Inactive — no longer carried in the catalog'],
+    ['malformed', { listing_state: 'open' }, 'Status unverified — check the source'],
+    ['self-contradicting', {
+      listing_state: 'closed', reference_only: false, actionable: true,
+      accepting_state: 'accepting', reason_code: null,
+      verified_at: null, expires_at: null,
+    }, 'Status unverified — check the source'],
+  ])('blanks every opening column and states the status for a %s row', (_label, truth, status) => {
+    // A spreadsheet is read months later with none of the page's context.
+    const csv = matchesToCSV([
+      makeMatch({
+        // The kind follows the reason. `faculty_not_accepting` quotes a named
+        // person's own refusal, and the backend only emits it for a
+        // `faculty_research` row — on a listing there is nobody who said it,
+        // so the payload reads as unverified and this row's expected status
+        // would be the wrong one.
+        source_type: (truth as { reason_code?: string }).reason_code === 'faculty_not_accepting'
+          ? 'faculty_research'
+          : 'campus_program',
+        paid: 'stipend',
+        deadline: '2026-09-02',
+        opportunity_type: 'research',
+        source_url: 'https://source-page.com',
+        target_truth: truth,
+        application: {
+          application_effort: 'low',
+          requires_resume: 'yes',
+          contact_method: 'email',
+          application_url: 'https://apply-here.com',
+        },
+      } as never),
+    ]);
+    expect(csv).not.toContain('stipend');
+    expect(csv).not.toContain('2026-09-02');
+    expect(csv).not.toContain('apply-here.com');
+    expect(csv).toContain('https://source-page.com');
+    // The exact cell, not a substring of the whole file: four refusals are
+    // four different facts, and a shared "no longer open" claims all of them
+    // were open once — false for a reference record, and false for a
+    // professor who never had a posting at all.
+    expect(statusCell(csv)).toBe(status);
+  });
+
+  it('exports the source page, never the apply URL, for a closed listing', () => {
+    // An exported sheet outlives the session. A closed row must not hand
+    // someone an application link under the same column heading.
+    const csv = matchesToCSV([
+      makeMatch({
+        source_type: 'campus_program',
+        url: 'https://source-page.com',
+        target_truth: {
+          listing_state: 'closed',
+          reference_only: false,
+          actionable: false,
+          accepting_state: 'not_accepting',
+          reason_code: 'listing_closed',
+          verified_at: null,
+          expires_at: null,
+        },
+        application: {
+          application_effort: 'low',
+          requires_resume: 'yes',
+          contact_method: 'email',
+          application_url: 'https://apply-here.com',
+        },
+      }),
+    ]);
+    expect(csv).not.toContain('apply-here.com');
+    expect(csv).toContain('"https://source-page.com"');
   });
 
   it('exports faculty profiles as contacts, not paid openings or apply URLs', () => {

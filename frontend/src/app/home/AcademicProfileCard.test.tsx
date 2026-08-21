@@ -65,11 +65,11 @@ afterEach(() => {
 });
 
 describe('AcademicProfileCard — school row + switcher entry', () => {
-  it('offers the Fellowship opportunity type now that it is accepted', () => {
+  it('keeps core opportunity types while hiding Fellowships', () => {
     renderCard();
     expect(screen.getByText('home.form.seekingResearch')).toBeInTheDocument();
     expect(screen.getByText('home.form.seekingInternship')).toBeInTheDocument();
-    expect(screen.getByText('home.form.seekingFellowship')).toBeInTheDocument();
+    expect(screen.queryByText('home.form.seekingFellowship')).not.toBeInTheDocument();
   });
 
   it('shows the current school name and a Change button (default uiuc)', () => {

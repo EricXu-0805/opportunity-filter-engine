@@ -14,9 +14,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/api', () => ({
   getStats: () => Promise.resolve({ total: 100, last_updated_at: '2026-04-01T00:00:00Z' }),
   parseGitHubProfile: vi.fn(),
-  // The home page mounts FeaturedFellowships once fellowships is accepted, and
-  // a partial module mock throws rather than returning undefined for a missing
-  // export — so an accepted feature takes the whole page's suite down.
+  // Keep the dormant export complete even though the release gate does not
+  // mount FeaturedFellowships on the MVP home page.
   getFeaturedFellowships: () => Promise.resolve([]),
 }));
 

@@ -33,8 +33,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
 from backend.lib import metering
+from backend.lib.release_scope import opportunity_visible_in_release
 from backend.main import app
 from backend.routes import tailor as tailor_module
+from src.evidence import is_actionable_target
 
 client = TestClient(app)
 
@@ -43,7 +45,19 @@ client = TestClient(app)
 def real_opp_id() -> str:
     by_id = data_loader.load_opportunities_by_id()
     assert by_id, "data loader should return at least one opportunity"
-    return next(iter(by_id.keys()))
+    opportunity_id = next(
+        (
+            opportunity_id
+            for opportunity_id, opportunity in by_id.items()
+            if opportunity_visible_in_release(opportunity)
+            and is_actionable_target(opportunity)
+        ),
+        None,
+    )
+    assert opportunity_id is not None, (
+        "corpus should contain at least one release-visible actionable opportunity"
+    )
+    return opportunity_id
 
 
 @pytest.fixture

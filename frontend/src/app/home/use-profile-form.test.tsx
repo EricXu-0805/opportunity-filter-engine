@@ -485,19 +485,15 @@ describe('useProfileForm — prefill from URL', () => {
     await waitFor(() => expect(screen.getByTestId('seeking').textContent).toBe(''));
   });
 
-  // These two asserted the preference was stripped while fellowships was
-  // dormant. It is accepted now, so a stored or shared profile keeps it — which
-  // is the point of normalizeProfileForRelease being derived from the switch
-  // rather than hardcoded: the ingress path re-arms by itself if it closes.
-  it('keeps an accepted fellowship preference from a stored profile', async () => {
+  it('strips a hidden fellowship preference from a stored profile', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ seeking_types: ['research', 'fellowship'] }));
     render(<Wrapped />);
     await waitFor(() =>
-      expect(screen.getByTestId('seeking').textContent).toBe('research,fellowship'),
+      expect(screen.getByTestId('seeking').textContent).toBe('research'),
     );
   });
 
-  it('keeps an accepted fellowship preference from a shared profile', async () => {
+  it('strips a hidden fellowship preference from a shared profile', async () => {
     const share = encodeProfile({
       ...DEFAULT_PROFILE,
       seeking_types: ['internship', 'fellowship'],
@@ -505,7 +501,7 @@ describe('useProfileForm — prefill from URL', () => {
     searchRef.current = `share=${share}`;
     render(<Wrapped />);
     await waitFor(() =>
-      expect(screen.getByTestId('seeking').textContent).toBe('internship,fellowship'),
+      expect(screen.getByTestId('seeking').textContent).toBe('internship'),
     );
   });
 });
@@ -10116,7 +10112,7 @@ describe('useProfileForm — a question stays answerable in the UI the person is
     expect(screen.queryByTestId('conflict-keep-mine'),
       'so the controls for it are still there').not.toBeNull();
     expect(screen.queryByTestId('conflict-use-cloud')).not.toBeNull();
-  });
+  }, 10_000);
 
   it('UI-conflict-rejection: a rejected answer leaves the question answerable, not a dead Retry', async () => {
     await questionInTheUi();

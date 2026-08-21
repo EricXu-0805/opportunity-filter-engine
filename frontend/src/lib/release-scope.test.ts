@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeProfileForRelease, RELEASE_SCOPE } from './release-scope';
+import {
+  normalizeProfileForRelease,
+  PUBLIC_RELEASE_CACHE_VERSION,
+  RELEASE_SCOPE,
+} from './release-scope';
 
 describe('MVP public release scope', () => {
   it('is exactly the accepted table, so a flip is never a side effect', () => {
@@ -16,12 +20,12 @@ describe('MVP public release scope', () => {
     expect(RELEASE_SCOPE).toEqual({
       matchAiRefine: false,
       crossSchoolMatching: true,
-      compare: true,
-      resumeRenovate: true,
-      fellowships: true,
-      roadmap: true,
-      askAi: true,
-      professorSignals: true,
+      compare: false,
+      resumeRenovate: false,
+      fellowships: false,
+      roadmap: false,
+      askAi: false,
+      professorSignals: false,
       microsoftSchoolAuth: false,
       payments: false,
       conciergePayQr: false,
@@ -52,27 +56,27 @@ describe('MVP public release scope', () => {
     expect(publicClientSource).not.toContain('amountCents: 4900');
   });
 
-  it('passes accepted preferences through untouched', () => {
-    // Both families this function guards — fellowships and cross-school
-    // matching — are accepted now, so it is a no-op by construction and there
-    // is nothing left for it to strip. It re-arms on its own the moment either
-    // switch closes, which is why the stripping stays in the source rather than
-    // being deleted as dead code.
-    //
+  it('strips hidden fellowships while preserving accepted cross-school matching', () => {
     // The enforced boundary is the server's, not this one: a client that never
     // ran this still cannot smuggle a hidden preference past
     // matches._normalized_profile (tests/test_release_scope.py). This function
     // only keeps a stale local profile from re-showing a selector.
     expect(
       normalizeProfileForRelease({
-        seeking_types: ['research', 'fellowship'],
+        seeking_types: ['research', 'fellowship', ' Fellowship ', 'FELLOWSHIP'],
         include_cross_school: true,
         major: 'Computer Science',
       }),
     ).toEqual({
-      seeking_types: ['research', 'fellowship'],
+      seeking_types: ['research'],
       include_cross_school: true,
       major: 'Computer Science',
     });
+  });
+
+  it('pins a new public cache namespace for the closed capability surface', () => {
+    expect(PUBLIC_RELEASE_CACHE_VERSION).toBe(
+      'mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2',
+    );
   });
 });

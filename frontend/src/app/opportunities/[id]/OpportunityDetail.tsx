@@ -10,6 +10,9 @@ import type { Opportunity, ProfileData } from '@/lib/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { opportunityRecordKind } from '@/lib/match-utils';
+import { canDeliverReminder } from '@/lib/reminders';
+import { targetPosture } from '@/lib/target-truth';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
@@ -83,6 +86,23 @@ export default function OpportunityDetail({
     handleShare,
   } = useOpportunityDetail(opp);
 
+  // One read, used by every action surface on this page. Historical and
+  // unverified both resolve to false: the page stays readable either way,
+  // but nothing on it may act on the target.
+  const actionable = targetPosture(opp) === 'actionable';
+  // Which body sections may exist at all. Each of the four gated below is a
+  // block of offer terms — what it pays, when it closes, who may apply, what
+  // to submit — and the sections themselves only knew `source_type`, so a
+  // closed listing rendered its full application section under a banner
+  // saying the application was closed.
+  const recordKind = opportunityRecordKind(opp);
+  const isCurrentListing = recordKind === 'listing' && actionable;
+  // A profile, not a posting. It gets the profile-shaped variants the
+  // sections already implement — a projected description, the faculty
+  // at-a-glance, the outreach block — and none of the listing ones.
+  const isActionableFaculty = recordKind === 'faculty_contact' && actionable;
+  const showsProfileOrOffer = isCurrentListing || isActionableFaculty;
+
   const description = opp.description_raw || opp.description_clean || '';
 
   return (
@@ -108,10 +128,15 @@ export default function OpportunityDetail({
               favoriteBusy={favoriteLoading || favoriteSaving}
               shareCopied={shareCopied}
               onStar={handleStar}
-              onOpenEmailModal={() => setEmailModalOpen(true)}
-              onOpenTailorModal={() => setTailorOpen(true)}
+              // Undefined, not disabled: the header renders these controls
+              // only when it has an opener, so withholding it removes them
+              // from the accessibility tree and the tab order entirely. A
+              // disabled button is still announced, still focusable, and still
+              // says the action exists.
+              onOpenEmailModal={actionable ? () => setEmailModalOpen(true) : undefined}
+              onOpenTailorModal={actionable ? () => setTailorOpen(true) : undefined}
               tailorDisabled={!ownerReady}
-              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate
+              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && actionable
                 ? () => setRenovationOpen(true)
                 : undefined}
               onShare={handleShare}
@@ -179,6 +204,10 @@ export default function OpportunityDetail({
               // user typed against untrustworthy state, or silently drop
               // it into a permanently-unretried limbo.
               writeReady={ownerReady && !interactionLoading && !interactionError && !!interaction && !statusSaving}
+              // Separate from writeReady on purpose — see the prop's comment.
+              // Notes and status stay editable for a closed listing; only
+              // scheduling a reminder the cron would skip is withheld.
+              reminderEligible={canDeliverReminder(opp, interaction)}
               t={t}
             />
             {RELEASE_SCOPE.professorSignals && (
@@ -190,24 +219,39 @@ export default function OpportunityDetail({
             )}
           </div>
 
-          <DescriptionSection description={description} t={t} />
+          {showsProfileOrOffer && <DescriptionSection description={description} t={t} />}
+          {/* Publications are the record's history and stay whatever its
+              posture is — the section already refuses anything without
+              verified attribution. */}
           <RecentWorksSection opp={opp} t={t} />
-          <AtAGlanceSection opp={opp} t={t} />
-          <EligibilitySection opp={opp} t={t} />
-          <ApplicationSection opp={opp} t={t} />
-          <ContactRevealSection opp={opp} t={t} />
+          {showsProfileOrOffer && <AtAGlanceSection opp={opp} t={t} />}
+          {/* The faculty variant of this section is deliberately narrow — it
+              hides year, major and required skills, and shows only the
+              fail-closed international answer plus an explicit citizenship
+              restriction. Those are evidenced negatives and verify-this
+              prompts, not terms of an offer, so a live profile keeps them. */}
+          {showsProfileOrOffer && <EligibilitySection opp={opp} t={t} />}
+          {showsProfileOrOffer && <ApplicationSection opp={opp} t={t} />}
+          {/* Revealing a contact is a direct action, not a display detail: it
+              re-fetches the record to obtain the address, can raise the sign-in
+              modal, and ends in a mailto. None of that belongs on a target the
+              server would refuse to draft an email about. */}
+          {actionable && <ContactRevealSection opp={opp} t={t} />}
           <KeywordsSection opp={opp} t={t} />
           <SimilarOpportunities similar={similar} t={t} />
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">
             {opp.source && <p>{t('detail.source', { source: opp.source })}</p>}
-            {(opp.metadata as { last_verified?: string } | undefined)?.last_verified && (
-              <p>{t('detail.lastVerified', { date: (opp.metadata as { last_verified?: string }).last_verified ?? '' })}</p>
+            {/* From the truth envelope, not metadata: the server stopped
+                serving metadata.last_verified once target_truth carried it,
+                and one timestamp cannot disagree with itself. */}
+            {opp.target_truth?.verified_at && (
+              <p>{t('detail.lastVerified', { date: opp.target_truth.verified_at })}</p>
             )}
           </div>
         </main>
 
-        {RELEASE_SCOPE.askAi && (
+        {RELEASE_SCOPE.askAi && actionable && (
           <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
             <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
               <OpportunityChatbot opportunity={opp} profile={profile} />
@@ -216,7 +260,7 @@ export default function OpportunityDetail({
         )}
       </div>
 
-      {RELEASE_SCOPE.askAi && (
+      {RELEASE_SCOPE.askAi && actionable && (
         <ChatDrawer
           opp={opp}
           profile={profile}
@@ -227,7 +271,12 @@ export default function OpportunityDetail({
         />
       )}
 
-      {profile && (
+      {/* Historical and unverified targets mount none of these. A closed
+          listing stays readable; drafting an email about it, tailoring a
+          résumé to it, or asking an AI how to approach it are the actions
+          that must not exist — including as a closed modal one state change
+          from opening. */}
+      {profile && actionable && (
         <ColdEmailModal
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
@@ -235,10 +284,11 @@ export default function OpportunityDetail({
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           opportunitySchool={opp.school ?? null}
+          reminderTarget={opp}
         />
       )}
 
-      {profile && (
+      {profile && actionable && (
         <TailorModal
           // Generation-qualified key (same fix as TrackerPanel above): a
           // real identity transition forces a full remount, destroying
@@ -257,7 +307,10 @@ export default function OpportunityDetail({
         />
       )}
 
-      {RELEASE_SCOPE.resumeRenovate && profile && (
+      {/* `actionable` is stated explicitly rather than left to the release
+          flag. A test that passes only because resumeRenovate is false proves
+          nothing about the day it is turned on. */}
+      {RELEASE_SCOPE.resumeRenovate && profile && actionable && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}

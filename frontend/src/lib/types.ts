@@ -95,6 +95,36 @@ export interface ProfileRequest {
 }
 
 // ── Opportunity (backend shape) ──────────────────────────────────────
+/**
+ * Whether the server says this record can still be acted on, and why not.
+ *
+ * `evidence_source` / `evidence_key` / `evidence_value` are deliberately NOT
+ * here: they name internal metadata paths, and a client that branched on them
+ * would couple itself to one collector's schema. `verified_at` / `expires_at`
+ * are state a student can read, so they do ship — either may be null, and
+ * neither is ever synthesized.
+ */
+export interface PublicTargetTruth {
+  listing_state: 'open' | 'closed' | 'unknown';
+  reference_only: boolean;
+  actionable: boolean;
+  accepting_state: 'accepting' | 'not_accepting' | 'unknown';
+  reason_code:
+    | 'listing_closed'
+    | 'reference_only'
+    // The source profile says this person is not taking undergraduates. Kept
+    // distinct from 'listing_closed' on purpose: no posting closed, and the
+    // copy a student reads must not imply one did.
+    | 'faculty_not_accepting'
+    | 'inactive'
+    // Nobody has confirmed what this record is. Not "it closed", and not a
+    // payload we failed to parse — a readable payload about an unreviewed row.
+    | 'record_kind_unverified'
+    | null;
+  verified_at: string | null;
+  expires_at: string | null;
+}
+
 export interface OpportunityEligibility {
   international_friendly: string; // "yes" | "no" | "unknown"
   preferred_year: string[];
@@ -183,6 +213,21 @@ export interface Opportunity {
   eligibility: OpportunityEligibility;
   application: OpportunityApplication;
   metadata: OpportunityMetadata;
+  // Server-stamped target truth. Optional and nullable in the type ONLY so a
+  // stale cache entry, an explicit JSON null, or an in-flight deploy still
+  // parses — absent, null and malformed all resolve to `unknown` at runtime,
+  // which suspends actions. Never treated as "actionable".
+  target_truth?: PublicTargetTruth | null;
+  /**
+   * The server's own normalization of `source_type`.
+   *
+   * Optional because an older backend does not send it, and absence is not
+   * disagreement. Present, it must equal what this build derives from the
+   * same field — `readTruth` refuses the whole payload otherwise, including
+   * when the value is not one of these three, so a renamed source type cannot
+   * become a listing on one side of a deploy and not the other.
+   */
+  record_kind?: 'listing' | 'faculty_contact' | 'unknown';
   // Match-card projection of metadata.recent_works (title/year only) — the
   // /matches card payload carries it top-level; the full record keeps the
   // complete list under metadata. The attribution status rides alongside
@@ -264,6 +309,12 @@ export interface MatchesResponse {
   next_cursor?: string | null;
   result_set_id?: string;
   contract_version?: string;
+  // Present when the backend promises every row carries a complete
+  // `target_truth` and that historical records were already filtered out.
+  // Separate from `contract_version` so the promise can ship while the wire
+  // version stays put across a split frontend/backend deploy — and readable on
+  // an empty page, which has no rows to inspect. Absent = no such promise.
+  target_truth_contract?: string;
   view_start?: number;
   // Exact server-side view metadata. Present on /matches/view.
   filtered_total?: number;

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { notFound } = vi.hoisted(() => ({
   notFound: vi.fn(() => {
@@ -12,28 +12,41 @@ import ComparePage from '@/app/compare/page';
 import FellowshipsReleaseGuard from '@/app/fellowships/layout';
 import RoadmapReleaseGuard from '@/app/roadmap/layout';
 
-// These three guards returned 404 for the whole MVP route freeze. The features
-// are accepted now, so the assertion inverts — but the guard stays in the
-// source and keeps its test, because what it protects against is a route
-// remaining reachable after a switch closes again. A guard nobody exercises is
-// how a closed feature quietly stays open.
-describe('accepted route guards let their route render', () => {
-  it('renders Fellowships instead of calling notFound', () => {
-    expect(() =>
-      FellowshipsReleaseGuard({ children: <div>rendered</div> }),
-    ).not.toThrow();
-    expect(notFound).not.toHaveBeenCalled();
+describe('hidden MTP route guards return 404 before rendering', () => {
+  beforeEach(() => {
+    notFound.mockClear();
   });
 
-  it('renders Roadmap instead of calling notFound', () => {
-    expect(() =>
-      RoadmapReleaseGuard({ children: <div>rendered</div> }),
-    ).not.toThrow();
+  it('refuses Fellowships', () => {
+    let error: unknown;
+    try {
+      FellowshipsReleaseGuard({ children: <div>rendered</div> });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({ message: 'NEXT_NOT_FOUND' });
+    expect(notFound).toHaveBeenCalledTimes(1);
   });
 
-  it('resolves Compare rather than refusing before it reads its ids', async () => {
-    await expect(
-      ComparePage({ searchParams: Promise.resolve({ ids: '' }) }),
-    ).resolves.toBeDefined();
+  it('refuses Roadmap', () => {
+    let error: unknown;
+    try {
+      RoadmapReleaseGuard({ children: <div>rendered</div> });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({ message: 'NEXT_NOT_FOUND' });
+    expect(notFound).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses Compare before it reads its ids', async () => {
+    let error: unknown;
+    try {
+      await ComparePage({ searchParams: Promise.resolve({ ids: '' }) });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({ message: 'NEXT_NOT_FOUND' });
+    expect(notFound).toHaveBeenCalledTimes(1);
   });
 });

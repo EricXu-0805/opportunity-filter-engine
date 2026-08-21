@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 const mockGetFavorites = vi.fn();
 const mockGetInteractionsFull = vi.fn();
@@ -71,6 +71,42 @@ function shortlist(
   return { opportunities, unavailableIds };
 }
 
+// The two canonical live shapes. A date, a type label and a "reminder due"
+// row are all claims about a target the product still stands behind, so a
+// fixture without a truth is not a neutral fixture — it is the non-actionable
+// case, and using it for a positive control tests the wrong thing.
+const LIVE_LISTING_TRUTH = {
+  listing_state: 'open', reference_only: false, actionable: true,
+  accepting_state: 'accepting', reason_code: null,
+  verified_at: null, expires_at: null,
+} as const;
+
+// A directory page states no listing and no acceptance, so both are unknown —
+// never the (open, accepting) pair a confirmed listing carries.
+const LIVE_FACULTY_TRUTH = {
+  listing_state: 'unknown', reference_only: false, actionable: true,
+  accepting_state: 'unknown', reason_code: null,
+  verified_at: null, expires_at: null,
+} as const;
+
+function liveListing(fields: Record<string, unknown>): Record<string, unknown> {
+  return {
+    source_type: 'campus_program',
+    record_kind: 'listing',
+    target_truth: { ...LIVE_LISTING_TRUTH },
+    ...fields,
+  };
+}
+
+function liveFaculty(fields: Record<string, unknown>): Record<string, unknown> {
+  return {
+    source_type: 'faculty_research',
+    record_kind: 'faculty_contact',
+    target_truth: { ...LIVE_FACULTY_TRUTH },
+    ...fields,
+  };
+}
+
 /** Never resolves — leaves the page pinned in its loading state. */
 function pending<T>(): Promise<T> {
   return new Promise<T>(() => {});
@@ -97,6 +133,14 @@ afterEach(() => {
 });
 
 describe('DashboardPage — personal metrics', () => {
+  it('does not mount hidden Professor Updates or the Roadmap CTA', async () => {
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('0'));
+    expect(screen.queryByTestId('professor-updates-section')).not.toBeInTheDocument();
+    expect(screen.queryByText('dashboard.roadmapCta.title')).not.toBeInTheDocument();
+  });
+
   it('shows the saved count and tracker funnel, with no whole-database stats', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'fav-2']));
     mockGetInteractionsFull.mockResolvedValue(new Map([
@@ -124,26 +168,26 @@ describe('DashboardPage — personal metrics', () => {
     mockGetFavorites.mockResolvedValue(new Set(['exact', 'estimated', 'unknown-precision']));
     mockGetInteractionsFull.mockResolvedValue(new Map());
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
-      {
+      liveListing({
         id: 'estimated',
         title: 'Estimated Deadline Lab',
         organization: 'Org B',
         deadline: isoDateIn(5),
         deadline_is_estimate: true,
-      },
-      {
+      }),
+      liveListing({
         id: 'exact',
         title: 'Exact Deadline Lab',
         organization: 'Org A',
         deadline: isoDateIn(3),
         deadline_is_estimate: false,
-      },
-      {
+      }),
+      liveListing({
         id: 'unknown-precision',
         title: 'Unknown Precision Lab',
         organization: 'Org C',
         deadline: isoDateIn(9),
-      },
+      }),
     ]));
 
     render(<DashboardPage />);
@@ -168,20 +212,18 @@ describe('DashboardPage — personal metrics', () => {
     mockGetFavorites.mockResolvedValue(new Set(['faculty-1', 'listing-1']));
     mockGetInteractionsFull.mockResolvedValue(new Map());
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
-      {
+      liveFaculty({
         id: 'faculty-1',
         title: 'Faculty Contact Profile',
-        source_type: 'faculty_research',
         deadline: isoDateIn(1),
         deadline_is_estimate: false,
-      },
-      {
+      }),
+      liveListing({
         id: 'listing-1',
         title: 'Real Listing',
-        source_type: 'campus_program',
         deadline: isoDateIn(4),
         deadline_is_estimate: false,
-      },
+      }),
     ]));
 
     render(<DashboardPage />);
@@ -193,8 +235,8 @@ describe('DashboardPage — personal metrics', () => {
   it('never lets a non-favorite record leak into the saved-deadline list', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
-      { id: 'fav-1', title: 'My Favorite', deadline: isoDateIn(4), deadline_is_estimate: false },
-      { id: 'intruder', title: 'Global Record', deadline: isoDateIn(2), deadline_is_estimate: false },
+      liveListing({ id: 'fav-1', title: 'My Favorite', deadline: isoDateIn(4), deadline_is_estimate: false }),
+      liveListing({ id: 'intruder', title: 'Global Record', deadline: isoDateIn(2), deadline_is_estimate: false }),
     ]));
 
     render(<DashboardPage />);
@@ -211,7 +253,7 @@ describe('DashboardPage — personal metrics', () => {
       ['opp-a', { type: 'applied', notes: 'emailed PI', remind_at: isoDateIn(2) }],
     ]));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
-      { id: 'opp-a', title: 'Tracked Lab', organization: 'Org', opportunity_type: 'research' },
+      liveListing({ id: 'opp-a', title: 'Tracked Lab', organization: 'Org', opportunity_type: 'research' }),
     ]));
 
     render(<DashboardPage />);
@@ -320,10 +362,18 @@ describe('DashboardPage — honest empty and error states', () => {
     await waitFor(() => {
       expect(screen.getByText('dashboard.reminders.detailsUnavailable')).toBeInTheDocument();
     });
-    // Status funnel and reminder countdown come from the tracker itself
-    // (label appears on the stat card and the tracked-row chip).
+    // The status funnel still comes from the tracker itself — that is the
+    // student's own record and does not depend on the corpus.
     expect(screen.getAllByText('tracker.status.applied').length).toBeGreaterThan(1);
-    expect(screen.getByText('dashboard.reminders.tomorrow')).toBeInTheDocument();
+    // But NOT a due label. With the batch lookup down, no target's posture is
+    // known, and the cron fails closed on exactly that — so "Due tomorrow"
+    // would promise a notification nothing is going to send. It becomes a
+    // needs-review line with a real link to the tracker.
+    expect(screen.queryByText('dashboard.reminders.tomorrow')).toBeNull();
+    expect(screen.queryByText('dashboard.reminders.today')).toBeNull();
+    const note = screen.getByTestId('dashboard-reminders-needs-review');
+    expect(note).toHaveTextContent('dashboard.reminders.needsReview');
+    expect(within(note).getByRole('link')).toHaveAttribute('href', '/tracker');
   });
 });
 
@@ -400,7 +450,7 @@ describe('DashboardPage — unresolvable saved and tracked ids', () => {
   it('reports saved deadlines that could not be loaded instead of dropping them', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'gone-1', 'gone-2']));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist(
-      [{ id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false }],
+      [liveListing({ id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false })],
       ['gone-1', 'gone-2'],
     ));
 
@@ -455,7 +505,7 @@ describe('DashboardPage — unresolvable saved and tracked ids', () => {
   it('shows no unavailable note when everything resolved', async () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
-      { id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false },
+      liveListing({ id: 'fav-1', title: 'Live Lab', deadline: isoDateIn(3), deadline_is_estimate: false }),
     ]));
 
     render(<DashboardPage />);
@@ -464,6 +514,130 @@ describe('DashboardPage — unresolvable saved and tracked ids', () => {
       expect(screen.getByText('Live Lab')).toBeInTheDocument();
     });
     expect(screen.queryAllByTestId('dashboard-unavailable-note')).toHaveLength(0);
+    expect(screen.queryByTestId('dashboard-reminders-needs-review')).toBeNull();
+  });
+});
+
+describe('DashboardPage — a reminder is only "due" if it will actually be sent', () => {
+  const LIVE_TRUTH = {
+    listing_state: 'open', reference_only: false, actionable: true,
+    accepting_state: 'accepting', reason_code: null,
+    verified_at: null, expires_at: null,
+  };
+  const CLOSED_TRUTH = {
+    listing_state: 'closed', reference_only: false, actionable: false,
+    accepting_state: 'not_accepting', reason_code: 'listing_closed',
+    verified_at: null, expires_at: null,
+  };
+
+  it('five undeliverable reminders never hide the one that will fire', async () => {
+    // The slice used to happen before the partition, so five dead rows at
+    // the top pushed the only live one off a five-item preview — the
+    // student's real next action, hidden by rows that assert notifications
+    // nothing will send.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['dead-1', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['dead-2', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['dead-3', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['dead-4', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['dead-5', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['live-1', { type: 'applied', remind_at: isoDateIn(1) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      ...['dead-1', 'dead-2', 'dead-3', 'dead-4', 'dead-5'].map((id) => ({
+        id, title: `Closed ${id}`, source_type: 'campus_program',
+        record_kind: 'listing', target_truth: { ...CLOSED_TRUTH },
+      })),
+      {
+        id: 'live-1', title: 'Live Lab', source_type: 'campus_program',
+        record_kind: 'listing', target_truth: { ...LIVE_TRUTH },
+      },
+    ]));
+
+    render(<DashboardPage />);
+
+    // Asserted through the reminder labels, not the titles: every one of
+    // these rows also appears in the tracked-opportunities section below,
+    // which is correct — the tracker keeps them — so a title match cannot
+    // tell the two sections apart. The five dead reminders are due today and
+    // the live one tomorrow, so the labels are unambiguous.
+    await waitFor(() =>
+      expect(screen.getByText('dashboard.reminders.tomorrow')).toBeInTheDocument());
+    expect(screen.queryByText('dashboard.reminders.today')).toBeNull();
+    // "N pending" counts what will actually be delivered, not what is stored.
+    expect(screen.getByText('dashboard.reminders.pending {"count":1}')).toBeInTheDocument();
+    const note = screen.getByTestId('dashboard-reminders-needs-review');
+    expect(note).toHaveTextContent('dashboard.reminders.needsReview');
+    expect(within(note).getByRole('link')).toHaveAttribute('href', '/tracker');
+  });
+
+  it.each([
+    ['a successful lookup', false],
+    ['a lookup that fails wholesale', true],
+  ])('keeps a dismissed target hidden through %s, while a rejected one stays visible', async (_label, lookupFails) => {
+    // 'dismissed' is the hide-everywhere status. Tracker excludes it from
+    // every column and collectReminders drops it — but this section rebuilt
+    // its rows straight from the raw interactions map, in BOTH the success
+    // path and the catch, so a target the student explicitly put away came
+    // back on the page they see first. The lib-level filter cannot catch
+    // that; only rendering the section can.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['gone-1', { type: 'dismissed', notes: 'DISMISSED NOTE', remind_at: isoDateIn(0) }],
+      ['rej-1', { type: 'rejected', notes: 'REJECTED NOTE', remind_at: isoDateIn(0) }],
+    ]));
+    if (lookupFails) {
+      mockGetShortlistOpportunities.mockRejectedValue(new Error('batch endpoint down'));
+    } else {
+      mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+        { id: 'gone-1', title: 'DISMISSED LAB', source_type: 'campus_program',
+          record_kind: 'listing', target_truth: { ...LIVE_TRUTH } },
+        { id: 'rej-1', title: 'REJECTED LAB', source_type: 'campus_program',
+          record_kind: 'listing', target_truth: { ...LIVE_TRUTH } },
+      ]));
+    }
+
+    render(<DashboardPage />);
+
+    // Exactly one tracked row survives. The row renders a sticky-note marker
+    // rather than the note text, and in the failed-lookup branch it has no
+    // title either, so the marker is the one signal present in both.
+    await waitFor(() => expect(
+      screen.getAllByLabelText('dashboard.trackerSection.hasNotes'),
+    ).toHaveLength(1));
+    // Nothing of the dismissed row, in any section.
+    expect(screen.queryByText('DISMISSED LAB')).toBeNull();
+    expect(screen.queryByText('tracker.status.dismissed')).toBeNull();
+    // The rejected row is visible and needs review — never due.
+    expect(screen.getByTestId('dashboard-reminders-needs-review'))
+      .toHaveTextContent('dashboard.reminders.needsReview {"count":1}');
+    expect(screen.queryByText('dashboard.reminders.today')).toBeNull();
+    expect(screen.queryByText('dashboard.reminders.pending {"count":1}')).toBeNull();
+  });
+
+  it('a rejected row on a live listing counts as needing review, never as due', async () => {
+    // Actionable target, undeliverable status: the cron's query selects
+    // contacted/applied/replied/interviewing and nothing else.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-a', { type: 'rejected', remind_at: isoDateIn(0) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      {
+        id: 'opp-a', title: 'Rejected Lab', source_type: 'campus_program',
+        record_kind: 'listing', target_truth: { ...LIVE_TRUTH },
+      },
+    ]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('dashboard-reminders-needs-review')).toBeInTheDocument());
+    expect(screen.queryByText('dashboard.reminders.today')).toBeNull();
+    // And not swallowed by "No reminders set" — the student has one, it just
+    // is not going to fire.
+    expect(screen.queryByText('dashboard.reminders.emptyTitle')).toBeNull();
   });
 });
 

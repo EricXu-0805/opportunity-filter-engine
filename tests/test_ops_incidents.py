@@ -1182,6 +1182,21 @@ def _install_cron_stubs(monkeypatch, *, webpush_impl=None, open_keys=(), calls=N
 
     from backend.routes import push as push_mod
 
+    # Incident tests deliberately reach the delivery path. Keep that target
+    # visibly in release scope instead of depending on the assembled corpus.
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            _DUE["opportunity_id"]: {
+                "id": _DUE["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+        },
+    )
+
     class _Client:
         def __init__(self, *a, **k):
             pass

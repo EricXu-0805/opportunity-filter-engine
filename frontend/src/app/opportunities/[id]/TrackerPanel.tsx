@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BellRing, StickyNote } from 'lucide-react';
 import type { InteractionRecord } from '@/lib/supabase';
 import type { SaveDetailsResult } from './use-opportunity-detail';
@@ -41,6 +41,18 @@ export function TrackerPanel({
    *  'abandoned' with no UI path back to retry it. Defaults to true so
    *  existing callers/tests that don't pass it are unaffected. */
   writeReady = true,
+  /** Whether the reminders cron would actually send for this row — the
+   *  target still actionable AND the status one it selects. Deliberately
+   *  SEPARATE from writeReady: folding it in there would disable notes and
+   *  the whole panel for a closed listing, which is the student's own record
+   *  and must stay editable. What it gates is only scheduling: for anything
+   *  else, the date input would accept a value, persist it, and then nothing
+   *  would ever fire.
+   *
+   *  REQUIRED, with no default. A default of `true` means a caller that
+   *  forgets it silently re-opens the exact control this exists to close;
+   *  every call site has to make the decision explicitly. */
+  reminderEligible,
   t,
 }: {
   detail: InteractionRecord | null;
@@ -48,6 +60,7 @@ export function TrackerPanel({
   opportunityId: string;
   hasInteraction: boolean;
   writeReady?: boolean;
+  reminderEligible: boolean;
   t: TFunc;
 }) {
   const [open, setOpen] = useState(!!(detail?.notes || detail?.remind_at));
@@ -114,8 +127,43 @@ export function TrackerPanel({
     if (saveStatus === 'error') { setSaveStatus('idle'); lastFailedPatchRef.current = null; }
     setNotes(value);
   }
+  // Read at execution time, not captured. A date can be picked while the row
+  // is still eligible and then land after the student marks it rejected — the
+  // 600ms debounce is long enough for exactly that — and a failed non-null
+  // save can be retried after eligibility is gone. Both must refuse.
+  //
+  // useLayoutEffect, not useEffect: a passive effect runs after paint, so a
+  // Retry clicked in the window between the new prop committing and the
+  // effect flushing would read the OLD answer and replay a write the page has
+  // already decided against. Layout effects run before the browser can
+  // deliver that click.
+  const reminderEligibleRef = useRef(reminderEligible);
+  useLayoutEffect(() => {
+    reminderEligibleRef.current = reminderEligible;
+    if (reminderEligible) return;
+    // Withdraw anything that could still write a date, in the same commit the
+    // answer changes — not on the next debounce tick. A Retry offering to
+    // replay a date-only patch that can no longer be accepted is a control
+    // whose only possible outcome is to fail again; a mixed patch keeps its
+    // notes half and stays retryable.
+    setRemindAt(remindAtBaselineRef.current);
+    const failed = lastFailedPatchRef.current;
+    if (failed && failed.remind_at != null) {
+      const { remind_at: _dropped, ...rest } = failed;
+      if (Object.keys(rest).length === 0) {
+        lastFailedPatchRef.current = null;
+        setSaveStatus('idle');
+      } else {
+        lastFailedPatchRef.current = rest;
+      }
+    }
+  }, [reminderEligible]);
+
   function handleRemindAtChange(value: string) {
     if (!writeReady) return;
+    // Clearing is always allowed: dropping a date the student set is never
+    // the thing this gate exists to prevent. Setting one is.
+    if (value && !reminderEligibleRef.current) return;
     draftRevisionRef.current += 1;
     if (saveStatus === 'error') { setSaveStatus('idle'); lastFailedPatchRef.current = null; }
     setRemindAt(value);
@@ -148,6 +196,30 @@ export function TrackerPanel({
         setSaveStatus('idle'); // nothing to save — clear a stale 'saving' left over from before the draft matched baseline again
         return;
       }
+    }
+    // ONE gate, on the fully-constructed patch, whichever path built it.
+    // Checking the override alone left the debounced path open: a date picked
+    // while the row was eligible is assembled here 600ms later, by which time
+    // the student may have marked it rejected. A DOM-level hide never sees
+    // that timer, and Retry replays a patch built under the old answer.
+    //
+    // Only a non-null remind_at is refused. A notes-only patch is unaffected,
+    // and clearing an existing reminder (null) is always allowed — dropping a
+    // date the student set is never what this prevents.
+    if (patch.remind_at != null && !reminderEligibleRef.current) {
+      delete patch.remind_at;
+      // The draft goes back to what is actually persisted. Leaving the picked
+      // date on screen while refusing to write it is the worst outcome of the
+      // three: the student sees their date, sees "Saved", and has neither.
+      setRemindAt(remindAtBaselineRef.current);
+      lastFailedPatchRef.current = null;
+    }
+    // Emptiness is decided on the patch, not on the dirty flags that built
+    // it. Reading the flags meant a refused reminder still counted as a
+    // change, so onSave({}) went out and reported Saved for nothing.
+    if (Object.keys(patch).length === 0) {
+      setSaveStatus('idle');
+      return;
     }
     const myRevision = draftRevisionRef.current;
     setSaveStatus('saving');
@@ -199,8 +271,10 @@ export function TrackerPanel({
     setSaveStatus('saving');
     const timer = setTimeout(() => { void attemptSave(); }, 600);
     return () => clearTimeout(timer);
+    // reminderEligible is a dep so losing eligibility tears down a debounce
+    // that was scheduled while the row still had it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, remindAt, hasInteraction, writeReady]);
+  }, [notes, remindAt, hasInteraction, writeReady, reminderEligible]);
 
   const hasContent = !!(notes || remindAt);
 
@@ -220,9 +294,21 @@ export function TrackerPanel({
           <span className="ml-auto text-[11px] text-gray-400">
             {notes && <span>{notes.length > 40 ? notes.slice(0, 40) + '…' : notes}</span>}
             {remindAt && (
-              <span className="ml-2 inline-flex items-center gap-1 text-amber-600">
+              // Collapsed, the amber bell and a date read as "this is
+              // scheduled" — and the warning only existed once expanded, which
+              // is the state a student scanning the page never enters. The
+              // date stays (it is theirs); the colour drops to neutral and the
+              // sentence comes with it.
+              <span
+                className={`ml-2 inline-flex items-center gap-1 ${
+                  reminderEligible ? 'text-amber-600' : 'text-gray-400'
+                }`}
+              >
                 <BellRing className="w-3 h-3" aria-hidden="true" />
                 {remindAt}
+                {!reminderEligible && (
+                  <span className="ml-1">{t('tracker.reminderWontSend')}</span>
+                )}
               </span>
             )}
           </span>
@@ -321,13 +407,22 @@ export function TrackerPanel({
           <label className="flex items-center gap-2 text-[12px] text-gray-600">
             <BellRing className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
             <span className="font-medium">{t('detail.tracker.remindLabel')}</span>
-            <input
-              type="date"
-              value={remindAt}
-              onChange={(e) => handleRemindAtChange(e.target.value)}
-              disabled={!writeReady}
-              className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60 disabled:cursor-wait"
-            />
+            {/* Absent, not disabled, when nothing would be delivered: a
+                disabled date input still says "you may schedule one here,
+                later". An existing date stays readable, and its Clear stays
+                live — the student set that reminder, and dropping it is
+                always allowed. */}
+            {reminderEligible ? (
+              <input
+                type="date"
+                value={remindAt}
+                onChange={(e) => handleRemindAtChange(e.target.value)}
+                disabled={!writeReady}
+                className="px-2 py-1 text-[12px] bg-white border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:opacity-60 disabled:cursor-wait"
+              />
+            ) : remindAt ? (
+              <span className="px-2 py-1 text-[12px] text-gray-500">{remindAt}</span>
+            ) : null}
             {remindAt && (
               <button
                 type="button"
@@ -337,6 +432,13 @@ export function TrackerPanel({
               >
                 {t('common.clear')}
               </button>
+            )}
+            {!reminderEligible && (
+              <span className="text-[11px] text-gray-400">
+                {t(remindAt
+                  ? 'tracker.reminderWontSend'
+                  : 'tracker.reminderUnavailable')}
+              </span>
             )}
           </label>
           {hasInteraction && (

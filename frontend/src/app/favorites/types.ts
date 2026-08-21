@@ -1,7 +1,7 @@
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch } from '@/lib/saved-searches';
 import { humanizeTime } from '@/lib/humanize-time';
-import type { FacultyAvailabilityStatus } from '@/lib/types';
+import type { FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
 
 export interface Opp {
   id: string;
@@ -12,8 +12,16 @@ export interface Opp {
   paid?: string;
   location?: string;
   url?: string;
+  // The page the collector actually read. A historical record may carry only
+  // this, so a card that reads `url` alone can end up keeping the card while
+  // losing the one link it is still allowed to offer.
+  source_url?: string;
   source?: string;
   source_type?: string;
+  // Carried through the saved-view projection: a target can close after it was
+  // favorited, and the card gates its actions on this. Absent/null resolves to
+  // `unknown`, which suspends them.
+  target_truth?: PublicTargetTruth | null;
   faculty_availability_status?: FacultyAvailabilityStatus;
   school?: string;
   on_campus?: boolean | null;
@@ -58,7 +66,11 @@ export function customImportToOpp(c: CustomImport): Opp {
     opportunity_type: oppType,
     paid,
     location: e.location || undefined,
-    url: e.url || e.source_url || undefined,
+    // Kept as two distinct fields rather than collapsed into `url`: every
+    // reader goes through opportunitySourceUrl, which prefers source_url, and
+    // flattening them here would silently hand it the display link instead.
+    url: e.url || undefined,
+    source_url: e.source_url || undefined,
     source: undefined,
     on_campus: onCampus,
     deadline: e.deadline || undefined,

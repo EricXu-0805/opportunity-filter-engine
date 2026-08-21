@@ -10,7 +10,12 @@ import type { MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { MATCH_VIEW_CONTRACT_VERSION, readMatchCache, writeMatchCache as writeMatchCacheRaw } from '@/lib/match-cache';
+import {
+  MATCH_VIEW_CONTRACT_VERSION,
+  TARGET_TRUTH_CONTRACT,
+  readMatchCache,
+  writeMatchCache as writeMatchCacheRaw,
+} from '@/lib/match-cache';
 
 const mocks = vi.hoisted(() => ({ getMatchView: vi.fn(), trackOnce: vi.fn() }));
 vi.mock('@/lib/api', async () => {
@@ -68,6 +73,21 @@ function response(id: string): MatchesResponse {
         title: id,
         organization: 'Test University',
         opportunity_type: 'research',
+        // A confirmed listing. An unreviewed source_type is no longer
+        // actionable, so a fixture without one would make every page here a
+        // page of dead rows and the loader would refuse it for that reason.
+        source_type: 'campus_program',
+        record_kind: 'listing',
+        // Live rows carry a truth; without one the cache refuses the page.
+        target_truth: {
+          listing_state: 'open',
+          reference_only: false,
+          actionable: true,
+          accepting_state: 'accepting',
+          reason_code: null,
+          verified_at: null,
+          expires_at: null,
+        },
         paid: 'unknown',
         location: '',
         on_campus: true,
@@ -96,6 +116,7 @@ function response(id: string): MatchesResponse {
     next_cursor: null,
     result_set_id: `set-${id}`,
     contract_version: MATCH_VIEW_CONTRACT_VERSION,
+    target_truth_contract: TARGET_TRUTH_CONTRACT,
     view_start: 0,
     filtered_total: 1,
     view_counts: {

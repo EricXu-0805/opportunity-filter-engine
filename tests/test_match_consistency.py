@@ -68,6 +68,10 @@ def _opp(ident, **overrides):
         "organization": "Test University",
         "on_campus": True,
         "opportunity_type": "research",
+        # A reviewed source type, because every served record has one and an
+        # unreviewed one is no longer actionable. Without it these fixtures
+        # describe the 26-row exception rather than the corpus.
+        "source_type": "campus_program",
         "paid": "yes",
         "is_rolling": True,
         "school": "uiuc",
@@ -290,13 +294,28 @@ class TestExplainServesTheListConclusion:
         monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
         m_module._match_snapshots.clear()
 
-        body = client.post(
+        response = client.post(
             "/api/matches/faculty-source-negative/explain",
             json=_profile(),
-        ).json()
-        assert body["in_results"] is False
-        assert body["excluded_reason"] == reason
-        assert gap_text in body["reasons_gap"][0].lower()
+        )
+
+        # CONTRACT CHANGE, deliberate: this used to answer 200 with
+        # `in_results: false` and an explanation. The target-truth guard now
+        # refuses the endpoint outright, the same way it already refused it for
+        # a closed listing — explain accepts `?llm=true` and is a paid call, so
+        # the refusal has to come before the work, and one endpoint answering
+        # "here is why not" for one dead reason while refusing the other three
+        # is the inconsistency this contract exists to remove.
+        #
+        # What must NOT change is the precision: the student is told the source
+        # says this person is not accepting undergraduates, never a blurred
+        # "closed" or "unavailable".
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert detail["code"] == "TARGET_NOT_ACTIONABLE"
+        assert detail["reason"] == reason
+        assert detail["retryable"] is False
+        assert gap_text in detail["message"].lower()
 
     def test_matcher_version_served_and_stable(self, snapshot_env):
         listing = client.post("/api/matches", json=_profile()).json()
@@ -808,7 +827,11 @@ class TestServerMatchView:
         first = response_pages[0]
         assert first["filtered_total"] == len(expected)
         assert first["view_counts"]["all"] == len(expected)
+        # Stage 1: the wire version is deliberately unchanged so a still-running
+        # old frontend keeps working. The target-truth promise travels as its
+        # own marker, present on every page including an empty one.
         assert first["contract_version"] == "match-view-v3-faculty-trust"
+        assert all(page["target_truth_contract"] == "target-truth-v2" for page in response_pages)
         assert all(page["result_set_id"] == first["result_set_id"] for page in response_pages)
         assert all(page["view_id"] == first["view_id"] for page in response_pages)
 
@@ -1376,8 +1399,18 @@ class TestOpportunitiesSurfaceConsistency:
         ids = [o["id"] for o in body["opportunities"]]
         assert "m-retired" not in ids
         assert body["total"] == len(ids) == 2
-        # Saved links keep working: direct id fetch still resolves.
-        detail = client.get("/api/opportunities/m-retired")
+        # Saved links keep working: direct id fetch still resolves. Asked with
+        # the current release scope because the rollout bridge serves a
+        # historical record only to a client that has declared it can read a
+        # target truth; what is under test here is that the record resolves at
+        # all, not which clients may read it.
+        detail = client.get(
+            "/api/opportunities/m-retired",
+            params={
+                "_release_scope":
+                    "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+            },
+        )
         assert detail.status_code == 200
 
     def test_upcoming_excludes_inactive_and_tie_breaks_by_id(self, browse_corpus):
@@ -1391,3 +1424,264 @@ class TestOpportunitiesSurfaceConsistency:
         body = client.get("/api/opportunities/a-active/similar?limit=1").json()
         assert len(body["opportunities"]) <= 1
         assert body["total"] >= len(body["opportunities"])
+
+
+TRUTH_KEYS = {
+    "listing_state", "reference_only", "actionable", "accepting_state",
+    "reason_code", "verified_at", "expires_at",
+}
+
+# One record per way a target can be dead, alongside two live ones. Built
+# here rather than sampled from the served corpus: a shard refresh changes
+# which shapes happen to be present, and a test that quietly stops covering
+# `reference_only` because the data moved is worse than no test.
+_DEAD_SHAPES = {
+    "m-closed": {"metadata": {"is_active": True, "urap_status": "closed"}},
+    "m-reference": {"metadata": {"is_active": True, "reference_only": True}},
+    "m-inactive": {"metadata": {"is_active": False}},
+    "m-faculty-stop": {
+        "source_type": "faculty_research",
+        "description_raw": "I am not currently accepting undergraduate students.",
+        "metadata": {"is_active": True},
+    },
+    # Nobody has reviewed what this is, and it looks exactly like a live paid
+    # on-campus listing in every field a surface might read. The truth is the
+    # only thing standing between it and the ranked universe.
+    "m-unreviewed": {
+        "source_type": None,
+        "paid": "yes",
+        "on_campus": True,
+        "is_rolling": True,
+        "deadline": "2099-12-31",
+        "deadline_is_estimate": False,
+        "posted_date": "2099-01-01",
+        "eligibility": {
+            "preferred_year": ["sophomore"],
+            "majors": ["CS"],
+            "skills_required": ["Python"],
+            "international_friendly": "yes",
+        },
+        "application": {"application_url": "https://example.edu/unreviewed/apply"},
+        "metadata": {"is_active": True},
+    },
+}
+LIVE_IDS = ["opp-00", "opp-01"]
+
+
+@pytest.fixture
+def mixed_corpus(monkeypatch):
+    """Two live records and one of every non-actionable shape."""
+    corpus = [_opp(ident) for ident in LIVE_IDS]
+    corpus += [_opp(ident, **overrides) for ident, overrides in _DEAD_SHAPES.items()]
+    by_id = {o["id"]: o for o in corpus}
+    ranker_state = (
+        ranker._corpus_ref,
+        ranker._corpus_rows,
+        ranker._static_cache,
+        ranker._sim_matrix,
+        dict(ranker._kw_word_res),
+    )
+    monkeypatch.setattr(
+        m_module, "load_opportunities_generation", lambda: (corpus, "mixed-fixture"),
+    )
+    monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+    ranker.register_corpus(corpus)
+    m_module._match_snapshots.clear()
+    yield corpus
+    m_module._match_snapshots.clear()
+    with ranker.corpus_generation_lock:
+        (
+            ranker._corpus_ref,
+            ranker._corpus_rows,
+            ranker._static_cache,
+            ranker._sim_matrix,
+            old_keyword_res,
+        ) = ranker_state
+        ranker._kw_word_res.clear()
+        ranker._kw_word_res.update(old_keyword_res)
+
+
+def _view_body(**view):
+    return {
+        "profile": _profile(),
+        "view": {"today": "2026-08-20", **view},
+        "page_size": 50,
+    }
+
+
+class TestMatchResponsesAttestToTheirOwnContract:
+    """What a client is entitled to assume, asserted at the endpoint.
+
+    A response carrying the marker is a promise: every row has a complete
+    target truth and every historical record has already been removed. The
+    frontend's shared validator refuses any page that fails this, so a backend
+    that stamped the marker onto a page it had not filtered would take the
+    whole Results view down rather than degrade quietly.
+    """
+
+    def test_a_normal_page_states_both_versions(self, mixed_corpus):
+        body = client.post("/api/matches", json=_profile()).json()
+
+        assert body["contract_version"] == "match-page-v3-faculty-trust"
+        assert body["target_truth_contract"] == "target-truth-v2"
+
+    def test_the_view_endpoint_states_its_own_wire_version_and_the_same_marker(
+        self, mixed_corpus,
+    ):
+        body = client.post("/api/matches/view", json=_view_body()).json()
+
+        assert body["contract_version"] == "match-view-v3-faculty-trust"
+        assert body["target_truth_contract"] == "target-truth-v2"
+
+    @pytest.mark.parametrize("path", ["/api/matches", "/api/matches/view"])
+    def test_every_row_carries_a_complete_actionable_truth(self, path, mixed_corpus):
+        body = (
+            client.post(path, json=_view_body()).json()
+            if path.endswith("/view")
+            else client.post(path, json=_profile()).json()
+        )
+
+        assert body["results"], "the fixture has live records to return"
+        for row in body["results"]:
+            opportunity = row["opportunity"]
+            truth = opportunity.get("target_truth")
+            assert truth is not None, row["opportunity_id"]
+            # Exactly seven: a missing key breaks the client's parser, and an
+            # extra one means an internal evidence pointer rode along.
+            assert set(truth) == TRUTH_KEYS, row["opportunity_id"]
+            assert truth["actionable"] is True, row["opportunity_id"]
+            # The client keys favourites, compare and export off the outer id
+            # while rendering from the nested record. A drift between them
+            # exports one target's fields under another's identity.
+            assert row["opportunity_id"] == opportunity["id"]
+
+    @pytest.mark.parametrize("path", ["/api/matches", "/api/matches/view"])
+    def test_no_dead_shape_survives_into_a_response(self, path, mixed_corpus):
+        body = (
+            client.post(path, json=_view_body()).json()
+            if path.endswith("/view")
+            else client.post(path, json=_profile()).json()
+        )
+        returned = {row["opportunity_id"] for row in body["results"]}
+
+        assert returned == set(LIVE_IDS)
+        for dead in _DEAD_SHAPES:
+            assert dead not in returned, dead
+
+    def test_the_counts_describe_the_same_universe_the_rows_came_from(
+        self, mixed_corpus,
+    ):
+        """Totals padded with dead records are the subtler half of the bug.
+
+        Filtering only the rows would leave "247 matches" above a list the
+        student can never page to — and the bucket counts driving the tabs
+        would be counting targets that are gone.
+        """
+        body = client.post("/api/matches", json=_profile()).json()
+        buckets = ("high_priority", "good_match", "reach", "low_fit")
+
+        assert body["total"] == len(LIVE_IDS)
+        assert sum(body[b] for b in buckets) == len(LIVE_IDS)
+        assert body["field_relevant_count"] <= len(LIVE_IDS)
+
+    def test_the_view_counts_and_facets_exclude_them_too(self, mixed_corpus):
+        body = client.post("/api/matches/view", json=_view_body()).json()
+
+        assert body["filtered_total"] == len(LIVE_IDS)
+        assert body["view_counts"]["all"] == len(LIVE_IDS)
+        facet_total = sum(f["count"] for f in body["source_facets"])
+        assert facet_total <= len(LIVE_IDS)
+        assert sum(body["deadline_facets"].values()) <= len(LIVE_IDS)
+
+    def test_an_empty_page_past_the_end_still_carries_the_marker(self, mixed_corpus):
+        """The case a row-inspecting client cannot check for itself.
+
+        With no rows there is nothing to examine, so an unmarked empty page is
+        indistinguishable from an old backend's — and the client would have to
+        either trust it or discard a legitimately empty result.
+        """
+        body = client.post("/api/matches?offset=9999", json=_profile()).json()
+
+        assert body["results"] == []
+        assert body["contract_version"] == "match-page-v3-faculty-trust"
+        assert body["target_truth_contract"] == "target-truth-v2"
+
+    def test_a_genuinely_empty_view_still_carries_the_marker(self, mixed_corpus):
+        body = client.post(
+            "/api/matches/view",
+            json=_view_body(tab="starred", favorite_ids=["no-such-record"]),
+        ).json()
+
+        assert body["results"] == []
+        assert body["filtered_total"] == 0
+        assert body["contract_version"] == "match-view-v3-faculty-trust"
+        assert body["target_truth_contract"] == "target-truth-v2"
+
+    @pytest.mark.parametrize(
+        ("label", "cursor", "status"),
+        [
+            # Structurally unreadable: not our encoding at all. A malformed
+            # request is 400 — the server rejects it, nothing conflicts.
+            ("invalid", "not-a-real-cursor", 400),
+            # Well-formed and correctly signed, but naming a result set this
+            # process no longer holds — the shape a client gets after a backend
+            # restart or a snapshot TTL expiry. 409, because the request is
+            # fine and the state it refers to is what moved.
+            ("expired", None, 409),
+        ],
+    )
+    @pytest.mark.parametrize("path", ["/api/matches", "/api/matches/view"])
+    def test_a_dead_cursor_never_asks_the_client_to_retry_it(
+        self, path, label, cursor, status, mixed_corpus,
+    ):
+        """Asserted on the real response, not on the constant in the source.
+
+        `retryable: true` here would be a loop: the same cursor fails the same
+        way forever, and the client's automatic retry turns one dead page into
+        sustained traffic. Recovery is a fresh page-1 request, which the
+        frontend does once — so the flag has to say "do not repeat this".
+        """
+        if cursor is None:
+            # Mint a real signed cursor, then drop the snapshot it points at.
+            # page_size 1 on both endpoints: the mixed fixture holds two live
+            # records, so a default page would return everything and there
+            # would be no next_cursor to expire.
+            live = (
+                client.post(path, json={**_view_body(), "page_size": 1}).json()
+                if path.endswith("/view")
+                else client.post("/api/matches?limit=1", json=_profile()).json()
+            )
+            cursor = live["next_cursor"]
+            assert cursor, f"{path}: fixture must produce a second page"
+            m_module._match_snapshots.clear()
+
+        if path.endswith("/view"):
+            body = {**_view_body(), "page_size": 1, "cursor": cursor}
+            response = client.post(path, json=body)
+        else:
+            response = client.post(f"{path}?cursor={cursor}", json=_profile())
+
+        assert response.status_code == status, f"{path}/{label}"
+        detail = response.json()["detail"]
+        assert detail["code"] == f"MATCH_CURSOR_{label.upper()}", f"{path}/{label}"
+        assert detail["retryable"] is False, f"{path}/{label}"
+
+    def test_the_marker_has_no_default_to_fall_back_to(self):
+        """A forgotten field must fail loudly at the server, not silently.
+
+        With `= ""` a new construction site that omitted it would serve a
+        page claiming nothing, and every client would correctly refuse it —
+        an outage discovered in production instead of at the type level.
+        """
+        import pydantic
+        import pytest as _pytest
+
+        from backend.schemas import MatchesResponse
+
+        field = MatchesResponse.model_fields["target_truth_contract"]
+        assert field.is_required(), "target_truth_contract must be required"
+        with _pytest.raises(pydantic.ValidationError):
+            MatchesResponse(
+                total=0, high_priority=0, good_match=0, reach=0, low_fit=0,
+                results=[], contract_version="match-page-v3-faculty-trust",
+            )

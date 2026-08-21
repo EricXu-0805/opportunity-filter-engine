@@ -10,8 +10,17 @@ afterEach(() => {
 });
 
 describe('useResultsKeyboardNav external destination', () => {
-  it('opens the canonical faculty profile, never a poisoned application URL', () => {
+  it('goes to the in-app detail page, never straight out to an external URL', () => {
+    // Enter must not be an unlabelled Apply. Whatever the record's posture, it
+    // lands on the detail page, where the user can read the target's status
+    // before choosing an action.
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...original, assign },
+    });
     const faculty = {
       opportunity: {
         id: 'faculty-ada',
@@ -31,10 +40,11 @@ describe('useResultsKeyboardNav external destination', () => {
     act(() => result.current.setFocusedIdx(0));
     act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })));
 
-    expect(open).toHaveBeenCalledWith(
-      'https://faculty.example.edu/real-profile',
-      '_blank',
-      'noopener,noreferrer',
-    );
+    expect(assign).toHaveBeenCalledWith('/opportunities/faculty-ada');
+    expect(open).not.toHaveBeenCalled();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: original,
+    });
   });
 });

@@ -19,10 +19,13 @@ import { captureOwnerToken } from '@/lib/identity-owner';
 import type { ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
+import { targetPosture } from '@/lib/target-truth';
 import {
+  ApiError,
   getMatchView,
   type MatchViewRequestState,
 } from '@/lib/api';
+import { isTrustedMatchViewPage } from '@/lib/match-cache';
 import {
   parsePresetsArray,
   removePreset,
@@ -205,7 +208,14 @@ function ResultsContent() {
     opportunityId: string;
     opportunityTitle: string;
     opportunitySchool: string | null;
-  }>({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
+    openedAgainstResults: MatchResult[] | null;
+  }>({
+    open: false,
+    opportunityId: '',
+    opportunityTitle: '',
+    opportunitySchool: null,
+    openedAgainstResults: null,
+  });
 
   // Close (never leave open) the recipient modal on a REAL identity switch —
   // it can trigger a write, and a U1-opened modal must not be left able to
@@ -319,6 +329,9 @@ function ResultsContent() {
     page,
     t,
     semanticSettled,
+    // A dead cursor is dropped by the hook; returning to page 1 is the page's
+    // own job, since it owns `page`.
+    useCallback(() => setPage(1), []),
   );
 
   // Facets are derived from the complete canonical snapshot by the backend,
@@ -522,20 +535,60 @@ function ResultsContent() {
 
   const openEmailModal = useCallback(
     (opportunityId: string) => {
-      const match = data?.results.find((m) => m.opportunity.id === opportunityId);
+      const results = data?.results;
+      if (!results) return;
+      const match = results.find((m) => m.opportunity.id === opportunityId);
+      // Re-checked here, not just on the card that offered the button. This
+      // modal copies an id and then lives on its own — it is the one target
+      // control on this page that is NOT inside the result's keyed subtree,
+      // so nothing unmounts it when the row goes away.
+      if (!match || targetPosture(match.opportunity) !== 'actionable') return;
       setEmailModal({
         open: true,
         opportunityId,
-        opportunityTitle: match?.opportunity.title ?? t('results.opportunityFallback'),
-        opportunitySchool: match?.opportunity.school ?? null,
+        opportunityTitle: match.opportunity.title ?? t('results.opportunityFallback'),
+        opportunitySchool: match.opportunity.school ?? null,
+        openedAgainstResults: results,
       });
     },
     [data, t],
   );
 
   const closeEmailModal = useCallback(() => {
-    setEmailModal({ open: false, opportunityId: '', opportunityTitle: '', opportunitySchool: null });
+    setEmailModal({
+      open: false,
+      opportunityId: '',
+      opportunityTitle: '',
+      opportunitySchool: null,
+      openedAgainstResults: null,
+    });
   }, []);
+
+  // Re-resolved on every render against the CURRENT results, so a stale target
+  // cannot exist rather than being cleaned up after the fact. A passive effect
+  // would run after paint, leaving one frame in which a dialog for a target
+  // that just closed is on screen with a working Generate button.
+  //
+  // Absence of results is not evidence of life either. `data` is null on
+  // every refetch — the cache no longer paints, so that window is now the
+  // normal state between a filter change and its answer — and standing on the
+  // check made when the dialog opened means a Generate button backed by a
+  // posture nobody has re-read. During a split deploy the backend answering
+  // it may not even understand the current truth contract. So a null results
+  // set withdraws the dialog exactly like a set that no longer contains the
+  // target: it fails closed, and a live target has to be opened again
+  // deliberately rather than resurfacing on its own.
+  const emailTargetLive = useMemo(() => {
+    if (!emailModal.open) return false;
+    const results = data?.results;
+    // A modal belongs to the exact results snapshot on which the student
+    // opened it. Once that snapshot is withdrawn or replaced, the old modal
+    // cannot revive when a later response happens to contain the same id;
+    // the student must explicitly open it against the new evidence.
+    if (!results || results !== emailModal.openedAgainstResults) return false;
+    const match = results.find((m) => m.opportunity.id === emailModal.opportunityId);
+    return !!match && targetPosture(match.opportunity) === 'actionable';
+  }, [emailModal.open, emailModal.opportunityId, emailModal.openedAgainstResults, data]);
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -544,7 +597,7 @@ function ResultsContent() {
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
     paginated,
-    emailModalOpen: emailModal.open,
+    emailModalOpen: emailModal.open && emailTargetLive,
     onCloseEmailModal: closeEmailModal,
     onToggleFavorite: handleToggleFav,
     onOpenHelp: openHelp,
@@ -647,6 +700,14 @@ function ResultsContent() {
         cursor,
         pageSize: 100,
       });
+      // Every page, before its rows join the accumulator. The export is the
+      // furthest a row travels from this session — a spreadsheet is read
+      // months later with none of the page's context — and it used to check
+      // only generation/duplicates, so a closed row or one with no truth could
+      // still reach a Deadline or a URL column.
+      if (!isTrustedMatchViewPage(response)) {
+        throw new Error('untrusted match view page');
+      }
       if (
         (resultSetId && response.result_set_id !== resultSetId)
         || (viewId && response.view_id !== viewId)
@@ -680,6 +741,21 @@ function ResultsContent() {
   const loadEmailMatches = useCallback(async () => {
     if (!profile) return [];
     const response = await getMatchView(profile, matchView, { pageSize: 50 });
+    // This is a second, independent fetch — it does not pass through
+    // useResultsData's validation — so it repeats the same three checks here.
+    // Without them a page that the results view would refuse can still be
+    // mailed, and during the Vercel-first window those rows reach an old
+    // backend through the legacy bridge fields, which renders whatever it is
+    // handed. All-or-nothing: never quietly mail a shorter digest than the one
+    // the user asked for.
+    if (!isTrustedMatchViewPage(response)) {
+      throw new ApiError(
+        502,
+        'MATCH_CONTRACT_MISMATCH',
+        'Match results need to be refreshed. Please retry.',
+        true,
+      );
+    }
     return response.results;
   }, [profile, matchView]);
 
@@ -935,7 +1011,7 @@ function ResultsContent() {
         </div>
       )}
 
-      {profile && (
+      {profile && emailTargetLive && (
         <ColdEmailModal
           isOpen={emailModal.open}
           onClose={closeEmailModal}
@@ -943,6 +1019,13 @@ function ResultsContent() {
           opportunityId={emailModal.opportunityId}
           opportunityTitle={emailModal.opportunityTitle}
           opportunitySchool={emailModal.opportunitySchool}
+          // The row as this page currently sees it, re-resolved every render.
+          // Undefined while a refetch is in flight or the row has gone, which
+          // fails the follow-up chips closed rather than letting them write a
+          // reminder against a posture nobody has re-read.
+          reminderTarget={data?.results?.find(
+            (m) => m.opportunity.id === emailModal.opportunityId,
+          )?.opportunity}
         />
       )}
 

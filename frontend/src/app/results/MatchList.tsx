@@ -10,8 +10,20 @@ import type { TFunc } from './types';
 
 const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
   return (
-    prev.match.opportunity.id === next.match.opportunity.id &&
-    prev.match.final_score === next.match.final_score &&
+    // Object identity, not a field digest. The digest that stood here listed
+    // id, score and seven truth fields — which is a list of everything the
+    // author remembered the card renders, maintained by hand, in a different
+    // file from the card. It already omitted `source_type`, and the card now
+    // decides every offer term from that field: a refreshed row that turns out
+    // not to be a listing kept its pay badge, its deadline and its "New" label
+    // because the digest could not see the change. Same problem for a corrected
+    // deadline, a withdrawn stipend, an edited title.
+    //
+    // A new match object means the server sent a new row, and a new row is
+    // repainted whole. A re-render that hands back the SAME object — the
+    // ordinary case, since `data.results` is stable between fetches — still
+    // skips, which is the only thing this memo was ever for.
+    prev.match === next.match &&
     prev.isFavorited === next.isFavorited &&
     prev.interaction === next.interaction &&
     prev.favoritePending === next.favoritePending &&

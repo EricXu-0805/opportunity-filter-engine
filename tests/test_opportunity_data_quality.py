@@ -964,7 +964,8 @@ class TestSchoolAudience:
         )
         assert (fx.get("title") or "").strip(), (
             f"E2E detail fixture {e2e_fixture_id!r} has an empty title; the "
-            f"JobPosting JSON-LD spec asserts parsed.title is truthy."
+            f"detail SSR / page-title / metadata E2E specs need a non-empty "
+            f"title to assert against."
         )
 
     def test_no_works_list_stamped_across_many_faculty(self):

@@ -42,6 +42,49 @@ function authState(uid: string | null) {
 
 let interactions: Map<string, { type: string; notes?: string; remind_at?: string }>;
 
+// Canonical target shapes, installed per test rather than globally. The two
+// live pairs are the only ones the backend emits: a confirmed listing states
+// (open, accepting); a directory page states neither, so both are unknown.
+const LIVE_LISTING = {
+  source_type: 'campus_program',
+  record_kind: 'listing',
+  target_truth: {
+    listing_state: 'open', reference_only: false, actionable: true,
+    accepting_state: 'accepting', reason_code: null,
+    verified_at: null, expires_at: null,
+  },
+};
+
+const LIVE_FACULTY = {
+  source_type: 'faculty_research',
+  record_kind: 'faculty_contact',
+  target_truth: {
+    listing_state: 'unknown', reference_only: false, actionable: true,
+    accepting_state: 'unknown', reason_code: null,
+    verified_at: null, expires_at: null,
+  },
+};
+
+const CLOSED_LISTING = {
+  source_type: 'campus_program',
+  record_kind: 'listing',
+  target_truth: {
+    listing_state: 'closed', reference_only: false, actionable: false,
+    accepting_state: 'not_accepting', reason_code: 'listing_closed',
+    verified_at: null, expires_at: null,
+  },
+};
+
+/** Give every resolved target the same canonical shape, for this test only. */
+function installTargets(shape: Record<string, unknown>) {
+  mocks.getShortlistOpportunities.mockImplementation((ids: string[]) => Promise.resolve({
+    opportunities: ids.map((id) => ({
+      id, title: `Opp ${id}`, lab_or_program: `Lab ${id}`, ...shape,
+    })),
+    unavailableIds: [] as string[],
+  }));
+}
+
 beforeEach(() => {
   mocks.getInteractionsFull.mockReset();
   mocks.trackInteraction.mockReset();
@@ -59,6 +102,10 @@ beforeEach(() => {
     ['o3', { type: 'dismissed' }],
   ]);
   mocks.getInteractionsFull.mockImplementation(() => Promise.resolve(interactions));
+  // The default fixture carries NO truth, and that is deliberate: absent is
+  // the fail-closed case, so nothing here can schedule a reminder by
+  // accident. Tests that need a schedulable target install one explicitly —
+  // see installTargets(liveListing) / liveFaculty below.
   mocks.getShortlistOpportunities.mockImplementation((ids: string[]) => Promise.resolve({
     opportunities: ids.map((id) => ({ id, title: `Opp ${id}`, lab_or_program: `Lab ${id}` })),
     unavailableIds: [] as string[],
@@ -86,8 +133,16 @@ describe('useTrackerData — hydration', () => {
     expect(result.current.error).toBe(false);
   });
 
-  it('excludes dismissed from the pipeline columns', () => {
-    expect(TRACKER_COLUMNS).toEqual(['applied', 'replied', 'interviewing', 'rejected']);
+  it('starts the pipeline at contacted and still excludes dismissed', () => {
+    // 'contacted' was missing entirely: the cold-email confirm-sent flow and
+    // the follow-up chips both write it, and the reminders cron sends for it
+    // — so a student who emailed a professor had a tracked row, a
+    // deliverable reminder, and no card anywhere on this board. Reaching out
+    // is where the funnel starts.
+    expect(TRACKER_COLUMNS).toEqual([
+      'contacted', 'applied', 'replied', 'interviewing', 'rejected',
+    ]);
+    // 'dismissed' stays out — it is the hide-from-results status, not a stage.
     expect(TRACKER_COLUMNS).not.toContain('dismissed');
   });
 
@@ -652,6 +707,7 @@ describe('useTrackerData — channel independence (notes vs exclusive status/rem
   });
 
   it('a failed reminder retry survives an unrelated notes save for the SAME id — the two error channels are independent', async () => {
+    installTargets(LIVE_LISTING); // scheduling requires a deliverable target
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('reminder failed'));
     const { result } = renderHook(() => useTrackerData());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -672,6 +728,7 @@ describe('useTrackerData — channel independence (notes vs exclusive status/rem
 
 describe('useTrackerData — setReminder', () => {
   it('optimistically updates remind_at and persists with an owner token', async () => {
+    installTargets(LIVE_LISTING);
     const { result } = renderHook(() => useTrackerData());
     await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { result.current.setReminder('o1', '2030-01-01'); });
@@ -682,7 +739,113 @@ describe('useTrackerData — setReminder', () => {
     expect(mocks.updateInteractionDetails).toHaveBeenCalledWith('o1', { remind_at: null }, expect.anything());
   });
 
+  // The hook is the single write path, so the rule lives here and not only
+  // in the card. Hiding the preset buttons stops a click; it does nothing
+  // about a retained handler, a future caller, or a race.
+  it.each([
+    ['a target with no truth at all', undefined, 'applied'],
+    ['a closed listing', CLOSED_LISTING, 'applied'],
+    // Actionable, but in a status the cron's query never selects.
+    ['a rejected row on a live listing', LIVE_LISTING, 'rejected'],
+  ])('refuses to schedule a reminder for %s', async (_label, shape, status) => {
+    if (shape) installTargets(shape);
+    interactions = new Map([['o1', { type: status }]]);
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => { result.current.setReminder('o1', '2030-01-01'); });
+
+    expect(mocks.updateInteractionDetails).not.toHaveBeenCalled();
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.remind_at)
+      .toBeUndefined();
+  });
+
+  it('schedules for a live faculty contact the student has emailed', async () => {
+    // The positive control the matrix above needs, and the majority case:
+    // reminders are set on professors far more than on postings, and the
+    // cron does send for this exact shape.
+    installTargets(LIVE_FACULTY);
+    interactions = new Map([['o1', { type: 'contacted' }]]);
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => { result.current.setReminder('o1', '2030-01-01'); });
+
+    expect(mocks.updateInteractionDetails)
+      .toHaveBeenCalledWith('o1', { remind_at: '2030-01-01' }, expect.anything());
+    expect(result.current.items.find((i) => i.opp.id === 'o1')?.record.remind_at)
+      .toBe('2030-01-01');
+  });
+
+  it('a failed clear on an unresolved placeholder retries the clear, never the row deletion', async () => {
+    // A placeholder used to have exactly one possible action, so retry
+    // dispatched straight to clearUnavailable. It now has two — clearing its
+    // reminder can fail as well — and replaying that as clearUnavailable
+    // would delete the whole interaction, taking the student's status and
+    // notes with it, when all they asked was to drop a date.
+    mocks.getShortlistOpportunities.mockImplementation(() => Promise.resolve({
+      opportunities: [],
+      unavailableIds: ['o1'],
+    }));
+    interactions = new Map([
+      ['o1', { type: 'applied', notes: 'my own note', remind_at: '2030-01-01' }],
+    ]);
+    mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('clear failed'));
+
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.unavailableItems).toHaveLength(1);
+
+    await act(async () => { result.current.setReminder('o1', null); });
+    expect(result.current.statusErrors.has('o1')).toBe(true);
+    // Rolled back, so the student still sees the date they tried to drop.
+    expect(result.current.unavailableItems[0].record.remind_at).toBe('2030-01-01');
+
+    mocks.updateInteractionDetails.mockResolvedValueOnce(undefined);
+    await act(async () => { result.current.retryStatusItem('o1'); });
+
+    await waitFor(() => expect(result.current.statusErrors.has('o1')).toBe(false));
+    expect(mocks.updateInteractionDetails).toHaveBeenLastCalledWith(
+      'o1', { remind_at: null }, expect.anything(),
+    );
+    expect(mocks.removeInteraction).not.toHaveBeenCalled();
+    // The row and everything on it survive; only the date is gone.
+    expect(result.current.unavailableItems).toHaveLength(1);
+    expect(result.current.unavailableItems[0].record.type).toBe('applied');
+    expect(result.current.unavailableItems[0].record.notes).toBe('my own note');
+    expect(result.current.unavailableItems[0].record.remind_at).toBeUndefined();
+  });
+
+  it('a placeholder can never be given a NEW reminder, only cleared', async () => {
+    mocks.getShortlistOpportunities.mockImplementation(() => Promise.resolve({
+      opportunities: [],
+      unavailableIds: ['o1'],
+    }));
+    interactions = new Map([['o1', { type: 'applied' }]]);
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => { result.current.setReminder('o1', '2030-01-01'); });
+
+    expect(mocks.updateInteractionDetails).not.toHaveBeenCalled();
+  });
+
+  it('still clears an existing reminder on a closed listing', async () => {
+    // Clearing is never what this gate prevents: the date is the student's,
+    // and dropping one they can see is always allowed.
+    installTargets(CLOSED_LISTING);
+    interactions = new Map([['o1', { type: 'applied', remind_at: '2030-01-01' }]]);
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => { result.current.setReminder('o1', null); });
+
+    expect(mocks.updateInteractionDetails)
+      .toHaveBeenCalledWith('o1', { remind_at: null }, expect.anything());
+  });
+
   it('a failure rolls back to the prior reminder and is visibly retryable', async () => {
+    installTargets(LIVE_LISTING);
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('reminder write failed'));
     const { result } = renderHook(() => useTrackerData());
     await waitFor(() => expect(result.current.loading).toBe(false));

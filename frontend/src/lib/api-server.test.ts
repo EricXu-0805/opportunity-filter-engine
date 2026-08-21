@@ -329,3 +329,128 @@ describe('fetchOpportunityDetail (detail-page classification)', () => {
     expect(await fetchOpportunityServer('missing')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Freshness of anything that carries a target truth
+// ---------------------------------------------------------------------------
+
+const OPEN_TRUTH = {
+  listing_state: 'open',
+  reference_only: false,
+  actionable: true,
+  accepting_state: 'accepting',
+  reason_code: null,
+  verified_at: null,
+  expires_at: null,
+} as const;
+
+const CLOSED_TRUTH = {
+  listing_state: 'closed',
+  reference_only: false,
+  actionable: false,
+  accepting_state: 'not_accepting',
+  reason_code: 'listing_closed',
+  verified_at: null,
+  expires_at: null,
+} as const;
+
+function record(id: string, truth: unknown, extra: Record<string, unknown> = {}) {
+  return {
+    id,
+    title: `${id} title`,
+    source_type: 'campus_program',
+    record_kind: 'listing',
+    target_truth: truth,
+    paid: 'yes',
+    deadline: '2099-12-31',
+    ...extra,
+  };
+}
+
+/** Every option object the mock was handed, in call order. */
+function optionsFor(index: number): Record<string, unknown> {
+  return (fetchMock.mock.calls[index][1] ?? {}) as Record<string, unknown>;
+}
+
+describe('a target truth is never served from a stored copy', () => {
+  beforeEach(() => {
+    vi.stubEnv('BACKEND_URL', 'https://api.test');
+  });
+
+  // Asserting the options literal alone proves the string is present, not
+  // that a second call happens or that its answer is the one used. Each case
+  // below asks for the SAME id twice, with the record closing in between.
+  it('fetchOpportunityServer asks again and returns the newer truth', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(record('opp-1', OPEN_TRUTH)))
+      .mockResolvedValueOnce(okJson(record('opp-1', CLOSED_TRUTH)));
+
+    const first = await fetchOpportunityServer('opp-1');
+    const second = await fetchOpportunityServer('opp-1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(first?.target_truth).toEqual(OPEN_TRUTH);
+    expect(second?.target_truth).toEqual(CLOSED_TRUTH);
+    for (const i of [0, 1]) {
+      expect(optionsFor(i).cache, `call ${i}`).toBe('no-store');
+      expect(optionsFor(i).next, `call ${i}`).toBeUndefined();
+    }
+  });
+
+  it('fetchOpportunityDetail asks again and returns the newer truth', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson(record('opp-1', OPEN_TRUTH)))
+      .mockResolvedValueOnce(okJson(record('opp-1', CLOSED_TRUTH)));
+
+    const first = await fetchOpportunityDetail('opp-1');
+    const second = await fetchOpportunityDetail('opp-1');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(first).toMatchObject({ status: 'ok' });
+    expect(second).toMatchObject({ status: 'ok' });
+    expect((first as { opportunity: { target_truth: unknown } }).opportunity.target_truth)
+      .toEqual(OPEN_TRUTH);
+    expect((second as { opportunity: { target_truth: unknown } }).opportunity.target_truth)
+      .toEqual(CLOSED_TRUTH);
+    for (const i of [0, 1]) {
+      expect(optionsFor(i).cache, `call ${i}`).toBe('no-store');
+      expect(optionsFor(i).next, `call ${i}`).toBeUndefined();
+      // The abort signal is not a casualty of the options change.
+      expect(optionsFor(i).signal, `call ${i}`).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it('fetchSimilarServer asks again and returns the newer list', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson({
+        opportunities: [record('sim-open', OPEN_TRUTH, { _similarity: 0.9 })],
+      }))
+      .mockResolvedValueOnce(okJson({ opportunities: [] }));
+
+    const first = await fetchSimilarServer('seed');
+    const second = await fetchSimilarServer('seed');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(first.map(o => o.id)).toEqual(['sim-open']);
+    // The rail emptying is itself a truth change: the row that was similar
+    // yesterday is gone today, and a stored copy would keep recommending it.
+    expect(second).toEqual([]);
+    for (const i of [0, 1]) {
+      expect(optionsFor(i).cache, `call ${i}`).toBe('no-store');
+      expect(optionsFor(i).next, `call ${i}`).toBeUndefined();
+      expect(optionsFor(i).signal, `call ${i}`).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it('the sitemap id list is still cached for an hour — it carries no truth', async () => {
+    // The control for the three above. If every server fetch were switched to
+    // no-store this would pass too, and the sitemap would re-fetch on every
+    // crawl for a list of strings nobody acts on.
+    fetchMock.mockResolvedValue(okJson({ opportunities: [{ id: 'a' }] }));
+
+    await fetchOpportunityIdsServer();
+
+    expect(optionsFor(0).next).toEqual({ revalidate: 3600 });
+    expect(optionsFor(0).cache).toBeUndefined();
+  });
+});

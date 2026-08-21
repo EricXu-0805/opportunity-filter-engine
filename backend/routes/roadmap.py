@@ -13,6 +13,7 @@ from backend.lib.blocking import (
 )
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.schemas import RoadmapRequest, RoadmapResponse
+from src.evidence import target_truth
 from src.recommender.roadmap import prepare_roadmap
 
 router = APIRouter()
@@ -38,12 +39,22 @@ def _prepare_roadmap_request(profile: dict, opportunity_ids: list[str]) -> dict:
         if opportunity is None:
             unresolved_targets += 1
             continue
+        # Two gates, and roadmap's second one is deliberately STRICTER than
+        # general actionability. First: a stated closure keeps the target out
+        # of the plan entirely — filtered before scoring, because a 30-day plan
+        # built around a closed listing is advice the student cannot follow.
+        # Second, and unchanged from before this contract existed: planning
+        # needs a target confirmed live, so only an explicit
+        # `metadata.is_active is True` is resolved. A record that merely fails
+        # to state it is inactive is actionable elsewhere but stays `unverified`
+        # here — general actionability must not quietly promote it.
+        if not target_truth(opportunity).actionable:
+            inactive_targets += 1
+            continue
         metadata = opportunity.get("metadata")
         activity = metadata.get("is_active") if isinstance(metadata, dict) else None
         if activity is True:
             resolved_ids.append(opportunity_id)
-        elif activity is False:
-            inactive_targets += 1
         else:
             unverified_targets += 1
     opps = [lookup[opportunity_id] for opportunity_id in resolved_ids]

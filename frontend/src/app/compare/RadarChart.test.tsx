@@ -16,6 +16,7 @@ function row(id: string, title: string, score: number, base: number): CompareRow
       reasons_gap: [],
       explanation: '',
       method: 'local',
+      matcher_version: 'test-matcher-v1',
     },
     factors: {
       skill_match: base + 1,
