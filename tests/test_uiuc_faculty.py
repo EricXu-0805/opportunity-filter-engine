@@ -439,6 +439,64 @@ def test_carry_forward_keeps_attribution_stamp_with_recent_works():
     assert "publication_attribution_status" not in incoming3["metadata"]
 
 
+def test_carry_forward_keeps_research_areas_raw():
+    """The professor's own stated research areas survive a re-scrape that did
+    not reach their detail page.
+
+    Regression: the 2026-08-20 refresh re-harvested 16 shards through the
+    listing-only path, which emits no ``research_areas_raw``. ``cur.update(opp)``
+    replaces ``metadata`` wholesale, so 2,716 of 5,012 committed statements were
+    erased — brown and boulder to zero, rice 555 -> 1. That prose is the sole
+    input to the faculty availability signal and to cold-email grounding, so an
+    entire school silently lost both. Carried unconditionally for the same
+    reason ``recent_works`` is: a scrape that produced nothing is not evidence
+    that the professor removed anything.
+    """
+    existing = {
+        "pi_name": "Drew Milsom", "department": "PHYS",
+        "keywords": ["computational astrophysics"],
+        "metadata": {
+            "research_areas_raw": (
+                "While I am not currently research active, I have worked in "
+                "computational astrophysics."
+            ),
+            "last_verified": "2026-08-15T03:59:15",
+        },
+    }
+    incoming = {
+        "pi_name": "Drew Milsom", "department": "PHYS",
+        "keywords": ["computational astrophysics"],
+        "metadata": {"last_verified": "2026-08-20T06:31:54"},
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == (
+        "While I am not currently research active, I have worked in "
+        "computational astrophysics."
+    )
+    # The carried statement keeps the date it was actually observed, so nothing
+    # downstream can present last week's prose as verified today.
+    assert incoming["metadata"]["research_areas_verified_at"] == "2026-08-15T03:59:15"
+
+
+def test_carry_forward_fresh_research_areas_win():
+    """A scrape that reached the page owns the statement — including a professor
+    who deleted theirs, which is why the fresh value wins even when it is
+    shorter."""
+    existing = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"research_areas_raw": "black hole accretion flows",
+                     "last_verified": "2026-08-15T00:00:00"},
+    }
+    incoming = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"research_areas_raw": "quantum optics"},
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == "quantum optics"
+    # Not carried, so no stamp is invented for prose this scrape observed itself.
+    assert "research_areas_verified_at" not in incoming["metadata"]
+
+
 def test_carry_forward_fresh_email_still_wins():
     existing = {
         "pi_name": "A B", "department": "Computer Science",
