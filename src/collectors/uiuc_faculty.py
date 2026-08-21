@@ -1204,6 +1204,32 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         if status:
             md["publication_attribution_status"] = status
 
+    # research_areas_raw is carried the same unconditional way, and for the
+    # same reason: a listing-only re-scrape never reaches the detail page that
+    # states them, so it emits nothing — and `cur.update(opp)` replaces
+    # `metadata` wholesale. The 2026-08-20 refresh erased 2,716 of 5,012
+    # committed statements that way (brown and boulder to zero, rice 555 -> 1)
+    # before this guard existed. The prose is the only input to
+    # `faculty_availability_status` and the grounding cold email quotes, so
+    # losing it costs a truth signal, not just display text. A scrape that DID
+    # reach the page still wins, including a professor who deleted theirs.
+    areas = (existing.get("metadata") or {}).get("research_areas_raw")
+    if (
+        isinstance(areas, str)
+        and areas.strip()
+        and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
+    ):
+        md = incoming.setdefault("metadata", {})
+        md["research_areas_raw"] = areas
+        # Stamped with when the statement was actually observed, never with this
+        # refresh's time: an availability claim derived from carried prose must
+        # not be presentable as verified today.
+        observed = (existing.get("metadata") or {}).get(
+            "research_areas_verified_at"
+        ) or (existing.get("metadata") or {}).get("last_verified")
+        if isinstance(observed, str) and observed.strip():
+            md["research_areas_verified_at"] = observed
+
     # contact_email is carried the same unconditional way: for schools whose
     # listings never expose emails (e.g. CU Experts), the address exists ONLY
     # because a gated per-profile pass once found it — a listing-only refresh
