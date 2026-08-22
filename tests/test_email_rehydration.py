@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 
 import backend.main as main_mod
 from backend import data_loader
+from backend.lib.supabase_auth import SessionIdentity
 from backend.main import app
 from backend.routes import email as email_mod
 from src.evidence import record_kind, target_truth
@@ -94,8 +95,26 @@ def _quota_used(address: str = "reader@example.com") -> int:
     return len(email_mod._recipient_sends.get(address, []))
 
 
+READER = "reader@example.com"
+
+
+@pytest.fixture(autouse=True)
+def signed_in_reader(monkeypatch):
+    """Every digest test runs as a signed-in reader with a confirmed address.
+
+    Autouse because the alternative is 40 tests that all fail on the sign-in
+    check and stop exercising what they were written for. The tests that care
+    about identity override this explicitly.
+    """
+
+    async def identity(_authorization):
+        return SessionIdentity(uid="reader-uid", email=READER)
+
+    monkeypatch.setattr(email_mod, "authenticated_identity", identity)
+
+
 def _post(path: str, items: list[dict], **extra):
-    return client.post(path, json={"email": "reader@example.com", "items": items, **extra})
+    return client.post(path, json={"email": READER, "items": items, **extra})
 
 
 class TestRequestShape:
@@ -2486,3 +2505,84 @@ class TestTheLegacyScanCostsOneSnapshotAndNoEventLoopTime:
         response = _post(path, [{"opportunity_id": "open-1"}])
 
         assert response.status_code == 200
+
+
+class TestOnlyTheSignedInReaderCanBeMailed:
+    """A digest goes to the address the account proved it owns, or nowhere.
+
+    Before this, both endpoints took the recipient straight off the wire with
+    no session at all: an unauthenticated POST would mail a JoinALab-branded
+    digest to any address a stranger named, over the domain that also carries
+    every magic link. #790 had already closed the other half — every describing
+    field is re-read from the corpus, so the CONTENT could no longer be
+    forged — which left exactly this: real mail, real corpus, arbitrary
+    recipient.
+
+    Refusals here must also be free. They run before the recipient quota and
+    before the provider, so an abusive caller cannot spend either.
+    """
+
+    @pytest.fixture
+    def anonymous(self, monkeypatch):
+        async def identity(_authorization):
+            return None
+
+        monkeypatch.setattr(email_mod, "authenticated_identity", identity)
+
+    @pytest.fixture
+    def unconfirmed(self, monkeypatch):
+        async def identity(_authorization):
+            return SessionIdentity(uid="reader-uid", email=None)
+
+        monkeypatch.setattr(email_mod, "authenticated_identity", identity)
+
+    @pytest.mark.parametrize("path", ["/api/email/send-matches",
+                                      "/api/email/send-favorites"])
+    def test_a_stranger_cannot_mail_anyone(self, path, refused, anonymous):
+        r = _post(path, [{"opportunity_id": LISTING_ID}])
+        assert r.status_code == 401
+        assert r.json()["detail"]["code"] == "SIGN_IN_REQUIRED"
+        assert _quota_used() == 0
+
+    @pytest.mark.parametrize("path", ["/api/email/send-matches",
+                                      "/api/email/send-favorites"])
+    def test_an_unconfirmed_address_is_not_a_send_target(self, path, refused,
+                                                          unconfirmed):
+        r = _post(path, [{"opportunity_id": LISTING_ID}])
+        assert r.status_code == 409
+        assert r.json()["detail"]["code"] == "EMAIL_NOT_CONFIRMED"
+        assert _quota_used() == 0
+
+    @pytest.mark.parametrize("path", ["/api/email/send-matches",
+                                      "/api/email/send-favorites"])
+    def test_naming_someone_else_is_refused_not_silently_redirected(self, path,
+                                                                     refused):
+        """Quietly mailing the reader instead would leave them believing a
+        message went to the address they typed. Say no out loud."""
+        r = client.post(path, json={"email": "someone.else@example.com",
+                                    "items": [{"opportunity_id": LISTING_ID}]})
+        assert r.status_code == 409
+        assert r.json()["detail"]["code"] == "RECIPIENT_NOT_SELF"
+        assert _quota_used("someone.else@example.com") == 0
+        assert _quota_used() == 0
+
+    @pytest.mark.parametrize("path", ["/api/email/send-matches",
+                                      "/api/email/send-favorites"])
+    def test_the_session_address_is_what_is_actually_mailed(self, path, sent):
+        """Not the request body's — even when they agree, the value that
+        reaches the provider comes from the session."""
+        r = client.post(path, json={"email": "READER@Example.COM",
+                                    "items": [{"opportunity_id": LISTING_ID}]})
+        assert r.status_code == 200, r.text
+        assert sent["to"] == READER
+
+    @pytest.mark.parametrize("path", ["/api/email/send-matches",
+                                      "/api/email/send-favorites"])
+    def test_an_omitted_recipient_is_accepted_and_resolved_from_the_session(
+        self, path, sent,
+    ):
+        """The field is a rollout bridge, not a requirement: a client that has
+        stopped sending it must not 422 during the deploy window."""
+        r = client.post(path, json={"items": [{"opportunity_id": LISTING_ID}]})
+        assert r.status_code == 200, r.text
+        assert sent["to"] == READER
