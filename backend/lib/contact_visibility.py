@@ -258,6 +258,31 @@ def build_identity_bound_contact_evidence(
     }
 
 
+def carries_contact_evidence(opp: dict) -> bool:
+    """Whether a collector has ever spoken for this record's address.
+
+    True for a complete claim, a partial one, and a tombstone alike — the
+    question is only whether anything was ever stamped, not whether it passed.
+    Public because the merge paths must ask it of the COMMITTED record before
+    deciding whether a fresh scrape that produced no claim has actually
+    rejected something (in which case the tombstone is a verdict) or has simply
+    not reached the page (in which case stamping one invents a review that
+    never happened, and costs the record its grandfathering).
+    """
+    metadata = opp.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+    return any(
+        metadata.get(key) is not None
+        for key in (
+            "identity_bound",
+            "contact_verified_at",
+            "contact_verified_email",
+            "contact_source_url",
+        )
+    )
+
+
 def _predates_contact_stamping(opp: dict) -> bool:
     """W7a: provenance never gates data that predates stamping. A record with
     NO evidence field at all was harvested before the identity-bound contract
@@ -267,18 +292,7 @@ def _predates_contact_stamping(opp: dict) -> bool:
     record carries ANY of the evidence fields, a collector has spoken for it
     and the full three-part contract applies: a partial or wrong stamp fails
     closed, exactly as the strict rule intends."""
-    metadata = opp.get("metadata")
-    if not isinstance(metadata, dict):
-        return True
-    return not any(
-        metadata.get(k) is not None
-        for k in (
-            "identity_bound",
-            "contact_verified_at",
-            "contact_verified_email",
-            "contact_source_url",
-        )
-    )
+    return not carries_contact_evidence(opp)
 
 
 def _has_identity_bound_contact_evidence(
