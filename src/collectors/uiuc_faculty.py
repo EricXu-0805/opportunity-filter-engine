@@ -27,7 +27,10 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from backend.lib.contact_visibility import canonical_profile_evidence_url
+from backend.lib.contact_visibility import (
+    canonical_profile_evidence_url,
+    carries_contact_evidence,
+)
 
 from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
@@ -1270,7 +1273,13 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
             ):
                 apply_record_contact_claim(incoming, trusted_claim)
             else:
-                clear_contact_evidence(incoming)
+                # Only a record that WAS stamped can be rejected. When the
+                # committed row carried nothing either, this scrape reviewed
+                # nothing, and a tombstone here would retire a reachable
+                # address on the strength of a page we simply did not read.
+                clear_contact_evidence(
+                    incoming, tombstone=carries_contact_evidence(existing),
+                )
                 # Preserve legacy provenance with a legacy address, but never
                 # launder an incomplete bound_* tuple into a trusted source.
                 src = (existing.get("metadata") or {}).get("email_source")
@@ -1281,7 +1290,12 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # remain attached to it. A fresh collector-produced tuple has already
         # been validated on ``incoming`` and is preserved.
         if record_contact_claim(incoming) is None:
-            clear_contact_evidence(incoming)
+            # Same asymmetry: proof that described the OLD address must not
+            # follow the new one, but a professor changing address on a row
+            # nobody ever stamped is not a rejection of anything.
+            clear_contact_evidence(
+                incoming, tombstone=carries_contact_evidence(existing),
+            )
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
