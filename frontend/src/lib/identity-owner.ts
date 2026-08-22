@@ -35,7 +35,11 @@ export const USER_SCOPED_KEYS: readonly string[] = [
   STORAGE_KEYS.SEMANTIC_RERANK, // AI-rerank opt-in — an account-level choice, not a device setting
   STORAGE_KEYS.FILTER_PRESETS, // saved result filters — reflect the account's search intent
   STORAGE_KEYS.CUSTOM_IMPORTS, // user-imported opportunities — localStorage is their ONLY copy
-  STORAGE_KEYS.EMAIL_HINT, // remembered email address (PII)
+  // Remembered email address (PII). Nothing writes this any more — the digest
+  // dialog resolves the recipient from the session instead of asking — but the
+  // entry stays so values written by earlier builds are still scoped to their
+  // owner and cleared on an identity switch. Deleting it orphans that PII.
+  STORAGE_KEYS.EMAIL_HINT,
   STORAGE_KEYS.ANCHOR_3FAV_DISMISSED, // "save your favorites" prompt decision — the person's, not the device's
   STORAGE_KEYS.RESULTS_CTA_DISMISSED, // concierge CTA dismissal — same
   STORAGE_KEYS.FAVORITES_FALLBACK, // offline favorites mirror — would backfill into the next uid's account

@@ -10,14 +10,31 @@ raising ``orders._caller_uid`` pattern.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 
 import httpx
 
 from backend.lib.release_scope import session_provider_accepted
 
 
-async def authenticated_uid(authorization: str | None) -> str | None:
-    """The caller's Supabase uid, or ``None`` for anything but a signed-in account.
+@dataclass(frozen=True)
+class SessionIdentity:
+    """Who the caller is, as GoTrue states it — never as the client claims it.
+
+    ``email`` is populated only for an address GoTrue reports as CONFIRMED.
+    An account can hold an unconfirmed address (a typo at sign-up, or someone
+    else's address entered deliberately), and mailing that is the same
+    unsolicited send this type exists to prevent. Unconfirmed reads as ``None``
+    so a caller cannot mistake "we know of an address" for "the account proved
+    it owns one".
+    """
+
+    uid: str
+    email: str | None
+
+
+async def _session_user(authorization: str | None) -> dict | None:
+    """The GoTrue user behind a bearer token, or ``None``.
 
     ``None`` covers: missing/malformed header, expired or invalid token,
     Supabase env unconfigured, GoTrue unreachable, a session minted through a
@@ -25,6 +42,10 @@ async def authenticated_uid(authorization: str | None) -> str | None:
     ANONYMOUS sessions: every guest holds a real token from
     ``signInAnonymously``, so ``is_anonymous`` is what separates a guest from
     a signed-in account.
+
+    One round trip, shared by every caller: the uid and the confirmed address
+    come out of the same answer, so no route can end up trusting a uid from one
+    validation and an address from another.
     """
     if not authorization or not authorization.startswith("Bearer "):
         return None
@@ -53,5 +74,32 @@ async def authenticated_uid(authorization: str | None) -> str | None:
         return None
     if not session_provider_accepted(user):
         return None
-    uid = user.get("id")
-    return str(uid) if uid else None
+    return user if user.get("id") else None
+
+
+async def authenticated_uid(authorization: str | None) -> str | None:
+    """The caller's Supabase uid, or ``None`` for anything but a signed-in account."""
+    user = await _session_user(authorization)
+    return str(user["id"]) if user else None
+
+
+async def authenticated_identity(authorization: str | None) -> SessionIdentity | None:
+    """The caller's uid plus their confirmed address, or ``None``.
+
+    Confirmation is read from GoTrue's own ``email_confirmed_at`` (falling back
+    to the legacy ``confirmed_at`` older projects still emit). A present but
+    unconfirmed address yields ``SessionIdentity(uid, None)`` rather than a
+    refusal, so a route can tell "not signed in" apart from "signed in, no
+    address we may write to" and say the right thing to each.
+    """
+    user = await _session_user(authorization)
+    if user is None:
+        return None
+    email = user.get("email")
+    confirmed = user.get("email_confirmed_at") or user.get("confirmed_at")
+    usable = (
+        email.strip().lower()
+        if isinstance(email, str) and email.strip() and confirmed
+        else None
+    )
+    return SessionIdentity(uid=str(user["id"]), email=usable)
