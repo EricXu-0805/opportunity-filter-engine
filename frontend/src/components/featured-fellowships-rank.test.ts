@@ -1,3 +1,10 @@
+// Pinned west of UTC, before any Date is constructed. A bare `YYYY-MM-DD`
+// deadline parses as UTC midnight while startOfDay() reads LOCAL calendar
+// fields, so "is this deadline still today" only ever disagrees with itself
+// OUTSIDE UTC — and CI runs in UTC, where the bug is invisible. Without this
+// line these tests pass on the runner and fail for every user in the Americas.
+process.env.TZ = 'America/Los_Angeles';
+
 import { describe, it, expect } from 'vitest';
 import {
   FEATURED_FETCH_POOL,
