@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-import { captureOwnerToken, readUserScopedRaw, writeUserScopedRaw } from '@/lib/identity-owner';
-import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { getAuthState } from '@/lib/supabase';
+import { useAuthModal } from '@/lib/auth-modal-context';
 import { useT } from '@/i18n/client';
 
 type SendResult = { ok: boolean; count?: number };
@@ -22,7 +22,28 @@ interface EmailMeButtonProps {
   className?: string;
 }
 
-const LS_KEY = STORAGE_KEYS.EMAIL_HINT;
+/** Who, if anyone, this digest may be sent to.
+ *
+ *  Resolved from the session rather than typed. The address used to be a free
+ *  text field, which is what made both endpoints a way to mail a JoinALab
+ *  digest to a stranger; the server now refuses any recipient but the caller's
+ *  own confirmed address, and this is the UI telling the same truth. Three
+ *  states, because "you cannot send" has two different remedies.
+ */
+type Recipient =
+  | { kind: 'loading' }
+  | { kind: 'anonymous' }
+  | { kind: 'unconfirmed' }
+  | { kind: 'ready'; email: string };
+
+/** GoTrue's own confirmation stamp, including the legacy field older projects
+ *  still emit. Same pair the server reads, so the dialog and the endpoint
+ *  cannot disagree about whether an address may be written to. */
+function isConfirmed(
+  user: { email_confirmed_at?: string | null; confirmed_at?: string | null } | null,
+): boolean {
+  return Boolean(user?.email_confirmed_at || user?.confirmed_at);
+}
 
 export default function EmailMeButton({
   label,
@@ -33,17 +54,29 @@ export default function EmailMeButton({
   className,
 }: EmailMeButtonProps) {
   const { t } = useT();
+  const { openModal } = useAuthModal();
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
+  const [recipient, setRecipient] = useState<Recipient>({ kind: 'loading' });
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const sendRef = useRef<HTMLButtonElement>(null);
 
   const handleOpen = useCallback(() => {
-    const cached = readUserScopedRaw(LS_KEY);
-    if (cached) setEmail(cached);
     setOpen(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setRecipient({ kind: 'loading' });
+    void getAuthState().then(({ session, isAnonymous, user, email }) => {
+      if (!session || isAnonymous) setRecipient({ kind: 'anonymous' });
+      // An address GoTrue holds but the account has not confirmed is exactly
+      // the case this gate exists for: someone else's address, entered at
+      // sign-up. Confirmation comes from the user record, NOT from `email`
+      // being present — `getAuthState().email` is the raw address and stays
+      // populated while unconfirmed, because the account menu still has to
+      // display it. Reading absence as "unconfirmed" would make this state
+      // unreachable and push the discovery to after the send.
+      else if (!email || !isConfirmed(user)) setRecipient({ kind: 'unconfirmed' });
+      else setRecipient({ kind: 'ready', email: email.trim().toLowerCase() });
+    });
+    setTimeout(() => sendRef.current?.focus(), 50);
   }, []);
 
   useEffect(() => {
@@ -55,21 +88,11 @@ export default function EmailMeButton({
 
   const submit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setState('error');
-      setMessage(t('email.invalidEmail'));
-      return;
-    }
+    if (recipient.kind !== 'ready') return;
     setState('sending');
     setMessage(null);
-    // Captured before the send await: the hint write below must be
-    // attributed to the identity that was active when the user submitted,
-    // never one that resolves only later once the request completes.
-    const token = captureOwnerToken();
     try {
-      await onSend(trimmed);
-      writeUserScopedRaw(LS_KEY, trimmed, token);
+      await onSend(recipient.email);
       setState('sent');
       setMessage(t('email.sentMessage'));
       setTimeout(() => { setOpen(false); setState('idle'); setMessage(null); }, 2500);
@@ -78,12 +101,21 @@ export default function EmailMeButton({
       const msg = err instanceof Error ? err.message : String(err);
       if (err instanceof ApiError && err.status === 503) setMessage(t('email.notConfigured'));
       else if (err instanceof ApiError && err.status === 429) setMessage(t('email.rateLimit'));
+      // The session expired between opening the dialog and submitting, or the
+      // server disagrees about who this is. Say which, rather than "failed".
+      else if (err instanceof ApiError && err.status === 401) setMessage(t('email.signInRequired'));
+      // Both of the server's identity refusals are 409, so the CODE is what
+      // separates them. Branching on the status alone answered an unconfirmed
+      // reader with "nothing was sent to the address you entered" — about a
+      // field this dialog no longer has, and with the wrong remedy.
+      else if (err instanceof ApiError && err.code === 'EMAIL_NOT_CONFIRMED') setMessage(t('email.confirmRequired'));
+      else if (err instanceof ApiError && err.code === 'RECIPIENT_NOT_SELF') setMessage(t('email.notSelf'));
       // Tolerate older/custom callers that still throw a status-bearing string.
       else if (msg.includes('503')) setMessage(t('email.notConfigured'));
       else if (msg.includes('429')) setMessage(t('email.rateLimit'));
       else setMessage(t('email.sendFailed'));
     }
-  }, [email, onSend, t]);
+  }, [recipient, onSend, t]);
 
   return (
     <>
@@ -139,19 +171,31 @@ export default function EmailMeButton({
             )}
 
             <form onSubmit={submit} className="space-y-3">
-              <label className="block">
-                <span className="text-[12px] font-medium text-gray-700">{t('email.emailLabel')}</span>
-                <input
-                  ref={inputRef}
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  disabled={state === 'sending' || state === 'sent'}
-                  className="mt-1.5 w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
-                />
-              </label>
+              {recipient.kind === 'ready' && (
+                <div className="block">
+                  <span className="text-[12px] font-medium text-gray-700">{t('email.emailLabel')}</span>
+                  <p className="mt-1.5 w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[14px] text-gray-700 break-all">
+                    {recipient.email}
+                  </p>
+                </div>
+              )}
+              {recipient.kind === 'anonymous' && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2.5">
+                  <p className="text-[13px] text-indigo-900">{t('email.signInRequired')}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); openModal({ reason: 'email-digest' }); }}
+                    className="mt-2 inline-flex px-3 py-1.5 text-[12px] font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                  >
+                    {t('email.signInCta')}
+                  </button>
+                </div>
+              )}
+              {recipient.kind === 'unconfirmed' && (
+                <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">
+                  {t('email.confirmRequired')}
+                </p>
+              )}
 
               {message && state === 'sent' && (
                 <div className="flex items-center gap-2 text-[13px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
@@ -175,8 +219,9 @@ export default function EmailMeButton({
                   {t('common.cancel')}
                 </button>
                 <button
+                  ref={sendRef}
                   type="submit"
-                  disabled={state === 'sending' || state === 'sent' || !email.trim()}
+                  disabled={state === 'sending' || state === 'sent' || recipient.kind !== 'ready'}
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {state === 'sending' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

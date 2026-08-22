@@ -42,6 +42,9 @@ export type AuthModalReason =
   | 'guest-banner'
   | 'deep-link'
   | 'home-save-cta'
+  // Emailing a digest to yourself needs a confirmed address, so the sign-in
+  // prompt has to be reachable from the dialog that discovers you have none.
+  | 'email-digest'
   | 'contact-reveal';
 
 interface OpenOptions {

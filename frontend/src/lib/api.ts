@@ -1144,6 +1144,21 @@ export interface EmailMatchItem {
   record_kind?: 'listing' | 'faculty_contact' | 'unknown';
 }
 
+/** The bearer header a digest send must carry.
+ *
+ *  The server now mails the CALLER's own confirmed address and refuses any
+ *  other, so a request with no token is not "an anonymous send" — it is a 401.
+ *  `request` does not attach credentials on its own, which is why this is
+ *  explicit here rather than inherited.
+ */
+async function digestAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getRevealAccessToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export async function sendMatchesEmail(
   email: string,
   items: EmailMatchItem[],
@@ -1151,6 +1166,11 @@ export async function sendMatchesEmail(
 ): Promise<{ ok: boolean; count: number }> {
   return request('/email/send-matches', {
     method: 'POST',
+    headers: await digestAuthHeaders(),
+    // ROLLOUT BRIDGE: `email` is the caller's OWN session address, sent only
+    // so a Render still running the previous build has a recipient. The
+    // current backend ignores the value and refuses it outright when it names
+    // anyone but the session. Dropped once both sides are on the same SHA.
     body: JSON.stringify({ email, items, subject_hint: subjectHint }),
   });
 }
@@ -1177,6 +1197,8 @@ export async function sendFavoritesEmail(
 ): Promise<{ ok: boolean; count: number }> {
   return request('/email/send-favorites', {
     method: 'POST',
+    headers: await digestAuthHeaders(),
+    // ROLLOUT BRIDGE, same as sendMatchesEmail.
     body: JSON.stringify({ email, items }),
   });
 }

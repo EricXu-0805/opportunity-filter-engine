@@ -22,7 +22,7 @@ from collections import defaultdict
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.data_loader import load_opportunities_by_id
@@ -36,6 +36,7 @@ from backend.lib.release_scope import (
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
+from backend.lib.supabase_auth import authenticated_identity
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
 from src.evidence import (
     faculty_availability_status,
@@ -244,7 +245,11 @@ class MatchItem(BaseModel):
 class SendMatchesRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(max_length=_MAX_EMAIL_LENGTH)
+    # ROLLOUT BRIDGE, like the describing fields above: accepted so a client
+    # that still sends it is not 422'd, and optional so one that has stopped is
+    # not either. It is NEVER the send target — see `_self_send_target`, which
+    # mails the caller's own confirmed address and refuses any other.
+    email: str | None = Field(default=None, max_length=_MAX_EMAIL_LENGTH)
     items: list[MatchItemRequest] = Field(..., max_length=MAX_ITEMS_PER_EMAIL)
     # ROLLOUT BRIDGE, accepted and ignored. The old subject was "Your top N
     # matches from JoinALab" — a ranking claim, phrased by the client, about a
@@ -255,8 +260,8 @@ class SendMatchesRequest(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def _email(cls, v: str) -> str:
-        return _validate_email(v)
+    def _email(cls, v: str | None) -> str | None:
+        return _validate_email(v) if v is not None else None
 
 
 class FavoriteItemRequest(BaseModel):
@@ -317,13 +322,64 @@ class FavoriteItem(BaseModel):
 class SendFavoritesRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: str = Field(max_length=_MAX_EMAIL_LENGTH)
+    # ROLLOUT BRIDGE, like the describing fields above: accepted so a client
+    # that still sends it is not 422'd, and optional so one that has stopped is
+    # not either. It is NEVER the send target — see `_self_send_target`, which
+    # mails the caller's own confirmed address and refuses any other.
+    email: str | None = Field(default=None, max_length=_MAX_EMAIL_LENGTH)
     items: list[FavoriteItemRequest] = Field(..., max_length=MAX_ITEMS_PER_EMAIL)
 
     @field_validator("email")
     @classmethod
-    def _email(cls, v: str) -> str:
-        return _validate_email(v)
+    def _email(cls, v: str | None) -> str | None:
+        return _validate_email(v) if v is not None else None
+
+
+async def _self_send_target(authorization: str | None, claimed: str | None) -> str:
+    """The one address a user-facing digest may go to: the caller's own.
+
+    The recipient used to come straight off the wire with no session at all,
+    which made both endpoints a way to mail a JoinALab-branded digest to any
+    address a stranger named — over the same verified domain that carries every
+    magic link. #790 closed the other half of that (every describing field is
+    re-read from the corpus, so the content cannot be forged); this closes the
+    recipient.
+
+    ``claimed`` is the request body's ``email``, kept as a ROLLOUT BRIDGE while
+    clients still send it. It is never the send target. When it names someone
+    else this REFUSES rather than quietly substituting the session address:
+    silently redirecting would leave the sender believing a message reached the
+    address they typed.
+
+    Raised before the recipient quota and before the provider, so no refusal
+    here can cost a send or a slot.
+    """
+    identity = await authenticated_identity(authorization)
+    if identity is None:
+        raise prework_refusal(401, {
+            "code": "SIGN_IN_REQUIRED",
+            "message": "Sign in to email yourself these results.",
+            "retryable": False,
+        })
+    if identity.email is None:
+        raise prework_refusal(409, {
+            "code": "EMAIL_NOT_CONFIRMED",
+            "message": (
+                "Confirm your account's email address before JoinALab can send "
+                "to it."
+            ),
+            "retryable": False,
+        })
+    if claimed is not None and claimed.strip().lower() != identity.email:
+        raise prework_refusal(409, {
+            "code": "RECIPIENT_NOT_SELF",
+            "message": (
+                "JoinALab only emails your own confirmed address. Nothing was "
+                "sent to the address you entered."
+            ),
+            "retryable": False,
+        })
+    return identity.email
 
 
 def _resend_configured() -> tuple[str, str]:
@@ -875,8 +931,12 @@ def _resolve_all(items: list, lookup: dict, legacy_index: dict | None) -> list[d
 
 
 @router.post("/email/send-matches")
-async def send_matches(req: SendMatchesRequest):
+async def send_matches(
+    req: SendMatchesRequest,
+    authorization: str | None = Header(default=None),
+):
     api_key, from_addr = _resend_configured()
+    recipient = await _self_send_target(authorization, req.email)
     if not req.items:
         raise prework_refusal(400, "No items to send")
 
@@ -909,17 +969,21 @@ async def send_matches(req: SendMatchesRequest):
     # Last thing before the provider. Reserving earlier would spend the
     # recipient's quota on a request that a later render failure means was
     # never attempted.
-    _enforce_recipient_quota(req.email)
+    _enforce_recipient_quota(recipient)
     await _send_via_resend(
-        api_key=api_key, from_addr=from_addr, to=req.email,
+        api_key=api_key, from_addr=from_addr, to=recipient,
         subject=subject, html=html, text=text,
     )
     return {"ok": True, "count": len(req.items)}
 
 
 @router.post("/email/send-favorites")
-async def send_favorites(req: SendFavoritesRequest):
+async def send_favorites(
+    req: SendFavoritesRequest,
+    authorization: str | None = Header(default=None),
+):
     api_key, from_addr = _resend_configured()
+    recipient = await _self_send_target(authorization, req.email)
     if not req.items:
         raise prework_refusal(400, "No items to send")
 
@@ -943,9 +1007,9 @@ async def send_favorites(req: SendFavoritesRequest):
         ))
 
     subject, html, text = _render_favorites_email(rehydrated)
-    _enforce_recipient_quota(req.email)
+    _enforce_recipient_quota(recipient)
     await _send_via_resend(
-        api_key=api_key, from_addr=from_addr, to=req.email,
+        api_key=api_key, from_addr=from_addr, to=recipient,
         subject=subject, html=html, text=text,
     )
     return {"ok": True, "count": len(req.items)}
