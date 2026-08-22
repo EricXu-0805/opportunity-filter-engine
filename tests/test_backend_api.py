@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
 from backend.lib.release_scope import opportunity_visible_in_release
+from backend.lib.supabase_auth import SessionIdentity
 from backend.main import app
 from backend.routes.cold_email import _local_refine
 from src.evidence import record_kind, target_truth
@@ -3967,6 +3968,35 @@ class TestStatsFreshness:
         opportunities_routes._stats_cache_time = 0.0
 
 
+class _SignedInReader:
+    """A signed-in account whose confirmed address the test can change.
+
+    The digest endpoints mail the SESSION's address and never the request
+    body's, so a test that needs several distinct recipients now needs several
+    distinct sessions rather than several values in one payload.
+    """
+
+    def __init__(self, address: str):
+        self.address = address
+
+
+def _sign_in(monkeypatch, address: str) -> _SignedInReader:
+    """Run the digest endpoints as a signed-in reader with a confirmed address.
+
+    Returns the reader so a caller can reassign ``address`` between requests;
+    the resolver reads it per call rather than closing over the initial value.
+    """
+    from backend.routes import email as email_mod
+
+    reader = _SignedInReader(address)
+
+    async def identity(_authorization):
+        return SessionIdentity(uid=f"uid-{reader.address}", email=reader.address)
+
+    monkeypatch.setattr(email_mod, "authenticated_identity", identity)
+    return reader
+
+
 class TestEmailEndpoints:
     def test_send_matches_503_when_unconfigured(self, monkeypatch):
         monkeypatch.delenv("RESEND_API_KEY", raising=False)
@@ -3989,11 +4019,32 @@ class TestEmailEndpoints:
     def test_send_matches_400_empty_items(self, monkeypatch):
         monkeypatch.setenv("RESEND_API_KEY", "fake")
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
-        r = client.post("/api/email/send-matches", json={
-            "email": "test@example.com",
-            "items": [],
-        })
+        _sign_in(monkeypatch, "test@example.com")
+        r = client.post("/api/email/send-matches", json={"items": []})
         assert r.status_code == 400
+
+    def test_an_empty_send_is_still_refused_for_being_anonymous_first(
+        self, monkeypatch,
+    ):
+        """Sign-in is checked before the payload is judged.
+
+        The other order would answer a stranger's probe with a description of
+        their own request ("no items"), which tells them the endpoint is
+        reachable without a session. Neither refusal costs anything, so the
+        cheaper-to-check one is not the one to run first — the one that closes
+        the endpoint is.
+        """
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        from backend.routes import email as email_mod
+
+        async def anonymous(_authorization):
+            return None
+
+        monkeypatch.setattr(email_mod, "authenticated_identity", anonymous)
+        r = client.post("/api/email/send-matches", json={"items": []})
+        assert r.status_code == 401
+        assert r.json()["detail"]["code"] == "SIGN_IN_REQUIRED"
 
     def test_send_matches_422_too_many(self, monkeypatch):
         monkeypatch.setenv("RESEND_API_KEY", "fake")
@@ -4019,24 +4070,31 @@ class TestEmailEndpoints:
         # A different recipient is unaffected.
         email_mod._enforce_recipient_quota("someone-else@example.com")
 
-    def test_send_matches_caps_victim_across_rotating_ips(self, monkeypatch):
-        # SEC-3: an attacker rotating source IPs (distinct XFF) evades the per-IP
-        # limit, but the per-recipient cap still protects the victim mailbox.
+    def test_send_matches_caps_the_callers_own_mailbox_across_rotating_ips(
+        self, monkeypatch,
+    ):
+        # SEC-3, restated. The original framing — an attacker rotating source
+        # IPs to bomb a named "victim@" — is no longer reachable at all: the
+        # recipient is the session's own confirmed address, so a caller cannot
+        # aim a send at anyone else (see the RECIPIENT_NOT_SELF refusal). What
+        # the per-recipient cap still does, and what this pins, is bound the
+        # caller's OWN mailbox when they rotate IPs to slip the per-IP limit.
         monkeypatch.setenv("RESEND_API_KEY", "fake")
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
         from backend.routes import email as email_mod
         email_mod._recipient_sends.clear()
+        _sign_in(monkeypatch, "self-flooder@example.com")
 
         async def _noop(**kwargs):
             return None
         monkeypatch.setattr(email_mod, "_send_via_resend", _noop)
 
-        body = {"email": "bomb-target@example.com", "items": [{"opportunity_id": EMAIL_TARGET_ID}]}
+        body = {"items": [{"opportunity_id": EMAIL_TARGET_ID}]}
         for i in range(email_mod._RECIPIENT_SEND_LIMIT):
             r = client.post("/api/email/send-matches", json=body,
                             headers={"x-forwarded-for": f"203.0.113.{i}"})
             assert r.status_code == 200, r.text
-        # Fresh IP, same victim → blocked by the per-recipient cap.
+        # Fresh IP, same session → blocked by the per-recipient cap.
         r = client.post("/api/email/send-matches", json=body,
                         headers={"x-forwarded-for": "203.0.113.250"})
         assert r.status_code == 429
@@ -5246,41 +5304,52 @@ class TestClientIpTrustAndGlobalCeiling:
         return main_mod
 
     def test_rotating_leftmost_xff_no_longer_evades_per_ip(self, monkeypatch):
-        # Distinct recipients (per-recipient cap never fires) + a rotating spoofed
+        # Distinct SESSIONS (per-recipient cap never fires) + a rotating spoofed
         # leftmost XFF but a FIXED trusted rightmost hop. The per-IP bucket keys on
         # the rightmost now, so the 3/hr limit binds at the 4th request.
+        #
+        # Distinct sessions, not distinct payload addresses: the recipient comes
+        # from the session, so reusing one session would trip the per-recipient
+        # cap first and this would stop testing the per-IP bucket at all. Several
+        # readers behind one corporate hop is also the real shape of this case.
         main_mod = self._arm_rate_limiting(monkeypatch)
+        reader = _sign_in(monkeypatch, "u0@example.com")
         limit = main_mod.RATE_LIMITS["/api/email/send-matches"][0]
         for i in range(limit):
+            reader.address = f"u{i}@example.com"
             r = client.post(
                 "/api/email/send-matches",
-                json={"email": f"u{i}@example.com", "items": [{"opportunity_id": EMAIL_TARGET_ID}]},
+                json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
                 headers={"x-forwarded-for": f"1.2.3.{i}, 9.9.9.9"},
             )
             assert r.status_code == 200, r.text
+        reader.address = "u-final@example.com"
         r = client.post(
             "/api/email/send-matches",
-            json={"email": "u-final@example.com", "items": [{"opportunity_id": EMAIL_TARGET_ID}]},
+            json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
             headers={"x-forwarded-for": f"1.2.3.{limit}, 9.9.9.9"},
         )
         assert r.status_code == 429
 
     def test_global_email_ceiling_binds_across_distinct_ips(self, monkeypatch):
-        # Distinct rightmost IPs (per-IP never trips) + distinct recipients
-        # (per-recipient never trips) — only the global email ceiling can stop
-        # this, and it must, at the 3rd send.
+        # Distinct rightmost IPs (per-IP never trips) + distinct SESSIONS, so
+        # distinct recipients (per-recipient never trips) — only the global
+        # email ceiling can stop this, and it must, at the 3rd send.
         main_mod = self._arm_rate_limiting(monkeypatch)
+        reader = _sign_in(monkeypatch, "v0@example.com")
         monkeypatch.setattr(main_mod, "GLOBAL_EMAIL_PER_HOUR", 2)
         for i in range(2):
+            reader.address = f"v{i}@example.com"
             r = client.post(
                 "/api/email/send-matches",
-                json={"email": f"v{i}@example.com", "items": [{"opportunity_id": EMAIL_TARGET_ID}]},
+                json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
                 headers={"x-forwarded-for": f"9.9.9.{i}"},
             )
             assert r.status_code == 200, r.text
+        reader.address = "v-final@example.com"
         r = client.post(
             "/api/email/send-matches",
-            json={"email": "v-final@example.com", "items": [{"opportunity_id": EMAIL_TARGET_ID}]},
+            json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
             headers={"x-forwarded-for": "9.9.9.250"},
         )
         assert r.status_code == 429

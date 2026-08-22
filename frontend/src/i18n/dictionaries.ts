@@ -3466,8 +3466,17 @@ export const en = {
   },
   email: {
     title: 'Email me a copy',
-    subtitle: 'Save these to your inbox — free, no account needed.',
-    emailLabel: 'Your email',
+    // Both this line and privacyNote used to promise "no account needed".
+    // They were true when the endpoint mailed whatever address was typed into
+    // it — which was also what made it a way to mail strangers. Now that a
+    // digest only ever goes to the sender's own confirmed address, the old
+    // copy would be advertising something the product no longer does.
+    subtitle: 'Sent to your own inbox, and nowhere else.',
+    emailLabel: 'Sending to',
+    signInRequired: 'Sign in to email yourself these results.',
+    signInCta: 'Sign in',
+    confirmRequired: 'Confirm your account email address first — we can only send to an address you have confirmed.',
+    notSelf: 'JoinALab only emails your own confirmed address. Nothing was sent.',
     send: 'Send',
     sent: 'Sent ✓',
     sendMatches: 'Email matches',
@@ -3487,7 +3496,7 @@ export const en = {
     notConfigured: 'Email service is not configured yet.',
     rateLimit: 'Too many emails sent — try again in an hour.',
     sendFailed: 'Failed to send. Please try again.',
-    privacyNote: 'We only use your email for this one message. No marketing, no account.',
+    privacyNote: 'Sent only to your own confirmed address, for this one message. No marketing.',
     subjectMatches: 'Your top {count} matches from JoinALab',
     subjectFavorites: 'Your {count} saved opportunities',
   },
@@ -7927,8 +7936,15 @@ export const zh = {
   },
   email: {
     title: '发一份到邮箱',
-    subtitle: '免费存到你的收件箱 —— 不需要注册账号。',
-    emailLabel: '你的邮箱',
+    // 这句和 privacyNote 原本都写着「不需要注册账号」。那在端点会把邮件发到
+    // 任何填进去的地址时是真话 —— 也正是它能给陌生人发信的原因。现在摘要只
+    // 会发到发送者本人已验证的地址，旧文案等于在宣传一件产品不再做的事。
+    subtitle: '只发到你自己的收件箱，不发去别处。',
+    emailLabel: '发送至',
+    signInRequired: '登录后即可把结果发到你自己的邮箱。',
+    signInCta: '登录',
+    confirmRequired: '请先验证账号邮箱 —— 我们只能发送到你已验证过的地址。',
+    notSelf: 'JoinALab 只发送到你本人已验证的地址。本次未发送。',
     send: '发送',
     sent: '已发送 ✓',
     sendMatches: '发送匹配结果',
@@ -7944,7 +7960,7 @@ export const zh = {
     notConfigured: '邮件服务尚未配置。',
     rateLimit: '发送过于频繁 —— 一小时后再试。',
     sendFailed: '发送失败，请重试。',
-    privacyNote: '我们仅用你的邮箱发送这一封邮件。不做营销，不创建账号。',
+    privacyNote: '仅发送到你本人已验证的地址，仅此一封。不做营销。',
     subjectMatches: 'JoinALab · 你的 {count} 条最佳匹配',
     subjectFavorites: '你的 {count} 个已保存机会',
   },
