@@ -9,7 +9,14 @@ function startOfDay(d: Date): number {
 
 export function isPastDeadline(deadline: string | undefined, now: Date): boolean {
   if (!deadline) return false;
-  const parsed = new Date(deadline);
+  // `new Date('2026-06-01')` is UTC midnight, but startOfDay() below reads the
+  // LOCAL calendar fields — so anywhere west of UTC the two disagree by a day
+  // and a deadline that is still today reads as past. Every deadline in the
+  // corpus is a bare YYYY-MM-DD with no timezone, which means the student's own
+  // calendar day is the only frame that answers "is this still open"; the
+  // `T00:00:00` suffix is what makes the parse use it (same form as
+  // match-utils.daysUntil and the two deadline badges).
+  const parsed = new Date(deadline + 'T00:00:00');
   if (Number.isNaN(parsed.getTime())) return false;
   return startOfDay(parsed) < startOfDay(now);
 }
