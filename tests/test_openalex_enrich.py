@@ -6,6 +6,7 @@ field-consistency gate (wrong-person rejection), topic cleaning, and updates-onl
 apply.
 """
 from src.collectors import openalex_enrich as oa
+from src.publication_trust import verified_recent_works, works_are_verified
 
 
 def _author(name, works, inst_ids, topics):
@@ -382,7 +383,8 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
          "source_type": "faculty_research"},
         {"pi_name": "C Done", "school": "uw", "url": "https://x.edu/c",
          "source_type": "faculty_research",
-         "metadata": {"recent_works": [{"title": "old", "year": 2020}]}},
+         "metadata": {"recent_works": [{"title": "old", "year": 2020}],
+                      "publication_attribution_status": oa.ATTRIBUTION_VERIFIED}},
         {"pi_name": "D Other", "school": "not-registered", "url": "https://y.edu/d",
          "source_type": "faculty_research"},
     ]
@@ -394,8 +396,8 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
     monkeypatch.setattr(oa, "author_recent_works",
                         lambda aid, dept="": [{"title": "Recent Paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
-    # keyworded faculty ARE works targets; already-enriched + unmapped schools
-    # are not — and the entry carries the resolved author id (the provenance
+    # keyworded faculty ARE works targets; VERIFIED-enriched + unmapped schools
+    # are not (holding unverifiable papers does not make a record done) — and the entry carries the resolved author id (the provenance
     # apply_works turns into a verified_author_id stamp).
     assert mapping == {"https://x.edu/a#a match": {
         "author_id": "A1", "works": [{"title": "Recent Paper", "year": 2026}]}}
@@ -581,3 +583,102 @@ def test_apply_works_dedups_punctuation_variant_titles():
     oa.apply_works(opps, mapping)
     titles = [w["title"] for w in opps[0]["metadata"]["recent_works"]]
     assert titles == ["CGM in Older-Onset Diabetes", "A Different Paper"]
+
+
+# ---------------------------------------------------------------------------
+# Papers we already paid for, that no email can cite
+#
+# 15,917 faculty records in the corpus hold 47,024 harvested publications and
+# exactly zero of them pass ``works_are_verified``: they were harvested before
+# the attribution stamp existed. Two selection rules then made that state
+# permanent, and each one is sufficient on its own —
+#
+#   _works_targets skipped any record that HAD works, so the re-harvest that
+#   would resolve an author id never selected them;
+#   apply_works required strictly more papers, and 15,327 of the 15,917 already
+#   hold _MAX_WORKS, so even a completed re-harvest would have written nothing.
+#
+# Together: the papers are in the corpus, invisible to every serving path, and
+# unreachable by the only pass that could make them visible.
+# ---------------------------------------------------------------------------
+
+
+def _faculty(url, name, works=None, status=None):
+    o = {"pi_name": name, "school": "uw", "url": url,
+         "source_type": "faculty_research"}
+    if works is not None:
+        md = {"recent_works": works}
+        if status:
+            md["publication_attribution_status"] = status
+        o["metadata"] = md
+    return o
+
+
+def test_unverified_works_do_not_make_a_record_done():
+    # The record LOOKS harvested and is worth nothing to a cold email. It is a
+    # target until its papers are attributable to the person we would name.
+    unstamped = _faculty("https://x.edu/a", "A Prof",
+                         [{"title": "old", "year": 2020}])
+    name_matched = _faculty("https://x.edu/b", "B Prof",
+                            [{"title": "old", "year": 2020}],
+                            oa.ATTRIBUTION_NAME_MATCH)
+    verified = _faculty("https://x.edu/c", "C Prof",
+                        [{"title": "old", "year": 2020}],
+                        oa.ATTRIBUTION_VERIFIED)
+    targets = oa._works_targets([unstamped, name_matched, verified], None)
+    assert [t["pi_name"] for t in targets] == ["A Prof", "B Prof"]
+
+
+def test_the_same_three_papers_are_an_upgrade_once_they_carry_an_author_id():
+    # The decisive case: _MAX_WORKS is 3 and 15,327 records already hold 3, so
+    # a `len(clean) > len(existing)` rule rejects every completed re-harvest of
+    # the exact population the re-harvest exists for.
+    same = [{"title": "P1", "year": 2026}, {"title": "P2", "year": 2025},
+            {"title": "P3", "year": 2024}]
+    opp = _faculty("https://x.edu/a", "A Prof", list(same))
+    assert oa.apply_works([opp], {"https://x.edu/a": {"author_id": "A1",
+                                                      "works": list(same)}}) == 1
+    assert opp["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_VERIFIED
+
+
+def test_one_citable_paper_beats_three_uncitable_ones():
+    # Fewer papers, but the three it replaces were unusable by every serving
+    # path — so the record goes from zero citable papers to one.
+    opp = _faculty("https://x.edu/a", "A Prof",
+                   [{"title": "P1", "year": 2026}, {"title": "P2", "year": 2025},
+                    {"title": "P3", "year": 2024}])
+    mapping = {"https://x.edu/a": {"author_id": "A1",
+                                   "works": [{"title": "Real", "year": 2026}]}}
+    assert oa.apply_works([opp], mapping) == 1
+    assert [w["title"] for w in opp["metadata"]["recent_works"]] == ["Real"]
+    assert opp["metadata"]["publication_attribution_status"] == oa.ATTRIBUTION_VERIFIED
+
+
+def test_a_verified_record_is_never_traded_back_for_more_unverified_papers():
+    # The rule reads in one direction only. Three name-matched titles must not
+    # displace one paper we can actually attribute.
+    opp = _faculty("https://x.edu/a", "A Prof", [{"title": "Real", "year": 2026}],
+                   oa.ATTRIBUTION_VERIFIED)
+    mapping = {"https://x.edu/a": [{"title": "P1", "year": 2026},
+                                   {"title": "P2", "year": 2025},
+                                   {"title": "P3", "year": 2024}]}
+    assert oa.apply_works([opp], mapping) == 0
+    assert [w["title"] for w in opp["metadata"]["recent_works"]] == ["Real"]
+
+
+def test_a_reharvest_actually_reaches_a_stamped_state(monkeypatch):
+    # End to end over both gates, because fixing either one alone leaves the
+    # count at zero: target selection -> harvest -> apply -> citable.
+    opp = _faculty("https://x.edu/a", "A Prof",
+                   [{"title": "P1", "year": 2026}, {"title": "P2", "year": 2025},
+                    {"title": "P3", "year": 2024}])
+    monkeypatch.setattr(oa, "_match_author", lambda name, inst, dept="": {"id": "A1"})
+    monkeypatch.setattr(oa, "author_recent_works",
+                        lambda aid, dept="": [{"title": "P1", "year": 2026},
+                                              {"title": "P2", "year": 2025},
+                                              {"title": "P3", "year": 2024}])
+    assert works_are_verified(opp) is False
+    mapping = oa.harvest_works([opp], throttle=0)
+    assert oa.apply_works([opp], mapping) == 1
+    assert works_are_verified(opp) is True
+    assert len(verified_recent_works(opp)) == 3
