@@ -439,6 +439,64 @@ def test_carry_forward_keeps_attribution_stamp_with_recent_works():
     assert "publication_attribution_status" not in incoming3["metadata"]
 
 
+def test_carry_forward_keeps_research_areas_raw():
+    """The professor's own stated research areas survive a re-scrape that did
+    not reach their detail page.
+
+    Regression: the 2026-08-20 refresh re-harvested 16 shards through the
+    listing-only path, which emits no ``research_areas_raw``. ``cur.update(opp)``
+    replaces ``metadata`` wholesale, so 2,716 of 5,012 committed statements were
+    erased — brown and boulder to zero, rice 555 -> 1. That prose is the sole
+    input to the faculty availability signal and to cold-email grounding, so an
+    entire school silently lost both. Carried unconditionally for the same
+    reason ``recent_works`` is: a scrape that produced nothing is not evidence
+    that the professor removed anything.
+    """
+    existing = {
+        "pi_name": "Drew Milsom", "department": "PHYS",
+        "keywords": ["computational astrophysics"],
+        "metadata": {
+            "research_areas_raw": (
+                "While I am not currently research active, I have worked in "
+                "computational astrophysics."
+            ),
+            "last_verified": "2026-08-15T03:59:15",
+        },
+    }
+    incoming = {
+        "pi_name": "Drew Milsom", "department": "PHYS",
+        "keywords": ["computational astrophysics"],
+        "metadata": {"last_verified": "2026-08-20T06:31:54"},
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == (
+        "While I am not currently research active, I have worked in "
+        "computational astrophysics."
+    )
+    # The carried statement keeps the date it was actually observed, so nothing
+    # downstream can present last week's prose as verified today.
+    assert incoming["metadata"]["research_areas_verified_at"] == "2026-08-15T03:59:15"
+
+
+def test_carry_forward_fresh_research_areas_win():
+    """A scrape that reached the page owns the statement — including a professor
+    who deleted theirs, which is why the fresh value wins even when it is
+    shorter."""
+    existing = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"research_areas_raw": "black hole accretion flows",
+                     "last_verified": "2026-08-15T00:00:00"},
+    }
+    incoming = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"research_areas_raw": "quantum optics"},
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == "quantum optics"
+    # Not carried, so no stamp is invented for prose this scrape observed itself.
+    assert "research_areas_verified_at" not in incoming["metadata"]
+
+
 def test_carry_forward_fresh_email_still_wins():
     existing = {
         "pi_name": "A B", "department": "Computer Science",
@@ -1224,3 +1282,117 @@ def test_carry_forward_new_profile_page_stamp_travels():
     _carry_forward_enrichment(existing, incoming)
     assert incoming["contact_email"] == "found@illinois.edu"
     assert incoming["metadata"]["email_source"] == "profile_page"
+
+
+class TestATombstoneMeansAReviewActuallyHappened:
+    """``identity_bound: False`` is a verdict, not a shrug.
+
+    ``clear_contact_evidence`` documents it as "a collector reviewed this and
+    it is NOT bound", and the W7a legacy pass-through in ``contact_visibility``
+    reads it exactly that way: a stamped record loses the grandfathering that
+    keeps the pre-contract corpus reachable.
+
+    The merge path stamped it whenever a re-scrape produced no claim — including
+    the overwhelmingly common case where the committed record never had one
+    either, so nothing was reviewed and nothing was rejected. Measured on the
+    committed corpus at 8f587a79: of 116,430 records holding a harvested
+    address, 104,528 carried the tombstone with NO other evidence field, and
+    ZERO carried it alongside one. Every firing was a false positive, and each
+    cost a professor their reachability: 10,949 of 116,430 addresses passed
+    ``verified_send_target``, so cold email — the product's core step — could
+    not reach 90.6% of the people it had addresses for.
+    """
+
+    @staticmethod
+    def _merge(existing: dict, incoming: dict) -> dict:
+        _carry_forward_enrichment(existing, incoming)
+        return (incoming.get("metadata") or {})
+
+    def test_no_claim_on_either_side_leaves_the_record_grandfathered(self):
+        """Neither side ever carried evidence, so there was nothing to reject."""
+        existing = {
+            "id": "f1", "pi_name": "A B", "department": "Physics",
+            "contact_email": "a.b@uiuc.edu",
+            "metadata": {"email_source": "profile_page"},
+        }
+        incoming = {
+            "id": "f1", "pi_name": "A B", "department": "Physics",
+            "contact_email": "a.b@uiuc.edu",
+            "metadata": {"email_source": "profile_page"},
+        }
+        assert "identity_bound" not in self._merge(existing, incoming)
+
+    def test_a_real_claim_that_fails_the_identity_match_is_still_tombstoned(self):
+        """The case the tombstone was written for keeps working: a collector
+        HAD spoken for this address, and the fresh row must not inherit the
+        grandfathering that would let it flow unproven."""
+        existing = {
+            "id": "f2", "pi_name": "C D", "department": "Physics",
+            "contact_email": "c.d@uiuc.edu",
+            "metadata": {
+                "identity_bound": True,
+                "email_source": "bound_profile",
+                "contact_verified_email": "c.d@uiuc.edu",
+                "contact_source_url": "https://physics.uiuc.edu/people/cd",
+                "contact_verified_at": "2026-08-01T00:00:00+00:00",
+            },
+        }
+        # No id on the incoming row, so the stable-identity match cannot hold.
+        incoming = {
+            "pi_name": "C D", "department": "Physics",
+            "contact_email": "c.d@uiuc.edu",
+            "metadata": {},
+        }
+        assert self._merge(existing, incoming).get("identity_bound") is False
+
+    def test_partial_evidence_on_the_committed_row_still_tombstones(self):
+        """A stamp that never completed is a collector having spoken, and it
+        must fail closed rather than fall back to grandfathering."""
+        existing = {
+            "id": "f3", "pi_name": "E F", "department": "Physics",
+            "contact_email": "e.f@uiuc.edu",
+            "metadata": {"contact_verified_at": "2026-08-01T00:00:00+00:00"},
+        }
+        incoming = {
+            "id": "f3", "pi_name": "E F", "department": "Physics",
+            "contact_email": "e.f@uiuc.edu",
+            "metadata": {},
+        }
+        assert self._merge(existing, incoming).get("identity_bound") is False
+
+    def test_a_new_address_over_an_unstamped_row_is_not_tombstoned(self):
+        """A professor who changed address is not a rejection either: the old
+        row carried no proof, so there is none to strip and nothing to warn
+        about."""
+        existing = {
+            "id": "f4", "pi_name": "G H", "department": "Physics",
+            "contact_email": "old@uiuc.edu",
+            "metadata": {"email_source": "profile_page"},
+        }
+        incoming = {
+            "id": "f4", "pi_name": "G H", "department": "Physics",
+            "contact_email": "new@uiuc.edu",
+            "metadata": {"email_source": "profile_page"},
+        }
+        assert "identity_bound" not in self._merge(existing, incoming)
+
+    def test_a_new_address_over_a_proven_row_is_tombstoned(self):
+        """The proof described the OLD address. It must not follow the new one,
+        and the new one must not inherit grandfathering to flow unproven."""
+        existing = {
+            "id": "f5", "pi_name": "I J", "department": "Physics",
+            "contact_email": "old@uiuc.edu",
+            "metadata": {
+                "identity_bound": True,
+                "email_source": "bound_profile",
+                "contact_verified_email": "old@uiuc.edu",
+                "contact_source_url": "https://physics.uiuc.edu/people/ij",
+                "contact_verified_at": "2026-08-01T00:00:00+00:00",
+            },
+        }
+        incoming = {
+            "id": "f5", "pi_name": "I J", "department": "Physics",
+            "contact_email": "new@uiuc.edu",
+            "metadata": {},
+        }
+        assert self._merge(existing, incoming).get("identity_bound") is False

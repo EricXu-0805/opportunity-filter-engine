@@ -70,7 +70,7 @@ def _opp(
         "department": "Computer Science",
         "opportunity_type": "research",
         "source": "uiuc_faculty",
-        "source_type": "faculty",
+        "source_type": "faculty_research",
         "pi_name": "Jane Doe",
         "lab_or_program": "ML Lab",
         "contact_email": email,
@@ -460,7 +460,9 @@ class TestDetailRevealGate:
         assert body["contact_email_status"] == anon["contact_email_status"]
 
     def test_pi_email_stays_redacted(self, fake_corpus, authed):
-        body = client.get("/api/opportunities/verified", headers=AUTH).json()
+        response = client.get("/api/opportunities/verified", headers=AUTH)
+        assert response.status_code == 200, response.text
+        body = response.json()
         assert "pi_email" not in body
 
 
@@ -559,3 +561,86 @@ class TestVariantsSendTargetGate:
         assert body["recipient_status"] == "unavailable"
         for v in body["variants"]:
             assert v["recipient_email"] == ""
+
+
+class TestTheCorpusStaysReachable:
+    """Cold email is the product's core step; a corpus it cannot address is a
+    dead feature, and nothing here was watching that number.
+
+    On 2026-08-17 a single refresh stamped ``identity_bound: False`` across the
+    corpus — the tombstone that means "reviewed and NOT bound" — on records
+    nobody had reviewed. uiuc went from 0 such rows on 08-14 to 3,125 on 08-17;
+    corpus-wide, reachable addresses fell from 116,430 to 10,949 without one
+    test going red. Every unit bar below still passed, because each one asks
+    about a record it constructs itself.
+
+    Deliberately a FLOOR with headroom rather than a pinned count: an exact
+    number turns every data-refresh PR into a test edit (this repo has been
+    bitten by that), while a floor at 80% is stable across refreshes and would
+    still have caught a collapse to 9.4%.
+    """
+
+    MIN_REACHABLE_SHARE = 0.80
+
+    def test_no_record_holds_an_address_and_a_tombstone(self):
+        """The exact invariant, because the ratio below is too coarse to see a
+        partial regression.
+
+        A real rejection goes through ``clear_contact_claim``, which nulls the
+        address in the same breath as it stamps the tombstone. So an address
+        sitting next to ``identity_bound: False`` was never rejected — it was
+        stamped by a merge path that reviewed nothing.
+
+        Keyed on the address rather than on "no other evidence":
+        ``clear_contact_evidence`` strips every evidence field before stamping,
+        so a genuine tombstone and a false one look identical in what remains.
+        The address is the only thing that separates them.
+
+        This is what the 80% floor missed. A refresh that had started 24 minutes
+        before the fix landed committed 18,297 stale tombstones onto main; the
+        corpus read 82.9% reachable, cleared the floor, and shipped. Shard by
+        shard, each weekly refresh would have walked it back down.
+
+        If this ever fires on a tombstone that SHOULD keep its address, the
+        contract needs a positive marker for "reviewed, rejected, address
+        retained" — no path produces that today, and inventing one silently by
+        loosening this test would restore exactly the hole it closes.
+        """
+        from backend.data_loader import load_opportunities
+
+        offenders = [
+            o["id"]
+            for o in load_opportunities()
+            if (o.get("metadata") or {}).get("identity_bound") is False
+            and (o.get("contact_email") or "").strip()
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records carry a tombstone AND an address, e.g. "
+            f"{offenders[:5]} — a merge path stamped a review that never "
+            "happened, and each one is a professor the product can no longer "
+            "reach."
+        )
+
+    def test_most_harvested_addresses_are_still_send_targets(self):
+        from backend.data_loader import load_opportunities
+
+        held = reachable = 0
+        for record in load_opportunities():
+            email = record.get("contact_email")
+            if not isinstance(email, str) or not email.strip():
+                continue
+            held += 1
+            if verified_send_target(record):
+                reachable += 1
+
+        assert held > 1000, (
+            f"only {held} records hold an address — the corpus fixture is not "
+            "the real one, so this guard is not measuring anything"
+        )
+        share = reachable / held
+        assert share >= self.MIN_REACHABLE_SHARE, (
+            f"{reachable}/{held} ({share:.1%}) of harvested addresses are "
+            f"reachable, below the {self.MIN_REACHABLE_SHARE:.0%} floor. A "
+            "gate started refusing addresses in bulk — check for tombstones "
+            "written by a merge path that reviewed nothing."
+        )

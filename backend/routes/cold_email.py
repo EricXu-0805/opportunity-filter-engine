@@ -40,6 +40,7 @@ from backend.lib.public_projection import (
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.supabase_auth import authenticated_uid
+from backend.lib.target_actionability import assert_target_actionable
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
 from src.evidence import faculty_availability_status
 from src.matcher.ranker import _is_grad_year
@@ -1551,6 +1552,7 @@ async def generate_email(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
     _assert_outreach_allowed(opp)
 
     authed = await authenticated_uid(authorization) is not None
@@ -1828,6 +1830,7 @@ async def generate_email_stream(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
     _assert_outreach_allowed(opp)
     # Resolved before the stream starts: the generator outlives the request
     # handler, and the recipient decision must not wait behind LLM stages.
@@ -1896,6 +1899,7 @@ async def generate_email_variants(
     )
     if not opp:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
     _assert_outreach_allowed(opp)
 
     authed = await authenticated_uid(authorization) is not None
@@ -1962,10 +1966,25 @@ class EmailRefineRequest(BaseModel):
     instruction: str
     subject: str = ""
     profile: ProfileRequest | None = None
-    opportunity_id: str | None = None
+    # Required. Refine is a *target* action: it rewrites a draft using that
+    # target's evidence, so without a canonical record there is nothing to
+    # check the result against and no way to refuse a closed listing. The UI
+    # has always sent it; the optional signature was a bypass, not a feature.
+    # A general-purpose text editor, if ever wanted, is a different endpoint.
+    opportunity_id: str = Field(min_length=1)
     # Optional resume bullets so a refine keeps claims the student's real
     # experience supports (mirrors ColdEmailRequest.resume_bullets).
     resume_bullets: list[str] = Field(default_factory=list)
+
+    @field_validator("opportunity_id")
+    @classmethod
+    def require_a_real_id(cls, v: str) -> str:
+        # min_length alone accepts "   ", which then reaches the corpus lookup
+        # and 404s — a slower, vaguer way of saying the request was malformed.
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("opportunity_id must not be blank")
+        return stripped
 
     @field_validator("current_body")
     @classmethod
@@ -2090,15 +2109,16 @@ def _local_refine_fallback(
 
 @router.post("/cold-email/refine")
 async def refine_email(request: EmailRefineRequest):
-    opp: dict | None = None
-    if request.opportunity_id:
-        opp = release_visible_opportunity_by_id(
-            load_opportunities_by_id(),
-            request.opportunity_id,
-        )
-        if opp is None:
-            raise HTTPException(status_code=404, detail="Opportunity not found")
-        _assert_outreach_allowed(opp)
+    # Canonical lookup first, then actionability, then the source's own
+    # outreach refusal — every gate ahead of any provider call or evidence read.
+    opp = release_visible_opportunity_by_id(
+        load_opportunities_by_id(),
+        request.opportunity_id,
+    )
+    if opp is None:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    assert_target_actionable(opp)
+    _assert_outreach_allowed(opp)
 
     # A browser can still hold a pre-contact-trust draft. Never send that raw
     # text to a provider: remove any visible/encoded/obfuscated address before

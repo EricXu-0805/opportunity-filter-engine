@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import {
   MATCH_VIEW_CONTRACT_VERSION,
+  TARGET_TRUTH_CONTRACT,
   cachedMatcherVersion,
   clearMatchCache as clearMatchCacheRaw,
   hasMatchCache,
@@ -29,6 +30,16 @@ function clearMatchCache() {
   return clearMatchCacheRaw(token);
 }
 
+const ACTIONABLE_TRUTH = {
+  listing_state: 'open',
+  reference_only: false,
+  actionable: true,
+  accepting_state: 'accepting',
+  reason_code: null,
+  verified_at: null,
+  expires_at: null,
+} as const;
+
 function makeResult(id: string, bucket: MatchResult['bucket'] = 'good_match'): MatchResult {
   return {
     opportunity_id: id,
@@ -36,7 +47,15 @@ function makeResult(id: string, bucket: MatchResult['bucket'] = 'good_match'): M
     bucket, reasons_fit: ['fit'], reasons_gap: [], next_steps: ['apply'],
     opportunity: {
       id, title: `Title ${id}`, organization: 'UIUC',
+      // A reviewed source type: an unreviewed one is no longer actionable, so
+      // without this every cache fixture would be a page of dead rows and the
+      // accept/reject tests would all pass for the wrong reason.
+      source_type: 'campus_program',
+      record_kind: 'listing',
       description_clean: 'x'.repeat(500),
+      // Every live result carries a truth; the cache refuses a page without
+      // one, so the default fixture has to look like what the server sends.
+      target_truth: { ...ACTIONABLE_TRUTH },
       eligibility: { international_friendly: 'yes', skills_required: ['Python'], eligibility_text_raw: 'y'.repeat(400) },
       application: { application_url: 'http://a', requires_resume: 'yes', contact_method: 'email' },
       metadata: { notes: 'z'.repeat(400) },
@@ -49,8 +68,246 @@ function makeResponse(n = 3): MatchesResponse {
     total: n, high_priority: 0, good_match: n, reach: 0, low_fit: 0,
     results: Array.from({ length: n }, (_, i) => makeResult(`o${i}`)),
     contract_version: MATCH_VIEW_CONTRACT_VERSION,
+    target_truth_contract: TARGET_TRUTH_CONTRACT,
   };
 }
+
+describe('match-cache target-truth fail-close', () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    advanceOwnerEpoch('truth-fail-close-uid');
+    await syncLocalIdentityOwner('truth-fail-close-uid');
+    token = captureOwnerToken();
+  });
+
+  const BAD_TRUTHS: [string, unknown][] = [
+    ['missing', undefined],
+    ['null', null],
+    ['malformed', { listing_state: 'open' }],
+    ['closed', {
+      ...ACTIONABLE_TRUTH, actionable: false,
+      listing_state: 'closed', accepting_state: 'not_accepting',
+      reason_code: 'listing_closed',
+    }],
+    ['reference-only', {
+      ...ACTIONABLE_TRUTH, actionable: false,
+      reference_only: true, reason_code: 'reference_only',
+    }],
+    ['inactive', { ...ACTIONABLE_TRUTH, actionable: false, reason_code: 'inactive' }],
+    ['self-contradicting', { ...ACTIONABLE_TRUTH, listing_state: 'closed' }],
+  ];
+
+  it.each(BAD_TRUTHS)('refuses to persist a page containing a %s truth', (_label, truth) => {
+    const response = makeResponse(3);
+    const target = response.results[1].opportunity as unknown as Record<string, unknown>;
+    if (truth === undefined) delete target.target_truth;
+    else target.target_truth = truth;
+
+    // Whole page, not just the bad row: silently dropping it would leave the
+    // stored counts describing a page that can no longer be rendered.
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(readMatchCache('h', false)).toBeNull();
+  });
+
+  it('keeps the record-kind attestation across a round trip', () => {
+    // `readTruth` cross-checks the wire kind against the source type, so a
+    // restored row that lost it would be validated against half the
+    // attestation it arrived with — and a mismatch this build refuses live
+    // would become invisible on a cache hit.
+    expect(writeMatchCache('h', false, makeResponse(1))).toBe(true);
+    const back = readMatchCache('h', false);
+    expect(
+      (back!.results[0].opportunity as unknown as Record<string, unknown>).record_kind,
+    ).toBe('listing');
+  });
+
+  it('refuses a stored row whose wire kind stopped matching its source type', () => {
+    expect(writeMatchCache('h', false, makeResponse(2))).toBe(true);
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    raw.results[1].opportunity.record_kind = 'faculty_contact';
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    // Not a row we can vouch for, so the page is refused and cleared whole —
+    // the same all-or-nothing rule a bad truth gets.
+    expect(readMatchCache('h', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('discards the precisely-previous cache version, marker and truth notwithstanding', () => {
+    // The version bump is the only thing that retires a pre-target-truth
+    // page, and it is easy to lose: revert the string and every existing
+    // device silently keeps serving its old cache.
+    //
+    // The planted entry is the adversarial case — the immediately preceding
+    // CACHE_VERSION, but otherwise perfect: current marker, current wire
+    // version, every row carrying a valid actionable truth. Nothing about its
+    // CONTENT is refusable, so if this is still readable, the bump is gone.
+    const PREVIOUS_CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1-target-truth-v1';
+    expect(writeMatchCache('h', false, makeResponse(3))).toBe(true);
+    const planted = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    expect(planted.version).not.toBe(PREVIOUS_CACHE_VERSION);
+    planted.version = PREVIOUS_CACHE_VERSION;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(planted));
+
+    expect(readMatchCache('h', false)).toBeNull();
+    // Cleared, not merely ignored: a stale entry left in place keeps the
+    // quota occupied and reappears the moment the version string changes.
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it.each(BAD_TRUTHS)('rejects and clears a stored page containing a %s truth', (_label, truth) => {
+    expect(writeMatchCache('h', false, makeResponse(3))).toBe(true);
+    expect(readMatchCache('h', false)).not.toBeNull();
+
+    // Poison one row in place, as a corpus refresh would.
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    if (truth === undefined) delete raw.results[1].opportunity.target_truth;
+    else raw.results[1].opportunity.target_truth = truth;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    expect(readMatchCache('h', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  // Both halves are required, and both are exact. The marker says the backend
+  // makes a promise about target truth; the version says which wire shape the
+  // rows arrive in. Neither substitutes for the other.
+  it('accepts and round-trips the wire this backend speaks', () => {
+    const response = {
+      ...makeResponse(2),
+      contract_version: 'match-view-v3-faculty-trust',
+      target_truth_contract: TARGET_TRUTH_CONTRACT,
+    };
+    expect(writeMatchCache('h', false, response)).toBe(true);
+    const back = readMatchCache('h', false);
+    expect(back).not.toBeNull();
+    // The marker survives the round-trip. Without it the entry would fail its
+    // own read check — a cache that never hits, which looks like a working
+    // guard and is really a disabled one.
+    expect(back!.target_truth_contract).toBe(TARGET_TRUTH_CONTRACT);
+    expect(back!.contract_version).toBe('match-view-v3-faculty-trust');
+    expect(back!.results).toHaveLength(2);
+  });
+
+  it('refuses to store a version nobody has negotiated, marker or not', () => {
+    // `match-view-v4-target-truth` was once pre-accepted here so a future
+    // rename could not break clients in the wild. That trades a real risk for
+    // a hypothetical one: nothing emits v4, so the only payload that could
+    // ever arrive under it is one whose fields were never agreed — and this
+    // client would have stored it for seven days.
+    const response = {
+      ...makeResponse(2), contract_version: 'match-view-v4-target-truth',
+    };
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(readMatchCache('h', false)).toBeNull();
+  });
+
+  it('leaves a good stored page alone when an unnegotiated version arrives', () => {
+    // Refusing is refusing, not erasing. A v4 response showing up is no
+    // evidence that the v3 page already on the device went bad, and dropping
+    // it would cost the student their instant return-to-results for nothing.
+    expect(writeMatchCache('h', false, makeResponse(2))).toBe(true);
+    const stored = localStorage.getItem(MATCH_KEY);
+
+    expect(writeMatchCache('h', false, {
+      ...makeResponse(1), contract_version: 'match-view-v4-target-truth',
+    })).toBe(false);
+
+    expect(localStorage.getItem(MATCH_KEY)).toBe(stored);
+    expect(readMatchCache('h', false)!.results).toHaveLength(2);
+  });
+
+  it('rejects and clears an already-stored page whose version is not accepted', () => {
+    // The upgrade path that matters: a build that DID pre-accept v4 wrote
+    // this entry, and the student's next visit runs this build. Read has to
+    // refuse it on its own, not merely stop writing new ones.
+    expect(writeMatchCache('h', false, makeResponse(2))).toBe(true);
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    raw.contract_version = 'match-view-v4-target-truth';
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    expect(readMatchCache('h', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it.each([
+    ['no marker at all', undefined],
+    ['an empty marker', ''],
+    ['an unknown marker', 'target-truth-v9'],
+  ])('rejects a page with %s, whatever its version says', (_label, marker) => {
+    const response = {
+      ...makeResponse(2), target_truth_contract: marker,
+    } as never;
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(readMatchCache('h', false)).toBeNull();
+  });
+
+  it('rejects a marker-less EMPTY page too', () => {
+    // Nothing to inspect row by row, so the marker is the only evidence.
+    const response = { ...makeResponse(0), target_truth_contract: undefined } as never;
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(readMatchCache('h', false)).toBeNull();
+  });
+
+  it('accepts an EMPTY page that carries the marker', () => {
+    const response = { ...makeResponse(0) };
+    expect(writeMatchCache('h', false, response)).toBe(true);
+    expect(readMatchCache('h', false)).not.toBeNull();
+  });
+
+  it('rejects an unknown wire version even with a valid marker', () => {
+    const response = { ...makeResponse(2), contract_version: 'match-view-v9-future' };
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(readMatchCache('h', false)).toBeNull();
+  });
+
+  it.each([
+    ['a blank top-level id', (r: Record<string, unknown>) => { r.opportunity_id = '   '; }],
+    ['a missing top-level id', (r: Record<string, unknown>) => { delete r.opportunity_id; }],
+    ['a nested id that drifted', (r: Record<string, unknown>) => {
+      (r.opportunity as Record<string, unknown>).id = 'someone-else';
+    }],
+  ])('refuses to write a page with %s, leaving storage untouched', (_label, poison) => {
+    // Validated before the write, not cleaned up after it: storing first would
+    // leave the only copy on the device one we would refuse, and would charge
+    // the user a write for a page that can never be read back.
+    const response = makeResponse(3);
+    poison(response.results[1] as unknown as Record<string, unknown>);
+
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('refuses to write a page with duplicate ids, leaving storage untouched', () => {
+    const response = makeResponse(2);
+    response.results[1] = JSON.parse(JSON.stringify(response.results[0]));
+
+    expect(writeMatchCache('h', false, response)).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('does not overwrite a good entry with a rejected one', () => {
+    expect(writeMatchCache('good', false, makeResponse(2))).toBe(true);
+    const before = localStorage.getItem(MATCH_KEY);
+
+    const poisoned = makeResponse(2);
+    (poisoned.results[0] as unknown as Record<string, unknown>).opportunity_id = '';
+    expect(writeMatchCache('bad', false, poisoned)).toBe(false);
+
+    expect(localStorage.getItem(MATCH_KEY)).toBe(before);
+    expect(readMatchCache('good', false)).not.toBeNull();
+  });
+
+  it('clears a stored entry written before the marker existed', () => {
+    expect(writeMatchCache('h', false, makeResponse(2))).toBe(true);
+    const raw = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    delete raw.target_truth_contract;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(raw));
+
+    expect(readMatchCache('h', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+});
 
 describe('match-cache', () => {
   beforeEach(async () => {
@@ -63,7 +320,9 @@ describe('match-cache', () => {
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
     const raw = localStorage.getItem(MATCH_KEY)!;
-    expect(JSON.parse(raw).version).toBe('contact-trust-v1');
+    expect(JSON.parse(raw).version).toBe(
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2',
+    );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
     expect(raw).not.toContain('x'.repeat(500)); // full description not stored
@@ -91,8 +350,16 @@ describe('match-cache', () => {
     // dead-ends on the professor's bio page instead of the safe draft/profile
     // actions.
     const resp = makeResponse(1);
-    (resp.results[0].opportunity as unknown as Record<string, unknown>).source_type =
-      'faculty_research';
+    const target = resp.results[0].opportunity as unknown as Record<string, unknown>;
+    target.source_type = 'faculty_research';
+    // The wire kind travels with the source type; leaving the listing default
+    // behind would be a mismatch the cache correctly refuses.
+    target.record_kind = 'faculty_contact';
+    target.target_truth = {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null,
+      verified_at: null, expires_at: null,
+    };
     writeMatchCache('h1', false, resp);
     const out = readMatchCache('h1', false)!;
     const opp = out.results[0].opportunity as unknown as Record<string, unknown>;
@@ -101,8 +368,16 @@ describe('match-cache', () => {
 
   it('preserves a source-backed faculty stop status across a cache hit', () => {
     const resp = makeResponse(1);
-    (resp.results[0].opportunity as unknown as Record<string, unknown>).source_type =
-      'faculty_research';
+    const target = resp.results[0].opportunity as unknown as Record<string, unknown>;
+    target.source_type = 'faculty_research';
+    // The wire kind travels with the source type; leaving the listing default
+    // behind would be a mismatch the cache correctly refuses.
+    target.record_kind = 'faculty_contact';
+    target.target_truth = {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null,
+      verified_at: null, expires_at: null,
+    };
     resp.results[0].opportunity.faculty_availability_status =
       'not_accepting_undergraduates';
 
@@ -219,6 +494,24 @@ describe('match-cache', () => {
     );
 
     expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
+  it('rejects and removes the open-capability cache version under the current key', () => {
+    const response = makeResponse(1);
+    response.results[0].opportunity.opportunity_type = 'fellowship';
+    localStorage.setItem(
+      MATCH_KEY,
+      JSON.stringify({
+        version: 'contact-trust-v1',
+        hash: 'h1',
+        semantic: false,
+        savedAt: Date.now(),
+        ...response,
+      }),
+    );
+
+    expect(readMatchCache('h1', false)).toBeNull();
     expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 

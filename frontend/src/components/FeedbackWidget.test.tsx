@@ -210,7 +210,12 @@ describe('draft persistence', () => {
 
     fireEvent.click(screen.getByTestId('feedback-send'));
     await waitFor(() => expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument());
-    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+    // The clear happens in a passive effect, so "thanks is on screen" does not
+    // yet imply "storage is empty" — reading it synchronously here passes on an
+    // idle machine and fails under load. Wait for the state being asserted.
+    await waitFor(() =>
+      expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull(),
+    );
   });
 });
 
@@ -280,7 +285,10 @@ describe('ticket reference', () => {
     expect(screen.getByTestId('feedback-duplicate-note')).toBeInTheDocument();
     // The ticket was counted when it was created; a retry must not re-count it.
     expect(mockTrack).not.toHaveBeenCalled();
-    expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull();
+    // Same passive-effect timing as the clear-on-submit case above.
+    await waitFor(() =>
+      expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull(),
+    );
   });
 
   it('still thanks the user when the duplicate re-read could not fetch the id', async () => {

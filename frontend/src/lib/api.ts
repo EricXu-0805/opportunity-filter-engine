@@ -18,7 +18,7 @@ import type {
 } from './types';
 import { track } from './analytics';
 import { bySlug } from './schools';
-import { RELEASE_SCOPE } from './release-scope';
+import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -258,7 +258,7 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
   const requestedSeekingTypes =
     profile.seeking_types ?? ['research', 'summer_program'];
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
-    (value) => value !== 'fellowship' || RELEASE_SCOPE.fellowships,
+    (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
   return {
     name: profile.name ?? '',
@@ -277,7 +277,16 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
         ? acceptedSeekingTypes
         : ['research', 'summer_program'],
     desired_fields: deriveDesiredFields(profile.research_interests),
-    hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
+    // Provenance travels with the level or the level is a lie on arrival: the
+    // server decides whether a skill may back "I have experience with X", and
+    // it can only withhold that for an import it can still see is an import.
+    // An explicit field list is what dropped them here in the first place.
+    hard_skills: profile.skills.map((s) => ({
+      name: s.name,
+      level: s.level,
+      ...(s.source ? { source: s.source } : {}),
+      ...(s.confirmed ? { confirmed: true } : {}),
+    })),
     coursework: profile.coursework ?? [],
     experience_level: profile.experience_level ?? 'beginner',
     resume_ready: !!profile.resume_text,
@@ -889,8 +898,11 @@ export async function getEmailVariants(
 export async function refineEmail(
   currentBody: string,
   instruction: string,
-  profile?: ProfileData,
-  opportunityId?: string,
+  profile: ProfileData | undefined,
+  // Required: refine rewrites a draft against one target's evidence, and the
+  // server resolves that target before it will spend anything. Optional here
+  // only ever meant "send null and hope"; the modal has always had the id.
+  opportunityId: string,
   options: { resumeBullets?: string[] } = {},
 ): Promise<{ body: string; method: string; fallback_reason?: string }> {
   return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
@@ -899,7 +911,7 @@ export async function refineEmail(
       current_body: currentBody,
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
-      opportunity_id: opportunityId ?? null,
+      opportunity_id: opportunityId,
       // The student's real resume bullets keep experience claims grounded when
       // a refine instruction asks to emphasize them (additive + optional).
       ...(options.resumeBullets && options.resumeBullets.length > 0
@@ -1116,14 +1128,44 @@ export async function getUpcomingDeadlines(days = 30): Promise<UpcomingResponse>
   return request<UpcomingResponse>(`/opportunities/upcoming?days=${days}`);
 }
 
+/**
+ * One mailed match. `opportunity_id` is the only field the new backend reads —
+ * it rehydrates title, link, organization, source and deadline from the
+ * canonical record, because a digest outlives the tab that asked for it and a
+ * client-supplied claim would sit in an inbox under our name with nothing
+ * behind it.
+ *
+ * ROLLOUT BRIDGE — keep sending the legacy fields for now.
+ * Vercel and Render deploy independently and the frontend usually lands first,
+ * so for one release we send both shapes: an OLD backend still renders from
+ * title/url/..., and the NEW backend accepts them and throws them away. The
+ * follow-up PR, once both sides are on the same SHA, drops them here and
+ * forbids them there. Removing them earlier breaks the deploy window.
+ */
 export interface EmailMatchItem {
-  title: string;
+  opportunity_id: string;
+  title?: string;
   url?: string;
   score?: number;
   source?: string;
   deadline?: string | null;
   organization?: string;
   record_kind?: 'listing' | 'faculty_contact' | 'unknown';
+}
+
+/** The bearer header a digest send must carry.
+ *
+ *  The server now mails the CALLER's own confirmed address and refuses any
+ *  other, so a request with no token is not "an anonymous send" — it is a 401.
+ *  `request` does not attach credentials on its own, which is why this is
+ *  explicit here rather than inherited.
+ */
+async function digestAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getRevealAccessToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
 export async function sendMatchesEmail(
@@ -1133,18 +1175,28 @@ export async function sendMatchesEmail(
 ): Promise<{ ok: boolean; count: number }> {
   return request('/email/send-matches', {
     method: 'POST',
+    headers: await digestAuthHeaders(),
+    // ROLLOUT BRIDGE: `email` is the caller's OWN session address, sent only
+    // so a Render still running the previous build has a recipient. The
+    // current backend ignores the value and refuses it outright when it names
+    // anyone but the session. Dropped once both sides are on the same SHA.
     body: JSON.stringify({ email, items, subject_hint: subjectHint }),
   });
 }
 
+/**
+ * One saved row: which target, plus the notes and status the user owns.
+ * The describing fields are the same ROLLOUT BRIDGE as EmailMatchItem.
+ */
 export interface EmailFavoriteItem {
-  title: string;
+  opportunity_id: string;
+  notes?: string;
+  status?: string;
+  title?: string;
   url?: string;
   score?: number;
   source?: string;
   deadline?: string | null;
-  notes?: string;
-  status?: string;
   record_kind?: 'listing' | 'faculty_contact' | 'unknown';
 }
 
@@ -1154,6 +1206,8 @@ export async function sendFavoritesEmail(
 ): Promise<{ ok: boolean; count: number }> {
   return request('/email/send-favorites', {
     method: 'POST',
+    headers: await digestAuthHeaders(),
+    // ROLLOUT BRIDGE, same as sendMatchesEmail.
     body: JSON.stringify({ email, items }),
   });
 }

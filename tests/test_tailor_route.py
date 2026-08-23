@@ -26,8 +26,10 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
+from backend.lib.release_scope import opportunity_visible_in_release
 from backend.main import app
 from backend.routes import tailor as tailor_module
+from src.evidence import is_actionable_target
 
 client = TestClient(app)
 
@@ -41,7 +43,19 @@ def real_opp_id() -> str:
     """
     by_id = data_loader.load_opportunities_by_id()
     assert by_id, "data loader should return at least one opportunity"
-    return next(iter(by_id.keys()))
+    opportunity_id = next(
+        (
+            opportunity_id
+            for opportunity_id, opportunity in by_id.items()
+            if opportunity_visible_in_release(opportunity)
+            and is_actionable_target(opportunity)
+        ),
+        None,
+    )
+    assert opportunity_id is not None, (
+        "corpus should contain at least one release-visible actionable opportunity"
+    )
+    return opportunity_id
 
 
 @pytest.fixture
@@ -940,6 +954,66 @@ class TestSkillLevelThreading:
         assert out is not None
         assert "- MATLAB\n" in captured["user"]
         assert "- MATLAB (" not in captured["user"]
+
+
+class TestAnUnconfirmedImportIsNotEmphasised:
+    """The prompt speaks at the CLAIMABLE level; the evidence corpus keeps the
+    stored one.
+
+    Two different questions, and collapsing them breaks the feature in opposite
+    directions. The prompt decides what the model is told to lead with, so an
+    unconfirmed import must arrive as `beginner` or the system rules tell it to
+    emphasise a level the student never chose. The corpus decides which words
+    may appear at all, so it must keep the stored level — narrowing it makes a
+    legitimate composite citation like "Python (experienced)" read as
+    fabrication and get the whole bullet rejected.
+    """
+
+    _IMPORTED = {
+        "name": "S", "major": "EE", "year": "junior",
+        "hard_skills": [{"name": "Python", "level": "experienced",
+                         "source": "resume"}],
+    }
+
+    @staticmethod
+    def _capture(monkeypatch, captured):
+        def fake_chat(messages, **kwargs):
+            captured["user"] = messages[1]["content"]
+            return json.dumps({"bullets": [
+                {"text": "Used Python for analysis", "source_evidence": "Python"},
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+
+    def test_the_prompt_receives_the_withheld_level(self, monkeypatch):
+        captured: dict = {}
+        self._capture(monkeypatch, captured)
+        out = tailor_module._ai_tailor_bullets(
+            self._IMPORTED, {"title": "Lab", "eligibility": {}, "keywords": []},
+            ["Did Python work"])
+        assert out is not None
+        assert "- Python (beginner)" in captured["user"]
+        assert "- Python (experienced)" not in captured["user"]
+
+    def test_the_corpus_still_admits_the_stored_level(self):
+        """Otherwise the model may not even mention what the resume says."""
+        corpus = tailor_module._build_evidence_corpus(self._IMPORTED, [])
+        assert "experienced" in corpus
+        assert "python" in corpus
+
+    def test_a_confirmed_import_reaches_the_prompt_at_its_real_level(
+        self, monkeypatch,
+    ):
+        captured: dict = {}
+        self._capture(monkeypatch, captured)
+        profile = dict(self._IMPORTED)
+        profile["hard_skills"] = [{"name": "Python", "level": "experienced",
+                                   "source": "resume", "confirmed": True}]
+        out = tailor_module._ai_tailor_bullets(
+            profile, {"title": "Lab", "eligibility": {}, "keywords": []},
+            ["Did Python work"])
+        assert out is not None
+        assert "- Python (experienced)" in captured["user"]
 
 
 class TestUnitHelpers:

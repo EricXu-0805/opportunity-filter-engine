@@ -50,26 +50,20 @@ test.describe('/resources page', () => {
   });
 });
 
-test.describe('accepted release routes', () => {
-  // These three returned 404 by design while the MVP route freeze held. They
-  // are accepted now, so the assertion inverts: a route that renders is the
-  // contract, and a 404 here means a switch closed without anyone updating the
-  // surface that advertises it.
+test.describe('hidden MTP release routes', () => {
   for (const path of ['/fellowships', '/roadmap', '/compare?ids=one,two']) {
-    test(`${path} renders instead of failing closed`, async ({ page }) => {
+    test(`${path} fails closed with 404`, async ({ page }) => {
       const response = await page.goto(path);
-      expect(response?.status()).toBe(200);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      expect(response?.status()).toBe(404);
     });
   }
 
-  test('the header advertises the accepted product areas', async ({ page }) => {
+  test('home and header do not advertise hidden product areas', async ({ page }) => {
     await page.goto('/');
-    await openMobileNavIfVisible(page);
-    await expect(
-      page.getByRole('link', { name: /^Fellowships$|^Funding$/ }).first(),
-    ).toBeVisible();
-    await expect(page.getByRole('link', { name: /^Roadmap$/ }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Fellowships$|^Funding$/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Roadmap$/ })).toHaveCount(0);
+    await expect(page.getByTestId('featured-fellowships')).toHaveCount(0);
+    await expect(page.getByText(/^Fellowship$/)).toHaveCount(0);
   });
 });
 

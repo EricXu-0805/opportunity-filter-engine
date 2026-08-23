@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { SkillWithLevel, SkillLevel } from '@/lib/types';
+import { skillNeedsConfirming } from '@/lib/skill-evidence';
 import { useT } from '@/i18n/client';
 
 // A multi-domain STARTER set, not a closed list — students can type any skill we
@@ -98,10 +99,21 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
       selected.map((s) => {
         if (s.name !== name) return s;
         const idx = LEVELS.indexOf(s.level);
-        return { ...s, level: LEVELS[(idx + 1) % LEVELS.length] };
+        // Choosing the level IS the confirmation. An imported skill arrives
+        // unclaimed; the moment the student sets where they actually stand, the
+        // level is their own word and may back an outward claim.
+        return {
+          ...s,
+          level: LEVELS[(idx + 1) % LEVELS.length],
+          confirmed: true,
+        };
       }),
     );
   }
+
+  // Named rather than counted per chip: the student needs one sentence telling
+  // them why some chips look different and what to do, not a badge on each.
+  const unsettledCount = selected.filter(skillNeedsConfirming).length;
 
   return (
     <div className="relative">
@@ -115,10 +127,18 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
         {selected.map((skill) => {
           const cfg = LEVEL_CONFIG[skill.level];
           const levelLabel = t(`skills.levels.${skill.level}`);
+          // An import found the NAME on a page; it never learned how well the
+          // student knows it. A legacy `experienced` is the same story with the
+          // provenance missing. Either way the chip reads as unsettled — dashed
+          // rather than solid — and one tap on the level both sets and settles it.
+          const unsettled = skillNeedsConfirming(skill);
           return (
             <span
               key={skill.name}
-              className={`inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ring-1 ${cfg.bg} ${cfg.color} ${cfg.ring} text-sm font-medium group transition-all duration-200`}
+              // Tailwind has no dashed RING, so an unsettled chip swaps the
+              // ring for the dashed border this codebase already uses for
+              // provisional things, in the amber of the hint line below.
+              className={`inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ${cfg.bg} ${cfg.color} ${unsettled ? 'border border-dashed border-amber-300' : `ring-1 ${cfg.ring}`} text-sm font-medium group transition-all duration-200`}
             >
               {skill.name}
               <button
@@ -128,7 +148,18 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   cycleLevel(skill.name);
                 }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
-                title={t('skills.cycleLevelTitle', { level: levelLabel })}
+                title={
+                  // The line it was found on beats any generic explanation:
+                  // "Relevant coursework: Introduction to Python" tells the
+                  // student in one glance that this is not experience.
+                  unsettled && skill.evidence
+                    ? t('skills.foundOn', { line: skill.evidence })
+                    : unsettled && skill.source
+                      ? t(`skills.importedFrom.${skill.source}`)
+                      : unsettled
+                        ? t('skills.confirmLevelTitle')
+                        : t('skills.cycleLevelTitle', { level: levelLabel })
+                }
               >
                 {levelLabel}
               </button>
@@ -198,6 +229,15 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
             </button>
           )}
         </div>
+      )}
+
+      {unsettledCount > 0 && (
+        /* Says what happened and what to do, in one line. Without it the dashed
+           chips are just an unexplained style, and the levels stay unset — which
+           is what keeps every generated email and resume at "exposure". */
+        <p role="status" className="mt-1.5 text-[11px] text-amber-700 leading-snug">
+          {t('skills.confirmImportedHint', { count: unsettledCount })}
+        </p>
       )}
 
       {/* Always-visible hint so students know the presets aren't a closed list —

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { ArrowLeft, ClipboardList, Loader2 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -273,6 +273,43 @@ export default function TrackerPage() {
                   >
                     <div className="min-w-0">
                       <p className="text-[13px] text-gray-500">{t('tracker.unavailable.body')}</p>
+                      {/* The opportunity is what we lost, not the student's
+                          record of it. Their status, their notes and any
+                          reminder they set stay legible here — offering only
+                          "Remove" made the placeholder look like a dead row
+                          worth deleting, when it is the one place their own
+                          work on that target still exists. */}
+                      <p className="mt-1 text-[11px] font-medium text-gray-600">
+                        {t(`tracker.status.${u.record.type}`)}
+                      </p>
+                      {u.record.notes && (
+                        <p className="mt-1 whitespace-pre-wrap text-[12px] text-gray-500">
+                          {u.record.notes}
+                        </p>
+                      )}
+                      {u.record.remind_at && (
+                        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
+                          <span>{t('tracker.remindOn')} {u.record.remind_at}</span>
+                          <button
+                            type="button"
+                            onClick={() => setReminder(u.id, null)}
+                            disabled={statusPendingIds.has(u.id)}
+                            aria-label={t('tracker.clearReminder')}
+                            className="rounded p-0.5 text-gray-300 hover:text-gray-500 disabled:opacity-50 disabled:cursor-wait"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </p>
+                      )}
+                      {/* The cron fails closed on an unresolved target, so no
+                          reminder here will ever fire — said plainly instead
+                          of leaving the date looking scheduled. There are no
+                          presets for the same reason. */}
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        {t(u.record.remind_at
+                          ? 'tracker.reminderWontSend'
+                          : 'tracker.reminderUnavailable')}
+                      </p>
                       {statusErrors.has(u.id) && (
                         <p role="alert" className="mt-1 flex items-center gap-1.5 text-[11px] text-red-700">
                           {t('tracker.statusSaveError')}
@@ -300,7 +337,11 @@ export default function TrackerPage() {
             </section>
           )}
           {trackedCount > 0 && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 items-start">
+            // Five columns since 'contacted' joined the pipeline. Left at
+            // four, the new first stage wrapped onto its own row below the
+            // rest — the funnel would read as though outreach came after
+            // rejection. Mobile and md are unchanged.
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 items-start">
               {TRACKER_COLUMNS.map((status) => {
                 const colItems = byColumn.get(status) ?? [];
                 return (

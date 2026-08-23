@@ -234,6 +234,20 @@ def _keywords(text: str) -> list[str]:
     return found[:6] or ["undergraduate research"]
 
 
+def _row_states_closed(status: object) -> bool:
+    """Whether a row's own parsed Status field states the project is closed.
+
+    Deliberately narrow: the first word of the parsed field only. URAP writes
+    "Closed - no longer accepting apprentices" and "Open- accepting new
+    students", so the leading token is the whole signal. Scanning the free-text
+    remainder would start guessing from prose.
+    """
+    if not isinstance(status, str):
+        return False
+    head = status.strip().lower().split("-", 1)[0].strip()
+    return head == "closed"
+
+
 def normalize_project(raw: dict, past: bool = False) -> dict:
     """Normalize one URAP project row.
 
@@ -241,9 +255,22 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
     that is no longer recruiting, seeded as a reference for the kind of
     undergraduate research a lab offers (URAP posts fresh projects each
     application cycle, and the live ``status=Open`` collector picks those up).
-    Past records carry honest, non-actionable messaging, are flagged
-    ``is_rolling=False``, and get a lower confidence + a ``urap_status`` marker.
+
+    A past project is excluded from the actionable universe, not merely ranked
+    lower: it emits ``metadata.is_active=False`` alongside the ``urap_status``
+    marker, and carries no ``application_url``, because the only URL URAP
+    offers is the program-wide portal — presenting that as this project's
+    application is an invitation to apply to something that closed. The
+    project page stays reachable through ``url``/``source_url`` as reference.
+
+    A row whose own parsed ``status`` states it is closed is treated as past no
+    matter which page it arrived on. ``?status=Open`` is a query, not a
+    guarantee: URAP re-labels projects mid-cycle, and trusting only the
+    caller's flag writes such a row back as open and actionable on the very
+    next refresh. Only the parsed status field is consulted — never the
+    description prose, which would be guesswork.
     """
+    past = past or _row_states_closed(raw.get("status"))
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
     opp_id = "ucb-urap-proj-" + hashlib.md5(raw["id"].encode()).hexdigest()[:12]
     faculty = raw.get("faculty", "")
@@ -331,7 +358,7 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
             "requires_transcript": "unknown",
             "requires_recommendation": "unknown",
             "application_effort": "medium",
-            "application_url": APPLICATION_URL,
+            "application_url": None if past else APPLICATION_URL,
         },
         "description": description,
         "description_raw": description,
@@ -344,7 +371,7 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
             "last_verified": now,
             "first_seen_at": now,
             "last_seen_at": now,
-            "is_active": True,
+            "is_active": not past,
             "manually_reviewed": False,
             "notes": (
                 "Auto-imported from URAP project database "

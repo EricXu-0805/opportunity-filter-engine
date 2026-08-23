@@ -1,6 +1,9 @@
 import { getDeviceId, supabase } from './supabase';
 import type { DeadlineFilterValue } from './types';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+const OPPORTUNITY_BATCH_LIMIT = 200;
+
 export interface SavedSearchFilters {
   paid: '' | 'yes' | 'no';
   intl: '' | 'yes' | 'no';
@@ -68,6 +71,49 @@ function rowToSearch(r: SavedSearchRow): SavedSearch {
   };
 }
 
+/**
+ * Project cron-produced match ids through the current public opportunity
+ * boundary before they drive badges or `?highlight=`.  A stale row written
+ * while Fellowships were public must not advertise a hidden match until the
+ * next successful cron cleanup.  On any validation failure, keep the user's
+ * saved searches but fail closed on the transient "new" claims.
+ */
+async function projectVisibleNewMatchIds(
+  searches: SavedSearch[],
+): Promise<SavedSearch[]> {
+  const ids = Array.from(new Set(
+    searches.flatMap((search) => search.new_match_ids)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0),
+  ));
+  if (ids.length === 0) return searches;
+
+  try {
+    const visible = new Set<string>();
+    for (let start = 0; start < ids.length; start += OPPORTUNITY_BATCH_LIMIT) {
+      const chunk = ids.slice(start, start + OPPORTUNITY_BATCH_LIMIT);
+      const response = await fetch(`${API_BASE}/opportunities/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: chunk }),
+      });
+      if (!response.ok) throw new Error(`visibility check failed: ${response.status}`);
+      const payload = await response.json() as { opportunities?: Array<{ id?: unknown }> };
+      if (!Array.isArray(payload.opportunities)) {
+        throw new Error('visibility check returned an invalid payload');
+      }
+      for (const opportunity of payload.opportunities) {
+        if (typeof opportunity?.id === 'string') visible.add(opportunity.id);
+      }
+    }
+    return searches.map((search) => ({
+      ...search,
+      new_match_ids: search.new_match_ids.filter((id) => visible.has(id)),
+    }));
+  } catch {
+    return searches.map((search) => ({ ...search, new_match_ids: [] }));
+  }
+}
+
 export async function listSavedSearches(): Promise<SavedSearch[]> {
   const deviceId = await getDeviceId();
   if (!deviceId) return [];
@@ -85,7 +131,7 @@ export async function listSavedSearches(): Promise<SavedSearch[]> {
     return [];
   }
 
-  return (data as SavedSearchRow[]).map(rowToSearch);
+  return projectVisibleNewMatchIds((data as SavedSearchRow[]).map(rowToSearch));
 }
 
 /** Total number of new (unseen) matches across all of this device's saved

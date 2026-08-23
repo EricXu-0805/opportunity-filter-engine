@@ -2370,7 +2370,7 @@ export const en = {
     favorites: 'Saved',
     favoritesDesc: 'Opportunities you bookmarked',
     tracker: 'Tracker',
-    trackerDesc: "Applications you're tracking",
+    trackerDesc: "Outreach and applications you're tracking",
     dashboard: 'Dashboard',
     dashboardDesc: 'Deadlines, stats and reminders',
     planTitle: 'Plan',
@@ -2450,8 +2450,12 @@ export const en = {
   tracker: {
     back: 'Back',
     loading: 'Loading your tracker…',
-    title: 'Application Tracker',
-    subtitle: 'Every opportunity you have marked, organized by stage.',
+    // Not "Application Tracker". The board's first column is Contacted, and
+    // a faculty contact is the majority of what a student tracks here —
+    // reaching out to a professor is not an application, and calling the
+    // whole page one told them their outreach did not count.
+    title: 'Outreach & application tracker',
+    subtitle: 'Your outreach and applications, organized by stage.',
     columnEmpty: 'Nothing here yet',
     notesPlaceholder: 'Notes — contact, next step, deadline…',
     remindOn: 'Reminder:',
@@ -2461,10 +2465,16 @@ export const en = {
     remind14: '+2wk',
     followUpDue: 'Follow up — due',
     clearReminder: 'Clear reminder',
-    emptyTitle: 'No tracked applications yet',
-    emptyBody: 'Mark an opportunity as Applied, Replied, or Interviewing from your results and it will show up here.',
+    // The reminders cron only sends for a target it still calls actionable.
+    // Offering the preset buttons on anything else is a control that accepts
+    // the click, stores the date, and then never fires — worse than not
+    // offering it, because the student stops watching for the thing itself.
+    reminderUnavailable: 'New reminders are unavailable in the current state.',
+    reminderWontSend: 'This reminder will not be sent in the current state.',
+    emptyTitle: 'Nothing tracked yet',
+    emptyBody: 'Mark an opportunity as Contacted, Applied, Replied, or Interviewing from your results and it will show up here.',
     emptyCta: 'Go to results',
-    loadError: "Couldn't load your tracker — your tracked applications are safe.",
+    loadError: "Couldn't load your tracker — everything you have tracked is safe.",
     statusSaveError: "Couldn't save your status or reminder.",
     notesSaving: 'Saving…',
     notesSaveError: "Couldn't save your notes.",
@@ -2508,8 +2518,8 @@ export const en = {
           caption: 'A personalized draft citing the professor’s actual research, with tone controls, refine chat, and mistakes to avoid.',
         },
         tracker: {
-          title: 'Track every application',
-          caption: 'A board of everything you’ve applied to — statuses, notes, and reminders so no reply falls through.',
+          title: 'Track every outreach and application',
+          caption: 'A board of everyone you’ve contacted and everything you’ve applied to — statuses, notes, and reminders so no reply falls through.',
         },
       },
     },
@@ -2720,6 +2730,17 @@ export const en = {
       expert: 'Expert',
     },
     cycleLevelTitle: 'Click to change level ({level})',
+    // An import learned the skill's NAME off a page; it never learned how well
+    // the student knows it. Saying where it came from is also what makes the
+    // dashed chip legible instead of just odd-looking.
+    importedFrom: {
+      resume: 'Found on your resume — click to set your level',
+      github: 'Inferred from your GitHub repos — click to set your level',
+      shared: 'From a shared profile — click to set your own level',
+    },
+    confirmLevelTitle: 'Click to confirm where you actually stand',
+    foundOn: 'Found on your resume: "{line}" — click to set your level',
+    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand — until then they are described as exposure, not experience.',
     remove: 'Remove {skill}',
   },
   results: {
@@ -3037,6 +3058,9 @@ export const en = {
     renovateResume: 'Renovate Resume',
     recentWork: 'Recent work',
     facultyContactUnconfirmed: 'Faculty contact · openings not confirmed',
+    // Neither a confirmed listing nor a faculty profile. Says what we do not
+    // know instead of borrowing the record's own unreviewed type claim.
+    recordTypeUnconfirmed: 'Record type unconfirmed · check the source',
     facultyNotAcceptingUndergraduates: 'Source says not accepting undergraduates',
     facultyResearchInactive: 'Source reports no current research activity',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
@@ -3059,6 +3083,22 @@ export const en = {
     backToMatches: 'Back to matches',
     apply: 'Apply now',
     viewFacultyProfile: 'View faculty profile',
+    viewSource: 'View source',
+    // Says only what the closure states. The old wording called every closed
+    // record "this lab" — but a closed listing may be a company internship, a
+    // summer program or a one-off project, and naming a lab that may not exist
+    // is a claim the source never made.
+    closedBanner: 'This listing is closed and is no longer accepting applications. It is kept here for reference — check the source for current openings.',
+    referenceBanner: 'This record is published as reference material, not as an open listing.',
+    inactiveBanner: 'This record is no longer active.',
+    notAcceptingBanner: 'This faculty profile states that they are not currently accepting undergraduate students, so outreach actions are paused. The profile is kept here for reference.',
+    unverifiedBanner: 'We could not confirm this record’s current status, so actions are paused. Check the source for the latest.',
+    // Distinct from unverifiedBanner, which is about a status we could not
+    // read. This is about our own review queue: nobody has confirmed what
+    // kind of record this is, so it is not presented as an opening at all.
+    // It used to fall through to closedBanner, which told the student an
+    // application window had shut — a thing no source ever said.
+    kindUnverifiedBanner: 'We have not confirmed what kind of record this is, so it is not presented as an open listing and actions are paused. Check the source for the latest.',
     draftEmail: 'Draft email',
     share: 'Share',
     shareCopied: 'Copied',
@@ -3231,6 +3271,10 @@ export const en = {
     customSource: 'Imported',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     openSource: 'Open source',
+    // For a saved target we can no longer vouch for. "View Details" reads as
+    // "the current details of this opening", which is the one thing the link
+    // does not lead to.
+    viewSourceRecord: 'View the source page',
     dept: 'Dept:',
     loadError: "Couldn't load your favorites — your saved items are safe.",
     savedSearches: {
@@ -3280,6 +3324,34 @@ export const en = {
     tooMany: 'You can compare at most 3 opportunities.',
     notFound: 'None of the requested opportunities could be found.',
     notEnoughFound: 'Only one of the selected opportunities could be found — pick at least 2 to compare.',
+    // "Open" would be wrong for half of these: a faculty profile is a contact,
+    // not an opening, and an unreadable status means we could not confirm
+    // anything — not that something ended. The honest shared property is that
+    // we cannot currently confirm the target is one you can act on.
+    notEnoughComparable: 'Fewer than 2 of these are confirmed as targets you can act on, so there is nothing to compare. The rest are listed below for reference.',
+    referenceOnlyTitle: 'Kept for reference',
+    // Not "what the source reported": `status_unverified` comes from a truth
+    // we could not read at all, and `inactive` is our catalog's judgement, not
+    // a statement anyone published. Only some of these reasons have a source.
+    // Covers two different populations. Some of these are not confirmed
+    // actionable; others are perfectly live but sit outside this profile's
+    // results (another school's campus-only posting, a citizenship
+    // restriction, below the threshold). Saying "no longer open" about the
+    // second group would be false, so the umbrella states the disjunction and
+    // each card states its own reason.
+    referenceOnlyBody: 'Not compared: these are either not confirmed as targets you can act on now, or not part of this match. Each card says which.',
+    status: {
+      closed: 'Closed — no longer accepting applications',
+      reference: 'Reference record — not an open listing',
+      notAccepting: 'Source profile states this faculty member is not currently accepting undergraduate students',
+      inactive: 'Inactive — no longer carried in the catalog',
+      kindUnverified: 'Record type is unverified; not presented as an open listing',
+      unverified: 'Status unconfirmed — check the source',
+      // Scored, and scored as outside this profile's results — another
+      // school's campus-only posting, a citizenship restriction, below the
+      // threshold. A real number about something you cannot take up here.
+      notInResults: 'Not in your current results — shown for reference only',
+    },
     addMore: 'Add more from favorites',
     loadingProfile: 'Loading your profile…',
     noProfile: 'Create a profile to see how these opportunities rank for you.',
@@ -3405,8 +3477,17 @@ export const en = {
   },
   email: {
     title: 'Email me a copy',
-    subtitle: 'Save these to your inbox — free, no account needed.',
-    emailLabel: 'Your email',
+    // Both this line and privacyNote used to promise "no account needed".
+    // They were true when the endpoint mailed whatever address was typed into
+    // it — which was also what made it a way to mail strangers. Now that a
+    // digest only ever goes to the sender's own confirmed address, the old
+    // copy would be advertising something the product no longer does.
+    subtitle: 'Sent to your own inbox, and nowhere else.',
+    emailLabel: 'Sending to',
+    signInRequired: 'Sign in to email yourself these results.',
+    signInCta: 'Sign in',
+    confirmRequired: 'Confirm your account email address first — we can only send to an address you have confirmed.',
+    notSelf: 'JoinALab only emails your own confirmed address. Nothing was sent.',
     send: 'Send',
     sent: 'Sent ✓',
     sendMatches: 'Email matches',
@@ -3418,12 +3499,15 @@ export const en = {
     sendMatchesTop: 'Email top {count} matches',
     matchesCapNote: 'Sends the top 50 by match score',
     sendFavorites: 'Email favorites',
+    // Names both numbers. "Some items were not included" would leave the
+    // student unable to tell whether it was one or fifty.
+    favoritesTruncated: 'This email includes the first {shown} of your {total} saved results.',
     sentMessage: 'Check your inbox!',
     invalidEmail: 'Please enter a valid email address.',
     notConfigured: 'Email service is not configured yet.',
     rateLimit: 'Too many emails sent — try again in an hour.',
     sendFailed: 'Failed to send. Please try again.',
-    privacyNote: 'We only use your email for this one message. No marketing, no account.',
+    privacyNote: 'Sent only to your own confirmed address, for this one message. No marketing.',
     subjectMatches: 'Your top {count} matches from JoinALab',
     subjectFavorites: 'Your {count} saved opportunities',
   },
@@ -3485,6 +3569,11 @@ export const en = {
     remind7: 'in 1 week',
     remind14: 'in 2 weeks',
     reminderSet: 'Follow-up reminder set for {date}',
+    // A confirmed send whose row cannot take a reminder — the confirm RPC
+    // preserves an existing rejected/dismissed status, and the cron selects
+    // neither. Offering the prompt and then having nothing to offer is the
+    // same false capability one step earlier.
+    reminderUnavailable: 'Sent. A follow-up reminder is unavailable in the current state.',
     reminderFailed: 'Couldn\'t save the reminder. Your contact is still recorded.',
     aiVariantLabel: '✨ AI',
     aiVariantTitle: 'Personalize with AI',
@@ -3861,6 +3950,10 @@ export const en = {
       missingDeadline: 'Missing deadline',
       past: 'Past',
       inactive: 'Inactive',
+      // Not a defect count: a record whose type nobody has reviewed. It is in
+      // neither the listing nor the faculty population, so it appears here as
+      // its own queue rather than inflating either one.
+      unreviewedRecordKind: 'Unreviewed type',
     },
     worstFields: 'Records with most missing fields',
     worstFieldsCols: {
@@ -3873,6 +3966,9 @@ export const en = {
     emptyKeywords: 'Empty keywords',
     emptyDescription: 'Empty description',
     shortDescription: 'Short description',
+    // A review queue, not a defect: records whose type has never been
+    // confirmed, counted in neither the listing nor the faculty population.
+    unreviewedRecordKind: 'Unreviewed record type',
     flaggedInactive: 'Flagged inactive',
     trendTitle: '30-day trend',
     trendEmpty: 'Not enough history yet — come back after a few days.',
@@ -4174,7 +4270,7 @@ export const en = {
   },
   dashboard: {
     title: 'Dashboard',
-    subtitle: 'Your saved opportunities, deadlines, and application progress.',
+    subtitle: 'Your saved targets, deadlines, outreach, and application progress.',
     loading: 'Loading…',
     unknownTarget: 'Unknown opportunity',
     push: {
@@ -4233,18 +4329,27 @@ export const en = {
       inDays: 'In {days} days',
       emptyTitle: 'No reminders set',
       emptyBody: 'Set a follow-up reminder from the tracker and it will show up here.',
-      detailsUnavailable: 'Opportunity details are temporarily unavailable — dates and statuses below are still yours.',
+      // Not "dates and statuses below are still yours": with the lookup down
+      // we cannot tell which reminders would be delivered, so none are shown
+      // with a due label at all. Saying otherwise described a list that is
+      // no longer on the page.
+      detailsUnavailable: "We couldn't confirm which reminders will be delivered, so none are shown as due — check them in your tracker.",
+      // Deliberately not "couldn't be loaded": most of these resolved fine
+      // and are simply not deliverable right now — closed, unreviewed, or in
+      // a status the reminder job does not send for. Saying they failed to
+      // load would be false, and saying they are due would be worse.
+      needsReview: "{count} reminders aren't currently deliverable — open your tracker to review them.",
       errorTitle: "Couldn't load your reminders.",
       errorBody: 'Check your connection and reload the page.',
     },
     trackerSection: {
-      title: 'Application Tracker',
+      title: 'Outreach & application tracker',
       count: '{count} tracked',
       openBoard: 'Open board',
       hasNotes: 'Has notes',
       hasReminder: 'Has a reminder',
-      emptyTitle: 'No applications tracked yet',
-      emptyBody: 'Mark opportunities as Applied, Replied, or Interviewing from the results page and they will show up here.',
+      emptyTitle: 'Nothing tracked yet',
+      emptyBody: 'Mark opportunities as Contacted, Applied, Replied, or Interviewing from the results page and they will show up here.',
       emptyCta: 'Find matches',
       errorTitle: "Couldn't load your tracker.",
       errorBody: 'Check your connection and reload the page.',
@@ -4381,8 +4486,8 @@ export const en = {
     favoritesBody: 'Save any match with one tap. Your starred list is kept across visits, so you can come back and decide later.',
     compareTitle: 'Compare on a 6-axis radar',
     compareBody: 'Put up to four side by side on one radar across six dimensions: skill match, eligibility, effort, pay, deadline runway, and how international-friendly each is.',
-    trackerTitle: 'Track every application',
-    trackerBody: 'Move each opportunity through Applied → Replied → Interviewing, add notes, and set reminders so nothing slips.',
+    trackerTitle: 'Track every outreach and application',
+    trackerBody: 'Move each opportunity through Contacted → Applied → Replied → Interviewing, add notes, and set reminders so nothing slips.',
     dashboardTitle: 'Your dashboard',
     dashboardBody: 'One place for upcoming deadlines, your stats, and reminders — so you always know what is next.',
     roadmapTitle: 'A skill-gap roadmap',
@@ -6786,8 +6891,8 @@ export const zh = {
     activityTitle: '我的动态',
     favorites: '收藏',
     favoritesDesc: '你收藏的机会',
-    tracker: '申请追踪',
-    trackerDesc: '你正在追踪的申请',
+    tracker: '联系与申请追踪',
+    trackerDesc: '你正在追踪的联系与申请',
     dashboard: '数据面板',
     dashboardDesc: '截止日期、统计与提醒',
     planTitle: '套餐',
@@ -6821,7 +6926,7 @@ export const zh = {
     menuClose: '关闭菜单',
     fellowshipsShort: '资助',
     resourcesShort: '资源',
-    tracker: '申请追踪',
+    tracker: '联系与申请追踪',
     trackerShort: '追踪',
     roadmap: '能力路线',
     roadmapShort: '路线',
@@ -6867,8 +6972,8 @@ export const zh = {
   tracker: {
     back: '返回',
     loading: '正在加载你的追踪看板…',
-    title: '申请追踪',
-    subtitle: '你标记过的所有机会，按阶段整理。',
+    title: '联系与申请追踪',
+    subtitle: '你的联系与申请记录，按阶段整理。',
     columnEmpty: '暂无',
     notesPlaceholder: '备注 —— 联系人、下一步、截止日期…',
     remindOn: '提醒：',
@@ -6878,10 +6983,12 @@ export const zh = {
     remind14: '+2周',
     followUpDue: '该跟进了 ——',
     clearReminder: '清除提醒',
-    emptyTitle: '还没有追踪的申请',
-    emptyBody: '在结果页把某个机会标为「已申请 / 已回复 / 面试中」，它就会出现在这里。',
+    reminderUnavailable: '当前状态下无法新建提醒。',
+    reminderWontSend: '当前状态下不会发送这条提醒。',
+    emptyTitle: '还没有追踪任何记录',
+    emptyBody: '在结果页把某个机会标为「已联系 / 已申请 / 已回复 / 面试中」，它就会出现在这里。',
     emptyCta: '去结果页',
-    loadError: '无法加载追踪看板——你记录的申请仍然安全。',
+    loadError: '无法加载追踪看板——你记录的内容仍然安全。',
     statusSaveError: '状态或提醒保存失败。',
     notesSaving: '保存中…',
     notesSaveError: '备注保存失败。',
@@ -7137,6 +7244,16 @@ export const zh = {
       expert: '精通',
     },
     cycleLevelTitle: '点击切换水平（{level}）',
+    // 导入只在页面上认出了技能的名字，并不知道你掌握到什么程度。写清来源，
+    // 虚线标签才是有解释的，而不是一个看不懂的样式。
+    importedFrom: {
+      resume: '来自你的简历 —— 点击设置你的水平',
+      github: '根据你的 GitHub 仓库推断 —— 点击设置你的水平',
+      shared: '来自分享的档案 —— 点击设置你自己的水平',
+    },
+    confirmLevelTitle: '点击确认你实际的掌握程度',
+    foundOn: '在简历里找到：「{line}」—— 点击设置你的水平',
+    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
     remove: '移除 {skill}',
   },
   results: {
@@ -7451,6 +7568,7 @@ export const zh = {
     renovateResume: '简历翻新',
     recentWork: '近作',
     facultyContactUnconfirmed: '教师联系资料 · 是否招人待确认',
+    recordTypeUnconfirmed: '记录类型未确认 · 请查看来源页',
     facultyNotAcceptingUndergraduates: '来源注明当前不接收本科生',
     facultyResearchInactive: '来源注明当前没有开展研究',
     facultyAffiliationLocation: '教师所在机构：{location}',
@@ -7473,6 +7591,13 @@ export const zh = {
     backToMatches: '返回匹配列表',
     apply: '立即申请',
     viewFacultyProfile: '查看教师主页',
+    viewSource: '查看来源页',
+    closedBanner: '该记录已关闭，不再接收申请。此处保留供参考，最新招募请查看来源页。',
+    referenceBanner: '这条记录是作为参考资料发布的，不是一个开放中的招募。',
+    inactiveBanner: '这条记录已不再有效。',
+    notAcceptingBanner: '这位教师的主页写明目前不招收本科生，因此相关联系操作已暂停。此处保留主页供参考。',
+    unverifiedBanner: '我们无法确认这条记录的当前状态，因此暂停了相关操作。请查看来源页获取最新信息。',
+    kindUnverifiedBanner: '我们尚未确认这条记录属于哪一类，因此不会把它当作开放中的招募呈现，相关操作也已暂停。请查看来源页获取最新信息。',
     draftEmail: '起草邮件',
     share: '分享',
     shareCopied: '已复制',
@@ -7645,6 +7770,7 @@ export const zh = {
     customSource: '已导入',
     facultyAffiliationLocation: '教师所在机构：{location}',
     openSource: '打开来源',
+    viewSourceRecord: '查看来源页',
     dept: '部门：',
     loadError: '无法加载收藏——你保存的内容仍然安全。',
     savedSearches: {
@@ -7694,6 +7820,18 @@ export const zh = {
     tooMany: '最多可以对比 3 个机会。',
     notFound: '未能找到任何请求的机会。',
     notEnoughFound: '只找到 1 个所选机会——请至少选择 2 个进行对比。',
+    notEnoughComparable: '这些当中被确认为「你现在可以行动」的不足 2 个，无法对比。其余在下方列出供参考。',
+    referenceOnlyTitle: '保留供参考',
+    referenceOnlyBody: '不参与对比：这些要么当前状态未被确认为你可以行动的目标，要么不属于本次匹配结果。每张卡片会说明属于哪一种。',
+    status: {
+      closed: '已关闭，不再接收申请',
+      reference: '参考资料，不是开放中的招募',
+      notAccepting: '该教师主页写明目前不招收本科生',
+      inactive: '已失效，不再收录',
+      kindUnverified: '记录类型未确认，未按开放招募呈现',
+      unverified: '状态未确认，请查看来源页',
+      notInResults: '不在你当前的匹配结果内——仅供参考',
+    },
     addMore: '从收藏中添加',
     loadingProfile: '正在加载你的档案…',
     noProfile: '创建档案后即可查看这些机会与你的匹配排名。',
@@ -7819,8 +7957,15 @@ export const zh = {
   },
   email: {
     title: '发一份到邮箱',
-    subtitle: '免费存到你的收件箱 —— 不需要注册账号。',
-    emailLabel: '你的邮箱',
+    // 这句和 privacyNote 原本都写着「不需要注册账号」。那在端点会把邮件发到
+    // 任何填进去的地址时是真话 —— 也正是它能给陌生人发信的原因。现在摘要只
+    // 会发到发送者本人已验证的地址，旧文案等于在宣传一件产品不再做的事。
+    subtitle: '只发到你自己的收件箱，不发去别处。',
+    emailLabel: '发送至',
+    signInRequired: '登录后即可把结果发到你自己的邮箱。',
+    signInCta: '登录',
+    confirmRequired: '请先验证账号邮箱 —— 我们只能发送到你已验证过的地址。',
+    notSelf: 'JoinALab 只发送到你本人已验证的地址。本次未发送。',
     send: '发送',
     sent: '已发送 ✓',
     sendMatches: '发送匹配结果',
@@ -7830,12 +7975,13 @@ export const zh = {
     sendMatchesTop: '发送前 {count} 条匹配',
     matchesCapNote: '按匹配分数发送前 50 条',
     sendFavorites: '发送我的收藏',
+    favoritesTruncated: '这封邮件只包含你 {total} 条收藏中的前 {shown} 条。',
     sentMessage: '请查看收件箱！',
     invalidEmail: '请输入有效的邮箱地址。',
     notConfigured: '邮件服务尚未配置。',
     rateLimit: '发送过于频繁 —— 一小时后再试。',
     sendFailed: '发送失败，请重试。',
-    privacyNote: '我们仅用你的邮箱发送这一封邮件。不做营销，不创建账号。',
+    privacyNote: '仅发送到你本人已验证的地址，仅此一封。不做营销。',
     subjectMatches: 'JoinALab · 你的 {count} 条最佳匹配',
     subjectFavorites: '你的 {count} 个已保存机会',
   },
@@ -7897,6 +8043,7 @@ export const zh = {
     remind7: '1 周后',
     remind14: '2 周后',
     reminderSet: '已设置 {date} 的跟进提醒',
+    reminderUnavailable: '已发送。当前状态下无法设置跟进提醒。',
     reminderFailed: '提醒没能保存。你的联系记录仍然有效。',
     aiVariantLabel: '✨ AI',
     aiVariantTitle: '使用 AI 个性化',
@@ -8273,6 +8420,7 @@ export const zh = {
       missingDeadline: '缺截止',
       past: '已过',
       inactive: '下线',
+      unreviewedRecordKind: '类型未审核',
     },
     worstFields: '缺字段最多的记录',
     worstFieldsCols: {
@@ -8285,6 +8433,7 @@ export const zh = {
     emptyKeywords: '空关键词',
     emptyDescription: '空描述',
     shortDescription: '描述过短',
+    unreviewedRecordKind: '未审核记录类型',
     flaggedInactive: '已标记下线',
     trendTitle: '30 天趋势',
     trendEmpty: '历史数据不足——过几天再回来看。',
@@ -8586,7 +8735,7 @@ export const zh = {
   },
   dashboard: {
     title: '仪表盘',
-    subtitle: '你的收藏、截止日期与申请进度。',
+    subtitle: '你的收藏、截止日期、联系与申请进度。',
     loading: '加载中…',
     unknownTarget: '未知机会',
     push: {
@@ -8643,22 +8792,23 @@ export const zh = {
       today: '今天到期',
       tomorrow: '明天到期',
       inDays: '{days} 天后',
+      needsReview: '有 {count} 条提醒当前无法发送——请到追踪看板查看。',
       emptyTitle: '还没有设置提醒',
       emptyBody: '在追踪看板里设置跟进提醒，它会显示在这里。',
-      detailsUnavailable: '机会详情暂时不可用——下方的日期和状态仍是你自己记录的。',
+      detailsUnavailable: '我们无法确认哪些提醒会被发送，因此不显示任何到期标签——请到追踪看板查看。',
       errorTitle: '无法加载你的提醒。',
       errorBody: '请检查网络后刷新页面。',
     },
     trackerSection: {
-      title: '申请跟踪',
+      title: '联系与申请追踪',
       count: '跟踪中 {count} 个',
       openBoard: '打开看板',
       hasNotes: '有备注',
       hasReminder: '有提醒',
-      emptyTitle: '还没有跟踪的申请',
-      emptyBody: '在结果页把机会标记为已申请、已回复或面试中，它们就会显示在这里。',
+      emptyTitle: '还没有跟踪任何记录',
+      emptyBody: '在结果页把机会标记为已联系、已申请、已回复或面试中，它们就会显示在这里。',
       emptyCta: '去找匹配',
-      errorTitle: '无法加载你的申请跟踪。',
+      errorTitle: '无法加载你的联系与申请追踪。',
       errorBody: '请检查网络后刷新页面。',
     },
     professorUpdates: {
@@ -8793,8 +8943,8 @@ export const zh = {
     favoritesBody: '一键收藏任意匹配,收藏列表跨访问保留,方便你回头再决定。',
     compareTitle: '六维雷达图对比',
     compareBody: '最多选四个并排放上同一张雷达图,六个维度一眼看清:技能契合、资格、投入难度、报酬、截止余量、对国际生的友好度。',
-    trackerTitle: '追踪每一份申请',
-    trackerBody: '把每个机会在「已申请 → 已回复 → 面试中」之间推进,记笔记、设提醒,不漏任何一步。',
+    trackerTitle: '追踪每一次联系与申请',
+    trackerBody: '把每个机会在「已联系 → 已申请 → 已回复 → 面试中」之间推进,记笔记、设提醒,不漏任何一步。',
     dashboardTitle: '你的仪表盘',
     dashboardBody: '把临近截止、你的统计和提醒集中在一处 —— 随时知道下一步该干嘛。',
     roadmapTitle: '技能差距路线图',

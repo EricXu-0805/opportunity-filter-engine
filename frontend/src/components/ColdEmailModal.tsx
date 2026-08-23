@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
+import { canDeliverReminder } from '@/lib/reminders';
 import {
   X,
   Copy,
@@ -29,6 +30,7 @@ import {
   onAuthChange,
   updateInteractionDetails,
 } from '@/lib/supabase';
+import type { InteractionType } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -67,6 +69,25 @@ interface ColdEmailModalProps {
   /** Slug of the opportunity's host school — lets the no-email explainer link
    *  the student to their campus' official self-lookup directory. */
   opportunitySchool?: string | null;
+  /**
+   * The canonical record this dialog is about, as the caller currently sees
+   * it — used for one thing only: deciding whether a follow-up reminder would
+   * actually be delivered.
+   *
+   * Optional, and `undefined` FAILS CLOSED — no chips, no write. That is the
+   * honest reading of "the caller cannot presently prove anything about this
+   * target": a results refetch in flight, the row gone from the page, or a
+   * caller that never supplied one. All three production call sites pass it
+   * explicitly; a test that omits it simply gets no follow-up controls, which
+   * is the correct default rather than something to paper over.
+   *
+   * `id` is required and must equal `opportunityId`. A caller resolving the
+   * row by a stale id — a results list mid-swap, a favorites page whose
+   * modal id moved on — would otherwise hand over a perfectly live record
+   * that describes a DIFFERENT target, and this dialog would write a
+   * reminder for it.
+   */
+  reminderTarget?: NonNullable<Parameters<typeof canDeliverReminder>[0]> & { id: string };
 }
 
 /*
@@ -202,6 +223,7 @@ export default function ColdEmailModal({
   opportunityId,
   opportunityTitle,
   opportunitySchool,
+  reminderTarget,
 }: ColdEmailModalProps) {
   const { t } = useT();
   const { openModal } = useAuthModal();
@@ -252,10 +274,34 @@ export default function ColdEmailModal({
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
   // evidence the email was sent (the user may close the compose window), so
   // nothing is recorded yet. Only the explicit "I sent it" confirmation below
-  // creates the 'applied' interaction; the reminder chips then follow.
+  // creates the interaction — as 'contacted', since a send is outreach and
+  // not an application claim made on the student's behalf; the reminder chips
+  // then follow, when the returned status is one the cron actually sends for.
   const [contacted, setContacted] = useState(false);
+  // Same stamping as confirmedForId below, for the same reason: the
+  // copy/open strip must not carry A's "did you send it?" question onto B.
+  const [contactedForId, setContactedForId] = useState<string | null>(null);
+  const contactedHere = contacted && contactedForId === opportunityId;
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
+  // The status the confirm RPC actually landed on. It is an upsert that
+  // PRESERVES an existing status, so a row already marked rejected or
+  // dismissed stays that way — and the reminders cron never selects those.
+  // Assuming 'contacted' here is how a confirmed send still produced a
+  // reminder nothing would ever deliver.
+  const [confirmedStatus, setConfirmedStatus] = useState<InteractionType | undefined>();
+  // Which opportunity that status belongs to. The reset below is a passive
+  // effect, so between a rerender onto target B and that cleanup flushing,
+  // A's confirmation would already have painted B's chips — and the handler
+  // would have written against them. Stamping the id at creation makes the
+  // state unusable for anyone else by construction rather than by timing.
+  const [confirmedForId, setConfirmedForId] = useState<string | null>(null);
+  const confirmedHere = sendConfirmed && confirmedForId === opportunityId;
+  // Identity first, then deliverability. A live record for a different id is
+  // still a live record — canDeliverReminder would happily say yes to it.
+  const followUpDeliverable = confirmedHere
+    && reminderTarget?.id === opportunityId
+    && canDeliverReminder(reminderTarget, confirmedStatus);
   const [confirming, setConfirming] = useState(false);
   // Which persistence failed, so the strip can say the honest thing: a failed
   // confirmation recorded NOTHING, a failed reminder left a real contact
@@ -373,8 +419,14 @@ export default function ColdEmailModal({
       sendSessionRef.current += 1;
       confirmInFlightRef.current = false;
       setContacted(false);
+      setContactedForId(null);
       setSendConfirmed(false);
       setFollowUpDate(null);
+      // Reset with the rest: a status confirmed for the previous target must
+      // never decide whether the NEXT one may take a reminder. The id stamps
+      // make that true from the first render rather than from this cleanup.
+      setConfirmedStatus(undefined);
+      setConfirmedForId(null);
       setConfirming(false);
       setSendError(null);
       setVariants([]);
@@ -723,7 +775,11 @@ export default function ColdEmailModal({
   // not a verified send. No evidence = no tracking event.
   const markContacted = useCallback(() => {
     setContacted(true);
-  }, []);
+    setContactedForId(opportunityId);
+    // opportunityId is now READ here, so it has to be a dep. An empty array
+    // would freeze the stamp at whatever id existed on first mount, and a
+    // copy on target B would file itself under target A forever.
+  }, [opportunityId]);
 
   // The user's explicit attestation that the email went out — the ONLY path
   // that records the contact, and it records it with one atomic call.
@@ -732,8 +788,11 @@ export default function ColdEmailModal({
   // updated the metadata: three round trips a concurrent status change could
   // interleave with, and it painted `sent` before any of them had landed.
   // confirmInteractionContact is one INSERT ... ON CONFLICT DO UPDATE
-  // (migration 025) that creates the row as 'applied' or, when a further-along
-  // status already exists, only refreshes last_contacted_at.
+  // (migration 027) that creates the row as 'contacted' or, when any status
+  // already exists, only refreshes last_contacted_at. That preservation is
+  // why the RETURNED status is read below rather than assumed: a row already
+  // marked rejected or dismissed comes back unchanged, and the reminders cron
+  // selects neither.
   const confirmSent = useCallback(async () => {
     if (confirmInFlightRef.current) return;
     // Captured at the click, before any await: the capability belongs to the
@@ -750,11 +809,15 @@ export default function ColdEmailModal({
     const stillCurrent = () =>
       sendSessionRef.current === session && confirmAttemptRef.current === attempt;
     try {
-      await confirmInteractionContact(opportunityId, token);
+      const record = await confirmInteractionContact(opportunityId, token);
       // The owner check is re-read AFTER the await, against the token captured
       // BEFORE it. Same uid at a new epoch is a different capability.
       if (!stillCurrent()) return;
-      if (isTokenOwnerStillCurrent(token)) setSendConfirmed(true);
+      if (isTokenOwnerStillCurrent(token)) {
+        setConfirmedStatus(record?.type);
+        setConfirmedForId(opportunityId);
+        setSendConfirmed(true);
+      }
       else setSendError('owner-changed');
     } catch {
       if (!stillCurrent()) return;
@@ -773,6 +836,16 @@ export default function ColdEmailModal({
   // Reminder-only. It must never call the contact recorder: that would move
   // last_contacted_at and record a second outreach the student never made.
   const setFollowUp = useCallback(async (days: number) => {
+    // Both halves of the reminders cron's predicate, checked here and not
+    // only where the chips render. Hiding a button stops a click; it does
+    // nothing about a retained handler or a status that changed between the
+    // render and the click.
+    // Re-derived here rather than reading `followUpDeliverable`: this is the
+    // sink, and it must hold even when the DOM gate above passed against an
+    // older render of the same target object.
+    if (confirmedForId !== opportunityId) return;
+    if (reminderTarget?.id !== opportunityId) return;
+    if (!canDeliverReminder(reminderTarget, confirmedStatus)) return;
     const token = captureOwnerToken();
     const session = sendSessionRef.current;
     const d = new Date();
@@ -790,7 +863,7 @@ export default function ColdEmailModal({
       setSendError(null);
       setFollowUpDate(date);
     }
-  }, [opportunityId]);
+  }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId]);
 
   async function handleCopy() {
     try {
@@ -1174,9 +1247,9 @@ export default function ColdEmailModal({
                 actually sent (copying/opening a draft is not a send); only
                 after the user confirms is the contact recorded and the
                 follow-up reminder offered. */}
-            {contacted && (
+            {contactedHere && (
               <div className="flex flex-wrap items-center gap-2 px-6 py-2.5 border-t border-gray-100 bg-amber-50/60 shrink-0 text-sm">
-                {!sendConfirmed ? (
+                {!confirmedHere ? (
                   <>
                     <span className="inline-flex items-center gap-1.5 text-gray-600">
                       <Send className="w-4 h-4 text-amber-500" />
@@ -1204,6 +1277,17 @@ export default function ColdEmailModal({
                       </span>
                     )}
                   </>
+                ) : !followUpDeliverable ? (
+                  // The whole reminder block, not just the chips. Offering
+                  // "want a reminder?" and then having nothing to offer is
+                  // the same false capability one step earlier — and the
+                  // confirm RPC preserves an existing status, so a row
+                  // already marked rejected or dismissed reaches here after
+                  // a perfectly real send.
+                  <span className="inline-flex items-center gap-1.5 text-gray-500">
+                    <BellRing className="w-4 h-4 text-gray-400" />
+                    {t('coldEmail.reminderUnavailable')}
+                  </span>
                 ) : (
                   <>
                     {followUpDate ? (

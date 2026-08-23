@@ -34,12 +34,15 @@ RELEASE_SCOPE = MappingProxyType(
         # the bounded, server-attested acceptance PR.
         "match_ai_refine": False,
         "cross_school_matching": True,
-        "compare": True,
-        "fellowships": True,
-        "resume_renovate": True,
-        "roadmap": True,
-        "ask_ai": True,
-        "professor_signals": True,
+        # MTP capabilities remain implemented and tested internally, but are
+        # outside the accepted MVP surface. Their existing route gates return
+        # 404 while disabled; each can reopen only in its own acceptance PR.
+        "compare": False,
+        "fellowships": False,
+        "resume_renovate": False,
+        "roadmap": False,
+        "ask_ai": False,
+        "professor_signals": False,
         # Stays closed: migration 026 dropped the orders RLS policies and
         # revoked anon/authenticated access, and pricing.ts / the payment QR
         # assets are not on main. The flag is not the missing part.

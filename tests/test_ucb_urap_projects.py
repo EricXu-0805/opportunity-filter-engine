@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from src.collectors import ucb_urap_projects as up
+from src.evidence import target_truth
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
 LIST_FIXTURE = """
@@ -26,6 +27,20 @@ LIST_FIXTURE = """
       <div>Jane Doe - Associate Professor, Integrative Biology</div>
       <div>Status: Open   Weekly Hours: 6-8 hours   Location: On Campus</div>
       <p>Investigating microbial community structure using genomics and statistics.</p>
+    </div>
+  </div>
+</body></html>
+"""
+
+
+CLOSED_LIST_FIXTURE = """
+<html><body>
+  <div class="results">
+    <div class="entry">
+      <h3><a href="detail.php?id=19595-1">Machine learning for radiopharmaceutical imaging</a></h3>
+      <div>Christoph Neumann - Professor, Nuclear Engineering</div>
+      <div>Status: Closed- no longer accepting apprentices   Weekly Hours: 9-11 hours   Location: On Campus</div>
+      <div>Applying deep networks to alpha-particle microdosimetry maps.</div>
     </div>
   </div>
 </body></html>
@@ -52,6 +67,30 @@ class TestParseListPage:
         assert r["department"] == "Neuroscience"
         assert "12 or more hours" in r["weekly_hours"]
         assert "neural networks" in r["description"].lower()
+
+    def test_closed_row_survives_html_parse_into_a_non_actionable_record(self):
+        """End to end on real markup, with the un-spaced dash URAP actually emits.
+
+        The fixture writes "Closed- no longer accepting apprentices" exactly as
+        the live page does (compare "Open- accepting new students"). If either
+        _STATUS_RE or the status recognizer loses that form, the row silently
+        normalizes as an open, actionable project again — which is the whole
+        defect, reintroduced one layer earlier.
+        """
+        rows = up.parse_list_page(self._soup(CLOSED_LIST_FIXTURE))
+        assert len(rows) == 1
+        assert rows[0]["status"].startswith("Closed-")
+
+        record = up.normalize_project(rows[0])  # default past=False: an Open page
+        assert record["metadata"]["urap_status"] == "closed"
+        assert record["metadata"]["is_active"] is False
+        assert record["application"]["application_url"] is None
+
+        truth = target_truth(record)
+        assert truth.actionable is False
+        assert truth.reason_code == "listing_closed"
+        assert truth.reference_only is True
+        assert truth.accepting_state == "not_accepting"
 
     def test_no_detail_links_yields_empty(self):
         rows = up.parse_list_page(self._soup("<html><body><p>No projects match.</p></body></html>"))
@@ -108,10 +147,103 @@ class TestNormalize:
         assert "Apply through the URAP application portal" not in o["description"]
         assert o["id"] == up.normalize_project(self._raw())["id"]
 
+    def test_past_mode_leaves_the_actionable_universe(self):
+        """A lower confidence score only deprioritizes; this excludes.
+
+        The 861 records already in the corpus were written with
+        `metadata.is_active=True`, which is why `hard_exclusion` — whose only
+        activity check is `metadata.is_active is False` — let closed projects
+        rank. A refresh must not recreate that state.
+        """
+        o = up.normalize_project(self._raw(), past=True)
+        assert o["metadata"]["is_active"] is False
+        assert target_truth(o).actionable is False
+        assert target_truth(o).reason_code == "listing_closed"
+        assert target_truth(o).reference_only is True
+
+    def test_past_mode_offers_no_application_url(self):
+        """URAP publishes one program-wide portal, not a per-project form.
+
+        Carrying it on a closed project turns "here is where URAP applications
+        go" into "apply to this", which is the CTA the source never offered.
+        The project page stays reachable as reference.
+        """
+        o = up.normalize_project(self._raw(), past=True)
+        assert o["application"]["application_url"] is None
+        assert o["url"]
+        assert o["source_url"]
+
     def test_open_mode_unchanged_default(self):
         o = up.normalize_project(self._raw())
         assert o["is_rolling"] is True
         assert o["metadata"]["urap_status"] == "open"
+        assert o["metadata"]["is_active"] is True
+        assert o["application"]["application_url"] == up.APPLICATION_URL
+        assert target_truth(o).actionable is True
+        assert target_truth(o).reference_only is False
+
+    @pytest.mark.parametrize(
+        "status_line",
+        [
+            "Closed - no longer accepting apprentices",
+            "closed",
+            "  CLOSED - project full  ",
+        ],
+    )
+    def test_a_row_that_states_closed_wins_over_the_page_parameter(self, status_line):
+        """The page is fetched with one status; each row states its own.
+
+        `?status=Open` is a query, not a guarantee — URAP re-labels a project
+        mid-cycle and the row keeps its own Status line. Trusting only the
+        caller's flag writes that row back as open/active with an application
+        URL, which is how a closed project becomes actionable again on the very
+        next refresh.
+        """
+        raw = self._raw()
+        raw["status"] = status_line
+        o = up.normalize_project(raw)  # default past=False, i.e. an Open page
+        assert o["metadata"]["urap_status"] == "closed"
+        assert o["metadata"]["is_active"] is False
+        assert o["application"]["application_url"] is None
+        assert target_truth(o).actionable is False
+        assert target_truth(o).reason_code == "listing_closed"
+
+    @pytest.mark.parametrize(
+        "status_line",
+        ["Open- accepting new students", "Open", "", "Full for spring"],
+    )
+    def test_only_a_recognized_closed_status_downgrades_a_row(self, status_line):
+        """Narrow by design: no prose guessing, only the parsed status field."""
+        raw = self._raw()
+        raw["status"] = status_line
+        o = up.normalize_project(raw)
+        assert o["metadata"]["urap_status"] == "open"
+        assert o["metadata"]["is_active"] is True
+        assert target_truth(o).actionable is True
+
+    def test_closed_page_still_marks_every_row_closed(self, monkeypatch):
+        raw = self._raw()
+        raw["status"] = "Open"
+        monkeypatch.setattr(up, "scrape_projects", lambda status="Open": [raw])
+        out = up.fetch_and_normalize("Closed")
+        assert [o["metadata"]["urap_status"] for o in out] == ["closed"]
+        assert [o["metadata"]["is_active"] for o in out] == [False]
+
+    def test_open_page_with_a_mixed_status_row_downgrades_only_that_row(
+        self, monkeypatch,
+    ):
+        open_row = self._raw()
+        open_row["status"] = "Open- accepting new students"
+        closed_row = self._raw()
+        closed_row["id"] = "20079-1"
+        closed_row["status"] = "Closed - no longer accepting apprentices"
+        monkeypatch.setattr(
+            up, "scrape_projects", lambda status="Open": [open_row, closed_row],
+        )
+        out = up.fetch_and_normalize("Open")
+        assert [o["metadata"]["urap_status"] for o in out] == ["open", "closed"]
+        assert [o["metadata"]["is_active"] for o in out] == [True, False]
+        assert [target_truth(o).actionable for o in out] == [True, False]
 
 
 class TestMerge:

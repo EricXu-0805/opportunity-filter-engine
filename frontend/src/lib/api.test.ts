@@ -126,6 +126,32 @@ describe('getMatches', () => {
     expect(body.include_cross_school).toBe(false);
   });
 
+  it('carries skill provenance to the server, not just the level', async () => {
+    // The server decides whether a skill may back "I have experience with X",
+    // and it can only withhold that for an import it can still see is one.
+    // This mapping was an explicit `{name, level}` field list, which dropped
+    // `source` before it ever left the browser and made the whole server-side
+    // gate a no-op while its own tests passed.
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    const profile = makeProfile();
+    profile.skills = [
+      { name: 'Python', level: 'experienced', source: 'resume' },
+      { name: 'Rust', level: 'expert', source: 'github', confirmed: true },
+      { name: 'C++', level: 'expert' },
+    ];
+    await getMatches(profile);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.hard_skills).toEqual([
+      { name: 'Python', level: 'experienced', source: 'resume' },
+      { name: 'Rust', level: 'expert', source: 'github', confirmed: true },
+      // A skill the student typed carries no source — its absence is what
+      // marks the level as their own word.
+      { name: 'C++', level: 'expert' },
+    ]);
+  });
+
   it('sends exploring=true when the profile opts into explore mode', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
@@ -135,21 +161,17 @@ describe('getMatches', () => {
     expect(body.exploring).toBe(true);
   });
 
-  it('sends accepted preferences through instead of stripping them', async () => {
-    // Both families normalizeProfileForRelease guards are accepted now, so it
-    // is a pass-through here. The enforced boundary is the server's
-    // (_normalized_profile, tests/test_release_scope.py) — this one only stops
-    // a stale local profile from re-showing a selector.
+  it('strips hidden fellowship preferences but keeps accepted cross-school matching', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
     );
     await getMatches(makeProfile({
       include_cross_school: true,
-      seeking_types: ['research', 'fellowship'],
+      seeking_types: ['research', 'fellowship', ' Fellowship ', 'FELLOWSHIP'],
     }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.include_cross_school).toBe(true);
-    expect(body.seeking_type).toEqual(['research', 'fellowship']);
+    expect(body.seeking_type).toEqual(['research']);
   });
 
   it('maps scholar_url into the request and defaults it to "" when absent', async () => {
@@ -231,6 +253,9 @@ describe('getMatchView', () => {
         results: [],
         filtered_total: 0,
         view_counts: { all: 0, high_priority: 0, good_match: 0, reach: 0, starred: 0 },
+        // Kept in step with the wire the backend emits. This test is about
+        // the REQUEST — getMatchView returns the body verbatim and validates
+        // nothing — so the field is scenery here, not evidence of acceptance.
         contract_version: 'match-view-v3-faculty-trust',
       }),
     );
@@ -617,14 +642,18 @@ describe('cold-email endpoints', () => {
     expect(body.profile.school).toBe('UIUC');
   });
 
-  it('refineEmail POSTs /cold-email/refine with current_body + instruction', async () => {
+  it('refineEmail POSTs /cold-email/refine with body, instruction and target', async () => {
     fetchMock.mockResolvedValue(okJson({ body: 'new', method: 'llm' }));
-    await refineEmail('old body', 'make warmer');
+    // opportunityId is required: refine rewrites a draft against one target's
+    // evidence, and the server resolves that target before it spends anything.
+    await refineEmail('old body', 'make warmer', makeProfile(), 'opp-1');
     expect(fetchMock.mock.calls[0][0]).toBe('/api/cold-email/refine');
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const body = JSON.parse(init.body as string);
     expect(body.current_body).toBe('old body');
     expect(body.instruction).toBe('make warmer');
+    expect(body.opportunity_id).toBe('opp-1');
+    expect(body.profile.school).toBe('UIUC');
   });
 });
 
@@ -677,12 +706,20 @@ describe('email endpoints', () => {
 
   it('sendMatchesEmail POSTs /email/send-matches with subject_hint passthrough', async () => {
     fetchMock.mockResolvedValue(okJson({ ok: true, count: 1 }));
-    await sendMatchesEmail('alex@illinois.edu', [{ title: 'REU' }], 'weekly digest');
+    await sendMatchesEmail(
+      'alex@illinois.edu',
+      [{ opportunity_id: 'opp-1', title: 'REU', score: 88 }],
+      'weekly digest',
+    );
     expect(fetchMock.mock.calls[0][0]).toBe('/api/email/send-matches');
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     const body = JSON.parse(init.body as string);
     expect(body.email).toBe('alex@illinois.edu');
     expect(body.subject_hint).toBe('weekly digest');
+    // The id must always travel — it is what the new backend rehydrates from.
+    // The legacy fields ride along for the split-deploy window (see the
+    // ROLLOUT BRIDGE note on EmailMatchItem) and are ignored server-side.
+    expect(body.items[0].opportunity_id).toBe('opp-1');
   });
 
   it('sendFavoritesEmail POSTs /email/send-favorites', async () => {

@@ -1363,7 +1363,7 @@ def record_contact_claim(record: dict) -> dict | None:
     }
 
 
-def clear_contact_evidence(record: dict) -> None:
+def clear_contact_evidence(record: dict, *, tombstone: bool = True) -> None:
     """Remove the proof fields while preserving the current email.
 
     Leaves ``identity_bound: False`` as a tombstone — "a collector reviewed
@@ -1371,7 +1371,17 @@ def clear_contact_evidence(record: dict) -> None:
     it, a fully-cleared record is indistinguishable from one harvested
     before stamping existed, and the W7a legacy pass-through in
     ``contact_visibility`` would let the just-unverified address flow
-    again."""
+    again.
+
+    ``tombstone=False`` strips the residue without recording a verdict, and is
+    for the case where nothing was ever reviewed: the committed record carried
+    no evidence either, so a re-scrape that produced no claim has rejected
+    nothing. Stamping one there invents a review that never happened AND costs
+    the record the grandfathering that keeps the pre-contract corpus
+    reachable — which is how 104,528 addresses were silently retired. The
+    caller decides by asking ``carries_contact_evidence`` of the COMMITTED
+    record, never of the fresh one: the fresh row is unstamped in both cases,
+    so it cannot tell them apart."""
 
     metadata = record.get("metadata")
     if not isinstance(metadata, dict):
@@ -1381,7 +1391,8 @@ def clear_contact_evidence(record: dict) -> None:
         for key, value in metadata.items()
         if key not in CONTACT_EVIDENCE_FIELDS
     }
-    cleaned["identity_bound"] = False
+    if tombstone:
+        cleaned["identity_bound"] = False
     record["metadata"] = cleaned
 
 

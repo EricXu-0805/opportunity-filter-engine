@@ -23,6 +23,7 @@ from ..evidence import (
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
     is_professor_rank,
+    target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
@@ -2694,8 +2695,15 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
     and the explain endpoint both consume this, so "in your results" can never
     mean different things on different surfaces. Returns a stable reason code,
     or None when the record stays."""
-    if (opp.get("metadata") or {}).get("is_active") is False:
-        return "inactive"
+    # Target truth stays the FIRST branch, where the bare is_active check used
+    # to live. Order is load-bearing: placed after the school-scope rules below,
+    # a closed Berkeley listing would be reported to a non-Berkeley student as
+    # "another school's campus posting" — true, but not the reason it is dead.
+    # `target_truth` still answers "inactive" for a plain deactivated record, so
+    # no existing exclusion changes its code.
+    target = target_truth(opp)
+    if not target.actionable:
+        return target.reason_code
     faculty_status = faculty_availability_status(opp)
     if faculty_status == "not_accepting_undergraduates":
         return "faculty_not_accepting"

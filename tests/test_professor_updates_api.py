@@ -293,6 +293,11 @@ class TestOpportunityProfessorId:
         faculty = record()
         monkeypatch.setattr(
             opportunities_route,
+            "feature_enabled",
+            lambda feature: feature == "professor_signals",
+        )
+        monkeypatch.setattr(
+            opportunities_route,
             "load_opportunities_by_id",
             lambda: {faculty["id"]: faculty},
         )
@@ -304,11 +309,19 @@ class TestOpportunityProfessorId:
         assert "contact_email" not in body
 
     def test_non_faculty_detail_has_no_professor_id(self, monkeypatch):
-        listing = {"id": "reu-123", "source_type": "research_listing", "title": "REU"}
+        # `external_reu`, not the invented `research_listing`: only a RECOGNIZED
+        # listing source_type is actionable, and the rollout bridge refuses a
+        # historical record to a caller that has not declared the truth
+        # capability. This request deliberately sends no `_release_scope` — it
+        # doubles as an actionable legacy-client control — so an unreviewed kind
+        # would have made it a 409 whose error body contains no `professor_id`
+        # either, and the assertion below would have passed for the wrong reason.
+        listing = {"id": "reu-123", "source_type": "external_reu", "title": "REU"}
         monkeypatch.setattr(
             opportunities_route,
             "load_opportunities_by_id",
             lambda: {"reu-123": listing},
         )
-        body = client.get("/api/opportunities/reu-123").json()
-        assert "professor_id" not in body
+        response = client.get("/api/opportunities/reu-123")
+        assert response.status_code == 200
+        assert "professor_id" not in response.json()

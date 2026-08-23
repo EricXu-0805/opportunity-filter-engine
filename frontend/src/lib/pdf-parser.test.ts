@@ -77,7 +77,7 @@ describe('parseResumePDF — image-only PDF', () => {
     expect(res.message).toMatch(/image-based/i);
     expect(res.extracted_skills).toEqual([]);
     expect(res.extracted_coursework).toEqual([]);
-    expect(res.experience_level).toBe('beginner');
+    expect(res.skill_evidence).toEqual([]);
     expect(res.raw_text).toBe('');
   });
 
@@ -259,50 +259,6 @@ describe('parseResumePDF — research interests capture', () => {
   });
 });
 
-describe('parseResumePDF — experience-level inference', () => {
-  it('returns "strong" when 2+ strong keywords appear', async () => {
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(fakePdf(['I led the team and architected the solution. Python.'])),
-    });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.experience_level).toBe('strong');
-  });
-
-  it('returns "some" when 2+ "some" keywords appear and no strong markers', async () => {
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(fakePdf(['I contributed to the project and implemented the parser. Python.'])),
-    });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.experience_level).toBe('some');
-  });
-
-  it('returns "beginner" when only beginner-level cues appear', async () => {
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(fakePdf(['Coursework included a class project; familiar with Python.'])),
-    });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.experience_level).toBe('beginner');
-  });
-
-  it('returns "beginner" by default when no level markers are present', async () => {
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(fakePdf(['Python pandas numpy with no verbs at all.'])),
-    });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.experience_level).toBe('beginner');
-  });
-
-  it('prefers "strong" over "some" when both signals are present', async () => {
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(fakePdf([
-        'I led and architected the rewrite. I also assisted and implemented bugfixes. Python.',
-      ])),
-    });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.experience_level).toBe('strong');
-  });
-});
-
 describe('parseResumePDF — success response shape', () => {
   it('caps raw_text at 8000 characters (multi-page resumes feed the tailor flow)', async () => {
     const longBody = 'Python '.repeat(2000);
@@ -318,5 +274,77 @@ describe('parseResumePDF — success response shape', () => {
     });
     const res = await parseResumePDF(fakeFile());
     expect(res.message).toMatch(/Extracted \d+ skills, \d+ courses/);
+  });
+});
+
+describe('parseResumePDF — every skill carries where it was found', () => {
+  it('reports the resume line each skill matched on', async () => {
+    // The extractor is a bare presence test over a fixed list, so a match says
+    // only that the word appears — not that the student can do it. Carrying the
+    // line makes a spurious hit visible to them instead of silently becoming a
+    // skill on their profile.
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf([
+        'Relevant coursework: Introduction to Python and Data Structures',
+      ])),
+    });
+    const out = await parseResumePDF(fakeFile());
+    const hit = out.skill_evidence?.find((e) => e.skill === 'Python');
+    expect(hit).toBeDefined();
+    expect(hit!.line).toContain('Relevant coursework');
+    expect(hit!.line).toContain('Python');
+  });
+
+  it('gives each skill its own line when they sit on different ones', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf([
+        'Skills: Docker',
+        'Interests: hoping to learn PyTorch someday',
+      ])),
+    });
+    const out = await parseResumePDF(fakeFile());
+    const byName = Object.fromEntries(
+      (out.skill_evidence ?? []).map((e) => [e.skill, e.line]),
+    );
+    expect(byName['Docker']).toContain('Skills:');
+    expect(byName['PyTorch']).toContain('hoping to learn');
+  });
+
+  it('reports one entry per extracted skill, in the same order', async () => {
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf(['Built with Python, Docker and React'])),
+    });
+    const out = await parseResumePDF(fakeFile());
+    expect((out.skill_evidence ?? []).map((e) => e.skill))
+      .toEqual(out.extracted_skills);
+  });
+
+  it('caps a runaway line so a one-line PDF cannot ship the whole resume per skill', async () => {
+    // PDF extraction often flattens a resume onto a single line; without a cap
+    // every skill would carry a copy of the entire document.
+    const long = 'Python ' + 'x'.repeat(2000);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([long])) });
+    const out = await parseResumePDF(fakeFile());
+    const hit = out.skill_evidence!.find((e) => e.skill === 'Python')!;
+    expect(hit.line.length).toBeLessThanOrEqual(200);
+    expect(hit.line).toContain('Python');
+  });
+});
+
+describe('parseResumePDF — the inferred experience level is gone', () => {
+  it('no longer reports an experience_level nobody chose', async () => {
+    // It was computed from counting verbs ("led", "built") and then discarded:
+    // handleResumeParsed never read it. Measured on the real corpus, feeding it
+    // to the ranker would not reorder a single result — it shifts every score by
+    // the same constant — but it WOULD move opportunities between the
+    // High Priority / Good Match / Reach labels a student is shown, on the
+    // strength of a word appearing twice. And no control lets them correct it.
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf([
+        'Led the team, managed the rollout, published two papers',
+      ])),
+    });
+    const out = await parseResumePDF(fakeFile());
+    expect('experience_level' in out).toBe(false);
   });
 });

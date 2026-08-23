@@ -66,6 +66,8 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
+from backend.lib.contact_visibility import carries_contact_evidence
+
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
@@ -3140,7 +3142,14 @@ def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
         # This cross-record dedup is weaker than the stable-id carry path. Move
         # the address as legacy data, but never move a verified five-field claim
         # across records unless a future collector proves canonical identity.
-        clear_contact_evidence(survivor)
+        #
+        # "As legacy data" is the whole intent, and an unconditional tombstone
+        # did the opposite: it retired an address nobody had reviewed. Stamp
+        # only when the DROPPED row actually carried evidence — that is the
+        # claim which must not be laundered onto a record it never described.
+        clear_contact_evidence(
+            survivor, tombstone=carries_contact_evidence(loser),
+        )
         src = (loser.get("metadata") or {}).get("email_source")
         if isinstance(src, str) and not src.startswith("bound_"):
             survivor.setdefault("metadata", {})["email_source"] = src

@@ -15,6 +15,7 @@ import {
   type InteractionType,
 } from '@/lib/supabase';
 import { captureOwnerToken } from '@/lib/identity-owner';
+import { canDeliverReminder } from '@/lib/reminders';
 import type { Opp } from '@/app/favorites/types';
 
 export interface TrackedItem {
@@ -750,13 +751,40 @@ export function useTrackerData(): UseTrackerDataResult {
     if (statusPendingRef.current.has(id)) return;
     const generation = identityGenerationRef.current;
     const token = captureOwnerToken();
+    // An unavailable placeholder is a real interaction row the student owns —
+    // it just has no resolvable opportunity this load. Clearing a reminder on
+    // one has to work: the reminder is theirs, the corpus outage is ours, and
+    // the cron will not send for an unresolved target anyway. Only the array
+    // it lives in differs, so both branches share this single write path.
     const cur = itemsRef.current.find((it) => it.opp.id === id);
-    if (!cur) return;
-    const prevRemindAt = cur.record.remind_at;
-    itemsRef.current = itemsRef.current.map((it) =>
-      it.opp.id === id ? { ...it, record: { ...it.record, remind_at: date ?? undefined } } : it,
-    );
-    setItems(itemsRef.current);
+    const placeholder = cur
+      ? undefined
+      : unavailableItemsRef.current.find((u) => u.id === id);
+    if (!cur && !placeholder) return;
+    // Clearing is always allowed; scheduling is not. The UI already hides the
+    // presets, but a hidden control is not a guarantee — this is the single
+    // write path, and it is where the rule has to hold. A placeholder can
+    // never be scheduled (the cron fails closed on an unresolved target), and
+    // a resolved row only when the cron would actually send for it.
+    if (date !== null) {
+      if (placeholder) return;
+      if (!canDeliverReminder(cur!.opp, cur!.record.type)) return;
+    }
+    const prevRemindAt = (cur ?? placeholder)!.record.remind_at;
+    const applyRemindAt = (value: string | undefined) => {
+      if (cur) {
+        itemsRef.current = itemsRef.current.map((it) =>
+          it.opp.id === id ? { ...it, record: { ...it.record, remind_at: value } } : it,
+        );
+        setItems(itemsRef.current);
+        return;
+      }
+      unavailableItemsRef.current = unavailableItemsRef.current.map((u) =>
+        u.id === id ? { ...u, record: { ...u.record, remind_at: value } } : u,
+      );
+      setUnavailableItems(unavailableItemsRef.current);
+    };
+    applyRemindAt(date ?? undefined);
     clearStatusFailed(id);
     addStatusPending(id);
     (async () => {
@@ -764,15 +792,12 @@ export function useTrackerData(): UseTrackerDataResult {
         await updateInteractionDetails(id, { remind_at: date }, token);
       } catch {
         if (identityGenerationRef.current === generation) {
-          // Restore ONLY this id's remind_at against the CURRENT items —
+          // Restore ONLY this id's remind_at against the CURRENT array —
           // writes for other opportunities (and even a concurrent notes
           // save for this SAME id, which is never blocked against the
           // exclusive channel) are never serialized against this one and
           // must not be clobbered by a whole-array snapshot rollback.
-          itemsRef.current = itemsRef.current.map((it) =>
-            it.opp.id === id ? { ...it, record: { ...it.record, remind_at: prevRemindAt } } : it,
-          );
-          setItems(itemsRef.current);
+          applyRemindAt(prevRemindAt);
           setStatusFailed(id, { kind: 'reminder', date }); // as data — never re-derived
         }
       } finally {
@@ -782,15 +807,21 @@ export function useTrackerData(): UseTrackerDataResult {
   }, [addStatusPending, removeStatusPending, setStatusFailed, clearStatusFailed]);
 
   const retryStatusItem = useCallback((id: string) => {
-    // An unavailable placeholder's only possible action is clearUnavailable
-    // — it has no ExclusiveIntent stored (see setStatusFailed) and isn't in
-    // itemsRef for performStatusOp to look up, so this must be dispatched
-    // before ever consulting statusRetryIntentRef.
+    const intent = statusRetryIntentRef.current.get(id);
+    // A placeholder used to have exactly one possible action, so this branch
+    // could dispatch clearUnavailable without consulting the intent. It now
+    // has two: clearing its reminder can fail as well, and replaying THAT
+    // failure as clearUnavailable would delete the whole interaction — the
+    // student's status and notes with it — when all they asked for was to
+    // drop a date. The stored intent decides.
     if (unavailableItemsRef.current.some((u) => u.id === id)) {
+      if (intent?.kind === 'reminder') {
+        setReminder(id, intent.date);
+        return;
+      }
       clearUnavailable(id);
       return;
     }
-    const intent = statusRetryIntentRef.current.get(id);
     if (!intent) return;
     if (intent.kind === 'reminder') {
       setReminder(id, intent.date);
@@ -846,8 +877,15 @@ export function isReminderDue(date?: string): boolean {
 }
 
 // The pipeline columns, in order. "dismissed" is intentionally excluded — it is
-// the hide-from-results status, not a stage in the application funnel.
+// the hide-from-results status, not a stage in the funnel.
+//
+// 'contacted' is the first stage and was missing entirely: the cold-email
+// confirm-sent flow and the follow-up chips both write it, and the reminders
+// cron sends for it — so a student who emailed a professor had a tracked row,
+// a deliverable reminder, and no card anywhere on this board. Reaching out is
+// where the funnel starts; it is not a footnote to applying.
 export const TRACKER_COLUMNS: InteractionType[] = [
+  'contacted',
   'applied',
   'replied',
   'interviewing',

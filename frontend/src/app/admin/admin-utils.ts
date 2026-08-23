@@ -1,4 +1,20 @@
+import { QUALITY_SCOPE } from './types';
 import type { AdminResponse, HistoryEntry, TFunc } from './types';
+
+/**
+ * Whether a snapshot describes the population the current build measures.
+ *
+ * Presence of `listing_total` is NOT the test. An entry written before
+ * `reviewed-record-kind-v1` has that field too — it just counted every
+ * unreviewed record as a listing, so its denominator and its defect numerators
+ * describe a different set. Comparing across that boundary reports a change in
+ * the data when what changed was the definition.
+ */
+export function isCurrentQualityScope(
+  snapshot: { quality_scope?: string } | null | undefined,
+): boolean {
+  return snapshot?.quality_scope === QUALITY_SCOPE;
+}
 
 const LISTING_QUALITY_KEYS = new Set([
   'empty_majors',
@@ -24,10 +40,21 @@ export function diff(
   previous: HistoryEntry | null,
 ): number | null {
   if (!previous) return null;
+  // Both sides must describe the same population. A delta across the scope
+  // boundary is the definition changing, presented as the data moving — and
+  // it would show up as a green ▼ on exactly the counters that got smaller
+  // only because unreviewed rows stopped being counted as listings.
+  //
+  // The marker is necessary, not sufficient: a correctly-marked payload can
+  // still arrive without the denominator (a truncated response, a partial
+  // write), and treating a missing number as zero is how a comparison gets
+  // invented out of nothing. Both checks, both sides.
   if (
     LISTING_QUALITY_KEYS.has(key)
     && (
-      typeof current.global.listing_total !== 'number'
+      !isCurrentQualityScope(current)
+      || !isCurrentQualityScope(previous)
+      || typeof current.global.listing_total !== 'number'
       || typeof previous.listing_total !== 'number'
     )
   ) return null;
@@ -48,17 +75,59 @@ export function diff(
  * defect rate ~18x, on the dashboard used to judge whether data is fit to ship.
  */
 export function listingPct(key: string, data: AdminResponse): number | undefined {
+  // The marker, not the field. A legacy response ships `listing_total` as
+  // well; it simply counted unreviewed records inside it, so the rate it
+  // produces is over a set nobody meant. Omitting the percentage is honest —
+  // the absolute count beside it is still true and still shown.
+  if (!isCurrentQualityScope(data)) return undefined;
   const denominator = data.global.listing_total;
-  // A legacy response has no compatible denominator. Omitting the percentage
-  // is honest; falling back to the mixed faculty+listing total recreates the
-  // exact ~18x understatement this helper exists to prevent.
   if (typeof denominator !== 'number' || denominator <= 0) return undefined;
   return ((data.global[key] ?? 0) / denominator) * 100;
 }
 
-/** Remove legacy mixed-scope snapshots before rendering listing trends. */
+/**
+ * Keep only snapshots that describe the population this build measures AND
+ * carry the denominator a listing trend is drawn against. A correctly-marked
+ * but malformed row would otherwise plot as a zero — a cliff in the chart
+ * that never happened in the data.
+ */
 export function listingScopedHistory(history: HistoryEntry[]): HistoryEntry[] {
-  return history.filter((entry) => typeof entry.listing_total === 'number');
+  return history.filter(
+    (entry) => isCurrentQualityScope(entry) && typeof entry.listing_total === 'number',
+  );
+}
+
+/**
+ * The history entry immediately preceding the snapshot on screen.
+ *
+ * Not `history[length - 2]`. Two things break an index-based answer. Scope:
+ * the row before last may be a legacy entry, and comparing across that
+ * boundary shows every listing counter improving when all that happened is
+ * unreviewed records leaving the denominator. Position: `data` and `history`
+ * are fetched together while the backend appends at most one entry per hour,
+ * so the current snapshot may or may not already be in the list — making
+ * "second from the end" mean two different things on consecutive loads.
+ *
+ * Answered by timestamp instead, strictly earlier: an entry sharing the
+ * current snapshot's time IS that snapshot, and comparing it with itself
+ * shows no change on a board whose whole job is to show change. A current
+ * snapshot that is out of scope or has an unparseable time yields null —
+ * there is no "now" to measure from, and picking an index anyway would answer
+ * a question nobody asked.
+ */
+export function findPreviousSnapshot(
+  history: HistoryEntry[],
+  data: AdminResponse | null | undefined,
+): HistoryEntry | null {
+  const scoped = listingScopedHistory(history);
+  if (!scoped.length) return null;
+  const currentAt = isCurrentQualityScope(data) ? Date.parse(data?.generated_at ?? '') : NaN;
+  if (Number.isNaN(currentAt)) return null;
+  for (let i = scoped.length - 1; i >= 0; i -= 1) {
+    const at = Date.parse(scoped[i].t);
+    if (!Number.isNaN(at) && at < currentAt) return scoped[i];
+  }
+  return null;
 }
 
 /**

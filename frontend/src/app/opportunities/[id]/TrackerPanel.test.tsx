@@ -68,6 +68,7 @@ describe('TrackerPanel — collapse / expand', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -82,6 +83,7 @@ describe('TrackerPanel — collapse / expand', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -96,6 +98,7 @@ describe('TrackerPanel — collapse / expand', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -114,6 +117,7 @@ describe('TrackerPanel — collapsed preview line', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -129,6 +133,7 @@ describe('TrackerPanel — collapsed preview line', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -146,6 +151,7 @@ describe('TrackerPanel — notes editor', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -164,6 +170,7 @@ describe('TrackerPanel — notes editor', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -179,6 +186,7 @@ describe('TrackerPanel — notes editor', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -202,6 +210,7 @@ describe('TrackerPanel — notes editor', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -219,6 +228,7 @@ describe('TrackerPanel — notes editor', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -238,6 +248,7 @@ describe('TrackerPanel — reminder date', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -255,6 +266,7 @@ describe('TrackerPanel — reminder date', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -279,6 +291,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -308,6 +321,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -338,6 +352,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -363,6 +378,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -386,6 +402,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -400,6 +417,7 @@ describe('TrackerPanel — debounced save', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -415,6 +433,7 @@ describe('TrackerPanel — child component mounting', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -432,6 +451,7 @@ describe('TrackerPanel — child component mounting', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -443,6 +463,7 @@ describe('TrackerPanel — child component mounting', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction={false}
+        reminderEligible
         t={tFn}
       />,
     );
@@ -462,6 +483,7 @@ describe('TrackerPanel — honest save failure (never "Saved" on a rejected onSa
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -489,6 +511,7 @@ describe('TrackerPanel — honest save failure (never "Saved" on a rejected onSa
         onSave={onSave}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         t={tFn}
       />,
     );
@@ -519,7 +542,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     vi.useFakeTimers();
     let resolveN1: ((v: { status: 'committed' }) => void) | undefined;
     const onSave = vi.fn().mockImplementation(() => new Promise((r) => { resolveN1 = r; }));
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -538,7 +561,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     vi.useFakeTimers();
     let rejectN1: ((e: Error) => void) | undefined;
     const onSave = vi.fn().mockImplementation(() => new Promise((_r, rej) => { rejectN1 = rej; }));
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -558,7 +581,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     const onSave = vi.fn()
       .mockResolvedValueOnce({ status: 'committed' })
       .mockRejectedValueOnce(new Error('n2 failed'));
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -578,7 +601,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     const onSave = vi.fn()
       .mockRejectedValueOnce(new Error('n1 failed'))
       .mockResolvedValueOnce({ status: 'committed' });
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -599,7 +622,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
       .mockRejectedValueOnce(new Error('n1 failed'))
       .mockRejectedValueOnce(new Error('n2 failed'))
       .mockResolvedValueOnce({ status: 'committed' });
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -622,7 +645,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
   it('after a failure, ANY new edit immediately removes the stale Retry — clicking it again is impossible because it is gone', async () => {
     vi.useFakeTimers();
     const onSave = vi.fn().mockRejectedValueOnce(new Error('network down'));
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
 
@@ -639,7 +662,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     const { rerender } = render(
-      <TrackerPanel detail={detail({ notes: undefined, remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: undefined, remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     fireEvent.click(screen.getByRole('button', { expanded: false }));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
@@ -650,7 +673,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     // notes remains whatever it was BEFORE this component ever touched it
     // (i.e. this rewrite did not originate from notes).
     rerender(
-      <TrackerPanel detail={detail({ notes: undefined, remind_at: '2030-01-01' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: undefined, remind_at: '2030-01-01' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     expect(textarea.value).toBe('still typing, not yet saved'); // untouched
     vi.useRealTimers();
@@ -663,7 +686,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
       .mockImplementationOnce(() => new Promise((r) => { resolveN1 = r; }))
       .mockResolvedValueOnce({ status: 'committed' });
     const { rerender } = render(
-      <TrackerPanel detail={detail({ notes: undefined, remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: undefined, remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     fireEvent.click(screen.getByRole('button', { expanded: false }));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
@@ -681,7 +704,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     // that round-trip here.
     await act(async () => { resolveN1?.({ status: 'committed' }); });
     rerender(
-      <TrackerPanel detail={detail({ notes: 'N1', remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: 'N1', remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     expect(textarea.value).toBe('N1N2'); // NOT stomped back to N1 — the user's newer draft survives
 
@@ -695,7 +718,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
   it('abandoned (precondition/generation moved on) never displays Saved', async () => {
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValueOnce({ status: 'abandoned' });
-    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />);
+    render(<TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
     fireEvent.change(textarea, { target: { value: 'x' } });
@@ -708,7 +731,7 @@ describe('TrackerPanel — N1/N2 monotonic revision (only the LATEST attempt may
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     render(
-      <TrackerPanel detail={detail({ notes: '  existing  ', remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: '  existing  ', remind_at: undefined })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     // detail.notes is truthy, so the panel starts already expanded.
     expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
@@ -729,6 +752,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
         onSave={vi.fn()}
         opportunityId={OPP_ID}
         hasInteraction
+        reminderEligible
         writeReady={false}
         t={tFn}
       />,
@@ -742,7 +766,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     const { rerender } = render(
-      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction writeReady={false} t={tFn} />,
+      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible writeReady={false} t={tFn} />,
     );
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
@@ -757,7 +781,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
 
     // The real detail (Y) now lands, and writeReady flips true.
     rerender(
-      <TrackerPanel detail={detail({ notes: 'Y' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction writeReady t={tFn} />,
+      <TrackerPanel detail={detail({ notes: 'Y' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible writeReady t={tFn} />,
     );
     expect(textarea.value).toBe('Y'); // X was never treated as a real, dirty draft
     await act(async () => { await vi.advanceTimersByTimeAsync(700); });
@@ -771,7 +795,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     // status write starting), then flipping it back true.
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     const { rerender } = render(
-      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction writeReady t={tFn} />,
+      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible writeReady t={tFn} />,
     );
     fireEvent.click(screen.getByText(/detail.tracker.addButton/));
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
@@ -781,7 +805,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     // status write started) — no save attempt happens, and any 'saving'
     // indicator clears rather than sticking.
     rerender(
-      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction writeReady={false} t={tFn} />,
+      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible writeReady={false} t={tFn} />,
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(700); });
     expect(onSave).not.toHaveBeenCalled();
@@ -792,7 +816,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     // needed: the debounce-trigger effect re-evaluates because writeReady
     // is in its own dependency array.
     rerender(
-      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction writeReady t={tFn} />,
+      <TrackerPanel detail={null} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible writeReady t={tFn} />,
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(700); });
     expect(onSave).toHaveBeenCalledWith({ notes: 'dirty draft' });
@@ -802,7 +826,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     render(
-      <TrackerPanel detail={detail({ notes: 'baseline' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: 'baseline' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
 
@@ -821,7 +845,7 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     vi.useFakeTimers();
     const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
     const { rerender } = render(
-      <TrackerPanel detail={detail({ notes: 'old' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: 'old' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/) as HTMLTextAreaElement;
 
@@ -832,10 +856,181 @@ describe('TrackerPanel — writeReady gates every edit control', () => {
     // out-of-band save covered it) before this component's own 600ms timer
     // ever fires — attemptSave's own dirty check then finds nothing to do.
     rerender(
-      <TrackerPanel detail={detail({ notes: 'new draft' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction t={tFn} />,
+      <TrackerPanel detail={detail({ notes: 'new draft' })} onSave={onSave} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />,
     );
     await act(async () => { await vi.advanceTimersByTimeAsync(700); });
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.queryByText(/common.saving/)).toBeNull(); // not stuck
+  });
+});
+
+describe('TrackerPanel — a reminder is only offered where one would be delivered', () => {
+  it('with nothing scheduled: no date input, and it says so', () => {
+    render(
+      <TrackerPanel
+        detail={null} onSave={vi.fn()} opportunityId={OPP_ID}
+        hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    // Absent, not disabled: a disabled input still says "you may schedule one
+    // here, later".
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(screen.getByText('tracker.reminderUnavailable')).toBeInTheDocument();
+    expect(screen.queryByText('tracker.reminderWontSend')).toBeNull();
+  });
+
+  it('with a date already set: the date and Clear survive, and both views say it will not send', async () => {
+    // The student set that reminder. Removing it would be us editing their
+    // record; the honest move is to keep it and say it is not going to fire —
+    // including in the collapsed view, which is the only one a student
+    // scanning the page ever sees.
+    const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
+    render(
+      <TrackerPanel
+        detail={detail({ remind_at: '2026-12-31' })} onSave={onSave}
+        opportunityId={OPP_ID} hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+    // Collapsed first — the panel opens itself because a reminder exists, so
+    // close it to read the preview line.
+    fireEvent.click(screen.getByRole('button', { expanded: true }));
+    const collapsed = screen.getByRole('button');
+    expect(collapsed.textContent).toContain('2026-12-31');
+    expect(collapsed.textContent).toContain('tracker.reminderWontSend');
+
+    fireEvent.click(collapsed);
+    expect(screen.getByText('2026-12-31')).toBeInTheDocument();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    expect(screen.getAllByText('tracker.reminderWontSend').length).toBeGreaterThan(0);
+    expect(screen.queryByText('tracker.reminderUnavailable')).toBeNull();
+
+    // Clearing is always allowed.
+    fireEvent.click(screen.getByText(/common.clear/));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ remind_at: null }));
+  });
+
+  it('a date picked while eligible is never written if eligibility is lost before the debounce fires', async () => {
+    // 600ms is long enough for a status change to land. A DOM-level hide
+    // never sees a timer that is already scheduled.
+    vi.useFakeTimers();
+    const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
+    const { rerender } = render(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const input = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2030-01-01' } });
+
+    rerender(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+    await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+
+    expect(onSave).not.toHaveBeenCalled();
+    // No false success, and the draft goes back to what is actually stored —
+    // showing the picked date beside "Saved" would be the worst of the three.
+    expect(screen.queryByText(/common.saved/)).toBeNull();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('a failed date save is not replayed by Retry once eligibility is gone', async () => {
+    // Retry replays the EXACT patch that failed, which was built while the
+    // row was still eligible. The click can land in the same frame the new
+    // prop commits, so the check has to be synchronous.
+    const onSave = vi.fn().mockRejectedValueOnce(new Error('boom'));
+    const { rerender } = render(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const input = document.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '2030-01-01' } });
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await screen.findByText(/detail.tracker.saveError/);
+
+    rerender(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+    // Immediately, in the same commit — no waiting on a debounce tick. A
+    // date-only Retry that can no longer be accepted is a button whose only
+    // possible outcome is to fail again, so it is withdrawn with the input.
+    expect(screen.queryByText(/common.retry/)).toBeNull();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/common.saved/)).toBeNull();
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+
+  it('a mixed notes+date failure keeps a notes-only Retry, and replaying it never carries the date', async () => {
+    const onSave = vi.fn().mockRejectedValueOnce(new Error('boom'));
+    const { rerender } = render(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    fireEvent.change(
+      screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/),
+      { target: { value: 'my own note' } },
+    );
+    fireEvent.change(
+      document.querySelector('input[type="date"]') as HTMLInputElement,
+      { target: { value: '2030-01-01' } },
+    );
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toEqual({ notes: 'my own note', remind_at: '2030-01-01' });
+    await screen.findByText(/detail.tracker.saveError/);
+
+    rerender(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+
+    // The notes half is still the student's. It does not even need a Retry:
+    // withdrawing the date resets that draft to baseline, which leaves the
+    // notes as the only dirty field, and the ordinary debounce writes them on
+    // their own — without the date. Asserted on the patch, which is the thing
+    // that matters; the absent Retry is a consequence of a save being in
+    // flight, not of the notes having been dropped.
+    onSave.mockResolvedValueOnce({ status: 'committed' });
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    expect(onSave.mock.calls[1][0]).toEqual({ notes: 'my own note' });
+    expect(onSave.mock.calls[1][0]).not.toHaveProperty('remind_at');
+  });
+
+  it('notes still save on their own while reminders are blocked', async () => {
+    // The gate is about reminders. Abandoning the whole patch would throw
+    // away notes the student typed because of a rule about dates.
+    vi.useFakeTimers();
+    const onSave = vi.fn().mockResolvedValue({ status: 'committed' });
+    render(
+      <TrackerPanel
+        detail={detail()} onSave={onSave} opportunityId={OPP_ID}
+        hasInteraction reminderEligible={false} t={tFn}
+      />,
+    );
+    fireEvent.click(screen.getByText(/detail.tracker.addButton/));
+    const textarea = screen.getByPlaceholderText(/detail.tracker.notesPlaceholder/);
+    fireEvent.change(textarea, { target: { value: 'my own note' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+
+    expect(onSave).toHaveBeenCalledWith({ notes: 'my own note' });
+    vi.useRealTimers();
   });
 });

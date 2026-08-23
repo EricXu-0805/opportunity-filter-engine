@@ -74,7 +74,7 @@ describe('SkillTags — selected tag labels (i18n)', () => {
     const levelBtn = screen.getByRole('button', { name: 'Beginner' });
     expect(levelBtn).toHaveAttribute('title', 'Click to change level (Beginner)');
     fireEvent.click(levelBtn);
-    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'experienced' }]);
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'experienced', confirmed: true }]);
     expect(screen.getByRole('button', { name: 'Remove Python' })).toBeInTheDocument();
   });
 
@@ -87,17 +87,44 @@ describe('SkillTags — selected tag labels (i18n)', () => {
   });
 });
 
+describe('SkillTags — an imported skill shows where it came from', () => {
+  it('puts the resume line on the level badge', () => {
+    // A bare presence match cannot be judged from the skill name alone. The
+    // line is what lets the student see "Relevant coursework: Introduction to
+    // Python" and decline to claim it.
+    setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    const badge = screen.getByRole('button', { name: 'Beginner' });
+    expect(badge.getAttribute('title'))
+      .toContain('Relevant coursework: Introduction to Python');
+  });
+
+  it('falls back to naming the source when no line was captured', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
+    const badge = screen.getByRole('button', { name: 'Beginner' });
+    expect(badge.getAttribute('title')).toMatch(/GitHub/i);
+  });
+
+  it('leaves a settled skill with the ordinary cycle hint', () => {
+    setup([{ name: 'Python', level: 'expert' }]);
+    const badge = screen.getByRole('button', { name: 'Expert' });
+    expect(badge.getAttribute('title')).toMatch(/change level/i);
+  });
+});
+
 describe('SkillTags — level cycling', () => {
   it('cycles experienced → expert', () => {
     const { onChange } = setup([{ name: 'Python', level: 'experienced' }]);
     fireEvent.click(screen.getByRole('button', { name: 'Experienced' }));
-    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'expert' }]);
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'expert', confirmed: true }]);
   });
 
   it('wraps expert → beginner', () => {
     const { onChange } = setup([{ name: 'Python', level: 'expert' }]);
     fireEvent.click(screen.getByRole('button', { name: 'Expert' }));
-    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'beginner' }]);
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'beginner', confirmed: true }]);
   });
 
   it('cycling one chip leaves sibling chips untouched', () => {
@@ -107,8 +134,9 @@ describe('SkillTags — level cycling', () => {
     ]);
     fireEvent.click(screen.getByRole('button', { name: 'Beginner' }));
     expect(onChange).toHaveBeenCalledWith([
+      // Untouched: cycling one chip confirms that chip only.
       { name: 'Python', level: 'expert' },
-      { name: 'Java', level: 'experienced' },
+      { name: 'Java', level: 'experienced', confirmed: true },
     ]);
   });
 });

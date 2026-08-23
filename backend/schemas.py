@@ -6,10 +6,25 @@ from typing import Literal, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
+# Where an imported skill came from. Absence is the student's own choice; an
+# unrecognised value is normalised to "unknown" and treated as an import.
+_SKILL_SOURCES = frozenset({"resume", "github", "shared"})
+
 
 class SkillItem(BaseModel):
+    """One student skill, and whether its LEVEL is the student's own word.
+
+    Both fields must be declared here or they never arrive: the routes hand
+    ``profile.model_dump()`` to the email and tailor builders, and pydantic
+    drops undeclared keys silently — the claim gate downstream would then read
+    every import as student-chosen and be a no-op in production while its unit
+    tests passed.
+    """
+
     name: str
     level: str = "beginner"
+    source: str | None = None
+    confirmed: bool = False
 
 
 class ProfilePreferences(BaseModel):
@@ -104,6 +119,18 @@ class ProfileRequest(BaseModel):
             elif isinstance(item, dict):
                 item["name"] = str(item.get("name", ""))[:50]
                 item["level"] = str(item.get("level", "beginner"))[:50]
+                # Absent means student-chosen; anything we do not recognise is
+                # NOT promoted to that. A client asserting an unknown source
+                # would otherwise re-authorise the experience claim the gate
+                # exists to withhold, so unrecognised values fail closed to
+                # "imported" rather than to "typed".
+                source = item.get("source")
+                if source is not None:
+                    source = str(source)[:20]
+                    if source not in _SKILL_SOURCES:
+                        source = "unknown"
+                item["source"] = source
+                item["confirmed"] = item.get("confirmed") is True
                 result.append(SkillItem(**item))
             else:
                 result.append(item)
@@ -249,6 +276,19 @@ class MatchesResponse(BaseModel):
     next_cursor: str | None = None
     result_set_id: str = ""
     contract_version: str = ""
+    # Announces that every row in this response carries a complete
+    # `target_truth` and that historical records have already been filtered out.
+    # Separate from `contract_version` so it can ship while the wire version
+    # stays put through a split frontend/backend deploy, and present even on an
+    # empty page — which has no rows to inspect and would otherwise be
+    # indistinguishable from an old backend's empty page.
+    #
+    # Required, with no default. An omitted marker is a page every client
+    # correctly refuses, so a default would turn a forgotten argument at a new
+    # construction site into a silent production outage instead of an error
+    # here. (An OLD backend still sends no such field at all; that is the
+    # client's absent case, and unrelated to this server's own obligation.)
+    target_truth_contract: str
     view_start: int = 0
     # Exact server-side view metadata. Optional/defaulted so the canonical
     # /matches paging endpoint and older clients remain compatible.

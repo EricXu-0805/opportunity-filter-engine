@@ -2205,9 +2205,26 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // screen's extracted skills as the current owner's own additions.
     const origin = editingOrigin();
     if (!origin) return;
-    const newSkills: SkillWithLevel[] = data.extracted_skills.map(
-      (name) => ({ name, level: 'experienced' as const }),
+    // `beginner`, not `experienced`. The extractor is a bare presence test over
+    // a fixed list (pdf-parser.ts extractSkills), so "Relevant coursework:
+    // Introduction to Python" and "hoping to learn PyTorch" both matched — and
+    // `experienced` reached professors as "I have hands-on experience with X".
+    // A skill the student TYPES starts at `beginner` too; a regex hit has no
+    // business outranking their own statement about themselves. `source` is
+    // what lets the form offer to raise it and what keeps the claim withheld
+    // until they do.
+    // Each skill carries the line it was found on, so the form can show the
+    // student WHERE it came from. That is the whole defence against a bare
+    // presence match: they can see "hoping to learn PyTorch" and decline it.
+    const evidenceFor = new Map(
+      (data.skill_evidence ?? []).map((e) => [e.skill, e.line]),
     );
+    const newSkills: SkillWithLevel[] = data.extracted_skills.map((name) => ({
+      name,
+      level: 'beginner' as const,
+      source: 'resume' as const,
+      ...(evidenceFor.get(name) ? { evidence: evidenceFor.get(name) } : {}),
+    }));
     // An import ADDS names; it says nothing about the ones already there.
     // Recorded as an operation so a conflict merges these into whatever the
     // other device holds instead of pushing this whole list over it.
@@ -2327,7 +2344,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       if (profileRef.current.github_url?.trim() !== url) return null;
       githubImportedUrlRef.current = url;
       setGhStatus(t('home.form.githubImportSuccess', { skills: data.extracted_skills.length, repos: data.repo_count }));
-      return data.extracted_skills.map((name) => ({ name, level: 'experienced' as const }));
+      // Inferred from a repo's language field, which says the code exists, not
+      // that the student wrote it or understands it. Marked and unclaimed until
+      // they raise the level themselves.
+      return data.extracted_skills.map(
+        (name) => ({ name, level: 'beginner' as const, source: 'github' as const }),
+      );
     } catch {
       if (request !== ghRequestRef.current) return null;
       if (!ownsScreen(origin)) return null;

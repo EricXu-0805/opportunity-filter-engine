@@ -21,10 +21,29 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
+from backend.lib.release_scope import opportunity_visible_in_release
+from backend.lib.supabase_auth import SessionIdentity
 from backend.main import app
 from backend.routes.cold_email import _local_refine
+from src.evidence import record_kind, target_truth
 
 client = TestClient(app)
+
+# Email digests now rehydrate every item from the canonical corpus, so a
+# payload needs an id that actually resolves — AND, for the send-matches
+# tests, one the target-truth contract will not refuse before the mail path
+# is reached.
+#
+# `load_opportunities()[0]` was neither. It is `0088a9eb2812c2f4`, one of the
+# 26 rows with no `source_type`, so its kind is unreviewed and it is not
+# actionable: every quota/rate-limit assertion built on it was really
+# measuring a 409 refusal. Chosen by property instead of by position, so a
+# corpus refresh that reorders the file cannot silently reintroduce this.
+EMAIL_TARGET_ID = next(
+    record["id"]
+    for record in data_loader.load_opportunities()
+    if record_kind(record) == "listing" and target_truth(record).actionable
+)
 
 
 @pytest.fixture
@@ -155,8 +174,19 @@ class TestUpcomingDeadlines:
 
 class TestOpportunityDetail:
     def test_returns_opportunity_by_id(self):
-        opps = data_loader.load_opportunities()
-        target = opps[0]
+        # No `_release_scope` on purpose: this is the legacy-client control
+        # proving the rollout bridge left an ACTIONABLE record's detail alone.
+        # Chosen by property rather than by position — `load_opportunities()[0]`
+        # is `0088a9eb2812c2f4`, one of the 26 unreviewed rows, which the bridge
+        # now refuses to a caller that has not declared the truth capability, so
+        # this control would have started measuring a 409.
+        target = next(
+            record
+            for record in data_loader.load_opportunities()
+            if opportunity_visible_in_release(record)
+            and record_kind(record) == "listing"
+            and target_truth(record).actionable
+        )
         resp = client.get(f"/api/opportunities/{target['id']}")
         assert resp.status_code == 200
         body = resp.json()
@@ -1139,7 +1169,9 @@ class TestColdEmailEngine:
     @pytest.fixture
     def cold_email_body(self, sample_profile_req):
         opps = data_loader.load_opportunities()
-        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+        # Property-selected: `opps[0]` is an unreviewed row the action routes
+        # refuse with a 409 before any of the behaviour below is reached.
+        return {"profile": sample_profile_req, "opportunity_id": EMAIL_TARGET_ID}
 
     def test_default_engine_is_template(self, cold_email_body, monkeypatch):
         for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
@@ -1272,7 +1304,15 @@ class TestColdEmailEngine:
         response = client.post(path, json=payload)
 
         assert response.status_code == 409
-        assert "not currently accepting undergraduate" in response.json()["detail"].lower()
+        # The refusal now comes from the target-truth contract rather than from
+        # cold-email's own gate, so the detail is the structured shape every
+        # action route shares. `reason` is asserted exactly: "faculty is not
+        # accepting" must never arrive labelled as a closed listing.
+        detail = response.json()["detail"]
+        assert detail["code"] == "TARGET_NOT_ACTIONABLE"
+        assert detail["reason"] == "faculty_not_accepting"
+        assert detail["retryable"] is False
+        assert "not currently accepting undergraduate" in detail["message"].lower()
         assert touched == []
 
     def test_engine_ai_falls_back_when_unconfigured(self, cold_email_body, monkeypatch):
@@ -1487,7 +1527,9 @@ class TestColdEmailStyle:
     @pytest.fixture
     def base_body(self, sample_profile_req):
         opps = data_loader.load_opportunities()
-        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+        # Property-selected: `opps[0]` is an unreviewed row the action routes
+        # refuse with a 409 before any of the behaviour below is reached.
+        return {"profile": sample_profile_req, "opportunity_id": EMAIL_TARGET_ID}
 
     def test_invalid_style_rejected(self, base_body):
         resp = client.post("/api/cold-email", json={**base_body, "style": "aggressive"})
@@ -1556,7 +1598,7 @@ class TestColdEmailStyle:
 
         monkeypatch.setattr(ce_module, "chat_completion", fake_chat)
         profile_dict = ProfileRequest(**sample_profile_req).model_dump()
-        opp = data_loader.load_opportunities()[0]
+        opp = data_loader.load_opportunities_by_id()[EMAIL_TARGET_ID]
 
         ce_module._pipeline_generate(profile_dict, opp, style="lively")
         assert "VOICE" in captured["system"]
@@ -1603,7 +1645,10 @@ class TestColdEmailRefineGrounding:
 
     @pytest.fixture
     def opp_id(self):
-        return data_loader.load_opportunities()[0]["id"]
+        # Property-selected, not positional. `[0]` is `0088a9eb2812c2f4`, one
+        # of the 26 rows with no `source_type`, so every action route below
+        # refuses it with a 409 before the behaviour under test is reached.
+        return EMAIL_TARGET_ID
 
     def _configure_llm(self, monkeypatch, edited_text):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
@@ -1639,14 +1684,18 @@ class TestColdEmailRefineGrounding:
             },
         }
 
-    def test_refine_rejects_fabricated_edit(self, monkeypatch):
+    def test_refine_rejects_fabricated_edit(self, monkeypatch, opp_id):
         self._configure_llm(
             monkeypatch,
             self._BODY + "\nI am also an expert in PyTorch and Kubernetes.",
         )
         resp = client.post(
             "/api/cold-email/refine",
-            json={"current_body": self._BODY, "instruction": "make it formal"},
+            json={
+                "current_body": self._BODY,
+                "instruction": "make it formal",
+                "opportunity_id": opp_id,
+            },
         )
         assert resp.status_code == 200
         out = resp.json()
@@ -1655,22 +1704,49 @@ class TestColdEmailRefineGrounding:
         assert "pytorch" not in out["body"].lower()
         assert "kubernetes" not in out["body"].lower()
 
-    def test_refine_accepts_grounded_edit(self, monkeypatch):
+    def test_refine_accepts_grounded_edit(self, monkeypatch, sample_profile_req):
+        # Stubbed rather than "whatever record happens to be first in the
+        # corpus": refine now always resolves a canonical target, so the
+        # grounding corpus is that target's evidence and the test must own it.
+        import backend.routes.cold_email as ce_module
+
+        opportunity_id = "faculty-grounded-edit"
+        # A specific research area, not a broad directory label: "Computer
+        # Science" is filtered as too generic to count as target evidence, so a
+        # target carrying only that reads as no evidence at all. The student's
+        # own "computer science" claim is grounded separately, by the profile.
+        opp = self._faculty(
+            opportunity_id,
+            keywords=["HPC"],
+            research_areas_raw="HPC",
+        )
+        monkeypatch.setattr(
+            ce_module,
+            "load_opportunities_by_id",
+            lambda: {opportunity_id: opp},
+        )
         self._configure_llm(
             monkeypatch,
-            "Dear Professor Lee, Sincerely, I am studying computer science. "
+            "Dear Jane Doe, Sincerely, I am studying computer science. "
             "Student would love joining your lab.",
         )
         resp = client.post(
             "/api/cold-email/refine",
-            json={"current_body": self._BODY, "instruction": "make it formal"},
+            json={
+                "current_body": self._BODY,
+                "instruction": "make it formal",
+                "profile": sample_profile_req,
+                "opportunity_id": opportunity_id,
+            },
         )
         assert resp.status_code == 200
         out = resp.json()
         assert out["method"] == "llm"
         assert "fallback_reason" not in out
 
-    def test_refine_redacts_pre_boundary_address_before_provider(self, monkeypatch):
+    def test_refine_redacts_pre_boundary_address_before_provider(
+        self, monkeypatch, opp_id,
+    ):
         import backend.routes.cold_email as ce_module
         from backend.lib.public_projection import contains_embedded_email
 
@@ -1691,6 +1767,7 @@ class TestColdEmailRefineGrounding:
                     "\u2060dot\u2060edu."
                 ),
                 "instruction": "make it formal",
+                "opportunity_id": opp_id,
             },
         )
 
@@ -2281,10 +2358,11 @@ class TestColdEmailSubjectParsing:
             "_pipeline_generate",
             lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
-        opps = data_loader.load_opportunities()
         payload = {
             "profile": sample_profile_req,
-            "opportunity_id": opps[0]["id"],
+            # Property-selected — see EMAIL_TARGET_ID. A positional pick lands
+            # on an unreviewed row and this route refuses it with a 409.
+            "opportunity_id": EMAIL_TARGET_ID,
             "engine": "ai",
         }
         resp = client.post("/api/cold-email", json=payload)
@@ -2375,7 +2453,10 @@ class TestExplainServerCache:
 
     @pytest.fixture
     def opp_id(self):
-        return data_loader.load_opportunities()[0]["id"]
+        # Property-selected, not positional. `[0]` is `0088a9eb2812c2f4`, one
+        # of the 26 rows with no `source_type`, so every action route below
+        # refuses it with a 409 before the behaviour under test is reached.
+        return EMAIL_TARGET_ID
 
     def _stub_llm(self, monkeypatch, calls):
         import backend.routes.matches as m_module
@@ -2449,7 +2530,10 @@ class TestOpportunityChatHardening:
 
     @pytest.fixture
     def opp_id(self):
-        return data_loader.load_opportunities()[0]["id"]
+        # Property-selected, not positional. `[0]` is `0088a9eb2812c2f4`, one
+        # of the 26 rows with no `source_type`, so every action route below
+        # refuses it with a 409 before the behaviour under test is reached.
+        return EMAIL_TARGET_ID
 
     def test_chat_falls_back_to_local_when_llm_raises(self, opp_id, monkeypatch):
         import backend.routes.opportunities as op_module
@@ -2631,7 +2715,10 @@ class TestOpportunityChatStreaming:
 
     @pytest.fixture
     def opp_id(self):
-        return data_loader.load_opportunities()[0]["id"]
+        # Property-selected, not positional. `[0]` is `0088a9eb2812c2f4`, one
+        # of the 26 rows with no `source_type`, so every action route below
+        # refuses it with a 409 before the behaviour under test is reached.
+        return EMAIL_TARGET_ID
 
     @staticmethod
     def _events(text: str) -> list[dict]:
@@ -3274,6 +3361,364 @@ class TestAdminDataQuality:
         assert payload["faculty_contacts_quality"]["empty_keywords"] == 1
         assert not any(row["id"] == "faculty-1" for row in payload["worst_fields"])
 
+    def test_unreviewed_record_kinds_are_counted_separately_not_as_listings(
+        self, monkeypatch,
+    ):
+        """Three populations, not two.
+
+        Every record that was not `faculty_research` counted as a listing, so
+        records whose type nobody has reviewed inflated `listing_total`, every
+        listing defect counter and the worst_fields work queue. A defect rate
+        over that denominator is not a rougher measure of the same thing — it
+        describes a different set, and it was the number used to judge whether
+        the data was fit to ship.
+        """
+        monkeypatch.setenv("ADMIN_TOKEN", "kind-dq")
+        from backend.routes import admin as admin_mod
+
+        # Reviewed listing, deliberately thin: three missing fields, so it
+        # must still reach worst_fields. The positive control.
+        # Each row also carries a CONTRADICTORY wire `record_kind`. The server
+        # decides kind from src.evidence.record_kind and nothing else — a
+        # payload field is whatever last wrote it, and trusting it would let a
+        # stale or hostile producer reclassify records in the quality figures.
+        listing = {
+            "id": "listing-1", "title": "Thin but real listing",
+            "source": "program_feed", "source_type": "campus_program",
+            "record_kind": "unknown",
+            "keywords": [], "is_rolling": False,
+            "eligibility": {"majors": [], "skills_required": []},
+            "metadata": {"is_active": True},
+        }
+        # Reviewed faculty contact with an empty keyword list and no
+        # description — its own counters, never listing ones.
+        faculty = {
+            "id": "faculty-1", "title": "Ada Lovelace",
+            "source": "faculty_directory", "source_type": "faculty_research",
+            "record_kind": "listing",
+            "keywords": [], "eligibility": {"majors": [], "skills_required": []},
+            "metadata": {"is_active": True},
+        }
+        # Three unreviewed records, across two sources, each carrying every
+        # kind of poison a listing counter looks for.
+        # Between them the three unknowns hit EVERY listing defect branch —
+        # past, missing and rolling deadlines; empty and short descriptions;
+        # stale verification; inactive — so a gate missing from any single
+        # branch shows up rather than hiding behind the two the others cover.
+        poison = {
+            "keywords": [], "eligibility": {"majors": [], "skills_required": []},
+        }
+        unfamiliar = {
+            "id": "unknown-1", "title": "Departmental newsletter item",
+            "source": "newsletter", "source_type": "departmental_newsletter",
+            "record_kind": "listing",
+            **poison, "deadline": "2000-01-01", "is_rolling": False,
+            "description_raw": "",
+            "metadata": {"is_active": True},
+        }
+        no_source_type = {
+            "id": "unknown-2", "title": "Record with no source type",
+            "source": "newsletter", **poison,
+            # No deadline and not rolling — the missing_deadline branch.
+            "is_rolling": False, "description_raw": "",
+            "metadata": {"is_active": True},
+        }
+        # Faculty-LOOKING but with an unreviewed source type: rolling, short
+        # description, inactive and stale, none of which may reach either
+        # population's counters.
+        faculty_like = {
+            "id": "unknown-3", "title": "Prof. Someone (unverified feed)",
+            "source": "scraped_pdf", "source_type": "faculty_pdf_dump",
+            **poison, "is_rolling": True, "description_raw": "too short",
+            "metadata": {"is_active": False, "last_verified": "2020-01-01T00:00:00+00:00"},
+        }
+
+        monkeypatch.setattr(
+            admin_mod, "load_opportunities",
+            lambda: [listing, faculty, unfamiliar, no_source_type, faculty_like],
+        )
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+
+        payload = client.get(
+            "/api/admin/data-quality?force=true",
+            headers={"X-Admin-Token": "kind-dq"},
+        ).json()
+
+        # `total` is still the whole corpus — the unreviewed rows exist.
+        assert payload["total"] == 5
+        assert payload["quality_scope"] == "reviewed-record-kind-v1"
+
+        # Denominators count only what was reviewed.
+        assert payload["global"]["listing_total"] == 1
+        assert payload["faculty_contacts_quality"]["total"] == 1
+
+        # The unreviewed queue, by source, stated rather than inferred.
+        assert payload["unreviewed_record_kind"] == {
+            "total": 3,
+            "by_source": {"newsletter": 2, "scraped_pdf": 1},
+        }
+
+        # Not one poisoned field reached a listing counter. Each of these
+        # would be 3 or 4 if the unreviewed rows were still counted in.
+        for metric in ("empty_majors", "empty_keywords", "missing_skills"):
+            assert payload["global"][metric] == 1, metric
+        # The reviewed listing has no description at all, so empty_description
+        # is its one hit and short_description must stay clean — unknown-3's
+        # short text is the only other candidate.
+        assert payload["global"]["empty_description"] == 1
+        assert payload["global"]["short_description"] == 0
+        # unknown-1 is past, unknown-3 is rolling, unknown-2 is missing: only
+        # the reviewed listing's own missing_deadline may appear.
+        assert payload["global"]["past_deadline"] == 0
+        assert payload["global"]["rolling_deadline"] == 0
+        assert payload["global"]["missing_deadline"] == 1
+        # unknown-3 is inactive and 2020-stale; neither counter may move.
+        assert payload["global"]["flagged_inactive"] == 0
+        assert payload["global"]["stale_verify"] == 0
+        # ...nor the faculty ones, despite unknown-3 looking like a professor.
+        assert payload["faculty_contacts_quality"]["flagged_inactive"] == 0
+        assert payload["faculty_contacts_quality"]["stale_verify"] == 0
+        assert payload["faculty_contacts_quality"]["empty_keywords"] == 1
+
+        # Deadline branches stay mutually exclusive for the one real listing.
+        assert (
+            payload["global"]["missing_deadline"]
+            + payload["global"]["rolling_deadline"]
+            + payload["global"]["past_deadline"]
+        ) == 1
+
+        # The work queue names only the reviewed listing.
+        assert [row["id"] for row in payload["worst_fields"]] == ["listing-1"]
+
+        by_source = {row["source"]: row for row in payload["sources"]}
+        assert by_source["newsletter"]["total"] == 2
+        assert by_source["newsletter"]["listing_total"] == 0
+        assert by_source["newsletter"]["faculty_contacts"] == 0
+        assert by_source["newsletter"]["unreviewed_record_kind"] == 2
+        assert by_source["scraped_pdf"]["unreviewed_record_kind"] == 1
+        assert by_source["program_feed"]["unreviewed_record_kind"] == 0
+        assert by_source["faculty_directory"]["faculty_contacts"] == 1
+        # Every row's total is auditably the sum of the three populations.
+        for row in payload["sources"]:
+            assert row["total"] == (
+                row["listing_total"] + row["faculty_contacts"]
+                + row["unreviewed_record_kind"]
+            ), row["source"]
+
+    def test_a_null_or_blank_source_is_bucketed_under_question_mark(self, monkeypatch):
+        """`sources` is sorted, and a None key among strings raises TypeError.
+
+        `o.get("source", "?")` only defaults a MISSING key; a record whose
+        source is explicitly null or blank sailed through and took the whole
+        endpoint down at sort time.
+        """
+        monkeypatch.setenv("ADMIN_TOKEN", "null-src")
+        from backend.routes import admin as admin_mod
+
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "u-1", "title": "No source at all", "source": None,
+             "source_type": "departmental_newsletter", "metadata": {"is_active": True}},
+            {"id": "u-2", "title": "Blank source", "source": "   ",
+             "source_type": "departmental_newsletter", "metadata": {"is_active": True}},
+            {"id": "l-1", "title": "Real listing", "source": "program_feed",
+             "source_type": "campus_program", "keywords": ["ml"],
+             "description_raw": "x" * 200, "deadline": "2099-01-01",
+             "eligibility": {"majors": ["CS"], "skills_required": ["Python"]},
+             "metadata": {"is_active": True}},
+        ])
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+
+        response = client.get(
+            "/api/admin/data-quality?force=true",
+            headers={"X-Admin-Token": "null-src"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["unreviewed_record_kind"]["by_source"] == {"?": 2}
+        by_source = {row["source"]: row for row in payload["sources"]}
+        assert by_source["?"]["unreviewed_record_kind"] == 2
+
+
+class TestAdminQualityScopeHistory:
+    """History and health may only compare like with like.
+
+    An entry written before `reviewed-record-kind-v1` carries `listing_total`
+    too — it just counted unreviewed records inside it. Shape cannot tell the
+    two apart, so the marker has to.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _isolate_history(self, monkeypatch, tmp_path):
+        from datetime import UTC, datetime, timedelta
+
+        from backend.routes import admin as admin_mod
+        self.now = datetime.now(UTC)
+        self.ago = lambda days: (self.now - timedelta(days=days)).isoformat()
+        self.path = tmp_path / "admin_history.jsonl"
+        monkeypatch.setattr(admin_mod, "_HISTORY_PATH", self.path)
+        admin_mod._cache["snapshot"] = None
+        admin_mod._cache["built_at"] = 0.0
+
+    def _write(self, entries):
+        self.path.write_text(
+            "".join(json.dumps(e) + "\n" for e in entries), encoding="utf-8",
+        )
+
+    def test_a_new_entry_carries_the_marker_and_all_three_populations(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "hist-1")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "l", "source": "s", "source_type": "campus_program",
+             "metadata": {"is_active": True}},
+            {"id": "f", "source": "s", "source_type": "faculty_research",
+             "metadata": {"is_active": True}},
+            {"id": "u", "source": "s", "source_type": "newsletter_blob",
+             "metadata": {"is_active": True}},
+        ])
+
+        client.get("/api/admin/data-quality?force=true", headers={"X-Admin-Token": "hist-1"})
+
+        entry = json.loads(self.path.read_text(encoding="utf-8").strip())
+        assert entry["quality_scope"] == "reviewed-record-kind-v1"
+        # The stored row is auditable on its own: the three populations sum
+        # to total, so the unreviewed count cannot quietly vanish behind a
+        # correct marker.
+        assert entry["total"] == 3
+        assert entry["listing_total"] == 1
+        assert entry["faculty_contact_total"] == 1
+        assert entry["unreviewed_record_kind_total"] == 1
+        assert entry["total"] == (
+            entry["listing_total"] + entry["faculty_contact_total"]
+            + entry["unreviewed_record_kind_total"]
+        )
+
+    def test_a_recent_legacy_entry_does_not_suppress_the_first_new_scope_entry(
+        self, monkeypatch,
+    ):
+        """The hourly throttle is per-scope.
+
+        It exists to stop a refresh spamming identical numbers. Applied across
+        the boundary it would block the first entry of the new series until an
+        hour of no admin traffic happened to pass.
+        """
+        monkeypatch.setenv("ADMIN_TOKEN", "hist-2")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "l", "source": "s", "source_type": "campus_program",
+             "metadata": {"is_active": True}},
+        ])
+        self._write([{"t": self.ago(0), "total": 9, "listing_total": 9, "empty_majors": 1}])
+
+        client.get("/api/admin/data-quality?force=true", headers={"X-Admin-Token": "hist-2"})
+
+        lines = self.path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[-1])["quality_scope"] == "reviewed-record-kind-v1"
+
+    def test_a_recent_same_scope_entry_still_throttles(self, monkeypatch):
+        # The control: without it, "always append" would pass the test above.
+        monkeypatch.setenv("ADMIN_TOKEN", "hist-3")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "l", "source": "s", "source_type": "campus_program",
+             "metadata": {"is_active": True}},
+        ])
+        self._write([{
+            "t": self.ago(0), "total": 9, "listing_total": 9,
+            "quality_scope": "reviewed-record-kind-v1",
+        }])
+
+        client.get("/api/admin/data-quality?force=true", headers={"X-Admin-Token": "hist-3"})
+
+        assert len(self.path.read_text(encoding="utf-8").strip().splitlines()) == 1
+
+    def test_a_recent_FUTURE_scope_entry_does_not_throttle_this_build(self, monkeypatch):
+        # Exact equality, not truthiness. A rollback leaves newer entries on
+        # disk; this build still has to record its own series.
+        monkeypatch.setenv("ADMIN_TOKEN", "hist-4")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "load_opportunities", lambda: [
+            {"id": "l", "source": "s", "source_type": "campus_program",
+             "metadata": {"is_active": True}},
+        ])
+        self._write([{
+            "t": self.ago(0), "total": 9, "listing_total": 9,
+            "quality_scope": "reviewed-record-kind-v2",
+        }])
+
+        client.get("/api/admin/data-quality?force=true", headers={"X-Admin-Token": "hist-4"})
+
+        lines = self.path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[-1])["quality_scope"] == "reviewed-record-kind-v1"
+
+    def test_health_refuses_a_legacy_baseline_and_says_so(self, monkeypatch):
+        """A "regression" that is only the definition changing is the loudest
+        possible false alarm, on the board an operator trusts to be quiet."""
+        monkeypatch.setenv("ADMIN_TOKEN", "health-1")
+        self._write([
+            {"t": self.ago(8), "total": 100, "listing_total": 100, "empty_majors": 2},
+            {"t": self.ago(1), "total": 100, "listing_total": 100, "empty_majors": 90},
+        ])
+
+        alerts = client.get(
+            "/api/admin/health-check", headers={"X-Admin-Token": "health-1"},
+        ).json()["alerts"]
+        kinds = {a["kind"] for a in alerts}
+
+        assert "baseline_unavailable" in kinds
+        assert "metric_regression" not in kinds
+
+    @pytest.mark.parametrize("baseline_scope", [None, "reviewed-record-kind-v2"])
+    def test_health_will_not_use_an_off_scope_baseline_under_a_current_latest(
+        self, baseline_scope, monkeypatch,
+    ):
+        """The rollout case, and the one an all-legacy fixture cannot reach.
+
+        The newest entry IS in the current scope; only the 7-day baseline is
+        not. An implementation that filters nothing — or only checks the
+        latest — would happily diff across the boundary and report a
+        regression that is entirely the definition changing.
+        """
+        monkeypatch.setenv("ADMIN_TOKEN", "health-3")
+        old = {"t": self.ago(8), "total": 100, "listing_total": 100, "empty_majors": 2}
+        if baseline_scope:
+            old["quality_scope"] = baseline_scope
+        self._write([
+            old,
+            {"t": self.ago(1), "total": 100, "listing_total": 100, "empty_majors": 90,
+             "quality_scope": "reviewed-record-kind-v1"},
+        ])
+
+        alerts = client.get(
+            "/api/admin/health-check", headers={"X-Admin-Token": "health-3"},
+        ).json()["alerts"]
+        kinds = {a["kind"] for a in alerts}
+
+        assert "baseline_unavailable" in kinds
+        assert "metric_regression" not in kinds
+
+    def test_health_compares_two_entries_in_the_same_scope(self, monkeypatch):
+        # The control for the refusals above.
+        monkeypatch.setenv("ADMIN_TOKEN", "health-2")
+        self._write([
+            {"t": self.ago(8), "total": 100, "listing_total": 100, "empty_majors": 2,
+             "quality_scope": "reviewed-record-kind-v1"},
+            {"t": self.ago(1), "total": 100, "listing_total": 100, "empty_majors": 90,
+             "quality_scope": "reviewed-record-kind-v1"},
+        ])
+
+        alerts = client.get(
+            "/api/admin/health-check", headers={"X-Admin-Token": "health-2"},
+        ).json()["alerts"]
+        kinds = {a["kind"] for a in alerts}
+
+        assert "metric_regression" in kinds
+        assert "baseline_unavailable" not in kinds
+
 
 class TestCollectorStatusHistory:
     """Schema lock for ``GET /admin/collector-status/history``.
@@ -3523,13 +3968,42 @@ class TestStatsFreshness:
         opportunities_routes._stats_cache_time = 0.0
 
 
+class _SignedInReader:
+    """A signed-in account whose confirmed address the test can change.
+
+    The digest endpoints mail the SESSION's address and never the request
+    body's, so a test that needs several distinct recipients now needs several
+    distinct sessions rather than several values in one payload.
+    """
+
+    def __init__(self, address: str):
+        self.address = address
+
+
+def _sign_in(monkeypatch, address: str) -> _SignedInReader:
+    """Run the digest endpoints as a signed-in reader with a confirmed address.
+
+    Returns the reader so a caller can reassign ``address`` between requests;
+    the resolver reads it per call rather than closing over the initial value.
+    """
+    from backend.routes import email as email_mod
+
+    reader = _SignedInReader(address)
+
+    async def identity(_authorization):
+        return SessionIdentity(uid=f"uid-{reader.address}", email=reader.address)
+
+    monkeypatch.setattr(email_mod, "authenticated_identity", identity)
+    return reader
+
+
 class TestEmailEndpoints:
     def test_send_matches_503_when_unconfigured(self, monkeypatch):
         monkeypatch.delenv("RESEND_API_KEY", raising=False)
         monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
         r = client.post("/api/email/send-matches", json={
             "email": "test@example.com",
-            "items": [{"title": "x", "url": "https://example.com"}],
+            "items": [{"opportunity_id": EMAIL_TARGET_ID}],
         })
         assert r.status_code == 503
 
@@ -3538,25 +4012,46 @@ class TestEmailEndpoints:
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
         r = client.post("/api/email/send-matches", json={
             "email": "not-an-email",
-            "items": [{"title": "x"}],
+            "items": [{"opportunity_id": EMAIL_TARGET_ID}],
         })
         assert r.status_code == 422
 
     def test_send_matches_400_empty_items(self, monkeypatch):
         monkeypatch.setenv("RESEND_API_KEY", "fake")
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
-        r = client.post("/api/email/send-matches", json={
-            "email": "test@example.com",
-            "items": [],
-        })
+        _sign_in(monkeypatch, "test@example.com")
+        r = client.post("/api/email/send-matches", json={"items": []})
         assert r.status_code == 400
+
+    def test_an_empty_send_is_still_refused_for_being_anonymous_first(
+        self, monkeypatch,
+    ):
+        """Sign-in is checked before the payload is judged.
+
+        The other order would answer a stranger's probe with a description of
+        their own request ("no items"), which tells them the endpoint is
+        reachable without a session. Neither refusal costs anything, so the
+        cheaper-to-check one is not the one to run first — the one that closes
+        the endpoint is.
+        """
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        from backend.routes import email as email_mod
+
+        async def anonymous(_authorization):
+            return None
+
+        monkeypatch.setattr(email_mod, "authenticated_identity", anonymous)
+        r = client.post("/api/email/send-matches", json={"items": []})
+        assert r.status_code == 401
+        assert r.json()["detail"]["code"] == "SIGN_IN_REQUIRED"
 
     def test_send_matches_422_too_many(self, monkeypatch):
         monkeypatch.setenv("RESEND_API_KEY", "fake")
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
         r = client.post("/api/email/send-matches", json={
             "email": "test@example.com",
-            "items": [{"title": f"opp{i}"} for i in range(51)],
+            "items": [{"opportunity_id": EMAIL_TARGET_ID} for i in range(51)],
         })
         assert r.status_code == 422
 
@@ -3575,24 +4070,31 @@ class TestEmailEndpoints:
         # A different recipient is unaffected.
         email_mod._enforce_recipient_quota("someone-else@example.com")
 
-    def test_send_matches_caps_victim_across_rotating_ips(self, monkeypatch):
-        # SEC-3: an attacker rotating source IPs (distinct XFF) evades the per-IP
-        # limit, but the per-recipient cap still protects the victim mailbox.
+    def test_send_matches_caps_the_callers_own_mailbox_across_rotating_ips(
+        self, monkeypatch,
+    ):
+        # SEC-3, restated. The original framing — an attacker rotating source
+        # IPs to bomb a named "victim@" — is no longer reachable at all: the
+        # recipient is the session's own confirmed address, so a caller cannot
+        # aim a send at anyone else (see the RECIPIENT_NOT_SELF refusal). What
+        # the per-recipient cap still does, and what this pins, is bound the
+        # caller's OWN mailbox when they rotate IPs to slip the per-IP limit.
         monkeypatch.setenv("RESEND_API_KEY", "fake")
         monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
         from backend.routes import email as email_mod
         email_mod._recipient_sends.clear()
+        _sign_in(monkeypatch, "self-flooder@example.com")
 
         async def _noop(**kwargs):
             return None
         monkeypatch.setattr(email_mod, "_send_via_resend", _noop)
 
-        body = {"email": "bomb-target@example.com", "items": [{"title": "opp"}]}
+        body = {"items": [{"opportunity_id": EMAIL_TARGET_ID}]}
         for i in range(email_mod._RECIPIENT_SEND_LIMIT):
             r = client.post("/api/email/send-matches", json=body,
                             headers={"x-forwarded-for": f"203.0.113.{i}"})
             assert r.status_code == 200, r.text
-        # Fresh IP, same victim → blocked by the per-recipient cap.
+        # Fresh IP, same session → blocked by the per-recipient cap.
         r = client.post("/api/email/send-matches", json=body,
                         headers={"x-forwarded-for": "203.0.113.250"})
         assert r.status_code == 429
@@ -3602,19 +4104,21 @@ class TestEmailRenderers:
     def test_match_email_html_contains_title_and_link(self):
         from backend.routes.email import MatchItem, _render_match_email
         subject, html, text = _render_match_email([
-            MatchItem(title="Test Lab", url="https://example.com/a", score=85.5,
+            MatchItem(opportunity_id="email-item-1", title="Test Lab", url="https://example.com/a",
                       source="uiuc_faculty", deadline="2026-03-01", organization="UIUC"),
-        ], "")
+        ])
         assert "Test Lab" in html
         assert "https://example.com/a" in html
-        assert "86% match" in html  # banker's rounding 85.5 -> 86
+        # No client score, and a subject that claims no ranking.
+        assert "% match" not in html
+        assert "top" not in subject.lower()
         assert "Test Lab" in text
 
     def test_match_email_escapes_html(self):
         from backend.routes.email import MatchItem, _render_match_email
         _, html, _ = _render_match_email([
-            MatchItem(title="<script>alert(1)</script>", url="https://x.com"),
-        ], "")
+            MatchItem(opportunity_id="email-item-2", title="<script>alert(1)</script>", url="https://x.com"),
+        ])
         assert "<script>alert(1)</script>" not in html
         assert "&lt;script&gt;" in html
 
@@ -3622,8 +4126,8 @@ class TestEmailRenderers:
         from backend.routes.email import MatchItem, _render_match_email
 
         _, html, text = _render_match_email([
-            MatchItem(title="Legacy cached item", deadline="2099-12-31"),
-        ], "")
+            MatchItem(opportunity_id="email-item-3", title="Legacy cached item", deadline="2099-12-31"),
+        ])
         for body in (html, text):
             assert "Saved match" in body
             assert "type not confirmed" in body
@@ -3634,19 +4138,17 @@ class TestEmailRenderers:
         from backend.routes.email import MatchItem, _render_match_email
 
         _, html, text = _render_match_email([
-            MatchItem(
-                title="Ada profile",
+            MatchItem(opportunity_id="email-item-4", title="Ada profile",
                 url="https://example.edu/ada",
                 deadline="2099-12-31",
                 record_kind="faculty_contact",
             ),
-            MatchItem(
-                title="Real REU",
+            MatchItem(opportunity_id="email-item-5", title="Real REU",
                 url="https://example.edu/reu",
                 deadline="2027-02-01",
                 record_kind="listing",
             ),
-        ], "")
+        ])
 
         for body in (html, text):
             assert "Faculty contact profile" in body
@@ -3660,13 +4162,11 @@ class TestEmailRenderers:
         from backend.routes.email import FavoriteItem, _render_favorites_email
 
         subject, html, text = _render_favorites_email([
-            FavoriteItem(
-                title="Ada profile",
+            FavoriteItem(opportunity_id="email-item-6", title="Ada profile",
                 deadline="2099-12-31",
                 record_kind="faculty_contact",
             ),
-            FavoriteItem(
-                title="Real REU",
+            FavoriteItem(opportunity_id="email-item-7", title="Real REU",
                 deadline="2027-02-01",
                 record_kind="listing",
             ),
@@ -3929,7 +4429,7 @@ def _set_push_env(monkeypatch):
 
 def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None,
                         calls=None, patches=None, deletes=None, account_email=None,
-                        emails=None):
+                        emails=None, target_fields=None):
     """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
 
     The route fetches due interactions then push subscriptions from Supabase
@@ -4011,6 +4511,24 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
     monkeypatch.setattr(pywebpush, "webpush", webpush_impl or _default_webpush)
     monkeypatch.setattr(push_mod, "send_webpush_safely", _passthrough_send_webpush)
     monkeypatch.setattr(push_mod, "_send_via_resend", _fake_send)
+    # `target_fields` merges into every stubbed record, so a test can make the
+    # reminder's target a faculty contact rather than a listing. Reminders are
+    # set on professors more often than on postings, and the copy this cron
+    # sends has to be true for both.
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            row["opportunity_id"]: {
+                "id": row["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+                **(target_fields or {}),
+            }
+            for row in interactions
+        },
+    )
     # Per-recipient quota is in-memory module state shared across tests.
     email_mod._recipient_sends.clear()
 
@@ -4159,7 +4677,21 @@ class TestPushRemindersCron:
         assert body["sent"] == 0
         assert body["failed"] == 1
 
-    def test_payload_carries_opportunity_url_and_tag(self, monkeypatch):
+    def test_payload_is_neutral_json_pointing_at_the_tracker(self, monkeypatch):
+        """The notification says what this job knows, and nothing else.
+
+        It used to read "You set a follow-up reminder for an application" and
+        link to the opportunity page. A reminder can be set on a faculty
+        profile — where no application exists — and a listing can close
+        between the reminder being set and the cron firing.
+
+        Nor "due today": the query is remind_at <= today and a failed or
+        ambiguous delivery is retried later, so a Monday reminder can honestly
+        arrive on Wednesday.
+
+        The tag keeps its per-target identity; that is what collapses
+        duplicates at the push service.
+        """
         _set_push_env(monkeypatch)
         calls: list = []
         _install_push_stubs(
@@ -4169,9 +4701,122 @@ class TestPushRemindersCron:
             "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
         )
         assert r.status_code == 200
-        payload = calls[0]["data"]
-        assert "/opportunities/opp-42" in payload
-        assert "reminder-opp-42" in payload
+        # Parsed, not substring-matched: the payload is built with json.dumps
+        # now, and an exact object is what the service worker consumes.
+        payload = json.loads(calls[0]["data"])
+        assert payload == {
+            "title": "Reminder: follow up",
+            "body": "Your follow-up reminder is due.",
+            "url": "/tracker",
+            "tag": "reminder-opp-42",
+        }
+        assert "application" not in calls[0]["data"].lower()
+        assert "today" not in calls[0]["data"].lower()
+        assert "/opportunities/" not in calls[0]["data"]
+
+    @pytest.mark.parametrize(("label", "fields"), [
+        ("closed listing", {
+            "source_type": "campus_program",
+            "metadata": {"is_active": True, "urap_status": "closed"},
+        }),
+        # Nobody has reviewed what this record is, so it is not presented as
+        # an opening anywhere — and a reminder about it would be the one
+        # surface that still did.
+        ("unreviewed kind", {"source_type": "departmental_newsletter"}),
+    ])
+    def test_a_non_actionable_target_is_skipped_entirely(
+        self, label, fields, monkeypatch,
+    ):
+        """The reminder row survives; the notification does not.
+
+        Every other stub in this file installs a live target, so deleting the
+        actionability half of the sendable filter would have gone unnoticed
+        here. The user's reminder is deliberately NOT cleared: a target can
+        reopen, and clearing would silently destroy something they set.
+        """
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        calls: list = []
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            calls=calls, patches=patches, emails=emails,
+            account_email="user@example.com", target_fields=fields,
+        )
+        body = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        ).json()
+
+        assert body["sent"] == 0, label
+        assert body["emailed"] == 0, label
+        assert body["skipped"] == 1, label
+        assert calls == [], label
+        assert emails == [], label
+        # Nothing was written back — in particular remind_at is untouched.
+        assert [p for p in patches if "interactions" in p["url"]] == [], label
+
+    def test_an_id_with_quotes_and_control_characters_still_yields_valid_json(
+        self, monkeypatch,
+    ):
+        """The reason the payload is built with json.dumps.
+
+        It used to be assembled by string concatenation with the id
+        interpolated straight in. An id carrying a quote or a backslash
+        produced a body the service worker cannot parse, and the notification
+        is simply lost — silently, since nothing on our side ever reads it.
+        """
+        weird_id = 'opp-"42"\\x\nend'
+        _set_push_env(monkeypatch)
+        calls: list = []
+        _install_push_stubs(
+            monkeypatch,
+            interactions=[dict(_DUE_ROW, opportunity_id=weird_id)],
+            subscriptions=[_SUB_ROW],
+            calls=calls,
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        # Parses at all — the whole point — and the id survives intact.
+        payload = json.loads(calls[0]["data"])
+        assert payload["tag"] == f"reminder-{weird_id}"
+        assert payload["url"] == "/tracker"
+        assert payload["title"] == "Reminder: follow up"
+
+    def test_a_faculty_target_gets_the_same_neutral_payload(self, monkeypatch):
+        """The case the old copy was outright wrong about.
+
+        A contacted professor is the most common thing a reminder is set on,
+        and there is no application anywhere in that story.
+        """
+        _set_push_env(monkeypatch)
+        calls: list = []
+        _install_push_stubs(
+            monkeypatch,
+            interactions=[dict(_DUE_ROW, interaction_type="contacted")],
+            subscriptions=[_SUB_ROW],
+            calls=calls,
+            target_fields={"source_type": "faculty_research"},
+        )
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        # Still sent — a live faculty profile is actionable, so the reminder
+        # is delivered; it is the wording that had to change.
+        assert r.json()["sent"] == 1
+        payload = json.loads(calls[0]["data"])
+        assert payload == {
+            "title": "Reminder: follow up",
+            "body": "Your follow-up reminder is due.",
+            "url": "/tracker",
+            "tag": "reminder-opp-42",
+        }
+        assert "application" not in calls[0]["data"].lower()
+        assert "today" not in calls[0]["data"].lower()
 
     def test_passes_vapid_private_key_and_claims(self, monkeypatch):
         _set_push_env(monkeypatch)
@@ -4277,7 +4922,22 @@ class TestPushDeliveryBookkeeping:
 
         assert len(emails) == 1
         assert emails[0]["to"] == "user@example.com"
-        assert "/opportunities/opp-42" in emails[0]["html"]
+        # The fallback channel says exactly what the push one says. Asserting
+        # only that "tracker" appears somewhere would have passed before this
+        # change too — the old footer already linked to "Manage your tracker"
+        # while the subject, the body and the CTA all described an application
+        # and sent the reader to the opportunity page.
+        from backend.routes import push as push_mod
+        tracker_url = f"{push_mod.FRONTEND_BASE}/tracker"
+        body = emails[0]["html"] + emails[0]["text"]
+        assert emails[0]["subject"] == "Your follow-up reminder is due"
+        assert f'href="{tracker_url}"' in emails[0]["html"]
+        assert tracker_url in emails[0]["text"]
+        assert "Open your tracker" in emails[0]["html"]
+        assert "application" not in body.lower()
+        assert "/opportunities/" not in body
+        assert "/favorites" not in body
+        assert "today" not in body.lower()
 
         int_patches = [p for p in patches if "interactions" in p["url"]]
         assert len(int_patches) == 1
@@ -4443,7 +5103,7 @@ class TestRateLimitHardening:
         try:
             r = client.post(
                 "/api/email/send-matches",
-                json={"items": [{"title": "opp"}]},
+                json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
                 headers={"x-forwarded-for": "9.9.9.9"},
             )
             assert r.status_code == 429
@@ -4644,41 +5304,52 @@ class TestClientIpTrustAndGlobalCeiling:
         return main_mod
 
     def test_rotating_leftmost_xff_no_longer_evades_per_ip(self, monkeypatch):
-        # Distinct recipients (per-recipient cap never fires) + a rotating spoofed
+        # Distinct SESSIONS (per-recipient cap never fires) + a rotating spoofed
         # leftmost XFF but a FIXED trusted rightmost hop. The per-IP bucket keys on
         # the rightmost now, so the 3/hr limit binds at the 4th request.
+        #
+        # Distinct sessions, not distinct payload addresses: the recipient comes
+        # from the session, so reusing one session would trip the per-recipient
+        # cap first and this would stop testing the per-IP bucket at all. Several
+        # readers behind one corporate hop is also the real shape of this case.
         main_mod = self._arm_rate_limiting(monkeypatch)
+        reader = _sign_in(monkeypatch, "u0@example.com")
         limit = main_mod.RATE_LIMITS["/api/email/send-matches"][0]
         for i in range(limit):
+            reader.address = f"u{i}@example.com"
             r = client.post(
                 "/api/email/send-matches",
-                json={"email": f"u{i}@example.com", "items": [{"title": "opp"}]},
+                json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
                 headers={"x-forwarded-for": f"1.2.3.{i}, 9.9.9.9"},
             )
             assert r.status_code == 200, r.text
+        reader.address = "u-final@example.com"
         r = client.post(
             "/api/email/send-matches",
-            json={"email": "u-final@example.com", "items": [{"title": "opp"}]},
+            json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
             headers={"x-forwarded-for": f"1.2.3.{limit}, 9.9.9.9"},
         )
         assert r.status_code == 429
 
     def test_global_email_ceiling_binds_across_distinct_ips(self, monkeypatch):
-        # Distinct rightmost IPs (per-IP never trips) + distinct recipients
-        # (per-recipient never trips) — only the global email ceiling can stop
-        # this, and it must, at the 3rd send.
+        # Distinct rightmost IPs (per-IP never trips) + distinct SESSIONS, so
+        # distinct recipients (per-recipient never trips) — only the global
+        # email ceiling can stop this, and it must, at the 3rd send.
         main_mod = self._arm_rate_limiting(monkeypatch)
+        reader = _sign_in(monkeypatch, "v0@example.com")
         monkeypatch.setattr(main_mod, "GLOBAL_EMAIL_PER_HOUR", 2)
         for i in range(2):
+            reader.address = f"v{i}@example.com"
             r = client.post(
                 "/api/email/send-matches",
-                json={"email": f"v{i}@example.com", "items": [{"title": "opp"}]},
+                json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
                 headers={"x-forwarded-for": f"9.9.9.{i}"},
             )
             assert r.status_code == 200, r.text
+        reader.address = "v-final@example.com"
         r = client.post(
             "/api/email/send-matches",
-            json={"email": "v-final@example.com", "items": [{"title": "opp"}]},
+            json={"items": [{"opportunity_id": EMAIL_TARGET_ID}]},
             headers={"x-forwarded-for": "9.9.9.250"},
         )
         assert r.status_code == 429
@@ -4898,6 +5569,11 @@ class TestMatchesHomeSchool:
             "id": ident,
             "title": "Undergraduate ML Research Assistant",
             "organization": "Test University",
+            # A REVIEWED source type. Without one the record's kind is
+            # unreviewed, so it is not actionable and the discovery filter
+            # drops it before the scope filter under test ever runs — the
+            # fixture would be measuring the wrong exclusion.
+            "source_type": "campus_program",
             "on_campus": True,
             "opportunity_type": "research",
             "paid": "yes",
@@ -5087,7 +5763,24 @@ class TestResponsePayloadTrim:
         target = next((o for o in opps if o.get("description_raw") or o.get("metadata")), None)
         if target is None:
             pytest.skip("No opportunity carries description_raw/metadata")
-        opp = client.get(f"/api/opportunities/{target['id']}").json()
+        # The first record carrying either heavy field is `0088a9eb2812c2f4`,
+        # one of the 26 unreviewed rows, which is non-actionable — so the
+        # rollout bridge serves its detail only to a client that has declared
+        # the truth capability. This test is about PAYLOAD COMPLETENESS for a
+        # reader who can see the record at all, not about which clients may;
+        # the absent/old refusal is pinned in tests/test_target_truth.py.
+        response = client.get(
+            f"/api/opportunities/{target['id']}",
+            params={
+                "_release_scope":
+                    "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+            },
+        )
+        # Asserted before the body is read: a refusal envelope contains neither
+        # heavy field, so `"metadata" in opp` would fail with a message about
+        # payload trimming for a reason that has nothing to do with it.
+        assert response.status_code == 200
+        opp = response.json()
         # the detail endpoint is the lazy-load path — full body, emails aside
         if target.get("description_raw"):
             assert "description_raw" in opp
@@ -5159,10 +5852,182 @@ class TestResponsePayloadTrim:
         assert out["metadata"] is not verified["metadata"]
         assert out["metadata"]["recent_works"] == works
 
-        plain = {"id": "x", "metadata": {"is_active": True}}
+        # `is_active` is one of the inputs to the target-truth decision, and
+        # the decision now ships as its own `target_truth` envelope. Serving
+        # the input alongside it invites a client to branch on the raw flag and
+        # disagree with the envelope — which is exactly what a closed-but-active
+        # record would produce. The public payload keeps the answer, not the
+        # evidence.
+        #
+        # A REVIEWED source_type, deliberately. The fixture used to omit it
+        # while asserting `actionable is True`, which the record-kind contract
+        # makes impossible — an unreviewed kind is never actionable. Left as
+        # it was, this line could only be kept green by relaxing that
+        # fail-close, so the fixture is what changes here, never the rule.
+        plain = {
+            "id": "x",
+            "source_type": "campus_program",
+            "metadata": {"is_active": True, "notes": "keep me"},
+        }
         plain_out = _redact(plain)
-        assert plain_out["metadata"] == plain["metadata"]
+        assert "is_active" not in plain_out["metadata"]
+        assert plain_out["metadata"]["notes"] == "keep me"
+        assert plain_out["target_truth"]["actionable"] is True
+        assert plain_out["record_kind"] == "listing"
+        # Copy-on-write: the shared corpus object is untouched.
+        assert plain["metadata"]["is_active"] is True
         assert plain_out["metadata"] is not plain["metadata"]
+
+
+class TestOpportunityPayloadRoutesUseTheCentralProjector:
+    """Route receipts for the one projector.
+
+    Scope is exactly the four surfaces that emit an opportunity-shaped public
+    payload: anonymous detail, Authorization-bearing detail, the batch
+    endpoint, and the browse/match cards. Each fails if its route stops going
+    through `project_public_opportunity_payload` — either by stamping a truth
+    envelope of its own or by returning a payload the projector would have
+    neutralized.
+
+    `/opportunities/upcoming` is deliberately NOT in this list. It renders a
+    generic calendar card behind `actionable_opportunities` rather than a
+    projected opportunity payload, and this batch does not change its schema.
+    What protects it is the discovery filter, covered separately below.
+    """
+
+    UNKNOWN_ID = "b27723bb1ca91202"
+    BASE_TITLE = "URSA — Undergraduate Research in Scientific Advancement"
+    # The record is unreviewed, so it is non-actionable, and the rollout bridge
+    # serves historical detail only to a client that has declared it can read a
+    # target truth. This class is about what the CURRENT build is shown; the
+    # absent/old/duplicate refusals are pinned in tests/test_target_truth.py.
+    SCOPE = {
+        "_release_scope":
+            "mvp-core-close-v1-contact-trust-v1-faculty-trust-v1-target-truth-v2",
+    }
+    SEVEN_KEYS = {
+        "listing_state", "reference_only", "actionable",
+        "accepting_state", "reason_code", "verified_at", "expires_at",
+    }
+
+    def _assert_unknown_envelope(self, payload):
+        assert payload["record_kind"] == "unknown"
+        assert set(payload["target_truth"]) == self.SEVEN_KEYS
+        assert payload["target_truth"]["actionable"] is False
+        assert payload["target_truth"]["reason_code"] == "record_kind_unverified"
+        assert payload["title"] == self.BASE_TITLE
+        for field in (
+            "deadline", "paid", "opportunity_type", "description", "description_clean",
+            "status", "semester", "on_campus", "audience", "is_rolling",
+        ):
+            assert field not in payload, field
+        assert payload.get("eligibility", {}) == {}
+        assert payload.get("application", {}) == {}
+        # Still readable: identity and a source link survive.
+        assert payload["id"] == self.UNKNOWN_ID
+        assert payload.get("source_url") or payload.get("url")
+
+    def test_anonymous_detail_carries_the_canonical_envelope(self):
+        r = client.get(f"/api/opportunities/{self.UNKNOWN_ID}", params=self.SCOPE)
+        assert r.status_code == 200
+        self._assert_unknown_envelope(r.json())
+
+    def test_an_authorization_bearing_detail_says_exactly_the_same_thing(self):
+        # A signed-in reader gets contact affordances an anonymous one does
+        # not. What must NOT differ is what the record is claimed to be. Both
+        # calls declare the same capability, so the comparison isolates the
+        # credential rather than the client build.
+        anon = client.get(
+            f"/api/opportunities/{self.UNKNOWN_ID}", params=self.SCOPE,
+        ).json()
+        authed = client.get(
+            f"/api/opportunities/{self.UNKNOWN_ID}",
+            params=self.SCOPE,
+            headers={"Authorization": "Bearer not-a-real-token"},
+        )
+        assert authed.status_code == 200
+        body = authed.json()
+        self._assert_unknown_envelope(body)
+        assert body["target_truth"] == anon["target_truth"]
+        assert body["record_kind"] == anon["record_kind"]
+        assert body["title"] == anon["title"]
+
+    def test_the_batch_endpoint_carries_the_same_exact_output(self):
+        r = client.post("/api/opportunities/batch", json={"ids": [self.UNKNOWN_ID]})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["requested"] == 1
+        assert body["found"] == 1
+        self._assert_unknown_envelope(body["opportunities"][0])
+
+    def test_the_browse_list_card_stamps_the_envelope(self):
+        from backend.routes.opportunities import _list_card
+
+        record = data_loader.load_opportunities_by_id()[self.UNKNOWN_ID]
+        card = _list_card(record)
+        self._assert_unknown_envelope(card)
+
+    def test_the_match_card_stamps_the_envelope(self):
+        from backend.routes.matches import _match_card
+
+        record = data_loader.load_opportunities_by_id()[self.UNKNOWN_ID]
+        card = _match_card(record)
+        assert card["record_kind"] == "unknown"
+        assert set(card["target_truth"]) == self.SEVEN_KEYS
+        assert card["target_truth"]["actionable"] is False
+        assert card["title"] == self.BASE_TITLE
+        assert card["id"] == self.UNKNOWN_ID
+        for field in ("deadline", "paid", "opportunity_type", "on_campus", "audience"):
+            assert field not in card, field
+
+    def test_a_live_listing_card_keeps_its_terms(self):
+        # The over-redaction control. Without it, a projector that emptied
+        # every card would pass every assertion above.
+        from backend.routes.matches import _match_card
+
+        record = data_loader.load_opportunities_by_id()[EMAIL_TARGET_ID]
+        card = _match_card(record)
+        assert card["record_kind"] == "listing"
+        assert card["target_truth"]["actionable"] is True
+        assert card["id"] == EMAIL_TARGET_ID
+        assert card["title"]
+
+
+class TestUpcomingKeepsItsDiscoveryFilter:
+    """One tripwire, and only the claim it can actually support.
+
+    `/opportunities/upcoming` is not centrally projected in this batch and its
+    schema is unchanged. What is asserted here is narrower and is the thing
+    that matters for the deadline calendar: an unreviewed row never appears on
+    it, because `actionable_opportunities` runs first. Giving this endpoint the
+    full public envelope is a separate contract, not something to infer from a
+    membership test.
+    """
+
+    def test_upcoming_excludes_a_future_deadline_unknown_record(self, monkeypatch):
+        from datetime import date, timedelta
+
+        from backend.routes import opportunities as opportunities_route
+
+        soon = (date.today() + timedelta(days=5)).isoformat()
+        live = {
+            "id": "synthetic-live-1", "source_type": "campus_program",
+            "title": "Synthetic live listing", "deadline": soon,
+            "metadata": {"is_active": True},
+        }
+        unknown = {
+            "id": "synthetic-unknown-1",
+            "title": "Synthetic unreviewed row (applications open)", "deadline": soon,
+            "metadata": {"is_active": True},
+        }
+        monkeypatch.setattr(
+            opportunities_route, "load_opportunities", lambda: [live, unknown],
+        )
+        r = client.get("/api/opportunities/upcoming?days=30")
+        assert r.status_code == 200
+        ids = [o["id"] for o in r.json()["opportunities"]]
+        assert "synthetic-live-1" in ids
+        assert "synthetic-unknown-1" not in ids
 
 
 class TestAdminFeedback:
@@ -6186,7 +7051,9 @@ class TestColdEmailStream:
     @pytest.fixture
     def stream_body(self, sample_profile_req):
         opps = data_loader.load_opportunities()
-        return {"profile": sample_profile_req, "opportunity_id": opps[0]["id"]}
+        # Property-selected: `opps[0]` is an unreviewed row the action routes
+        # refuse with a 409 before any of the behaviour below is reached.
+        return {"profile": sample_profile_req, "opportunity_id": EMAIL_TARGET_ID}
 
     @staticmethod
     def _events(resp) -> list[dict]:

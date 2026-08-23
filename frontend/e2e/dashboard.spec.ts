@@ -15,7 +15,7 @@ test.describe('Dashboard', () => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Saved deadlines' })).toBeVisible();
     await expect(page.getByText('No saved opportunities yet')).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText('No applications tracked yet')).toBeVisible();
+    await expect(page.getByText('Nothing tracked yet')).toBeVisible();
     await expect(page.getByText('No reminders set')).toBeVisible();
   });
 });

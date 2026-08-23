@@ -44,6 +44,21 @@ const TEST_OPPORTUNITY = vi.hoisted(() => ({
   title: 'Wiring Test Lab',
   organization: 'Test University',
   opportunity_type: 'research',
+  // A confirmed listing, with the wire kind the server sends beside it. An
+  // unreviewed source_type is no longer actionable, so the page would refuse
+  // this row and the wiring assertions would never see a rendered card.
+  source_type: 'campus_program',
+  record_kind: 'listing',
+  // Live rows carry a truth; a page missing one is refused whole.
+  target_truth: {
+    listing_state: 'open',
+    reference_only: false,
+    actionable: true,
+    accepting_state: 'accepting',
+    reason_code: null,
+    verified_at: null,
+    expires_at: null,
+  },
   paid: 'unknown',
   location: '',
   on_campus: true,
@@ -69,6 +84,18 @@ const TEST_OPPORTUNITY = vi.hoisted(() => ({
 const mockGetMatchView = vi.fn();
 vi.mock('@/lib/api', () => ({
   getMatchView: (...args: unknown[]) => mockGetMatchView(...args),
+  // The real class: loadEmailMatches throws one when a page fails validation,
+  // and a stub would let a broken throw path pass unnoticed.
+  ApiError: class ApiError extends Error {
+    constructor(
+      public status: number,
+      public code: string,
+      message: string,
+      public retryable: boolean,
+    ) {
+      super(message);
+    }
+  },
 }));
 
 const MATCH_VIEW_RESPONSE = {
@@ -80,7 +107,10 @@ const MATCH_VIEW_RESPONSE = {
       opportunity: TEST_OPPORTUNITY,
     }],
     returned_count: 1, has_more: false, next_cursor: null,
+    // The wire the backend emits; a version nothing serves would make the
+    // page refuse this fixture before any of the wiring below is reached.
     contract_version: 'match-view-v3-faculty-trust',
+    target_truth_contract: 'target-truth-v2',
     view_start: 0, filtered_total: 1,
     view_counts: { all: 1, high_priority: 1, good_match: 0, reach: 0, starred: 0 },
     view_id: 'view-wiring-1',

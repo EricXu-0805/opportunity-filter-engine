@@ -10,6 +10,7 @@ import {
   setAdminActor,
   SESSION_KEY,
 } from './admin-api';
+import { findPreviousSnapshot } from './admin-utils';
 import type {
   AdminResponse,
   CollectorHistoryEntry,
@@ -476,9 +477,18 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     if (token) fetchOps(token, f);
   }, [token, fetchOps]);
 
+  // The last snapshot STRICTLY BEFORE the one on screen, in the current
+  // scope. Two things make an index-based answer wrong. Scope: history[-2]
+  // raw could be a legacy entry, so the first refresh after the boundary
+  // showed a large green improvement that was only unreviewed records leaving
+  // the denominator. And position: `data` and `history` are fetched together,
+  // while the backend appends at most one entry per hour — so the current
+  // snapshot may or may not be in the list, and scoped[-2] is "two ago" in
+  // one case and "the one before last" in the other. Comparing by timestamp
+  // asks the question directly.
   const previousSnapshot = useMemo(
-    () => history.length >= 2 ? history[history.length - 2] : null,
-    [history],
+    () => findPreviousSnapshot(history, data),
+    [history, data],
   );
 
   const filteredWorstFields = useMemo(() => {

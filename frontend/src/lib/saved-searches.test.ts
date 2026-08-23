@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 const mockFrom = vi.fn();
 const mockGetDeviceId = vi.fn();
+const fetchMock = vi.fn();
 
 vi.mock('./supabase', () => ({
   supabase: { from: (table: string) => mockFrom(table) },
@@ -70,6 +71,18 @@ beforeEach(() => {
   mockFrom.mockReset();
   mockGetDeviceId.mockReset();
   mockGetDeviceId.mockResolvedValue('test-device-id');
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body)) as { ids: string[] };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        opportunities: body.ids.map((id) => ({ id })),
+      }),
+    };
+  });
+  vi.stubGlobal('fetch', fetchMock);
 });
 
 describe('listSavedSearches', () => {
@@ -138,6 +151,56 @@ describe('listSavedSearches', () => {
     expect(result).toEqual([]);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('removes hidden stale ids before they drive badges or highlights', async () => {
+    mockFrom.mockReturnValue(makeQuery({
+      data: [{
+        ...SAMPLE_ROW,
+        new_match_ids: ['visible-research', 'hidden-fellowship'],
+      }],
+      error: null,
+    }));
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ opportunities: [{ id: 'visible-research' }] }),
+    });
+
+    const result = await listSavedSearches();
+
+    expect(result[0].new_match_ids).toEqual(['visible-research']);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({
+      ids: ['visible-research', 'hidden-fellowship'],
+    });
+  });
+
+  it('keeps searches but clears transient new claims when visibility validation fails', async () => {
+    mockFrom.mockReturnValue(makeQuery({ data: [SAMPLE_ROW], error: null }));
+    fetchMock.mockRejectedValue(new Error('network unavailable'));
+
+    const result = await listSavedSearches();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(SAMPLE_ROW.id);
+    expect(result[0].last_result_ids).toEqual(SAMPLE_ROW.last_result_ids);
+    expect(result[0].new_match_ids).toEqual([]);
+  });
+
+  it('validates more than 200 ids in bounded API batches', async () => {
+    const ids = Array.from({ length: 401 }, (_, index) => `opp-${index}`);
+    mockFrom.mockReturnValue(makeQuery({
+      data: [{ ...SAMPLE_ROW, new_match_ids: ids }],
+      error: null,
+    }));
+
+    const result = await listSavedSearches();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.map((call) => (
+      JSON.parse(String(call[1].body)) as { ids: string[] }
+    ).ids.length)).toEqual([200, 200, 1]);
+    expect(result[0].new_match_ids).toEqual(ids);
   });
 });
 

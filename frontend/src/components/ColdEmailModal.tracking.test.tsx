@@ -8,6 +8,7 @@
  * event.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ComponentProps } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
@@ -105,6 +106,19 @@ async function renderModal() {
       opportunityId="opp-1"
       opportunityTitle="REU"
       profile={profile}
+      // The last assertion in this file reads the reminder prompt as the
+      // signal that confirmation landed, so the target has to be one the
+      // reminders cron would actually send for.
+      reminderTarget={{
+        id: 'opp-1',
+        source_type: 'campus_program',
+        record_kind: 'listing',
+        target_truth: {
+          listing_state: 'open', reference_only: false, actionable: true,
+          accepting_state: 'accepting', reason_code: null,
+          verified_at: null, expires_at: null,
+        },
+      } as ComponentProps<typeof ColdEmailModal>['reminderTarget']}
     />,
   );
   await screen.findByText('coldEmail.copy');

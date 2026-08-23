@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  canDeliverReminder,
   classifyReminder,
   daysUntilReminder,
   collectReminders,
@@ -66,15 +67,25 @@ describe('collectReminders', () => {
     expect(collectReminders(m, NOW)).toEqual([]);
   });
 
-  it('skips rejected and dismissed interactions', () => {
+  it('skips dismissed but KEEPS rejected, which the tracker still shows', () => {
+    // Rejected used to be dropped here alongside dismissed. But a rejected
+    // row is visible in Tracker and keeps whatever reminder the student set
+    // — the cron simply never sends for it. Dropping it made that reminder
+    // invisible on the dashboard in both directions: not counted as due
+    // (right) and not counted as needing review (wrong). Deliverability is
+    // decided downstream by canDeliverReminder; this function's job is only
+    // to collect what exists.
+    //
+    // Dismissed stays dropped: it is the hide-everywhere status, excluded
+    // from every Tracker column, and surfacing it here would resurrect
+    // something the student explicitly put away.
     const m = makeMap([
       ['a', { type: 'rejected', remind_at: '2026-04-20' }],
       ['b', { type: 'dismissed', remind_at: '2026-04-20' }],
       ['c', { type: 'applied', remind_at: '2026-04-20' }],
     ]);
     const reminders = collectReminders(m, NOW);
-    expect(reminders).toHaveLength(1);
-    expect(reminders[0].opportunityId).toBe('c');
+    expect(reminders.map((r) => r.opportunityId).sort()).toEqual(['a', 'c']);
   });
 
   it('sorts overdue before today before upcoming', () => {
@@ -138,5 +149,100 @@ describe('formatReminderLabel', () => {
 
   it('formats upcoming', () => {
     expect(formatReminderLabel(mk({ status: 'upcoming', daysAway: 12 }))).toBe('In 12 days');
+  });
+});
+
+// The one predicate four surfaces share — the tracker board, the detail
+// panel's date editor, the detail page's automatic suggestion, and the
+// dashboard's due list. It copies the reminders cron's own two filters:
+//   interaction_type in (contacted, applied, replied, interviewing)
+//   AND the target is release-visible and still actionable
+// A copy that drifts produces a control that accepts the click, stores the
+// date, and then nothing arrives.
+describe('canDeliverReminder', () => {
+  const LIVE_LISTING = {
+    source_type: 'campus_program',
+    record_kind: 'listing',
+    target_truth: {
+      listing_state: 'open', reference_only: false, actionable: true,
+      accepting_state: 'accepting', reason_code: null,
+      verified_at: null, expires_at: null,
+    },
+  };
+  // A directory page states no listing and no acceptance — both unknown.
+  const LIVE_FACULTY = {
+    source_type: 'faculty_research',
+    record_kind: 'faculty_contact',
+    target_truth: {
+      listing_state: 'unknown', reference_only: false, actionable: true,
+      accepting_state: 'unknown', reason_code: null,
+      verified_at: null, expires_at: null,
+    },
+  };
+  function deadListing(truth: unknown) {
+    return { source_type: 'campus_program', record_kind: 'listing', target_truth: truth };
+  }
+
+  it.each(['contacted', 'applied', 'replied', 'interviewing'] as const)(
+    'a live listing in %s is deliverable',
+    (status) => {
+      expect(canDeliverReminder(LIVE_LISTING as never, status)).toBe(true);
+    },
+  );
+
+  it('a live faculty contact the student emailed is deliverable', () => {
+    // The majority case: reminders are set on professors far more often than
+    // on postings, and the cron does select this shape.
+    expect(canDeliverReminder(LIVE_FACULTY as never, 'contacted')).toBe(true);
+  });
+
+  it.each(['rejected', 'dismissed'] as const)(
+    'a live listing in %s is not — the cron query never selects it',
+    (status) => {
+      expect(canDeliverReminder(LIVE_LISTING as never, status)).toBe(false);
+    },
+  );
+
+  it.each([
+    ['closed', {
+      listing_state: 'closed', reference_only: false, actionable: false,
+      accepting_state: 'not_accepting', reason_code: 'listing_closed',
+      verified_at: null, expires_at: null,
+    }],
+    ['reference-only', {
+      listing_state: 'unknown', reference_only: true, actionable: false,
+      accepting_state: 'unknown', reason_code: 'reference_only',
+      verified_at: null, expires_at: null,
+    }],
+    ['inactive', {
+      listing_state: 'unknown', reference_only: false, actionable: false,
+      accepting_state: 'unknown', reason_code: 'inactive',
+      verified_at: null, expires_at: null,
+    }],
+    ['absent', undefined],
+    ['malformed', { listing_state: 'open' }],
+  ])('a %s target is not deliverable even in a good status', (_label, truth) => {
+    expect(canDeliverReminder(deadListing(truth) as never, 'applied')).toBe(false);
+  });
+
+  it('an unreviewed record kind is not deliverable', () => {
+    expect(canDeliverReminder(
+      { source_type: 'departmental_newsletter', record_kind: 'unknown' } as never,
+      'applied',
+    )).toBe(false);
+  });
+
+  it('a wire record_kind that disagrees with the source type is not deliverable', () => {
+    // One of the two allowlists moved. Trusting either alone is how a renamed
+    // source type silently becomes a listing.
+    expect(canDeliverReminder(
+      { ...LIVE_LISTING, record_kind: 'faculty_contact' } as never,
+      'applied',
+    )).toBe(false);
+  });
+
+  it('no target and no status are both refused', () => {
+    expect(canDeliverReminder(undefined, 'applied')).toBe(false);
+    expect(canDeliverReminder(LIVE_LISTING as never, undefined)).toBe(false);
   });
 });

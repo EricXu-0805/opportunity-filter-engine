@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test('probe: why does the grade pick vanish after the zh switch?', async ({ page }) => {
   page.on('request', (r) => {
@@ -18,17 +18,29 @@ test('probe: why does the grade pick vanish after the zh switch?', async ({ page
   await page.getByRole('button', { name: /Switch to Chinese/i }).click();
   console.log(`[T ${Date.now() % 100000}] switched to zh`);
 
-  await page.selectOption('#college', 'Grainger College of Engineering');
+  const college = page.locator('select#college:visible');
+  const major = page.locator('select#major:visible');
+  const grade = page.locator('select#grade:visible');
+
+  await college.selectOption('Grainger College of Engineering');
   console.log(`[T ${Date.now() % 100000}] picked college`);
-  await page.selectOption('#major', { index: 1 });
+  await expect(major).toBeEnabled();
+  await major.selectOption({ index: 1 });
   console.log(`[T ${Date.now() % 100000}] picked major`);
-  await page.selectOption('#grade', { index: 1 });
-  console.log(`[T ${Date.now() % 100000}] picked grade -> ${await page.locator('#grade').inputValue()}`);
+  await grade.selectOption({ index: 1 });
+  const selectedGrade = await grade.inputValue();
+  const generateButton = page.locator('[data-testid="generate-matches"]:visible');
+  expect(selectedGrade).not.toBe('');
+  await expect(generateButton).toBeEnabled();
+  console.log(`[T ${Date.now() % 100000}] picked grade -> ${selectedGrade}`);
 
   for (let i = 0; i < 10; i += 1) {
     await page.waitForTimeout(500);
-    const grade = await page.locator('#grade').inputValue();
-    const btnDisabled = await page.locator('[data-testid="generate-matches"]').isDisabled();
-    console.log(`[T ${Date.now() % 100000}] +${(i + 1) * 500}ms grade="${grade}" generateDisabled=${btnDisabled}`);
+    const observedGrade = await grade.inputValue();
+    const btnDisabled = await generateButton.isDisabled();
+    console.log(`[T ${Date.now() % 100000}] +${(i + 1) * 500}ms grade="${observedGrade}" generateDisabled=${btnDisabled}`);
   }
+
+  await expect(grade).toHaveValue(selectedGrade);
+  await expect(generateButton).toBeEnabled();
 });

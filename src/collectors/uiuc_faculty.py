@@ -27,7 +27,10 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from backend.lib.contact_visibility import canonical_profile_evidence_url
+from backend.lib.contact_visibility import (
+    canonical_profile_evidence_url,
+    carries_contact_evidence,
+)
 
 from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
@@ -1204,6 +1207,32 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         if status:
             md["publication_attribution_status"] = status
 
+    # research_areas_raw is carried the same unconditional way, and for the
+    # same reason: a listing-only re-scrape never reaches the detail page that
+    # states them, so it emits nothing — and `cur.update(opp)` replaces
+    # `metadata` wholesale. The 2026-08-20 refresh erased 2,716 of 5,012
+    # committed statements that way (brown and boulder to zero, rice 555 -> 1)
+    # before this guard existed. The prose is the only input to
+    # `faculty_availability_status` and the grounding cold email quotes, so
+    # losing it costs a truth signal, not just display text. A scrape that DID
+    # reach the page still wins, including a professor who deleted theirs.
+    areas = (existing.get("metadata") or {}).get("research_areas_raw")
+    if (
+        isinstance(areas, str)
+        and areas.strip()
+        and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
+    ):
+        md = incoming.setdefault("metadata", {})
+        md["research_areas_raw"] = areas
+        # Stamped with when the statement was actually observed, never with this
+        # refresh's time: an availability claim derived from carried prose must
+        # not be presentable as verified today.
+        observed = (existing.get("metadata") or {}).get(
+            "research_areas_verified_at"
+        ) or (existing.get("metadata") or {}).get("last_verified")
+        if isinstance(observed, str) and observed.strip():
+            md["research_areas_verified_at"] = observed
+
     # contact_email is carried the same unconditional way: for schools whose
     # listings never expose emails (e.g. CU Experts), the address exists ONLY
     # because a gated per-profile pass once found it — a listing-only refresh
@@ -1244,7 +1273,13 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
             ):
                 apply_record_contact_claim(incoming, trusted_claim)
             else:
-                clear_contact_evidence(incoming)
+                # Only a record that WAS stamped can be rejected. When the
+                # committed row carried nothing either, this scrape reviewed
+                # nothing, and a tombstone here would retire a reachable
+                # address on the strength of a page we simply did not read.
+                clear_contact_evidence(
+                    incoming, tombstone=carries_contact_evidence(existing),
+                )
                 # Preserve legacy provenance with a legacy address, but never
                 # launder an incomplete bound_* tuple into a trusted source.
                 src = (existing.get("metadata") or {}).get("email_source")
@@ -1255,7 +1290,12 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # remain attached to it. A fresh collector-produced tuple has already
         # been validated on ``incoming`` and is preserved.
         if record_contact_claim(incoming) is None:
-            clear_contact_evidence(incoming)
+            # Same asymmetry: proof that described the OLD address must not
+            # follow the new one, but a professor changing address on a row
+            # nobody ever stamped is not a rejection of anything.
+            clear_contact_evidence(
+                incoming, tombstone=carries_contact_evidence(existing),
+            )
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:

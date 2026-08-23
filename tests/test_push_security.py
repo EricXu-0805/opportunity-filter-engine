@@ -272,6 +272,19 @@ def _install_cron_io(
 ) -> None:
     import pywebpush
 
+    monkeypatch.setattr(
+        push_mod,
+        "load_opportunities_by_id",
+        lambda: {
+            _DUE_ROW["opportunity_id"]: {
+                "id": _DUE_ROW["opportunity_id"],
+                "source_type": "campus_program",
+                "opportunity_type": "research",
+                "metadata": {"is_active": True},
+            }
+        },
+    )
+
     subscriptions = [
         {
             "device_id": "dev-1",

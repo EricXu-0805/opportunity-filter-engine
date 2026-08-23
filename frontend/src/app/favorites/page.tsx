@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useCustomImports } from '@/lib/custom-imports';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { targetPosture } from '@/lib/target-truth';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -85,6 +86,7 @@ export default function FavoritesPage() {
     enterSelection,
     cancelSelection,
     toggleSelect,
+    reconcileSelection,
     confirmCompare,
   } = useCompareSelection();
 
@@ -122,6 +124,13 @@ export default function FavoritesPage() {
     [customImports, serverOpportunities],
   );
 
+  // A row selected while live can turn closed on the next refresh. Reconcile
+  // rather than leave it ticked: toggleSelect refuses non-actionable targets,
+  // which would otherwise make the stale selection impossible to remove.
+  useEffect(() => {
+    reconcileSelection(opportunities);
+  }, [opportunities, reconcileSelection]);
+
   const toggleExpand = useCallback((id: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
@@ -131,6 +140,10 @@ export default function FavoritesPage() {
   }, []);
 
   const openEmailModal = useCallback((opp: Opp) => {
+    // Second gate, independent of the card's. The card decides what to render;
+    // this decides what may actually open, so a card variant that keeps a
+    // control cannot reach a modal the server would refuse to serve.
+    if (targetPosture(opp) !== 'actionable') return;
     setEmailModal({ open: true, id: opp.id, title: opp.title, school: opp.school ?? null });
   }, []);
 
@@ -140,6 +153,7 @@ export default function FavoritesPage() {
 
   const openTailorModal = useCallback((opp: Opp) => {
     if (!ownerReady) return; // fail-closed — the CTA is disabled too, this is defense-in-depth
+    if (targetPosture(opp) !== 'actionable') return;
     setTailorModal({ open: true, id: opp.id, title: opp.title });
   }, [ownerReady]);
 
@@ -159,6 +173,20 @@ export default function FavoritesPage() {
   const selectedTitles = Array.from(selected)
     .map((id) => opportunities.find((o) => o.id === id)?.title || '')
     .filter(Boolean);
+
+  // Re-read on EVERY render, not once when the modal opened. A target can be
+  // refreshed into a closed listing, or removed from the corpus entirely,
+  // while its modal is on screen — checking only at open time leaves a live
+  // Tailor session attached to a target the server has already started
+  // refusing. Looked up in the canonical server list, so a custom import (no
+  // server truth) also fails closed here.
+  const modalTargetActionable = (id: string) => {
+    if (!id) return false;
+    const record = serverOpportunities.find((o) => o.id === id);
+    return !!record && targetPosture(record) === 'actionable';
+  };
+  const tailorTargetActionable = modalTargetActionable(tailorModal.id);
+  const emailTargetActionable = modalTargetActionable(emailModal.id);
 
   return (
     <div className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 ${selectionMode ? 'pb-32' : ''}`}>
@@ -263,12 +291,12 @@ export default function FavoritesPage() {
           selectedCount={selected.size}
           selectedTitles={selectedTitles}
           onCancel={cancelSelection}
-          onConfirm={confirmCompare}
+          onConfirm={() => confirmCompare(opportunities)}
           t={t}
         />
       )}
 
-      {profile && (
+      {profile && emailTargetActionable && (
         <ColdEmailModal
           isOpen={emailModal.open}
           onClose={closeEmailModal}
@@ -276,10 +304,11 @@ export default function FavoritesPage() {
           opportunityId={emailModal.id}
           opportunityTitle={emailModal.title}
           opportunitySchool={emailModal.school}
+          reminderTarget={opportunities.find((o) => o.id === emailModal.id)}
         />
       )}
 
-      {profile && (
+      {profile && tailorTargetActionable && (
         <TailorModal
           // Generation-qualified key: a real identity transition forces a
           // full remount, destroying this modal's own local state (draft,

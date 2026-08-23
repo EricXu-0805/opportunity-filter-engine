@@ -4,7 +4,67 @@ import { ExternalLink, Sparkles, Star, Shield, Mountain } from 'lucide-react';
 import type { CompareRow } from './scores';
 import { useT } from '@/i18n/client';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
-import { opportunityDestination } from '@/lib/match-utils';
+import type { Opportunity } from '@/lib/types';
+import {
+  opportunityApplicationUrl,
+  opportunitySourceUrl,
+  targetPosture,
+  targetStatusReason,
+} from '@/lib/target-truth';
+
+const STATUS_LABEL_KEY = {
+  listing_closed: 'compare.status.closed',
+  reference_only: 'compare.status.reference',
+  faculty_not_accepting: 'compare.status.notAccepting',
+  inactive: 'compare.status.inactive',
+  record_kind_unverified: 'compare.status.kindUnverified',
+  status_unverified: 'compare.status.unverified',
+} as const;
+
+/**
+ * All a non-comparable target may show: what it is, why it is not open, and
+ * where to read the source.
+ *
+ * Everything else is withheld rather than styled down — no score, no bars, no
+ * strengths or concerns, no AI explanation, no deadline, no pay, no Apply.
+ * Each of those is a claim about an option the student can still take, and
+ * this card exists precisely because that is no longer true. The link is the
+ * SOURCE page, never an application URL.
+ */
+export function ReferenceOnlyCard(
+  { opp, statusOverride }: { opp: Opportunity; statusOverride?: string },
+) {
+  const { t } = useT();
+  const reason = targetStatusReason(opp) ?? 'status_unverified';
+  const sourceUrl = opportunitySourceUrl(opp);
+  return (
+    <article
+      data-testid="compare-reference-card"
+      className="rounded-2xl border border-gray-200 bg-gray-50/60 p-4"
+    >
+      <a
+        href={`/opportunities/${encodeURIComponent(opp.id)}`}
+        className="text-[14px] font-semibold text-gray-900 leading-snug line-clamp-2 hover:text-indigo-600 transition-colors"
+      >
+        {opp.title}
+      </a>
+      <p className="mt-1.5 text-[12px] text-amber-900">
+        {statusOverride ?? t(STATUS_LABEL_KEY[reason])}
+      </p>
+      {sourceUrl && (
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-600 hover:text-gray-800"
+        >
+          <ExternalLink className="w-3 h-3" aria-hidden="true" />
+          {t('compare.viewSource')}
+        </a>
+      )}
+    </article>
+  );
+}
 
 interface Props {
   rows: CompareRow[];
@@ -104,6 +164,27 @@ export default function BucketCards({ rows }: Props) {
     <section className="mb-8">
       <div className={`grid grid-cols-1 ${colsClass} gap-4`}>
         {rows.map(({ opp, match, status }) => {
+          // Second layer, independent of CompareTable's filter. This component
+          // is exported and rendered directly by tests and could be reused; a
+          // row that reaches it with a dead target must degrade here too,
+          // because everything below this line — score, bars, reasons, the AI
+          // paragraph, the Apply button — is only truthful for a live one.
+          if (targetPosture(opp) !== 'actionable') {
+            return <ReferenceOnlyCard key={opp.id} opp={opp} />;
+          }
+          // Scored, and scored as "not in your results". The number is real
+          // and describes something this student cannot reach through the
+          // product, so it gets the same reference treatment: readable, not
+          // ranked, and never shown as a percentage beside two live options.
+          if (status === 'excluded') {
+            return (
+              <ReferenceOnlyCard
+                key={opp.id}
+                opp={opp}
+                statusOverride={t('compare.status.notInResults')}
+              />
+            );
+          }
           const bucket = displayBucket(match?.bucket);
           const style = BUCKET_STYLE[bucket];
           const isError = status === 'error' || !match;
@@ -114,10 +195,14 @@ export default function BucketCards({ rows }: Props) {
             || (opp.source ?? '').toLowerCase().includes('faculty')
             || opp.source_type === 'faculty_research',
           );
-          const applyUrl = opportunityDestination(opp);
+          // One resolver decides both the link and its label, so a record can
+          // never be linked as an application and labelled as a source (or the
+          // reverse) depending on which of two checks ran.
+          const applicationUrl = opportunityApplicationUrl(opp);
+          const applyUrl = applicationUrl ?? opportunitySourceUrl(opp);
           const actionLabel = isFacultyProfile
             ? t('compare.viewFaculty')
-            : opp.application?.application_url
+            : applicationUrl
               ? t('compare.apply')
               : t('compare.viewSource');
           // A listed date always beats the `is_rolling` flag (a blanket

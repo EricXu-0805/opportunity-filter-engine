@@ -3,8 +3,12 @@
 import { BellRing, Calendar, ExternalLink, X } from 'lucide-react';
 
 import { InteractionStatusMenu } from '@/components/InteractionStatusMenu';
+import { opportunityRecordKind } from '@/lib/match-utils';
+import { opportunitySourceUrl, targetPosture } from '@/lib/target-truth';
 import type { InteractionType } from '@/lib/supabase';
 import type { Opp, TFunc } from '@/app/favorites/types';
+
+import { canDeliverReminder } from '@/lib/reminders';
 
 import { dateInDays, isReminderDue } from './use-tracker-data';
 
@@ -76,18 +80,43 @@ export function TrackerCard({
   t: TFunc;
 }) {
   const lab = opp.lab_or_program || opp.organization || opp.department || '';
+  // A tracked row outlives its target: that is the whole point of a tracker.
+  // What must not outlive it is a date presented as still applying. Excluding
+  // only faculty rows left a closed listing showing the deadline it had when
+  // the student saved it, next to their own notes about chasing it.
+  const actionable = targetPosture(opp) === 'actionable';
+  const isCurrentListing = opportunityRecordKind(opp) === 'listing' && actionable;
+  // Deliberately posture, NOT current-listing. The reminders cron sends for
+  // any target it still calls actionable, and a live faculty contact is the
+  // most common thing a student sets a reminder on. Gating this on "listing"
+  // would remove the feature from exactly its main use.
+  //
+  // The other direction is the real bug: for a target the cron skips, these
+  // buttons accepted the click, stored the date, and then nothing ever fired.
+  // A reminder that silently never arrives is worse than no reminder — the
+  // student stops watching for the thing itself.
+  //
+  // Both halves of the cron's predicate, from the one shared helper — see
+  // canDeliverReminder. A reminder on a rejected or dismissed row is never
+  // selected either, so offering to schedule one there is the same dead
+  // control in a different place.
+  const canSetReminder = canDeliverReminder(opp, status);
+  // `source_url` first, `url` as fallback — the shared resolver, so a
+  // historical row that carries only the page a collector read is still
+  // readable here rather than losing its link.
+  const sourceUrl = opportunitySourceUrl(opp);
 
   return (
     <div data-tracker-card-id={opp.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <a
-          href={opp.url || undefined}
+          href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="group flex-1 text-sm font-semibold leading-snug text-gray-900 hover:text-indigo-700"
         >
           {opp.title}
-          {opp.url && (
+          {sourceUrl && (
             <ExternalLink className="ml-1 inline-block h-3 w-3 align-baseline text-gray-300 group-hover:text-indigo-400" />
           )}
         </a>
@@ -95,7 +124,7 @@ export function TrackerCard({
 
       {lab && <p className="mt-1 text-xs text-gray-500">{lab}</p>}
 
-      {opp.source_type !== 'faculty_research' && opp.deadline && (
+      {isCurrentListing && opp.deadline && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-400">
           <Calendar className="h-3 w-3" />
           {opp.deadline}
@@ -123,7 +152,7 @@ export function TrackerCard({
               <X className="h-3 w-3" />
             </button>
           </>
-        ) : (
+        ) : canSetReminder ? (
           <>
             <span className="inline-flex items-center gap-1 text-gray-400">
               <BellRing className="h-3 w-3" />{t('tracker.remind')}
@@ -142,6 +171,29 @@ export function TrackerCard({
               ),
             )}
           </>
+        ) : null}
+        {/* Independent of the branch above, because both halves are true at
+            once for a reminder the student already set on a target the cron
+            now skips: the date and its Clear control stay (they are the
+            student's own record), AND the page has to say that nothing will
+            be delivered. Folding this into the else-branch meant the one case
+            that most needs the warning — an existing, silently dead reminder
+            — was the only case that never showed it. The presets are absent
+            rather than greyed out: a disabled button still announces that the
+            action exists. */}
+        {!canSetReminder && (
+          <span className="inline-flex items-center gap-1 text-gray-400">
+            <BellRing className="h-3 w-3" />
+            {/* Two different facts, and the reason is not always the target:
+                an actionable listing marked `rejected` is undeliverable too.
+                So the copy describes the state, not the record — and an
+                existing reminder gets the sentence that is actually about it
+                ("this one will not be sent"), not the one about creating new
+                ones. */}
+            {t(remindAt
+              ? 'tracker.reminderWontSend'
+              : 'tracker.reminderUnavailable')}
+          </span>
         )}
       </div>
 

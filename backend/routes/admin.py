@@ -37,6 +37,7 @@ from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunitie
 from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
+from src.evidence import record_kind
 from src.matcher.feedback_learning import analyze_votes
 
 router = APIRouter()
@@ -52,6 +53,21 @@ _HISTORY_MAX_ENTRIES = 365
 # ~80-120ms; cached it's sub-millisecond. TTL set to 5 minutes so admin
 # refresh reflects changes within a reasonable window but polling is cheap.
 _CACHE_TTL_SECONDS = 300
+
+# Which population the quality numbers describe.
+#
+# Before this, every record that was not `faculty_research` was counted as a
+# listing — so unreviewed rows inflated `listing_total`, every listing defect
+# counter, and worst_fields. A defect rate computed over that denominator is
+# not a worse measurement of the same thing; it measures a different set.
+#
+# History entries written under the old rule carry `listing_total` too, which
+# is exactly why they cannot be told apart by shape. Every consumer that
+# compares two snapshots — the percentage, the delta, the trend line, the
+# regression alert — must require this marker on BOTH sides and fail closed
+# otherwise. Absolute counts from an older entry are still true about
+# themselves and may be displayed; only comparisons are refused.
+_QUALITY_SCOPE = "reviewed-record-kind-v1"
 _cache: dict = {"snapshot": None, "built_at": 0.0}
 
 
@@ -166,14 +182,40 @@ async def data_quality(
         short_description=0, stale_verify=0, flagged_inactive=0,
     )
 
+    unreviewed_by_source: Counter = Counter()
+    # (record, kind) resolved once per row, reused by the worst_fields pass
+    # below. Calling record_kind twice invites the two call sites to drift
+    # apart, which is precisely the bug this batch is fixing.
+    classified: list[tuple[dict, str]] = []
     today = datetime.now(UTC).date()
     for o in opps:
-        src = o.get("source", "?")
+        # A missing OR null/blank source both mean "we do not know", and the
+        # by_source keys are sorted later — a None among the strings raises
+        # TypeError and takes the whole endpoint down.
+        raw_src = o.get("source")
+        src = raw_src if isinstance(raw_src, str) and raw_src.strip() else "?"
         b = by_source.setdefault(src, Counter(total=0))
         b["total"] += 1
-        is_faculty_contact = o.get("source_type") == "faculty_research"
+        # The shared allowlist, resolved once per row, and the ONLY thing that
+        # decides which population this record belongs to. `source_type ==
+        # 'faculty_research'` answered one of the three questions and silently
+        # guessed the other: everything that was not faculty became a listing,
+        # including source types nobody has reviewed.
+        kind = record_kind(o)
+        classified.append((o, kind))
 
-        if is_faculty_contact:
+        if kind == "unknown":
+            # Not a broken listing and not a faculty contact — a record whose
+            # type we have not confirmed. It is counted, by source, so the
+            # queue is visible, and it enters no denominator and no defect
+            # numerator on either side. Calling its absent majors or missing
+            # deadline a defect would be reporting on fields that may not
+            # apply to whatever this turns out to be.
+            b["unreviewed_record_kind"] += 1
+            unreviewed_by_source[src] += 1
+            continue
+
+        if kind == "faculty_contact":
             # A faculty directory row is a person/research contact, not an
             # opening. Track its identity/topic/freshness quality separately;
             # never count intentionally unknown majors, skills or deadlines as
@@ -257,7 +299,20 @@ async def data_quality(
 
     sources_list = sorted(
         [
-            {"source": src, **dict(c), "total": c["total"]}
+            {
+                "source": src,
+                **dict(c),
+                "total": c["total"],
+                # All three populations explicit on every row, including
+                # zeros, so `total` is auditably their sum. Deriving any one
+                # of them by subtraction is an inference that silently changes
+                # meaning the moment a fourth population exists — and it is
+                # how the unreviewed count stayed invisible in the first
+                # place, folded into listings by an `else`.
+                "listing_total": int(c.get("listing_total", 0)),
+                "faculty_contacts": int(c.get("faculty_contacts", 0)),
+                "unreviewed_record_kind": int(c.get("unreviewed_record_kind", 0)),
+            }
             for src, c in by_source.items()
         ],
         key=lambda x: x["total"],
@@ -265,11 +320,13 @@ async def data_quality(
     )
 
     worst_fields = []
-    for o in opps:
-        if (
-            o.get("metadata", {}).get("is_active") is False
-            or o.get("source_type") == "faculty_research"
-        ):
+    for o, kind in classified:
+        # Same three-way split as the counters above, reusing the kind already
+        # resolved for this row. This list is a work queue — "fix these
+        # records" — and an unreviewed row belongs in the review queue
+        # instead; listing its absent majors as defects asks someone to fill
+        # in fields that may not even apply to it.
+        if o.get("metadata", {}).get("is_active") is False or kind != "listing":
             continue
         elig = o.get("eligibility", {}) or {}
         missing_fields: list[str] = []
@@ -298,8 +355,15 @@ async def data_quality(
     data_mtime = _opportunities_mtime()
     snapshot = {
         "total": total,
+        "quality_scope": _QUALITY_SCOPE,
         "global": dict(global_counts),
         "faculty_contacts_quality": dict(faculty_counts),
+        "unreviewed_record_kind": {
+            "total": sum(unreviewed_by_source.values()),
+            # Sorted so the object is stable across builds — an operator
+            # diffing two responses should see data change, not key order.
+            "by_source": {k: unreviewed_by_source[k] for k in sorted(unreviewed_by_source)},
+        },
         "sources": sources_list,
         "worst_fields": worst_fields[:20],
         "generated_at": generated_at.isoformat(),
@@ -309,14 +373,34 @@ async def data_quality(
     _cache["snapshot"] = snapshot
     _cache["built_at"] = now
 
-    _append_history_snapshot(generated_at, total, dict(global_counts))
+    _append_history_snapshot(
+        generated_at,
+        total,
+        dict(global_counts),
+        faculty_contact_total=faculty_counts["total"],
+        unreviewed_record_kind_total=sum(unreviewed_by_source.values()),
+    )
 
     return snapshot
 
 
-def _append_history_snapshot(ts: datetime, total: int, global_counts: dict) -> None:
+def _append_history_snapshot(
+    ts: datetime,
+    total: int,
+    global_counts: dict,
+    *,
+    faculty_contact_total: int,
+    unreviewed_record_kind_total: int,
+) -> None:
     """Append a compact snapshot to history file. Skips if the last
     entry was written less than an hour ago (prevents noise on refresh).
+
+    All three populations are written flat alongside `total`, so a stored
+    entry can be audited on its own: total == listing + faculty + unreviewed.
+    Without the unreviewed count the history would record a correct marker and
+    still lose the number the marker exists to explain. Older entries are left
+    exactly as they are — inventing a split for them would be fabricating data
+    the old code never measured.
     """
     try:
         if _HISTORY_PATH.exists():
@@ -331,12 +415,33 @@ def _append_history_snapshot(ts: datetime, total: int, global_counts: dict) -> N
                 try:
                     last_obj = json.loads(last)
                     last_ts = datetime.fromisoformat(last_obj.get("t", "").replace("Z", "+00:00"))
-                    if (ts - last_ts).total_seconds() < 3600:
+                    # The hourly throttle exists to keep a refresh from
+                    # spamming the file with the same numbers. It only applies
+                    # when the last entry describes the SAME population —
+                    # otherwise a recent legacy snapshot would suppress the
+                    # first entry under the new scope, and the new series
+                    # could not start until an hour of no admin traffic
+                    # happened to pass.
+                    if (
+                        last_obj.get("quality_scope") == _QUALITY_SCOPE
+                        and (ts - last_ts).total_seconds() < 3600
+                    ):
                         return
                 except (json.JSONDecodeError, ValueError):
                     pass
 
-        entry = {"t": ts.isoformat(), "total": total, **global_counts}
+        # The marker travels with every new entry so a later reader can tell
+        # which population these counts describe. Entries written before this
+        # existed carry listing_total under the old, unknown-inflated rule and
+        # are indistinguishable by shape alone.
+        entry = {
+            "t": ts.isoformat(),
+            "total": total,
+            "quality_scope": _QUALITY_SCOPE,
+            "faculty_contact_total": faculty_contact_total,
+            "unreviewed_record_kind_total": unreviewed_record_kind_total,
+            **global_counts,
+        }
         _HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
         with _HISTORY_PATH.open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
@@ -517,9 +622,20 @@ async def health_check(
         except (ValueError, TypeError):
             pass
 
-    history = _read_history()
+    # Only entries that describe the CURRENT population. An older entry has a
+    # `listing_total` that counted unreviewed rows as listings, so comparing
+    # against it would report a "regression" that is entirely the definition
+    # changing under the metric — the loudest possible false alarm, on the one
+    # board an operator trusts to be quiet when things are fine. With nothing
+    # comparable left, `baseline_unavailable` is the honest answer.
+    raw_history = _read_history()
+    history = [h for h in raw_history if h.get("quality_scope") == _QUALITY_SCOPE]
     prior = _find_baseline(history, days_ago=7) if len(history) >= 2 else None
-    if prior is None and history:
+    # `raw_history`, not the filtered list: a board with a full year of
+    # old-scope entries has no usable baseline, and that is exactly when the
+    # operator most needs telling. Keying this on the filtered list would go
+    # silent in the one case it exists for.
+    if prior is None and raw_history:
         # Honest about the gap rather than silently skipping comparison: with
         # no usable baseline the regression detector is blind, and an operator
         # reading a clean board deserves to know that (W15).
