@@ -1646,6 +1646,156 @@ class TestStudentCompetenceProvenanceEG2:
         assert resp.fallback_reason == "fabrication"
 
 
+class TestOnlyConfirmedSkillsBackAnExperienceClaim:
+    """A level nobody chose cannot authorize "I have hands-on experience".
+
+    A skill the student TYPES lands at ``beginner`` (SkillTags.tsx). A skill a
+    regex found in their uploaded PDF landed at ``experienced``
+    (use-profile-form.ts), as did every skill inferred from a GitHub repo's
+    language field. So the student's own statement about themselves ranked
+    BELOW a substring match, and the substring match is what reached a
+    professor as "I have hands-on experience with X"
+    (src/recommender/cold_email.py).
+
+    The extractor is a bare presence test over a fixed list (pdf-parser.ts
+    extractSkills), so "Relevant coursework: Introduction to Python", "hoping
+    to learn PyTorch", and a club named "R Users Group" all became claimed
+    experience.
+
+    Scoring is deliberately untouched: a weaker signal inside a ranking is not
+    a claim made to a person.
+    """
+
+    _OPP = {
+        "opportunity_type": "research", "pi_name": "Jane Doe",
+        "lab_or_program": "Prof. Jane Doe's Research Group",
+        "department": "Computer Science", "keywords": ["computer vision"],
+        "description_raw": "Computer vision research using Python.",
+        "eligibility": {"skills_required": ["Python"]},
+    }
+
+    _CLAIMS = (
+        "i have experience with",
+        "hands-on experience",
+        "working experience with",
+        "strong proficiency",
+    )
+
+    def _profile(self, skills: list[dict]) -> dict:
+        return {
+            "name": "Eric", "year": "freshman", "major": "Computer Science",
+            "school": "UIUC", "hard_skills": skills,
+            "research_interests_text": "computer vision",
+        }
+
+    def _assert_no_experience_claim(self, email: str) -> None:
+        low = email.lower()
+        for phrase in self._CLAIMS:
+            assert phrase not in low, f"unconfirmed skill produced: {phrase!r}"
+
+    def test_an_unconfirmed_resume_skill_is_not_experience(self):
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "experienced",
+                            "source": "resume"}]), self._OPP)
+        self._assert_no_experience_claim(email)
+
+    def test_an_unconfirmed_github_skill_is_not_experience(self):
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "expert",
+                            "source": "github"}]), self._OPP)
+        self._assert_no_experience_claim(email)
+
+    def test_a_shared_profile_skill_is_not_the_recipients_experience(self):
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "expert",
+                            "source": "shared"}]), self._OPP)
+        self._assert_no_experience_claim(email)
+
+    def test_the_skill_is_still_named_at_exposure_level(self):
+        """Dropping it entirely would lose a fact that IS on their resume. The
+        overstatement is the verb, not the skill."""
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "experienced",
+                            "source": "resume"}]), self._OPP)
+        assert "Python" in email
+        assert "foundational exposure to" in email.lower()
+
+    def test_confirming_an_imported_skill_restores_the_claim(self):
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "experienced",
+                            "source": "resume", "confirmed": True}]), self._OPP)
+        assert "foundational exposure" not in email.lower()
+
+    def test_a_legacy_experienced_skill_fails_closed(self):
+        """Provenance-less ``experienced`` is exactly what the bug produced.
+
+        Both import sites stamped that literal value, and one badge click
+        produces a byte-identical record — the two cannot be told apart in
+        stored data, so the ambiguous one is withheld. A student who really did
+        click once is held back too; the form marks every unconfirmed skill and
+        one click restores it, so nobody is muted without being told.
+        """
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "experienced"}]),
+            self._OPP)
+        self._assert_no_experience_claim(email)
+
+    def test_a_legacy_expert_skill_is_still_the_students_own(self):
+        """Nothing in the tree writes ``expert`` except the badge the student
+        clicks (SkillTags.cycleLevel); both import sites wrote ``experienced``.
+        So this value IS provably theirs, and failing it closed would mute a
+        claim we can show they made."""
+        email = generate_cold_email(
+            self._profile([{"name": "Python", "level": "expert"}]), self._OPP)
+        assert "foundational exposure" not in email.lower()
+
+    def test_the_schema_carries_provenance_instead_of_dropping_it(self):
+        """The gate is only real if the fields survive the HTTP boundary.
+
+        The routes hand ``profile.model_dump()`` to the builders, and pydantic
+        drops undeclared keys silently — so an undeclared ``source`` would make
+        every import read as student-chosen and turn the gate into a no-op in
+        production while every test above still passed.
+        """
+        from backend.schemas import ProfileRequest
+
+        parsed = ProfileRequest(hard_skills=[
+            {"name": "Python", "level": "experienced", "source": "resume"},
+            {"name": "Rust", "level": "expert", "source": "github",
+             "confirmed": True},
+            {"name": "C++", "level": "expert"},
+        ]).model_dump()["hard_skills"]
+        assert [(s["source"], s["confirmed"]) for s in parsed] == [
+            ("resume", False), ("github", True), (None, False),
+        ]
+
+    def test_an_unrecognised_source_cannot_buy_back_the_claim(self):
+        """Absence means student-chosen. A client naming a source we do not
+        know must not be promoted into that, or the gate is opt-out."""
+        from backend.schemas import ProfileRequest
+
+        parsed = ProfileRequest(hard_skills=[
+            {"name": "Python", "level": "expert", "source": "typed"},
+        ]).model_dump()["hard_skills"]
+        assert parsed[0]["source"] == "unknown"
+        self._assert_no_experience_claim(
+            generate_cold_email(self._profile(parsed), self._OPP))
+
+    def test_every_variant_holds_the_same_line(self):
+        """Three builders read the level independently. A gate on one of them
+        is a gate on none."""
+        from src.recommender.cold_email import generate_variants
+
+        variants = generate_variants(
+            self._profile([{"name": "Python", "level": "experienced",
+                            "source": "resume"},
+                           {"name": "PyTorch", "level": "expert",
+                            "source": "github"}]), self._OPP)
+        assert variants, "no variants generated — the assertion below is vacuous"
+        for v in variants:
+            self._assert_no_experience_claim(v["text"])
+
+
 class TestBeginnerSafeTemplateEG3:
     """Evidence grounding, gap 3: the deterministic template — the email every
     user without an LLM gets, and the fallback the fabrication gate degrades

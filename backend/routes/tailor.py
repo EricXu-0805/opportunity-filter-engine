@@ -67,6 +67,7 @@ from backend.schemas import (
     TailorResponse,
 )
 from src.recommender.cold_email import filter_course_entries
+from src.student_evidence import claimable_skill_level
 
 logger = logging.getLogger("ofe.tailor")
 
@@ -300,10 +301,19 @@ def _ai_tailor_bullets(
     for skill in (profile_dict.get("hard_skills") or [])[:20]:
         if isinstance(skill, dict):
             n = str(skill.get("name", ""))
-            lvl = str(skill.get("level", "beginner"))
             if n:
-                skills_lines.append(f"- {n} ({lvl})")
+                # The CLAIMABLE level, same one the cold email speaks at. The
+                # rules below tell the model to lead with expert and experienced
+                # skills, so handing it a level the student never chose is how
+                # an inferred skill becomes an emphasised one in a resume they
+                # send out. `_build_evidence_corpus` deliberately keeps the
+                # STORED level: that corpus answers "may this word appear",
+                # and narrowing it would make merely MENTIONING an unconfirmed
+                # skill read as fabrication.
+                skills_lines.append(f"- {n} ({claimable_skill_level(skill)})")
         else:
+            # A bare string carries no level. Printing one would assert
+            # something the profile never said.
             skills_lines.append(f"- {skill}")
     skills_block = "\n".join(skills_lines) or "(none listed)"
 

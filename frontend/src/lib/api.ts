@@ -277,7 +277,16 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
         ? acceptedSeekingTypes
         : ['research', 'summer_program'],
     desired_fields: deriveDesiredFields(profile.research_interests),
-    hard_skills: profile.skills.map((s) => ({ name: s.name, level: s.level })),
+    // Provenance travels with the level or the level is a lie on arrival: the
+    // server decides whether a skill may back "I have experience with X", and
+    // it can only withhold that for an import it can still see is an import.
+    // An explicit field list is what dropped them here in the first place.
+    hard_skills: profile.skills.map((s) => ({
+      name: s.name,
+      level: s.level,
+      ...(s.source ? { source: s.source } : {}),
+      ...(s.confirmed ? { confirmed: true } : {}),
+    })),
     coursework: profile.coursework ?? [],
     experience_level: profile.experience_level ?? 'beginner',
     resume_ready: !!profile.resume_text,

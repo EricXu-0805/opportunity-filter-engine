@@ -2605,7 +2605,7 @@ describe('useProfileForm — the remaining same-owner GitHub and submit races', 
       await new Promise((r) => setTimeout(r, 20));
     });
     const submitted = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!);
-    expect(submitted.skills).toEqual([{ name: 'Go', level: 'experienced' }]);
+    expect(submitted.skills).toEqual([{ name: 'Go', level: 'beginner', source: 'github' }]);
   });
 
   it('a field edited during submit\'s GitHub await is what gets saved, not the snapshot submit started with', async () => {
@@ -2634,7 +2634,7 @@ describe('useProfileForm — the remaining same-owner GitHub and submit races', 
     const stored = JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!);
     expect(stored.research_interests).toBe('my interests');
     expect(stored.search_weight).toBe(90);
-    expect(stored.skills).toEqual([{ name: 'Go', level: 'experienced' }]);
+    expect(stored.skills).toEqual([{ name: 'Go', level: 'beginner', source: 'github' }]);
     expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({
       research_interests: 'my interests',
       search_weight: 90,
@@ -2815,7 +2815,7 @@ describe('useProfileForm — submit refuses to ship something the user did not m
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).skills)
-      .toEqual([{ name: 'Rust', level: 'experienced' }]);
+      .toEqual([{ name: 'Rust', level: 'beginner', source: 'github' }]);
     expect(pushSpy).toHaveBeenCalledWith('/results');
   });
 
@@ -2844,7 +2844,7 @@ describe('useProfileForm — submit refuses to ship something the user did not m
     expect(cacheMocks.clearMatchCache).toHaveBeenCalledTimes(1);
     expect(pushSpy).toHaveBeenCalledTimes(1);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).skills)
-      .toEqual([{ name: 'Go', level: 'experienced' }]);
+      .toEqual([{ name: 'Go', level: 'beginner', source: 'github' }]);
   });
 });
 
@@ -5710,7 +5710,7 @@ describe("useProfileForm — Generate on a shared draft recomputes after reading
     // name `skills` and still record an addition, and the row would save an
     // empty list while the operation claimed otherwise.
     expect(stages[0].patch.skills, 'carrying what was actually imported')
-      .toContainEqual({ name: 'Go', level: 'experienced' });
+      .toContainEqual({ name: 'Go', level: 'beginner', source: 'github' });
     expect(
       await journalOps().filter((o) => o.mode === 'add-skills'),
       'recorded durably as an ADDITION, exactly once, and only now',

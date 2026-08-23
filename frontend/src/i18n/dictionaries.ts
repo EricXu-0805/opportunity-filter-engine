@@ -2730,6 +2730,16 @@ export const en = {
       expert: 'Expert',
     },
     cycleLevelTitle: 'Click to change level ({level})',
+    // An import learned the skill's NAME off a page; it never learned how well
+    // the student knows it. Saying where it came from is also what makes the
+    // dashed chip legible instead of just odd-looking.
+    importedFrom: {
+      resume: 'Found on your resume — click to set your level',
+      github: 'Inferred from your GitHub repos — click to set your level',
+      shared: 'From a shared profile — click to set your own level',
+    },
+    confirmLevelTitle: 'Click to confirm where you actually stand',
+    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand — until then they are described as exposure, not experience.',
     remove: 'Remove {skill}',
   },
   results: {
@@ -7233,6 +7243,15 @@ export const zh = {
       expert: '精通',
     },
     cycleLevelTitle: '点击切换水平（{level}）',
+    // 导入只在页面上认出了技能的名字，并不知道你掌握到什么程度。写清来源，
+    // 虚线标签才是有解释的，而不是一个看不懂的样式。
+    importedFrom: {
+      resume: '来自你的简历 —— 点击设置你的水平',
+      github: '根据你的 GitHub 仓库推断 —— 点击设置你的水平',
+      shared: '来自分享的档案 —— 点击设置你自己的水平',
+    },
+    confirmLevelTitle: '点击确认你实际的掌握程度',
+    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
     remove: '移除 {skill}',
   },
   results: {

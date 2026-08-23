@@ -14,9 +14,18 @@ export type DeadlineFilterValue = '' | 'rolling' | '7' | '14' | '30' | 'passed';
 // ── Skill Proficiency ────────────────────────────────────────────────
 export type SkillLevel = 'beginner' | 'experienced' | 'expert';
 
+/** Where a skill came from, when the student did not choose it themselves.
+ *  Absent means they typed it. */
+export type SkillSource = 'resume' | 'github' | 'shared';
+
 export interface SkillWithLevel {
   name: string;
   level: SkillLevel;
+  /** Set only on imports. Its absence is what makes `level` the student's own
+   *  word, which is what lets an outward claim of experience rest on it. */
+  source?: SkillSource;
+  /** The student has since set this level themselves. */
+  confirmed?: boolean;
 }
 
 // ── Frontend Profile (form state) ────────────────────────────────────
