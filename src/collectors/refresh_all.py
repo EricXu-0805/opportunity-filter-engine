@@ -18,6 +18,21 @@ from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
+
+
+def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
+    """How many records this run's scrape produced, per department.
+
+    The unit of proof for stale retirement. A department whose directory URL
+    rotted appears with 0 (or not at all, which the pass treats the same way),
+    so its stored records are preserved instead of being read as departures.
+    """
+    ledger: dict[str, int] = {}
+    for record in scraped:
+        unit = record.get("department")
+        if isinstance(unit, str) and unit.strip():
+            ledger[unit.strip()] = ledger.get(unit.strip(), 0) + 1
+    return ledger
 from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
@@ -791,12 +806,21 @@ def refresh_all(
                 "enriched": deep,
                 "empty_departments": empty_depts,
                 "components": components,
-                # The four producer families currently share one source value,
-                # so the corpus cannot yet prove which component owned an old
-                # row. Until component-level baselines/lineage exist, a
+                # The four producer families share one source value, so the
+                # corpus cannot prove which component owned an old row, and a
                 # nonzero-but-collapsed component must never retire old UIUC
-                # faculty through the aggregate 70% gate.
+                # faculty through the aggregate gate. The hold therefore
+                # stands, and refresh_contract blocks a release that drops it.
+                #
+                # `stale_unit_ledger` below is the evidence for lifting it: the
+                # producers own DISJOINT department sets, so the department a
+                # record already carries is finer-grained lineage than the
+                # component that produced it. A collapsed component takes every
+                # department it owns to zero, which the per-unit gate skips.
+                # While the hold stands the pass only REPORTS what that ledger
+                # would retire; nothing is written.
                 "stale_deactivation_authorized": False,
+                "stale_unit_ledger": _faculty_unit_ledger(all_faculty),
                 "status": "error" if component_errors else "ok",
             }
             if component_errors:
@@ -1432,9 +1456,19 @@ def refresh_all(
         }
         deactivation_not_authorized: list[str] = []
         if "uiuc_faculty" in faculty_fetched:
-            faculty_fetched.pop("uiuc_faculty")
+            # The hold stands: uiuc_faculty is reported as not authorized, and
+            # refresh_contract still blocks a release that says otherwise. It
+            # keeps its entry in fetched_counts — as the per-unit ledger — so
+            # the pass can report what lifting the hold would retire without
+            # retiring anything.
+            ledger = (
+                summary["sources"]["uiuc_faculty"].get("stale_unit_ledger") or {}
+            )
+            faculty_fetched["uiuc_faculty"] = ledger
             deactivation_not_authorized.append("uiuc_faculty")
-        stale_faculty = deactivate_stale_faculty(all_opps, faculty_fetched)
+        stale_faculty = deactivate_stale_faculty(
+            all_opps, faculty_fetched, held_sources={"uiuc_faculty"},
+        )
         summary["sources"]["deactivate_stale_faculty"] = {
             "newly_deactivated": stale_faculty["newly_deactivated"],
             "kept_fresh": stale_faculty["kept_fresh"],
@@ -1443,6 +1477,10 @@ def refresh_all(
                 stale_faculty["skipped_missing_unit_ledger"]
             ),
             "deactivation_not_authorized": deactivation_not_authorized,
+            # What a held source WOULD retire. Capped: this is a review aid in
+            # a summary artifact, not the corpus.
+            "would_deactivate": stale_faculty["would_deactivate"][:200],
+            "would_deactivate_total": len(stale_faculty["would_deactivate"]),
             "status": "ok",
         }
         logger.info(
