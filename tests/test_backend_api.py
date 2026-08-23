@@ -4642,6 +4642,64 @@ class TestPushRemindersCron:
         assert r.status_code == 200
         assert r.json() == {"status": "ok", "sent": 0, "due": 0}
 
+    def test_a_reminder_with_nowhere_to_go_is_counted(self, monkeypatch):
+        """A due reminder that reaches no channel must not vanish silently.
+
+        Production, 2026-08-22: ``{"status":"ok","due":1,"sent":0,"failed":0,
+        "ambiguous":0,"emailed":0,"skipped":0,...}``. One reminder was due and
+        every outcome counter was zero, so a user's reminder disappeared and
+        check_cron_response.py had no non-zero counter to fail the step on.
+        Two paths reach that silence — no email fallback configured on the
+        backend, and a device with no account address — and neither incremented
+        anything.
+        """
+        _set_push_env(monkeypatch)
+        monkeypatch.delenv("RESEND_API_KEY", raising=False)
+        monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+        # Due, and no push subscription for its device.
+        _install_push_stubs(monkeypatch, interactions=[_DUE_ROW], subscriptions=[])
+        r = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["due"] == 1
+        assert body["sent"] == 0
+        assert body["emailed"] == 0
+        assert body["no_channel"] == 1
+
+    def test_a_device_with_no_account_address_is_counted_too(self, monkeypatch):
+        # The second silent path: the backend HAS an email fallback, but this
+        # device never signed in, so there is no address to fall back to. The
+        # reminder still has nowhere to arrive, and it was counted nowhere.
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "re_test")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "JoinALab <no-reply@example.com>")
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            account_email=None, emails=emails,
+        )
+        body = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        ).json()
+        assert body["due"] == 1
+        assert body["emailed"] == 0
+        assert emails == []
+        assert body["no_channel"] == 1
+
+    def test_a_delivered_reminder_is_not_counted_as_channelless(self, monkeypatch):
+        # The counter must mean "nowhere to arrive", not "we ran".
+        _set_push_env(monkeypatch)
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW]
+        )
+        body = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        ).json()
+        assert body["sent"] == 1
+        assert body["no_channel"] == 0
+
     def test_sends_one_push_per_subscription(self, monkeypatch):
         _set_push_env(monkeypatch)
         calls: list = []
@@ -4706,6 +4764,33 @@ class TestPushRemindersCron:
         body = r.json()
         assert body["sent"] == 0
         assert body["failed"] == 1
+
+    def test_a_push_that_was_tried_and_failed_is_not_nowhere_to_go(self, monkeypatch):
+        """The counter has to mean one thing to be worth reading.
+
+        A failed push had a channel; it just did not work, and `failed`
+        already says so. Counting it here as well would make `no_channel`
+        mean "nothing arrived", which every other counter already covers,
+        and leave nothing that means "this reminder has no way to reach
+        anyone" — the state that is otherwise invisible.
+        """
+        from pywebpush import WebPushException
+
+        def _boom(**kwargs):
+            raise WebPushException("delivery rejected")
+
+        _set_push_env(monkeypatch)
+        monkeypatch.delenv("RESEND_API_KEY", raising=False)
+        monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[_SUB_ROW],
+            webpush_impl=_boom,
+        )
+        body = client.get(
+            "/api/cron/reminders", headers={"Authorization": "Bearer cron-ok"}
+        ).json()
+        assert body["failed"] == 1
+        assert body["no_channel"] == 0
 
     def test_payload_is_neutral_json_pointing_at_the_tracker(self, monkeypatch):
         """The notification says what this job knows, and nothing else.

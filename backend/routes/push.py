@@ -402,6 +402,18 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     resend_from = os.environ.get("RESEND_FROM_EMAIL", "").strip()
 
     sent, failed, emailed, pruned, skipped = 0, 0, 0, 0, 0
+    # Reminders that reached the end of the run with no channel to arrive
+    # by. Counted because the response otherwise reports them nowhere: a
+    # production run on 2026-08-22 returned `due: 1` with sent, emailed,
+    # failed, skipped and ambiguous all zero and `status: "ok"`. The
+    # reminder a user set simply vanished, and check_cron_response.py had
+    # no non-zero counter to fail the step on.
+    #
+    # Non-zero is not automatically a fault — a device-only account with no
+    # push subscription genuinely has nowhere to be reached — so this is
+    # reported rather than alerted on. It stops the silence, which is what
+    # was missing.
+    no_channel = 0
     # Subset of `failed` whose outcome is genuinely unknown (W16). `failed`
     # stays the "we did not see an acceptance" counter that operator alerting
     # is built on; `ambiguous` is the part of it that may nonetheless have
@@ -510,6 +522,11 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
             entity_id = f"{device_id}:{opportunity_id}"
             delivered = False
             row_ambiguous = False
+            # Captured before the loop below, which prunes dead endpoints: the
+            # question is whether this row had a channel to try, not whether
+            # any survived. A push that was tried and failed is a failure, and
+            # already counted as one — it is not a reminder with nowhere to go.
+            had_subscription = bool(subs_by_device.get(device_id))
             # One reminder = one notification identity. The service-worker
             # `tag` collapses duplicates that are already on screen; the RFC
             # 8030 Topic (derived from the same identity, hashed into the
@@ -706,12 +723,21 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
             # KNOWN non-delivery (no subscription, pruned endpoint, provider
             # rejection). When the push outcome is unknown, adding a second
             # channel is how one reminder becomes two notifications.
-            if not delivered and not row_ambiguous and resend_key and resend_from:
+            if (not delivered and not row_ambiguous and not had_subscription
+                    and not (resend_key and resend_from)):
+                # No subscription to push to and no email fallback configured
+                # on this backend: nothing was even attempted for this row.
+                no_channel += 1
+            elif not delivered and not row_ambiguous:
                 if device_id not in email_by_device:
                     email_by_device[device_id] = await _account_email(
                         client, supabase_url, headers, device_id,
                     )
                 to_email = email_by_device[device_id]
+                if not to_email and not had_subscription:
+                    # The device never signed in, so the fallback has no
+                    # address. Same silence as above, different cause.
+                    no_channel += 1
                 if to_email:
                     subject, html, text = _render_reminder_email(row["opportunity_id"])
                     # One reminder for one device on one day is ONE logical
@@ -866,6 +892,8 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "emailed": emailed,
         "pruned": pruned,
         "skipped": skipped,
+        # Due, undelivered, and nothing was attempted — see `no_channel` above.
+        "no_channel": no_channel,
         "bookkeeping_failed": bookkeeping_failed,
         "row_errors": row_errors,
         # W15 ops-queue bookkeeping. incident_errors > 0 means failures
