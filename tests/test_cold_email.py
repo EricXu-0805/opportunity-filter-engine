@@ -1822,6 +1822,13 @@ class TestTheStudentsOwnWorkReachesTheEmail:
         "department": "Computer Science", "keywords": ["computer vision", "segmentation"],
         "description_raw": "Computer vision research on image segmentation.",
         "eligibility": {"skills_required": ["Python"]},
+        # The professor's own words. Real faculty records carry these, the
+        # keyword list is a three-item summary of them, and a bullet is scored
+        # against both — see _target_match_terms.
+        "metadata": {
+            "research_areas_raw": "Computer vision, image segmentation, "
+                                  "and 3D medical imaging",
+        },
     }
 
     _BULLETS = [
@@ -1838,6 +1845,73 @@ class TestTheStudentsOwnWorkReachesTheEmail:
                              "confirmed": True}],
             "research_interests_text": "computer vision",
         }
+
+    def test_the_professors_own_words_are_scored_not_just_the_keyword_summary(self):
+        """A strong match's keyword list is the student's whole FIELD.
+
+        `research_topic` is the first three keywords, and for the best matches
+        those are abstract field nouns — "signal processing", "biomedical",
+        "algorithms" — which never appear in a sentence about what someone
+        built. Measured on production's top 100 for a UIUC ECE sophomore, the
+        paragraph fired for 94% of ranks 51-100 and 20% of the top five:
+        working everywhere except the matches a student actually writes to.
+        The professor's own prose is where the specifics live.
+        """
+        opp = {
+            "opportunity_type": "research", "pi_name": "Jane Doe",
+            "department": "Electrical & Computer Engineering",
+            # Exactly the generic shape of a strong match: nothing here occurs
+            # in an accomplishment sentence.
+            "keywords": ["biomedical", "signal processing", "algorithms"],
+            "metadata": {
+                "research_areas_raw": "Magnetic resonance imaging and "
+                                      "spectroscopy; image reconstruction",
+            },
+        }
+        email = generate_cold_email(
+            self._profile(), opp,
+            resume_bullets=["Reconstruction of undersampled imaging data in Python"],
+        )
+        assert "Reconstruction of undersampled imaging data in Python" in email
+
+    def test_a_single_shared_word_is_not_a_topic(self):
+        """"The campus learning center" shares `learn` with "machine learning".
+
+        Stem equality alone let that one collision carry a tutoring line into a
+        machine-learning professor's inbox — 18 of production's top 100 with a
+        resume holding nothing relevant. Two shared words takes it to 1.
+        """
+        opp = {
+            "opportunity_type": "research", "pi_name": "Jane Doe",
+            "department": "Computer Science",
+            "keywords": ["machine learning"],
+            "metadata": {"research_areas_raw": "Machine learning theory"},
+        }
+        email = generate_cold_email(
+            self._profile(), opp,
+            resume_bullets=["Tutored calculus at the campus learning center"],
+        )
+        assert "Tutored calculus" not in email
+
+    def test_word_forms_connect_across_the_two_sides(self):
+        """A resume says what someone DID; a research page says what a field IS.
+
+        So the same idea arrives inflected differently on each side, and
+        comparing surface forms scored "reconstructed" against
+        "reconstruction" as unrelated.
+        """
+        opp = {
+            "opportunity_type": "research", "pi_name": "Jane Doe",
+            "department": "Bioengineering",
+            "keywords": ["image reconstruction"],
+            "metadata": {"research_areas_raw": "Image reconstruction and "
+                                               "segmentation"},
+        }
+        email = generate_cold_email(
+            self._profile(), opp,
+            resume_bullets=["Reconstructed 3D volumes and segmented them in Python"],
+        )
+        assert "Reconstructed 3D volumes" in email
 
     def test_a_resume_bullet_reaches_the_generated_email(self):
         email = generate_cold_email(self._profile(), self._OPP,
