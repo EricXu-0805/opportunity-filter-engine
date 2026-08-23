@@ -1183,6 +1183,36 @@ class TestColdEmailEngine:
         assert body["subject"]
         assert body["body"]
 
+    @pytest.mark.parametrize("path", ["/api/cold-email", "/api/cold-email/variants"])
+    def test_the_students_own_work_survives_the_route(
+        self, cold_email_body, monkeypatch, path,
+    ):
+        """The request already carried `resume_bullets` and the deterministic
+        path threw them away — the route did not forward them, and no template
+        builder read them even when it did. Two independent breaks on the same
+        line, which is why this asserts through HTTP rather than on the builder:
+        either one alone leaves a green unit test and an empty email.
+
+        This path is what every user without a provider gets, and what the
+        fabrication gate degrades to.
+        """
+        for var in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        opp = data_loader.load_opportunities_by_id()[EMAIL_TARGET_ID]
+        # Overlapping with the target's own words, since a bullet that speaks to
+        # nothing in the posting is deliberately left out.
+        term = next(
+            (k for k in (opp.get("keywords") or []) if len(str(k)) > 3), "research",
+        )
+        bullet = f"Built a {term} pipeline end to end"
+        resp = client.post(path, json={**cold_email_body, "resume_bullets": [bullet]})
+        assert resp.status_code == 200, resp.text
+        payload = resp.json()
+        text = payload.get("body") or " ".join(
+            v["body"] for v in payload.get("variants", [])
+        )
+        assert bullet in text, text[:400]
+
     @pytest.mark.parametrize(
         ("path", "extra"),
         [

@@ -581,13 +581,17 @@ def _common_parts(
     )
 
 
-def generate_cold_email(profile: dict, opportunity: dict) -> str:
-    p = _common_parts(profile, opportunity)
+def generate_cold_email(
+    profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+) -> str:
+    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     return _build_balanced(p)
 
 
-def generate_variants(profile: dict, opportunity: dict) -> list[dict]:
-    p = _common_parts(profile, opportunity)
+def generate_variants(
+    profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+) -> list[dict]:
+    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     lab_type = p["lab_type"]
     return [
         {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p),     "lab_type": lab_type},
@@ -709,6 +713,65 @@ def _student_self(p: dict, connector: str) -> str:
     return f"a {' '.join(filter(None, [year, major]))} student{at}"
 
 
+# A cold email has one paragraph to earn a reply, so the bullet that goes in it
+# is chosen for overlap with the target rather than taken in resume order.
+# Capped because a resume line can run long and the reader is skimming.
+_BULLET_CAP = 220
+
+
+def _significant_terms(text: str) -> list[str]:
+    """Content words from a target's own description of itself.
+
+    Split on non-letters so "image segmentation" contributes both halves; the
+    caller drops anything four characters or shorter, which is what keeps "and"
+    and "the" from matching every bullet.
+    """
+    return [w for w in re.split(r"[^a-z]+", text.lower()) if w]
+
+
+def _pick_resume_bullet(p: dict) -> str:
+    """The student's own sentence that best matches this target, or "".
+
+    Quoted verbatim, never paraphrased: a bullet is the student's own statement
+    about themselves, which is the evidence class the claim rules admit. The
+    moment the template restates it in its own words it is asserting detail
+    nothing backs — which is the failure this whole path exists to avoid.
+    """
+    bullets = [b.strip() for b in (p.get("resume_bullets") or []) if b and b.strip()]
+    if not bullets:
+        return ""
+
+    # Score against what this target actually says, not against the student's
+    # own skill list — otherwise every bullet mentioning Python ties and the
+    # first one wins by accident.
+    terms = {
+        t for t in (
+            [str(k).lower() for k in (p.get("opp_skills_required") or [])]
+            + [str(k).lower() for k in (p.get("matching_skills") or [])]
+            + _significant_terms(str(p.get("research_topic") or ""))
+            + _significant_terms(str(p.get("research_area") or ""))
+        ) if len(t) > 3
+    }
+
+    def overlap(bullet: str) -> int:
+        low = bullet.lower()
+        return sum(1 for t in terms if t in low)
+
+    best = max(bullets, key=overlap)
+    # No overlap at all means nothing here speaks to this lab. Saying something
+    # irrelevant is worse than saying nothing: it reads as a mass mailing.
+    if overlap(best) == 0:
+        return ""
+    return best[:_BULLET_CAP].rstrip()
+
+
+def _p3_concrete_work(p: dict) -> str:
+    bullet = _pick_resume_bullet(p)
+    if not bullet:
+        return ""
+    return f"\n\nMost relevant to your work: {bullet}."
+
+
 def _build_balanced(p: dict) -> str:
     subject = _subject(p)
     greeting = _greeting(p)
@@ -718,11 +781,12 @@ def _build_balanced(p: dict) -> str:
     intro += _recent_work_cite(p)
 
     skills_para = _p2_skills_applied(p)
+    work_para = _p3_concrete_work(p)
     ask = _ask_for_lab_type(
         p.get("lab_type", "dry"), is_faculty=bool(p.get("is_faculty"))
     )
     closing = _closing(p)
-    body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
+    body = f"{greeting}\n\n{intro}{skills_para}{work_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
 
@@ -819,7 +883,7 @@ def _build_skills_focus(p: dict) -> str:
             "\n\nWould you have 15 minutes for a brief conversation?"
         )
     closing = _closing(p)
-    body = f"{greeting}\n\n{intro}{skills_para}{ask}{closing}"
+    body = f"{greeting}\n\n{intro}{skills_para}{_p3_concrete_work(p)}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
 
@@ -863,7 +927,7 @@ def _build_concise(p: dict) -> str:
         ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
 
     closing = _closing(p)
-    body = f"{greeting}\n\n{core}{ask}{closing}"
+    body = f"{greeting}\n\n{core}{_p3_concrete_work(p)}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
 
