@@ -54,11 +54,34 @@ _WSE_LADDER = {"require": r"\bprofessor\b",
                         r"|\badjunct|\bvisiting|\bstaff\b|\bpostdoc|\bfellow\b")}
 
 
-def _wse(short: str, name: str, majors: list[str], url: str) -> dict:
+# Computer Science is the ONE Whiting department whose profiles publish research
+# areas, and it publishes them as discrete chips:
+#
+#   <div class="entity_meta_detail research_areas">
+#     <span class="entity_meta_detail_label">Research Areas</span>
+#     <span class="entity_meta_detail_item">Machine learning</span>
+#     <span class="entity_meta_detail_item">Statistical signal processing</span>
+#
+# The other WSE profile pages carry only awards and news — no research section
+# to select — so this is deliberately not on the shared helper. Rendered, like
+# the listings: the whole engineering.jhu.edu estate is Cloudflare-walled and a
+# plain GET returns the challenge page.
+_WSE_CS_ENRICH = {
+    "research_items_selector": ".entity_meta_detail.research_areas .entity_meta_detail_item",
+    "render": True,
+    "throttle": 0.3,
+}
+
+
+def _wse(short: str, name: str, majors: list[str], url: str,
+         enrich: dict | None = None) -> dict:
     """One Whiting dept, scraped from its ``.entity`` faculty listing (render)."""
+    scrape = {"url": url, "render": True, "selectors": _WSE_SEL,
+              "ladder_filter": _WSE_LADDER}
+    if enrich:
+        scrape["profile_enrich"] = enrich
     return {"short": short, "name": name, "majors": majors, "directory_url": url,
-            "scrape": {"url": url, "render": True, "selectors": _WSE_SEL,
-                       "ladder_filter": _WSE_LADDER}}
+            "scrape": scrape}
 
 
 SCHOOL: dict = {
@@ -112,7 +135,7 @@ SCHOOL: dict = {
             ["Neuroscience"], "Neuroscience"),
         # --- Whiting School of Engineering (shared .entity theme, render) ---
         _wse("WSE-CS", "Department of Computer Science", ["Computer Science"],
-             "https://www.cs.jhu.edu/faculty/"),
+             "https://www.cs.jhu.edu/faculty/", enrich=_WSE_CS_ENRICH),
         _wse("WSE-ECE", "Department of Electrical and Computer Engineering",
              ["Electrical Engineering", "Computer Engineering"],
              "https://engineering.jhu.edu/ece/faculty/"),
@@ -216,6 +239,25 @@ SCHOOL: dict = {
                                   "drop": (r"\bemerit|\badjunct|\bscientist|\bscholar"
                                            r"|research associate|\binstructor|\blecturer"
                                            r"|\bfellow\b")},
+            },
+            # Dept-level, because the roster is a json_dir seed with no scrape
+            # block to hang the pass on — the engine supports exactly this
+            # (faculty_graph: "a json_dir roster ... still have profile
+            # endpoints to follow"). Each profile carries a Drupal field:
+            #
+            #   <div class="field-research-interests">
+            #     <h2 class="field-label">Research Interests</h2>
+            #     <div class="field-item">reproductive health; family planning; …</div>
+            #
+            # A text block rather than chips, which is usually the risky shape —
+            # it is taken here because BSPH writes semicolon-delimited terms
+            # rather than prose, so the derived-keyword split lands whole areas
+            # instead of sentence fragments. Rendered: the Turnstile wall returns
+            # a challenge page to a plain GET.
+            "profile_enrich": {
+                "research_selector": ".field-research-interests .field-item",
+                "render": True,
+                "throttle": 0.3,
             },
         },
         # --- School of Medicine (harvested academic professoriate, static seed) ---
