@@ -48,6 +48,11 @@ function fromShared(shared: SharedProfile): Partial<ProfileData> {
           .map(s => ({
             name: clampStr(s.n, 50),
             level: (['beginner', 'experienced', 'expert'].includes(s.l) ? s.l : 'beginner'),
+            // Somebody else's self-assessment. A share link is definitionally
+            // not the recipient's own statement about themselves, so it can
+            // never authorise a first-person claim in THEIR email until they
+            // say so — marked, never `confirmed`.
+            source: 'shared' as const,
           }))
       : [],
     seeking_types: Array.isArray(shared.seeking)

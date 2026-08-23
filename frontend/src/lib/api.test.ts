@@ -126,6 +126,32 @@ describe('getMatches', () => {
     expect(body.include_cross_school).toBe(false);
   });
 
+  it('carries skill provenance to the server, not just the level', async () => {
+    // The server decides whether a skill may back "I have experience with X",
+    // and it can only withhold that for an import it can still see is one.
+    // This mapping was an explicit `{name, level}` field list, which dropped
+    // `source` before it ever left the browser and made the whole server-side
+    // gate a no-op while its own tests passed.
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    const profile = makeProfile();
+    profile.skills = [
+      { name: 'Python', level: 'experienced', source: 'resume' },
+      { name: 'Rust', level: 'expert', source: 'github', confirmed: true },
+      { name: 'C++', level: 'expert' },
+    ];
+    await getMatches(profile);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.hard_skills).toEqual([
+      { name: 'Python', level: 'experienced', source: 'resume' },
+      { name: 'Rust', level: 'expert', source: 'github', confirmed: true },
+      // A skill the student typed carries no source — its absence is what
+      // marks the level as their own word.
+      { name: 'C++', level: 'expert' },
+    ]);
+  });
+
   it('sends exploring=true when the profile opts into explore mode', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),

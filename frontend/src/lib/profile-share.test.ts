@@ -28,7 +28,14 @@ describe('profile-share encode/decode roundtrip', () => {
     expect(decoded!.grade).toBe(FULL_PROFILE.grade);
     expect(decoded!.is_international).toBe(true);
     expect(decoded!.research_interests).toBe(FULL_PROFILE.research_interests);
-    expect(decoded!.skills).toEqual(FULL_PROFILE.skills);
+    // Names and levels survive the round trip; every decoded skill also gains
+    // `source: 'shared'`. A share link is somebody else's self-assessment, so
+    // it can never authorise a first-person claim in the RECIPIENT's email
+    // until they set the level themselves.
+    expect(decoded!.skills).toEqual(
+      FULL_PROFILE.skills.map((s) => ({ ...s, source: 'shared' })),
+    );
+    expect(decoded!.skills.every((s) => !s.confirmed)).toBe(true);
     expect(decoded!.coursework).toEqual(FULL_PROFILE.coursework);
     expect(decoded!.search_weight).toBe(60);
     expect(decoded!.seeking_types).toEqual(FULL_PROFILE.seeking_types);

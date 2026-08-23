@@ -27,6 +27,9 @@ def filter_course_entries(courses: list) -> list[str]:
     ]
 
 
+from src.student_evidence import claimable_skill_levels
+
+
 def _extract_skill_names(raw_skills: list) -> list[str]:
     result = []
     for s in raw_skills:
@@ -40,15 +43,14 @@ def _extract_skill_names(raw_skills: list) -> list[str]:
 
 
 def _extract_skill_levels(raw_skills: list) -> dict[str, str]:
-    result = {}
-    for s in raw_skills:
-        if isinstance(s, dict):
-            result[s.get("name", "")] = s.get("level", "beginner")
-        elif isinstance(s, str):
-            result[s] = "beginner"
-        else:
-            result[getattr(s, "name", str(s))] = getattr(s, "level", "beginner")
-    return result
+    """Levels as they may be CLAIMED, which is not always as they are stored.
+
+    Delegates to ``src.student_evidence`` so this and the tailor prompt cannot
+    reach opposite conclusions from the same skill — they did, which is how an
+    unconfirmed import became "I have hands-on experience with X" here while
+    the tailor prompt was separately told to emphasise it.
+    """
+    return claimable_skill_levels(raw_skills)
 
 
 _EMAIL_GENERIC_KW = frozenset({
