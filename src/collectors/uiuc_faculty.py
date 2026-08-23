@@ -628,6 +628,23 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
         return person
 
     if "email" not in person:
+        # The address in this person's OWN role card, before any page-order
+        # scan. The shared Illinois college template opens with a sidebar of
+        # college staff — an alumni-relations coordinator, a director of
+        # advancement — so "first mailto that isn't known noise" bound one
+        # staffer's inbox to every professor in the department. The
+        # shared-inbox pass then correctly nulled it, which is why ECE, Civil
+        # and NPRE are the only UIUC departments a student cannot email.
+        # Where a role card exists on other UIUC sites (Physics, MechSE,
+        # Bioengineering) it agrees with the address already stored, so this
+        # only changes the departments the sidebar was shadowing.
+        own = soup.select_one("div.role .email a[href^='mailto:']")
+        if own is not None:
+            email = own.get("href", "").replace("mailto:", "").split("?")[0].strip()
+            if email and email not in NOISE_EMAILS and "@" in email:
+                person["email"] = email
+
+    if "email" not in person:
         for mailto in soup.select("a[href^='mailto:']"):
             email = mailto.get("href", "").replace("mailto:", "").split("?")[0].strip()
             if email and email not in NOISE_EMAILS and "@" in email:
