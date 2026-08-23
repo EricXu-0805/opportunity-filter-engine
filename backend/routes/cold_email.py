@@ -1740,7 +1740,13 @@ def _run_engine(
                     )
 
     if method != "ai":
-        email_text = generate_cold_email(profile_dict, safe_opp)
+        # The bullets the request carried. Omitting them here is what made the
+        # deterministic path — every user without a provider, and the fallback
+        # the fabrication gate degrades to — send an email with none of the
+        # student's actual work in it.
+        email_text = generate_cold_email(
+            profile_dict, safe_opp, resume_bullets=request.resume_bullets,
+        )
         subject, body = _extract_subject_and_body(email_text)
 
     # Last output belt: a provider or a legacy template must not synthesize or
@@ -1910,6 +1916,10 @@ async def generate_email_variants(
             generate_variants,
             profile_dict,
             safe_opp,
+            # Same bullets the single-draft route forwards. Every variant is a
+            # deterministic template, so leaving them out here would keep three
+            # of the four generated emails empty of the student's own work.
+            request.resume_bullets,
             timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS,
         )
     except BlockingWorkTimeout as exc:
@@ -2027,6 +2037,10 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,
         "parts": parts,
+        # Carried explicitly rather than dug out of `parts`: the deterministic
+        # template below takes them as an argument, and a caller reaching into
+        # another function's parts dict is how they drift apart.
+        "resume_bullets": request.resume_bullets,
         "corpus": _build_email_corpus(parts, safe_opp),
         "prof_brief": _render_professor_brief(parts, safe_opp),
     }
@@ -2043,7 +2057,10 @@ def _safe_refine_template_body(context: dict) -> str:
     """
     profile_dict = context["profile_dict"]
     if str(profile_dict.get("name") or "").strip():
-        template = generate_cold_email(profile_dict, context["safe_opp"])
+        template = generate_cold_email(
+            profile_dict, context["safe_opp"],
+            resume_bullets=context.get("resume_bullets"),
+        )
         _subject, body = _extract_subject_and_body(template)
         return body
 
