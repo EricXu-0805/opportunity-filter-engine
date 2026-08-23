@@ -491,7 +491,33 @@ def sample_category(category: str, records: list[dict], ctx: dict,
 
     rows = [build_sample_row(category, seq, record, tag)
             for seq, (record, tag) in enumerate(selected, 1)]
-    return rows, gaps
+    return rows, gaps, _stratum_coverage(category, pool, ctx)
+
+
+def _stratum_coverage(category: str, pool: list[dict], ctx: dict) -> dict:
+    """How much of the pool each risk stratum accounts for, corpus-wide.
+
+    The strata already exist to bias sampling. Counting them over the whole
+    pool costs one more pass and answers a question the sample cannot: not
+    "is what this record says true" but "how many records say anything at
+    all". Two holes found by hand on 2026-08-23 were invisible to a report
+    that returned GO on both days — 47,024 harvested publications with 0
+    passing the attribution gate, and a stale-faculty pass structurally unable
+    to reach 98.4% of the corpus. Both would have read straight off this
+    block.
+
+    Reported, never gated. A corpus that cites nothing is perfectly truthful,
+    and failing the audit on low coverage would trade a silence for noise.
+    What was missing is that the silence had no number.
+    """
+    total = len(pool)
+    return {
+        "pool": total,
+        "strata": {
+            tag: sum(1 for r in pool if pred(r, ctx))
+            for tag, pred in RISK_SELECTORS[category]
+        },
+    }
 
 
 def load_corpus(corpus_path: Path) -> list[dict]:
@@ -508,20 +534,57 @@ def load_corpus(corpus_path: Path) -> list[dict]:
     return records
 
 
+def _reviewed_counts(out_dir: Path, wanted: list[str]) -> dict[str, int]:
+    """Human verdicts a fresh sample would overwrite, per category file."""
+    found: dict[str, int] = {}
+    for cat in wanted:
+        path = out_dir / f"{cat}.json"
+        if not path.exists():
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                samples = (json.load(f) or {}).get("samples") or []
+        except (OSError, ValueError):
+            continue
+        n = sum(1 for s in samples
+                if (s.get("review_result") or "pending") != "pending")
+        if n:
+            found[cat] = n
+    return found
+
+
 def run_sample(corpus_path: Path, out_dir: Path, category: str,
-               seed: int, per_category: int) -> int:
+               seed: int, per_category: int, force: bool = False) -> int:
     records = load_corpus(corpus_path)
     ctx = build_risk_context(records)
     wanted = list(CATEGORIES) if category == "all" else [category]
+
+    # Sampling rewrites each category file wholesale, and a review verdict
+    # lives inside those files. Re-running it on a reviewed directory silently
+    # resets every verdict to "pending" — the audit's only irreplaceable input,
+    # since re-deriving one means a person checking a record against its source
+    # again. Refuse instead, and say what would have been lost.
+    if not force and (reviewed := _reviewed_counts(out_dir, wanted)):
+        detail = ", ".join(f"{cat}: {n}" for cat, n in sorted(reviewed.items()))
+        print(
+            "truthfulness_audit: refusing to overwrite reviewed samples "
+            f"({detail}). Re-sampling resets every verdict to pending, and a "
+            "verdict is a person having checked a record against its source. "
+            "Pass --force if that is genuinely what you want.",
+            file=sys.stderr,
+        )
+        return 2
+
     out_dir.mkdir(parents=True, exist_ok=True)
     for cat in wanted:
-        rows, gaps = sample_category(cat, records, ctx, seed, per_category)
+        rows, gaps, coverage = sample_category(cat, records, ctx, seed, per_category)
         payload = {
             "category": cat,
             "generated_at": datetime.now(UTC).isoformat(),
             "seed": seed,
             "corpus_records": len(records),
             "risk_pool_gaps": gaps,
+            "coverage": coverage,
             "samples": rows,
         }
         path = out_dir / f"{cat}.json"
@@ -572,6 +635,10 @@ def run_report(samples_dir: Path, out_path: Path) -> int:
             "reviewed_count": len(samples) - pending,
             "complete": complete,
             "results": results,
+            # Corpus-wide, from the sampling pass — see _stratum_coverage.
+            # Carried through so the report answers "how many records say
+            # anything at all", which no sample of ten can.
+            "coverage": data.get("coverage") or {},
         }
 
     if critical_open:
@@ -597,6 +664,17 @@ def run_report(samples_dir: Path, out_path: Path) -> int:
                   else "yes" if info["complete"] else "no")
         print(f"{cat:<15}{info['sample_count']:>8}{info['reviewed_count']:>9}"
               f"{info['results'].get('pending', 0):>8}{findings:>9}  {status}")
+
+    print()
+    print("corpus-wide coverage (reported, never gated — a corpus that claims")
+    print("nothing is truthful; this says how much it claims at all)")
+    for cat, info in categories.items():
+        cov = info.get("coverage") or {}
+        pool = cov.get("pool") or 0
+        if not pool:
+            continue
+        for tag, n in sorted((cov.get("strata") or {}).items()):
+            print(f"  {cat}/{tag:<28}{n:>8} / {pool:<8} {100 * n / pool:>5.1f}%")
     if critical_open:
         print(f"\ncritical_open ({len(critical_open)}): {', '.join(critical_open)}")
     banner = f"TRUTHFULNESS DECISION: {report['decision']}"
@@ -629,6 +707,9 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     sp.add_argument("--out", type=Path, default=DEFAULT_SAMPLES_DIR)
     sp.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    sp.add_argument("--force", action="store_true",
+                    help="overwrite sample files that already carry human "
+                         "review verdicts")
     sp.add_argument("--per-category", type=int, default=DEFAULT_PER_CATEGORY,
                     dest="per_category")
 
@@ -638,7 +719,8 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "sample":
-        return run_sample(args.corpus, args.out, args.category, args.seed, args.per_category)
+        return run_sample(args.corpus, args.out, args.category, args.seed,
+                          args.per_category, force=args.force)
     return run_report(args.samples, args.out)
 
 
