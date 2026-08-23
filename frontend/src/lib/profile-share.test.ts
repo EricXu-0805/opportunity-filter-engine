@@ -35,7 +35,7 @@ describe('profile-share encode/decode roundtrip', () => {
     expect(decoded!.skills).toEqual(
       FULL_PROFILE.skills.map((s) => ({ ...s, source: 'shared' })),
     );
-    expect(decoded!.skills.every((s) => !s.confirmed)).toBe(true);
+    expect(decoded!.skills?.every((s) => !s.confirmed)).toBe(true);
     expect(decoded!.coursework).toEqual(FULL_PROFILE.coursework);
     expect(decoded!.search_weight).toBe(60);
     expect(decoded!.seeking_types).toEqual(FULL_PROFILE.seeking_types);
