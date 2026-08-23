@@ -360,3 +360,100 @@ def test_sample_still_exits_zero(tmp_path):
     assert main(["sample", "--corpus", str(corpus),
                  "--out", str(tmp_path / "s"), "--seed", "7",
                  "--per-category", "4"]) == 0
+
+
+# ---------------------------------------------------------------------------
+# Coverage: how much the corpus claims at all, which no sample of ten can say
+#
+# Two holes found by hand on 2026-08-23 were invisible to a report that
+# returned GO on the same corpus, both days:
+#
+#   * 47,024 harvested publications on 15,917 professors, 0 of them passing
+#     the attribution gate, so no cold email had ever cited a paper;
+#   * a stale-faculty pass structurally unable to reach 98.4% of the corpus.
+#
+# Neither is a truthfulness failure. A record that claims nothing is perfectly
+# truthful, and the sample-based audit is right to pass it. What was missing
+# is a number for the silence — so coverage is REPORTED and never gated, the
+# same call made for `no_channel` in the reminders cron.
+# ---------------------------------------------------------------------------
+
+
+def test_sampling_records_corpus_wide_stratum_counts(tmp_path):
+    from scripts.truthfulness_audit import RISK_SELECTORS
+
+    samples_dir = tmp_path / "samples"
+    corpus = _write_corpus(tmp_path)
+    main(["sample", "--corpus", str(corpus), "--out", str(samples_dir), "--seed", "1"])
+    data = json.loads((samples_dir / "publication.json").read_text(encoding="utf-8"))
+    coverage = data["coverage"]
+    assert coverage["pool"] > 0
+    # Every stratum is counted, including the ones at zero — a stratum that
+    # drops out of the report because nothing matched is exactly the hole.
+    assert set(coverage["strata"]) == {tag for tag, _ in RISK_SELECTORS["publication"]}
+
+
+def test_a_capability_nothing_uses_reads_as_zero_not_as_absent(tmp_path):
+    samples_dir = tmp_path / "samples"
+    corpus = _write_corpus(tmp_path)
+    main(["sample", "--corpus", str(corpus), "--out", str(samples_dir), "--seed", "1"])
+    coverage = json.loads(
+        (samples_dir / "publication.json").read_text(encoding="utf-8")
+    )["coverage"]
+    # The fixture corpus stamps no attribution, so this is the 0-of-N state the
+    # real corpus was in and nothing reported.
+    assert coverage["strata"]["verified_author_id"] == 0
+
+
+def test_coverage_reaches_the_report_and_does_not_gate_it(tmp_path):
+    samples_dir = _write_samples_dir(tmp_path, review_result="verified_correct")
+    # A category whose capability covers nothing at all.
+    path = samples_dir / "publication.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["coverage"] = {"pool": 1000, "strata": {"verified_author_id": 0}}
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    report = _run_report(tmp_path, samples_dir)
+    assert report["categories"]["publication"]["coverage"]["strata"] == {
+        "verified_author_id": 0
+    }
+    # Zero coverage is not a truthfulness finding.
+    assert report["decision"] == "GO"
+
+
+def test_resampling_refuses_to_discard_human_verdicts(tmp_path, capsys):
+    """A verdict is the one input the audit cannot re-derive.
+
+    Everything else in a sample file comes from the corpus and regenerates for
+    free. A review_result is a person having opened a source page and checked
+    a record against it. `sample` rewrites each category file wholesale, so
+    re-running it on a reviewed directory silently reset every verdict to
+    pending — which is exactly what happened while building the coverage block
+    above: ten verdicts across publication.json alone, recoverable only
+    because they were still in git.
+    """
+    samples_dir = _write_samples_dir(tmp_path, review_result="verified_correct")
+    corpus = _write_corpus(tmp_path)
+    rc = main(["sample", "--corpus", str(corpus), "--out", str(samples_dir),
+               "--seed", "1"])
+    assert rc == 2
+    assert "refusing to overwrite reviewed samples" in capsys.readouterr().err
+    after = json.loads((samples_dir / "email.json").read_text(encoding="utf-8"))
+    assert all(s["review_result"] == "verified_correct" for s in after["samples"])
+
+
+def test_force_still_resamples(tmp_path):
+    samples_dir = _write_samples_dir(tmp_path, review_result="verified_correct")
+    corpus = _write_corpus(tmp_path)
+    assert main(["sample", "--corpus", str(corpus), "--out", str(samples_dir),
+                 "--seed", "1", "--force"]) == 0
+    after = json.loads((samples_dir / "email.json").read_text(encoding="utf-8"))
+    assert all(s["review_result"] == "pending" for s in after["samples"])
+
+
+def test_an_unreviewed_directory_resamples_without_a_flag(tmp_path):
+    # The guard must not make the ordinary first run harder.
+    samples_dir = _write_samples_dir(tmp_path, review_result="pending")
+    corpus = _write_corpus(tmp_path)
+    assert main(["sample", "--corpus", str(corpus), "--out", str(samples_dir),
+                 "--seed", "1"]) == 0
