@@ -26,6 +26,10 @@ export interface SkillWithLevel {
   source?: SkillSource;
   /** The student has since set this level themselves. */
   confirmed?: boolean;
+  /** The resume line this skill was found on. Shown when asking the student to
+   *  confirm, so a spurious match — "Relevant coursework: Introduction to
+   *  Python" — is visible rather than silently becoming a claim. */
+  evidence?: string;
 }
 
 // ── Frontend Profile (form state) ────────────────────────────────────
@@ -551,10 +555,22 @@ export interface RenovationDoc {
 }
 
 // ── Resume ───────────────────────────────────────────────────────────
+/** One extracted skill and the resume line it was found on.
+ *
+ *  The extractor is a bare presence test over a fixed list, so a hit says only
+ *  that the word appears — "Relevant coursework: Introduction to Python" and
+ *  "hoping to learn PyTorch" both match. Carrying the line is what lets the
+ *  form show the student WHERE it came from, so a spurious match is visible
+ *  rather than silently becoming a skill on their profile. */
+export interface ResumeSkillEvidence {
+  skill: string;
+  line: string;
+}
+
 export interface ResumeParseResponse {
   extracted_skills: string[];
+  skill_evidence: ResumeSkillEvidence[];
   extracted_coursework: string[];
-  experience_level: string;
   raw_text: string;
   success: boolean;
   message: string;

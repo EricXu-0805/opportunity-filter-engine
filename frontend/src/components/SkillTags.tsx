@@ -149,11 +149,16 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                 }}
                 className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
                 title={
-                  unsettled && skill.source
-                    ? t(`skills.importedFrom.${skill.source}`)
-                    : unsettled
-                      ? t('skills.confirmLevelTitle')
-                      : t('skills.cycleLevelTitle', { level: levelLabel })
+                  // The line it was found on beats any generic explanation:
+                  // "Relevant coursework: Introduction to Python" tells the
+                  // student in one glance that this is not experience.
+                  unsettled && skill.evidence
+                    ? t('skills.foundOn', { line: skill.evidence })
+                    : unsettled && skill.source
+                      ? t(`skills.importedFrom.${skill.source}`)
+                      : unsettled
+                        ? t('skills.confirmLevelTitle')
+                        : t('skills.cycleLevelTitle', { level: levelLabel })
                 }
               >
                 {levelLabel}
