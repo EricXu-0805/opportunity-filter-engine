@@ -1396,3 +1396,87 @@ class TestATombstoneMeansAReviewActuallyHappened:
             "metadata": {},
         }
         assert self._merge(existing, incoming).get("identity_bound") is False
+
+
+# ---------------------------------------------------------------------------
+# The professor's address, not the college's alumni-relations coordinator
+#
+# Three UIUC departments — ECE (3/118 contactable), Civil & Environmental
+# (0/123) and Nuclear, Plasma & Radiological (0/43) — are the only ones a
+# student cannot email; every other UIUC department sits at 79-100%. They share
+# one page template whose sidebar lists college staff BEFORE the professor's
+# own role card, so "first mailto that isn't known noise" bound a donor
+# -relations coordinator's address to every professor in the department. The
+# shared-inbox pass then correctly nulled it, and the extraction was never
+# fixed — which is why the gap survived.
+#
+# It lands on exactly the wrong people: those departments supply the top of the
+# match list for an engineering student, so the better the match, the less
+# likely they could contact them (production top-25 for a UIUC ECE sophomore:
+# 1 of 11 faculty contactable, against an 88.6% corpus baseline).
+# ---------------------------------------------------------------------------
+
+_ILLINOIS_PROFILE = """
+<html><body>
+  <div class="col-md column1">
+    <p><strong>Nikki Slack</strong><br>Alumni &amp; Donor Relations Coordinator<br>
+    <a href="mailto:nslack@illinois.edu">nslack@illinois.edu</a></p>
+  </div>
+  <div class="col-md column2">
+    <p><strong>Heather Vazquez</strong><br>Senior Director of Advancement<br>
+    <a href="mailto:hfv@illinois.edu">hfv@illinois.edu</a></p>
+  </div>
+  <div><div class="role cat15 primary">
+    <div class="title"><strong>Professor</strong></div>
+    <div class="email"><a href="mailto:jhasegaw@illinois.edu">jhasegaw@illinois.edu</a></div>
+    <div class="office">2011 Beckman Institute</div>
+  </div></div>
+  <footer><a href="mailto:grainger-marcom@illinois.edu">Webmaster</a></footer>
+</body></html>
+"""
+
+
+def _enrich_with_page(monkeypatch, html, person=None):
+    from bs4 import BeautifulSoup
+
+    import src.collectors.uiuc_faculty as f
+    monkeypatch.setattr(f.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: BeautifulSoup(html, "html.parser"))
+    return f._enrich_faculty_from_profile(
+        dict(person or {"pi_name": "Mark Hasegawa-Johnson",
+                        "url": "https://ece.illinois.edu/about/directory/faculty/jhasegaw"})
+    )
+
+
+def test_the_professors_own_role_card_wins_over_the_staff_sidebar(monkeypatch):
+    assert _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE)["email"] == "jhasegaw@illinois.edu"
+
+
+def test_a_staff_address_is_never_bound_to_a_professor(monkeypatch):
+    # Stated separately from the line above because it is the harm, not the
+    # mechanism: nslack@ on 118 ECE records is one person's inbox wearing 118
+    # professors' names, and a student emailing it reaches none of them.
+    got = _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE)["email"]
+    assert got not in {"nslack@illinois.edu", "hfv@illinois.edu",
+                       "grainger-marcom@illinois.edu"}
+
+
+def test_pages_without_a_role_card_still_use_the_first_mailto(monkeypatch):
+    # Statistics, Math and iSchool profiles carry no role card and their first
+    # mailto is already the right person. Verified live on real profile URLs
+    # before this change: where a role card DOES exist (Physics, MechSE,
+    # Bioengineering) it agrees with what the corpus already holds, so this
+    # only ever changes the three departments the sidebar was shadowing.
+    page = '<html><body><a href="mailto:sahlgren@illinois.edu">x</a></body></html>'
+    assert _enrich_with_page(monkeypatch, page)["email"] == "sahlgren@illinois.edu"
+
+
+def test_a_role_card_without_an_email_falls_through(monkeypatch):
+    page = ('<html><body><div class="role primary"><div class="title">Professor</div></div>'
+            '<a href="mailto:someone@illinois.edu">x</a></body></html>')
+    assert _enrich_with_page(monkeypatch, page)["email"] == "someone@illinois.edu"
+
+
+def test_an_already_known_email_is_not_overwritten(monkeypatch):
+    person = {"pi_name": "X", "url": "http://x", "email": "already@illinois.edu"}
+    assert _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE, person)["email"] == "already@illinois.edu"
