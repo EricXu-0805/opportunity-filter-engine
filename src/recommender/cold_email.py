@@ -718,6 +718,19 @@ def _student_self(p: dict, connector: str) -> str:
 # Capped because a resume line can run long and the reader is skimming.
 _BULLET_CAP = 220
 
+# Shared words a bullet needs before it counts as speaking to this target.
+#
+# One is a coincidence: "the campus learning center" shares `learn` with a
+# professor's "machine learning" and nothing else. Two is a topic. Measured
+# against production's top 100 for a UIUC ECE sophomore, with a four-line
+# résumé of real work and with a control résumé holding only tutoring and a
+# campus job:
+#
+#   >=1   real 100/100   irrelevant-only 18/100   <- the guard leaks
+#   >=2   real 100/100   irrelevant-only  1/100
+#   >=3   real  10/100   irrelevant-only  0/100   <- coverage collapses
+_MIN_BULLET_OVERLAP = 2
+
 
 def _significant_terms(text: str) -> list[str]:
     """Content words from a target's own description of itself.
@@ -727,6 +740,51 @@ def _significant_terms(text: str) -> list[str]:
     and "the" from matching every bullet.
     """
     return [w for w in re.split(r"[^a-z]+", text.lower()) if w]
+
+
+# Suffixes stripped, longest first, before two words are compared. A résumé
+# says what someone DID and a research page says what a field IS, so the same
+# idea reaches the two sides in different forms — "reconstructed" against
+# "reconstruction", "images" against "imaging". Comparing the surface forms
+# scored those as unrelated. Over-stripping can only cost a slightly less apt
+# bullet: the choice is between the student's own sentences, and whichever
+# wins is still quoted verbatim.
+_SUFFIXES = ("ations", "ation", "ions", "ing", "ion", "ers", "es", "ed", "er", "s")
+
+
+def _stem(word: str) -> str:
+    for suffix in _SUFFIXES:
+        if len(word) > len(suffix) + 3 and word.endswith(suffix):
+            return word[: -len(suffix)]
+    return word
+
+
+def _target_match_terms(p: dict) -> set[str]:
+    """Everything this target is on record as working on, as comparable stems.
+
+    ``research_topic`` alone is the first three keywords, which for a strong
+    match is the student's whole FIELD — "signal processing", "biomedical",
+    "algorithms". Those are abstract nouns, and an accomplishment sentence
+    never contains them, so the closer the match the less likely any bullet
+    scored against them. Measured on production's top 100 for a UIUC ECE
+    sophomore, the paragraph fired for 94% of ranks 51-100 and 20% of the top
+    five — inverted exactly where a student actually writes.
+
+    ``research_areas_raw`` is the professor's own prose (Zhi-Pei Liang's says
+    "Magnetic resonance imaging and spectroscopy" while his topic string says
+    "biomedical"), and the student's stated interests are the words that made
+    this a match at all.
+    """
+    return {
+        _stem(t) for t in (
+            [str(k).lower() for k in (p.get("opp_skills_required") or [])]
+            + [str(k).lower() for k in (p.get("matching_skills") or [])]
+            + _significant_terms(str(p.get("research_topic") or ""))
+            + _significant_terms(str(p.get("research_area") or ""))
+            + _significant_terms(str(p.get("research_areas_raw") or ""))
+            + _significant_terms(str(p.get("research_interests") or ""))
+        ) if len(t) > 3
+    }
 
 
 def _pick_resume_bullet(p: dict) -> str:
@@ -744,23 +802,21 @@ def _pick_resume_bullet(p: dict) -> str:
     # Score against what this target actually says, not against the student's
     # own skill list — otherwise every bullet mentioning Python ties and the
     # first one wins by accident.
-    terms = {
-        t for t in (
-            [str(k).lower() for k in (p.get("opp_skills_required") or [])]
-            + [str(k).lower() for k in (p.get("matching_skills") or [])]
-            + _significant_terms(str(p.get("research_topic") or ""))
-            + _significant_terms(str(p.get("research_area") or ""))
-        ) if len(t) > 3
-    }
+    terms = _target_match_terms(p)
 
     def overlap(bullet: str) -> int:
-        low = bullet.lower()
-        return sum(1 for t in terms if t in low)
+        # Stems compared for equality, not containment. Containment let short
+        # stems match anywhere — "learning center" scored against a professor's
+        # "machine learning" — and every bullet then matched every target, which
+        # is the same as having no guard at all.
+        words = {_stem(w) for w in _significant_terms(bullet) if len(w) > 3}
+        return len(terms & words)
 
     best = max(bullets, key=overlap)
-    # No overlap at all means nothing here speaks to this lab. Saying something
-    # irrelevant is worse than saying nothing: it reads as a mass mailing.
-    if overlap(best) == 0:
+    # Too little in common means nothing here speaks to this lab. Saying
+    # something irrelevant is worse than saying nothing: it reads as a mass
+    # mailing.
+    if overlap(best) < _MIN_BULLET_OVERLAP:
         return ""
     return best[:_BULLET_CAP].rstrip()
 
