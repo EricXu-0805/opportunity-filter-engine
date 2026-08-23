@@ -3,12 +3,20 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff } from 'lucide-react';
 import { getPushStatus, subscribeToPush, unsubscribeFromPush, isPushSupported, type PushStatus } from '@/lib/push';
+import { getVapidPublicKey } from '@/lib/api';
 import { useT } from '@/i18n/client';
 
 export default function PushToggle() {
   const { t } = useT();
   const [status, setStatus] = useState<PushStatus | 'loading'>('loading');
   const [busy, setBusy] = useState(false);
+  // The server's own key, not a build-time copy of it. The private half that
+  // signs every push lives on the backend, so a subscription minted against
+  // any other key is accepted by the browser and then never delivered to —
+  // and NEXT_PUBLIC_* is inlined at build time, so a Vercel variable that is
+  // unset or has drifted from Render's cannot be noticed at runtime. `null`
+  // means the server has no key: no control, because none could work.
+  const [vapidKey, setVapidKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isPushSupported()) {
@@ -17,16 +25,16 @@ export default function PushToggle() {
       return;
     }
     getPushStatus().then(setStatus).catch(() => setStatus('default'));
+    getVapidPublicKey().then(setVapidKey).catch(() => setVapidKey(null));
   }, []);
 
   if (status === 'loading' || status === 'unsupported' || status === 'denied') {
     return null;
   }
 
-  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!vapidKey) return null;
-
   const subscribed = status === 'subscribed';
+  // Unsubscribing needs no key; only minting one does.
+  if (!vapidKey && !subscribed) return null;
 
   async function handleClick() {
     setBusy(true);
