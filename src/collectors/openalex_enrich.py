@@ -48,6 +48,9 @@ from ..publication_trust import (
 from ..publication_trust import (
     VERIFIED_AUTHOR_ID as ATTRIBUTION_VERIFIED,
 )
+from ..publication_trust import (
+    works_are_verified,
+)
 from .ucb_common import PROCESSED_FILE
 
 logger = logging.getLogger(__name__)
@@ -682,7 +685,12 @@ def _works_targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
             continue
         if not (o.get("pi_name") and _record_url(o)):
             continue
-        if (o.get("metadata") or {}).get("recent_works"):
+        # Having works is not being done. Works no serving path may cite are
+        # worth exactly what an empty list is worth, and skipping their records
+        # here is what locked 15,917 faculty out of the only pass that could
+        # ever stamp them: harvested before the stamp existed, then never
+        # selected again because they looked harvested.
+        if works_are_verified(o):
             continue
         out.append(o)
     return out
@@ -752,14 +760,34 @@ def _entry_works_and_status(entry) -> tuple[list[dict], str]:
     return entry or [], ATTRIBUTION_NAME_MATCH
 
 
+def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
+                   record: dict) -> bool:
+    """Whether writing ``clean`` over ``existing`` makes the record better.
+
+    Count alone answers this only WITHIN a trust level. Across levels it gives
+    the wrong answer, and did: 15,327 of the 15,917 records holding papers hold
+    exactly ``_MAX_WORKS`` of them, so a re-harvest returning the same three
+    papers now carrying an author id failed ``3 > 3`` and the stamp never
+    landed. Unverified works are unusable by every serving path, so one citable
+    paper beats three uncitable ones — and a verified record is never traded
+    back for an unverified one at any count.
+    """
+    was_verified = works_are_verified(record)
+    now_verified = status == ATTRIBUTION_VERIFIED
+    if now_verified != was_verified:
+        return now_verified
+    return len(clean) > len(existing)
+
+
 def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
     """Set ``metadata.recent_works`` on faculty keyed in mapping (composite
     ``url#name`` first; bare-URL fallback only for a URL owned by exactly one
-    faculty — see ``apply_openalex``), whenever
-    the mapping carries MORE papers than the record already has. Upgrade-when-
-    richer (not skip-if-present): re-applying the fuller ``WORKS_STORE`` promotes a
-    1-paper record to the full ``_MAX_WORKS`` set, while never downgrading a record
-    that already has more. Every write also stamps
+    faculty — see ``apply_openalex``), whenever the mapping entry is an upgrade
+    (``_is_an_upgrade``: better attribution first, more papers as the tiebreak
+    within a trust level). Upgrade-when-richer, not skip-if-present:
+    re-applying the fuller ``WORKS_STORE`` promotes a 1-paper record to the
+    full ``_MAX_WORKS`` set, while never downgrading a record that already has
+    more — or that already has better provenance. Every write also stamps
     ``metadata.publication_attribution_status`` for the works it stores (see
     ``_entry_works_and_status``); records it doesn't touch keep whatever they
     had. Idempotent; never touches any other field."""
@@ -787,7 +815,7 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             if len(clean) >= _MAX_WORKS:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
-        if clean and len(clean) > len(existing):
+        if clean and _is_an_upgrade(clean, status, existing, o):
             md = o.setdefault("metadata", {})
             md["recent_works"] = clean
             md["publication_attribution_status"] = status
