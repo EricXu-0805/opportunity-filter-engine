@@ -883,6 +883,31 @@ class TestSkillLevelThreading:
         assert "- Python (expert)" in captured["user"]
         assert "- Java (beginner)" in captured["user"]
 
+    def test_neither_prompt_asks_the_model_to_hedge_inside_a_bullet(self):
+        """Honesty about a level is a prohibition, not a phrase to insert.
+
+        Rule 5 used to say "frame it as exposure or foundational familiarity",
+        and the model did exactly that. A live /api/tailor draft came back as
+        "Built a Python-based reconstruction algorithm, DRAWING ON FOUNDATIONAL
+        PYTHON EXPOSURE, to process undersampled MRI k-space data" — from an
+        original bullet reading "Built a Python pipeline that reconstructed
+        undersampled MRI k-space data, cutting scan time 30%".
+
+        The bullet is the student's own statement, and building the thing is
+        stronger evidence of the skill than any self-reported tag. Inserting a
+        hedge makes their resume argue against them, which is its own
+        inaccuracy — the same one the level rules exist to prevent, pointing
+        the other way. The per-bullet renovation prompt has always been
+        prohibition-only; these two now match it.
+        """
+        for prompt in (tailor_module._SYSTEM_PROMPT_EN,
+                       tailor_module._SYSTEM_PROMPT_ZH):
+            assert "foundational familiarity" not in prompt
+            assert "有基础、接触过" not in prompt
+        # The prohibition itself stays, in both languages.
+        assert "never present a beginner skill" in tailor_module._SYSTEM_PROMPT_EN
+        assert "绝不能写成精通或熟练掌握" in tailor_module._SYSTEM_PROMPT_ZH
+
     def test_en_system_prompt_states_level_honesty_rule(
         self, leveled_profile, real_opp_id, monkeypatch,
     ):
