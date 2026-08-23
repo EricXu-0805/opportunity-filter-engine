@@ -197,8 +197,8 @@ let handedToPersist: ProfileViewSnapshot | null = null;
 
 const RESUME = (suggested_interests: string, extracted_skills: string[] = []) => ({
   extracted_skills,
+  skill_evidence: extracted_skills.map((skill) => ({ skill, line: `Skills: ${skill}` })),
   extracted_coursework: [] as string[],
-  experience_level: 'beginner',
   raw_text: 'resume body',
   success: true,
   message: '',

@@ -87,6 +87,33 @@ describe('SkillTags — selected tag labels (i18n)', () => {
   });
 });
 
+describe('SkillTags — an imported skill shows where it came from', () => {
+  it('puts the resume line on the level badge', () => {
+    // A bare presence match cannot be judged from the skill name alone. The
+    // line is what lets the student see "Relevant coursework: Introduction to
+    // Python" and decline to claim it.
+    setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    const badge = screen.getByRole('button', { name: 'Beginner' });
+    expect(badge.getAttribute('title'))
+      .toContain('Relevant coursework: Introduction to Python');
+  });
+
+  it('falls back to naming the source when no line was captured', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
+    const badge = screen.getByRole('button', { name: 'Beginner' });
+    expect(badge.getAttribute('title')).toMatch(/GitHub/i);
+  });
+
+  it('leaves a settled skill with the ordinary cycle hint', () => {
+    setup([{ name: 'Python', level: 'expert' }]);
+    const badge = screen.getByRole('button', { name: 'Expert' });
+    expect(badge.getAttribute('title')).toMatch(/change level/i);
+  });
+});
+
 describe('SkillTags — level cycling', () => {
   it('cycles experienced → expert', () => {
     const { onChange } = setup([{ name: 'Python', level: 'experienced' }]);

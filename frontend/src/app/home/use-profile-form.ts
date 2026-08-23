@@ -2213,9 +2213,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // business outranking their own statement about themselves. `source` is
     // what lets the form offer to raise it and what keeps the claim withheld
     // until they do.
-    const newSkills: SkillWithLevel[] = data.extracted_skills.map(
-      (name) => ({ name, level: 'beginner' as const, source: 'resume' as const }),
+    // Each skill carries the line it was found on, so the form can show the
+    // student WHERE it came from. That is the whole defence against a bare
+    // presence match: they can see "hoping to learn PyTorch" and decline it.
+    const evidenceFor = new Map(
+      (data.skill_evidence ?? []).map((e) => [e.skill, e.line]),
     );
+    const newSkills: SkillWithLevel[] = data.extracted_skills.map((name) => ({
+      name,
+      level: 'beginner' as const,
+      source: 'resume' as const,
+      ...(evidenceFor.get(name) ? { evidence: evidenceFor.get(name) } : {}),
+    }));
     // An import ADDS names; it says nothing about the ones already there.
     // Recorded as an operation so a conflict merges these into whatever the
     // other device holds instead of pushing this whole list over it.

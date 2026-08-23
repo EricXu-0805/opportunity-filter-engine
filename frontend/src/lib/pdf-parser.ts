@@ -43,14 +43,37 @@ const COURSEWORK_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-�
 const INTERESTS_LABEL = /\b(?:areas?\s+of\s+interest|research\s+interests?|research\s+areas?)\b\s*[:\-—]\s*/i;
 const INTERESTS_STOP = /\s+[A-Z][A-Za-z][A-Za-z &/]*\s*[:—]/;
 
-const EXP_KEYWORDS: Record<string, string[]> = {
-  strong: ['led', 'managed', 'architected', 'published', 'co-author', 'principal'],
-  some: ['assisted', 'contributed', 'developed', 'implemented', 'designed', 'built'],
-  beginner: ['coursework', 'class project', 'learning', 'familiar'],
-};
+/** The longest excerpt shown back to the student per skill. PDF extraction
+ *  routinely flattens a whole resume onto one line, so without a cap every
+ *  skill would carry a copy of the entire document. */
+const EVIDENCE_CAP = 200;
 
-function extractSkills(text: string): string[] {
-  return SKILL_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(({ skill }) => skill);
+/** The line a match sits on, trimmed and capped around the match itself so the
+ *  skill stays visible even when the "line" is the whole document. */
+function evidenceFor(text: string, index: number, length: number): string {
+  const start = text.lastIndexOf('\n', index) + 1;
+  const nl = text.indexOf('\n', index);
+  const end = nl === -1 ? text.length : nl;
+  const line = text.slice(start, end).trim();
+  if (line.length <= EVIDENCE_CAP) return line;
+  // Centre the window on the match rather than truncating from the left, or a
+  // skill near the end of a flattened resume would be cut out of its own
+  // evidence.
+  const rel = index - start;
+  const from = Math.max(0, Math.min(rel - (EVIDENCE_CAP - length) / 2,
+                                    line.length - EVIDENCE_CAP));
+  return line.slice(Math.floor(from), Math.floor(from) + EVIDENCE_CAP).trim();
+}
+
+function extractSkills(text: string): { skill: string; line: string }[] {
+  const hits: { skill: string; line: string }[] = [];
+  for (const { skill, pattern } of SKILL_PATTERNS) {
+    const m = pattern.exec(text);
+    if (m && m.index !== undefined) {
+      hits.push({ skill, line: evidenceFor(text, m.index, m[0].length) });
+    }
+  }
+  return hits;
 }
 
 function trimCourse(s: string): string {
@@ -97,16 +120,6 @@ function extractResearchInterests(text: string): string {
   return '';
 }
 
-function inferExperienceLevel(text: string): string {
-  const lower = text.toLowerCase();
-  for (const level of ['strong', 'some', 'beginner'] as const) {
-    const hits = EXP_KEYWORDS[level].filter(kw => lower.includes(kw)).length;
-    if (level === 'strong' && hits >= 2) return 'strong';
-    if (level === 'some' && hits >= 2) return 'some';
-  }
-  return 'beginner';
-}
-
 export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -132,26 +145,25 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   if (!rawText.trim()) {
     return {
       extracted_skills: [],
+      skill_evidence: [],
       extracted_coursework: [],
-      experience_level: 'beginner',
       raw_text: '',
       success: false,
       message: 'Could not extract text from PDF. The file may be image-based.',
     };
   }
 
-  const skills = extractSkills(rawText);
+  const hits = extractSkills(rawText);
   const coursework = extractCoursework(rawText);
-  const experience = inferExperienceLevel(rawText);
   const interests = extractResearchInterests(rawText);
 
   return {
-    extracted_skills: skills,
+    extracted_skills: hits.map((h) => h.skill),
+    skill_evidence: hits,
     extracted_coursework: coursework,
-    experience_level: experience,
     raw_text: rawText.slice(0, 8000),
     success: true,
-    message: `Extracted ${skills.length} skills, ${coursework.length} courses from resume.`,
+    message: `Extracted ${hits.length} skills, ${coursework.length} courses from resume.`,
     suggested_interests: interests,
   };
 }
