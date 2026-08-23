@@ -249,3 +249,126 @@ def test_uiuc_merge_reactivates_reappearing_faculty(tmp_path):
     assert saved["metadata"]["is_active"] is True
     assert saved["metadata"]["last_seen_at"] == fresh["metadata"]["last_seen_at"]
     assert saved["metadata"]["first_seen_at"] == "2026-01-01T00:00:00"
+
+
+# ---------------------------------------------------------------------------
+# Per-unit ledger: making the pass reach the 98.4% it currently cannot
+#
+# Of the 167 faculty sources wired into this pass, 52 represent exactly one
+# named unit and can retire a departed professor. The other 115 — 126,877 of
+# the 128,892 faculty records, 98.4% — span several departments, so the
+# source-level count cannot prove any individual department was scraped, and
+# the pass preserves everything. 9,692 records currently sit past the grace
+# window with no mechanism able to adjudicate them, and the corpus holds
+# professors their directory no longer lists.
+#
+# A per-department count closes that without weakening anything: the same
+# MIN_SCRAPE_RATIO and GRACE_DAYS gates, applied per unit instead of per
+# source. A department whose URL rotted scrapes 0 against N active records and
+# is skipped; a whole collector component collapsing takes all of its
+# departments to 0 and skips them all.
+#
+# Every gate below is the existing one. Nothing here lowers a bar.
+# ---------------------------------------------------------------------------
+
+
+def test_a_ledger_retires_only_within_a_department_that_scraped_completely():
+    # The exact scenario test_aggregate_source_cannot_hide_a_missing_department
+    # refuses to act on: 95 fresh CS, 5 stale Statistics. With a ledger the
+    # answer is no longer "preserve everything" — it is "CS is provably
+    # complete, Statistics provably is not".
+    opps = [
+        _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
+        for i in range(95)
+    ] + [
+        _fac(f"stat-{i}", last_seen=STALE, department="Statistics")
+        for i in range(5)
+    ]
+    counts = deactivate_stale_faculty(
+        opps,
+        {"uiuc_faculty": {"Computer Science": 95, "Statistics": 0}},
+        today=TODAY,
+    )
+    assert counts["newly_deactivated"] == 0
+    assert counts["skipped_partial_scrape"] == ["uiuc_faculty/Statistics"]
+    assert all(o["metadata"]["is_active"] is True for o in opps)
+
+
+def test_a_department_that_scraped_completely_retires_its_stale_records():
+    opps = [
+        _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
+        for i in range(19)
+    ] + [_fac("cs-gone", last_seen=STALE, department="Computer Science")]
+    counts = deactivate_stale_faculty(
+        opps, {"uiuc_faculty": {"Computer Science": 19}}, today=TODAY,
+    )
+    assert counts["newly_deactivated"] == 1
+    assert opps[-1]["metadata"]["is_active"] is False
+    assert opps[-1]["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+
+
+def test_a_department_missing_from_the_ledger_is_never_retired():
+    # A unit the ledger does not mention was not proven scraped at all. Absence
+    # of evidence stays absence of authority.
+    opps = [
+        _fac("cs", last_seen=FRESH, department="Computer Science"),
+        _fac("phys", last_seen=STALE, department="Physics"),
+    ]
+    counts = deactivate_stale_faculty(
+        opps, {"uiuc_faculty": {"Computer Science": 1}}, today=TODAY,
+    )
+    assert counts["newly_deactivated"] == 0
+    assert "uiuc_faculty/Physics" in counts["skipped_missing_unit_ledger"]
+    assert opps[1]["metadata"]["is_active"] is True
+
+
+def test_a_collapsed_component_takes_all_its_departments_down_with_it():
+    # Chromium unavailable -> the JS producer returns nothing -> every
+    # department it owns reports 0. None of them may retire anyone.
+    opps = [
+        _fac(f"js-{i}", last_seen=STALE, department=d)
+        for d in ("Gies", "Social Work") for i in range(10)
+    ]
+    counts = deactivate_stale_faculty(
+        opps, {"uiuc_faculty": {"Gies": 0, "Social Work": 0}}, today=TODAY,
+    )
+    assert counts["newly_deactivated"] == 0
+    assert sorted(counts["skipped_partial_scrape"]) == [
+        "uiuc_faculty/Gies", "uiuc_faculty/Social Work",
+    ]
+
+
+def test_a_held_source_reports_what_it_would_retire_and_retires_nothing():
+    # UIUC carries a release-contract safety hold (refresh_contract blocks a
+    # release that does not preserve it). Stage one produces the evidence for
+    # lifting it without touching a single record.
+    opps = [
+        _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
+        for i in range(19)
+    ] + [_fac("cs-gone", last_seen=STALE, department="Computer Science")]
+    counts = deactivate_stale_faculty(
+        opps,
+        {"uiuc_faculty": {"Computer Science": 19}},
+        today=TODAY,
+        held_sources={"uiuc_faculty"},
+    )
+    assert counts["newly_deactivated"] == 0
+    assert counts["would_deactivate"] == ["cs-gone"]
+    assert all(o["metadata"]["is_active"] is True for o in opps)
+
+
+def test_a_bare_count_still_means_exactly_what_it_meant_before():
+    # No ledger -> the single-named-unit rule, unchanged. This is the same
+    # assertion as test_aggregate_source_cannot_hide_a_missing_department,
+    # restated here so a regression in the new branch cannot pass by only
+    # keeping the ledger path honest.
+    opps = [
+        _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
+        for i in range(95)
+    ] + [
+        _fac(f"stat-{i}", last_seen=STALE, department="Statistics")
+        for i in range(5)
+    ]
+    counts = deactivate_stale_faculty(opps, {"uiuc_faculty": 95}, today=TODAY)
+    assert counts["newly_deactivated"] == 0
+    assert counts["skipped_missing_unit_ledger"] == ["uiuc_faculty"]

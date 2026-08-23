@@ -277,19 +277,49 @@ def _seen_date(opp: dict) -> date | None:
         return None
 
 
+def _unit_of(record: dict) -> str | None:
+    unit = record.get("department")
+    return unit.strip() if isinstance(unit, str) and unit.strip() else None
+
+
+def _retire(opp: dict, today: date) -> None:
+    meta = opp.setdefault("metadata", {})
+    meta["is_active"] = False
+    meta["deactivated_at"] = today.isoformat()
+    meta["deactivation_reason"] = "absent_from_directory_rescrape"
+
+
 def deactivate_stale_faculty(
     opps: list[dict],
-    fetched_counts: dict[str, int],
+    fetched_counts: dict[str, int | dict[str, int]],
     today: date | None = None,
+    held_sources: set[str] | frozenset[str] | None = None,
 ) -> dict:
     """Mark faculty absent from their directory re-scrape as inactive (in place).
 
     ``fetched_counts`` maps each faculty source that completed successfully in
-    the current refresh run to the number of records its scrape yielded;
-    sources that did not run (or errored) must be omitted and are never
-    touched. Returns counts for newly deactivated/kept/inactive records plus
-    lists of sources held for partial scrapes or missing per-unit lineage.
+    the current refresh run to either
+
+      * an int — the whole scrape's record count, which authorizes retirement
+        only for a source proven to be one named academic unit; or
+      * ``{unit: count}`` — a per-unit ledger, which authorizes retirement
+        unit by unit under the SAME gates. The department a record carries is
+        finer-grained lineage than the collector component that produced it
+        (UIUC's four producers own disjoint department sets), so a
+        per-department count proves per-department completeness without any
+        component-level provenance on the stored row. A department whose URL
+        rotted scrapes 0 against N active records and is skipped; a collapsed
+        component takes all of its departments to 0 and skips them all.
+
+    Sources that did not run (or errored) must be omitted and are never
+    touched. ``held_sources`` are computed and reported but never written —
+    the UIUC release-contract hold, whose evidence for being lifted is exactly
+    the ``would_deactivate`` list this produces.
+
+    Returns counts for newly deactivated/kept/inactive records plus lists of
+    sources (or ``source/unit``) held for partial scrapes or missing lineage.
     """
+    held_sources = held_sources or frozenset()
     today = today or date.today()
     cutoff = today - timedelta(days=GRACE_DAYS)
     counts: dict = {
@@ -298,6 +328,8 @@ def deactivate_stale_faculty(
         "already_inactive": 0,
         "skipped_partial_scrape": [],
         "skipped_missing_unit_ledger": [],
+        # Ids a held source would have retired. Evidence, not an action.
+        "would_deactivate": [],
     }
 
     by_source: dict[str, list[dict]] = {}
@@ -314,6 +346,46 @@ def deactivate_stale_faculty(
             if (o.get("metadata") or {}).get("is_active") is not False
         ]
         counts["already_inactive"] += len(records) - len(active)
+        held = source in held_sources
+
+        ledger = fetched_counts[source]
+        if isinstance(ledger, dict):
+            by_unit: dict[str | None, list[dict]] = {}
+            for record in active:
+                by_unit.setdefault(_unit_of(record), []).append(record)
+            for unit, unit_records in sorted(
+                by_unit.items(), key=lambda kv: (kv[0] is None, kv[0] or "")
+            ):
+                label = f"{source}/{unit}" if unit else f"{source}/(unnamed)"
+                if unit is None or unit not in ledger:
+                    # Not mentioned by the ledger: never proven scraped at all.
+                    logger.warning(
+                        "deactivate_stale_faculty: %s has no per-unit scrape "
+                        "count — preserving records", label,
+                    )
+                    counts["skipped_missing_unit_ledger"].append(label)
+                    continue
+                if ledger[unit] < MIN_SCRAPE_RATIO * len(unit_records):
+                    logger.warning(
+                        "deactivate_stale_faculty: %s scrape yielded %d records "
+                        "vs %d currently active (< %.0f%%) — likely partial "
+                        "scrape, skipping",
+                        label, ledger[unit], len(unit_records),
+                        MIN_SCRAPE_RATIO * 100,
+                    )
+                    counts["skipped_partial_scrape"].append(label)
+                    continue
+                for opp in unit_records:
+                    seen = _seen_date(opp)
+                    if seen is None or seen >= cutoff:
+                        counts["kept_fresh"] += 1
+                        continue
+                    if held:
+                        counts["would_deactivate"].append(opp.get("id"))
+                        continue
+                    _retire(opp, today)
+                    counts["newly_deactivated"] += 1
+            continue
 
         # A school-wide collector can average 95% while one department is
         # completely absent (for example, 95 fresh people in department A and
@@ -357,10 +429,10 @@ def deactivate_stale_faculty(
             # Missing/unparseable last_seen_at: staleness can't be established,
             # so keep the record rather than guess.
             if seen is not None and seen < cutoff:
-                meta = opp.setdefault("metadata", {})
-                meta["is_active"] = False
-                meta["deactivated_at"] = today.isoformat()
-                meta["deactivation_reason"] = "absent_from_directory_rescrape"
+                if held:
+                    counts["would_deactivate"].append(opp.get("id"))
+                    continue
+                _retire(opp, today)
                 counts["newly_deactivated"] += 1
             else:
                 counts["kept_fresh"] += 1
