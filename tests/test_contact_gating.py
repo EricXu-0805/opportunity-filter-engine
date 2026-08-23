@@ -582,6 +582,45 @@ class TestTheCorpusStaysReachable:
 
     MIN_REACHABLE_SHARE = 0.80
 
+    def test_no_record_holds_an_address_and_a_tombstone(self):
+        """The exact invariant, because the ratio below is too coarse to see a
+        partial regression.
+
+        A real rejection goes through ``clear_contact_claim``, which nulls the
+        address in the same breath as it stamps the tombstone. So an address
+        sitting next to ``identity_bound: False`` was never rejected — it was
+        stamped by a merge path that reviewed nothing.
+
+        Keyed on the address rather than on "no other evidence":
+        ``clear_contact_evidence`` strips every evidence field before stamping,
+        so a genuine tombstone and a false one look identical in what remains.
+        The address is the only thing that separates them.
+
+        This is what the 80% floor missed. A refresh that had started 24 minutes
+        before the fix landed committed 18,297 stale tombstones onto main; the
+        corpus read 82.9% reachable, cleared the floor, and shipped. Shard by
+        shard, each weekly refresh would have walked it back down.
+
+        If this ever fires on a tombstone that SHOULD keep its address, the
+        contract needs a positive marker for "reviewed, rejected, address
+        retained" — no path produces that today, and inventing one silently by
+        loosening this test would restore exactly the hole it closes.
+        """
+        from backend.data_loader import load_opportunities
+
+        offenders = [
+            o["id"]
+            for o in load_opportunities()
+            if (o.get("metadata") or {}).get("identity_bound") is False
+            and (o.get("contact_email") or "").strip()
+        ]
+        assert not offenders, (
+            f"{len(offenders)} records carry a tombstone AND an address, e.g. "
+            f"{offenders[:5]} — a merge path stamped a review that never "
+            "happened, and each one is a professor the product can no longer "
+            "reach."
+        )
+
     def test_most_harvested_addresses_are_still_send_targets(self):
         from backend.data_loader import load_opportunities
 
