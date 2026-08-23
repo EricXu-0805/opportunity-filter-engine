@@ -350,7 +350,11 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
     opportunity = _opportunity()
     captured: dict = {}
 
-    def fake_generate(profile: dict, safe_opp: dict) -> str:
+    # Mirrors the real signature rather than accepting **kwargs: a double
+    # that swallows anything stops noticing when the contract it stands in
+    # for changes.
+    def fake_generate(profile: dict, safe_opp: dict,
+                      resume_bullets: list[str] | None = None) -> str:
         captured["profile"] = profile
         captured["opportunity"] = safe_opp
         return (
