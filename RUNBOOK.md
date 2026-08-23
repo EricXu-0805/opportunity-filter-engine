@@ -55,9 +55,10 @@ referencing `auth.uid()::text`.
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-**Add** (for Web Push — optional, skip if not using push):
-
-- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — public key (see step 4)
+**Add**: nothing. Web Push needs no frontend variable — the browser fetches
+the public key from the backend at `GET /api/push/vapid-public-key`, so the
+key a subscription is minted with is always the one whose private half signs
+the pushes. A build-time copy could only drift.
 
 ## 4. Web Push — generate VAPID keypair
 
@@ -70,15 +71,17 @@ The script prints three env vars. Paste them:
 
 | Env var | Where |
 |---|---|
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Vercel (frontend) |
 | `VAPID_PRIVATE_KEY` | Backend host (Render/Fly/your server) |
 | `VAPID_PUBLIC_KEY` | Backend host |
 | `VAPID_SUBJECT` | Backend host, e.g. `mailto:you@example.com` |
 
-The private key must stay secret — store in a password manager.
+The private key must stay secret — store in a password manager. The script
+also prints a `NEXT_PUBLIC_VAPID_PUBLIC_KEY=` line; the backend accepts it as
+a fallback name for `VAPID_PUBLIC_KEY`, and nothing else reads it.
 
-Until you set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, the "Enable notifications"
-button on `/dashboard` stays hidden (graceful degradation).
+Until the backend has a public key, `GET /api/push/vapid-public-key` answers
+503 and the "Enable notifications" button on `/dashboard` stays hidden
+(graceful degradation).
 
 ## 5. Push cron — wire up scheduler
 
@@ -173,8 +176,9 @@ If anything goes wrong:
   `supabase/migrations/004_rls_device_scoping.sql` and restoring old
   `frontend/src/lib/supabase.ts` from git history
   (`git show HEAD~1:frontend/src/lib/supabase.ts`).
-- **Push** — remove `NEXT_PUBLIC_VAPID_PUBLIC_KEY` from Vercel. The
-  subscribe UI disappears, no new subscriptions happen, existing
+- **Push** — remove `VAPID_PUBLIC_KEY` (and the `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+  fallback, if set) from the backend host. `/api/push/vapid-public-key` then
+  503s, the subscribe UI disappears, no new subscriptions happen, existing
   subscriptions sit inert until the cron runs.
 
 ## Live environment (as of Apr 2026)
@@ -188,9 +192,8 @@ If anything goes wrong:
 
 ### Environment variables deployed
 
-**Vercel (2):**
+**Vercel (1):**
 - `BACKEND_URL` → Render URL
-- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 
 **Render (6):**
 - `CRON_SECRET`

@@ -963,6 +963,24 @@ export async function getTailorStatus(): Promise<TailorStatus> {
 }
 
 /**
+ * The VAPID public key the backend's private key will sign pushes with.
+ *
+ * Only the server knows which key that is, so it is the only correct source:
+ * the browser accepts any well-formed key when minting a subscription, and a
+ * mismatch surfaces nowhere until delivery silently stops. `null` when the
+ * server has no key configured (503) or is unreachable — the caller then
+ * offers no subscribe control rather than one that cannot work.
+ */
+export async function getVapidPublicKey(): Promise<string | null> {
+  try {
+    const { key } = await request<{ key: string }>('/push/vapid-public-key');
+    return key || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resume renovation, stage 0: structure the raw résumé text into sections +
  * bullets (verbatim extraction; the backend degrades to a heuristic split on
  * any LLM issue and never 5xxes for it).
