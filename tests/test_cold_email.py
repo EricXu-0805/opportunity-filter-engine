@@ -1796,6 +1796,94 @@ class TestOnlyConfirmedSkillsBackAnExperienceClaim:
             self._assert_no_experience_claim(v["text"])
 
 
+class TestTheStudentsOwnWorkReachesTheEmail:
+    """The deterministic template had the student's resume and ignored it.
+
+    `resume_bullets` was accepted by the route, stored in `_common_parts`, and
+    read by NOTHING — grep returned the parameter and the assignment and
+    nothing else. `generate_cold_email` did not even accept the argument, so
+    the parameter defaulted to None at every call site anyway. Two failures
+    stacked on the same path.
+
+    That path is not an edge case. It is what every user without an LLM gets,
+    and what the fabrication gate degrades to when the AI output fails. Those
+    users were sending a stranger's-eye summary of their skill list —
+    "Python for data processing, analysis, and scripting" out of a hardcoded
+    table — with none of their actual work in it.
+
+    A bullet is quotable where a skill token is not: it is the student's own
+    sentence about themselves, which is the evidence class the claim rules
+    admit. A skill token is a regex's guess ABOUT that sentence.
+    """
+
+    _OPP = {
+        "opportunity_type": "research", "pi_name": "Jane Doe",
+        "lab_or_program": "Prof. Jane Doe's Research Group",
+        "department": "Computer Science", "keywords": ["computer vision", "segmentation"],
+        "description_raw": "Computer vision research on image segmentation.",
+        "eligibility": {"skills_required": ["Python"]},
+    }
+
+    _BULLETS = [
+        "Tutored introductory calculus for two semesters",
+        "Built an image segmentation pipeline in PyTorch for 3D MRI volumes",
+        "Wrote a shell script to rename files",
+    ]
+
+    def _profile(self) -> dict:
+        return {
+            "name": "Eric", "year": "sophomore", "major": "Computer Science",
+            "school": "UIUC",
+            "hard_skills": [{"name": "Python", "level": "experienced",
+                             "confirmed": True}],
+            "research_interests_text": "computer vision",
+        }
+
+    def test_a_resume_bullet_reaches_the_generated_email(self):
+        email = generate_cold_email(self._profile(), self._OPP,
+                                    resume_bullets=self._BULLETS)
+        assert "image segmentation pipeline" in email
+
+    def test_the_bullet_is_chosen_for_overlap_with_the_target(self):
+        """Not the first one. A cold email has one paragraph to earn a reply,
+        and calculus tutoring does not earn it from a segmentation lab."""
+        email = generate_cold_email(self._profile(), self._OPP,
+                                    resume_bullets=self._BULLETS)
+        assert "Tutored introductory calculus" not in email
+        assert "rename files" not in email
+
+    def test_nothing_is_invented_when_there_are_no_bullets(self):
+        before = generate_cold_email(self._profile(), self._OPP)
+        after = generate_cold_email(self._profile(), self._OPP, resume_bullets=[])
+        assert before == after
+
+    def test_a_bullet_is_quoted_not_paraphrased(self):
+        """The template must not restate the student's work in its own words —
+        that is how a deterministic path invents detail it cannot support."""
+        email = generate_cold_email(
+            self._profile(), self._OPP,
+            resume_bullets=["Built an image segmentation pipeline in PyTorch for 3D MRI volumes"])
+        assert "Built an image segmentation pipeline in PyTorch for 3D MRI volumes" in email
+
+    def test_an_overlong_bullet_is_capped(self):
+        long = "Built an image segmentation system " + "and more work " * 40
+        email = generate_cold_email(self._profile(), self._OPP,
+                                    resume_bullets=[long])
+        assert len(email) < 4000
+        assert "Built an image segmentation system" in email
+
+    def test_every_variant_carries_the_work_too(self):
+        """generate_variants builds from the same parts dict; a fix that only
+        reaches the default template leaves the other three saying nothing."""
+        from src.recommender.cold_email import generate_variants
+
+        variants = generate_variants(self._profile(), self._OPP,
+                                     resume_bullets=self._BULLETS)
+        assert variants
+        for v in variants:
+            assert "image segmentation pipeline" in v["text"], v["id"]
+
+
 class TestBeginnerSafeTemplateEG3:
     """Evidence grounding, gap 3: the deterministic template — the email every
     user without an LLM gets, and the fallback the fabrication gate degrades
