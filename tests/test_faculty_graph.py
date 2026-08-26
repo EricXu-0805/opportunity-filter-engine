@@ -774,8 +774,9 @@ class TestScrapeLayer:
         """Every UNC page carries a site-wide "Research" nav item. A bare
         `^research\\b` label matches it on every profile and tags the whole
         school with the menu block that follows."""
-        from src.collectors.schools.unc_faculty import _RESEARCH_LABEL
         import re
+
+        from src.collectors.schools.unc_faculty import _RESEARCH_LABEL
         label = re.compile(_RESEARCH_LABEL, re.I)
         assert not label.match("Research")
         assert label.match("Research Interests")
