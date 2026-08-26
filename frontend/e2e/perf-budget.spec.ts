@@ -68,6 +68,19 @@ test.describe('Performance budget', () => {
     expect(v.domInteractive, `DOM interactive was ${v.domInteractive}ms`).toBeLessThan(5000);
   });
 
+  // The home page's CLS is CPU-bound: on a fast machine the streamed shell is
+  // replaced before it can paint, and the test above measures ~0.003 whether
+  // or not the shift exists. Under throttling the shell paints, so this is the
+  // assertion that actually holds the fix — a footer painting inside the
+  // viewport and then dropping 1,600px cost 0.13 here.
+  test('home page stays stable when the CPU is slow', async ({ page }) => {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+    const v = await collectWebVitals(page, '/');
+    console.log('Home page vitals (6x CPU throttle):', v);
+    expect(v.cls, `CLS was ${v.cls}`).toBeLessThan(0.1);
+  });
+
   test('about page is lean', async ({ page }) => {
     const v = await collectWebVitals(page, '/about');
     console.log('About page vitals:', v);

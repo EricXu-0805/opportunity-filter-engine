@@ -19,8 +19,13 @@ import { SubmitRow } from './home/SubmitRow';
 import { useProfileForm } from './home/use-profile-form';
 
 export default function HomePage() {
+  // The fallback reserves a viewport of height on purpose. With a null
+  // fallback the streamed shell is short enough that the sticky footer paints
+  // INSIDE the viewport, and lands 1,600px lower once the form arrives — a
+  // 0.13 CLS on any slow device. Invisible here: the page is three viewports
+  // tall by the time it settles.
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="min-h-screen" aria-hidden="true" />}>
       <HomePageInner />
     </Suspense>
   );
