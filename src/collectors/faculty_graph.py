@@ -257,7 +257,9 @@ def _hygiene_keyword(k: str) -> str | None:
     Returns the cleaned keyword or ``None`` to drop. Reuses uiuc's
     ``_is_junk_keyword`` as the shared junk gate so curated/taxonomy keywords are
     held to the same bar the derived fallback already enforces."""
-    c = (k or "").strip().strip("\"'“”‘’").strip(" .,;:").strip()
+    # A research block written as a bullet list flattens to "- Synthesis,
+    # processing…", so the marker is edge punctuation like any other.
+    c = (k or "").strip().strip("\"'“”‘’").strip(" .,;:-–—•*").strip()
     if not c:
         return None
     # A bare single nav word ("Research", "News") is zero-signal furniture and,
@@ -351,7 +353,9 @@ def _clean_keywords(person: dict) -> list[str]:
     # Trim stray edge punctuation a comma/semicolon split leaves ("...in STEM." ->
     # "STEM"), then drop a part with unbalanced parentheses — a "(species
     # interactions" tail left dangling when a parenthetical itself got comma-split.
-    parts = [p.strip(" .,:;") for p in parts]
+    # Bullet markers count: a research block written as a list flattens to text
+    # with them still attached ("- Synthesis, processing…").
+    parts = [p.strip(" .,:;-–—•*") for p in parts]
     parts = [p for p in parts if p.count("(") == p.count(")")]
     # A research-area keyword is a short noun phrase; a part that runs long or to
     # many words is a prose bio fragment (some directories put free text in the
@@ -384,7 +388,8 @@ _RESEARCH_LABEL_RE = re.compile(
 # clause, not a standalone topic — the DQ gate rejects these, so we drop them at
 # the source. (Mirrors test_faculty_keywords_have_no_fragment_leadins.)
 _FRAGMENT_LEADIN_RE = re.compile(
-    r"^(?:such as|particularly|especially|including|namely|e\.g\.?)\b", re.I)
+    r"^(?:such as|particularly|especially|including|namely|in particular"
+    r"|in general|e\.g\.?)\b", re.I)
 
 
 _PRONOUN_RE = re.compile(
