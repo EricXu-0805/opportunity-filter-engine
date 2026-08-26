@@ -1315,6 +1315,42 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
             )
 
 
+def _observed_at(record: dict) -> datetime | None:
+    raw = (record.get("metadata") or {}).get("last_seen_at")
+    if not isinstance(raw, str):
+        return None
+    try:
+        seen = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    return seen if seen.tzinfo is None else seen.astimezone(UTC).replace(tzinfo=None)
+
+
+def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
+    """Move the newest proof of life onto the row that survives dedup.
+
+    Dedup keeps the research-richer row and discards the rest, so a professor
+    whose fresh directory row loses on richness would keep the kept row's older
+    ``last_seen_at`` — and deactivate_stale_faculty reads exactly that field to
+    decide who has vanished from their directory. Being seen this run is an
+    observation about the person, not a property of the better-written row.
+    """
+    newer = _observed_at(dropped)
+    if newer is None:
+        return
+    current = _observed_at(survivor)
+    if current is not None and current >= newer:
+        return
+    meta = survivor.setdefault("metadata", {})
+    meta["last_seen_at"] = dropped["metadata"]["last_seen_at"]
+    if (dropped.get("metadata") or {}).get("is_active") is not False:
+        # Observed after the retirement that removed it: absence is disproven,
+        # so the retirement stamp goes with the timestamp it contradicted.
+        meta["is_active"] = True
+        meta.pop("deactivated_at", None)
+        meta.pop("deactivation_reason", None)
+
+
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
     """Collapse same-professor duplicate faculty rows (same profile URL + last
     name), keeping the richer record at its original position. Non-faculty rows
@@ -1327,6 +1363,10 @@ def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
             continue
         if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
             best_idx[key] = i
+    for i, opp in enumerate(opps):
+        key = _faculty_name_key(opp)
+        if key is not None and best_idx[key] != i:
+            _carry_newest_liveness(opps[best_idx[key]], opp)
     return [
         opp
         for i, opp in enumerate(opps)
@@ -1810,6 +1850,10 @@ def _dedup_faculty_by_email(opps: list[dict]) -> list[dict]:
             continue
         if key not in best_idx or _faculty_is_richer(opp, opps[best_idx[key]]):
             best_idx[key] = i
+    for i, opp in enumerate(opps):
+        key = _faculty_email_key(opp)
+        if key is not None and best_idx[key] != i:
+            _carry_newest_liveness(opps[best_idx[key]], opp)
     return [
         opp
         for i, opp in enumerate(opps)

@@ -1480,3 +1480,119 @@ def test_a_role_card_without_an_email_falls_through(monkeypatch):
 def test_an_already_known_email_is_not_overwritten(monkeypatch):
     person = {"pi_name": "X", "url": "http://x", "email": "already@illinois.edu"}
     assert _enrich_with_page(monkeypatch, _ILLINOIS_PROFILE, person)["email"] == "already@illinois.edu"
+
+
+def _seen(pi_name, url, last_seen, keywords=(), metadata_extra=None):
+    meta = {"last_seen_at": last_seen, "is_active": True}
+    meta.update(metadata_extra or {})
+    return {
+        "source": "uiuc_faculty",
+        "source_type": "faculty_research",
+        "id": f"faculty-test-{pi_name.lower().replace(' ', '-')}",
+        "pi_name": pi_name,
+        "source_url": url,
+        "url": url,
+        "department": "Department of Physics",
+        "keywords": list(keywords),
+        "metadata": meta,
+    }
+
+
+_PROFILE = "https://physics.illinois.edu/people/directory/profile/jcovey"
+
+
+def test_dedup_moves_the_newest_sighting_onto_the_kept_row():
+    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+                   keywords=["cold atom physics", "quantum computing"])
+    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    out = _dedup_faculty_records([stored, fresh])
+    assert [o["pi_name"] for o in out] == ["Jacob P. Covey"]
+    assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
+
+
+def test_dedup_never_backdates_the_kept_row():
+    stored = _seen("Jacob P. Covey", _PROFILE, "2026-08-24T06:20:11",
+                   keywords=["cold atom physics", "quantum computing"])
+    stale = _seen("Jacob Covey", _PROFILE, "2026-07-27T07:34:46")
+    out = _dedup_faculty_records([stored, stale])
+    assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
+
+
+def test_dedup_lifts_a_retirement_the_new_sighting_disproves():
+    retired = _seen(
+        "Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+        keywords=["cold atom physics", "quantum computing"],
+        metadata_extra={
+            "is_active": False,
+            "deactivated_at": "2026-08-10",
+            "deactivation_reason": "absent_from_directory_rescrape",
+        },
+    )
+    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    out = _dedup_faculty_records([retired, fresh])
+    meta = out[0]["metadata"]
+    assert meta["is_active"] is True
+    assert "deactivated_at" not in meta
+    assert "deactivation_reason" not in meta
+
+
+def test_dedup_keeps_a_retirement_the_dropped_row_agrees_with():
+    retired = _seen(
+        "Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+        keywords=["cold atom physics", "quantum computing"],
+        metadata_extra={
+            "is_active": False,
+            "deactivated_at": "2026-08-10",
+            "deactivation_reason": "absent_from_directory_rescrape",
+        },
+    )
+    also_gone = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11",
+                      metadata_extra={"is_active": False})
+    out = _dedup_faculty_records([retired, also_gone])
+    assert out[0]["metadata"]["is_active"] is False
+    assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
+
+
+def test_dedup_tolerates_a_row_with_no_usable_sighting():
+    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+                   keywords=["cold atom physics", "quantum computing"])
+    broken = _seen("Jacob Covey", _PROFILE, "not-a-timestamp")
+    out = _dedup_faculty_records([stored, broken])
+    assert out[0]["metadata"]["last_seen_at"] == "2026-07-27T07:34:46"
+
+
+def test_email_dedup_moves_the_newest_sighting_too():
+    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+                   keywords=["cold atom physics", "quantum computing"])
+    fresh = _seen("Jacob Covey", "https://mrl.illinois.edu/people/covey",
+                  "2026-08-24T06:20:11")
+    stored["contact_email"] = fresh["contact_email"] = "jcovey@illinois.edu"
+    out = _dedup_faculty_by_email([stored, fresh])
+    assert [o["pi_name"] for o in out] == ["Jacob P. Covey"]
+    assert out[0]["metadata"]["last_seen_at"] == "2026-08-24T06:20:11"
+
+
+def test_a_professor_seen_this_run_is_never_proposed_for_retirement():
+    """The whole point of the carry: dedup feeds deactivate_stale_faculty."""
+    from datetime import date
+
+    from src.normalizers.deactivate_stale_faculty import deactivate_stale_faculty
+
+    stored = _seen("Jacob P. Covey", _PROFILE, "2026-07-27T07:34:46",
+                   keywords=["cold atom physics", "quantum computing"])
+    fresh = _seen("Jacob Covey", _PROFILE, "2026-08-24T06:20:11")
+    peers = [
+        _seen(f"Peer {i} Physicist",
+              f"https://physics.illinois.edu/people/directory/profile/p{i}",
+              "2026-08-24T06:20:11")
+        for i in range(19)
+    ]
+    corpus = _dedup_faculty_records([stored, fresh] + peers)
+    result = deactivate_stale_faculty(
+        corpus,
+        {"uiuc_faculty": {"Department of Physics": len(corpus)}},
+        today=date(2026, 8, 24),
+        held_sources={"uiuc_faculty"},
+    )
+    assert result["would_deactivate"] == []
+    assert result["newly_deactivated"] == 0
