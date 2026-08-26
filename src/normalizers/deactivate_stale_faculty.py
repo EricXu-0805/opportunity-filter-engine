@@ -16,9 +16,11 @@ gap conservatively, with three safety gates:
   * only records unseen for GRACE_DAYS (≈2 missed weekly deep runs) are
     deactivated, so a single flaky scrape cannot retire anyone.
 
-Reactivation needs no code here: both faculty merges replace the stored
+Reactivation needs no code here: the faculty merges replace the stored
 metadata with the freshly normalized record (is_active=True, fresh
-last_seen_at), so a professor who reappears in a later scrape goes live again.
+last_seen_at), and uiuc_faculty's row dedup — which drops that fresh row
+whenever a stored row is research-richer — carries the newest sighting onto
+the survivor. Either way a professor who reappears goes live again.
 """
 
 from __future__ import annotations
