@@ -757,6 +757,30 @@ class TestScrapeLayer:
         for k in kws:
             assert not _is_junk_keyword(k), k
 
+    def test_unc_enriches_only_the_subdomains_that_publish_research(self):
+        """UNC's school-wide profile follow stays deferred (ITS bans request
+        bursts). The two professional schools on their own subdomains are the
+        exception — and Hussman is deliberately NOT one of them: 0/10 sampled
+        profiles there publish research under any label, so the fetches would
+        buy nothing but risk the burst ban."""
+        from src.collectors.schools.unc_faculty import SCHOOL
+        enriched = {
+            d["short"] for d in SCHOOL["departments"]
+            if (d.get("scrape") or {}).get("profile_enrich")
+        }
+        assert enriched == {"EDUC", "KFBS"}, enriched
+
+    def test_unc_research_label_is_not_the_bare_nav_word(self):
+        """Every UNC page carries a site-wide "Research" nav item. A bare
+        `^research\\b` label matches it on every profile and tags the whole
+        school with the menu block that follows."""
+        from src.collectors.schools.unc_faculty import _RESEARCH_LABEL
+        import re
+        label = re.compile(_RESEARCH_LABEL, re.I)
+        assert not label.match("Research")
+        assert label.match("Research Interests")
+        assert label.match("Areas of Expertise")
+
     def test_clean_keywords_trims_edge_punct_and_drops_unbalanced_parens(self):
         """Comma-splitting a parenthetical research blob leaves a dangling
         "(species interactions" and a trailing period ("Genomics.") — trim the
