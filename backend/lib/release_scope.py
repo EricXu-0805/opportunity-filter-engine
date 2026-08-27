@@ -39,7 +39,15 @@ RELEASE_SCOPE = MappingProxyType(
         # 404 while disabled; each can reopen only in its own acceptance PR.
         "compare": False,
         "fellowships": False,
-        "resume_renovate": False,
+        # Accepted. Renovation is a named step of the product flow, and its
+        # incremental risk over the already-public /api/tailor is bounded by
+        # construction: the macro plan is ID-only, so the model may reorder and
+        # label the student's own bullets but cannot introduce text there, and
+        # the rewrite stage is the same _ai_tailor_bullets path /api/tailor
+        # already serves publicly — validated against a corpus built from the
+        # student's own bullets and profile alone, with a rejected rewrite
+        # leaving the bullet at the student's base_text rather than dropping it.
+        "resume_renovate": True,
         "roadmap": False,
         "ask_ai": False,
         "professor_signals": False,
