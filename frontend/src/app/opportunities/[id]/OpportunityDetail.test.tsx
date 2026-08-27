@@ -108,10 +108,10 @@ vi.mock('@/components/TailorModal', () => ({
 }));
 
 // A mutable copy of the release switches, defaulting to their real values.
-// askAi and resumeRenovate are both false in production, so `flag && actionable
-// && <X/>` is false whatever `actionable` says — every "the chatbot is absent"
-// assertion below would hold with the posture gate deleted. One describe turns
-// them on so the gate is the only thing left deciding.
+// askAi is false in production, so `flag && actionable && <X/>` is false
+// whatever `actionable` says — every "the chatbot is absent" assertion below
+// would hold with the posture gate deleted. One describe turns it on so the
+// gate is the only thing left deciding.
 const releaseFlags = vi.hoisted(() => ({}) as Record<string, unknown>);
 vi.mock('@/lib/release-scope', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/release-scope')>();
@@ -193,7 +193,7 @@ const opp = {
 } as never;
 
 describe('OpportunityDetail — MVP capability surface', () => {
-  it('keeps Tailor while not mounting Renovate, Ask AI, or Professor Signals', async () => {
+  it('keeps Tailor and Renovate while not mounting Ask AI or Professor Signals', async () => {
     window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
       institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
       research_interests: 'ml', skills: [],
@@ -203,9 +203,9 @@ describe('OpportunityDetail — MVP capability surface', () => {
     render(<OpportunityDetail opp={opp} />);
 
     expect(screen.getByTestId('header-tailor-handler')).toHaveTextContent('true');
-    expect(screen.getByTestId('header-renovate-handler')).toHaveTextContent('false');
+    expect(screen.getByTestId('header-renovate-handler')).toHaveTextContent('true');
     expect(await screen.findByTestId('mock-tailor-modal')).toBeInTheDocument();
-    expect(screen.queryByTestId('renovation-modal')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('renovation-modal')).toBeInTheDocument();
     expect(screen.queryByTestId('opportunity-chatbot')).not.toBeInTheDocument();
     expect(screen.queryByTestId('chat-drawer')).not.toBeInTheDocument();
     expect(screen.queryByTestId('professor-follow')).not.toBeInTheDocument();

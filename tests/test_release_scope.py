@@ -58,12 +58,12 @@ def scope_closed(monkeypatch):
 
 ACCEPTED_FEATURES = frozenset({
     "cross_school_matching",
+    "resume_renovate",
 })
 UNACCEPTED_FEATURES = frozenset({
     "match_ai_refine",
     "compare",
     "fellowships",
-    "resume_renovate",
     "roadmap",
     "ask_ai",
     "professor_signals",
@@ -1170,3 +1170,41 @@ def test_hidden_mtp_migration_closes_browser_data_api_and_preserves_server():
         "TO service_role"
     ) in normalized
     assert "DROP TABLE" not in normalized.upper()
+
+
+def test_accepted_renovation_routes_are_reachable_under_the_real_table():
+    """The renovation surface a student actually reaches, with nothing patched.
+
+    tests/conftest.py forces every feature ON for the implementation suites, so
+    test_resume_renovation.py would keep passing with the switch closed at the
+    door. This module opts out of that fixture, which makes it the only place
+    the flip is observable — and it fails from either half of a half-finished
+    one: the switch without the accepted-feature list above, or the list
+    without the switch.
+    """
+    from backend import data_loader
+    from src.evidence import is_actionable_target
+
+    by_id = data_loader.load_opportunities_by_id()
+    opportunity_id = next(
+        opp_id
+        for opp_id, opportunity in by_id.items()
+        if opportunity_visible_in_release(opportunity)
+        and is_actionable_target(opportunity)
+    )
+    profile = {"name": "Test Student", "school": "UIUC", "major": "Computer Science"}
+
+    for path, payload in (
+        ("/api/tailor/structure", {"resume_text": ""}),
+        (
+            "/api/tailor/renovate",
+            {"profile": profile, "opportunity_id": opportunity_id, "sections": []},
+        ),
+        (
+            "/api/tailor/bullet",
+            {"profile": profile, "opportunity_id": opportunity_id, "current_text": ""},
+        ),
+    ):
+        response = client.post(path, json=payload)
+        assert response.json() != {"detail": "Not found"}, path
+        assert response.status_code == 200, (path, response.text)

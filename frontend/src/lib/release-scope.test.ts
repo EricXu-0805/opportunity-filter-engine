@@ -21,7 +21,7 @@ describe('MVP public release scope', () => {
       matchAiRefine: false,
       crossSchoolMatching: true,
       compare: false,
-      resumeRenovate: false,
+      resumeRenovate: true,
       fellowships: false,
       roadmap: false,
       askAi: false,
