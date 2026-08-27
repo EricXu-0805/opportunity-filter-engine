@@ -781,6 +781,43 @@ class TestScrapeLayer:
         assert not label.match("Research")
         assert label.match("Research Interests")
         assert label.match("Areas of Expertise")
+    def test_clean_keywords_drops_in_particular_fragment(self):
+        """Comma-splitting a "Research Interests" sentence strands the qualifier
+        clause "in particular" as its own term — the same family the leadin gate
+        already drops (regression: NJIT Data Science "Spatial statistics, in
+        particular, the analysis of spatial point patterns")."""
+        person = {"research_areas":
+                  "Spatial statistics, in particular, the analysis of spatial "
+                  "point patterns; bootstrap"}
+        kws = fg._clean_keywords(person)
+        assert "Spatial statistics" in kws
+        assert "bootstrap" in kws
+        assert not any(k.lower().startswith("in particular") for k in kws)
+
+    def test_clean_keywords_strips_bullet_marker(self):
+        """A research block written as a bullet list flattens to text with the
+        markers still attached ("- Synthesis, processing…") — the marker is edge
+        punctuation (regression: NJIT Chemical Engineering)."""
+        person = {"research_areas":
+                  "- Synthesis, processing and characterization of "
+                  "cell-instructive biomaterials - Hydrogels"}
+        kws = fg._clean_keywords(person)
+        assert "Synthesis" in kws
+        assert not any(k.startswith(("-", "\u2013", "\u2014", "*", "\u2022")) for k in kws)
+
+    def test_njit_reads_research_from_the_profile_it_already_fetches(self):
+        """NJIT's listing carries no research; its profile does, under a
+        "Research Interests" label. The email pass already fetches every
+        profile, so the label pass must ride that same fetch — and must name
+        the label in full: a bare "Research" matches the site-wide nav item on
+        every profile page."""
+        from src.collectors.schools.njit_faculty import SCHOOL
+        enrich = {
+            e["scrape"]["profile_enrich"]
+            .get("research_label_re")
+            for e in SCHOOL["departments"]
+        }
+        assert enrich == {r"^research\s+interests?\b"}, enrich
 
     def test_clean_keywords_trims_edge_punct_and_drops_unbalanced_parens(self):
         """Comma-splitting a parenthetical research blob leaves a dangling
