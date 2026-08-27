@@ -26,6 +26,7 @@ import type {
   OpsPatch,
   OpsRollup,
   OrdersInbox,
+  ConciergeQueue,
   SavedSearchHealth,
   TFunc,
   TicketDetail,
@@ -80,6 +81,7 @@ export interface UseAdminDataResult {
   collectorHistory: CollectorHistoryEntry[];
   health: HealthResponse | null;
   savedSearchHealth: SavedSearchHealth | null;
+  conciergeQueue: ConciergeQueue | null;
   feedbackInbox: FeedbackInbox | null;
   ordersInbox: OrdersInbox | null;
   loading: boolean;
@@ -111,6 +113,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [collectorHistory, setCollectorHistory] = useState<CollectorHistoryEntry[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [savedSearchHealth, setSavedSearchHealth] = useState<SavedSearchHealth | null>(null);
+  const [conciergeQueue, setConciergeQueue] = useState<ConciergeQueue | null>(null);
   const [feedbackInbox, setFeedbackInbox] = useState<FeedbackInbox | null>(null);
   const [ordersInbox, setOrdersInbox] = useState<OrdersInbox | null>(null);
   const [loading, setLoading] = useState(false);
@@ -199,7 +202,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes] =
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge] =
         await Promise.all([
           adminFetch<AdminResponse>(`/admin/data-quality`, tok),
           adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
@@ -215,8 +218,9 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
             ? adminFetch<OrdersInbox>(`/admin/orders?limit=50`, tok)
             : Promise.resolve<Awaited<ReturnType<typeof adminFetch<OrdersInbox>>>>({ status: 200 }),
           adminFetch<OpsIncidentsResponse>(opsQuery(opsFilters), tok),
+          adminFetch<ConciergeQueue>(`/admin/concierge-requests?limit=100`, tok),
         ]);
-      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes];
+      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge];
       if (all.some((r) => r.status === 401)) {
         surfaceAuthFailure();
         return;
@@ -239,6 +243,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setCollectorStatus(collector.data ?? null);
       setCollectorHistory(collectorHist.data?.entries ?? []);
       setSavedSearchHealth(ssHealth.data ?? null);
+      setConciergeQueue(concierge.data ?? null);
       setTicketLoadError(sectionError(fbInbox));
       if (!fbInbox.error) setFeedbackInbox(fbInbox.data ?? null);
       setOrdersInbox(ordInbox.data ?? null);
@@ -298,6 +303,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setCollectorHistory([]);
     setHealth(null);
     setSavedSearchHealth(null);
+    setConciergeQueue(null);
     setFeedbackInbox(null);
     setOrdersInbox(null);
     setOpsIncidents([]);
@@ -552,6 +558,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     collectorHistory,
     health,
     savedSearchHealth,
+    conciergeQueue,
     feedbackInbox,
     ordersInbox,
     loading,

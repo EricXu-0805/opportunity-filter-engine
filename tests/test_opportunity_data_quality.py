@@ -968,6 +968,22 @@ class TestSchoolAudience:
             f"title to assert against."
         )
 
+    def test_e2e_second_detail_fixture_present(self):
+        """concierge-request.spec.ts needs TWO distinct detail pages: the whole
+        point of the request being opportunity-bound is that asking about one
+        professor does not answer for another, and a single page cannot show
+        that. Pinned here for the same reason as the fixture above — a data PR
+        that drops it would otherwise surface as an unexplained E2E failure."""
+        e2e_fixture_id = "uiuc-career-center-ugr"
+        by_id = {o.get("id"): o for o in _load_data()}
+        assert by_id.get(e2e_fixture_id) is not None, (
+            f"E2E second detail fixture {e2e_fixture_id!r} is gone from the "
+            f"corpus — concierge-request.spec.ts navigates to "
+            f"/opportunities/{e2e_fixture_id} to prove one request does not "
+            f"answer for a different target. Restore the seed or update the "
+            f"second id in frontend/e2e/concierge-request.spec.ts."
+        )
+
     def test_no_works_list_stamped_across_many_faculty(self):
         """The url-keyed works store once stamped ONE person's papers onto all
         430 JHU faculty sharing a directory URL (2026-07 audit). Co-authors can

@@ -1633,6 +1633,67 @@ export async function joinWaitlist(
   return true;
 }
 
+/**
+ * "Apply to THIS one for me" — the same concierge intent as joinWaitlist, with
+ * the target attached.
+ *
+ * The work a student is asking for is per-professor, so a request that does not
+ * name the professor is not actionable by the person who has to do it. The
+ * unique index from migration 033 makes a repeat ask idempotent rather than a
+ * second job in the queue, so a duplicate is reported as success: the student's
+ * request IS on file, which is the only thing the button claims.
+ */
+export async function requestConciergeApply(
+  opportunityId: string,
+  email: string | null,
+  props: Record<string, unknown> = {},
+): Promise<boolean> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return false;
+
+  const { error } = await supabase.from('waitlist').insert({
+    device_id: deviceId,
+    email: email || null,
+    intent: 'apply_for_me',
+    opportunity_id: opportunityId,
+    props,
+  });
+  // 23505 = unique_violation: this student already asked for this target.
+  if (error && error.code !== '23505') {
+    console.warn('[ofe] concierge request insert failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * The targets this student has already asked us to handle.
+ *
+ * Returns null — not an empty set — when the answer is unknown, so a caller can
+ * tell "you have asked for nothing" apart from "we could not find out". Drawing
+ * a fresh button in the second case invites a student to ask for something they
+ * already asked for.
+ */
+export async function loadConciergeRequests(): Promise<Set<string> | null> {
+  const deviceId = await ensureAnonSession();
+  if (!deviceId) return null;
+
+  const { data, error } = await supabase
+    .from('waitlist')
+    .select('opportunity_id')
+    .eq('device_id', deviceId)
+    .not('opportunity_id', 'is', null);
+  if (error) {
+    console.warn('[ofe] concierge request load failed:', error.message);
+    return null;
+  }
+  return new Set(
+    (data ?? [])
+      .map((row) => (row as { opportunity_id: string | null }).opportunity_id)
+      .filter((id): id is string => !!id),
+  );
+}
+
 export type FeedbackCategory = 'bug' | 'idea' | 'data_issue' | 'account' | 'other';
 
 export interface FeedbackSubmission {
