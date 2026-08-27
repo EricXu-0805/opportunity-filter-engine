@@ -3157,6 +3157,15 @@ export const en = {
     contactSignInPrompt: 'A verified email address is on file for this recipient. Sign in to reveal it.',
     contactSignInCta: 'Sign in to reveal',
     contactVerifyHint: 'Collected from an official public source — double-check it there before sending.',
+    concierge: {
+      title: 'Want us to handle this one?',
+      body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
+      cta: 'Ask us to handle it',
+      emailPlaceholder: 'Where should we reach you?',
+      done: 'Noted — we will email you about this one.',
+      failed: "That didn't save. Please try again.",
+      note: 'Free while we are testing this. Nothing is charged, and no payment details are collected.',
+    },
     fields: {
       deadline: 'Deadline',
       deadlineEstimate: '(estimated)',
@@ -4252,6 +4261,13 @@ export const en = {
       confirm: 'Confirm paid',
       confirming: 'Confirming…',
       paidAt: 'paid {when}',
+    },
+    concierge: {
+      title: 'Concierge requests',
+      unconfigured: 'Supabase not configured — requests appear once SUPABASE_URL is set on the backend.',
+      empty: 'Nobody has asked yet.',
+      openTarget: 'Open target',
+      noEmail: 'No email left — reachable only through their session.',
     },
     savedSearch: {
       title: 'Saved-search cron & email digest',
@@ -7656,6 +7672,15 @@ export const zh = {
     contactSignInPrompt: '这位收件人有一个经核实的邮箱地址。登录后即可查看。',
     contactSignInCta: '登录查看',
     contactVerifyHint: '采集自官方公开来源 —— 发送前请到来源页面再核对一次。',
+    concierge: {
+      title: '这个要不要我们替你办？',
+      body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',
+      cta: '让我们替你办',
+      emailPlaceholder: '怎么联系你？',
+      done: '已记好 —— 这个我们会邮件找你。',
+      failed: '没存上，请再试一次。',
+      note: '试运行期间免费。不收费，也不收集任何支付信息。',
+    },
     fields: {
       deadline: '截止日期',
       deadlineEstimate: '（估算）',
@@ -8717,6 +8742,13 @@ export const zh = {
       confirm: '确认已付款',
       confirming: '确认中…',
       paidAt: '已付款 {when}',
+    },
+    concierge: {
+      title: '代办请求',
+      unconfigured: '未配置 Supabase——backend 设好 SUPABASE_URL 后这里会显示请求。',
+      empty: '还没有人提。',
+      openTarget: '打开目标页',
+      noEmail: '没留邮箱——只能在他下次登录时找到人。',
     },
     savedSearch: {
       title: '保存搜索定时任务与邮件摘要',

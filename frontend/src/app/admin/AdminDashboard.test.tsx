@@ -68,6 +68,7 @@ function renderDashboard(
       collectorHistory={[]}
       health={null}
       savedSearchHealth={null}
+      conciergeQueue={null}
       feedbackInbox={null}
       ordersInbox={null}
       tickets={{} as never}

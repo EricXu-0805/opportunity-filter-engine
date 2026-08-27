@@ -27,6 +27,7 @@ function AdminInner() {
     collectorHistory,
     health,
     savedSearchHealth,
+    conciergeQueue,
     feedbackInbox,
     ordersInbox,
     tickets,
@@ -70,6 +71,7 @@ function AdminInner() {
       collectorHistory={collectorHistory}
       health={health}
       savedSearchHealth={savedSearchHealth}
+      conciergeQueue={conciergeQueue}
       feedbackInbox={feedbackInbox}
       ordersInbox={ordersInbox}
       tickets={tickets}
