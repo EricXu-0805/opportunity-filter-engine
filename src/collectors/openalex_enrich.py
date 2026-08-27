@@ -22,6 +22,14 @@ protects it on refresh -> zero weekly cost.
     python -m src.collectors.openalex_enrich harvest uw,ucla,... --out oa.json
     python -m src.collectors.openalex_enrich apply oa.json
 
+``harvest`` buys one name search per professor (10 credits each, ~85 people a
+day on the free tier). ``roster`` buys the school's whole author list by the
+page instead (1 credit per 100 authors) and matches locally, which is the same
+answer roughly 200x cheaper — a school a minute rather than a school a month:
+
+    python -m src.collectors.openalex_enrich roster jhu,cincinnati --out oa.json
+    python -m src.collectors.openalex_enrich apply oa.json
+
 A second pass fetches each matched author's most recent publications (title +
 year only) into ``metadata.recent_works`` so cold emails can cite a real,
 current paper. Same institution/surname/field gating; run-once, carried
@@ -38,6 +46,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 
 import requests
 
@@ -371,10 +380,22 @@ _warned_429 = False
 _RETRY_429_WAIT = 15.0
 
 
-def _get(params: dict, url: str = _API) -> dict:
-    # OpenAlex metered its API in 2026 (every call costs credits, $0 free/day);
-    # the prepaid key authorizes the request via the api_key query param. Absent
-    # a key the call returns a 429 budget error (no "results") -> stays broad.
+def _get(params: dict, url: str = _API, timeout: int = 20) -> dict:
+    # OpenAlex metered its API in 2026, but the free tier is not zero: measured
+    # 2026-08-27 with NO key, the response carries x-ratelimit-limit: 1000 and a
+    # remaining counter that resets daily. A prepaid key (api_key query param)
+    # only raises that ceiling.
+    #
+    # What the credits buy is NOT uniform, and the difference decides which
+    # harvest is affordable:
+    #
+    #   /authors with `search=` (or a `display_name.search` filter)  10 credits
+    #   /authors with pure filters + cursor paging (100 per page)     1 credit
+    #   /works with a filter                                          1 credit
+    #
+    # So the per-person search path costs ~12 credits (~85 people/day), while
+    # paging a whole institution's author roster costs 1 credit per 100 authors.
+    # See ``harvest_openalex_roster``.
     global _warned_429
     key = os.environ.get("OPENALEX_API_KEY")
     if key:
@@ -382,7 +403,7 @@ def _get(params: dict, url: str = _API) -> dict:
     seen_429 = False
     for attempt in range(4):
         try:
-            resp = requests.get(url, params=params, headers=_HEADERS, timeout=20)
+            resp = requests.get(url, params=params, headers=_HEADERS, timeout=timeout)
             if resp.status_code == 429:
                 if not seen_429:
                     # Could be a transient per-second burst limit — pause once
@@ -503,20 +524,34 @@ def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> di
     return best
 
 
+def usable_topics(names, max_topics: int = 5) -> list[str]:
+    """Clean OpenAlex topic labels into at most ``max_topics`` distinct keywords.
+
+    Distinct after cleaning, not before: `_clean_topic` flattens delimiters and
+    drops a trailing generic noun, so "Advanced Battery Technologies" and
+    "Advanced battery technologies, materials" collapse to the same string — and
+    a record carrying it twice fails the corpus duplicate-keyword gate and
+    doubles the word up in the faculty title. Scanning past a duplicate rather
+    than slicing first also means a professor still gets ``max_topics`` areas.
+    """
+    out: list[str] = []
+    for raw in names:
+        c = _clean_topic(raw or "")
+        if c and c not in out and len(c.split()) <= 7:
+            out.append(c)
+        if len(out) >= max_topics:
+            break
+    return out
+
+
 def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) -> list[str]:
     """Top research topics for the institution-affiliated author named ``name``,
     or [] when no confident match exists (gating in ``_match_author``)."""
     best = _match_author(name, inst_id, dept)
     if best is None:
         return []
-    out: list[str] = []
-    for t in best.get("topics") or []:
-        c = _clean_topic(t.get("display_name", ""))
-        if c and c not in out and len(c.split()) <= 7:
-            out.append(c)
-        if len(out) >= max_topics:
-            break
-    return out
+    return usable_topics(
+        (t.get("display_name", "") for t in best.get("topics") or []), max_topics)
 
 
 def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
@@ -647,6 +682,221 @@ def harvest_openalex(
             print(f"  ...{i + 1}/{len(targets)}, {len(mapping)} matched", flush=True)
     _flush_checkpoint(checkpoint_path, mapping, misses)
     return mapping
+
+
+_ROSTER_PAGE = 100
+# Fields the roster needs. `affiliations` is deliberately absent: it is 96% of
+# the payload (5.3MB vs 201KB per 100 authors, measured), and the filter below
+# already pins the institution. What it cost us is the _institution_share
+# tiebreak, which the ambiguity rule replaces — see _match_in_roster.
+_ROSTER_SELECT = "id,display_name,works_count,topics"
+
+
+def _roster_author(a: dict) -> dict:
+    """One roster row, trimmed to what matching needs."""
+    topics = a.get("topics") or []
+    return {
+        "id": a.get("id"),
+        "name": a.get("display_name") or "",
+        "works": a.get("works_count") or 0,
+        "topics": [t.get("display_name") for t in topics[:8] if t.get("display_name")],
+        "fields": [
+            (t.get("field") or {}).get("display_name", "") for t in topics[:6]
+        ],
+    }
+
+
+def fetch_roster(inst_id: str, *, min_works: int = _MIN_WORKS,
+                 progress: bool = False, cursor: str = "*",
+                 authors: list[dict] | None = None) -> dict:
+    """Every OpenAlex author whose LAST KNOWN institution is ``inst_id``.
+
+    Pure filters + cursor paging, so this costs 1 credit per 100 authors rather
+    than the 10 a name search costs — 28,388 JHU authors for 284 credits, versus
+    ~54,000 credits to search that school's 4,563 faculty one at a time.
+
+    Returns ``{"authors", "cursor", "expected", "complete"}``. ``complete`` is
+    the only thing a caller may trust: a page can fail to arrive (a timeout, an
+    exhausted daily budget) and ``_get`` reports both as an empty dict, which is
+    byte-identical to a roster that has genuinely ended. Reading that as "done"
+    is how the first run of this cached 300 of Cincinnati's 6,925 authors and
+    then matched 4% of the school against them. So completeness is decided by
+    the count OpenAlex itself reports, not by the loop finishing.
+
+    Pass ``cursor``/``authors`` back to resume an incomplete roster tomorrow.
+    """
+    out = list(authors or [])
+    expected: int | None = None
+    pages = 0
+    while cursor:
+        j = _get({
+            "filter": f"last_known_institutions.id:{inst_id},works_count:>{min_works - 1}",
+            "select": _ROSTER_SELECT,
+            "per_page": _ROSTER_PAGE,
+            "cursor": cursor,
+        }, timeout=90)
+        results = j.get("results")
+        if results is None:
+            # The page never arrived. Leave the cursor set so the caller can
+            # tell this apart from a finished walk and resume from here.
+            break
+        if expected is None:
+            expected = (j.get("meta") or {}).get("count")
+        if not results:
+            cursor = None
+            break
+        out.extend(_roster_author(a) for a in results)
+        pages += 1
+        if progress and pages % 25 == 0:
+            print(f"  roster: {len(out)}/{expected} authors, {pages} pages", flush=True)
+        cursor = (j.get("meta") or {}).get("next_cursor")
+    complete = cursor is None and (
+        expected is None or len(out) >= expected * 0.98
+    )
+    return {"authors": out, "cursor": cursor, "expected": expected,
+            "complete": complete}
+
+
+def _match_name_key(name: str) -> tuple[str, str] | None:
+    """(surname, first initial), accent-folded. None when the name is unusable."""
+    folded = unicodedata.normalize("NFKD", name or "")
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    toks = [t for t in re.sub(r"[^a-z ]", " ", folded.lower()).split() if t]
+    if len(toks) < 2:
+        return None
+    return (toks[-1], toks[0][0])
+
+
+def _given_name(name: str) -> str:
+    k = _match_name_key(name)
+    if k is None:
+        return ""
+    folded = unicodedata.normalize("NFKD", name)
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return re.sub(r"[^a-z ]", " ", folded.lower()).split()[0]
+
+
+def index_roster(roster: list[dict]) -> dict[tuple[str, str], list[dict]]:
+    idx: dict[tuple[str, str], list[dict]] = {}
+    for a in roster:
+        k = _match_name_key(a.get("name", ""))
+        if k is not None:
+            idx.setdefault(k, []).append(a)
+    return idx
+
+
+def _match_in_roster(name: str, dept: str,
+                     idx: dict[tuple[str, str], list[dict]]) -> tuple[dict | None, str]:
+    """The roster author for this faculty member, or (None, reason).
+
+    Gates in order, all of them the search path's own:
+      * surname + first initial, accent-folded;
+      * works_count >= _MIN_WORKS;
+      * a majority of the top topic fields compatible with the department.
+
+    Then the rule that replaces ``_institution_share``: if more than one
+    candidate is still standing, REFUSE. The old tiebreak was "most works
+    wins", and that is exactly what handed a Grinnell digital-humanities
+    scholar a Brazilian chemist's research areas. Without affiliation years
+    there is no honest way to rank two same-named colleagues, and a wrong
+    person's research is worse than none.
+    """
+    k = _match_name_key(name)
+    if k is None:
+        return None, "unusable_name"
+    cands = [a for a in idx.get(k, []) if a.get("works", 0) >= _MIN_WORKS]
+    if not cands:
+        return None, "absent"
+    allowed = _dept_fields(dept)
+    if allowed is not None:
+        kept = []
+        for a in cands:
+            fields = [f for f in (a.get("fields") or []) if f]
+            n = len(fields)
+            comp = sum(1 for f in fields if f in allowed)
+            ok = (comp * 2 >= n) if n >= 3 else (n > 0 and comp == n)
+            if ok:
+                kept.append(a)
+        cands = kept
+        if not cands:
+            return None, "field_reject"
+    exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
+    if exact:
+        cands = exact
+    if len(cands) > 1:
+        return None, "ambiguous"
+    return cands[0], "ok"
+
+
+def harvest_openalex_roster(
+    opps: list[dict],
+    *,
+    schools: list[str] | None = None,
+    progress: bool = False,
+    roster_dir: str | None = None,
+    max_topics: int = 5,
+) -> tuple[dict[str, list[str]], dict[str, int]]:
+    """``harvest_openalex``'s result, bought by the page instead of by the person.
+
+    Returns ``({url#name: topics}, reason_counts)``. The mapping is the same
+    shape ``apply_openalex`` already consumes.
+
+    ``roster_dir`` caches each school's roster as JSON so a re-run — after the
+    daily budget resets, or to re-match with a changed gate — costs nothing.
+    """
+    from .uiuc_faculty import _is_junk_keyword
+
+    targets = _targets(opps, schools)
+    by_school: dict[str, list[dict]] = {}
+    for o in targets:
+        by_school.setdefault(o["school"], []).append(o)
+
+    mapping: dict[str, list[str]] = {}
+    reasons: dict[str, int] = {}
+    for slug, people in sorted(by_school.items()):
+        cache = os.path.join(roster_dir, f"{slug}.json") if roster_dir else None
+        state = json.load(open(cache)) if cache and os.path.exists(cache) else None
+        if state is None or not state.get("complete"):
+            if progress:
+                have = len(state["authors"]) if state else 0
+                print(f"{slug}: fetching roster for {len(people)} fieldless faculty"
+                      + (f" (resuming from {have})" if have else ""), flush=True)
+            state = fetch_roster(
+                SCHOOL_INST[slug], progress=progress,
+                cursor=(state or {}).get("cursor") or "*",
+                authors=(state or {}).get("authors"),
+            )
+            if cache:
+                os.makedirs(roster_dir, exist_ok=True)
+                json.dump(state, open(cache, "w"))
+        elif progress:
+            print(f"{slug}: {len(state['authors'])} cached roster authors", flush=True)
+        if not state["complete"]:
+            # Matching a school against a roster that is missing authors invents
+            # misses, and those misses are indistinguishable from real ones in
+            # the output. Skip the school; tomorrow's run resumes its cursor.
+            reasons["roster_incomplete"] = reasons.get("roster_incomplete", 0) + 1
+            if progress:
+                print(f"{slug}: roster incomplete "
+                      f"({len(state['authors'])}/{state.get('expected')}) — skipped",
+                      flush=True)
+            continue
+        idx = index_roster(state["authors"])
+        for o in people:
+            author, why = _match_in_roster(o["pi_name"], o.get("department", ""), idx)
+            reasons[why] = reasons.get(why, 0) + 1
+            if author is None:
+                continue
+            topics = [t for t in usable_topics(author.get("topics") or [], max_topics)
+                      if not _is_junk_keyword(t)]
+            if topics:
+                mapping[_person_key(o)] = topics
+            else:
+                reasons["no_usable_topics"] = reasons.get("no_usable_topics", 0) + 1
+        if progress:
+            print(f"{slug}: {len(people)} targets -> {len(mapping)} matched so far",
+                  flush=True)
+    return mapping, reasons
 
 
 def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
@@ -840,10 +1090,29 @@ def _load_dotenv() -> None:
 
 def _cli(argv: list[str]) -> int:
     _load_dotenv()
-    if not argv or argv[0] not in ("harvest", "apply", "works", "apply-works"):
+    if not argv or argv[0] not in ("harvest", "roster", "apply", "works", "apply-works"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
+    if mode == "roster":
+        schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
+        out = "openalex.json"
+        roster_dir = "data/openalex_rosters"
+        for i, a in enumerate(rest):
+            if a == "--out":
+                out = rest[i + 1]
+            elif a == "--roster-dir":
+                roster_dir = rest[i + 1]
+        opps = json.load(open(PROCESSED_FILE))
+        mapping, reasons = harvest_openalex_roster(
+            opps, schools=schools, progress=True, roster_dir=roster_dir,
+        )
+        json.dump(mapping, open(out, "w"), indent=2)
+        total = sum(reasons.values())
+        print(f"matched {len(mapping)} faculty -> {out}")
+        for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            print(f"  {why:18} {n:6} ({n / max(1, total) * 100:5.1f}%)")
+        return 0
     if mode in ("harvest", "works"):
         schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
         out = "openalex.json"

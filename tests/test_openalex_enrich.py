@@ -5,6 +5,8 @@ gating — institution-id match, surname match, min-works, the majority
 field-consistency gate (wrong-person rejection), topic cleaning, and updates-only
 apply.
 """
+import json
+
 from src.collectors import openalex_enrich as oa
 from src.publication_trust import verified_recent_works, works_are_verified
 
@@ -682,3 +684,246 @@ def test_a_reharvest_actually_reaches_a_stamped_state(monkeypatch):
     assert oa.apply_works([opp], mapping) == 1
     assert works_are_verified(opp) is True
     assert len(verified_recent_works(opp)) == 3
+
+
+# --- roster harvest (institution-paged, 1 credit per 100 authors) ------------
+
+def _roster_row(name, works=40, topics=(), fields=()):
+    return {"id": f"A{abs(hash(name)) % 10**8}", "name": name, "works": works,
+            "topics": list(topics), "fields": list(fields)}
+
+
+def test_roster_refuses_two_same_named_colleagues():
+    """The Grinnell bug's real fix. Without affiliation years there is no honest
+    way to rank two same-named authors at one school, and 'most works wins' is
+    what handed a digital-humanities scholar a chemist's research areas."""
+    idx = oa.index_roster([
+        _roster_row("Elizabeth Rodrigues", works=12, topics=["digital humanities"]),
+        _roster_row("Elizabeth Rodrigues", works=300, topics=["polymer chemistry"]),
+    ])
+    author, why = oa._match_in_roster("Elizabeth Rodrigues", "Digital Studies", idx)
+    assert author is None
+    assert why == "ambiguous"
+
+
+def test_roster_full_given_name_breaks_an_initial_collision():
+    """Two authors share the surname and first initial; only one shares the
+    whole given name, so the ambiguity is real only for the other."""
+    idx = oa.index_roster([
+        _roster_row("Robert Chen", topics=["robotics"]),
+        _roster_row("Rachel Chen", topics=["immunology"]),
+    ])
+    author, why = oa._match_in_roster("Robert Chen", "", idx)
+    assert why == "ok"
+    assert author["name"] == "Robert Chen"
+
+
+def test_roster_applies_the_department_field_gate():
+    idx = oa.index_roster([
+        _roster_row("Jane Seismic", topics=["seismic waves"],
+                fields=["Earth and Planetary Sciences"] * 4),
+    ])
+    _, why = oa._match_in_roster("Jane Seismic", "Electrical Engineering", idx)
+    assert why == "field_reject"
+
+
+def test_roster_holds_the_min_works_floor():
+    idx = oa.index_roster([_roster_row("Ann Novice", works=oa._MIN_WORKS - 1,
+                                   topics=["genomics"])])
+    _, why = oa._match_in_roster("Ann Novice", "", idx)
+    assert why == "absent"
+
+
+def test_roster_matching_folds_accents():
+    idx = oa.index_roster([_roster_row("Jose Angel Nunez", topics=["optics"])])
+    author, why = oa._match_in_roster("José Ángel Núñez", "", idx)
+    assert why == "ok" and author is not None
+
+
+def test_fetch_roster_pages_with_filters_and_never_a_search(monkeypatch):
+    """The whole economics of this path: a pure filter page is 1 credit, a name
+    search is 10. A 'search' key creeping into these params costs 10x silently."""
+    seen = []
+
+    def fake_get(params, url=oa._API, timeout=20):
+        seen.append(params)
+        if len(seen) == 1:
+            return {"results": [{"display_name": "A", "works_count": 9, "topics": []}],
+                    "meta": {"next_cursor": "c2"}}
+        return {"results": [{"display_name": "B", "works_count": 9, "topics": []}],
+                "meta": {"next_cursor": None}}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    out = oa.fetch_roster("I1")
+    assert [a["name"] for a in out["authors"]] == ["A", "B"]
+    assert out["complete"] is True
+    assert all("search" not in p for p in seen)
+    assert all("search" not in str(p.get("filter", "")) for p in seen)
+    assert [p.get("cursor") for p in seen] == ["*", "c2"]
+
+
+def test_fetch_roster_keeps_what_it_read_when_the_budget_dies(monkeypatch):
+    """_get returns {} on a confirmed 429. The page already paid for must not be
+    thrown away — tomorrow's run resumes from the cache, not from zero."""
+    calls = []
+
+    def fake_get(params, url=oa._API, timeout=20):
+        calls.append(params)
+        if len(calls) == 1:
+            return {"results": [{"display_name": "A", "works_count": 9, "topics": []}],
+                    "meta": {"next_cursor": "c2"}}
+        return {}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    out = oa.fetch_roster("I1")
+    assert [a["name"] for a in out["authors"]] == ["A"]
+    assert out["complete"] is False, "a page that never arrived is not a finished roster"
+    assert out["cursor"] == "c2", "the cursor must survive so tomorrow resumes here"
+
+
+def test_roster_harvest_keys_what_apply_openalex_reads(monkeypatch, tmp_path):
+    """Wiring: the roster harvest must emit the SAME url#name keys the existing
+    apply step consumes, or it produces a mapping nothing can spend."""
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"jhu": "I145311948"})
+    monkeypatch.setattr(oa, "fetch_roster", lambda inst, **kw: {
+        "authors": [_roster_row("Erik Andersen", topics=["Genetics of aging"],
+                                fields=["Biochemistry, Genetics and Molecular Biology"] * 4)],
+        "cursor": None, "expected": 1, "complete": True,
+    })
+    opps = [{
+        "source_type": "faculty_research", "school": "jhu",
+        "pi_name": "Erik Andersen", "department": "Department of Biology",
+        "url": "https://krieger.jhu.edu/bio/andersen", "keywords": [],
+    }]
+    mapping, reasons = oa.harvest_openalex_roster(
+        opps, schools=["jhu"], roster_dir=str(tmp_path))
+    assert reasons.get("ok") == 1
+    assert oa.apply_openalex(opps, mapping) == 1
+    assert opps[0]["keywords"] == ["genetics of aging"]
+
+
+def test_roster_harvest_reuses_the_cached_roster(monkeypatch, tmp_path):
+    """A re-run after the daily budget resets must not re-buy the roster."""
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"jhu": "I1"})
+    fetches = []
+
+    def counted(inst, **kw):
+        fetches.append(inst)
+        return {"authors": [_roster_row(
+            "Erik Andersen", topics=["Genetics of aging"],
+            fields=["Biochemistry, Genetics and Molecular Biology"] * 4)],
+            "cursor": None, "expected": 1, "complete": True}
+
+    monkeypatch.setattr(oa, "fetch_roster", counted)
+    opps = [{"source_type": "faculty_research", "school": "jhu",
+             "pi_name": "Erik Andersen", "department": "Department of Biology",
+             "url": "https://x/andersen", "keywords": []}]
+    oa.harvest_openalex_roster(opps, schools=["jhu"], roster_dir=str(tmp_path))
+    oa.harvest_openalex_roster(opps, schools=["jhu"], roster_dir=str(tmp_path))
+    assert len(fetches) == 1
+
+
+def test_fetch_roster_stops_on_an_empty_page_even_with_a_cursor(monkeypatch):
+    """An empty page ends the roster. Treating only a missing `results` key as
+    the end (rather than an empty one) keeps paging a school that has no more
+    authors — spending a credit per page against a cursor the API will keep
+    handing back."""
+    pages = [
+        {"results": [{"display_name": "A", "works_count": 9, "topics": []}],
+         "meta": {"next_cursor": "c2"}},
+        {"results": [], "meta": {"next_cursor": "c3"}},
+        {"results": [{"display_name": "B", "works_count": 9, "topics": []}],
+         "meta": {"next_cursor": None}},
+    ]
+    calls = []
+
+    def fake_get(params, url=oa._API, timeout=20):
+        calls.append(params)
+        return pages[len(calls) - 1]
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    out = oa.fetch_roster("I1")
+    assert [a["name"] for a in out["authors"]] == ["A"]
+    assert len(calls) == 2
+
+
+def test_a_truncated_roster_is_never_reported_complete(monkeypatch):
+    """The defect this rule exists for: a timed-out page and a finished roster
+    both reach the loop as an empty dict. Reading that as "done" cached 300 of
+    Cincinnati's 6,925 authors and then scored the school 4% matched — misses
+    that look exactly like real ones."""
+    calls = []
+
+    def fake_get(params, url=oa._API, timeout=20):
+        calls.append(params)
+        if len(calls) == 1:
+            return {"results": [{"display_name": "A", "works_count": 9, "topics": []}],
+                    "meta": {"next_cursor": "c2", "count": 6925}}
+        return {}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    out = oa.fetch_roster("I1")
+    assert out["expected"] == 6925
+    assert len(out["authors"]) == 1
+    assert out["complete"] is False
+
+
+def test_an_incomplete_roster_never_matches_a_school(monkeypatch, tmp_path):
+    """A partial roster must not be spent: every faculty it cannot see becomes a
+    silent miss. Skip the school and keep the cursor for tomorrow."""
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"cincinnati": "I1"})
+    monkeypatch.setattr(oa, "fetch_roster", lambda inst, **kw: {
+        "authors": [_roster_row("Jane Doe", topics=["x"])],
+        "cursor": "c9", "expected": 6925, "complete": False,
+    })
+    opps = [{"source_type": "faculty_research", "school": "cincinnati",
+             "pi_name": "Jane Doe", "department": "", "url": "https://x/1",
+             "keywords": []}]
+    mapping, reasons = oa.harvest_openalex_roster(
+        opps, schools=["cincinnati"], roster_dir=str(tmp_path))
+    assert mapping == {}
+    assert reasons.get("roster_incomplete") == 1
+    assert json.load(open(tmp_path / "cincinnati.json"))["cursor"] == "c9"
+
+
+def test_an_incomplete_roster_resumes_from_its_cursor(monkeypatch, tmp_path):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"cincinnati": "I1"})
+    (tmp_path / "cincinnati.json").write_text(json.dumps(
+        {"authors": [], "cursor": "c9", "expected": 10, "complete": False}))
+    seen = {}
+
+    def resume(inst, **kw):
+        seen.update(kw)
+        return {"authors": [], "cursor": None, "expected": 0, "complete": True}
+
+    monkeypatch.setattr(oa, "fetch_roster", resume)
+    opps = [{"source_type": "faculty_research", "school": "cincinnati",
+             "pi_name": "Jane Doe", "department": "", "url": "https://x/1",
+             "keywords": []}]
+    oa.harvest_openalex_roster(opps, schools=["cincinnati"], roster_dir=str(tmp_path))
+    assert seen.get("cursor") == "c9"
+
+
+def test_usable_topics_are_distinct_after_cleaning():
+    """_clean_topic collapses two OpenAlex labels onto one string; a record that
+    carries it twice fails the corpus duplicate-keyword gate (it did, on 2 of
+    2,676 JHU records) and doubles the word up in the faculty title."""
+    out = oa.usable_topics([
+        "Advanced Battery Technologies",
+        "Advanced battery technologies: research",
+        "Solid-state spectroscopy",
+    ])
+    assert out == sorted(set(out), key=out.index)
+    assert len(out) == len({t.lower() for t in out})
+
+
+def test_usable_topics_looks_past_a_duplicate_to_fill_the_quota():
+    """Slicing to max_topics BEFORE cleaning costs the professor a real area
+    every time a duplicate lands inside the slice."""
+    out = oa.usable_topics(["A research", "A", "B", "C"], max_topics=3)
+    assert out == ["a", "b", "c"]
+
+
+def test_usable_topics_drops_a_topic_too_long_to_be_a_keyword():
+    long = " ".join(["word"] * 9)
+    assert long not in oa.usable_topics([long, "optics"])
