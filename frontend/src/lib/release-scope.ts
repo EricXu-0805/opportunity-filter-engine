@@ -16,7 +16,9 @@ export const RELEASE_SCOPE = Object.freeze({
   // coverage, but are not part of the accepted MVP surface. Each must reopen
   // in a separate product-acceptance PR.
   compare: false,
-  resumeRenovate: false,
+  // Accepted — see backend/lib/release_scope.py for why the renovation surface
+  // carries no fabrication risk the public /api/tailor does not already carry.
+  resumeRenovate: true,
   fellowships: false,
   roadmap: false,
   askAi: false,
