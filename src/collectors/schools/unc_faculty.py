@@ -28,11 +28,15 @@ several distinct card shapes are covered:
   ``wp-json/wp/v2`` person feed; the ``api`` block pulls name/title/email from
   the ACF payload and filters to a division / faculty ``class_list`` tag.
 
-Research keywords are NOT captured on this pass: UNC ITS runs an IP-based WAF
+Research keywords are NOT captured school-wide: UNC ITS runs an IP-based WAF
 that bans request bursts, so the per-profile ``profile_enrich`` follow (thousands
-of fetches) is deliberately deferred — the directory-level harvest below is
-throttled to stay under the burst threshold. A later research-capture pass can
-layer keywords in via ``_carry_forward_enrichment`` without re-fetching listings.
+of fetches) stays deferred — the directory-level harvest below is throttled to
+stay under the burst threshold. Two professional schools are the exception:
+Education and Kenan-Flagler sit on their own subdomains, are the only
+departments besides Hussman that the WAF currently lets through at all, and are
+277 profiles between them. Both carry a labelled research block, so both run a
+throttled ``profile_enrich``. A later pass can layer the rest in via
+``_carry_forward_enrichment`` without re-fetching listings.
 
 Live-verified card counts (pre-ladder / pre-dedupe, 2026-07-26): CS 126,
 Political Science 45, Sociology 26, Geography 25, Anthropology 29, Public Policy
@@ -119,6 +123,32 @@ _WPLOOP_SEL = {
 
 
 # ============================================================================
+# Research capture on the two professional-school subdomains that survive the
+# WAF. ed.unc.edu and kenan-flagler.unc.edu are separate hosts from the main
+# site whose burst ban forced the school-wide deferral below, and together they
+# are 277 profiles — not the "thousands of fetches" that deferral was about.
+# Live-sampled 2026-08-26: ed.unc.edu 5/10 profiles carry a labelled block
+# ("Adolescent Development, Peer Relations, School-based Intervention"),
+# kenan-flagler 16/16 carry exactly one taxonomy tag ("Climate finance",
+# "Competitive strategy"; 11 distinct across 16, so a real taxonomy rather
+# than one menu repeated). hussman.unc.edu is deliberately absent: 0/10 there
+# publish research under any label, so the fetches would buy nothing.
+#
+# The label is spelled out rather than a bare `^research\b`, which matches the
+# site-wide "Research" nav item present on every UNC page.
+_RESEARCH_LABEL = (
+    r"^(research\s+(interests?|areas?|focus|topics?)"
+    r"|areas?\s+of\s+(expertise|research|interest|specializ\w+)"
+    r"|expertise|specializations?)\b"
+)
+
+_LABEL_ENRICH = {
+    "research_label_re": _RESEARCH_LABEL,
+    # Slower than the engine default on purpose: UNC ITS bans request bursts.
+    "throttle": 0.5,
+}
+
+
 SCHOOL: dict = {
     "school_slug": "unc",
     "source": "unc_faculty",
@@ -443,6 +473,7 @@ SCHOOL: dict = {
                     "link": ".person-listing__content h2 a",
                     "title": ".headline-group__sub",
                     "email": ".person__detail--email a[href^='mailto:']"},
+                "profile_enrich": _LABEL_ENRICH,
             },
         },
         {
@@ -472,6 +503,7 @@ SCHOOL: dict = {
                               "name": ".content h3", "link": "a",
                               "title": ".content p"},
                 "paginate": {"param": "pg", "start": 2, "max": 6},
+                "profile_enrich": _LABEL_ENRICH,
             },
         },
         # ---- WP REST feeds -------------------------------------------------
