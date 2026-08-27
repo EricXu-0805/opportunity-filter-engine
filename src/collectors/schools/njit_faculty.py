@@ -44,8 +44,9 @@ scrape block declares a ``profile_enrich`` with that email selector and
 ``always: True``. The listing has NO email at all, so the profile pass is not
 optional depth — it is where the record's only contact field lives, and a
 name-only NJIT record has no product value. Live-verified 100% email coverage
-across all seventeen departments. Research topics come from downstream OpenAlex
-enrichment (the listing carries none).
+across all seventeen departments. The listing carries no research either, but
+the profile does: a "Research Interests" block on 40% of a live 30-profile
+sample (12/12 distinct, no menu bleed), read by the same pass.
 
 Cross-department overlap (Data Science shares many appointments with Computer
 Science; History and Hillier deans appear in several rosters) is collapsed by
@@ -118,8 +119,15 @@ _FIELD = {
 # Each profile page (people.njit.edu/profile/<uid>) exposes exactly one plain
 # mailto. always=True because the listing carries no email whatsoever — this
 # pass is the record's only contact field, not optional depth.
+#
+# The same page carries a "Research Interests" block, so the label pass rides
+# the fetch this pass already makes: no extra request for any profile. The
+# label is spelled out in full on purpose — a bare `^research\b` matches the
+# site-wide "Research" nav item on every profile, whose following block is the
+# menu word "Academics", and 505 professors would all be tagged with it.
 _ENRICH = {
     "email_selector": "a[href^='mailto:']",
+    "research_label_re": r"^research\s+interests?\b",
     "always": True,
     "throttle": 0.05,
 }
