@@ -16,6 +16,7 @@ import { targetPosture } from '@/lib/target-truth';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
+import { ConciergeRequestSection } from './ConciergeRequestSection';
 import {
   ApplicationSection,
   AtAGlanceSection,
@@ -237,6 +238,10 @@ export default function OpportunityDetail({
               modal, and ends in a mailto. None of that belongs on a target the
               server would refuse to draft an email about. */}
           {actionable && <ContactRevealSection opp={opp} t={t} />}
+          {/* Placed after the address, where the size of the job becomes
+              concrete. Bound to this record, because the work being asked for
+              is: read this lab, tailor to this lab, write to this person. */}
+          {actionable && <ConciergeRequestSection opportunityId={opp.id} t={t} />}
           <KeywordsSection opp={opp} t={t} />
           <SimilarOpportunities similar={similar} t={t} />
 

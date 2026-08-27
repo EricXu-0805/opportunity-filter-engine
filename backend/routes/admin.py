@@ -28,7 +28,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from backend.data_loader import load_opportunities
+from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.corpus_freshness import (
     CORPUS_FRESHNESS_STALE_HOURS,
     CORPUS_FRESHNESS_WARN_HOURS,
@@ -832,6 +832,82 @@ async def saved_search_health(
             os.environ.get("RESEND_API_KEY") and os.environ.get("RESEND_FROM_EMAIL")
         ),
         "generated_at": now.isoformat(),
+    }
+
+
+@router.get("/admin/concierge-requests")
+async def concierge_requests(
+    actor: str = Depends(require_admin),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """The operator's queue: who asked us to handle which opportunity.
+
+    A concierge request is fulfilled by hand, so it is worth nothing sitting in
+    a table nobody reads — this is the read path, via the service-role key
+    (waitlist is insert-own / select-own under RLS, so the operator cannot see
+    it any other way).
+
+    Each row is joined against the corpus so the queue says what the work IS —
+    the professor's name, department and page — rather than an opaque id the
+    operator would have to look up one at a time. A request whose target has
+    since left the corpus keeps its row with a null target: the student asked
+    for something real, and dropping the row would hide that we owe them an
+    answer.
+    """
+    env_result = _required_env(["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"])
+    if isinstance(env_result, tuple):
+        _, missing = env_result
+        return {"status": "unconfigured", "missing": missing, "requests": []}
+    env = env_result
+
+    supabase_url = env["SUPABASE_URL"].rstrip("/")
+    headers = {
+        "apikey": env["SUPABASE_SERVICE_ROLE_KEY"],
+        "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
+    }
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0, trust_env=False, follow_redirects=False,
+        ) as client:
+            resp = await client.get(
+                f"{supabase_url}/rest/v1/waitlist",
+                params={
+                    "select": "id,device_id,email,opportunity_id,created_at",
+                    "opportunity_id": "not.is.null",
+                    "order": "created_at.desc",
+                    "limit": str(limit),
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Supabase unreachable: {e}") from e
+
+    by_id = load_opportunities_by_id()
+    requests = []
+    for row in rows:
+        opportunity = by_id.get(row.get("opportunity_id")) or {}
+        requests.append({
+            "id": row.get("id"),
+            "device_id": row.get("device_id"),
+            "email": row.get("email"),
+            "opportunity_id": row.get("opportunity_id"),
+            "created_at": row.get("created_at"),
+            "target": {
+                "title": opportunity.get("title"),
+                "pi_name": opportunity.get("pi_name"),
+                "organization": opportunity.get("organization"),
+                "department": opportunity.get("department"),
+                "url": opportunity.get("source_url") or opportunity.get("url"),
+            } if opportunity else None,
+        })
+
+    return {
+        "status": "ok",
+        "total": len(requests),
+        "requests": requests,
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 

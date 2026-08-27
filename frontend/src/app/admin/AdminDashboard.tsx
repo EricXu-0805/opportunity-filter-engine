@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeft, Database, Lock, RefreshCw } from 'lucide-reac
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { AlertList } from './AlertList';
 import { CollectorStatusSection } from './CollectorStatusSection';
+import { ConciergeQueueSection } from './ConciergeQueueSection';
 import { FreshnessBanner } from './FreshnessBanner';
 import { RefreshTriggerSection } from './RefreshTriggerSection';
 import { FeedbackSection } from './FeedbackSection';
@@ -27,6 +28,7 @@ import type {
   FeedbackInbox,
   OpsWorkflow,
   OrdersInbox,
+  ConciergeQueue,
   SavedSearchHealth,
   TFunc,
   TicketWorkflow,
@@ -41,6 +43,7 @@ export function AdminDashboard({
   collectorHistory,
   health,
   savedSearchHealth,
+  conciergeQueue,
   feedbackInbox,
   ordersInbox,
   tickets,
@@ -67,6 +70,7 @@ export function AdminDashboard({
   collectorHistory: CollectorHistoryEntry[];
   health: HealthResponse | null;
   savedSearchHealth: SavedSearchHealth | null;
+  conciergeQueue: ConciergeQueue | null;
   feedbackInbox: FeedbackInbox | null;
   ordersInbox: OrdersInbox | null;
   tickets: TicketWorkflow;
@@ -164,6 +168,7 @@ export function AdminDashboard({
             read-only pane errored — the exact moment an operator needs them. */}
         <OpsIncidentsSection ops={ops} t={t} />
         <FeedbackSection inbox={feedbackInbox} tickets={tickets} t={t} />
+        <ConciergeQueueSection queue={conciergeQueue} t={t} />
         {RELEASE_SCOPE.payments && (
           <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
         )}

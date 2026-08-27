@@ -140,6 +140,31 @@ export interface SavedSearchHealth {
   generated_at?: string;
 }
 
+export interface ConciergeRequest {
+  id: string;
+  device_id: string;
+  email: string | null;
+  opportunity_id: string;
+  created_at: string;
+  /** Null when the target has since left the corpus — the request is still
+   *  owed an answer, so the row survives its target. */
+  target: {
+    title: string | null;
+    pi_name: string | null;
+    organization: string | null;
+    department: string | null;
+    url: string | null;
+  } | null;
+}
+
+export interface ConciergeQueue {
+  status: 'ok' | 'unconfigured';
+  missing?: string[];
+  total?: number;
+  requests: ConciergeRequest[];
+  generated_at?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Support tickets (W15). A feedback row is a ticket: it carries handling
 // state, an assignee, a reply with its OWN delivery outcome, and a resolution
