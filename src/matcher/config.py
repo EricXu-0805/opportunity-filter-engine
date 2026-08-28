@@ -65,6 +65,10 @@ INTL_UNKNOWN_SCORE = _env_float("OFE_INTL_UNKNOWN", 60.0)
 # internships higher than research/other postings — verify-don't-rule-out.
 INTL_UNKNOWN_INTERNSHIP_SCORE = _env_float("OFE_INTL_UNKNOWN_INTERNSHIP", 72.0)
 
+# The score for a student who left the coursework field blank. It is a
+# neutral prior, and _coursework_score floors the count component at it so
+# that stating a fact can never rank below stating nothing.
+COURSEWORK_UNKNOWN = _env_float("OFE_COURSE_UNKNOWN", 30.0)
 COURSEWORK_PER_COURSE = _env_float("OFE_COURSE_PER", 12.0)
 COURSEWORK_MAX_FROM_COUNT = _env_float("OFE_COURSE_MAX_COUNT", 70.0)
 COURSEWORK_RELEVANCE_BONUS = _env_float("OFE_COURSE_RELEVANCE", 30.0)
@@ -238,7 +242,14 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # this — the change is in `target_truth`, not in a weight — so the base is what
 # has to move, or a cached v7 conclusion would keep serving the 26 rows this
 # removed.
-_MATCHER_VERSION_BASE = "8"
+# 9: answering the coursework question can no longer score below leaving it
+# blank. The no-answer prior (30) used to outrank one course (12) and two
+# courses (24), so honest partial answers were penalised; the count
+# component is now floored at that prior. The fingerprint DOES move here
+# too (COURSEWORK_UNKNOWN joined the hashed knobs), but the base moves as
+# well because the change is a formula, not a value: a deployment that
+# happened to keep the same numbers would still be scoring differently.
+_MATCHER_VERSION_BASE = "9"
 
 
 def _matcher_fingerprint() -> str:
@@ -247,7 +258,8 @@ def _matcher_fingerprint() -> str:
         "buckets": BUCKET_THRESHOLDS,
         "hp_target": HIGH_PRIORITY_TARGET_COUNT,
         "intl_unknown": (INTL_UNKNOWN_SCORE, INTL_UNKNOWN_INTERNSHIP_SCORE),
-        "coursework": (COURSEWORK_PER_COURSE, COURSEWORK_MAX_FROM_COUNT, COURSEWORK_RELEVANCE_BONUS),
+        "coursework": (COURSEWORK_UNKNOWN, COURSEWORK_PER_COURSE, COURSEWORK_MAX_FROM_COUNT,
+                       COURSEWORK_RELEVANCE_BONUS),
         "bonuses": (INTEREST_BONUS_CAP, EMPTY_INTEREST_MAJOR_BONUS, INTEREST_BONUS_PER_HIT,
                     COLLEGE_AFFINITY_MAX, HOME_SCHOOL_AFFINITY_MAX, RESPONSIVENESS_BONUS),
         "penalties": (DEADLINE_PASSED_PENALTY, GRAD_LEVEL_PENALTY,
