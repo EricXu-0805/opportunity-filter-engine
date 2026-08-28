@@ -819,3 +819,61 @@ class TestTheLifecycleTitleNeutralizer:
         # exactly the claim this helper exists to remove. No corpus row is
         # this shape; if one appears it arrives nameless rather than lying.
         assert neutralize_lifecycle_title("(applications open)", _UNKNOWN) == ""
+
+
+class TestKeywordProvenanceReachesTheClient:
+    """A topic we inferred must not render identically to one they stated.
+
+    5% of faculty rows carry keywords derived from a matched OpenAlex author
+    record. An audit of 14 such rows found 4 attached to the wrong person — a
+    UTK geographer working on GeoAI and remote sensing was showing a petroleum
+    geophysicist's topics. The stamp recording that derivation has existed in
+    `metadata.inferred_fields` since the enrichment was written and no route
+    ever served it, so every surface presented an inference as a stated fact.
+
+    This is the same contract `publication_attribution_status` already has, for
+    the same reason: the client cannot re-derive it, and absent must keep
+    meaning "stated" for every record that never went through enrichment.
+    """
+
+    @staticmethod
+    def _record(inferred: bool) -> dict:
+        record = {
+            "id": "faculty-utk-geog-x", "title": "Bing Zhou",
+            "source_type": "faculty_research", "pi_name": "Bing Zhou",
+            "keywords": ["hydrocarbon exploration and reservoir analysis"],
+            "metadata": {},
+        }
+        if inferred:
+            record["metadata"] = {
+                "inferred_fields": {"keywords": "derived:openalex_topics"}
+            }
+        return record
+
+    def test_a_derived_keyword_is_labelled_on_the_wire(self):
+        record = self._record(inferred=True)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["keywords_attribution"] == "inferred"
+
+    def test_a_stated_keyword_carries_no_label(self):
+        """Absent means stated. Labelling everything would make the label
+        meaningless and quietly downgrade the 41% who published their own."""
+        record = self._record(inferred=False)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "keywords_attribution" not in out
+
+    def test_a_record_with_no_keywords_is_not_labelled(self):
+        record = self._record(inferred=True)
+        record["keywords"] = []
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "keywords_attribution" not in out
+
+    def test_the_label_follows_the_canonical_record_not_the_payload(self):
+        """Same rule identity already follows: a payload that arrived without
+        metadata — every card, since _CARD_OPP_FIELDS excludes it — must still
+        be labelled from the record the projection was given."""
+        record = self._record(inferred=True)
+        card = {"id": record["id"], "title": record["title"],
+                "keywords": record["keywords"]}
+        out = project_public_opportunity_payload(card, record)
+        assert out["keywords_attribution"] == "inferred"

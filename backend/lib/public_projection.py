@@ -9,7 +9,7 @@ from html.parser import HTMLParser
 from typing import TypeVar
 from urllib.parse import unquote, urlsplit
 
-from src.evidence import record_kind, target_truth
+from src.evidence import inferred_method, record_kind, target_truth
 
 _EMAIL_IN_TEXT_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\."
@@ -704,6 +704,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # source-type table, and so "we could not confirm what this is" is a fact
     # on the wire rather than an inference from an absent field.
     projected["record_kind"] = kind
+    # Where the keywords came from, on the wire, for the same reason
+    # `publication_attribution_status` is: a client cannot re-derive it, and
+    # without it a topic this pipeline INFERRED renders identically to one
+    # scraped off the professor's own page. 5% of faculty carry keywords
+    # derived from a matched OpenAlex author record, and that match is wrong
+    # often enough — common surname, department field family too coarse to
+    # separate two people — that presenting them as stated fact is a claim we
+    # cannot support. Absent means stated, which is what every non-enriched
+    # record has always been.
+    keywords_method = inferred_method(canonical_record, "keywords")
+    if keywords_method and projected.get("keywords"):
+        projected["keywords_attribution"] = "inferred"
 
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):

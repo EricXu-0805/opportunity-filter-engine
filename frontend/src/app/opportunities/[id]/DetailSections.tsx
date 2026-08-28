@@ -249,6 +249,9 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 
 export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   if (!opp.keywords?.length) return null;
+  // Checked for 'inferred', never for absence: a record that never went
+  // through enrichment carries nothing here and is stated by default.
+  const inferred = opp.keywords_attribution === 'inferred';
   return (
     <Section title={t('detail.sections.keywords')}>
       <div className="flex flex-wrap gap-1.5">
@@ -258,6 +261,11 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           </span>
         ))}
       </div>
+      {inferred && (
+        <p className="mt-2 text-[11px] text-gray-400" data-testid="keywords-inferred-note">
+          {t('detail.keywordsInferred')}
+        </p>
+      )}
     </Section>
   );
 }

@@ -3157,6 +3157,7 @@ export const en = {
     contactSignInPrompt: 'A verified email address is on file for this recipient. Sign in to reveal it.',
     contactSignInCta: 'Sign in to reveal',
     contactVerifyHint: 'Collected from an official public source — double-check it there before sending.',
+    keywordsInferred: 'Inferred from their publication record, not stated on their page — worth checking before you write to them.',
     concierge: {
       title: 'Want us to handle this one?',
       body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
@@ -7672,6 +7673,7 @@ export const zh = {
     contactSignInPrompt: '这位收件人有一个经核实的邮箱地址。登录后即可查看。',
     contactSignInCta: '登录查看',
     contactVerifyHint: '采集自官方公开来源 —— 发送前请到来源页面再核对一次。',
+    keywordsInferred: '根据他的论文发表记录推断，不是他主页上写的 —— 写信前值得自己核一下。',
     concierge: {
       title: '这个要不要我们替你办？',
       body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',
