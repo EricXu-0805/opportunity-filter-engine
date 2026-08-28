@@ -6,6 +6,7 @@ import {
   ApplicationSection,
   AtAGlanceSection,
   EligibilitySection,
+  KeywordsSection,
   RecentWorksSection,
 } from './DetailSections';
 
@@ -243,5 +244,39 @@ describe('RecentWorksSection', () => {
     );
     expect(screen.getAllByRole('link')).toHaveLength(5);
     expect(screen.queryByText('Paper 6')).not.toBeInTheDocument();
+  });
+});
+
+
+describe('KeywordsSection provenance', () => {
+  const kw = ['hydrocarbon exploration and reservoir analysis'];
+
+  it('tells the student when the topics were inferred rather than stated', () => {
+    render(
+      <KeywordsSection
+        opp={opp({}, { keywords: kw, keywords_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('keywords-inferred-note')).toBeInTheDocument();
+  });
+
+  it('says nothing extra when the professor stated them', () => {
+    // Absence is the default for every record that never went through
+    // enrichment. Labelling those too would make the label meaningless.
+    render(<KeywordsSection opp={opp({}, { keywords: kw })} t={tFn} />);
+    expect(screen.queryByTestId('keywords-inferred-note')).not.toBeInTheDocument();
+  });
+
+  it('still renders the keywords themselves when they were inferred', () => {
+    // The note is a caveat, not a suppression: these topics are why the
+    // student is looking at this professor at all.
+    render(
+      <KeywordsSection
+        opp={opp({}, { keywords: kw, keywords_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText(kw[0])).toBeInTheDocument();
   });
 });

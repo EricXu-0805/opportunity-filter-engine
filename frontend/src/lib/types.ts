@@ -172,6 +172,13 @@ export interface OpportunityMetadata {
   // without a confident OpenAlex match.
   recent_works?: { title: string; year?: number | null }[];
   publication_attribution_status?: PublicationAttributionStatus | null;
+  // Where `keywords` came from. 'inferred' means the pipeline derived them
+  // from a matched OpenAlex author record rather than reading them off the
+  // professor's own page, and that match is wrong often enough that the UI
+  // must not present them as something the professor said. ABSENT MEANS
+  // STATED — every record that never went through enrichment carries nothing
+  // here, so a render site must check for 'inferred', never for its absence.
+  keywords_attribution?: 'inferred' | null;
   // Scraped deadline prose (e.g. "Rolling admissions"). The ONLY accepted
   // evidence of genuinely rolling admissions — `is_rolling` alone is a blanket
   // collector default and must never be presented as a scraped fact.
@@ -247,6 +254,13 @@ export interface Opportunity {
   // (null/absent = unverified).
   recent_works?: { title: string; year?: number | string | null }[];
   publication_attribution_status?: PublicationAttributionStatus | null;
+  // Where `keywords` came from. 'inferred' means the pipeline derived them
+  // from a matched OpenAlex author record rather than reading them off the
+  // professor's own page, and that match is wrong often enough that the UI
+  // must not present them as something the professor said. ABSENT MEANS
+  // STATED — every record that never went through enrichment carries nothing
+  // here, so a render site must check for 'inferred', never for its absence.
+  keywords_attribution?: 'inferred' | null;
   // Match-card projection of metadata.faculty_title (scraped rank). Absent or
   // empty = unknown rank; gates "Professor" framing on card CTAs.
   faculty_title?: string;
