@@ -32,6 +32,7 @@ from .config import (
     COURSEWORK_MAX_FROM_COUNT,
     COURSEWORK_PER_COURSE,
     COURSEWORK_RELEVANCE_BONUS,
+    COURSEWORK_UNKNOWN,
     DEADLINE_PASSED_PENALTY,
     ELIG_MAJOR_WEIGHT,
     EMPTY_INTEREST_MAJOR_BONUS,
@@ -805,9 +806,18 @@ def _coursework_score(
     None means build it here.
     """
     if not student_courses:
-        return 30.0
+        return COURSEWORK_UNKNOWN
 
-    count_score = min(COURSEWORK_MAX_FROM_COUNT, len(student_courses) * COURSEWORK_PER_COURSE)
+    # Floored at the unknown value, because that value is a neutral prior for a
+    # student who told us nothing — not a score they earned. Without the floor a
+    # student who typed one course scored 12 and one who typed two scored 24,
+    # both below the 30 handed to a student who left the field blank: answering
+    # the question honestly cost you up to 18 points of readiness. Information
+    # may move a student up from the prior or leave them level. Never down.
+    count_score = min(
+        COURSEWORK_MAX_FROM_COUNT,
+        max(COURSEWORK_UNKNOWN, len(student_courses) * COURSEWORK_PER_COURSE),
+    )
 
     signals = _opp_static(opportunity).course_signals
     if not signals:
