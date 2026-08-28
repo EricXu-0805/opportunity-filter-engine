@@ -1,6 +1,10 @@
 import re
 
-from src.evidence import faculty_contact_claims_unverified, is_professor_rank
+from src.evidence import (
+    faculty_contact_claims_unverified,
+    inferred_method,
+    is_professor_rank,
+)
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
 from src.publication_trust import verified_recent_works
 
@@ -333,8 +337,28 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
     return " ".join(parts)
 
 
+def _stated_keywords(opportunity: dict) -> list[str]:
+    """The record's keywords, unless we inferred them rather than read them.
+
+    A keyword stamped ``derived:openalex_topics`` came from an OpenAlex author
+    record this pipeline MATCHED to the professor by surname and institution.
+    That match is wrong often enough to matter — a common surname plus a
+    department whose field family is too coarse to separate two people hands
+    one person's topics to another — and the email would then assert those
+    topics as this professor's work, in the student's voice, to the professor.
+
+    They stay perfectly good ranking signal, where a wrong match costs a slot.
+    They are not evidence of what this person studies, which is what the
+    specific opener claims. Same rule this module already applies to department
+    names and to our own generated summary.
+    """
+    if inferred_method(opportunity, "keywords"):
+        return []
+    return opportunity.get("keywords") or []
+
+
 def _infer_research_topic(opportunity: dict) -> str:
-    keywords = opportunity.get("keywords") or []
+    keywords = _stated_keywords(opportunity)
     specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
 
     if specific:
@@ -372,7 +396,7 @@ def _infer_research_topic(opportunity: dict) -> str:
 
 
 def _infer_research_area(opportunity: dict) -> str:
-    keywords = opportunity.get("keywords") or []
+    keywords = _stated_keywords(opportunity)
     if keywords:
         specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
         if specific:

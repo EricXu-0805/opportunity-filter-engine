@@ -2605,3 +2605,74 @@ class TestBriefGreetingIsAnOutputInvariant:
             "Subject: Inquiry\n\nI hope you are well. Dear Professor Smith",
             self.BRIEF,
         ) is None
+
+
+class TestInferredKeywordsNeverSpeakAsTheProfessor:
+    """A keyword we inferred is not something the professor said.
+
+    5% of faculty rows carry keywords derived from a matched OpenAlex author
+    record rather than scraped from their own page, and that matching gets the
+    person wrong when a surname is common and the department's field family is
+    too coarse to separate two people. An audit of 14 such records found 4
+    wrong, including a UTK geographer whose real work is GeoAI and remote
+    sensing for disaster mapping being handed the topics of a petroleum
+    geophysicist with the same name.
+
+    The email said, in the student's voice, to a real professor:
+
+        "your work in hydrocarbon exploration and reservoir analysis aligns
+         with my interest in using satellite imagery and machine learning to
+         map flood damage"
+
+    The whole point of this module — stated in _infer_research_area's own
+    comment about department names — is that only EVIDENCE of a research area
+    may become "your work in X". An inference about which author record belongs
+    to this person is not that evidence. It stays good enough to rank on (a
+    wrong match costs a slot) and is never good enough to assert.
+    """
+
+    @staticmethod
+    def _faculty(inferred: bool) -> dict:
+        opp = {
+            "id": "faculty-utk-geog-x", "title": "Bing Zhou",
+            "source_type": "faculty_research", "pi_name": "Bing Zhou",
+            "organization": "University of Tennessee, Knoxville",
+            "department": "Department of Geography and Sustainability",
+            "keywords": ["hydrocarbon exploration and reservoir analysis",
+                         "enhanced oil recovery"],
+            "description_raw": "", "description_clean": "",
+            "eligibility": {}, "application": {},
+            "metadata": ({"inferred_fields": {"keywords": "derived:openalex_topics"}}
+                         if inferred else {}),
+        }
+        return opp
+
+    def test_a_derived_keyword_is_not_offered_as_their_research(self):
+        assert _infer_research_area(self._faculty(inferred=True)) == ""
+        assert _infer_research_topic(self._faculty(inferred=True)) == ""
+
+    def test_a_scraped_keyword_still_is(self):
+        """The fix must not mute the 41% of faculty whose keywords came off
+        their own page — that is the signal the specific opener exists for."""
+        assert _infer_research_area(self._faculty(inferred=False)) == (
+            "hydrocarbon exploration and reservoir analysis"
+        )
+        assert _infer_research_topic(self._faculty(inferred=False)) != ""
+
+    def test_the_professors_own_stated_areas_outrank_a_derived_keyword(self):
+        """research_areas_raw is the professor's own words. When both exist the
+        stated one must win rather than the record falling silent."""
+        opp = self._faculty(inferred=True)
+        opp["metadata"]["research_areas_raw"] = "GeoAI; remote sensing; disaster mapping"
+        assert "GeoAI" in _infer_research_area(opp)
+        assert "GeoAI" in _infer_research_topic(opp)
+
+    def test_the_generated_email_makes_no_claim_about_their_work(self):
+        profile = {"name": "Alex Chen", "year": "sophomore", "major": "Geography",
+                   "school": "UTK", "hard_skills": ["Python"],
+                   "research_interests_text": "satellite imagery and machine learning"}
+        body = generate_cold_email(profile, self._faculty(inferred=True))
+        assert "hydrocarbon" not in body.lower()
+        assert "enhanced oil recovery" not in body.lower()
+        # Still a usable email, not an empty one.
+        assert "Bing Zhou" in body

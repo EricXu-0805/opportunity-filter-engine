@@ -2735,3 +2735,59 @@ class TestEmptyInterestMajorBonus:
         opp = self._fac("d-related", ["Psychology"])
         profile = {"major": "Cognitive Science", "research_interests_text": ""}
         assert _empty_interest_major_bonus(profile, opp) == 0.0
+
+
+class TestAnsweringNeverCostsYou:
+    """Filling in a profile field must never score worse than leaving it blank.
+
+    Coursework had exactly that shape. The no-answer default was 30 and each
+    course was worth 12, so a student who typed one course scored 12 and a
+    student who typed two scored 24 — both BELOW the 30 handed to a student who
+    typed nothing. The form asks for coursework on the first screen; answering
+    it honestly cost you up to 18 points of readiness against staying silent.
+
+    The rule this pins is about the semantics of an unknown, not about the
+    constants: a blank is a neutral prior, so information may move a student up
+    from it or leave them level, and may never move them down.
+    """
+
+    @staticmethod
+    def _opp_without_course_signals() -> dict:
+        # No keywords/skills for a course code to match, so the relevance bonus
+        # cannot mask the count component being tested here.
+        return {"id": "o1", "title": "Lab position", "description": "",
+                "keywords": [], "eligibility": {}, "application": {}}
+
+    def test_one_course_is_never_worth_less_than_no_courses(self):
+        from src.matcher.ranker import _coursework_score
+
+        opp = self._opp_without_course_signals()
+        blank = _coursework_score(frozenset(), opp)
+        for n in range(1, 8):
+            courses = frozenset(f"ECE {100 + i}" for i in range(n))
+            assert _coursework_score(courses, opp) >= blank, (
+                f"{n} course(s) scored below listing none ({blank})"
+            )
+
+    def test_more_coursework_never_scores_lower_than_less(self):
+        from src.matcher.ranker import _coursework_score
+
+        opp = self._opp_without_course_signals()
+        scores = [
+            _coursework_score(frozenset(f"ECE {100 + i}" for i in range(n)), opp)
+            for n in range(0, 10)
+        ]
+        assert scores == sorted(scores), f"non-monotone in course count: {scores}"
+
+    def test_a_relevant_course_still_pays_on_top_of_the_floor(self):
+        """The floor must not swallow the relevance bonus — otherwise raising it
+        would quietly delete the signal that a course matches the target."""
+        from src.matcher.ranker import _coursework_score
+
+        relevant = {"id": "o2", "title": "CS lab", "description": "",
+                    "keywords": ["cs"], "eligibility": {}, "application": {}}
+        one_relevant = _coursework_score(frozenset({"CS 225"}), relevant)
+        one_irrelevant = _coursework_score(
+            frozenset({"CS 225"}), self._opp_without_course_signals()
+        )
+        assert one_relevant > one_irrelevant
