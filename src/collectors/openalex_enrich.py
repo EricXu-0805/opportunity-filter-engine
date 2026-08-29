@@ -1215,6 +1215,16 @@ def harvest_works_by_roster(
         for i in range(0, len(resolved), _WORKS_BATCH):
             batch = resolved[i:i + _WORKS_BATCH]
             raw = works_for_authors([aid for _, aid, _ in batch])
+            if _warned_429:
+                # Don't record this batch as misses — the lookup never really
+                # ran. An empty answer from an exhausted budget is not the same
+                # claim as "this professor has no citable paper", and writing
+                # the second one would make tomorrow's run skip them.
+                if progress:
+                    print(f"  {slug}: aborting at {i}/{len(resolved)} — OpenAlex "
+                          f"budget exhausted (confirmed 429); {len(mapping)} with papers",
+                          flush=True)
+                return mapping, reasons
             for key, aid, dept in batch:
                 works = _usable_works(raw.get(aid) or [], dept)
                 if works:

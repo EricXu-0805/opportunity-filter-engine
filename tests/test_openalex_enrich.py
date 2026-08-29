@@ -1271,3 +1271,48 @@ def test_a_round_that_serves_nobody_is_not_bought_twice(monkeypatch):
     monkeypatch.setattr(oa, "_get", fake_get)
     oa.works_for_authors([f"A{i}" for i in range(40)])
     assert len(calls) <= 2, calls
+
+
+def test_an_exhausted_budget_is_not_a_professor_without_papers(monkeypatch, tmp_path):
+    """An empty answer from a dead budget is not the claim "this professor has
+    no citable paper". Writing the second one would be a lie the next run acts
+    on: `_works_targets` skips whoever already looks done, so a false miss is
+    how a professor gets locked out of the only pass that can ever cite them —
+    the same way 15,917 records were locked out before #804.
+    """
+    # Alphabetic and distinct: _match_name_key strips digits, so "Person1
+    # Smith1" and "Person2 Smith2" are one key and every person would collide.
+    def _nym(i):
+        a, b, c = "abcdefghijklmnopqrstuvwxyz"[i // 26], "abcdefghijklmnopqrstuvwxyz"[i % 26], "x"
+        return f"{a.upper()}nna{b} {c.upper()}yle{a}{b}"
+
+    people = []
+    for i in range(60):
+        people.append({"id": f"f{i}", "school": "jhu", "source_type": "faculty_research",
+                       "pi_name": _nym(i), "url": f"https://x.edu/{i}",
+                       "source_url": f"https://x.edu/{i}", "department": "Physics"})
+    (tmp_path / "jhu.json").write_text(json.dumps({
+        "complete": True, "expected": len(people),
+        "authors": [{"id": f"https://openalex.org/A{i}", "name": p["pi_name"],
+                     "works": 40, "topics": ["optics"],
+                     "fields": ["Physics and Astronomy"]}
+                    for i, p in enumerate(people)]}))
+
+    calls = {"n": 0}
+
+    def dying(ids, **kw):
+        calls["n"] += 1
+        if calls["n"] == 1:                       # first batch answers normally
+            return {ids[0]: [_authored_work("A Real Paper", 2026,
+                                            "Physics and Astronomy", [ids[0]])]}
+        monkeypatch.setattr(oa, "_warned_429", True)   # budget dies mid-run
+        return {}
+
+    monkeypatch.setattr(oa, "works_for_authors", dying)
+    mapping, reasons = oa.harvest_works_by_roster(
+        people, schools=["jhu"], roster_dir=str(tmp_path))
+
+    assert len(mapping) == 1, "the one real answer is kept"
+    # 24 of the first batch genuinely returned nothing; nobody after the 429 is
+    # recorded at all.
+    assert reasons.get("no_usable_work", 0) == oa._WORKS_BATCH - 1, reasons
