@@ -951,7 +951,7 @@ class TestRecentWorkGrounding:
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
-        assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
+        assert "within the last three): (none)" in user_msg
 
     def test_prompt_excludes_unverified_works(self, monkeypatch):
         # Publication trust boundary: pipeline-verified works are presented as
@@ -959,14 +959,21 @@ class TestRecentWorkGrounding:
         # EXCLUDED from the prompt entirely — "(none)" is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        assert "Recent publications by this professor (cite at most ONE" in user_msg
+        assert "Publications by this professor, newest first (cite at most ONE" in user_msg
         assert "matched to this professor by name" not in user_msg
+        # The block used to be labelled "Recent publications", and the GOOD
+        # few-shot taught "Your recent paper on ...". 42% of the papers this
+        # cites are older than 2023 and the oldest is from 1995, so the model
+        # was being taught to call a 1995 paper recent to its own author.
+        assert "Recent publications" not in user_msg
+        assert "'recent' only if that year is within the last three" in user_msg
+        assert "Your recent paper on" not in user_msg
 
         for status in ("name_match", None, "pending", "definitely_verified"):
             user_msg = self._capture_prompt(
                 monkeypatch, self._opp(self._WORKS, status=status))
             assert "NeuroFlow" not in user_msg
-            assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
+            assert "within the last three): (none)" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
