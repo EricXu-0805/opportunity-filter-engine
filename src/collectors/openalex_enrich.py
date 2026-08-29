@@ -293,6 +293,83 @@ _DEPT_FIELDS: tuple[tuple[str, set[str]], ...] = (
     ("dance", {"Arts and Humanities"}), ("media", {"Arts and Humanities", "Social Sciences"}),
     ("journalism", {"Arts and Humanities", "Social Sciences"}),
     ("architect", {"Arts and Humanities", "Engineering", "Social Sciences"}),
+    # The names below matched no key above, so the wrong-person check was
+    # skipped entirely for 8,583 of 70,631 enrichment targets (12.2%) — the
+    # gate reads as a guard but abstains for one target in eight. None of them
+    # is exotic: the single largest was "School of Engineering" (400 people),
+    # because every engineering key here is a SUB-discipline and plain
+    # "engineer" was never one. Ordered against the real corpus, most specific
+    # first: "engineer" precedes "environment" so a school of sustainable
+    # engineering is judged as engineering, and "studies" is last because it is
+    # a catch-all that must not answer for Environmental Studies.
+    #
+    # A wrong mapping here costs coverage, never truth: too narrow a family
+    # rejects the correct author and the professor stays unenriched, which is
+    # this module's stated preference ("better broad than a different person's
+    # research"). So each is the generous union of the fields its faculty
+    # plausibly publish in.
+    ("engineer", _ENG),
+    ("optic", {"Physics and Astronomy", "Engineering", "Materials Science",
+               "Computer Science"}),
+    ("agricultur", _LIFE), ("agronom", _LIFE), ("horticultur", _LIFE),
+    ("crop", _LIFE), ("soil", _LIFE | {"Earth and Planetary Sciences"}),
+    ("poultry", _LIFE), ("veterinar", _LIFE | _HEALTH), ("fisheries", _LIFE),
+    ("food", _LIFE | {"Chemistry"}), ("nutrition", _LIFE | _HEALTH),
+    ("life scien", _LIFE),
+    ("physiolog", _LIFE | _HEALTH), ("optometr", _HEALTH),
+    ("epidemiolog", _HEALTH | {"Social Sciences"}), ("infectious", _LIFE | _HEALTH),
+    ("therapy", _HEALTH), ("gerontolog", _HEALTH | _SOC),
+    ("cognitive", {"Psychology", "Neuroscience", "Computer Science",
+                   "Social Sciences", "Medicine", "Arts and Humanities"}),
+    ("neural", _LIFE | {"Psychology", "Computer Science"}),
+    ("informatic", _ENG | {"Decision Sciences"}),
+    ("data scien", _ENG | {"Decision Sciences"}),
+    # iSchools genuinely straddle computing and the social study of it, so the
+    # union is wide on purpose; it still excludes a chemist or a physiologist.
+    ("information", _ENG | _SOC),
+    ("environment", {"Environmental Science", "Earth and Planetary Sciences",
+                     "Agricultural and Biological Sciences", "Engineering",
+                     "Social Sciences", "Chemistry"}),
+    ("sustainab", {"Environmental Science", "Earth and Planetary Sciences",
+                   "Agricultural and Biological Sciences", "Engineering",
+                   "Social Sciences", "Energy"}),
+    ("natural resource", _LIFE | {"Earth and Planetary Sciences", "Social Sciences"}),
+    ("marine", {"Earth and Planetary Sciences", "Environmental Science",
+                "Agricultural and Biological Sciences"}),
+    ("design", {"Arts and Humanities", "Engineering", "Computer Science",
+                "Social Sciences", "Materials Science"}),
+    ("construction", _ENG | {"Social Sciences"}),
+    ("planning", _SOC | {"Engineering", "Environmental Science"}),
+    ("spanish", {"Arts and Humanities", "Social Sciences"}),
+    ("portuguese", {"Arts and Humanities", "Social Sciences"}),
+    ("french", {"Arts and Humanities", "Social Sciences"}),
+    ("italian", {"Arts and Humanities", "Social Sciences"}),
+    ("german", {"Arts and Humanities", "Social Sciences"}),
+    ("romance", {"Arts and Humanities", "Social Sciences"}),
+    ("hispanic", {"Arts and Humanities", "Social Sciences"}),
+    ("theolog", {"Arts and Humanities", "Social Sciences"}),
+    ("divinity", {"Arts and Humanities", "Social Sciences"}),
+    ("writing", {"Arts and Humanities", "Social Sciences"}),
+    ("rhetoric", {"Arts and Humanities", "Social Sciences"}),
+    ("theater", {"Arts and Humanities"}),
+    ("archaeolog", {"Arts and Humanities", "Social Sciences",
+                    "Earth and Planetary Sciences"}),
+    # Social work, human development, and global/international studies are
+    # health-facing social science: measured against the cached rosters, _SOC
+    # alone rejected Bridget Freisthler (182 works, Health Professions /
+    # Psychology / Medicine) and six more correct people, because the majority
+    # of their topics are clinical. Adding the health fields costs almost no
+    # discriminating power — the wrong-person matches this gate exists to stop
+    # were STEM twins (Ashleigh Jones -> "Alex K. Jones", 302 Computer Science
+    # works), and Engineering, CS, Chemistry, Physics and Mathematics are still
+    # out.
+    ("social work", _SOC | _HEALTH),
+    ("human development", _SOC | _HEALTH),
+    ("global", _SOC | {"Environmental Science", "Medicine", "Health Professions"}),
+    ("international", _SOC | {"Environmental Science", "Medicine", "Health Professions"}),
+    ("criminolog", _SOC), ("social", _SOC), ("humanities", _SOC),
+    ("teaching", _SOC), ("curriculum", _SOC),
+    ("studies", _SOC | {"Medicine", "Health Professions"}),
 )
 
 
@@ -471,9 +548,11 @@ def _institution_share(author: dict, inst_id: str) -> float:
     Pará, the other two of its three years at Grinnell. The first is the more
     published, so "most works wins" chose it and offered a Grinnell
     digital-humanities scholar a materials chemist's research areas — and her
-    department, "Digital Studies Concentration", maps to no field family, so
-    the wrong-field gate never ran. Being the more prolific author is not
-    evidence of being this school's.
+    department, "Digital Studies Concentration", mapped to no field family at
+    the time, so the wrong-field gate never ran. It maps now, and would refuse
+    him on its own; this rule still has to hold, because two candidates in the
+    SAME field are exactly the case fields cannot decide. Being the more
+    prolific author is not evidence of being this school's.
 
     A ratio rather than a count, so a new hire whose only listed institution is
     the school scores 1.0 instead of losing to a long conflated history.
