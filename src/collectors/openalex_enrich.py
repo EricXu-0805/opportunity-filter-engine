@@ -576,6 +576,11 @@ def _match_author_query(query: str, surname: str, inst_id: str, dept: str) -> di
     for a in j.get("results", []):
         if surname not in (a.get("display_name") or "").lower():
             continue
+        # The surname alone was the whole name test on this path, which is
+        # weaker than the roster path's surname + initial and admits the same
+        # wrong people.
+        if not _given_names_can_be_one_person(query, a.get("display_name") or ""):
+            continue
         aff_ids = {
             (aff.get("institution") or {}).get("id", "").rsplit("/", 1)[-1]
             for aff in (a.get("affiliations") or [])
@@ -855,6 +860,64 @@ def _given_name(name: str) -> str:
     return re.sub(r"[^a-z ]", " ", folded.lower()).split()[0]
 
 
+# Given names that can be one person. Every pair here was observed as a
+# rejection this rule got wrong on the cached rosters — Mike/Michael Guidry
+# (334 works), Joe/Joseph Miles (116), Charlie/Charles Kwit (71) — so the list
+# is derived from evidence rather than guessed at, and it is certainly
+# incomplete. It does not assert that two names ARE one person; it only stops
+# the name from being grounds for refusal, leaving the institution, field and
+# ambiguity gates to decide.
+_DIMINUTIVES = {
+    "mike": "michael", "cindi": "cynthia", "cindy": "cynthia",
+    "joe": "joseph", "nick": "nicholas", "charlie": "charles",
+    "katie": "katherine", "kathy": "katherine", "bill": "william",
+    "bob": "robert", "dan": "daniel", "jim": "james", "tom": "thomas",
+    "steve": "stephen", "dave": "david", "liz": "elizabeth",
+    "beth": "elizabeth", "sue": "susan",
+}
+
+
+def _off_by_one(a: str, b: str) -> bool:
+    """One substitution or one inserted letter apart — Oswaldo/Osvaldo.
+
+    Only for names of five letters or more, where a single character is a
+    spelling variant rather than a different name: at three letters it would
+    make Jun and Jie the same person.
+    """
+    if min(len(a), len(b)) < 5 or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b, strict=True)) == 1
+    short, long = (a, b) if len(a) < len(b) else (b, a)
+    for i in range(len(long)):
+        if long[:i] + long[i + 1:] == short:
+            return True
+    return False
+
+
+def _given_names_can_be_one_person(faculty: str, author: str) -> bool:
+    """Whether these two given names can belong to the same human.
+
+    The surname and first initial are all that bind a faculty member to a
+    roster author, which is why "Christy Hickman" was being handed Candice
+    Hickman's research, and "Ashleigh Jones" Alex K. Jones's. Neither the
+    institution nor the field gate can see the difference: both people really
+    are C. Hickman at that school.
+
+    Unknown on either side is not evidence, so it passes.
+    """
+    a, b = _given_name(faculty), _given_name(author)
+    if not a or not b or a == b:
+        return True
+    if len(a) == 1 or len(b) == 1:      # "J." tells us only the initial
+        return a[0] == b[0]
+    if a.startswith(b) or b.startswith(a):
+        return True
+    if _DIMINUTIVES.get(a, a) == _DIMINUTIVES.get(b, b):
+        return True
+    return _off_by_one(a, b)
+
+
 def index_roster(roster: list[dict]) -> dict[tuple[str, str], list[dict]]:
     idx: dict[tuple[str, str], list[dict]] = {}
     for a in roster:
@@ -899,6 +962,10 @@ def _match_in_roster(name: str, dept: str,
         cands = kept
         if not cands:
             return None, "field_reject"
+    named = [a for a in cands if _given_names_can_be_one_person(name, a.get("name", ""))]
+    if not named:
+        return None, "given_name_reject"
+    cands = named
     exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
     if exact:
         cands = exact
