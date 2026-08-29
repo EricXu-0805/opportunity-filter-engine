@@ -439,6 +439,53 @@ def test_carry_forward_keeps_attribution_stamp_with_recent_works():
     assert "publication_attribution_status" not in incoming3["metadata"]
 
 
+def test_carry_forward_keeps_the_inference_stamp_with_the_keywords():
+    """The ``inferred_fields.keywords`` stamp travels WITH the keywords it
+    describes, exactly like ``publication_attribution_status`` travels with
+    ``recent_works``.
+
+    Regression for the 2026-08-29 refresh (#829/#830), which carried 2,829
+    OpenAlex-derived keyword sets forward while dropping their stamps: JHU
+    2,676 stamped records became 266, Cincinnati 432 became 13, and not one
+    keyword or record was lost. Losing only the stamp is the worst of the
+    three outcomes, because a stamp is the sole thing separating a topic we
+    guessed from a topic the professor stated. Downstream, an unstamped
+    keyword is a stated fact: ``_stated_keywords`` lets the cold email write
+    "your work in X" about it, and the detail card drops the "inferred"
+    caveat. A refresh that silently promotes inference to fact re-arms the
+    exact false sentence #826 and #827 were built to prevent.
+    """
+    existing = {
+        "pi_name": "A B", "department": "Radiology",
+        "keywords": ["magnetic resonance imaging", "breast cancer screening"],
+        "metadata": {"inferred_fields": {"keywords": "derived:openalex_topics"}},
+    }
+    incoming = {  # a listing-only re-scrape: the department label, nothing more
+        "pi_name": "A B", "department": "Radiology", "keywords": ["radiology"],
+    }
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["keywords"] == existing["keywords"]
+    assert incoming["metadata"]["inferred_fields"]["keywords"] == "derived:openalex_topics"
+
+    # A richer fresh scrape wins, and the stale stamp must NOT follow: those
+    # keywords came off the professor's own page, so labelling them "inferred"
+    # would understate what we know just as falsely as the reverse overstates.
+    incoming2 = {
+        "pi_name": "A B", "department": "Radiology",
+        "keywords": ["diffusion tensor imaging", "quantitative MRI", "radiomics"],
+    }
+    _carry_forward_enrichment(existing, incoming2)
+    assert incoming2["keywords"] == ["diffusion tensor imaging", "quantitative MRI", "radiomics"]
+    assert "inferred_fields" not in (incoming2.get("metadata") or {})
+
+    # A legacy stated record carries its keywords with no stamp invented.
+    stated = {"pi_name": "A B", "department": "Radiology",
+              "keywords": ["magnetic resonance imaging", "breast cancer screening"]}
+    incoming3 = {"pi_name": "A B", "department": "Radiology", "keywords": ["radiology"]}
+    _carry_forward_enrichment(stated, incoming3)
+    assert incoming3["keywords"] == stated["keywords"]
+    assert "inferred_fields" not in (incoming3.get("metadata") or {})
+
 def test_carry_forward_keeps_research_areas_raw():
     """The professor's own stated research areas survive a re-scrape that did
     not reach their detail page.
