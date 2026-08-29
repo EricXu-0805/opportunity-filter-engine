@@ -1134,3 +1134,140 @@ def test_usable_topics_looks_past_a_duplicate_to_fill_the_quota():
 def test_usable_topics_drops_a_topic_too_long_to_be_a_keyword():
     long = " ".join(["word"] * 9)
     assert long not in oa.usable_topics([long, "optics"])
+
+
+# --- works bought by the page, so the papers can be cited ------------------
+
+def _authored_work(title, year, field, author_ids):
+    return {"display_name": title, "publication_year": year,
+            "primary_topic": {"field": {"display_name": field}},
+            "authorships": [{"author": {"id": f"https://openalex.org/{a}"}}
+                            for a in author_ids]}
+
+
+def test_one_request_buys_a_whole_batch_of_authors(monkeypatch):
+    """A /works request costs a credit per REQUEST, not per author, and its
+    author.id filter takes an OR list. That is what makes a corpus-wide pass
+    affordable: the per-person path costs about 12 credits a professor."""
+    calls = []
+
+    def fake_get(params, url=None, timeout=20):
+        calls.append(params)
+        return {"results": [_authored_work("Shared Paper", 2026, "Engineering", ["A1", "A2"]),
+                            _authored_work("Only A2", 2025, "Engineering", ["A2"])],
+                "meta": {"next_cursor": None}}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    got = oa.works_for_authors(["A1", "https://openalex.org/A2"])
+    assert len(calls) == 1, "one request must serve the whole batch"
+    assert calls[0]["filter"] == "author.id:A1|A2"
+    assert calls[0]["per-page"] == oa._WORKS_PAGE_SIZE
+    # A work is credited to every author of it that we asked about, and to no
+    # one we did not.
+    assert [w["display_name"] for w in got["A1"]] == ["Shared Paper"]
+    assert [w["display_name"] for w in got["A2"]] == ["Shared Paper", "Only A2"]
+    assert oa.works_for_authors([]) == {}
+
+
+def test_the_papers_a_roster_match_buys_are_citable(monkeypatch, tmp_path):
+    """The point of the pass. 15,903 faculty hold real paper titles that no
+    serving path may cite, because the committed store keeps only a name-keyed
+    association and `verified_recent_works` fails closed. Going back through
+    the roster gives the author id those papers were always missing."""
+    from src.publication_trust import verified_recent_works
+
+    opp = {"id": "f1", "school": "jhu", "source_type": "faculty_research",
+           "pi_name": "Rika Anderson", "url": "https://x.edu/rika",
+           "source_url": "https://x.edu/rika", "department": "Department of Biology",
+           "metadata": {"recent_works": [{"title": "Old Untraceable Paper", "year": 2019}]}}
+    assert verified_recent_works(opp) == []          # what production holds today
+
+    (tmp_path / "jhu.json").write_text(json.dumps({
+        "complete": True, "expected": 1,
+        "authors": [{"id": "https://openalex.org/A9", "name": "Rika Anderson",
+                     "works": 40, "topics": ["hydrothermal vents"],
+                     "fields": ["Agricultural and Biological Sciences"]}]}))
+    monkeypatch.setattr(oa, "works_for_authors", lambda ids, **kw: {
+        "A9": [_authored_work("Microbial Life at Hydrothermal Vents", 2026,
+                     "Agricultural and Biological Sciences", ["A9"]),
+               _authored_work("Monetary Policy in the Euro Area", 2026,
+                              "Economics, Econometrics and Finance", ["A9"])],
+    })
+
+    mapping, reasons = oa.harvest_works_by_roster(
+        [opp], schools=["jhu"], roster_dir=str(tmp_path))
+
+    key = oa._person_key(opp)
+    assert mapping[key]["author_id"] == "A9", "the id is what makes them citable"
+    # The per-work field gate still runs. An economics paper is not this
+    # biologist's, however recent — while Medicine would have been kept, since
+    # a biology department genuinely publishes there.
+    assert "Medicine" in oa._dept_fields("Department of Biology")
+    assert [w["title"] for w in mapping[key]["works"]] == [
+        "Microbial Life at Hydrothermal Vents"]
+
+    assert oa.apply_works([opp], mapping) == 1
+    assert [w["title"] for w in verified_recent_works(opp)] == [
+        "Microbial Life at Hydrothermal Vents"]
+
+
+def test_an_incomplete_roster_is_skipped_not_guessed_at(monkeypatch, tmp_path):
+    """A miss against a partial roster is indistinguishable from a real one,
+    so the school waits for tomorrow's cursor rather than reporting absences
+    it cannot stand behind."""
+    opp = {"id": "f1", "school": "jhu", "source_type": "faculty_research",
+           "pi_name": "Rika Anderson", "url": "https://x.edu/rika",
+           "source_url": "https://x.edu/rika", "department": "Department of Biology"}
+    (tmp_path / "jhu.json").write_text(json.dumps(
+        {"complete": False, "authors": [], "expected": 900}))
+    called = []
+    monkeypatch.setattr(oa, "works_for_authors",
+                        lambda ids, **kw: called.append(ids) or {})
+
+    mapping, reasons = oa.harvest_works_by_roster([opp], schools=["jhu"],
+                                                  roster_dir=str(tmp_path))
+    assert mapping == {}
+    assert reasons["roster_incomplete"] == 1
+    assert called == [], "no credit is spent against a partial roster"
+
+
+def test_a_prolific_author_does_not_crowd_out_the_batch(monkeypatch):
+    """Asking OpenAlex for three real UCSC authors in one newest-first request
+    returned 201 works for the first, 1 for the second and 0 for the third.
+    An OR filter sorted by date belongs to whoever publishes most, and paging
+    deeper buys more of the same author — so each round drops the authors it
+    has already served and re-asks for the rest.
+    """
+    rounds = []
+
+    def fake_get(params, url=None, timeout=20):
+        rounds.append(params["filter"])
+        if len(rounds) == 1:                    # a full page, all one author
+            return {"results": [_authored_work(f"Prolific {i}", 2026, "Engineering", ["A1"])
+                                for i in range(oa._WORKS_PAGE_SIZE)]}
+        return {"results": [_authored_work("The Quiet One's Paper", 2025,
+                                           "Engineering", ["A2"])]}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    got = oa.works_for_authors(["A1", "A2"])
+
+    assert rounds == ["author.id:A1|A2", "author.id:A2"], \
+        "the served author must be dropped from the second ask"
+    assert len(got["A1"]) == oa._WORKS_PAGE_SIZE
+    assert [w["display_name"] for w in got["A2"]] == ["The Quiet One's Paper"]
+
+
+def test_a_round_that_serves_nobody_is_not_bought_twice(monkeypatch):
+    """If a full page leaves every author still short, re-asking would return
+    the same page for the same credit."""
+    calls = []
+
+    def fake_get(params, url=None, timeout=20):
+        calls.append(params["filter"])
+        # A full page, but spread so thinly that nobody reaches the slack mark.
+        return {"results": [_authored_work(f"P{i}", 2026, "Engineering", [f"A{i % 40}"])
+                            for i in range(oa._WORKS_PAGE_SIZE)]}
+
+    monkeypatch.setattr(oa, "_get", fake_get)
+    oa.works_for_authors([f"A{i}" for i in range(40)])
+    assert len(calls) <= 2, calls

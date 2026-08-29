@@ -37,6 +37,16 @@ forward on re-scrape by ``_carry_forward_enrichment``:
 
     python -m src.collectors.openalex_enrich works princeton,stanford --out works.json
     python -m src.collectors.openalex_enrich apply-works works.json
+
+``works`` buys one request per professor and resolves each author through the
+12-credit search, which is why it never ran at corpus scale and 15,903 faculty
+hold papers no serving path may cite. ``works-roster`` takes the author id from
+the cached institution roster (free) and buys the papers ``_WORKS_BATCH`` people
+to a request:
+
+    python -m src.collectors.openalex_enrich works-roster jhu,cincinnati \
+        --roster-dir data/openalex_rosters --out works.json
+    python -m src.collectors.openalex_enrich apply-works works.json
 """
 from __future__ import annotations
 
@@ -92,6 +102,18 @@ WORKS_STORE = os.path.join(os.path.dirname(PROCESSED_FILE), "faculty_works.json"
 # Over-fetch so the per-work field filter (drops OpenAlex same-name conflation
 # outliers) still leaves _MAX_WORKS survivors in the common case.
 _WORKS_FETCH = 10
+# One /works request serves a whole batch of authors (see ``works_for_authors``).
+# 25 keeps the OR filter well inside OpenAlex's length limits, and two pages of
+# 200 leave room for a prolific co-author to crowd the newest-first ordering.
+_WORKS_BATCH = 25
+_WORKS_PAGE_SIZE = 200
+# Rounds per batch, each dropping the authors already served. Four covers the
+# observed skew (one UCSC author took 201 of a 200-work page on his own) while
+# capping a pathological batch at four credits instead of twenty-five.
+_WORKS_ROUNDS = 4
+# Raw works to collect per author before calling them served: the per-work
+# field gate discards some, so asking for exactly `want` would under-serve.
+_WORKS_SLACK = 4
 
 # school slug -> OpenAlex institution id (resolved once via /institutions). The
 # id is matched against each candidate author's full affiliation history, so a
@@ -638,8 +660,9 @@ def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) 
         (t.get("display_name", "") for t in best.get("topics") or []), max_topics)
 
 
-def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
-    """Up to ``max_works`` most recent works for a matched author: title + year
+def _usable_works(raw: list[dict], dept: str = "",
+                  max_works: int = _MAX_WORKS) -> list[dict]:
+    """The citable subset of one author's works, newest first: title + year
     only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
 
     OpenAlex author-name disambiguation conflates distinct same-name people
@@ -648,17 +671,12 @@ def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WO
     when the department maps to a field family, a work whose ``primary_topic``
     field is incompatible with it is dropped — the same wrong-field guard the
     author-topics pass applies, at the per-work level. Better to cite no paper
-    than the wrong person's."""
+    than the wrong person's.
+    """
     allowed = _dept_fields(dept)
-    j = _get({
-        "filter": f"author.id:{author_id}",
-        "sort": "publication_date:desc",
-        "per-page": _WORKS_FETCH,
-        "select": "display_name,publication_year,primary_topic",
-    }, url=_WORKS_API)
     out: list[dict] = []
     seen: set[str] = set()
-    for w in j.get("results", []) or []:
+    for w in raw:
         if allowed is not None:
             field = ((w.get("primary_topic") or {}).get("field") or {}).get("display_name", "")
             if field not in allowed:
@@ -670,6 +688,67 @@ def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WO
             seen.add(_title_key(title))
             out.append({"title": title, "year": year})
         if len(out) >= max_works:
+            break
+    return out
+
+
+def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
+    """``_usable_works`` for one author, bought one request per person."""
+    j = _get({
+        "filter": f"author.id:{author_id}",
+        "sort": "publication_date:desc",
+        "per-page": _WORKS_FETCH,
+        "select": "display_name,publication_year,primary_topic",
+    }, url=_WORKS_API)
+    return _usable_works(j.get("results") or [], dept, max_works)
+
+
+def works_for_authors(author_ids: list[str], *, want: int = _MAX_WORKS,
+                      rounds: int = _WORKS_ROUNDS) -> dict[str, list[dict]]:
+    """Recent works for up to ``_WORKS_BATCH`` authors, a request at a time.
+
+    ``/works`` costs a credit per REQUEST, not per author, and its author.id
+    filter takes an OR list — so the same credit that buys one professor's
+    papers can buy twenty-five. That is the difference between a pass that can
+    run over the whole corpus and one that cannot: the per-person path costs
+    about 12 credits a professor, which is why 15,903 faculty are holding
+    papers no serving path may cite.
+
+    The obvious version of this does not work, and asking OpenAlex proved it:
+    three real UCSC authors in one newest-first request returned 201 works for
+    the first, 1 for the second and 0 for the third. One prolific author
+    crowds out the page, and paging deeper just buys more of the same author.
+
+    So each round drops the authors it has already served and re-asks for the
+    rest. The prolific ones are satisfied first and stop competing, which is
+    what makes the next page belong to the quiet ones. A few extra requests
+    per batch is still far cheaper than one request per person.
+    """
+    pending = {a.rsplit("/", 1)[-1] for a in author_ids if a}
+    if not pending:
+        return {}
+    enough = max(1, want) * _WORKS_SLACK    # room for the per-work field gate
+    out: dict[str, list[dict]] = {}
+    for _ in range(max(1, rounds)):
+        j = _get({
+            "filter": "author.id:" + "|".join(sorted(pending)),
+            "sort": "publication_date:desc",
+            "per-page": _WORKS_PAGE_SIZE,
+            "select": "display_name,publication_year,primary_topic,authorships",
+        }, url=_WORKS_API)
+        results = j.get("results") or []
+        for w in results:
+            for a in w.get("authorships") or []:
+                aid = ((a.get("author") or {}).get("id") or "").rsplit("/", 1)[-1]
+                if aid in pending:
+                    out.setdefault(aid, []).append(w)
+        if len(results) < _WORKS_PAGE_SIZE:
+            break                           # the whole filter fits in one page
+        served = {aid for aid in pending if len(out.get(aid) or []) >= enough}
+        if not served:
+            break                           # re-asking would buy the same page
+        pending -= served
+        if not pending:
             break
     return out
 
@@ -1069,6 +1148,85 @@ def apply_openalex(opps: list[dict], mapping: dict[str, list[str]]) -> int:
     return n
 
 
+def harvest_works_by_roster(
+    opps: list[dict],
+    *,
+    schools: list[str] | None = None,
+    roster_dir: str | None = None,
+    progress: bool = False,
+) -> tuple[dict[str, dict], dict[str, int]]:
+    """``harvest_works``'s result, bought the way #821 buys research areas.
+
+    Returns ``({url#name: {"author_id":..., "works":[...]}}, reason_counts)``,
+    the dict form ``apply_works`` stamps as verified attribution — which is the
+    whole point. 15,903 faculty are holding real paper titles that no serving
+    path may cite, because they were harvested before provenance existed and
+    the committed store keeps only a name-keyed association. A cold email may
+    say "your recent paper" only of a paper it can prove is theirs, so those
+    15,903 records cite nothing.
+
+    The two costs that made re-harvesting them unaffordable are both gone here.
+    Resolving the author was 12 credits a professor through the search API; the
+    cached institution roster already holds the answer and costs nothing to
+    match against. Fetching the papers was one request a professor; a single
+    ``/works`` request serves ``_WORKS_BATCH`` of them.
+
+    Only faculty whose works are not already verified are targeted, and a
+    school whose cached roster is incomplete is skipped rather than matched
+    against a partial list — the same rule ``harvest_openalex_roster`` follows,
+    for the same reason: a miss against a partial roster is indistinguishable
+    from a real one.
+    """
+    targets = _works_targets(opps, schools)
+    by_school: dict[str, list[dict]] = {}
+    for o in targets:
+        by_school.setdefault(o["school"], []).append(o)
+
+    mapping: dict[str, dict] = {}
+    reasons: dict[str, int] = {}
+    for slug, people in sorted(by_school.items()):
+        cache = os.path.join(roster_dir, f"{slug}.json") if roster_dir else None
+        state = json.load(open(cache)) if cache and os.path.exists(cache) else None
+        if state is None:
+            reasons["no_roster"] = reasons.get("no_roster", 0) + 1
+            if progress:
+                print(f"{slug}: no cached roster — skipped", flush=True)
+            continue
+        if not state.get("complete"):
+            reasons["roster_incomplete"] = reasons.get("roster_incomplete", 0) + 1
+            if progress:
+                print(f"{slug}: roster incomplete "
+                      f"({len(state.get('authors') or [])}/{state.get('expected')}) — skipped",
+                      flush=True)
+            continue
+        idx = index_roster(state["authors"])
+        resolved: list[tuple[str, str, str]] = []   # (key, author_id, dept)
+        for o in people:
+            author, why = _match_in_roster(o["pi_name"], o.get("department", ""), idx)
+            reasons[why] = reasons.get(why, 0) + 1
+            if author is None:
+                continue
+            aid = str(author.get("id") or "").rsplit("/", 1)[-1]
+            if aid:
+                resolved.append((_person_key(o), aid, o.get("department", "")))
+        if progress:
+            print(f"{slug}: {len(people)} targets, {len(resolved)} authors resolved "
+                  f"({-(-len(resolved) // _WORKS_BATCH)} requests)", flush=True)
+        for i in range(0, len(resolved), _WORKS_BATCH):
+            batch = resolved[i:i + _WORKS_BATCH]
+            raw = works_for_authors([aid for _, aid, _ in batch])
+            for key, aid, dept in batch:
+                works = _usable_works(raw.get(aid) or [], dept)
+                if works:
+                    mapping[key] = {"author_id": aid, "works": works}
+                else:
+                    reasons["no_usable_work"] = reasons.get("no_usable_work", 0) + 1
+            if progress:
+                print(f"  {slug}: {min(i + _WORKS_BATCH, len(resolved))}/{len(resolved)} "
+                      f"-> {len(mapping)} with papers", flush=True)
+    return mapping, reasons
+
+
 def _works_targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
     # Unlike the topics pass, keyworded faculty ARE targets — a recent paper
     # title gives the cold email substance regardless of keyword source.
@@ -1236,7 +1394,8 @@ def _load_dotenv() -> None:
 
 def _cli(argv: list[str]) -> int:
     _load_dotenv()
-    if not argv or argv[0] not in ("harvest", "roster", "apply", "works", "apply-works"):
+    if not argv or argv[0] not in ("harvest", "roster", "apply", "works",
+                                   "works-roster", "apply-works"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
@@ -1256,6 +1415,25 @@ def _cli(argv: list[str]) -> int:
         json.dump(mapping, open(out, "w"), indent=2)
         total = sum(reasons.values())
         print(f"matched {len(mapping)} faculty -> {out}")
+        for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            print(f"  {why:18} {n:6} ({n / max(1, total) * 100:5.1f}%)")
+        return 0
+    if mode == "works-roster":
+        schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
+        out = "works.json"
+        roster_dir = "data/openalex_rosters"
+        for i, a in enumerate(rest):
+            if a == "--out":
+                out = rest[i + 1]
+            elif a == "--roster-dir":
+                roster_dir = rest[i + 1]
+        opps = json.load(open(PROCESSED_FILE))
+        mapping, reasons = harvest_works_by_roster(
+            opps, schools=schools, progress=True, roster_dir=roster_dir,
+        )
+        json.dump(mapping, open(out, "w"), indent=2)
+        total = sum(reasons.values())
+        print(f"matched {len(mapping)} faculty with citable papers -> {out}")
         for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
             print(f"  {why:18} {n:6} ({n / max(1, total) * 100:5.1f}%)")
         return 0
