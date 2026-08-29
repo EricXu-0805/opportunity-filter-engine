@@ -14,6 +14,7 @@ pin the three defects found in review:
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from src.recommender.cold_email import (
     _build_concise,
@@ -1039,6 +1040,26 @@ class TestTemplateRecentWorkCitation:
         text = generate_cold_email(self._profile, self._opp(works))
         assert "<sup>" not in text
         assert '"Imaging [18F]FDG PET/CT of Nicotinic Receptors" (2025)' in text
+
+    def test_recent_is_only_said_of_a_recent_paper(self):
+        """The newest paper we hold is not always a recent one. Across the
+        first 74 professors harvested through the roster works pass, 42% of
+        the papers this sentence would cite predate 2023 and the oldest is
+        from 1995. "Your recent paper (1995)" prints the contradiction beside
+        the word. The citation still earns its place — only the adjective is
+        dropped.
+        """
+        this_year = date.today().year
+        fresh = generate_cold_email(
+            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 1}]))
+        assert 'Your recent paper "Efficient Sparse Training"' in fresh
+
+        stale = generate_cold_email(
+            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 9}]))
+        assert 'Your paper "Efficient Sparse Training"' in stale
+        assert "recent" not in stale.lower().split("caught my attention")[0].split("your paper")[-1]
+        # the paper is still cited, with its real year
+        assert f"({this_year - 9}) caught my attention" in stale
 
     def test_no_works_no_citation(self):
         text = generate_cold_email(self._profile, self._opp([]))
