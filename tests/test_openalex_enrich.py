@@ -219,6 +219,87 @@ def test_health_facing_social_science_may_publish_in_medicine():
     assert author["topics"] == ["child maltreatment"]
 
 
+def test_a_shared_initial_is_not_a_shared_person():
+    """Surname + first initial is all that bound a faculty member to a roster
+    author, so Christy Hickman was being handed Candice Hickman's research and
+    Ashleigh Jones was being handed Alex K. Jones's 302 Computer Science works.
+    Both really are C. Hickman and A. Jones at that school, so neither the
+    institution gate nor the field gate can see the difference.
+
+    Measured on the cached rosters: 45 of 1,223 accepted matches (3.7%) were
+    two different people. Twelve of the thirty-six inspectable ones were
+    Chinese or Korean names — Li Wang against Lu Wang, Jun Li against Jie Li,
+    Jeongwon Kim against Jiwoong Kim — because a shared surname and initial
+    carry the least information exactly where surnames are most shared.
+    """
+    can = oa._given_names_can_be_one_person
+    for faculty, author in (("Christy Hickman", "Candice Hickman"),
+                            ("Ashleigh Jones", "Alex K. Jones"),
+                            ("Li Wang", "Lu Wang"),
+                            ("Jun Li", "Jie Li"),
+                            ("Jeongwon Kim", "Jiwoong Kim"),
+                            ("Dan Greene", "David L. Greene"),
+                            ("Christine Vossler", "Christian A. Vossler")):
+        assert not can(faculty, author), (faculty, author)
+
+    # ...and the ways one person is written two ways, each observed as a
+    # wrong refusal on those same rosters.
+    for faculty, author in (("Michael Guidry", "Mike Guidry"),
+                            ("Joe Miles", "Joseph R. Miles"),
+                            ("Charlie Kwit", "Charles Kwit"),
+                            ("Pam Linden", "Pamela Linden"),
+                            ("Oswaldo Rafael Nunez", "Osvaldo Nunez"),
+                            ("Pawel Stanislaw Jung", "Paweł S. Jung"),
+                            ("Gokhan Mumcu", "Gökhan Mumcu"),
+                            ("Elizabeth Rodrigues", "E. Rodrigues"),
+                            ("Ada Lovelace", "Ada Lovelace")):
+        assert can(faculty, author), (faculty, author)
+
+    # One letter apart is a spelling variant only in a name long enough for
+    # that to be true; at three letters it would make Jun and Jie one person.
+    assert oa._off_by_one("oswaldo", "osvaldo")
+    assert not oa._off_by_one("jun", "jie")
+
+
+def test_the_roster_refuses_a_stranger_with_the_right_initial():
+    idx = oa.index_roster([
+        _roster_row("Candice Hickman", works=6, topics=["nursing education"],
+                    fields=["Medicine", "Health Professions", "Psychology"]),
+    ])
+    author, why = oa._match_in_roster("Christy Hickman", "College of Social Work", idx)
+    assert author is None
+    assert why == "given_name_reject"
+
+    # The same rule settles a collision the fields cannot: two candidates in
+    # one compatible family, only one of whom is plausibly this person.
+    idx = oa.index_roster([
+        _roster_row("Candice Hickman", works=6, topics=["nursing education"],
+                    fields=["Medicine", "Health Professions", "Psychology"]),
+        _roster_row("Christy L. Hickman", works=20, topics=["child welfare"],
+                    fields=["Health Professions", "Psychology", "Social Sciences"]),
+    ])
+    author, why = oa._match_in_roster("Christy Hickman", "College of Social Work", idx)
+    assert why == "ok"
+    assert author["topics"] == ["child welfare"]
+
+
+def test_the_search_path_checks_the_given_name_too(monkeypatch):
+    """The surname alone was the whole name test on the search path, weaker
+    than the roster path's surname + initial."""
+    monkeypatch.setattr(oa, "_get", lambda p: {"results": [
+        {"id": "A_stranger", "display_name": "Alex K. Jones", "works_count": 302,
+         "affiliations": [{"institution": {"id": "https://openalex.org/I1"},
+                           "years": [2024, 2023]}],
+         "topics": [{"display_name": "Computer Architecture",
+                     "field": {"display_name": "Computer Science"}}]},
+    ]})
+    # The department is the stranger's own field, so the wrong-field gate has
+    # nothing to say and only the name can refuse him.
+    assert oa._dept_fields("Department of Computer Science") == oa._ENG
+    assert oa._match_author("Ashleigh Jones", "I1",
+                            "Department of Computer Science") is None
+
+
 def test_author_topics_requires_institution_and_surname(monkeypatch):
     # right surname but WRONG institution -> no match
     monkeypatch.setattr(oa, "_get", lambda p: {"results": [
