@@ -36,6 +36,8 @@ from ..evidence import (
     FACULTY_MAJOR_LABELS_MARKER,
     UNIT_MAILBOX_LOCALPARTS,
     dept_name_stems,
+    inferred_method,
+    stamp_inferred,
 )
 from .ucb_common import (
     apply_record_contact_claim,
@@ -1213,6 +1215,18 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:
                 incoming[f] = existing[f]
+                # The inference stamp describes exactly this value, so it
+                # travels with it — and only with it, like
+                # publication_attribution_status travels with recent_works.
+                # Carrying the keywords while dropping the stamp is not a
+                # smaller loss than dropping both: it silently promotes a
+                # topic we guessed into a topic the professor stated, and
+                # every consumer downstream reads the absence of a stamp as
+                # "stated". The 2026-08-29 refresh did exactly that to 2,829
+                # OpenAlex-derived records.
+                method = inferred_method(existing, f)
+                if method:
+                    stamp_inferred(incoming.setdefault("metadata", {}), f, method)
     works = (existing.get("metadata") or {}).get("recent_works")
     if works and not (incoming.get("metadata") or {}).get("recent_works"):
         md = incoming.setdefault("metadata", {})
