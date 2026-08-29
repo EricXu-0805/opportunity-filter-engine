@@ -44,10 +44,14 @@ def test_the_school_s_author_wins_over_the_more_published_one(monkeypatch):
     A5007392163 has 20 works and one Grinnell year against three at
     Universidade Federal do Pará; A5072745591 has 12 works and two of its three
     years at Grinnell. "Most works wins" picked the first and offered a
-    digital-humanities scholar a materials chemist's research areas — and her
-    department, "Digital Studies Concentration", maps to no field family, so
-    the wrong-field gate never ran. Being the more prolific author is not
-    evidence of being this school's.
+    digital-humanities scholar a materials chemist's research areas. Being the
+    more prolific author is not evidence of being this school's.
+
+    "Digital Studies Concentration" mapped to no field family when this was
+    written, so the wrong-field gate never ran and institution share was the
+    only thing standing between her and the chemist. It maps now, which means
+    two independent rules refuse him — so the second half of this test pins the
+    share rule on its own, with both candidates field-compatible.
     """
     monkeypatch.setattr(oa, "_get", lambda p: {"results": [
         {"id": "A_chemist", "display_name": "Elizabeth Rodrigues",
@@ -58,7 +62,8 @@ def test_the_school_s_author_wins_over_the_more_published_one(monkeypatch):
              {"institution": {"id": "https://openalex.org/I999"},
               "years": [2019, 2018, 2017]},
          ],
-         "topics": [{"display_name": "Layered Double Hydroxides"}]},
+         "topics": [{"display_name": "Layered Double Hydroxides",
+                     "field": {"display_name": "Chemistry"}}]},
         {"id": "A_scholar", "display_name": "Elizabeth Rodrigues",
          "works_count": 12,
          "affiliations": [
@@ -67,7 +72,40 @@ def test_the_school_s_author_wins_over_the_more_published_one(monkeypatch):
              {"institution": {"id": "https://openalex.org/I888"},
               "years": [2008]},
          ],
-         "topics": [{"display_name": "Digital Humanities and Scholarship"}]},
+         "topics": [{"display_name": "Digital Humanities and Scholarship",
+                     "field": {"display_name": "Arts and Humanities"}}]},
+    ]})
+
+    best = oa._match_author("Elizabeth (Liz) Rodrigues", "I173288447",
+                            "Digital Studies Concentration")
+
+    assert best["id"] == "A_scholar"
+
+    # Same two, both now publishing in a field the department allows: the
+    # wrong-field gate has nothing to say and the share rule alone must still
+    # prefer the author whose years are mostly at this school over the one with
+    # nearly twice the works.
+    monkeypatch.setattr(oa, "_get", lambda p: {"results": [
+        {"id": "A_prolific", "display_name": "Elizabeth Rodrigues",
+         "works_count": 20,
+         "affiliations": [
+             {"institution": {"id": "https://openalex.org/I173288447"},
+              "years": [2022]},
+             {"institution": {"id": "https://openalex.org/I999"},
+              "years": [2019, 2018, 2017]},
+         ],
+         "topics": [{"display_name": "Book History",
+                     "field": {"display_name": "Arts and Humanities"}}]},
+        {"id": "A_scholar", "display_name": "Elizabeth Rodrigues",
+         "works_count": 12,
+         "affiliations": [
+             {"institution": {"id": "https://openalex.org/I173288447"},
+              "years": [2020, 2017]},
+             {"institution": {"id": "https://openalex.org/I888"},
+              "years": [2008]},
+         ],
+         "topics": [{"display_name": "Digital Humanities and Scholarship",
+                     "field": {"display_name": "Arts and Humanities"}}]},
     ]})
 
     best = oa._match_author("Elizabeth (Liz) Rodrigues", "I173288447",
@@ -112,6 +150,73 @@ def test_the_word_department_does_not_name_a_discipline():
     # An earlier key still wins over the word, as it always did.
     assert "Chemistry" in oa._dept_fields("Department of Chemistry")
     assert oa._dept_fields("Departments") is None
+
+
+def test_the_umbrella_names_are_gated_too():
+    """A department that matches no key is accepted ungated, so the guard
+    abstains rather than judges. That was 8,583 of 70,631 enrichment targets
+    (12.2%) — one in eight — and the largest single name in it was "School of
+    Engineering" (400 people), because every engineering key here is a
+    sub-discipline and plain "engineer" was never one. With these added it is
+    507 (0.7%).
+    """
+    assert "Engineering" in oa._dept_fields("School of Engineering")
+    assert "Agricultural and Biological Sciences" in oa._dept_fields(
+        "College of Agricultural Sciences")
+    assert "Social Sciences" in oa._dept_fields("College of Social Sciences and Humanities")
+    assert "Arts and Humanities" in oa._dept_fields("Department of Spanish & Portuguese")
+    assert "Computer Science" in oa._dept_fields("School of Data Science")
+    assert "Environmental Science" in oa._dept_fields("Department of Environmental Sciences")
+    assert "Medicine" in oa._dept_fields("Department of Physiology")
+
+    # Order carries meaning. A school of sustainable engineering is judged as
+    # engineering, and Environmental Studies is judged as environmental
+    # science — not by the "studies" catch-all, which sits last for exactly
+    # this reason.
+    assert oa._dept_fields("School of Sustainable Engineering and the Built Environment") == oa._ENG
+    assert "Earth and Planetary Sciences" in oa._dept_fields("Department of Environmental Studies")
+    assert "Physics and Astronomy" not in oa._dept_fields("Department of American Studies")
+
+    # Every key already in the table still answers first.
+    assert oa._dept_fields("Department of Electrical Engineering") == oa._ENG
+    assert oa._dept_fields("Department of Art History") == {"Arts and Humanities",
+                                                           "Social Sciences"}
+
+
+def test_health_facing_social_science_may_publish_in_medicine():
+    """Measured against the cached rosters: gating social work on _SOC alone
+    rejected seven correct people, among them Bridget Freisthler (182 works,
+    Health Professions / Psychology / Medicine). The majority of a social work
+    researcher's topics are clinical, so a family without the health fields
+    refuses the person it was meant to confirm.
+
+    The gate keeps its teeth where the wrong-person matches actually came from:
+    Ashleigh Jones of Human Development was being handed "Alex K. Jones", 302
+    works, all Computer Science — still refused.
+    """
+    for dept in ("College of Social Work", "Department of Human Development and Family Science",
+                 "School of Interdisciplinary Global Studies"):
+        fields = oa._dept_fields(dept)
+        assert "Medicine" in fields, dept
+        assert "Computer Science" not in fields, dept
+        assert "Engineering" not in fields, dept
+
+    idx = oa.index_roster([
+        _roster_row("Alex K. Jones", works=302, topics=["computer architecture"],
+                    fields=["Computer Science", "Computer Science", "Engineering"]),
+    ])
+    author, why = oa._match_in_roster(
+        "Ashleigh Jones", "Department of Human Development and Family Science", idx)
+    assert author is None
+    assert why == "field_reject"
+
+    idx = oa.index_roster([
+        _roster_row("Bridget Freisthler", works=182, topics=["child maltreatment"],
+                    fields=["Health Professions", "Psychology", "Medicine"]),
+    ])
+    author, why = oa._match_in_roster("Bridget Freisthler", "College of Social Work", idx)
+    assert why == "ok"
+    assert author["topics"] == ["child maltreatment"]
 
 
 def test_author_topics_requires_institution_and_surname(monkeypatch):
@@ -696,10 +801,31 @@ def _roster_row(name, works=40, topics=(), fields=()):
 def test_roster_refuses_two_same_named_colleagues():
     """The Grinnell bug's real fix. Without affiliation years there is no honest
     way to rank two same-named authors at one school, and 'most works wins' is
-    what handed a digital-humanities scholar a chemist's research areas."""
+    what handed a digital-humanities scholar a chemist's research areas.
+
+    Both rows carry fields, because every real roster row does: across the
+    miami, syracuse and utk rosters, 16 of 22,609 authors have no field, and
+    each of those has no topic to give a professor either.
+    """
     idx = oa.index_roster([
-        _roster_row("Elizabeth Rodrigues", works=12, topics=["digital humanities"]),
-        _roster_row("Elizabeth Rodrigues", works=300, topics=["polymer chemistry"]),
+        _roster_row("Elizabeth Rodrigues", works=12, topics=["digital humanities"],
+                    fields=["Arts and Humanities"]),
+        _roster_row("Elizabeth Rodrigues", works=300, topics=["polymer chemistry"],
+                    fields=["Chemistry"]),
+    ])
+    # "Digital Studies" now maps to a field family, so the chemist is refused
+    # on the evidence and the ambiguity dissolves — a better answer than
+    # refusing both, and the outcome this collision should have had all along.
+    author, why = oa._match_in_roster("Elizabeth Rodrigues", "Digital Studies", idx)
+    assert why == "ok"
+    assert author["topics"] == ["digital humanities"]
+
+    # Two colleagues the fields cannot separate: the refusal rule still holds.
+    idx = oa.index_roster([
+        _roster_row("Elizabeth Rodrigues", works=12, topics=["digital humanities"],
+                    fields=["Arts and Humanities"]),
+        _roster_row("Elizabeth Rodrigues", works=300, topics=["book history"],
+                    fields=["Arts and Humanities"]),
     ])
     author, why = oa._match_in_roster("Elizabeth Rodrigues", "Digital Studies", idx)
     assert author is None
