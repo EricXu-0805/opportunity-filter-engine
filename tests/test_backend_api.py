@@ -2678,7 +2678,7 @@ class TestOpportunityChatHardening:
             },
         }
         system = op_module._build_chat_system_prompt(verified, None)
-        assert ('Recent publications by this professor: '
+        assert ('Publications by this professor, newest first: '
                 '"Sparse Attention at Scale" (2026)') in system
         assert "matched to this professor by name" not in system
 

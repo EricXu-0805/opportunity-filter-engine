@@ -14,6 +14,7 @@ pin the three defects found in review:
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from src.recommender.cold_email import (
     _build_concise,
@@ -950,7 +951,7 @@ class TestRecentWorkGrounding:
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
-        assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
+        assert "within the last three): (none)" in user_msg
 
     def test_prompt_excludes_unverified_works(self, monkeypatch):
         # Publication trust boundary: pipeline-verified works are presented as
@@ -958,14 +959,22 @@ class TestRecentWorkGrounding:
         # EXCLUDED from the prompt entirely — "(none)" is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        assert "Recent publications by this professor (cite at most ONE" in user_msg
+        assert "Publications by this professor, newest first (cite at most ONE" in user_msg
         assert "matched to this professor by name" not in user_msg
+        # The block used to be labelled "Recent publications", and the GOOD
+        # few-shot taught "Your recent paper on ...". For 12% of the harvested
+        # professors the newest paper is over three years old and the oldest
+        # cited is from 1995, so the model was being taught to call a 1995
+        # paper recent to its own author.
+        assert "Recent publications" not in user_msg
+        assert "'recent' only if that year is within the last three" in user_msg
+        assert "Your recent paper on" not in user_msg
 
         for status in ("name_match", None, "pending", "definitely_verified"):
             user_msg = self._capture_prompt(
                 monkeypatch, self._opp(self._WORKS, status=status))
             assert "NeuroFlow" not in user_msg
-            assert "cite at most ONE, whichever is most relevant): (none)" in user_msg
+            assert "within the last three): (none)" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
@@ -1039,6 +1048,25 @@ class TestTemplateRecentWorkCitation:
         text = generate_cold_email(self._profile, self._opp(works))
         assert "<sup>" not in text
         assert '"Imaging [18F]FDG PET/CT of Nicotinic Receptors" (2025)' in text
+
+    def test_recent_is_only_said_of_a_recent_paper(self):
+        """The newest paper we hold is not always a recent one. Of the 2,581
+        professors in the first roster works harvest, 305 (12%) have nothing
+        newer than three years, and the oldest cited paper is from 1995.
+        "Your recent paper (1995)" prints the contradiction beside the word.
+        The citation still earns its place — only the adjective is dropped.
+        """
+        this_year = date.today().year
+        fresh = generate_cold_email(
+            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 1}]))
+        assert 'Your recent paper "Efficient Sparse Training"' in fresh
+
+        stale = generate_cold_email(
+            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 9}]))
+        assert 'Your paper "Efficient Sparse Training"' in stale
+        assert "recent" not in stale.lower().split("caught my attention")[0].split("your paper")[-1]
+        # the paper is still cited, with its real year
+        assert f"({this_year - 9}) caught my attention" in stale
 
     def test_no_works_no_citation(self):
         text = generate_cold_email(self._profile, self._opp([]))

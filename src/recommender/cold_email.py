@@ -1,4 +1,5 @@
 import re
+from datetime import date
 
 from src.evidence import (
     faculty_contact_claims_unverified,
@@ -1092,6 +1093,16 @@ def _p1_research_hook(p: dict) -> str:
     return ""
 
 
+# A paper stops being "recent" some years after it is published. Three keeps
+# the word honest without discarding the citation, which stays useful at any
+# age — it is evidence the student looked the professor up.
+_RECENT_WORK_MAX_AGE_YEARS = 3
+
+
+def _is_recent_year(year: object) -> bool:
+    return isinstance(year, int) and year >= date.today().year - _RECENT_WORK_MAX_AGE_YEARS
+
+
 def _recent_work_cite(p: dict) -> str:
     """One sentence citing the professor's newest usable paper — the template
     path's counterpart to the AI prompt's recent-works block, so the free tier
@@ -1112,7 +1123,15 @@ def _recent_work_cite(p: dict) -> str:
             continue
         year = w.get("year")
         yr = f" ({year})" if year else ""
-        return f' Your recent paper "{title}"{yr} caught my attention.'
+        # "recent" is a claim, and the newest paper we hold is not always a
+        # recent one: of the 2,581 professors in the first roster works
+        # harvest, 305 (12%) have nothing newer than three years, and the
+        # oldest cited paper is from 1995. Calling that recent — to its
+        # author, with the year printed right beside the word — reads as a
+        # machine that does not know what the word means. The paper is still
+        # worth citing; only the adjective has to go.
+        lead = "Your recent paper" if _is_recent_year(year) else "Your paper"
+        return f' {lead} "{title}"{yr} caught my attention.'
     return ""
 
 
