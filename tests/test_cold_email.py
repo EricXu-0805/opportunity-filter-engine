@@ -962,9 +962,10 @@ class TestRecentWorkGrounding:
         assert "Publications by this professor, newest first (cite at most ONE" in user_msg
         assert "matched to this professor by name" not in user_msg
         # The block used to be labelled "Recent publications", and the GOOD
-        # few-shot taught "Your recent paper on ...". 42% of the papers this
-        # cites are older than 2023 and the oldest is from 1995, so the model
-        # was being taught to call a 1995 paper recent to its own author.
+        # few-shot taught "Your recent paper on ...". For 12% of the harvested
+        # professors the newest paper is over three years old and the oldest
+        # cited is from 1995, so the model was being taught to call a 1995
+        # paper recent to its own author.
         assert "Recent publications" not in user_msg
         assert "'recent' only if that year is within the last three" in user_msg
         assert "Your recent paper on" not in user_msg
@@ -1049,12 +1050,11 @@ class TestTemplateRecentWorkCitation:
         assert '"Imaging [18F]FDG PET/CT of Nicotinic Receptors" (2025)' in text
 
     def test_recent_is_only_said_of_a_recent_paper(self):
-        """The newest paper we hold is not always a recent one. Across the
-        first 74 professors harvested through the roster works pass, 42% of
-        the papers this sentence would cite predate 2023 and the oldest is
-        from 1995. "Your recent paper (1995)" prints the contradiction beside
-        the word. The citation still earns its place — only the adjective is
-        dropped.
+        """The newest paper we hold is not always a recent one. Of the 2,581
+        professors in the first roster works harvest, 305 (12%) have nothing
+        newer than three years, and the oldest cited paper is from 1995.
+        "Your recent paper (1995)" prints the contradiction beside the word.
+        The citation still earns its place — only the adjective is dropped.
         """
         this_year = date.today().year
         fresh = generate_cold_email(

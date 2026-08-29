@@ -700,9 +700,9 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
     works_str = _format_recent_works(opp)
     if works_str:
         owner_label = "professor" if faculty_is_professor else "faculty member"
-        # Not "recent": each entry carries its year, and the newest paper we
-        # hold for someone is often a decade old (42% of the first batch
-        # harvested this way predate 2023, the oldest is 1995).
+        # Not "recent": each entry carries its year, and for 305 of the
+        # 2,581 professors in the first roster works harvest (12%) the newest
+        # one is over three years old; the oldest cited is from 1995.
         lines.append(
             f"- Publications by this {owner_label}, newest first: {works_str}")
     if desc and not faculty_profile:

@@ -1124,12 +1124,12 @@ def _recent_work_cite(p: dict) -> str:
         year = w.get("year")
         yr = f" ({year})" if year else ""
         # "recent" is a claim, and the newest paper we hold is not always a
-        # recent one: across the first 74 professors harvested this way, 42%
-        # of the papers this sentence would cite predate 2023 and the oldest
-        # is from 1995. Calling that recent — to its author, with the year
-        # printed right beside the word — reads as a machine that does not
-        # know what the word means. The paper is still worth citing; only the
-        # adjective has to go.
+        # recent one: of the 2,581 professors in the first roster works
+        # harvest, 305 (12%) have nothing newer than three years, and the
+        # oldest cited paper is from 1995. Calling that recent — to its
+        # author, with the year printed right beside the word — reads as a
+        # machine that does not know what the word means. The paper is still
+        # worth citing; only the adjective has to go.
         lead = "Your recent paper" if _is_recent_year(year) else "Your paper"
         return f' {lead} "{title}"{yr} caught my attention.'
     return ""
