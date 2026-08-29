@@ -1,386 +1,551 @@
 {
-  "duration_seconds": 7907.3,
+  "duration_seconds": 10227.6,
   "release": {
     "by_unit": {
-      "cincinnati": {
+      "barnard": {
         "ready": true,
         "reasons": []
       },
-      "clemson": {
+      "bates": {
         "ready": true,
         "reasons": []
       },
-      "cmu": {
+      "brynmawr": {
         "ready": true,
         "reasons": []
       },
-      "columbia": {
+      "caltech": {
         "ready": true,
         "reasons": []
       },
-      "jhu": {
+      "casewestern": {
         "ready": true,
         "reasons": []
       },
-      "miami": {
+      "colby": {
         "ready": true,
         "reasons": []
       },
-      "northwestern": {
+      "colostate": {
         "ready": true,
         "reasons": []
       },
-      "princeton": {
+      "gatech": {
         "ready": true,
         "reasons": []
       },
-      "stanford": {
+      "lsu": {
         "ready": true,
         "reasons": []
       },
-      "ucf": {
+      "neu": {
         "ready": true,
         "reasons": []
       },
-      "ucsc": {
+      "osu": {
         "ready": true,
         "reasons": []
       },
-      "ucsd": {
+      "pomona": {
         "ready": true,
         "reasons": []
       },
-      "uf": {
+      "sbu": {
         "ready": true,
         "reasons": []
       },
-      "unl": {
+      "swarthmore": {
+        "ready": false,
+        "reasons": [
+          "required source swarthmore_faculty emitted zero records"
+        ]
+      },
+      "uchicago": {
         "ready": true,
         "reasons": []
       },
-      "washu": {
+      "uci": {
+        "ready": true,
+        "reasons": []
+      },
+      "ucsb": {
+        "ready": true,
+        "reasons": []
+      },
+      "umass": {
+        "ready": true,
+        "reasons": []
+      },
+      "umich": {
+        "ready": true,
+        "reasons": []
+      },
+      "upenn": {
+        "ready": true,
+        "reasons": []
+      },
+      "utdallas": {
+        "ready": true,
+        "reasons": []
+      },
+      "utk": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [
       {
-        "detail": "5/7",
-        "kind": "crawl_sources_unreached",
-        "source": "campus_graph:jhu"
+        "detail": "0/2 seed pages, 0/1 crawl sources",
+        "kind": "dark_crawl",
+        "source": "campus_graph:colby"
       },
       {
-        "detail": "8/31, 23 failed",
-        "kind": "seed_pages_unreached",
-        "source": "campus_graph:jhu"
-      },
-      {
-        "detail": "jhu_department_campus: seed fetch failed: https://engineering.jhu.edu/research/undergraduate-research-opportunities/; jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/publichealth/; jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/ursca/; jhu_lab_lab: seed fetch failed: https://hemi.jhu.edu/opportunities/; jhu_program_campus: seed fetch failed: https://csmsip.cell",
+        "detail": "colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/; colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/",
         "kind": "crawl_errors",
-        "source": "campus_graph:jhu"
+        "source": "campus_graph:colby"
       },
       {
-        "detail": "3/5",
+        "detail": "4/6",
         "kind": "crawl_sources_unreached",
-        "source": "campus_graph:princeton"
+        "source": "campus_graph:uchicago"
       },
       {
-        "detail": "4/8, 4 failed",
+        "detail": "8/13, 5 failed",
         "kind": "seed_pages_unreached",
-        "source": "campus_graph:princeton"
+        "source": "campus_graph:uchicago"
       },
       {
-        "detail": "princeton_institutes: seed fetch failed: https://www.pppl.gov/education; princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/; princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/programs; princeton_our_programs: seed fetch failed: https://undergraduateresearch.princeton.edu/programs",
+        "detail": "uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office",
         "kind": "crawl_errors",
-        "source": "campus_graph:princeton"
+        "source": "campus_graph:uchicago"
+      },
+      {
+        "detail": "0/9 seed pages, 0/6 crawl sources",
+        "kind": "dark_crawl",
+        "source": "campus_graph:umich"
+      },
+      {
+        "detail": "umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads; umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research; umich_department_research: seed fetch failed: https://sure.engin.umich.edu/; umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/; ",
+        "kind": "crawl_errors",
+        "source": "campus_graph:umich"
       }
     ],
     "expected": [
-      "campus_graph:cincinnati",
-      "campus_graph:clemson",
-      "campus_graph:cmu",
-      "campus_graph:columbia",
-      "campus_graph:jhu",
-      "campus_graph:miami",
-      "campus_graph:northwestern",
-      "campus_graph:princeton",
-      "campus_graph:stanford",
-      "campus_graph:ucf",
-      "campus_graph:ucsc",
-      "campus_graph:ucsd",
-      "campus_graph:uf",
-      "campus_graph:unl",
-      "campus_graph:washu",
-      "cincinnati_faculty",
-      "clemson_faculty",
-      "cmu_faculty",
-      "columbia_faculty",
-      "jhu_faculty",
-      "miami_faculty",
-      "northwestern_faculty",
-      "princeton_faculty",
-      "stanford_faculty",
-      "ucf_faculty",
-      "ucsc_faculty",
-      "ucsd_faculty",
-      "uf_faculty",
-      "unl_faculty",
-      "washu_faculty"
+      "barnard_faculty",
+      "bates_faculty",
+      "brynmawr_faculty",
+      "caltech_faculty",
+      "campus_graph:barnard",
+      "campus_graph:bates",
+      "campus_graph:brynmawr",
+      "campus_graph:caltech",
+      "campus_graph:casewestern",
+      "campus_graph:colby",
+      "campus_graph:colostate",
+      "campus_graph:gatech",
+      "campus_graph:lsu",
+      "campus_graph:neu",
+      "campus_graph:osu",
+      "campus_graph:pomona",
+      "campus_graph:sbu",
+      "campus_graph:swarthmore",
+      "campus_graph:uchicago",
+      "campus_graph:uci",
+      "campus_graph:ucsb",
+      "campus_graph:umass",
+      "campus_graph:umich",
+      "campus_graph:upenn",
+      "campus_graph:utdallas",
+      "campus_graph:utk",
+      "casewestern_faculty",
+      "colby_faculty",
+      "colostate_faculty",
+      "gatech_faculty",
+      "lsu_faculty",
+      "neu_faculty",
+      "osu_faculty",
+      "pomona_faculty",
+      "sbu_faculty",
+      "swarthmore_faculty",
+      "uchicago_faculty",
+      "uci_faculty",
+      "ucsb_faculty",
+      "ucsb_urca_projects",
+      "umass_faculty",
+      "umich_faculty",
+      "upenn_faculty",
+      "utdallas_faculty",
+      "utk_faculty"
     ],
     "observed": [
       "auto_tagger",
+      "barnard_faculty",
+      "bates_faculty",
+      "brynmawr_faculty",
+      "caltech_faculty",
       "campus_discovery_quarantine",
-      "campus_graph:cincinnati",
-      "campus_graph:clemson",
-      "campus_graph:cmu",
-      "campus_graph:columbia",
-      "campus_graph:jhu",
-      "campus_graph:miami",
-      "campus_graph:northwestern",
-      "campus_graph:princeton",
-      "campus_graph:stanford",
-      "campus_graph:ucf",
-      "campus_graph:ucsc",
-      "campus_graph:ucsd",
-      "campus_graph:uf",
-      "campus_graph:unl",
-      "campus_graph:washu",
-      "cincinnati_faculty",
-      "clemson_faculty",
-      "cmu_faculty",
-      "columbia_faculty",
+      "campus_graph:barnard",
+      "campus_graph:bates",
+      "campus_graph:brynmawr",
+      "campus_graph:caltech",
+      "campus_graph:casewestern",
+      "campus_graph:colby",
+      "campus_graph:colostate",
+      "campus_graph:gatech",
+      "campus_graph:lsu",
+      "campus_graph:neu",
+      "campus_graph:osu",
+      "campus_graph:pomona",
+      "campus_graph:sbu",
+      "campus_graph:swarthmore",
+      "campus_graph:uchicago",
+      "campus_graph:uci",
+      "campus_graph:ucsb",
+      "campus_graph:umass",
+      "campus_graph:umich",
+      "campus_graph:upenn",
+      "campus_graph:utdallas",
+      "campus_graph:utk",
+      "casewestern_faculty",
+      "colby_faculty",
+      "colostate_faculty",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
+      "gatech_faculty",
       "intl_reconciliation",
-      "jhu_faculty",
-      "miami_faculty",
-      "northwestern_faculty",
+      "lsu_faculty",
+      "neu_faculty",
+      "osu_faculty",
       "pi_enricher",
-      "princeton_faculty",
+      "pomona_faculty",
       "professor_tracking",
+      "sbu_faculty",
       "school_audience",
-      "stanford_faculty",
-      "ucf_faculty",
-      "ucsc_faculty",
-      "ucsd_faculty",
-      "uf_faculty",
-      "unl_faculty",
-      "washu_faculty"
+      "swarthmore_faculty",
+      "uchicago_faculty",
+      "uci_faculty",
+      "ucsb_faculty",
+      "ucsb_urca_projects",
+      "umass_faculty",
+      "umich_faculty",
+      "upenn_faculty",
+      "utdallas_faculty",
+      "utk_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cincinnati",
-        "summary_key": "campus_graph:cincinnati"
+        "school": "barnard",
+        "summary_key": "barnard_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "clemson",
-        "summary_key": "campus_graph:clemson"
+        "school": "bates",
+        "summary_key": "bates_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cmu",
-        "summary_key": "campus_graph:cmu"
+        "school": "brynmawr",
+        "summary_key": "brynmawr_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "columbia",
-        "summary_key": "campus_graph:columbia"
+        "school": "caltech",
+        "summary_key": "caltech_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "jhu",
-        "summary_key": "campus_graph:jhu"
+        "school": "barnard",
+        "summary_key": "campus_graph:barnard"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "miami",
-        "summary_key": "campus_graph:miami"
+        "school": "bates",
+        "summary_key": "campus_graph:bates"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "northwestern",
-        "summary_key": "campus_graph:northwestern"
+        "school": "brynmawr",
+        "summary_key": "campus_graph:brynmawr"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "princeton",
-        "summary_key": "campus_graph:princeton"
+        "school": "caltech",
+        "summary_key": "campus_graph:caltech"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "stanford",
-        "summary_key": "campus_graph:stanford"
+        "school": "casewestern",
+        "summary_key": "campus_graph:casewestern"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucf",
-        "summary_key": "campus_graph:ucf"
+        "school": "colby",
+        "summary_key": "campus_graph:colby"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucsc",
-        "summary_key": "campus_graph:ucsc"
+        "school": "colostate",
+        "summary_key": "campus_graph:colostate"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucsd",
-        "summary_key": "campus_graph:ucsd"
+        "school": "gatech",
+        "summary_key": "campus_graph:gatech"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uf",
-        "summary_key": "campus_graph:uf"
+        "school": "lsu",
+        "summary_key": "campus_graph:lsu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "unl",
-        "summary_key": "campus_graph:unl"
+        "school": "neu",
+        "summary_key": "campus_graph:neu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "washu",
-        "summary_key": "campus_graph:washu"
+        "school": "osu",
+        "summary_key": "campus_graph:osu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cincinnati",
-        "summary_key": "cincinnati_faculty"
+        "school": "pomona",
+        "summary_key": "campus_graph:pomona"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "clemson",
-        "summary_key": "clemson_faculty"
+        "school": "sbu",
+        "summary_key": "campus_graph:sbu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cmu",
-        "summary_key": "cmu_faculty"
+        "school": "swarthmore",
+        "summary_key": "campus_graph:swarthmore"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "columbia",
-        "summary_key": "columbia_faculty"
+        "school": "uchicago",
+        "summary_key": "campus_graph:uchicago"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "jhu",
-        "summary_key": "jhu_faculty"
+        "school": "uci",
+        "summary_key": "campus_graph:uci"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "miami",
-        "summary_key": "miami_faculty"
+        "school": "ucsb",
+        "summary_key": "campus_graph:ucsb"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "northwestern",
-        "summary_key": "northwestern_faculty"
+        "school": "umass",
+        "summary_key": "campus_graph:umass"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "princeton",
-        "summary_key": "princeton_faculty"
+        "school": "umich",
+        "summary_key": "campus_graph:umich"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "stanford",
-        "summary_key": "stanford_faculty"
+        "school": "upenn",
+        "summary_key": "campus_graph:upenn"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucf",
-        "summary_key": "ucf_faculty"
+        "school": "utdallas",
+        "summary_key": "campus_graph:utdallas"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucsc",
-        "summary_key": "ucsc_faculty"
+        "school": "utk",
+        "summary_key": "campus_graph:utk"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucsd",
-        "summary_key": "ucsd_faculty"
+        "school": "casewestern",
+        "summary_key": "casewestern_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uf",
-        "summary_key": "uf_faculty"
+        "school": "colby",
+        "summary_key": "colby_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "unl",
-        "summary_key": "unl_faculty"
+        "school": "colostate",
+        "summary_key": "colostate_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "washu",
-        "summary_key": "washu_faculty"
+        "school": "gatech",
+        "summary_key": "gatech_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "lsu",
+        "summary_key": "lsu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "neu",
+        "summary_key": "neu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "osu",
+        "summary_key": "osu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "pomona",
+        "summary_key": "pomona_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "sbu",
+        "summary_key": "sbu_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "swarthmore",
+        "summary_key": "swarthmore_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "uchicago",
+        "summary_key": "uchicago_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "uci",
+        "summary_key": "uci_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucsb",
+        "summary_key": "ucsb_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucsb",
+        "summary_key": "ucsb_urca_projects"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "umass",
+        "summary_key": "umass_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "umich",
+        "summary_key": "umich_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "upenn",
+        "summary_key": "upenn_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "utdallas",
+        "summary_key": "utdallas_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "utk",
+        "summary_key": "utk_faculty"
       }
     ],
     "publishable": [
-      "cincinnati",
-      "clemson",
-      "cmu",
-      "columbia",
-      "jhu",
-      "miami",
-      "northwestern",
-      "princeton",
-      "stanford",
-      "ucf",
-      "ucsc",
-      "ucsd",
-      "uf",
-      "unl",
-      "washu"
+      "barnard",
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
     ],
-    "ready": true,
-    "reasons": [],
-    "status": "degraded",
+    "ready": false,
+    "reasons": [
+      "required source swarthmore_faculty emitted zero records"
+    ],
+    "status": "blocked",
     "structural_reasons": [],
     "warnings": [
-      "deep source campus_graph:jhu crawled 5/7 configured crawl sources; the unreached ones keep their previous records",
-      "deep source campus_graph:jhu loaded 8/31 configured seed pages (23 failed); those sources kept their previous records",
-      "deep source campus_graph:jhu reported crawl errors: ['jhu_department_campus: seed fetch failed: https://engineering.jhu.edu/research/undergraduate-research-opportunities/', 'jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/publichealth/', 'jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/ursca/', 'jhu_lab_lab: seed fetch failed: https://hemi.jhu.edu/opportunities/', 'jhu_program_campus: seed fetch failed: https://csmsip.cellbio.jhmi.edu/', 'jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/about/outreach-and-belonging/hopkins-engineering-propel/', 'jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/research/spur-apl/rise-apl/', 'jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/ug-academic/engagement/vredenburg/', 'jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/bdpsp/', 'jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/catalyst/', 'jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/husummer/', 'jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/pura/', 'jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/summerpura/', 'jhu_program_campus: seed fetch failed: https://krieger.jhu.edu/ursca/projects/aspire-grant/', 'jhu_program_campus: seed fetch failed: https://krieger.jhu.edu/ursca/projects/uurf/', 'jhu_program_campus: seed fetch failed: https://publichealth.jhu.edu/about/inclusion-diversity-anti-racism-and-equity-idare/diversity-summer-internship-program-for-undergraduates', 'jhu_program_campus: seed fetch failed: https://www.bme.jhu.edu/academics/bme-design/undergraduate-design-team/', 'jhu_program_campus: seed fetch failed: https://www.hopkinsmedicine.org/som/pathway/summer-internship-program', 'jhu_program_lab: seed fetch failed: https://bioethics.jhu.edu/education-training/mentorship/', 'jhu_program_lab: seed fetch failed: https://inbt.jhu.edu/nanobio-reu/', 'jhu_program_lab: seed fetch failed: https://lcsr.jhu.edu/reu/', 'jhu_program_lab: seed fetch failed: https://snfagora.jhu.edu/curricular-programs/ba-in-moral-political-economy/undergraduate-summer-internship-program/', 'jhu_program_lab: seed fetch failed: https://snfagora.jhu.edu/for-students/research-assistants-program/']",
-      "deep source campus_graph:princeton crawled 3/5 configured crawl sources; the unreached ones keep their previous records",
-      "deep source campus_graph:princeton loaded 4/8 configured seed pages (4 failed); those sources kept their previous records",
-      "deep source campus_graph:princeton reported crawl errors: ['princeton_institutes: seed fetch failed: https://www.pppl.gov/education', 'princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/', 'princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/programs', 'princeton_our_programs: seed fetch failed: https://undergraduateresearch.princeton.edu/programs']",
-      "deep source campus_graph:stanford degraded on recursive discovered pages: ['stanford_department: discovered-page fetch failed: https://careered.stanford.edu/jobs-internships/where-find-jobs-internships']",
-      "faculty stale retirement is held pending per-unit lineage: ['cincinnati_faculty', 'clemson_faculty', 'cmu_faculty', 'columbia_faculty', 'jhu_faculty', 'miami_faculty', 'northwestern_faculty', 'princeton_faculty', 'stanford_faculty', 'ucf_faculty', 'ucsc_faculty', 'ucsd_faculty', 'uf_faculty', 'unl_faculty', 'washu_faculty']",
+      "deep source campus_graph:colby loaded no live page at all (0/2 seed pages, 0/1 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
+      "deep source campus_graph:colby reported crawl errors: ['colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/', 'colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/']",
+      "deep source campus_graph:gatech degraded on recursive discovered pages: ['gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0', 'gatech_department: discovered-page fetch failed: https://finaid.gatech.edu/']",
+      "deep source campus_graph:uchicago crawled 4/6 configured crawl sources; the unreached ones keep their previous records",
+      "deep source campus_graph:uchicago loaded 8/13 configured seed pages (5 failed); those sources kept their previous records",
+      "deep source campus_graph:uchicago reported crawl errors: ['uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-undergraduate-research-scholars-program', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program']",
+      "deep source campus_graph:uchicago degraded on recursive discovered pages: ['uchicago_department: discovered-page fetch failed: http://bfi.uchicago.edu/kapani-metcalf-summer-internship-program/', 'uchicago_department: discovered-page fetch failed: https://ccrf.uchicago.edu/content/jeff-metcalf-summer-undergraduate-research-fellows-surf-marine-biological-laboratory-mbl']",
+      "deep source campus_graph:umich loaded no live page at all (0/9 seed pages, 0/6 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
+      "deep source campus_graph:umich reported crawl errors: ['umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads', 'umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research', 'umich_department_research: seed fetch failed: https://sure.engin.umich.edu/', 'umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/', 'umich_institutes: seed fetch failed: https://isr.umich.edu/training-opportunities/student-research-opportunities/', 'umich_institutes: seed fetch failed: https://www.lsi.umich.edu/education/undergrads', 'umich_research_programs: seed fetch failed: https://lsa.umich.edu/urop/prospective-students/summer-programs.html', 'umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop', 'umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop/prospective-students.html']",
+      "faculty stale retirement is held pending per-unit lineage: ['barnard_faculty', 'bates_faculty', 'brynmawr_faculty', 'caltech_faculty', 'casewestern_faculty', 'colby_faculty', 'colostate_faculty', 'gatech_faculty', 'lsu_faculty', 'neu_faculty', 'osu_faculty', 'pomona_faculty', 'sbu_faculty', 'swarthmore_faculty', 'uchicago_faculty', 'uci_faculty', 'ucsb_faculty', 'umass_faculty', 'umich_faculty', 'upenn_faculty', 'utdallas_faculty', 'utk_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -388,53 +553,167 @@
     "deep": true,
     "national": false,
     "schools": [
-      "cincinnati",
-      "clemson",
-      "cmu",
-      "columbia",
-      "jhu",
-      "miami",
-      "northwestern",
-      "princeton",
-      "stanford",
-      "ucf",
-      "ucsc",
-      "ucsd",
-      "uf",
-      "unl",
-      "washu"
+      "barnard",
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "swarthmore",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "cincinnati",
-      "clemson",
-      "cmu",
-      "columbia",
-      "jhu",
-      "miami",
-      "northwestern",
-      "princeton",
-      "stanford",
-      "ucf",
-      "ucsc",
-      "ucsd",
-      "uf",
-      "unl",
-      "washu"
+      "barnard",
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "swarthmore",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
     ]
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 72,
+      "rule_based_tagged": 141,
       "status": "ok"
+    },
+    "barnard_faculty": {
+      "fetched": 209,
+      "new": 1,
+      "status": "ok",
+      "updated": 208
+    },
+    "bates_faculty": {
+      "fetched": 215,
+      "new": 40,
+      "status": "ok",
+      "updated": 175
+    },
+    "brynmawr_faculty": {
+      "fetched": 151,
+      "new": 0,
+      "status": "ok",
+      "updated": 151
+    },
+    "caltech_faculty": {
+      "fetched": 469,
+      "new": 44,
+      "status": "ok",
+      "updated": 425
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:cincinnati": {
+    "campus_graph:barnard": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:bates": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 11,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 11,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:brynmawr": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:caltech": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 4,
+      "crawl_sources_loaded": 4,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 31,
+      "live_pages_attempted": 17,
+      "live_pages_loaded": 17,
+      "new": 0,
+      "seed_pages_expected": 17,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 17,
+      "seed_records": 31,
+      "status": "ok",
+      "updated": 30
+    },
+    "campus_graph:casewestern": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -453,7 +732,29 @@
       "status": "ok",
       "updated": 4
     },
-    "campus_graph:clemson": {
+    "campus_graph:colby": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/",
+        "colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/"
+      ],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 0,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 0,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 2,
+      "seed_pages_loaded": 0,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:colostate": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -461,18 +762,42 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 4,
+      "fetched": 5,
       "live_pages_attempted": 2,
       "live_pages_loaded": 2,
       "new": 0,
       "seed_pages_expected": 2,
       "seed_pages_failed": 0,
       "seed_pages_loaded": 2,
-      "seed_records": 4,
+      "seed_records": 5,
       "status": "ok",
-      "updated": 4
+      "updated": 5
     },
-    "campus_graph:cmu": {
+    "campus_graph:gatech": {
+      "complete_recursive_sources": [
+        "gatech_lab"
+      ],
+      "crawl_errors": [],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 6,
+      "deep": true,
+      "degraded_page_errors": [
+        "gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0",
+        "gatech_department: discovered-page fetch failed: https://finaid.gatech.edu/"
+      ],
+      "discovered_records": 16,
+      "fetched": 26,
+      "live_pages_attempted": 45,
+      "live_pages_loaded": 43,
+      "new": 0,
+      "seed_pages_expected": 10,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 10,
+      "seed_records": 10,
+      "status": "ok",
+      "updated": 25
+    },
+    "campus_graph:lsu": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -481,17 +806,17 @@
       "degraded_page_errors": [],
       "discovered_records": 0,
       "fetched": 6,
-      "live_pages_attempted": 1,
-      "live_pages_loaded": 1,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
       "new": 0,
-      "seed_pages_expected": 1,
+      "seed_pages_expected": 2,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 1,
+      "seed_pages_loaded": 2,
       "seed_records": 6,
       "status": "ok",
       "updated": 6
     },
-    "campus_graph:columbia": {
+    "campus_graph:neu": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -499,7 +824,64 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 7,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:osu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:pomona": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:sbu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 5,
       "live_pages_attempted": 3,
       "live_pages_loaded": 3,
       "new": 0,
@@ -508,52 +890,9 @@
       "seed_pages_loaded": 3,
       "seed_records": 7,
       "status": "ok",
-      "updated": 7
+      "updated": 5
     },
-    "campus_graph:jhu": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [
-        "jhu_department_campus: seed fetch failed: https://engineering.jhu.edu/research/undergraduate-research-opportunities/",
-        "jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/ursca/",
-        "jhu_department_campus: seed fetch failed: https://krieger.jhu.edu/publichealth/",
-        "jhu_lab_lab: seed fetch failed: https://hemi.jhu.edu/opportunities/",
-        "jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/pura/",
-        "jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/summerpura/",
-        "jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/catalyst/",
-        "jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/bdpsp/",
-        "jhu_program_campus: seed fetch failed: https://hour.jhu.edu/opportunities/husummer/",
-        "jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/about/outreach-and-belonging/hopkins-engineering-propel/",
-        "jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/research/spur-apl/rise-apl/",
-        "jhu_program_campus: seed fetch failed: https://engineering.jhu.edu/ug-academic/engagement/vredenburg/",
-        "jhu_program_campus: seed fetch failed: https://krieger.jhu.edu/ursca/projects/aspire-grant/",
-        "jhu_program_campus: seed fetch failed: https://krieger.jhu.edu/ursca/projects/uurf/",
-        "jhu_program_campus: seed fetch failed: https://www.bme.jhu.edu/academics/bme-design/undergraduate-design-team/",
-        "jhu_program_campus: seed fetch failed: https://www.hopkinsmedicine.org/som/pathway/summer-internship-program",
-        "jhu_program_campus: seed fetch failed: https://csmsip.cellbio.jhmi.edu/",
-        "jhu_program_campus: seed fetch failed: https://publichealth.jhu.edu/about/inclusion-diversity-anti-racism-and-equity-idare/diversity-summer-internship-program-for-undergraduates",
-        "jhu_program_lab: seed fetch failed: https://inbt.jhu.edu/nanobio-reu/",
-        "jhu_program_lab: seed fetch failed: https://lcsr.jhu.edu/reu/",
-        "jhu_program_lab: seed fetch failed: https://bioethics.jhu.edu/education-training/mentorship/",
-        "jhu_program_lab: seed fetch failed: https://snfagora.jhu.edu/curricular-programs/ba-in-moral-political-economy/undergraduate-summer-internship-program/",
-        "jhu_program_lab: seed fetch failed: https://snfagora.jhu.edu/for-students/research-assistants-program/"
-      ],
-      "crawl_sources_expected": 7,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 31,
-      "live_pages_attempted": 31,
-      "live_pages_loaded": 8,
-      "new": 0,
-      "seed_pages_expected": 31,
-      "seed_pages_failed": 23,
-      "seed_pages_loaded": 8,
-      "seed_records": 31,
-      "status": "ok",
-      "updated": 31
-    },
-    "campus_graph:miami": {
+    "campus_graph:swarthmore": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -561,18 +900,48 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
+      "fetched": 10,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
       "new": 0,
-      "seed_pages_expected": 2,
+      "seed_pages_expected": 4,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 5,
+      "seed_pages_loaded": 4,
+      "seed_records": 10,
       "status": "ok",
-      "updated": 5
+      "updated": 10
     },
-    "campus_graph:northwestern": {
+    "campus_graph:uchicago": {
+      "complete_recursive_sources": [
+        "uchicago_lab"
+      ],
+      "crawl_errors": [
+        "uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-undergraduate-research-scholars-program",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program"
+      ],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 4,
+      "deep": true,
+      "degraded_page_errors": [
+        "uchicago_department: discovered-page fetch failed: http://bfi.uchicago.edu/kapani-metcalf-summer-internship-program/",
+        "uchicago_department: discovered-page fetch failed: https://ccrf.uchicago.edu/content/jeff-metcalf-summer-undergraduate-research-fellows-surf-marine-biological-laboratory-mbl"
+      ],
+      "discovered_records": 3,
+      "fetched": 15,
+      "live_pages_attempted": 19,
+      "live_pages_loaded": 12,
+      "new": 0,
+      "seed_pages_expected": 13,
+      "seed_pages_failed": 5,
+      "seed_pages_loaded": 8,
+      "seed_records": 13,
+      "status": "ok",
+      "updated": 14
+    },
+    "campus_graph:uci": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 5,
@@ -580,86 +949,104 @@
       "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 29,
-      "live_pages_attempted": 30,
-      "live_pages_loaded": 30,
+      "fetched": 15,
+      "live_pages_attempted": 9,
+      "live_pages_loaded": 9,
       "new": 0,
-      "seed_pages_expected": 30,
+      "seed_pages_expected": 9,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 30,
-      "seed_records": 31,
+      "seed_pages_loaded": 9,
+      "seed_records": 15,
       "status": "ok",
-      "updated": 29
+      "updated": 15
     },
-    "campus_graph:princeton": {
-      "complete_recursive_sources": [
-        "princeton_department_research"
-      ],
-      "crawl_errors": [
-        "princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/",
-        "princeton_our_hub: seed fetch failed: https://undergraduateresearch.princeton.edu/programs",
-        "princeton_our_programs: seed fetch failed: https://undergraduateresearch.princeton.edu/programs",
-        "princeton_institutes: seed fetch failed: https://www.pppl.gov/education"
-      ],
+    "campus_graph:ucsb": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
       "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 3,
+      "crawl_sources_loaded": 5,
       "deep": true,
       "degraded_page_errors": [],
-      "discovered_records": 10,
-      "fetched": 19,
-      "live_pages_attempted": 30,
-      "live_pages_loaded": 26,
-      "new": 8,
-      "seed_pages_expected": 8,
-      "seed_pages_failed": 4,
+      "discovered_records": 0,
+      "fetched": 16,
+      "live_pages_attempted": 10,
+      "live_pages_loaded": 10,
+      "new": 0,
+      "seed_pages_expected": 10,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 10,
+      "seed_records": 16,
+      "status": "ok",
+      "updated": 16
+    },
+    "campus_graph:umass": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
       "seed_pages_loaded": 4,
-      "seed_records": 11,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:umich": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop",
+        "umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop/prospective-students.html",
+        "umich_research_programs: seed fetch failed: https://lsa.umich.edu/urop/prospective-students/summer-programs.html",
+        "umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/",
+        "umich_department_research: seed fetch failed: https://sure.engin.umich.edu/",
+        "umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research",
+        "umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads",
+        "umich_institutes: seed fetch failed: https://www.lsi.umich.edu/education/undergrads",
+        "umich_institutes: seed fetch failed: https://isr.umich.edu/training-opportunities/student-research-opportunities/"
+      ],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 0,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 12,
+      "live_pages_attempted": 9,
+      "live_pages_loaded": 0,
+      "new": 0,
+      "seed_pages_expected": 9,
+      "seed_pages_failed": 9,
+      "seed_pages_loaded": 0,
+      "seed_records": 12,
       "status": "ok",
       "updated": 11
     },
-    "campus_graph:stanford": {
-      "complete_recursive_sources": [
-        "stanford_lab"
-      ],
+    "campus_graph:upenn": {
+      "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 6,
       "crawl_sources_loaded": 6,
       "deep": true,
-      "degraded_page_errors": [
-        "stanford_department: discovered-page fetch failed: https://careered.stanford.edu/jobs-internships/where-find-jobs-internships"
-      ],
-      "discovered_records": 20,
-      "fetched": 29,
-      "live_pages_attempted": 47,
-      "live_pages_loaded": 46,
-      "new": 0,
-      "seed_pages_expected": 11,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 11,
-      "seed_records": 11,
-      "status": "ok",
-      "updated": 28
-    },
-    "campus_graph:ucf": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
       "degraded_page_errors": [],
       "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
+      "fetched": 38,
+      "live_pages_attempted": 18,
+      "live_pages_loaded": 18,
       "new": 0,
-      "seed_pages_expected": 2,
+      "seed_pages_expected": 18,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 5,
+      "seed_pages_loaded": 18,
+      "seed_records": 38,
       "status": "ok",
-      "updated": 5
+      "updated": 37
     },
-    "campus_graph:ucsc": {
+    "campus_graph:utdallas": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -678,48 +1065,7 @@
       "status": "ok",
       "updated": 4
     },
-    "campus_graph:ucsd": {
-      "complete_recursive_sources": [
-        "ucsd_department_research",
-        "ucsd_institutes"
-      ],
-      "crawl_errors": [],
-      "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 25,
-      "fetched": 32,
-      "live_pages_attempted": 36,
-      "live_pages_loaded": 36,
-      "new": 0,
-      "seed_pages_expected": 7,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 7,
-      "seed_records": 13,
-      "status": "ok",
-      "updated": 30
-    },
-    "campus_graph:uf": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 8,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 8,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:unl": {
+    "campus_graph:utk": {
       "complete_recursive_sources": [],
       "crawl_errors": [],
       "crawl_sources_expected": 1,
@@ -738,54 +1084,29 @@
       "status": "ok",
       "updated": 5
     },
-    "campus_graph:washu": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 8,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
+    "casewestern_faculty": {
+      "fetched": 720,
+      "new": 3,
+      "status": "ok",
+      "updated": 717
+    },
+    "colby_faculty": {
+      "fetched": 238,
       "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 8,
       "status": "ok",
-      "updated": 8
+      "updated": 238
     },
-    "cincinnati_faculty": {
-      "fetched": 1047,
-      "new": 12,
+    "colostate_faculty": {
+      "fetched": 920,
+      "new": 7,
       "status": "ok",
-      "updated": 1035
-    },
-    "clemson_faculty": {
-      "fetched": 903,
-      "new": 13,
-      "status": "ok",
-      "updated": 890
-    },
-    "cmu_faculty": {
-      "fetched": 961,
-      "new": 71,
-      "status": "ok",
-      "updated": 890
-    },
-    "columbia_faculty": {
-      "fetched": 1070,
-      "new": 29,
-      "status": "ok",
-      "updated": 1041
+      "updated": 913
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 17804,
+      "skipped_rolling": 17424,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -793,21 +1114,28 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "cincinnati_faculty",
-        "clemson_faculty",
-        "cmu_faculty",
-        "columbia_faculty",
-        "jhu_faculty",
-        "miami_faculty",
-        "northwestern_faculty",
-        "princeton_faculty",
-        "stanford_faculty",
-        "ucf_faculty",
-        "ucsc_faculty",
-        "ucsd_faculty",
-        "uf_faculty",
-        "unl_faculty",
-        "washu_faculty"
+        "barnard_faculty",
+        "bates_faculty",
+        "brynmawr_faculty",
+        "caltech_faculty",
+        "casewestern_faculty",
+        "colby_faculty",
+        "colostate_faculty",
+        "gatech_faculty",
+        "lsu_faculty",
+        "neu_faculty",
+        "osu_faculty",
+        "pomona_faculty",
+        "sbu_faculty",
+        "swarthmore_faculty",
+        "uchicago_faculty",
+        "uci_faculty",
+        "ucsb_faculty",
+        "umass_faculty",
+        "umich_faculty",
+        "upenn_faculty",
+        "utdallas_faculty",
+        "utk_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok",
@@ -815,30 +1143,32 @@
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 291,
-      "keywords_cleaned": 210,
+      "duplicates_removed": 525,
+      "keywords_cleaned": 147,
       "removed_by_school": {
-        "cincinnati": 2,
-        "clemson": 1,
-        "cmu": 65,
-        "columbia": 14,
+        "bates": 40,
+        "caltech": 44,
+        "colostate": 2,
         "duke": 1,
-        "jhu": 12,
-        "miami": 1,
-        "northwestern": 11,
-        "princeton": 23,
-        "stanford": 48,
-        "ucf": 22,
-        "ucsc": 1,
-        "ucsd": 17,
+        "gatech": 126,
+        "lsu": 2,
+        "neu": 113,
+        "osu": 29,
+        "sbu": 4,
+        "uchicago": 46,
+        "uci": 18,
+        "ucsb": 17,
         "udel": 1,
-        "uf": 55,
-        "unl": 13,
-        "washu": 4
+        "umass": 35,
+        "umich": 30,
+        "upenn": 14,
+        "utk": 3
       },
       "retitled": 0,
       "shared_inbox_nulled": {
-        "columbia": 2
+        "bates": 2,
+        "casewestern": 4,
+        "lsu": 2
       },
       "shared_keyword_demoted": 0,
       "status": "ok"
@@ -848,56 +1178,68 @@
       "shared_mailbox_nulled": 0,
       "status": "ok"
     },
+    "gatech_faculty": {
+      "fetched": 1209,
+      "new": 110,
+      "status": "ok",
+      "updated": 1099
+    },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "jhu_faculty": {
-      "fetched": 4058,
+    "lsu_faculty": {
+      "fetched": 1135,
       "new": 12,
       "status": "ok",
-      "updated": 4046
+      "updated": 1123
     },
-    "miami_faculty": {
-      "fetched": 456,
-      "new": 8,
+    "neu_faculty": {
+      "fetched": 2072,
+      "new": 145,
       "status": "ok",
-      "updated": 448
+      "updated": 1927
     },
-    "northwestern_faculty": {
-      "fetched": 2774,
-      "new": 13,
+    "osu_faculty": {
+      "fetched": 2246,
+      "new": 69,
       "status": "ok",
-      "updated": 2761
+      "updated": 2177
     },
     "pi_enricher": {
-      "already_had": 17799,
-      "enriched": 318,
-      "nulled_unit_inboxes": 5,
-      "renulled_shared_emails": 272,
+      "already_had": 19880,
+      "enriched": 189,
+      "nulled_unit_inboxes": 6,
+      "renulled_shared_emails": 47,
       "scraped": 1000,
-      "skipped_budget": 2840,
+      "skipped_budget": 1341,
       "status": "ok"
     },
-    "princeton_faculty": {
-      "fetched": 636,
-      "new": 30,
+    "pomona_faculty": {
+      "fetched": 270,
+      "new": 2,
       "status": "ok",
-      "updated": 606
+      "updated": 268
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 34.18,
-      "events": 11672,
-      "freshness_pct": 34.18,
+      "active_profile_coverage_pct": 34.15,
+      "events": 11674,
+      "freshness_pct": 34.15,
       "fully_stale_school_count": 40,
-      "missing_profile_count": 84816,
+      "missing_profile_count": 84937,
       "missing_school_count": 40,
-      "new_events": 884,
-      "profiles": 44252,
+      "new_events": 2,
+      "profiles": 44255,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
       "untrackable_active_count": 0
+    },
+    "sbu_faculty": {
+      "fetched": 663,
+      "new": 16,
+      "status": "ok",
+      "updated": 647
     },
     "school_audience": {
       "by_source": {
@@ -907,9 +1249,9 @@
         "arizona_research_programs": 5,
         "asu_faculty": 2470,
         "asu_research_programs": 6,
-        "barnard_faculty": 211,
+        "barnard_faculty": 212,
         "barnard_research_programs": 9,
-        "bates_faculty": 176,
+        "bates_faculty": 216,
         "bates_research_programs": 11,
         "bc_faculty": 839,
         "bc_research_programs": 4,
@@ -927,20 +1269,20 @@
         "buffalo_faculty": 840,
         "buffalo_research_programs": 6,
         "caltech_external_research": 14,
-        "caltech_faculty": 434,
+        "caltech_faculty": 478,
         "caltech_labs": 8,
         "caltech_research_programs": 8,
         "carleton_faculty": 300,
         "carleton_research_programs": 10,
-        "casewestern_faculty": 733,
+        "casewestern_faculty": 736,
         "casewestern_research_programs": 4,
-        "cincinnati_faculty": 1073,
+        "cincinnati_faculty": 1071,
         "cincinnati_research_programs": 4,
-        "clemson_faculty": 918,
+        "clemson_faculty": 917,
         "clemson_research_programs": 4,
         "cmc_faculty": 154,
         "cmc_research_programs": 10,
-        "cmu_faculty": 970,
+        "cmu_faculty": 905,
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
@@ -948,9 +1290,9 @@
         "colgate_research_programs": 9,
         "coloradocollege_faculty": 207,
         "coloradocollege_research_programs": 7,
-        "colostate_faculty": 927,
+        "colostate_faculty": 934,
         "colostate_research_programs": 5,
-        "columbia_faculty": 1102,
+        "columbia_faculty": 1088,
         "columbia_research_programs": 7,
         "cornell_faculty": 1651,
         "cornell_research_programs": 4,
@@ -969,7 +1311,7 @@
         "fsu_faculty": 653,
         "fsu_research_programs": 5,
         "gatech_external_research": 2,
-        "gatech_faculty": 1305,
+        "gatech_faculty": 1415,
         "gatech_labs": 1,
         "gatech_research_programs": 26,
         "georgetown_faculty": 861,
@@ -990,19 +1332,19 @@
         "indiana_faculty": 1666,
         "indiana_research_programs": 4,
         "jhu_external_research": 1,
-        "jhu_faculty": 4575,
+        "jhu_faculty": 4563,
         "jhu_labs": 7,
         "jhu_research_programs": 23,
         "kenyon_faculty": 170,
         "kenyon_research_programs": 11,
         "lehigh_faculty": 575,
         "lehigh_research_programs": 4,
-        "lsu_faculty": 1206,
+        "lsu_faculty": 1218,
         "lsu_research_programs": 6,
         "macalester_faculty": 198,
         "macalester_research_programs": 8,
         "manual": 25,
-        "miami_faculty": 464,
+        "miami_faculty": 463,
         "miami_research_programs": 5,
         "middlebury_faculty": 313,
         "middlebury_research_programs": 9,
@@ -1014,11 +1356,11 @@
         "ncsu_research_programs": 11,
         "nd_faculty": 1278,
         "nd_research_programs": 8,
-        "neu_faculty": 1964,
+        "neu_faculty": 2109,
         "neu_research_programs": 8,
         "njit_faculty": 505,
         "njit_research_programs": 4,
-        "northwestern_faculty": 2788,
+        "northwestern_faculty": 2777,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
         "nsf_reu": 756,
@@ -1026,13 +1368,13 @@
         "nyu_research_programs": 11,
         "oregonstate_faculty": 604,
         "oregonstate_research_programs": 4,
-        "osu_faculty": 2472,
+        "osu_faculty": 2541,
         "osu_research_programs": 8,
         "pitt_faculty": 1142,
         "pitt_research_programs": 4,
-        "pomona_faculty": 269,
+        "pomona_faculty": 271,
         "pomona_research_programs": 8,
-        "princeton_faculty": 656,
+        "princeton_faculty": 633,
         "princeton_labs": 4,
         "princeton_research_programs": 15,
         "psu_faculty": 2761,
@@ -1049,13 +1391,13 @@
         "rpi_research_programs": 4,
         "rutgers_faculty": 2021,
         "rutgers_research_programs": 8,
-        "sbu_faculty": 897,
+        "sbu_faculty": 913,
         "sbu_research_programs": 5,
         "simplify_internships": 4266,
         "smith_faculty": 308,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
-        "stanford_faculty": 1415,
+        "stanford_faculty": 1367,
         "stanford_labs": 1,
         "stanford_research_programs": 38,
         "stevens_faculty": 337,
@@ -1127,13 +1469,13 @@
         "ucb_urap": 1,
         "ucb_urap_projects": 861,
         "ucd_research_programs": 7,
-        "ucf_faculty": 833,
+        "ucf_faculty": 811,
         "ucf_research_programs": 5,
         "uchicago_external_research": 3,
-        "uchicago_faculty": 1168,
+        "uchicago_faculty": 1214,
         "uchicago_labs": 1,
         "uchicago_research_programs": 13,
-        "uci_faculty": 1192,
+        "uci_faculty": 1210,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -1145,18 +1487,18 @@
         "ucr_faculty": 1154,
         "ucr_research_programs": 6,
         "ucsb_external_research": 1,
-        "ucsb_faculty": 867,
+        "ucsb_faculty": 884,
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
-        "ucsb_urca_projects": 248,
-        "ucsc_faculty": 737,
+        "ucsb_urca_projects": 249,
+        "ucsc_faculty": 736,
         "ucsc_research_programs": 4,
-        "ucsd_faculty": 1489,
+        "ucsd_faculty": 1472,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "udel_faculty": 1009,
         "udel_research_programs": 5,
-        "uf_faculty": 2097,
+        "uf_faculty": 2042,
         "uf_research_programs": 8,
         "uga_faculty": 2160,
         "uga_research_programs": 7,
@@ -1172,21 +1514,21 @@
         "uiuc_ursa": 1,
         "uky_faculty": 767,
         "uky_research_programs": 6,
-        "umass_faculty": 1569,
+        "umass_faculty": 1611,
         "umass_research_programs": 9,
         "umd_faculty": 1299,
         "umd_research_programs": 7,
         "umich_external_research": 2,
-        "umich_faculty": 1466,
+        "umich_faculty": 1506,
         "umich_labs": 3,
         "umich_research_programs": 6,
         "umn_faculty": 1451,
         "umn_research_programs": 7,
         "unc_faculty": 367,
-        "unl_faculty": 1224,
+        "unl_faculty": 1211,
         "unl_research_programs": 5,
         "upenn_external_research": 9,
-        "upenn_faculty": 1911,
+        "upenn_faculty": 1926,
         "upenn_labs": 2,
         "upenn_research_programs": 26,
         "usc_faculty": 1575,
@@ -1195,12 +1537,12 @@
         "usf_research_programs": 5,
         "utah_faculty": 1115,
         "utah_research_programs": 5,
-        "utdallas_faculty": 1070,
+        "utdallas_faculty": 1086,
         "utdallas_research_programs": 4,
         "utexas_external_research": 1,
         "utexas_faculty": 2259,
         "utexas_research_programs": 35,
-        "utk_faculty": 1066,
+        "utk_faculty": 1071,
         "utk_research_programs": 5,
         "uva_faculty": 1633,
         "uva_research_programs": 9,
@@ -1214,7 +1556,7 @@
         "vassar_research_programs": 8,
         "vt_faculty": 1889,
         "vt_research_programs": 9,
-        "washu_faculty": 1112,
+        "washu_faculty": 1108,
         "washu_research_programs": 8,
         "wellesley_faculty": 286,
         "wellesley_research_programs": 2,
@@ -1232,49 +1574,77 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 137385
+      "tagged": 137745
     },
-    "stanford_faculty": {
-      "fetched": 1403,
-      "new": 51,
+    "swarthmore_faculty": {
+      "fetched": 0,
+      "new": 0,
       "status": "ok",
-      "updated": 1352
+      "updated": 0
     },
-    "ucf_faculty": {
-      "fetched": 800,
-      "new": 28,
+    "uchicago_faculty": {
+      "fetched": 1147,
+      "new": 46,
       "status": "ok",
-      "updated": 772
+      "updated": 1101
     },
-    "ucsc_faculty": {
-      "fetched": 707,
+    "uci_faculty": {
+      "fetched": 1088,
+      "new": 18,
+      "status": "ok",
+      "updated": 1070
+    },
+    "ucsb_faculty": {
+      "fetched": 848,
+      "new": 17,
+      "status": "ok",
+      "updated": 831
+    },
+    "ucsb_urca_projects": {
+      "deactivated": 0,
+      "empty_confirmed": false,
+      "fetched": 249,
+      "locations_seen": 283,
       "new": 1,
+      "recognized_locations": 283,
+      "sitemap_complete": true,
+      "sitemap_structure_complete": true,
+      "sitemaps_expected": 2,
+      "sitemaps_loaded": 2,
       "status": "ok",
-      "updated": 706
+      "unexpected_location_count": 0,
+      "unexpected_location_samples": [],
+      "updated": 248
     },
-    "ucsd_faculty": {
-      "fetched": 1363,
-      "new": 19,
+    "umass_faculty": {
+      "fetched": 1579,
+      "new": 42,
       "status": "ok",
-      "updated": 1344
+      "updated": 1537
     },
-    "uf_faculty": {
-      "fetched": 1876,
-      "new": 83,
+    "umich_faculty": {
+      "fetched": 1446,
+      "new": 40,
       "status": "ok",
-      "updated": 1793
+      "updated": 1406
     },
-    "unl_faculty": {
-      "fetched": 1000,
-      "new": 60,
+    "upenn_faculty": {
+      "fetched": 1836,
+      "new": 15,
       "status": "ok",
-      "updated": 940
+      "updated": 1821
     },
-    "washu_faculty": {
-      "fetched": 1094,
-      "new": 11,
+    "utdallas_faculty": {
+      "fetched": 1074,
+      "new": 16,
       "status": "ok",
-      "updated": 1083
+      "updated": 1058
+    },
+    "utk_faculty": {
+      "fetched": 1024,
+      "new": 5,
+      "status": "ok",
+      "updated": 1019
     }
   },
   "time_budget": {
@@ -1282,8 +1652,8 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-08-28T09:02:40.293440",
-  "total_in_file": 137094,
-  "total_new": 449,
-  "total_updated": 19892
+  "timestamp": "2026-08-29T06:04:40.278980",
+  "total_in_file": 137220,
+  "total_new": 649,
+  "total_updated": 20415
 }
