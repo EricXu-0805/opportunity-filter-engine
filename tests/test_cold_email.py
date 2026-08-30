@@ -2704,3 +2704,57 @@ class TestInferredKeywordsNeverSpeakAsTheProfessor:
         assert "enhanced oil recovery" not in body.lower()
         # Still a usable email, not an empty one.
         assert "Bing Zhou" in body
+
+
+class TestTopicDomainsReadWordsNotLetters:
+    """The lab-type vocabularies decide whether a draft may claim the student's
+    interests line up with this professor. They matched by raw substring, and
+    they mix tool names with field morphemes, so the letters of a tool name
+    landed inside unrelated words:
+
+      git     1 occurrence as a word, 2,007 inside others — 1,859 "digital"
+      aws     0 as a word, 58 inside — laws, draws, outlaws, lawsuits
+      react   4 as a word, 523 inside — reactions, reactors, reactive
+      labor   inside collaboration (191), laboratory (157), collaborative (153)
+
+    Across the corpus 11.5% of faculty records got a different domain set under
+    word matching, and 2.65% of (student, professor) alignment verdicts flipped.
+    Field morphemes are the reason the substring rule was there in the first
+    place and they still work: chemistry -> biochemistry, physics ->
+    astrophysics, algorithm -> algorithms.
+    """
+
+    @staticmethod
+    def _domains(text: str) -> set[str]:
+        from src.recommender.cold_email import _topic_domains
+
+        return _topic_domains(text)
+
+    def test_a_tool_name_does_not_match_the_word_that_contains_it(self):
+        assert "dry" not in self._domains("digital humanities and archival practice")
+        assert "dry" not in self._domains("constitutional laws and civil rights")
+        assert "dry" not in self._domains("organic reaction mechanisms and catalysis")
+        assert "hum" not in self._domains("collaboration across our laboratory groups")
+
+    def test_the_tool_name_still_counts_when_it_is_the_word(self):
+        """The stricter rule is a fix, not a deletion."""
+        assert "dry" in self._domains("we use git and docker for reproducible builds")
+        assert "hum" in self._domains("labor markets and wage inequality")
+
+    def test_a_field_stem_still_reaches_the_compound_it_belongs_to(self):
+        assert "wet" in self._domains("biochemistry of membrane proteins")
+        assert "dry" in self._domains("astrophysics and numerical cosmology")
+        assert "dry" in self._domains("approximation algorithms for graph problems")
+
+    def test_a_term_carrying_punctuation_keeps_plain_containment(self):
+        """"rna-seq", "c++" and multi-word phrases are too specific to collide,
+        so they are matched the old way rather than tokenized."""
+        assert "wet" in self._domains("single-cell rna-seq of tumor microenvironments")
+        assert "wet" in self._domains("molecular biology of DNA repair")
+
+    def test_communications_does_not_make_a_wireless_lab_humanities(self):
+        """Of the 621 corpus phrases containing the whole word "communications",
+        366 are ECE — wireless, optical, signal processing — against 57 that are
+        media studies. As a substring for the humanities term "communication" it
+        is a signal-processing detector."""
+        assert "hum" not in self._domains("wireless communications and signal processing")
