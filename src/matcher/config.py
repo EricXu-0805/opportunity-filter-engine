@@ -249,7 +249,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # too (COURSEWORK_UNKNOWN joined the hashed knobs), but the base moves as
 # well because the change is a formula, not a value: a deployment that
 # happened to keep the same numbers would still be scoring differently.
-_MATCHER_VERSION_BASE = "9"
+# 10: coursework relevance matches a field, not a substring. "CS" used to count
+# as relevant to economics, genomics, statistics and American politics because
+# its two letters are inside them — 14.5% of the corpus lit up for a CS
+# student. No hashed knob moved, so only the base can retire the cached
+# conclusions that rule produced.
+_MATCHER_VERSION_BASE = "10"
 
 
 def _matcher_fingerprint() -> str:

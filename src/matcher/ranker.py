@@ -789,6 +789,38 @@ def _skill_overlap_score(
     return min(100.0, ratio * 100)
 
 
+_COURSE_WORD_RE = re.compile(r"[a-z0-9]+")
+# Connectives carry no field information, and a student who types a course as a
+# sentence ("Introduction to Biology") would otherwise match every keyword that
+# happens to contain "to".
+_COURSE_STOPWORDS = frozenset({
+    "a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "is", "it",
+    "its", "of", "on", "or", "the", "to", "with",
+})
+# Below this a course prefix is an initialism, not a morpheme.
+_COURSE_STEM_MIN = 4
+
+
+def _course_touches(course_tokens: frozenset[str], signal_words: frozenset[str]) -> bool:
+    """True when a student's coursework plausibly names the field of a keyword.
+
+    Substring matching over the raw strings let a course prefix count wherever
+    its letters turned up: "CS" sits inside economics, genomics, statistics and
+    American politics, so 18,765 faculty records - 14.5% of the corpus - scored
+    as coursework-relevant for a CS student, and the ones it ranked highest were
+    the wrong ones. A course prefix means something as a word, or as the stem
+    inside a longer one when it is long enough to be a morpheme ("CHEM" ->
+    biochemistry, "PHYS" -> biophysics). It means nothing as a run of letters
+    through the middle of an unrelated word.
+    """
+    for word in course_tokens:
+        if word in signal_words:
+            return True
+        if len(word) >= _COURSE_STEM_MIN and any(word in w for w in signal_words):
+            return True
+    return False
+
+
 def _coursework_score(
     student_courses: set[str] | frozenset[str],
     opportunity: dict,
@@ -824,16 +856,9 @@ def _coursework_score(
         return count_score
 
     if course_tokens is None:
-        tokens: set[str] = set()
-        for c in student_courses:
-            cl = c.lower()
-            tokens.add(cl)
-            prefix = "".join(ch for ch in cl if ch.isalpha())
-            if prefix:
-                tokens.add(prefix)
-        course_tokens = frozenset(tokens)
+        course_tokens = _course_tokens(set(student_courses))
 
-    overlap = sum(1 for sig in signals if any(sig in tok or tok in sig for tok in course_tokens if len(tok) >= 2))
+    overlap = sum(1 for sig_words in signals if _course_touches(course_tokens, sig_words))
     if overlap == 0:
         return count_score
 
@@ -1794,7 +1819,7 @@ class _OppStatic:
     ov_set: frozenset[str]
     ov_canon: frozenset[str]
     containment_res: "tuple[re.Pattern[str], ...]"
-    course_signals: frozenset[str]
+    course_signals: tuple[frozenset[str], ...]
     first_exp: bool
     brand_score: float
     brand_reason: str | None
@@ -1833,11 +1858,15 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     )
 
     elig = faculty_safe_eligibility(opp)
-    course_signals = frozenset(
-        k.lower() for k in keywords if isinstance(k, str)
-    ) | frozenset(
-        s.lower() for s in elig.get("skills_required", []) or [] if isinstance(s, str)
-    )
+    # One word-set per keyword / required skill: the count of distinct signals a
+    # student touches is what earns the relevance bonus, so they stay separate.
+    course_signals = tuple(dict.fromkeys(
+        ws for ws in (
+            frozenset(_COURSE_WORD_RE.findall(sig.lower()))
+            for sig in list(keywords) + list(elig.get("skills_required", []) or [])
+            if isinstance(sig, str)
+        ) if ws
+    ))
 
     brand_score, brand_reason = 60.0, None
     org = (opp.get("organization") or "").lower()
@@ -2113,14 +2142,21 @@ def _topic_interest_sets(interest: str) -> tuple[frozenset[str], frozenset[str]]
 @lru_cache(maxsize=512)
 def _course_sets(courses: tuple[str, ...]) -> tuple[frozenset[str], frozenset[str]]:
     upper = frozenset(c.upper().strip() for c in courses)
+    return upper, _course_tokens(upper)
+
+
+def _course_tokens(courses: frozenset[str] | set[str]) -> frozenset[str]:
+    """The words a student's course list contributes to relevance matching.
+
+    Both the words of the course title and the letters of its code ("CS 225"
+    -> {"cs", "225"}), because a code prefix is how a course names its field.
+    """
     tokens: set[str] = set()
-    for c in upper:
-        cl = c.lower()
-        tokens.add(cl)
-        prefix = "".join(ch for ch in cl if ch.isalpha())
-        if prefix:
-            tokens.add(prefix)
-    return upper, frozenset(tokens)
+    for c in courses:
+        for word in _COURSE_WORD_RE.findall(c.lower()):
+            if len(word) >= 2 and word not in _COURSE_STOPWORDS:
+                tokens.add(word)
+    return frozenset(tokens)
 
 
 # Fixed phrasings all come from this module, so prefix matching is stable; an

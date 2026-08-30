@@ -2737,6 +2737,58 @@ class TestEmptyInterestMajorBonus:
         assert _empty_interest_major_bonus(profile, opp) == 0.0
 
 
+class TestCourseworkNamesAFieldNotASubstring:
+    """A course code earns relevance by naming a field, not by sharing letters.
+
+    The match was a raw substring test in both directions, so a course prefix
+    counted wherever its letters turned up. "CS" is inside economics, genomics,
+    statistics, robotics and American politics: 18,765 faculty records — 14.5%
+    of the corpus — scored as coursework-relevant for a student whose courses
+    were CS 3500 and MATH 2270, and the professors it lifted hardest were the
+    ones furthest from the student. "ECE" reached photoreceptors and Greece.
+
+    Coursework is also the ONLY part of the readiness layer that varies between
+    two faculty records, so noise here is not diluted by anything — it is the
+    whole of what that layer contributes to the order.
+    """
+
+    @staticmethod
+    def _opp(*keywords: str) -> dict:
+        return {"id": "o1", "title": "Lab", "description": "",
+                "keywords": list(keywords), "eligibility": {}, "application": {}}
+
+    def _bonus(self, courses: tuple[str, ...], *keywords: str) -> float:
+        from src.matcher.ranker import _course_sets, _coursework_score
+
+        upper, tokens = _course_sets(courses)
+        with_signal = _coursework_score(upper, self._opp(*keywords), course_tokens=tokens)
+        without = _coursework_score(upper, self._opp(), course_tokens=tokens)
+        return with_signal - without
+
+    def test_an_initialism_does_not_match_the_words_that_contain_it(self):
+        assert self._bonus(("CS 3500",), "economics", "genomics", "statistics",
+                           "american politics", "robotics") == 0.0
+        assert self._bonus(("ECE 210",), "photoreceptor and optogenetics", "greece") == 0.0
+
+    def test_an_initialism_still_matches_the_field_written_out(self):
+        """The whole-word path is what makes the stricter rule a fix rather than
+        a deletion: "CS" is still relevant to a keyword that says cs."""
+        assert self._bonus(("CS 3500",), "cs") > 0.0
+
+    def test_a_long_prefix_still_reaches_the_compound_it_belongs_to(self):
+        """CHEM/biochemistry and PHYS/biophysics are real matches, and a rule
+        that only allowed word-initial matches would silently drop them."""
+        assert self._bonus(("CHEM 104",), "biochemistry") > 0.0
+        assert self._bonus(("PHYS 211",), "biophysics") > 0.0
+        assert self._bonus(("BIOL 240",), "microbiology") > 0.0
+
+    def test_a_course_typed_as_a_sentence_does_not_match_on_connectives(self):
+        """Students type courses by title as often as by code, and a title shares
+        its connectives with half the keyword vocabulary."""
+        assert self._bonus(("Introduction to Biology",), "response to injury") == 0.0
+        assert self._bonus(("Introduction to Biology",), "molecular biology") > 0.0
+
+
 class TestAnsweringNeverCostsYou:
     """Filling in a profile field must never score worse than leaving it blank.
 
