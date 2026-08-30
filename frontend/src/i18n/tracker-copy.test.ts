@@ -11,6 +11,7 @@
  * "Application Tracker" told them their outreach did not count.
  */
 import { describe, expect, it } from 'vitest';
+import { INTERACTION_OPTIONS } from '@/app/opportunities/[id]/types';
 import { dictionaries } from './dictionaries';
 
 const en = dictionaries.en;
@@ -144,5 +145,21 @@ describe('reminder copy describes the state, never the target', () => {
       .toBe('有 {count} 条提醒当前无法发送——请到追踪看板查看。');
     expect(zh.dashboard.reminders.detailsUnavailable)
       .toBe('我们无法确认哪些提醒会被发送，因此不显示任何到期标签——请到追踪看板查看。');
+  });
+});
+
+/**
+ * The pill row on an opportunity page is built by mapping INTERACTION_OPTIONS
+ * and translating `detail.interactions.<type>`. Walking the flow on production
+ * 2026-08-30 found a button reading literally "detail.interactions.contacted":
+ * 'contacted' joined the option list with the W12-15 tracker merge and neither
+ * dictionary ever got the label. Every other page test mocks `t` to echo the
+ * key, so the raw key looked exactly like a pass.
+ */
+describe('every status pill the detail page can render has a label', () => {
+  it.each(['en', 'zh'] as const)('%s', (locale) => {
+    const labels = dictionaries[locale].detail.interactions as Record<string, string>;
+    const missing = INTERACTION_OPTIONS.filter((type) => !labels[type]);
+    expect(missing).toEqual([]);
   });
 });
