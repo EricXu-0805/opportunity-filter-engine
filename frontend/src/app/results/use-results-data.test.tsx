@@ -198,6 +198,38 @@ describe('useResultsData', () => {
     expect(mocks.getMatchView.mock.calls[0][2].llm).toBe(true);
   });
 
+  it('re-renders that change nothing but object identity do not re-rank', async () => {
+    // Measured on production 2026-08-30: every /results load sent FIVE
+    // POST /api/matches/view with a byte-identical body, four of them aborted
+    // a moment later. The abort is client-side only — the server had already
+    // started ranking the full corpus for each, so one student opening one
+    // page cost five rankings of ~1,100 opportunities.
+    //
+    // The mechanism is the dep array, not the hook's logic: `requestKey` is a
+    // content hash and is stable, but `profile` and `view` were ALSO deps, and
+    // their identities churn while the page hydrates.
+    mocks.getMatchView.mockResolvedValue(response('a'));
+    const { rerender } = renderHook(
+      ({ p, v }) => useResultsData(p, true, v, 1, t, true),
+      { initialProps: { p: profile, v: baseView } },
+    );
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+    const firstSignal = mocks.getMatchView.mock.calls[0][2].signal as AbortSignal;
+
+    for (let i = 0; i < 4; i += 1) {
+      // Structurally identical, referentially new — exactly what a parent
+      // rebuilding these objects on each render produces.
+      rerender({ p: { ...profile, skills: [...profile.skills] }, v: { ...baseView } });
+    }
+    await act(async () => { await Promise.resolve(); });
+
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    // Not enough to send once: the request that WAS sent has to survive. A
+    // dedupe that skips the resend while the effect's cleanup still aborts the
+    // one in flight leaves the page loading forever.
+    expect(firstSignal.aborted).toBe(false);
+  });
+
   it('forwards the AI-refine choice into the request, both ways', async () => {
     // The hop that was missing: semanticRerank keyed the cache and nothing
     // else, so /matches/view always answered deterministically no matter what

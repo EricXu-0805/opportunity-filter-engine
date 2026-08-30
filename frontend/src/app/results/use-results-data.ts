@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
   getMatchView,
@@ -106,6 +106,22 @@ export function useResultsData(
     requestKey: '',
     byPage: new Map([[1, null]]),
   });
+  // What the request is BUILT from, held at latest and never reacted to.
+  // requestKey above is the content identity of these two, so listing them as
+  // deps of the fetch below adds only their object identity — and that churns
+  // while the page hydrates. Measured on production 2026-08-30, every /results
+  // load sent five byte-identical POST /api/matches/view, four aborted within
+  // 200ms. The abort is client-side: the server had begun ranking the full
+  // corpus for each one.
+  //
+  // This makes hashProfile's coverage load-bearing, which it was not while the
+  // object itself was a dep: a scored field the hash omits now means editing it
+  // silently keeps the old ranking. Audited 2026-08-30 — toProfileRequest also
+  // sends name, the three profile URLs and each skill's source/confirmed, none
+  // of which the hash covers and none of which src/matcher reads (source and
+  // confirmed reach only cold_email, via claimable_skill_levels).
+  const payloadRef = useRef({ profile, view });
+  useLayoutEffect(() => { payloadRef.current = { profile, view }; }, [profile, view]);
 
   useEffect(() => {
     if (!loading) {
@@ -118,7 +134,10 @@ export function useResultsData(
   }, [loading]);
 
   useEffect(() => {
-    if (!profile || !requestKey) return;
+    // requestKey is '' whenever profile is null, so this covers both.
+    if (!requestKey) return;
+    const { profile: reqProfile, view: reqView } = payloadRef.current;
+    if (!reqProfile) return;
     if (cursorsRef.current.requestKey !== requestKey) {
       cursorsRef.current = {
         requestKey,
@@ -173,7 +192,7 @@ export function useResultsData(
     let interimPainted = false;
 
     (async () => {
-      const request = getMatchView(profile, view, {
+      const request = getMatchView(reqProfile, reqView, {
         cursor: cursor ?? null,
         pageSize: MATCH_VIEW_PAGE_SIZE,
         llm: semanticRerank,
@@ -219,7 +238,7 @@ export function useResultsData(
           if (!active) return;
           if (!requestSettled) {
             try {
-              const ruleOnly = await getMatchView(profile, view, {
+              const ruleOnly = await getMatchView(reqProfile, reqView, {
                 cursor: null,
                 pageSize: MATCH_VIEW_PAGE_SIZE,
                 llm: false,
@@ -318,7 +337,7 @@ export function useResultsData(
     // captures whichever instance existed at mount, which is the classic stale
     // closure. Callers pass a stable (useCallback) reference, so listing it
     // does not cause a refetch.
-  }, [profile, semanticRerank, view, page, requestKey, t, onCursorReset]);
+  }, [semanticRerank, page, requestKey, t, onCursorReset]);
 
   return {
     data, setData, loading, error, showSlowHint, paginationReady, refining, refined, refineFailed,
