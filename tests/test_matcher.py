@@ -2737,6 +2737,88 @@ class TestEmptyInterestMajorBonus:
         assert _empty_interest_major_bonus(profile, opp) == 0.0
 
 
+class TestTheSliderLeansOnCourseworkNotOnAConstant:
+    """The search-focus slider's right-hand label says "Coursework".
+
+    It delivered that by raising the readiness LAYER's weight from 0.35 to 0.45.
+    Coursework is one fifth of that layer, and BETWEEN TWO FACULTY RECORDS the
+    other four fifths are the same number - resume, experience level,
+    willingness to cold-email, and (because a professor states no application
+    effort) the effort default. Measured over three personas the layer's spread
+    was 0.23-0.88 points against 5.63-15.16 for eligibility and 5.33-5.43 for
+    upside, and removing it outright left 21 to 25 of the visible top 25 in
+    place. So the slider was raising the volume on something that could not
+    reorder the faculty a student is here to find.
+
+    Coursework now earns a lift of its own. The layer weights are deliberately
+    NOT touched - see the test below for what that cost when it was tried.
+    """
+
+    @staticmethod
+    def _opp(*keywords: str) -> dict:
+        return {"id": "o1", "title": "Lab", "description": "", "source_type": "faculty_research",
+                "keywords": list(keywords), "eligibility": {}, "application": {}}
+
+    def test_the_weight_curve_is_unchanged(self):
+        """Pinned to the documented values at every position, both halves."""
+        from src.matcher.ranker import _compute_weights
+
+        expected = {
+            0: {"eligibility": 0.40, "readiness": 0.25, "upside": 0.35},
+            25: {"eligibility": 0.425, "readiness": 0.30, "upside": 0.275},
+            50: {"eligibility": 0.45, "readiness": 0.35, "upside": 0.20},
+            75: {"eligibility": 0.425, "readiness": 0.40, "upside": 0.175},
+            100: {"eligibility": 0.40, "readiness": 0.45, "upside": 0.15},
+        }
+        for sw, want in expected.items():
+            assert _compute_weights(sw) == pytest.approx(want), sw
+
+    def test_readiness_weight_is_what_keeps_professors_visible(self):
+        """Why the curve above may not be "cleaned up".
+
+        Readiness barely varies between two faculty records, which is what made
+        moving its weight look free. It is not free: it separates faculty from
+        PROGRAMS, because a program states an application effort and a professor
+        does not. Redirecting that weight to eligibility - which programs fill in
+        and professors leave blank - was measured against the live corpus and
+        sent the first professor a UIUC ECE student sees from rank 42 to rank
+        256, with zero faculty left in the top 100.
+        """
+        from src.matcher.ranker import score_readiness
+
+        student = {"resume_ready": True, "experience_level": "some",
+                   "can_cold_email": True, "coursework": [], "search_weight": 100}
+        professor = self._opp("compilers")
+        program = {**self._opp("compilers"), "source_type": "internship",
+                   "application": {"application_effort": "high"}}
+        assert score_readiness(student, professor)[0] > score_readiness(student, program)[0]
+
+    def test_the_right_half_lifts_coursework_that_names_the_lab(self):
+        from src.matcher.ranker import _coursework_focus_bonus
+
+        p = {"coursework": ["CHEM 104"]}
+        lab = self._opp("biochemistry", "organic chemistry", "chemical biology")
+        # Nothing on the interests half — and in particular never a PENALTY for
+        # having taken a relevant course.
+        for sw in (0, 25, 50):
+            assert _coursework_focus_bonus({**p, "search_weight": sw}, lab) == 0.0, sw
+        rising = [_coursework_focus_bonus({**p, "search_weight": sw}, lab)
+                  for sw in (60, 75, 90, 100)]
+        assert rising[0] > 0.0
+        assert all(b > a for a, b in zip(rising, rising[1:], strict=False)), rising
+        assert _coursework_focus_bonus({**p, "search_weight": 100},
+                                       self._opp("comparative politics")) == 0.0
+
+    def test_the_lift_reads_only_the_half_of_coursework_that_varies(self):
+        """The count component is the same number against every professor in the
+        list. Letting it into the lift would move the level and order nothing."""
+        from src.matcher.ranker import _coursework_focus_bonus
+
+        many = {"search_weight": 100,
+                "coursework": [f"ANTH {100 + i}" for i in range(8)]}
+        assert _coursework_focus_bonus(many, self._opp("condensed matter physics")) == 0.0
+
+
 class TestCollegeAffinityNeedsTheWholeWord:
     """A college's stem must name a department, not sit inside one.
 
