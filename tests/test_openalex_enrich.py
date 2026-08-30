@@ -543,6 +543,49 @@ def test_author_recent_works_drops_wrong_field_conflation(monkeypatch):
     ]
 
 
+def test_the_authors_own_fields_outrank_the_department_family(monkeypatch):
+    # Production 2026-08-30. A student's generated cold email told Zhi-Pei
+    # Liang — UIUC ECE, MRI reconstruction — that his "recent paper" was
+    # "SearchAuditor: Auditing and Attributing Failures in Long-Horizon Search
+    # Agents". His two other cited papers were geochemical anomaly detection
+    # and multi-agent figure generation. None are his: the author id was
+    # correct and OpenAlex had conflated other people's work into it, which
+    # newest-first surfaces first.
+    #
+    # The department gate could not stop it, and for this professor it points
+    # the wrong way: Electrical & Computer Engineering maps to nine fields
+    # including Computer Science and Environmental Science, so all three
+    # intruders pass — while his own MRI papers sit under Medicine, which ECE
+    # does not map to, so they were being dropped.
+    #
+    # His own topic profile says Medicine and Engineering, and it is a majority
+    # signal over 364 works rather than a recency sample of three. When we have
+    # it, the department is a worse proxy for the same question.
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
+        _work("SearchAuditor: Auditing Long-Horizon Search Agents", 2026,
+              field="Computer Science"),
+        _work("Spectral-Spatial Networks for Geochemical Anomalies", 2026,
+              field="Environmental Science"),
+        _work("Crafter: Editable Scientific Figure Generation", 2026,
+              field="Computer Science"),
+        _work("Subspace Imaging for High-Resolution MR Spectroscopy", 2025,
+              field="Medicine"),
+    ]}))
+    dept = "Electrical & Computer Engineering"
+    assert "Computer Science" in oa._dept_fields(dept)
+    assert "Medicine" not in oa._dept_fields(dept)
+
+    assert [w["title"] for w in oa.author_recent_works("A1", dept)] == [
+        "SearchAuditor: Auditing Long-Horizon Search Agents",
+        "Spectral-Spatial Networks for Geochemical Anomalies",
+        "Crafter: Editable Scientific Figure Generation",
+    ]
+    assert [
+        w["title"] for w in
+        oa.author_recent_works("A1", dept, author_fields=["Medicine", "Medicine", "Engineering"])
+    ] == ["Subspace Imaging for High-Resolution MR Spectroscopy"]
+
+
 def test_author_recent_works_ungated_dept_keeps_all(monkeypatch):
     # A department with no field mapping can't be judged, so every work passes
     # (same philosophy as the ungated author-topics path).
@@ -582,7 +625,7 @@ def test_harvest_works_targets_matched_authors_only(monkeypatch):
 
     monkeypatch.setattr(oa, "_match_author", _fake_match)
     monkeypatch.setattr(oa, "author_recent_works",
-                        lambda aid, dept="": [{"title": "Recent Paper", "year": 2026}])
+                        lambda aid, dept="", **kw: [{"title": "Recent Paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
     # keyworded faculty ARE works targets; VERIFIED-enriched + unmapped schools
     # are not (holding unverifiable papers does not make a record done) — and the entry carries the resolved author id (the provenance
@@ -706,7 +749,7 @@ def test_harvest_works_shared_url_keys_per_person(monkeypatch):
     ]
     monkeypatch.setattr(oa, "_match_author", lambda name, *a, **k: {"id": name.split()[0]})
     monkeypatch.setattr(oa, "author_recent_works",
-                        lambda aid, dept="": [{"title": f"{aid} paper", "year": 2026}])
+                        lambda aid, dept="", **kw: [{"title": f"{aid} paper", "year": 2026}])
     mapping = oa.harvest_works(opps, throttle=0)
     assert mapping == {
         "https://x.edu/dir#erik andersen": {
@@ -862,7 +905,7 @@ def test_a_reharvest_actually_reaches_a_stamped_state(monkeypatch):
                     {"title": "P3", "year": 2024}])
     monkeypatch.setattr(oa, "_match_author", lambda name, inst, dept="": {"id": "A1"})
     monkeypatch.setattr(oa, "author_recent_works",
-                        lambda aid, dept="": [{"title": "P1", "year": 2026},
+                        lambda aid, dept="", **kw: [{"title": "P1", "year": 2026},
                                               {"title": "P2", "year": 2025},
                                               {"title": "P3", "year": 2024}])
     assert works_are_verified(opp) is False
