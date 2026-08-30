@@ -2737,6 +2737,53 @@ class TestEmptyInterestMajorBonus:
         assert _empty_interest_major_bonus(profile, opp) == 0.0
 
 
+class TestCollegeAffinityNeedsTheWholeWord:
+    """A college's stem must name a department, not sit inside one.
+
+    "art" is inside "dep-art-ment". Matching it as a substring handed a Fine &
+    Applied Arts student the college-affinity bonus on 86,425 of the corpus's
+    129,328 faculty records - two thirds of everything, led by mathematics,
+    English and psychology. The same collision cost 13,755 faculty a correct
+    author match in #775; this is the ranking half of it.
+    """
+
+    ARTS = "College of Fine & Applied Arts"
+    LAS = "Liberal Arts & Sciences (LAS)"
+
+    @staticmethod
+    def _affinity(college: str, department: str) -> float:
+        from src.matcher.ranker import _college_affinity
+
+        return _college_affinity({"college": college}, {"id": "o1", "department": department,
+                                                        "keywords": []})
+
+    def test_the_letters_of_a_stem_inside_another_word_are_not_a_match(self):
+        for dept in ("Department of Mathematics", "Department of English",
+                     "Department of Psychology", "Department of Earth Science"):
+            assert self._affinity(self.ARTS, dept) == 0.0, dept
+
+    def test_the_department_it_actually_names_still_matches(self):
+        assert self._affinity(self.ARTS, "Department of Art History") > 0.0
+        assert self._affinity(self.ARTS, "School of Art + Design") > 0.0
+        assert self._affinity(self.ARTS, "Department of Music") > 0.0
+
+    def test_a_morpheme_still_reaches_the_compound_it_belongs_to(self):
+        """The stricter rule must not cost the matches that made substring
+        matching attractive in the first place."""
+        assert self._affinity(self.LAS, "Department of Biochemistry") > 0.0
+        assert self._affinity(self.LAS, "Department of Astronomy and Astrophysics") > 0.0
+        assert self._affinity("Grainger College of Engineering",
+                              "Department of Bioengineering") > 0.0
+
+    def test_a_multi_word_stem_is_not_split_into_words_that_collide(self):
+        """"computer science" must not match through "science" alone, or an
+        engineering student would be affine to political science."""
+        assert self._affinity("Grainger College of Engineering",
+                              "Department of Political Science") == 0.0
+        assert self._affinity("Grainger College of Engineering",
+                              "Department of Computer Science") > 0.0
+
+
 class TestCourseworkNamesAFieldNotASubstring:
     """A course code earns relevance by naming a field, not by sharing letters.
 
