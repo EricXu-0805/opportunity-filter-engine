@@ -431,10 +431,19 @@ def _college_affinity(profile: dict, opportunity: dict) -> float:
     stems = COLLEGE_DEPARTMENT_SIGNALS.get(college)
     if not stems:
         return 0.0
-    dept = _opp_static(opportunity).dept_lower
-    if not dept:
+    st = _opp_static(opportunity)
+    if not st.dept_lower:
         return 0.0
-    return COLLEGE_AFFINITY_MAX if any(stem in dept for stem in stems) else 0.0
+    # A one-word stem has to name a word of the department, not merely appear
+    # inside one. "art" is inside "department": matching it as a substring gave
+    # a Fine & Applied Arts student the affinity bonus on 86,425 of the 129,328
+    # faculty records - two thirds of the corpus, headed by mathematics, English
+    # and psychology. Multi-word stems ("political science") are specific enough
+    # that plain containment cannot collide.
+    return COLLEGE_AFFINITY_MAX if any(
+        (stem in st.dept_lower) if " " in stem else _names_a_field(stem, st.dept_words)
+        for stem in stems
+    ) else 0.0
 
 
 def _home_school_affinity(profile: dict, opportunity: dict) -> float:
@@ -797,28 +806,34 @@ _COURSE_STOPWORDS = frozenset({
     "a", "an", "and", "as", "at", "by", "for", "from", "in", "into", "is", "it",
     "its", "of", "on", "or", "the", "to", "with",
 })
-# Below this a course prefix is an initialism, not a morpheme.
-_COURSE_STEM_MIN = 4
+# Below this a token is an initialism, not a morpheme.
+_FIELD_STEM_MIN = 4
+
+
+def _names_a_field(token: str, words: frozenset[str]) -> bool:
+    """True when ``token`` names the field that ``words`` describe.
+
+    Substring matching over raw strings let a short token count wherever its
+    letters turned up: "CS" sits inside economics, genomics, statistics and
+    American politics, and "art" sits inside "department". A token means
+    something as a word, or as the stem inside a longer one when it is long
+    enough to be a morpheme ("chemistr" -> biochemistry, "physics" ->
+    astrophysics). It means nothing as a run of letters through the middle of
+    an unrelated word.
+    """
+    if token in words:
+        return True
+    return len(token) >= _FIELD_STEM_MIN and any(token in w for w in words)
 
 
 def _course_touches(course_tokens: frozenset[str], signal_words: frozenset[str]) -> bool:
     """True when a student's coursework plausibly names the field of a keyword.
 
-    Substring matching over the raw strings let a course prefix count wherever
-    its letters turned up: "CS" sits inside economics, genomics, statistics and
-    American politics, so 18,765 faculty records - 14.5% of the corpus - scored
-    as coursework-relevant for a CS student, and the ones it ranked highest were
-    the wrong ones. A course prefix means something as a word, or as the stem
-    inside a longer one when it is long enough to be a morpheme ("CHEM" ->
-    biochemistry, "PHYS" -> biophysics). It means nothing as a run of letters
-    through the middle of an unrelated word.
+    18,765 faculty records - 14.5% of the corpus - scored as coursework-relevant
+    for a student whose courses were CS 3500 and MATH 2270, and the ones the old
+    substring rule ranked highest were the wrong ones.
     """
-    for word in course_tokens:
-        if word in signal_words:
-            return True
-        if len(word) >= _COURSE_STEM_MIN and any(word in w for w in signal_words):
-            return True
-    return False
+    return any(_names_a_field(word, signal_words) for word in course_tokens)
 
 
 def _coursework_score(
@@ -1831,6 +1846,7 @@ class _OppStatic:
     lab_label: str
     signal_text: str
     dept_lower: str
+    dept_words: frozenset[str]
     topic_candidates: tuple[tuple[str, str, frozenset[str]], ...]
     topic_has_specific: bool
     requires_grad: bool
@@ -1857,6 +1873,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         if len(k) >= 4 and not (" " not in k and k in _LOW_SIGNAL_ALIGN_TOKENS)
     )
 
+    dept_lower = (opp.get("department") or "").lower()
     elig = faculty_safe_eligibility(opp)
     # One word-set per keyword / required skill: the count of distinct signals a
     # student touches is what earns the relevance bonus, so they stay separate.
@@ -1952,7 +1969,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         has_skill_signal=not is_faculty_contact and bool(elig.get("skills_required")),
         lab_label=lab_label,
         signal_text=f" {signal_joined} " if signal_joined else "",
-        dept_lower=(opp.get("department") or "").lower(),
+        dept_lower=dept_lower,
+        dept_words=frozenset(_COURSE_WORD_RE.findall(dept_lower)),
         topic_candidates=tuple(
             (
                 kw,

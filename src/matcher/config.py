@@ -254,7 +254,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # its two letters are inside them — 14.5% of the corpus lit up for a CS
 # student. No hashed knob moved, so only the base can retire the cached
 # conclusions that rule produced.
-_MATCHER_VERSION_BASE = "10"
+# 11: college affinity matches a department, not a substring of one. "art" is
+# inside "department", so a Fine & Applied Arts student collected the bonus on
+# 86,425 of 129,328 faculty records - mathematics, English and psychology at the
+# head of the list. No hashed knob moves for this either.
+_MATCHER_VERSION_BASE = "11"
 
 
 def _matcher_fingerprint() -> str:
