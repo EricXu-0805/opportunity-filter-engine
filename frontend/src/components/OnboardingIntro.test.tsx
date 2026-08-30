@@ -5,12 +5,41 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockTrack = vi.fn();
 
 vi.mock('@/lib/analytics', () => ({ track: (...args: unknown[]) => mockTrack(...args) }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
+
+// Real profile-sync everywhere except where a test needs to control WHEN the
+// hydration resolves — the bug this file now covers is entirely about that
+// timing, and it cannot be reproduced with a read that settles immediately.
+let hydrateOverride: (() => Promise<unknown>) | null = null;
+vi.mock('@/lib/profile-sync', async (importActual) => {
+  const actual = await importActual<typeof import('@/lib/profile-sync')>();
+  return {
+    ...actual,
+    hydrateProfile: () => (hydrateOverride ? hydrateOverride() : actual.hydrateProfile()),
+  };
+});
+
+// Everything real except a handle on the readiness notification, so a test can
+// fire the same-identity transition a real page load fires while a read is
+// still in flight. That transition is the whole bug.
+const ownerListeners = new Set<() => void>();
+const notifyOwnerChange = () => { ownerListeners.forEach((fn) => fn()); };
+vi.mock('@/lib/identity-owner', async (importActual) => {
+  const actual = await importActual<typeof import('@/lib/identity-owner')>();
+  return {
+    ...actual,
+    onLocalOwnerStateChange: (cb: () => void) => {
+      const off = actual.onLocalOwnerStateChange(cb);
+      ownerListeners.add(cb);
+      return () => { ownerListeners.delete(cb); off(); };
+    },
+  };
+});
 
 import OnboardingIntro from './OnboardingIntro';
 import { enterLocalOnlyMode } from '@/lib/identity-owner';
@@ -47,6 +76,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  hydrateOverride = null;
+  ownerListeners.clear();
 });
 
 describe('OnboardingIntro', () => {
@@ -97,6 +128,120 @@ describe('OnboardingIntro', () => {
     expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1');
     expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'uiuc' });
     expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('uiuc');
+  });
+
+  it('accepts a hydration that a same-identity readiness change raced past', async () => {
+    /*
+     * The tour accepted its baseline only if no further accept() had STARTED
+     * since — a monotonic counter. But accept() re-runs on every
+     * onLocalOwnerStateChange, and a plain page load fires two of those for
+     * the SAME identity while ownership settles. So the read that succeeded
+     * was discarded for having a stale counter ("hydrate ok seq 1 cur 3 ...
+     * valid true"), the later ones failed because ownership was not confirmed
+     * yet, and nothing retried. `view` stayed null, which disabled the CTA on
+     * the last step of a tour that cannot be dismissed: every first-time
+     * visitor was trapped. Live on production from #708 until this.
+     *
+     * Identity, not call count, is what makes a read stale — and
+     * isOwnerTokenValid already proves it, because a switch bumps the owner
+     * epoch the token carries.
+     */
+    const actual = await vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync');
+    let release: (() => void) | null = null;
+    hydrateOverride = () => {
+      if (release) {
+        // Exactly production's shape: every LATER attempt runs before
+        // ownership is confirmed and fails, so the only baseline available is
+        // the one the counter was throwing away.
+        return Promise.reject(new Error('ownership not confirmed'));
+      }
+      const pending = actual.hydrateProfile();
+      return new Promise((resolve, reject) => {
+        release = () => pending.then(resolve, reject);
+      });
+    };
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-primary'));
+
+    // A readiness transition for the same identity, exactly as a real load
+    // emits — this is what used to invalidate the in-flight read.
+    act(() => { notifyOwnerChange(); notifyOwnerChange(); });
+    await waitFor(() => expect(release).not.toBeNull());
+    await act(async () => { release?.(); await Promise.resolve(); });
+
+    for (let k = 0; k < SLIDE_COUNT; k += 1) {
+      fireEvent.click(screen.getByTestId('onboarding-primary'));
+      await act(async () => { await Promise.resolve(); });
+    }
+    await waitFor(() => expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1'));
+    expect(screen.queryByTestId('onboarding-error')).toBeNull();
+  });
+
+  it('retries a hydration that failed because ownership was not confirmed yet', async () => {
+    /*
+     * The read that fails here almost always resolves on its own moments
+     * later. Without a retry the tour depends on an owner-state notification
+     * that, on a real load, has already been and gone.
+     */
+    vi.useFakeTimers();
+    let attempts = 0;
+    hydrateOverride = () => {
+      attempts += 1;
+      if (attempts === 1) return Promise.reject(new Error('ownership not confirmed'));
+      return vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync')
+        .then((m) => m.hydrateProfile());
+    };
+    try {
+      render(<OnboardingIntro />);
+      await vi.waitFor(() => expect(attempts).toBe(1));
+      await act(async () => { await vi.advanceTimersByTimeAsync(1200); });
+      expect(attempts).toBeGreaterThan(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a baseline that is still valid while a fresh read is in flight', async () => {
+    /*
+     * accept() used to clear the baseline the moment it STARTED, before its
+     * own read had resolved. With retries that means every attempt throws away
+     * a baseline that already landed, and a student who clicks in that window
+     * is told the save failed when nothing was wrong.
+     */
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-primary'));
+    // A baseline has landed by now. Start a read that never resolves, exactly
+    // as a slow retry would, and confirm the tour still completes.
+    hydrateOverride = () => new Promise(() => {});
+    act(() => { notifyOwnerChange(); });
+    await act(async () => { await Promise.resolve(); });
+
+    for (let k = 0; k < SLIDE_COUNT; k += 1) {
+      fireEvent.click(screen.getByTestId('onboarding-primary'));
+      await act(async () => { await Promise.resolve(); });
+    }
+    await waitFor(() => expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1'));
+    expect(screen.queryByTestId('onboarding-error')).toBeNull();
+  });
+
+  it('never leaves the final CTA dead: an unusable baseline says so and stays retryable', async () => {
+    /*
+     * `disabled` also required an accepted baseline, so a read that never
+     * landed produced a grey button with no explanation and no way out.
+     * finish() already refuses to write without a baseline; the button now
+     * lets it say so.
+     */
+    hydrateOverride = () => Promise.reject(new Error('ownership not confirmed'));
+    render(<OnboardingIntro />);
+    await waitFor(() => screen.getByTestId('onboarding-primary'));
+    for (let k = 0; k < SLIDE_COUNT - 1; k += 1) {
+      fireEvent.click(screen.getByTestId('onboarding-primary'));
+    }
+    const cta = screen.getByTestId('onboarding-primary');
+    expect(cta).not.toBeDisabled();
+    fireEvent.click(cta);
+    await waitFor(() => expect(screen.getByTestId('onboarding-error')).toBeInTheDocument());
+    expect(localStorage.getItem('ofe_onboarding_seen')).toBeNull();
   });
 
   it('Skip routes to the forced school gate (does not close until a campus is confirmed)', async () => {
