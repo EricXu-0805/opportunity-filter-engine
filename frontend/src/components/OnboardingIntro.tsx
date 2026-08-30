@@ -312,6 +312,11 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
 // slide is a school gate (default UIUC, changeable later in the profile). Skipping
 // the tour — or pressing Esc / clicking the backdrop — jumps straight to that gate
 // rather than dismissing, so a campus is always chosen before the app is used.
+// A hydration that fails because ownership is not confirmed yet resolves on its
+// own within a tick or two; these bound how long the tour keeps asking.
+const ACCEPT_RETRIES = 4;
+const ACCEPT_RETRY_MS = 400;
+
 // Shown once, gated on localStorage; server renders nothing, client upgrades after
 // mount to avoid a hydration mismatch.
 export default function OnboardingIntro() {
@@ -347,14 +352,28 @@ export default function OnboardingIntro() {
 
   useEffect(() => {
     if (!show) return;
-    const accept = () => {
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const accept = (attempt = 0) => {
       acceptSeqRef.current += 1;
       const seq = acceptSeqRef.current;
-      // Immediately: until THIS identity's own row has been read, there is
-      // nothing to confirm against and the gate stays closed.
-      setView(null);
+      // Drop a baseline that is no longer valid for whoever owns the browser
+      // now — but only that one. Clearing unconditionally on every attempt
+      // (which is what this did) means each retry throws away a baseline that
+      // had already landed, and the confirm gate flickers shut behind a read
+      // that has not even resolved yet.
+      setView((v) => (v && isOwnerTokenValid(v.token, v.token.uid) ? v : null));
       hydrateProfile().then((h) => {
-        if (seq !== acceptSeqRef.current) return;
+        if (cancelled) return;
+        // Deliberately NOT gated on `seq` still being current. A read belongs
+        // to the identity in effect now if its own token is still valid, and
+        // that is what isOwnerTokenValid checks: an identity switch bumps the
+        // owner epoch, which the token then fails. `seq`, by contrast, also
+        // advances on a SAME-identity readiness transition, and every load
+        // fires two of those — so the counter check threw away the one read
+        // that had succeeded ("hydrate ok seq 1 cur 3 ... valid true"),
+        // leaving `view` null and the last step's CTA disabled forever on a
+        // tour that cannot be dismissed. Every first-time visitor was stuck.
         if (!isOwnerTokenValid(h.token, h.token.uid)) return;
         setView(makeProfileViewSnapshot({
           baseProfile: h.baseProfile,
@@ -365,15 +384,31 @@ export default function OnboardingIntro() {
           source: 'hydration',
         }));
       }).catch(() => {
-        if (seq !== acceptSeqRef.current) return;
+        if (cancelled || seq !== acceptSeqRef.current) return;
         // A read that FAILED is not "there is no row". Fail closed: the tour
         // stays open and unconfirmable rather than writing against a baseline
         // it could not establish.
-        setView(null);
+        // A failure is not evidence that an ALREADY-accepted baseline is
+        // wrong, and dropping one costs the student the only read that landed.
+        // Only an invalid one goes.
+        setView((v) => (v && isOwnerTokenValid(v.token, v.token.uid) ? v : null));
+        // Do not fail closed FOREVER. The read that fails here is usually
+        // "ownership not confirmed yet", which resolves on its own moments
+        // later — and the owner-state notification that would have retried it
+        // may already have fired. Without this the tour's own retry depends on
+        // an event that has been and gone.
+        if (attempt < ACCEPT_RETRIES) {
+          retry = setTimeout(() => accept(attempt + 1), ACCEPT_RETRY_MS * (attempt + 1));
+        }
       });
     };
     accept();
-    return onLocalOwnerStateChange(accept);
+    const off = onLocalOwnerStateChange(() => accept());
+    return () => {
+      cancelled = true;
+      if (retry !== undefined) clearTimeout(retry);
+      off();
+    };
   }, [show]);
 
   const gotoSchoolGate = useCallback(() => { setDir(1); setI(SLIDES.length - 1); }, []);
@@ -546,7 +581,13 @@ export default function OnboardingIntro() {
             <button
               type="button"
               onClick={next}
-              disabled={finishing || (isLast && !view)}
+              // Only while a save is in flight. It used to also require an
+              // accepted baseline, which turned "we could not read your row"
+              // into a grey button with no explanation, on the one step of a
+              // tour that cannot be dismissed. finish() still refuses to write
+              // without that baseline — it just says so now, and the student
+              // can try again.
+              disabled={finishing}
               data-testid="onboarding-primary"
               className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 text-white text-[14px] font-semibold px-6 py-2.5 hover:bg-gray-800 disabled:opacity-50 transition-colors"
             >
