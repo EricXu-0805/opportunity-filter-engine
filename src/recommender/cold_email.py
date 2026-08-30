@@ -283,8 +283,55 @@ def _short_interest(interests: str) -> str:
     return out.rstrip(".")
 
 
+_TOPIC_WORD_RE = re.compile(r"[a-z0-9]+")
+
+# The single-word terms above that a longer word may legitimately contain,
+# because the longer words that contain them are the same field: "chemistry"
+# reaches biochemistry and electrochemistry, "physics" reaches astrophysics and
+# biophysics, "algorithm" reaches algorithms. Every other single-word term
+# matches only as a whole word. Membership was decided term by term against the
+# corpus's own occurrences: a term stays here only when the words containing it,
+# weighted by how often they actually appear, belong to its field.
+#
+# The terms NOT here are why the rule exists. "git" occurs as a word once and
+# inside other words 2,007 times, 1,859 of them "digital". "aws" never occurs as
+# a word at all; all 58 of its hits are "laws", "draws", "outlaws", "lawsuits" —
+# in the DRY-LAB list, it marked legal scholars as computational. "react" has 4
+# word hits against 523 inside "reactions" and "reactors". "labor" reaches
+# "collaboration" and "laboratory", stamping every collaborative science lab as
+# humanities. And "communication" reaches "communications", of which 366 of 621
+# corpus phrases are ECE — wireless, optical, signal-processing — against 57
+# that are media studies, 6.4 to 1 against the list it sits in.
+_TOPIC_STEM_TERMS = frozenset({
+    "algorithm", "bio", "biology", "chemical", "chemistry", "design", "ecology",
+    "economics", "education", "genetics", "linguistics", "literature", "medical",
+    "medicine", "microbiology", "music", "nutrition", "pharmacology", "physics",
+    "physiology", "religion", "robotics", "simulation", "software", "statistics",
+})
+
+
+def _topic_term_hit(term: str, lower: str, words: frozenset[str]) -> bool:
+    """Whether one vocabulary term is present in text already tokenized to ``words``.
+
+    Multi-word phrases and terms carrying punctuation ("molecular biology",
+    "rna-seq", "c++") keep plain containment: they are too specific to collide.
+    """
+    if not term.isalnum():
+        return term in lower
+    if term in words:
+        return True
+    return term in _TOPIC_STEM_TERMS and any(term in w for w in words)
+
+
+# Deliberately no bare-plural tolerance ("law" -> "laws"). Measured over 14,919
+# faculty records it changes 55 of them, and 42 of the 55 are "communication"
+# reaching "communications" — the one collision this change exists to close.
+# The 13 records it would genuinely recover are not worth reopening it.
+
+
 def _topic_domains(text: str) -> set[str]:
     lower = text.lower()
+    words = frozenset(_TOPIC_WORD_RE.findall(lower))
     return {
         name
         for name, vocab in (
@@ -292,7 +339,7 @@ def _topic_domains(text: str) -> set[str]:
             ("dry", _DRY_LAB_KEYWORDS),
             ("hum", _HUMANITIES_KEYWORDS),
         )
-        if any(kw in lower for kw in vocab)
+        if any(_topic_term_hit(kw, lower, words) for kw in vocab)
     }
 
 
