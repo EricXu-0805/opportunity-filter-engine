@@ -29,6 +29,7 @@ from ..normalizers.school_audience import SOURCE_DEFAULTS
 from .config import (
     BUCKET_THRESHOLDS,
     COLLEGE_AFFINITY_MAX,
+    COURSEWORK_FOCUS_BONUS,
     COURSEWORK_MAX_FROM_COUNT,
     COURSEWORK_PER_COURSE,
     COURSEWORK_RELEVANCE_BONUS,
@@ -421,6 +422,36 @@ def _implicit_steer(profile: dict) -> set[str]:
         or bool(profile.get("desired_fields"))
     )
     return set() if has_explicit_interest else _profile_implicit_keywords(profile)
+
+
+def _coursework_focus_bonus(profile: dict, opportunity: dict) -> float:
+    """Additive lift (0..COURSEWORK_FOCUS_BONUS) for coursework that names this
+    professor's field, growing across the right half of the search-focus slider.
+
+    The slider's right-hand label says "Coursework". It used to deliver that by
+    raising the readiness layer's weight — but coursework is one fifth of that
+    layer, and for a faculty record the other four fifths (resume, experience,
+    willingness to cold-email, application effort) are properties of the student
+    and identical against every professor in the list. Measured over three
+    personas the layer's spread was 0.23-0.88 points against 5.3-15.2 for
+    eligibility and upside, and dropping it outright left 21 to 25 of the visible
+    top 25 unmoved. So the old right-hand end took ordering power away from
+    interest matching and handed it to a constant.
+
+    Zero at and below the midpoint, so the default and interests-led halves of
+    the slider score exactly as before.
+    """
+    sw = max(0, min(100, profile.get("search_weight", 50) or 0))
+    if sw <= 50:
+        return 0.0
+    courses = profile.get("coursework") or []
+    if not courses:
+        return 0.0
+    _, tokens = _course_sets(tuple(courses))
+    relevance = _coursework_relevance(opportunity, tokens)
+    if relevance <= 0.0:
+        return 0.0
+    return COURSEWORK_FOCUS_BONUS * ((sw - 50) / 50.0) * (relevance / COURSEWORK_RELEVANCE_BONUS)
 
 
 def _college_affinity(profile: dict, opportunity: dict) -> float:
@@ -866,19 +897,24 @@ def _coursework_score(
         max(COURSEWORK_UNKNOWN, len(student_courses) * COURSEWORK_PER_COURSE),
     )
 
-    signals = _opp_static(opportunity).course_signals
-    if not signals:
-        return count_score
-
     if course_tokens is None:
         course_tokens = _course_tokens(set(student_courses))
 
-    overlap = sum(1 for sig_words in signals if _course_touches(course_tokens, sig_words))
-    if overlap == 0:
-        return count_score
+    return min(100.0, count_score + _coursework_relevance(opportunity, course_tokens))
 
-    relevance = min(COURSEWORK_RELEVANCE_BONUS, overlap * 10.0)
-    return min(100.0, count_score + relevance)
+
+def _coursework_relevance(opportunity: dict, course_tokens: frozenset[str]) -> float:
+    """The part of the coursework score that is about THIS opportunity (0..bonus).
+
+    The count component is a property of the student — the same number against
+    every professor in a list — so anything that wants coursework to order a
+    list has to read this half on its own.
+    """
+    signals = _opp_static(opportunity).course_signals
+    if not signals or not course_tokens:
+        return 0.0
+    overlap = sum(1 for sig_words in signals if _course_touches(course_tokens, sig_words))
+    return min(COURSEWORK_RELEVANCE_BONUS, overlap * 10.0)
 
 
 _UNDERGRAD_ORDER = ["freshman", "sophomore", "junior", "senior"]
@@ -1434,6 +1470,15 @@ def _compute_weights(search_weight: int, exploring: bool = False) -> dict[str, f
     sw = max(0, min(100, search_weight))
     t = sw / 100.0
 
+    # The layer weights are deliberately left alone. Readiness barely varies
+    # BETWEEN two faculty records (spread 0.23-0.88 against 5.3-15.2 for the
+    # other two layers), which is why the slider needed a coursework term of its
+    # own — but it does separate faculty records from programs, because a
+    # program states an application effort and a professor does not. Moving its
+    # weight to eligibility on the right half was measured and reverted: it sent
+    # the first professor a UIUC ECE student sees from rank 42 to rank 256, and
+    # left zero faculty in the top 100. Programs carry filled-in eligibility;
+    # professors do not, so eligibility weight buys programs.
     elig = WEIGHTS_DEFAULT.eligibility - 0.05 * abs(t - 0.5) * 2
     readiness = (WEIGHTS_DEFAULT.readiness - 0.10) + 0.20 * t
     upside = 1.0 - elig - readiness
@@ -2264,7 +2309,9 @@ def _rank_opportunity_unlocked(
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
     resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
-    raw = min(100.0, raw + interest_bonus + major_bonus + college_bonus + home_bonus + resp_bonus)
+    course_bonus = _coursework_focus_bonus(profile, opportunity)
+    raw = min(100.0, raw + interest_bonus + major_bonus + college_bonus + home_bonus
+              + resp_bonus + course_bonus)
 
     # RANK-3: major fit is already weighted inside score_eligibility (0.20 of the
     # eligibility layer). A separate raw multiplier here double-counted the same

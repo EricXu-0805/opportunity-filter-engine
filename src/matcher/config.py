@@ -73,6 +73,13 @@ COURSEWORK_PER_COURSE = _env_float("OFE_COURSE_PER", 12.0)
 COURSEWORK_MAX_FROM_COUNT = _env_float("OFE_COURSE_MAX_COUNT", 70.0)
 COURSEWORK_RELEVANCE_BONUS = _env_float("OFE_COURSE_RELEVANCE", 30.0)
 
+# Peak size of the coursework lift at the far right of the search-focus slider,
+# on the scale of the other additive bonuses (stated interests 8, own college 4,
+# own school 4). It is applied to the RELEVANCE half of the coursework score
+# only — the count half is the same number against every professor in a list, so
+# weighting it would move the level and order nothing.
+COURSEWORK_FOCUS_BONUS = _env_float("OFE_COURSE_FOCUS_BONUS", 8.0)
+
 INTEREST_BONUS_CAP = _env_float("OFE_INTEREST_BONUS_CAP", 8.0)
 # With no stated interests the interest bonus is structurally 0 and the major
 # is the student's only topical signal — yet major-DIRECT matches (a CogSci
@@ -258,7 +265,16 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # inside "department", so a Fine & Applied Arts student collected the bonus on
 # 86,425 of 129,328 faculty records - mathematics, English and psychology at the
 # head of the list. No hashed knob moves for this either.
-_MATCHER_VERSION_BASE = "11"
+# 12: the search-focus slider leans on coursework instead of on a constant. Its
+# right-hand half used to raise the readiness layer's weight from 0.35 to 0.45,
+# and four fifths of that layer is the same number against every faculty record
+# in a list — measured spread 0.23-0.88 points against 5.3-15.2 for the other
+# two layers, and removing the layer outright left 21 to 25 of the visible top
+# 25 in place. So pushing the slider toward "Coursework" bought a louder
+# constant and quieter interest matching. Readiness now stops at its midpoint
+# weight, eligibility takes what it was given, and coursework relevance earns an
+# additive lift of its own.
+_MATCHER_VERSION_BASE = "12"
 
 
 def _matcher_fingerprint() -> str:
@@ -270,7 +286,8 @@ def _matcher_fingerprint() -> str:
         "coursework": (COURSEWORK_UNKNOWN, COURSEWORK_PER_COURSE, COURSEWORK_MAX_FROM_COUNT,
                        COURSEWORK_RELEVANCE_BONUS),
         "bonuses": (INTEREST_BONUS_CAP, EMPTY_INTEREST_MAJOR_BONUS, INTEREST_BONUS_PER_HIT,
-                    COLLEGE_AFFINITY_MAX, HOME_SCHOOL_AFFINITY_MAX, RESPONSIVENESS_BONUS),
+                    COLLEGE_AFFINITY_MAX, HOME_SCHOOL_AFFINITY_MAX, RESPONSIVENESS_BONUS,
+                    COURSEWORK_FOCUS_BONUS),
         "penalties": (DEADLINE_PASSED_PENALTY, GRAD_LEVEL_PENALTY,
                       TOPIC_UNKNOWN_PENALTY, TOPIC_MISMATCH_PENALTY),
         "explore": (EXPLORE_MAJOR_MISMATCH_FLOOR, EXPLORE_READINESS_DROP),
