@@ -834,30 +834,64 @@ def test_apply_works_dedups_punctuation_variant_titles():
 # ---------------------------------------------------------------------------
 
 
-def _faculty(url, name, works=None, status=None):
+def _faculty(url, name, works=None, status=None, gate=None):
     o = {"pi_name": name, "school": "uw", "url": url,
          "source_type": "faculty_research"}
     if works is not None:
         md = {"recent_works": works}
         if status:
             md["publication_attribution_status"] = status
+        if gate is not None:
+            md["works_gate"] = gate
         o["metadata"] = md
     return o
 
 
 def test_unverified_works_do_not_make_a_record_done():
     # The record LOOKS harvested and is worth nothing to a cold email. It is a
-    # target until its papers are attributable to the person we would name.
+    # target until its papers are attributable to the person we would name AND
+    # were chosen by the gate we currently trust.
     unstamped = _faculty("https://x.edu/a", "A Prof",
                          [{"title": "old", "year": 2020}])
     name_matched = _faculty("https://x.edu/b", "B Prof",
                             [{"title": "old", "year": 2020}],
                             oa.ATTRIBUTION_NAME_MATCH)
-    verified = _faculty("https://x.edu/c", "C Prof",
+    old_gate = _faculty("https://x.edu/c", "C Prof",
                         [{"title": "old", "year": 2020}],
                         oa.ATTRIBUTION_VERIFIED)
-    targets = oa._works_targets([unstamped, name_matched, verified], None)
-    assert [t["pi_name"] for t in targets] == ["A Prof", "B Prof"]
+    current = _faculty("https://x.edu/d", "D Prof",
+                       [{"title": "old", "year": 2020}],
+                       oa.ATTRIBUTION_VERIFIED, gate=oa._WORKS_GATE)
+    targets = oa._works_targets([unstamped, name_matched, old_gate, current], None)
+    # C is verified, but by the department-family gate #846 replaced: it is
+    # holding whatever that family let through, which is why it is here.
+    assert [t["pi_name"] for t in targets] == ["A Prof", "B Prof", "C Prof"]
+
+
+def test_a_stricter_gate_may_return_fewer_papers_and_still_win():
+    # 3 -> 1 is a correction, not a regression: the papers the newer gate drops
+    # are the ones it exists to drop. Without this the records most in need of
+    # fixing are exactly the ones that keep their old citations.
+    three = [{"title": "P1", "year": 2026}, {"title": "P2", "year": 2025},
+             {"title": "P3", "year": 2024}]
+    stale = _faculty("https://x.edu/a", "A Prof", list(three),
+                     oa.ATTRIBUTION_VERIFIED)
+    assert oa.apply_works([stale], {"https://x.edu/a": {
+        "author_id": "A1", "works": [{"title": "Only Real One", "year": 2026}]}}) == 1
+    md = stale["metadata"]
+    assert [w["title"] for w in md["recent_works"]] == ["Only Real One"]
+    assert md["works_gate"] == oa._WORKS_GATE
+
+    # ...and once it carries the current gate, a shorter list is a regression
+    # again and must be refused.
+    assert oa.apply_works([stale], {"https://x.edu/a": {
+        "author_id": "A1", "works": []}}) == 0
+    fresh = _faculty("https://x.edu/b", "B Prof",
+                     [{"title": "Keep", "year": 2026}, {"title": "These", "year": 2025}],
+                     oa.ATTRIBUTION_VERIFIED, gate=oa._WORKS_GATE)
+    assert oa.apply_works([fresh], {"https://x.edu/b": {
+        "author_id": "A2", "works": [{"title": "Just One", "year": 2026}]}}) == 0
+    assert len(fresh["metadata"]["recent_works"]) == 2
 
 
 def test_the_same_three_papers_are_an_upgrade_once_they_carry_an_author_id():
