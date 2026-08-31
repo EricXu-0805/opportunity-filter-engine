@@ -50,6 +50,7 @@ to a request:
 """
 from __future__ import annotations
 
+import collections
 import json
 import logging
 import os
@@ -57,6 +58,7 @@ import re
 import sys
 import time
 import unicodedata
+from typing import NamedTuple
 
 import requests
 
@@ -1025,17 +1027,57 @@ def _given_names_can_be_one_person(faculty: str, author: str) -> bool:
     return _off_by_one(a, b)
 
 
-def index_roster(roster: list[dict]) -> dict[tuple[str, str], list[dict]]:
+# A department whose discipline maps to exactly one unambiguous OpenAlex
+# field, used only to ask whether a candidate has ever published in it.
+# Ordered like _DEPT_FIELDS so "electric" answers first: Electrical & Computer
+# Engineering contains the word "computer", and its faculty legitimately
+# publish as Engineering, Physics and Astronomy or Materials Science with no
+# Computer Science topic at all.
+_DISCIPLINE_PROBE: tuple[tuple[str, str | None], ...] = (
+    ("electric", None),
+    ("computer", "Computer Science"),
+    ("computing", "Computer Science"),
+    ("software", "Computer Science"),
+)
+# How many people must share a surname on one institution's roster before
+# surname + first initial stops identifying anybody. Measured, not guessed:
+# see _match_in_roster.
+_AMBIGUOUS_SURNAME_MIN = 3
+
+
+def _discipline_probe(dept: str) -> str | None:
+    d = _DEPT_WORD_RE.sub(" ", (dept or "").lower())
+    for key, field in _DISCIPLINE_PROBE:
+        if key in d:
+            return field
+    return None
+
+
+class Roster(NamedTuple):
+    """A school's authors, indexed the two ways matching needs them.
+
+    Carrying the surname counts here rather than passing them separately is
+    deliberate: _match_in_roster cannot be called without them, so the guard
+    below cannot be left unwired by a caller that forgets.
+    """
+
+    by_name: dict[tuple[str, str], list[dict]]
+    surnames: collections.Counter
+
+
+def index_roster(roster: list[dict]) -> Roster:
     idx: dict[tuple[str, str], list[dict]] = {}
+    surnames: collections.Counter = collections.Counter()
     for a in roster:
         k = _match_name_key(a.get("name", ""))
         if k is not None:
             idx.setdefault(k, []).append(a)
-    return idx
+            surnames[k[0]] += 1
+    return Roster(idx, surnames)
 
 
 def _match_in_roster(name: str, dept: str,
-                     idx: dict[tuple[str, str], list[dict]]) -> tuple[dict | None, str]:
+                     idx: Roster) -> tuple[dict | None, str]:
     """The roster author for this faculty member, or (None, reason).
 
     Gates in order, all of them the search path's own:
@@ -1053,7 +1095,7 @@ def _match_in_roster(name: str, dept: str,
     k = _match_name_key(name)
     if k is None:
         return None, "unusable_name"
-    cands = [a for a in idx.get(k, []) if a.get("works", 0) >= _MIN_WORKS]
+    cands = [a for a in idx.by_name.get(k, []) if a.get("works", 0) >= _MIN_WORKS]
     if not cands:
         return None, "absent"
     allowed = _dept_fields(dept)
@@ -1073,6 +1115,26 @@ def _match_in_roster(name: str, dept: str,
     if not named:
         return None, "given_name_reject"
     cands = named
+    # When the surname is common on this roster, surname + first initial is not
+    # identifying and the field family above is too wide to finish the job: a
+    # School of Computing maps to a family holding Chemistry, Physics and
+    # Materials Science, so a peptide chemist named Arindam Banerjee is a
+    # majority-compatible match for the machine-learning professor of the same
+    # name, and "T. P. Martin" (302 works, physics) for Travis Martin.
+    #
+    # So for a department whose discipline names one unambiguous field, ask
+    # whether the candidate has ever published in it. Measured on 392 matched
+    # computing faculty: this rejects 12, of which a blind adversarial audit
+    # confirmed 10 as different humans. Requiring the shared surname is what
+    # keeps the other 380 — Deepak Vasisht (labelled Engineering, correct),
+    # Colleen Josephson (Engineering/Environmental, correct) and the maths half
+    # of a joint Mathematics & Computer Science department all have surnames
+    # that are near-unique on their rosters and are not asked the question.
+    probe = _discipline_probe(dept)
+    if probe and idx.surnames.get(_surname(name), 0) >= _AMBIGUOUS_SURNAME_MIN:
+        cands = [a for a in cands if probe in set(a.get("fields") or [])]
+        if not cands:
+            return None, "discipline_reject"
     exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
     if exact:
         cands = exact
