@@ -1359,3 +1359,67 @@ def test_an_exhausted_budget_is_not_a_professor_without_papers(monkeypatch, tmp_
     # 24 of the first batch genuinely returned nothing; nobody after the 429 is
     # recorded at all.
     assert reasons.get("no_usable_work", 0) == oa._WORKS_BATCH - 1, reasons
+
+
+def _crowd(surname, n):
+    """n other people sharing a surname, so it stops being identifying."""
+    return [_roster_row(f"Person{i} {surname}", fields=["Computer Science"])
+            for i in range(n)]
+
+
+def test_a_crowded_surname_must_publish_in_the_department_s_own_field():
+    # Production 2026-08-30: UIUC's Arindam Banerjee is a machine-learning
+    # professor, and the only "Arindam Banerjee" on UIUC's OpenAlex roster is a
+    # peptide chemist (320 works). A School of Computing maps to a field family
+    # holding Chemistry, Materials Science and Physics, so the chemist is
+    # majority-compatible and wins by being the only candidate. Utah's Travis
+    # Martin got "T. P. Martin", 302 works of physics, the same way.
+    chemist = _roster_row("Arindam Banerjee", works=320,
+                          fields=["Chemistry", "Materials Science", "Engineering"])
+    idx = oa.index_roster([chemist, *_crowd("Banerjee", 3)])
+    author, why = oa._match_in_roster(
+        "Arindam Banerjee", "Siebel School of Computing and Data Science", idx)
+    assert author is None
+    assert why == "discipline_reject"
+
+
+def test_a_rare_surname_is_not_asked():
+    # The question is only worth asking where surname + first initial has
+    # stopped identifying anybody. Deepak Vasisht's OpenAlex profile is labelled
+    # Engineering with no Computer Science topic at all — normal for a wireless
+    # networking researcher — and his surname is unique on UIUC's roster, so the
+    # match must stand. Rejecting him is the cost this condition exists to avoid.
+    idx = oa.index_roster([_roster_row("Deepak Vasisht", works=83, fields=["Engineering"])])
+    author, why = oa._match_in_roster(
+        "Deepak Vasisht", "Siebel School of Computing and Data Science", idx)
+    assert why == "ok"
+    assert author["name"] == "Deepak Vasisht"
+
+
+def test_electrical_and_computer_engineering_is_not_a_computing_department():
+    # "Electrical & Computer Engineering" contains the word "computer", and its
+    # faculty legitimately publish with no Computer Science topic at all —
+    # circuits, devices and signal processing are filed as Engineering or
+    # Physics and Astronomy. Asking them the computing question would reject a
+    # whole discipline, so "electric" answers first.
+    idx = oa.index_roster([
+        _roster_row("Ada Devicewright", works=364,
+                    fields=["Engineering", "Physics and Astronomy", "Engineering"]),
+        *_crowd("Devicewright", 4),
+    ])
+    author, why = oa._match_in_roster(
+        "Ada Devicewright", "Electrical & Computer Engineering", idx)
+    assert why == "ok"
+    assert author["works"] == 364
+
+
+def test_a_crowded_surname_with_the_field_present_still_matches():
+    idx = oa.index_roster([
+        _roster_row("Gang Wang", works=200,
+                    fields=["Computer Science", "Engineering"]),
+        *_crowd("Wang", 5),
+    ])
+    author, why = oa._match_in_roster(
+        "Gang Wang", "Siebel School of Computing and Data Science", idx)
+    assert why == "ok"
+    assert author["works"] == 200
