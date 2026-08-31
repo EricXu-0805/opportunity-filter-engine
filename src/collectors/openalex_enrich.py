@@ -1343,12 +1343,26 @@ def harvest_works_by_roster(
                           f"budget exhausted (confirmed 429); {len(mapping)} with papers",
                           flush=True)
                 return mapping, reasons
+            # Whether the request itself worked. If NO author in the batch came
+            # back with anything, that is a failure to ask, not twenty-five
+            # people with nothing to cite — and writing the second one down
+            # would clear their records below.
+            batch_answered = bool(raw)
             for key, aid, dept, own_fields in batch:
                 works = _usable_works(raw.get(aid) or [], dept, author_fields=own_fields)
                 if works:
                     mapping[key] = {"author_id": aid, "works": works}
-                else:
+                elif batch_answered:
+                    # An answer about this author: their recent work is not
+                    # theirs to cite. apply_works needs this written down —
+                    # absent from the mapping is indistinguishable from never
+                    # harvested, and a record that keeps its old papers because
+                    # the newer gate rejected all of them is the worst outcome
+                    # available.
+                    mapping[key] = {"author_id": aid, "works": []}
                     reasons["no_usable_work"] = reasons.get("no_usable_work", 0) + 1
+                else:
+                    reasons["batch_unanswered"] = reasons.get("batch_unanswered", 0) + 1
             if progress:
                 print(f"  {slug}: {min(i + _WORKS_BATCH, len(resolved))}/{len(resolved)} "
                       f"-> {len(mapping)} with papers", flush=True)
@@ -1372,7 +1386,13 @@ def _works_targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
         # here is what locked 15,917 faculty out of the only pass that could
         # ever stamp them: harvested before the stamp existed, then never
         # selected again because they looked harvested.
-        if works_are_verified(o):
+        #
+        # Nor is being verified being done, if an older gate verified it: a
+        # record whose papers were chosen by the department's field family is
+        # holding whatever that family let through, and #846 exists because
+        # that included other people's work. Re-target it once; the stamp it
+        # gets back stops it being selected again.
+        if works_are_verified(o) and _record_gate(o) >= _WORKS_GATE:
             continue
         out.append(o)
     return out
@@ -1443,6 +1463,48 @@ def _entry_works_and_status(entry) -> tuple[list[dict], str]:
     return entry or [], ATTRIBUTION_NAME_MATCH
 
 
+# Which per-work gate produced a record's stored papers.
+#   1  the department's field family alone. It is a proxy for the author and a
+#      poor one in both directions: Electrical & Computer Engineering spans
+#      nine fields including Computer Science and Environmental Science, so a
+#      conflated entity's search-agent and geochemistry papers all passed,
+#      while the professor's own imaging papers, filed under Medicine, did not.
+#   2  the author's own published fields, falling back to the family only when
+#      we don't have them (#846).
+# Stamped on every write. A record made by an older gate is a target again and
+# its replacement supersedes at any paper count — under a stricter gate, fewer
+# papers is the correction, not a regression.
+_WORKS_GATE = 2
+
+
+def _record_gate(record: dict) -> int:
+    """The gate that produced this record's stored works. Absent means gate 1:
+    every write since the field has existed sets it."""
+    gate = (record.get("metadata") or {}).get("works_gate")
+    return gate if isinstance(gate, int) else 1
+
+
+def _is_a_retraction(entry, record: dict) -> bool:
+    """Whether an EMPTY harvest answer should clear this record's papers.
+
+    Only for an explicit answer — a dict entry carrying the resolved author id
+    and an empty work list, which ``harvest_works_by_roster`` writes only when
+    the request that produced it demonstrably worked. A missing entry means the
+    person was never asked about and must never clear anything.
+
+    And only against papers an OLDER gate chose. A record already at the
+    current gate holding papers this run happened not to return is a transient
+    difference, not a correction.
+    """
+    if not (isinstance(entry, dict) and entry.get("author_id")):
+        return False
+    if entry.get("works"):
+        return False
+    if not (record.get("metadata") or {}).get("recent_works"):
+        return False
+    return works_are_verified(record) and _record_gate(record) < _WORKS_GATE
+
+
 def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
                    record: dict) -> bool:
     """Whether writing ``clean`` over ``existing`` makes the record better.
@@ -1459,6 +1521,14 @@ def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
     now_verified = status == ATTRIBUTION_VERIFIED
     if now_verified != was_verified:
         return now_verified
+    if now_verified and _record_gate(record) < _WORKS_GATE:
+        # Re-harvested under a stricter gate. Count cannot answer here either:
+        # the whole point of the newer gate is that some of what the record
+        # holds should never have been cited, so a shorter list is the
+        # correction. Measured on 800 rechecked records, this is what a
+        # re-harvest usually returns — one of the professor's own papers in
+        # place of a stranger's, not a shorter list.
+        return True
     return len(clean) > len(existing)
 
 
@@ -1498,10 +1568,22 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             if len(clean) >= _MAX_WORKS:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
+        if not clean and _is_a_retraction(entry, o):
+            # The newer gate was asked about this author and rejected every
+            # paper the record holds. Keeping them because the replacement is
+            # empty is the worst outcome available: these are the records most
+            # likely to be citing a stranger.
+            md = o.setdefault("metadata", {})
+            md.pop("recent_works", None)
+            md.pop("publication_attribution_status", None)
+            md["works_gate"] = _WORKS_GATE
+            n += 1
+            continue
         if clean and _is_an_upgrade(clean, status, existing, o):
             md = o.setdefault("metadata", {})
             md["recent_works"] = clean
             md["publication_attribution_status"] = status
+            md["works_gate"] = _WORKS_GATE
             n += 1
     return n
 
