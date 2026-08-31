@@ -1027,6 +1027,36 @@ def _given_names_can_be_one_person(faculty: str, author: str) -> bool:
     return _off_by_one(a, b)
 
 
+def _given_tokens(name: str) -> set[str]:
+    """Every name token before the surname, accent- and punctuation-folded.
+
+    "Zhi-Pei" is two tokens, so it can be told apart from "Zhixiang" — which
+    the prefix rule above cannot do.
+    """
+    folded = unicodedata.normalize("NFKD", name or "")
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    toks = [t for t in re.sub(r"[^a-z ]", " ", folded.lower()).split() if t]
+    return set(toks[:-1])
+
+
+def _writes_out_given_names(faculty: str, author: str) -> bool:
+    """Whether this roster row writes out every given name the directory lists."""
+    want = _given_tokens(faculty)
+    return bool(want) and want <= _given_tokens(author)
+
+
+def _shortens_given_name(faculty: str, author: str) -> bool:
+    """Whether the row gives a recognisable short form — Chris for Christopher.
+
+    An initial does not count: "M." is a prefix of Meghan, Melissa and Mark
+    alike. Three letters is where a prefix stops abbreviating one name and
+    starts naming another, and the direction matters too — Zhixiang is not a
+    short form of Zhi-Pei.
+    """
+    a, b = _given_name(faculty), _given_name(author)
+    return len(b) >= 3 and (a.startswith(b) or _DIMINUTIVES.get(b) == a)
+
+
 # A department whose discipline maps to exactly one unambiguous OpenAlex
 # field, used only to ask whether a candidate has ever published in it.
 # Ordered like _DEPT_FIELDS so "electric" answers first: Electrical & Computer
@@ -1076,6 +1106,39 @@ def index_roster(roster: list[dict]) -> Roster:
     return Roster(idx, surnames)
 
 
+def _rejected_namesake(name: str, chosen: dict,
+                       rejected: list[dict]) -> dict | None:
+    """The field gate's own reject, when it discarded the only candidate that
+    carries this faculty member's name.
+
+    _dept_fields is a proxy for identity and a coarse one: OpenAlex fields
+    follow what a person publishes, not who pays them, so Carle Illinois's
+    Ravishankar K. Iyer is Computer Science + Engineering, fails a college of
+    medicine's field family, and leaves an "R. Iyer" with five papers that the
+    ambiguity rule is happy to return. A row that writes the name out is direct
+    identity evidence and the field family is not, so when the gate has thrown
+    away the one such row, take it back.
+
+    Measured against the 18 cached rosters, 16 matches change. A blind panel
+    judged 14 of them: 12 say the record being replaced is a different human,
+    and 2 are one person OpenAlex had split in two, where the larger half is
+    the better answer either way. Of the 2 unjudged, Syracuse's Meghan Kelly
+    looks like the cost of the rule — the roster's 221-work "Meghan Kelly" is a
+    design academic and the "M. Kelly" being replaced does publish on GIS. No
+    name evidence separates her case from the twelve.
+
+    Uniqueness is what keeps the rest honest: Pitt has three Jun Chens, and
+    there this changes nothing.
+    """
+    if (_writes_out_given_names(name, chosen.get("name", ""))
+            or _shortens_given_name(name, chosen.get("name", ""))):
+        return None
+    full = [a for a in rejected
+            if _writes_out_given_names(name, a.get("name", ""))
+            and a.get("works", 0) > chosen.get("works", 0)]
+    return full[0] if len(full) == 1 else None
+
+
 def _match_in_roster(name: str, dept: str,
                      idx: Roster) -> tuple[dict | None, str]:
     """The roster author for this faculty member, or (None, reason).
@@ -1099,6 +1162,7 @@ def _match_in_roster(name: str, dept: str,
     if not cands:
         return None, "absent"
     allowed = _dept_fields(dept)
+    rejected: list[dict] = []
     if allowed is not None:
         kept = []
         for a in cands:
@@ -1106,8 +1170,7 @@ def _match_in_roster(name: str, dept: str,
             n = len(fields)
             comp = sum(1 for f in fields if f in allowed)
             ok = (comp * 2 >= n) if n >= 3 else (n > 0 and comp == n)
-            if ok:
-                kept.append(a)
+            (kept if ok else rejected).append(a)
         cands = kept
         if not cands:
             return None, "field_reject"
@@ -1118,6 +1181,10 @@ def _match_in_roster(name: str, dept: str,
     exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
     if exact:
         cands = exact
+    if len(cands) == 1:
+        named = _rejected_namesake(name, cands[0], rejected)
+        if named is not None:
+            cands = [named]
     # When the surname is common on this roster, surname + first initial is not
     # identifying and the field family above is too wide to finish the job: a
     # School of Computing maps to a family holding Chemistry, Physics and

@@ -1533,3 +1533,109 @@ def test_the_discipline_check_still_separates_two_equal_name_matches():
         "Changxi Zheng", "Department of Computer Science", idx)
     assert why == "ok"
     assert author["works"] == 180
+
+
+def test_the_field_gate_may_not_discard_the_only_record_that_carries_the_name():
+    # Production 2026-08-30. Ravishankar K. Iyer is listed under Carle Illinois
+    # College of Medicine; his OpenAlex profile is Computer Science and
+    # Engineering, so the college's field family cuts him and leaves an
+    # "R. Iyer" with five papers, which the ambiguity rule happily returns. The
+    # student's cold email then cites another person's work.
+    #
+    # A row that writes the name out is direct identity evidence; the field
+    # family is a proxy. When the proxy has thrown away the only such row, take
+    # it back.
+    real = _roster_row("Ravishankar K. Iyer", works=480,
+                       fields=["Computer Science", "Engineering", "Computer Science"])
+    fragment = _roster_row("R. Iyer", works=5, fields=["Medicine"])
+    idx = oa.index_roster([real, fragment])
+    author, why = oa._match_in_roster(
+        "Ravishankar K. Iyer", "Carle Illinois College of Medicine", idx)
+    assert why == "ok"
+    assert author["name"] == "Ravishankar K. Iyer"
+
+
+def test_two_rejected_namesakes_are_not_reached_for():
+    # Pitt's roster has three Jun Chens, and a blind panel judged that none of
+    # them is the professor. Reaching into the rejects only helps when there is
+    # exactly one row to reach for; with several, this changes nothing and the
+    # match stays whatever it already was.
+    idx = oa.index_roster([
+        _roster_row("J. L. S. Chen", works=9, fields=["Engineering"]),
+        _roster_row("Jun Chen", works=355, fields=["Medicine", "Medicine"]),
+        _roster_row("Jun Chen", works=311, fields=["Medicine", "Neuroscience"]),
+    ])
+    author, why = oa._match_in_roster(
+        "Jun Chen", "Department of Electrical and Computer Engineering", idx)
+    assert why == "ok"
+    assert author["name"] == "J. L. S. Chen"
+
+
+def test_a_rejected_namesake_must_account_for_every_given_name():
+    # Houston's Department of Physics lists Carlos R. Ordonez, a theoretical
+    # physicist with a small OpenAlex record; the roster's 291-work "Carlos
+    # Ordońẽz" is the university's database professor. Dropping the middle
+    # initial the directory does list is the difference, and it is the only
+    # signal there is — so it has to be enough to refuse on.
+    physicist = _roster_row("C. R. Ordóñez", works=7,
+                            fields=["Physics and Astronomy"] * 3)
+    database = _roster_row("Carlos Ordońẽz", works=291,
+                           fields=["Computer Science"] * 3)
+    idx = oa.index_roster([physicist, database])
+    author, why = oa._match_in_roster("Carlos R. Ordonez",
+                                      "Department of Physics", idx)
+    assert why == "ok"
+    assert author["works"] == 7
+
+
+def test_a_short_form_of_the_name_is_not_a_gap_in_it():
+    # Colorado State's Chris Peterson does algebraic geometry; the roster's
+    # 321-work "Christopher Peterson" is the positive-psychology researcher.
+    # "Chris" is the professor's own published name, not a record missing his,
+    # so there is nothing here for the rejects to fill in.
+    real = _roster_row("Chris Peterson", works=131,
+                       fields=["Mathematics", "Computer Science", "Mathematics"])
+    psychologist = _roster_row("Christopher Peterson", works=321,
+                               fields=["Psychology", "Social Sciences", "Psychology"])
+    idx = oa.index_roster([real, psychologist])
+    author, why = oa._match_in_roster("Christopher Peterson",
+                                      "Department of Mathematics", idx)
+    assert why == "ok"
+    assert author["works"] == 131
+
+
+def test_a_longer_given_name_is_not_the_same_name_written_out():
+    # Zhi-Pei and Zhixiang share a prefix, so _given_names_can_be_one_person
+    # cannot separate them — which is how UIUC's MRI professor came to be
+    # matched to Zhixiang Liang while his own record, filed under Medicine, was
+    # cut by Electrical & Computer Engineering's field family. Counting the
+    # given names the directory lists does separate them.
+    assert oa._given_names_can_be_one_person("Zhi-Pei Liang", "Zhixiang Liang")
+    assert not oa._writes_out_given_names("Zhi-Pei Liang", "Zhixiang Liang")
+    assert oa._writes_out_given_names("Zhi-Pei Liang", "Zhi‐Pei Liang")
+
+    real = _roster_row("Zhi‐Pei Liang", works=364,
+                       fields=["Medicine", "Medicine", "Engineering"])
+    other = _roster_row("Zhixiang Liang", works=47,
+                        fields=["Engineering", "Computer Science", "Engineering"])
+    idx = oa.index_roster([real, other])
+    author, why = oa._match_in_roster("Zhi-Pei Liang",
+                                      "Electrical & Computer Engineering", idx)
+    assert why == "ok"
+    assert author["works"] == 364
+
+
+def test_a_recovered_namesake_still_answers_the_discipline_question():
+    # The swap runs before the discipline probe, so a row reached for out of the
+    # rejects is judged by it like any other candidate. A crowded surname is
+    # exactly where reaching into the rejects is least safe.
+    idx = oa.index_roster([
+        _roster_row("K. Nakamura", works=6, fields=["Computer Science"]),
+        _roster_row("Kenji Nakamura", works=90,
+                    fields=["Agricultural and Biological Sciences"] * 3),
+        *_crowd("Nakamura", 4),
+    ])
+    author, why = oa._match_in_roster(
+        "Kenji Nakamura", "Siebel School of Computing and Data Science", idx)
+    assert author is None
+    assert why == "discipline_reject"
