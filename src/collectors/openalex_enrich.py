@@ -1343,12 +1343,26 @@ def harvest_works_by_roster(
                           f"budget exhausted (confirmed 429); {len(mapping)} with papers",
                           flush=True)
                 return mapping, reasons
+            # Whether the request itself worked. If NO author in the batch came
+            # back with anything, that is a failure to ask, not twenty-five
+            # people with nothing to cite — and writing the second one down
+            # would clear their records below.
+            batch_answered = bool(raw)
             for key, aid, dept, own_fields in batch:
                 works = _usable_works(raw.get(aid) or [], dept, author_fields=own_fields)
                 if works:
                     mapping[key] = {"author_id": aid, "works": works}
-                else:
+                elif batch_answered:
+                    # An answer about this author: their recent work is not
+                    # theirs to cite. apply_works needs this written down —
+                    # absent from the mapping is indistinguishable from never
+                    # harvested, and a record that keeps its old papers because
+                    # the newer gate rejected all of them is the worst outcome
+                    # available.
+                    mapping[key] = {"author_id": aid, "works": []}
                     reasons["no_usable_work"] = reasons.get("no_usable_work", 0) + 1
+                else:
+                    reasons["batch_unanswered"] = reasons.get("batch_unanswered", 0) + 1
             if progress:
                 print(f"  {slug}: {min(i + _WORKS_BATCH, len(resolved))}/{len(resolved)} "
                       f"-> {len(mapping)} with papers", flush=True)
@@ -1470,6 +1484,27 @@ def _record_gate(record: dict) -> int:
     return gate if isinstance(gate, int) else 1
 
 
+def _is_a_retraction(entry, record: dict) -> bool:
+    """Whether an EMPTY harvest answer should clear this record's papers.
+
+    Only for an explicit answer — a dict entry carrying the resolved author id
+    and an empty work list, which ``harvest_works_by_roster`` writes only when
+    the request that produced it demonstrably worked. A missing entry means the
+    person was never asked about and must never clear anything.
+
+    And only against papers an OLDER gate chose. A record already at the
+    current gate holding papers this run happened not to return is a transient
+    difference, not a correction.
+    """
+    if not (isinstance(entry, dict) and entry.get("author_id")):
+        return False
+    if entry.get("works"):
+        return False
+    if not (record.get("metadata") or {}).get("recent_works"):
+        return False
+    return works_are_verified(record) and _record_gate(record) < _WORKS_GATE
+
+
 def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
                    record: dict) -> bool:
     """Whether writing ``clean`` over ``existing`` makes the record better.
@@ -1533,14 +1568,17 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             if len(clean) >= _MAX_WORKS:
                 break
         existing = (o.get("metadata") or {}).get("recent_works") or []
-        # NOT handled: a re-harvest under a newer gate that rejects every paper
-        # the record holds. It produces no mapping entry at all (the harvest
-        # counts it `no_usable_work`), so the record keeps its old citations —
-        # and those are the records most likely to be wrong. Measured at 2 of
-        # 400 rechecked uiuc records and 0 of 400 columbia ones; left for a
-        # change that can tell "the harvest found nothing" apart from "the
-        # harvest did not run", which is the distinction a partial run would
-        # otherwise erase.
+        if not clean and _is_a_retraction(entry, o):
+            # The newer gate was asked about this author and rejected every
+            # paper the record holds. Keeping them because the replacement is
+            # empty is the worst outcome available: these are the records most
+            # likely to be citing a stranger.
+            md = o.setdefault("metadata", {})
+            md.pop("recent_works", None)
+            md.pop("publication_attribution_status", None)
+            md["works_gate"] = _WORKS_GATE
+            n += 1
+            continue
         if clean and _is_an_upgrade(clean, status, existing, o):
             md = o.setdefault("metadata", {})
             md["recent_works"] = clean

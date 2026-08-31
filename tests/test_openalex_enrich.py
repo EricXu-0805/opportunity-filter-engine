@@ -1425,10 +1425,15 @@ def test_an_exhausted_budget_is_not_a_professor_without_papers(monkeypatch, tmp_
     mapping, reasons = oa.harvest_works_by_roster(
         people, schools=["jhu"], roster_dir=str(tmp_path))
 
-    assert len(mapping) == 1, "the one real answer is kept"
-    # 24 of the first batch genuinely returned nothing; nobody after the 429 is
-    # recorded at all.
+    with_papers = [k for k, v in mapping.items() if v["works"]]
+    assert len(with_papers) == 1, "the one real answer is kept"
+    # The rest of that first batch were asked and have nothing citable, which is
+    # an answer and is written down as one. Nobody after the 429 is recorded at
+    # all — an exhausted budget must never read as "this professor has no
+    # papers", because that answer would clear their record.
+    assert len(mapping) == oa._WORKS_BATCH, "the answered batch, and only it"
     assert reasons.get("no_usable_work", 0) == oa._WORKS_BATCH - 1, reasons
+    assert all(v["works"] == [] for k, v in mapping.items() if k not in with_papers)
 
 
 def _crowd(surname, n):
