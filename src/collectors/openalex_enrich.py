@@ -660,20 +660,47 @@ def author_topics(name: str, inst_id: str, dept: str = "", max_topics: int = 5) 
         (t.get("display_name", "") for t in best.get("topics") or []), max_topics)
 
 
+def _author_own_fields(author: dict | None) -> set[str]:
+    """The fields this author actually publishes in, from their topic profile.
+
+    Roster entries carry ``fields`` directly; a search-path author carries
+    ``topics``. Either way this is a majority signal over the author's whole
+    record, which is what makes it a better answer than the department to
+    "could this paper be theirs" — the department is a proxy for exactly this,
+    used when the real thing is unavailable.
+    """
+    if not author:
+        return set()
+    fields = {f for f in (author.get("fields") or []) if f}
+    if fields:
+        return fields
+    return {
+        name for t in (author.get("topics") or [])
+        if (name := ((t.get("field") or {}).get("display_name") or ""))
+    }
+
+
 def _usable_works(raw: list[dict], dept: str = "",
-                  max_works: int = _MAX_WORKS) -> list[dict]:
+                  max_works: int = _MAX_WORKS,
+                  author_fields: list[str] | set[str] | None = None) -> list[dict]:
     """The citable subset of one author's works, newest first: title + year
     only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
 
     OpenAlex author-name disambiguation conflates distinct same-name people
     under one author id, and the recency sort surfaces the mis-attributed
     outliers first (a CS/NLP professor gets a myocardial-cell-injury paper). So
-    when the department maps to a field family, a work whose ``primary_topic``
-    field is incompatible with it is dropped — the same wrong-field guard the
-    author-topics pass applies, at the per-work level. Better to cite no paper
-    than the wrong person's.
+    a work whose ``primary_topic`` field is incompatible with the author is
+    dropped. Better to cite no paper than the wrong person's.
+
+    "Incompatible with the author" is answered by the author's OWN field
+    profile when we have it, and only otherwise by their department's field
+    family. The department is the weaker proxy in both directions, and a real
+    professor showed both: UIUC ECE maps to nine fields including Computer
+    Science and Environmental Science, so an MRI professor's conflated
+    search-agent and geochemistry papers all passed — while his own imaging
+    papers, filed under Medicine, which ECE does not map to, were dropped.
     """
-    allowed = _dept_fields(dept)
+    allowed = set(author_fields) if author_fields else _dept_fields(dept)
     out: list[dict] = []
     seen: set[str] = set()
     for w in raw:
@@ -692,7 +719,8 @@ def _usable_works(raw: list[dict], dept: str = "",
     return out
 
 
-def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS) -> list[dict]:
+def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS,
+                        author_fields: list[str] | set[str] | None = None) -> list[dict]:
     """``_usable_works`` for one author, bought one request per person."""
     j = _get({
         "filter": f"author.id:{author_id}",
@@ -700,7 +728,7 @@ def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WO
         "per-page": _WORKS_FETCH,
         "select": "display_name,publication_year,primary_topic",
     }, url=_WORKS_API)
-    return _usable_works(j.get("results") or [], dept, max_works)
+    return _usable_works(j.get("results") or [], dept, max_works, author_fields)
 
 
 def works_for_authors(author_ids: list[str], *, want: int = _MAX_WORKS,
@@ -1200,7 +1228,8 @@ def harvest_works_by_roster(
                       flush=True)
             continue
         idx = index_roster(state["authors"])
-        resolved: list[tuple[str, str, str]] = []   # (key, author_id, dept)
+        # (key, author_id, dept, the author's own fields)
+        resolved: list[tuple[str, str, str, set[str]]] = []
         for o in people:
             author, why = _match_in_roster(o["pi_name"], o.get("department", ""), idx)
             reasons[why] = reasons.get(why, 0) + 1
@@ -1208,13 +1237,14 @@ def harvest_works_by_roster(
                 continue
             aid = str(author.get("id") or "").rsplit("/", 1)[-1]
             if aid:
-                resolved.append((_person_key(o), aid, o.get("department", "")))
+                resolved.append((_person_key(o), aid, o.get("department", ""),
+                                 _author_own_fields(author)))
         if progress:
             print(f"{slug}: {len(people)} targets, {len(resolved)} authors resolved "
                   f"({-(-len(resolved) // _WORKS_BATCH)} requests)", flush=True)
         for i in range(0, len(resolved), _WORKS_BATCH):
             batch = resolved[i:i + _WORKS_BATCH]
-            raw = works_for_authors([aid for _, aid, _ in batch])
+            raw = works_for_authors([aid for _, aid, _, _ in batch])
             if _warned_429:
                 # Don't record this batch as misses — the lookup never really
                 # ran. An empty answer from an exhausted budget is not the same
@@ -1225,8 +1255,8 @@ def harvest_works_by_roster(
                           f"budget exhausted (confirmed 429); {len(mapping)} with papers",
                           flush=True)
                 return mapping, reasons
-            for key, aid, dept in batch:
-                works = _usable_works(raw.get(aid) or [], dept)
+            for key, aid, dept, own_fields in batch:
+                works = _usable_works(raw.get(aid) or [], dept, author_fields=own_fields)
                 if works:
                     mapping[key] = {"author_id": aid, "works": works}
                 else:
@@ -1293,7 +1323,8 @@ def harvest_works(
         dept = o.get("department", "")
         best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
         time.sleep(throttle)
-        works = author_recent_works(best["id"], dept) if best and best.get("id") else []
+        works = (author_recent_works(best["id"], dept, author_fields=_author_own_fields(best))
+                 if best and best.get("id") else [])
         if best and best.get("id"):
             time.sleep(throttle)
         if _warned_429:
