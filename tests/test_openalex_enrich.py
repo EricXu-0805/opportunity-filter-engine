@@ -1264,14 +1264,49 @@ def test_an_incomplete_roster_is_skipped_not_guessed_at(monkeypatch, tmp_path):
     (tmp_path / "jhu.json").write_text(json.dumps(
         {"complete": False, "authors": [], "expected": 900}))
     called = []
+    monkeypatch.setattr(oa, "_warned_429", False)
     monkeypatch.setattr(oa, "works_for_authors",
                         lambda ids, **kw: called.append(ids) or {})
+    # The partial roster is resumed first — that is what this pass can now do —
+    # and this run does not finish it either.
+    resumed = []
+    monkeypatch.setattr(oa, "fetch_roster", lambda inst, **kw: resumed.append(inst) or {
+        "complete": False, "authors": [], "expected": 900, "cursor": "next"})
 
     mapping, reasons = oa.harvest_works_by_roster([opp], schools=["jhu"],
                                                   roster_dir=str(tmp_path))
+    assert resumed, "an incomplete roster is resumed, not just skipped"
     assert mapping == {}
     assert reasons["roster_incomplete"] == 1
     assert called == [], "no credit is spent against a partial roster"
+
+
+def test_the_works_pass_buys_a_roster_it_does_not_have(monkeypatch, tmp_path):
+    # The two passes select different people: _targets wants faculty with no
+    # research keywords, _works_targets wants faculty with no citable papers.
+    # Berkeley has 0 of the first and 2,168 of the second, so the only command
+    # that bought rosters could never be asked for Berkeley's — and the pass
+    # that needed it read the cache and skipped. Measured on the corpus; the
+    # same holds for utexas, uw, ucla and five more.
+    opp = {"id": "f1", "school": "jhu", "source_type": "faculty_research",
+           "pi_name": "Rika Anderson", "url": "https://x.edu/rika",
+           "source_url": "https://x.edu/rika", "department": "Department of Biology"}
+    monkeypatch.setattr(oa, "_warned_429", False)
+    monkeypatch.setattr(oa, "fetch_roster", lambda inst, **kw: {
+        "complete": True, "expected": 1,
+        "authors": [{"id": "https://openalex.org/A1", "name": "Rika Anderson",
+                     "works": 40, "topics": ["ecology"],
+                     "fields": ["Agricultural and Biological Sciences"]}]})
+    monkeypatch.setattr(oa, "works_for_authors", lambda ids, **kw: {
+        ids[0]: [_authored_work("A Real Paper", 2026,
+                                "Agricultural and Biological Sciences", [ids[0]])]})
+
+    mapping, reasons = oa.harvest_works_by_roster([opp], schools=["jhu"],
+                                                  roster_dir=str(tmp_path))
+    assert reasons.get("no_roster") is None
+    assert [w["title"] for w in mapping["https://x.edu/rika#rika anderson"]["works"]] \
+        == ["A Real Paper"]
+    assert (tmp_path / "jhu.json").exists(), "and it is cached for the next pass"
 
 
 def test_a_prolific_author_does_not_crowd_out_the_batch(monkeypatch):
@@ -1342,6 +1377,7 @@ def test_an_exhausted_budget_is_not_a_professor_without_papers(monkeypatch, tmp_
                     for i, p in enumerate(people)]}))
 
     calls = {"n": 0}
+    monkeypatch.setattr(oa, "_warned_429", False)
 
     def dying(ids, **kw):
         calls["n"] += 1

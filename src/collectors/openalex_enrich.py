@@ -1150,6 +1150,38 @@ def _match_in_roster(name: str, dept: str,
     return cands[0], "ok"
 
 
+def _roster_state(slug: str, roster_dir: str | None, *, progress: bool,
+                  what: str) -> dict:
+    """This school's roster: the cache when it is complete, otherwise fetched
+    (resuming a partial one from its cursor) and cached.
+
+    Both passes need a roster and only one of them could get it. They select
+    different people — ``_targets`` wants faculty with no research keywords,
+    ``_works_targets`` wants faculty with no citable papers — so a school can
+    have thousands of works targets and no keyword targets at all, and never be
+    reachable by the only command that buys rosters. Berkeley is exactly that:
+    0 keyword targets, 2,168 works targets, and no way to get its roster.
+    """
+    cache = os.path.join(roster_dir, f"{slug}.json") if roster_dir else None
+    state = json.load(open(cache)) if cache and os.path.exists(cache) else None
+    if state is None or not state.get("complete"):
+        if progress:
+            have = len(state["authors"]) if state else 0
+            print(f"{slug}: fetching roster for {what}"
+                  + (f" (resuming from {have})" if have else ""), flush=True)
+        state = fetch_roster(
+            SCHOOL_INST[slug], progress=progress,
+            cursor=(state or {}).get("cursor") or "*",
+            authors=(state or {}).get("authors"),
+        )
+        if cache:
+            os.makedirs(roster_dir, exist_ok=True)
+            json.dump(state, open(cache, "w"))
+    elif progress:
+        print(f"{slug}: {len(state['authors'])} cached roster authors", flush=True)
+    return state
+
+
 def harvest_openalex_roster(
     opps: list[dict],
     *,
@@ -1176,23 +1208,8 @@ def harvest_openalex_roster(
     mapping: dict[str, list[str]] = {}
     reasons: dict[str, int] = {}
     for slug, people in sorted(by_school.items()):
-        cache = os.path.join(roster_dir, f"{slug}.json") if roster_dir else None
-        state = json.load(open(cache)) if cache and os.path.exists(cache) else None
-        if state is None or not state.get("complete"):
-            if progress:
-                have = len(state["authors"]) if state else 0
-                print(f"{slug}: fetching roster for {len(people)} fieldless faculty"
-                      + (f" (resuming from {have})" if have else ""), flush=True)
-            state = fetch_roster(
-                SCHOOL_INST[slug], progress=progress,
-                cursor=(state or {}).get("cursor") or "*",
-                authors=(state or {}).get("authors"),
-            )
-            if cache:
-                os.makedirs(roster_dir, exist_ok=True)
-                json.dump(state, open(cache, "w"))
-        elif progress:
-            print(f"{slug}: {len(state['authors'])} cached roster authors", flush=True)
+        state = _roster_state(slug, roster_dir, progress=progress,
+                              what=f"{len(people)} fieldless faculty")
         if not state["complete"]:
             # Matching a school against a roster that is missing authors invents
             # misses, and those misses are indistinguishable from real ones in
@@ -1282,13 +1299,15 @@ def harvest_works_by_roster(
     mapping: dict[str, dict] = {}
     reasons: dict[str, int] = {}
     for slug, people in sorted(by_school.items()):
-        cache = os.path.join(roster_dir, f"{slug}.json") if roster_dir else None
-        state = json.load(open(cache)) if cache and os.path.exists(cache) else None
-        if state is None:
-            reasons["no_roster"] = reasons.get("no_roster", 0) + 1
+        state = _roster_state(slug, roster_dir, progress=progress,
+                              what=f"{len(people)} faculty with nothing citable")
+        if _warned_429 and not state.get("complete"):
+            # The budget died buying this roster. Every school after it would
+            # spend a request confirming the same thing.
             if progress:
-                print(f"{slug}: no cached roster — skipped", flush=True)
-            continue
+                print(f"{slug}: budget exhausted while fetching the roster — stopping",
+                      flush=True)
+            return mapping, reasons
         if not state.get("complete"):
             reasons["roster_incomplete"] = reasons.get("roster_incomplete", 0) + 1
             if progress:
