@@ -1671,3 +1671,22 @@ def test_an_unverified_write_leaves_no_author_id_behind():
     assert oa.apply_works([opp], {oa._person_key(opp): listed}) == 1
     assert opp["metadata"]["publication_attribution_status"] == "name_match"
     assert "publication_author_id" not in opp["metadata"]
+
+
+def test_a_hyphenated_surname_is_not_a_second_given_name():
+    # The surname has to come off before punctuation is folded. Splitting the
+    # whole string on non-letters made "Akih-Kumgeh" two tokens and counted
+    # "akih" among Ben Akih-Kumgeh's given names, and "O’Hara" into "o" +
+    # "hara" — so a roster row spelling the name exactly right failed to write
+    # it out. Real names, all from the cached rosters.
+    assert oa._given_tokens("Ben Akih-Kumgeh") == {"ben"}
+    assert oa._given_tokens("Matt O’Hara") == {"matt"}
+    assert oa._given_tokens("No'am Dvory") == {"noam"}
+    # a hyphen inside the GIVEN name still separates two names, which is the
+    # whole reason this function exists
+    assert oa._given_tokens("Zhi-Pei Liang") == {"zhi", "pei"}
+    assert oa._given_sequence("Ho Joon Choi") == ["ho", "joon"]
+
+    assert oa._writes_out_given_names("Ben Akih-Kumgeh", "Ben Akih‐Kumgeh")
+    assert oa._writes_out_given_names("Matt O’Hara", "Matt O'Hara")
+    assert not oa._writes_out_given_names("Zhi-Pei Liang", "Zhixiang Liang")
