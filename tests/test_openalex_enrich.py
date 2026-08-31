@@ -1639,3 +1639,35 @@ def test_a_recovered_namesake_still_answers_the_discipline_question():
         "Kenji Nakamura", "Siebel School of Computing and Data Science", idx)
     assert author is None
     assert why == "discipline_reject"
+
+
+def test_a_verified_record_keeps_the_author_id_it_claims_to_have_resolved():
+    # "verified_author_id" asserts that an id resolved these papers, and until
+    # now the id itself was thrown away. "Which author was this?" is the only
+    # question that settles a wrong-person report, and re-deriving it from
+    # today's matcher answers for today's rule, not the one that made the
+    # record — which is how Zhi-Pei Liang's misattribution was diagnosed wrong
+    # the first time.
+    opp = {"source_type": "faculty_research", "pi_name": "Zhi-Pei Liang",
+           "url": "https://ece.illinois.edu/z-liang", "metadata": {}}
+    entry = {"author_id": "https://openalex.org/A5019294923",
+             "works": [{"title": "Subspace Imaging for MR Spectroscopy", "year": 2025}]}
+    assert oa.apply_works([opp], {oa._person_key(opp): entry}) == 1
+    md = opp["metadata"]
+    assert md["publication_attribution_status"] == "verified_author_id"
+    assert md["publication_author_id"] == "https://openalex.org/A5019294923"
+
+
+def test_an_unverified_write_leaves_no_author_id_behind():
+    # The committed pre-provenance store has no id, so its works are honestly
+    # name_match — and must not inherit the id of whatever the record held
+    # before, which would label a stranger's papers with a real author.
+    opp = {"source_type": "faculty_research", "pi_name": "Zhi-Pei Liang",
+           "url": "https://ece.illinois.edu/z-liang",
+           "metadata": {"recent_works": [{"title": "One", "year": 2020}],
+                        "publication_attribution_status": "name_match",
+                        "publication_author_id": "https://openalex.org/A0000000"}}
+    listed = [{"title": "One", "year": 2020}, {"title": "Two", "year": 2021}]
+    assert oa.apply_works([opp], {oa._person_key(opp): listed}) == 1
+    assert opp["metadata"]["publication_attribution_status"] == "name_match"
+    assert "publication_author_id" not in opp["metadata"]
