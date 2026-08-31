@@ -1027,16 +1027,30 @@ def _given_names_can_be_one_person(faculty: str, author: str) -> bool:
     return _off_by_one(a, b)
 
 
-def _given_tokens(name: str) -> set[str]:
-    """Every name token before the surname, accent- and punctuation-folded.
+def _given_sequence(name: str) -> list[str]:
+    """The given-name tokens, in order, accent- and punctuation-folded.
 
-    "Zhi-Pei" is two tokens, so it can be told apart from "Zhixiang" — which
-    the prefix rule above cannot do.
+    The surname is split off on WHITESPACE before any punctuation is touched,
+    because the two carry different punctuation and it means different things.
+    Splitting the whole string on non-letters first made "Akih-Kumgeh" into two
+    tokens and counted "akih" as one of Ben Akih-Kumgeh's given names, and
+    "O’Hara" into "o" + "hara". Within the given part, a hyphen separates
+    names ("Zhi-Pei" is two) while an apostrophe or a period sits inside one
+    ("No’am" is one) — which is why they are folded differently.
     """
     folded = unicodedata.normalize("NFKD", name or "")
     folded = "".join(c for c in folded if not unicodedata.combining(c))
-    toks = [t for t in re.sub(r"[^a-z ]", " ", folded.lower()).split() if t]
-    return set(toks[:-1])
+    out: list[str] = []
+    for part in folded.split()[:-1]:
+        part = re.sub(r"['’.]", "", part.lower())
+        out.extend(t for t in re.split(r"[^a-z]+", part) if t)
+    return out
+
+
+def _given_tokens(name: str) -> set[str]:
+    """Every given name before the surname. "Zhi-Pei" is two, so it can be
+    told apart from "Zhixiang" — which the prefix rule above cannot do."""
+    return set(_given_sequence(name))
 
 
 def _writes_out_given_names(faculty: str, author: str) -> bool:
@@ -1176,15 +1190,23 @@ def _match_in_roster(name: str, dept: str,
             return None, "field_reject"
     named = [a for a in cands if _given_names_can_be_one_person(name, a.get("name", ""))]
     if not named:
+        # The field gate's rejects are NOT consulted here, though one of them
+        # may well carry the name. Measured on the cached rosters, reaching for
+        # them recovers 26 matches and four of the first seven inspected are a
+        # different human: a Journalism professor given a smart-grid
+        # researcher's papers, Sociology given a protein biophysicist's, Public
+        # Affairs given a geophysicist's. A department rejecting every
+        # candidate is evidence, not an accident, and a shared name is not
+        # enough to overrule it.
         return None, "given_name_reject"
     cands = named
     exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
     if exact:
         cands = exact
     if len(cands) == 1:
-        named = _rejected_namesake(name, cands[0], rejected)
-        if named is not None:
-            cands = [named]
+        better = _rejected_namesake(name, cands[0], rejected)
+        if better is not None:
+            cands = [better]
     # When the surname is common on this roster, surname + first initial is not
     # identifying and the field family above is too wide to finish the job: a
     # School of Computing maps to a family holding Chemistry, Physics and
