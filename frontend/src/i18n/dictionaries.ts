@@ -3133,6 +3133,7 @@ export const en = {
       retry: 'Retry',
     },
     interactions: {
+      contacted: 'Contacted',
       applied: 'Applied',
       replied: 'Got reply',
       interviewing: 'Interviewing',
@@ -7649,6 +7650,7 @@ export const zh = {
       retry: '重试',
     },
     interactions: {
+      contacted: '已联系',
       applied: '已申请',
       replied: '已回复',
       interviewing: '面试中',
