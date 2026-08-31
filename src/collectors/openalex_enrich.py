@@ -1115,6 +1115,9 @@ def _match_in_roster(name: str, dept: str,
     if not named:
         return None, "given_name_reject"
     cands = named
+    exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
+    if exact:
+        cands = exact
     # When the surname is common on this roster, surname + first initial is not
     # identifying and the field family above is too wide to finish the job: a
     # School of Computing maps to a family holding Chemistry, Physics and
@@ -1123,7 +1126,14 @@ def _match_in_roster(name: str, dept: str,
     # name, and "T. P. Martin" (302 works, physics) for Travis Martin.
     #
     # So for a department whose discipline names one unambiguous field, ask
-    # whether the candidate has ever published in it. Measured on 392 matched
+    # whether the candidate has ever published in it — of the match that would
+    # actually be made, which is why this runs after the name preference above
+    # rather than before it. Filtering first let the check RESHAPE the
+    # candidate set instead of judging it: for Arindam Banerjee it dropped the
+    # chemist who carries his exact name and handed the professor an
+    # initials-only "A Banerjee" whose profile does list Computer Science —
+    # one wrong person swapped for another. Spending the name evidence first
+    # also keeps eleven correct matches the other order kept by accident. Measured on 392 matched
     # computing faculty: this rejects 12, of which a blind adversarial audit
     # confirmed 10 as different humans. Requiring the shared surname is what
     # keeps the other 380 — Deepak Vasisht (labelled Engineering, correct),
@@ -1135,9 +1145,6 @@ def _match_in_roster(name: str, dept: str,
         cands = [a for a in cands if probe in set(a.get("fields") or [])]
         if not cands:
             return None, "discipline_reject"
-    exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
-    if exact:
-        cands = exact
     if len(cands) > 1:
         return None, "ambiguous"
     return cands[0], "ok"

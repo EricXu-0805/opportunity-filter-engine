@@ -1423,3 +1423,38 @@ def test_a_crowded_surname_with_the_field_present_still_matches():
         "Gang Wang", "Siebel School of Computing and Data Science", idx)
     assert why == "ok"
     assert author["works"] == 200
+
+
+def test_the_discipline_check_may_not_promote_a_weaker_name_match():
+    # UIUC's roster holds the peptide chemist who carries Arindam Banerjee's
+    # exact name (no Computer Science topic) and an initials-only "A Banerjee"
+    # whose profile does list one. Asking the discipline question BEFORE
+    # spending the name evidence dropped the chemist and handed the professor
+    # the initials record instead — one wrong person swapped for another, and
+    # the record then looks matched rather than refused.
+    chemist = _roster_row("Arindam Banerjee", works=320,
+                          fields=["Chemistry", "Materials Science", "Engineering"])
+    initials = _roster_row("A Banerjee", works=42,
+                           fields=["Physics and Astronomy", "Computer Science",
+                                   "Mathematics"])
+    idx = oa.index_roster([chemist, initials, *_crowd("Banerjee", 3)])
+    author, why = oa._match_in_roster(
+        "Arindam Banerjee", "Siebel School of Computing and Data Science", idx)
+    assert author is None
+    assert why == "discipline_reject"
+
+
+def test_the_discipline_check_still_separates_two_equal_name_matches():
+    # The order change must not cost what filtering first was buying: where two
+    # candidates match the name equally well, the one that has published in the
+    # department's field is the match. Measured on the corpus, eleven records
+    # resolve this way and all eleven look right.
+    real = _roster_row("Changxi Zheng", works=180,
+                       fields=["Computer Science", "Engineering"])
+    other = _roster_row("Changxi Zheng", works=60,
+                        fields=["Materials Science", "Chemistry", "Engineering"])
+    idx = oa.index_roster([real, other, *_crowd("Zheng", 4)])
+    author, why = oa._match_in_roster(
+        "Changxi Zheng", "Department of Computer Science", idx)
+    assert why == "ok"
+    assert author["works"] == 180
