@@ -439,6 +439,36 @@ def test_carry_forward_keeps_attribution_stamp_with_recent_works():
     assert "publication_attribution_status" not in incoming3["metadata"]
 
 
+def test_carry_forward_keeps_the_gate_and_the_author_id_with_the_works():
+    """works_gate and publication_author_id travel with the works too.
+
+    Losing works_gate on a re-scrape is not cosmetic: _record_gate reads a
+    missing value as the oldest gate, so a record chosen by the current one
+    goes back into the re-harvest queue and gets bought again — and a version
+    stamp that a weekly refresh erases cannot do the job it was added for.
+    """
+    existing = {
+        "pi_name": "A B", "department": "Physics",
+        "metadata": {"recent_works": [{"title": "Old Paper", "year": 2024}],
+                     "publication_attribution_status": "verified_author_id",
+                     "publication_author_id": "https://openalex.org/A5019294923",
+                     "works_gate": 2},
+    }
+    incoming = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["works_gate"] == 2
+    assert incoming["metadata"]["publication_author_id"] == \
+        "https://openalex.org/A5019294923"
+
+    # a fresh scrape with its own works keeps none of it — the gate and the id
+    # describe the works they were written for, not whatever replaced them
+    incoming2 = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"recent_works": [{"title": "New Paper", "year": 2026}]}}
+    _carry_forward_enrichment(existing, incoming2)
+    assert "works_gate" not in incoming2["metadata"]
+    assert "publication_author_id" not in incoming2["metadata"]
+
+
 def test_carry_forward_keeps_the_inference_stamp_with_the_keywords():
     """The ``inferred_fields.keywords`` stamp travels WITH the keywords it
     describes, exactly like ``publication_attribution_status`` travels with

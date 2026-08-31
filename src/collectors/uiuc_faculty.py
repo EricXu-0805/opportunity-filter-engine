@@ -1231,12 +1231,19 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     if works and not (incoming.get("metadata") or {}).get("recent_works"):
         md = incoming.setdefault("metadata", {})
         md["recent_works"] = works
-        # The attribution stamp describes exactly these works, so it travels
-        # with them — and ONLY with them: when the works aren't carried, the
-        # stamp isn't either (it would then label works it never described).
-        status = (existing.get("metadata") or {}).get("publication_attribution_status")
-        if status:
-            md["publication_attribution_status"] = status
+        # Everything that describes exactly these works travels with them —
+        # and ONLY with them: when the works aren't carried, none of it is
+        # either (it would then describe works it never saw). The status says
+        # whether they may be cited, the author id says whose they are, and
+        # works_gate says which gate chose them. Dropping works_gate on a
+        # re-scrape silently ages a current record back to the oldest gate,
+        # which puts it back in the re-harvest queue and makes the version
+        # stamp mean nothing a week after it is written.
+        prior = (existing.get("metadata") or {})
+        for f in ("publication_attribution_status", "publication_author_id",
+                  "works_gate"):
+            if prior.get(f) is not None:
+                md[f] = prior[f]
 
     # research_areas_raw is carried the same unconditional way, and for the
     # same reason: a listing-only re-scrape never reaches the detail page that

@@ -114,7 +114,11 @@ _stats_cache_time: float = 0
 _STATS_TTL = 300
 
 
-_UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status")
+# The whole publication block, so an unverified record leaks no part of it —
+# including the resolved author id, which on its own would still assert that
+# some OpenAlex person is this professor.
+_UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status",
+                                "publication_author_id")
 
 
 def _tri_state(value: object) -> str:

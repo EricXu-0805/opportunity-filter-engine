@@ -1620,6 +1620,7 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
         if not entry and counts.get(_record_url(o), 0) == 1:
             entry = mapping.get(_record_url(o))
         works, status = _entry_works_and_status(entry)
+        author_id = entry.get("author_id") if isinstance(entry, dict) else None
         clean: list[dict] = []
         seen: set[str] = set()
         for w in works:
@@ -1643,6 +1644,7 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             md = o.setdefault("metadata", {})
             md.pop("recent_works", None)
             md.pop("publication_attribution_status", None)
+            md.pop("publication_author_id", None)
             md["works_gate"] = _WORKS_GATE
             n += 1
             continue
@@ -1651,6 +1653,17 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             md["recent_works"] = clean
             md["publication_attribution_status"] = status
             md["works_gate"] = _WORKS_GATE
+            # The status asserts that an author id resolved these papers; keep
+            # the id itself, because "which author was this?" is the only
+            # question that settles a wrong-person report and re-deriving the
+            # answer from today's matcher gives yesterday's records the wrong
+            # one. Diagnosing Zhi-Pei Liang's three misattributed 2026 papers
+            # took two tries and got it wrong the first time for exactly this
+            # reason.
+            if author_id:
+                md["publication_author_id"] = author_id
+            else:
+                md.pop("publication_author_id", None)
             n += 1
     return n
 
