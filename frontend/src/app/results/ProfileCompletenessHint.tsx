@@ -30,7 +30,6 @@ export function ProfileCompletenessHint({ profile, onEdit, t }: Props) {
   const filled: Record<(typeof FIELDS)[number], boolean> = {
     interests: !!profile.research_interests?.trim(),
     skills: (profile.skills?.length ?? 0) > 0,
-    coursework: (profile.coursework?.length ?? 0) > 0,
     resume: !!profile.resume_text?.trim(),
   };
   const missing = FIELDS.filter((f) => !filled[f]);
