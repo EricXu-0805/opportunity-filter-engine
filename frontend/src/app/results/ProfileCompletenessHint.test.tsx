@@ -22,13 +22,12 @@ function makeProfile(o: Partial<ProfileData> = {}): ProfileData {
 }
 
 describe('ProfileCompletenessHint', () => {
-  it('renders nothing when all four signals are filled', () => {
+  it('renders nothing when every signal the student can supply is filled', () => {
     const { container } = render(
       <ProfileCompletenessHint
         profile={makeProfile({
           research_interests: 'ML',
           skills: [{ name: 'Python', level: 'expert' }],
-          coursework: ['CS 225'],
           resume_text: 'resume text',
         })}
         onEdit={() => {}}
@@ -42,15 +41,36 @@ describe('ProfileCompletenessHint', () => {
     const onEdit = vi.fn();
     render(
       <ProfileCompletenessHint
-        profile={makeProfile({ research_interests: 'ML' })} // only 1 of 4 filled
+        profile={makeProfile({ research_interests: 'ML' })} // only 1 of 3 filled
         onEdit={onEdit}
         t={t}
       />,
     );
     expect(
-      screen.getByText(/results\.completeness\.summary\{complete=1,total=4/),
+      screen.getByText(/results\.completeness\.summary\{complete=1,total=3/),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByText('results.completeness.edit'));
     expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('never asks for coursework, which the profile form cannot enter', () => {
+    // Three of five testers walking production reported this independently:
+    // "Profile 2/4 complete — add coursework, résumé" with an Edit profile
+    // link to a form that has no coursework control. profile.coursework is
+    // written only by résumé PDF extraction, so a student without a résumé
+    // could never clear the item.
+    render(
+      <ProfileCompletenessHint
+        profile={makeProfile({
+          research_interests: 'ML',
+          skills: [{ name: 'Python', level: 'expert' }],
+          resume_text: 'resume text',
+          coursework: [],
+        })}
+        onEdit={() => {}}
+        t={t}
+      />,
+    );
+    expect(screen.queryByText(/coursework/)).toBeNull();
   });
 });

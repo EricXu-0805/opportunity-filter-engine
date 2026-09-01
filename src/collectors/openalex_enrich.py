@@ -101,6 +101,31 @@ _TITLE_CAP = 200
 # treats anything but verified_author_id as unverified and excludes it from
 # professor-specific output.
 
+# A book's front matter is indexed as a work with the section as its title, so
+# OpenAlex hands back "Introduction", "Preface", "Index" among a humanities
+# professor's recent publications and a cold email offers to discuss them.
+# Measured on the corpus: 63 of 18,699 citable papers, across 57 professors.
+#
+# Only unambiguous section names. "Methods", "Results", "Discussion",
+# "Summary" and "Abstract" are deliberately absent: they name real papers in
+# some fields, and dropping a real one is the worse error here.
+_FRONT_MATTER = frozenset({
+    "introduction", "conclusion", "conclusions", "preface", "foreword",
+    "afterword", "epilogue", "prologue", "dedication", "index", "author index",
+    "subject index", "contents", "table of contents", "acknowledgements",
+    "acknowledgments", "bibliography", "references", "appendix", "glossary",
+    "abbreviations", "notes", "editorial", "book review", "book reviews",
+    "reviews", "comment", "erratum", "errata", "corrigendum", "front matter",
+    "back matter", "frontmatter", "title page", "copyright", "contributors",
+    "list of contributors", "credits", "terms", "toolkits", "case studies",
+    "about",
+})
+
+
+def _is_front_matter(title: str) -> bool:
+    return " ".join(re.sub(r"[^a-z ]", " ", (title or "").lower()).split()) in _FRONT_MATTER
+
+
 # The committed "works library": the durable url -> [{title, year}] master record
 # of every OpenAlex paper we ever paid the metered API to harvest. recent_works is
 # the ONE faculty field no directory scrape reproduces, so this store is how we
@@ -717,6 +742,8 @@ def _usable_works(raw: list[dict], dept: str = "",
             if field not in allowed:
                 continue
         title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
+        if _is_front_matter(title):
+            continue
         year = w.get("publication_year")
         # preprint + published version of one paper share a display_name
         if title and isinstance(year, int) and _title_key(title) not in seen:
@@ -1033,16 +1060,30 @@ def _given_names_can_be_one_person(faculty: str, author: str) -> bool:
     return _off_by_one(a, b)
 
 
-def _given_tokens(name: str) -> set[str]:
-    """Every name token before the surname, accent- and punctuation-folded.
+def _given_sequence(name: str) -> list[str]:
+    """The given-name tokens, in order, accent- and punctuation-folded.
 
-    "Zhi-Pei" is two tokens, so it can be told apart from "Zhixiang" — which
-    the prefix rule above cannot do.
+    The surname is split off on WHITESPACE before any punctuation is touched,
+    because the two carry different punctuation and it means different things.
+    Splitting the whole string on non-letters first made "Akih-Kumgeh" into two
+    tokens and counted "akih" as one of Ben Akih-Kumgeh's given names, and
+    "O’Hara" into "o" + "hara". Within the given part, a hyphen separates
+    names ("Zhi-Pei" is two) while an apostrophe or a period sits inside one
+    ("No’am" is one) — which is why they are folded differently.
     """
     folded = unicodedata.normalize("NFKD", name or "")
     folded = "".join(c for c in folded if not unicodedata.combining(c))
-    toks = [t for t in re.sub(r"[^a-z ]", " ", folded.lower()).split() if t]
-    return set(toks[:-1])
+    out: list[str] = []
+    for part in folded.split()[:-1]:
+        part = re.sub(r"['’.]", "", part.lower())
+        out.extend(t for t in re.split(r"[^a-z]+", part) if t)
+    return out
+
+
+def _given_tokens(name: str) -> set[str]:
+    """Every given name before the surname. "Zhi-Pei" is two, so it can be
+    told apart from "Zhixiang" — which the prefix rule above cannot do."""
+    return set(_given_sequence(name))
 
 
 def _writes_out_given_names(faculty: str, author: str) -> bool:
@@ -1182,15 +1223,23 @@ def _match_in_roster(name: str, dept: str,
             return None, "field_reject"
     named = [a for a in cands if _given_names_can_be_one_person(name, a.get("name", ""))]
     if not named:
+        # The field gate's rejects are NOT consulted here, though one of them
+        # may well carry the name. Measured on the cached rosters, reaching for
+        # them recovers 26 matches and four of the first seven inspected are a
+        # different human: a Journalism professor given a smart-grid
+        # researcher's papers, Sociology given a protein biophysicist's, Public
+        # Affairs given a geophysicist's. A department rejecting every
+        # candidate is evidence, not an accident, and a shared name is not
+        # enough to overrule it.
         return None, "given_name_reject"
     cands = named
     exact = [a for a in cands if _given_name(a["name"]) == _given_name(name)]
     if exact:
         cands = exact
     if len(cands) == 1:
-        named = _rejected_namesake(name, cands[0], rejected)
-        if named is not None:
-            cands = [named]
+        better = _rejected_namesake(name, cands[0], rejected)
+        if better is not None:
+            cands = [better]
     # When the surname is common on this roster, surname + first initial is not
     # identifying and the field family above is too wide to finish the job: a
     # School of Computing maps to a family holding Chemistry, Physics and
@@ -1540,10 +1589,23 @@ def _entry_works_and_status(entry) -> tuple[list[dict], str]:
     return entry or [], ATTRIBUTION_NAME_MATCH
 
 
-# The gate version and its reader are the trust boundary's, not this module's:
-# "verified" is a claim a specific rule version made, and every consumer that
-# has to know which one imports the same answer. See src/publication_trust
-# (_WORKS_GATE is CURRENT_WORKS_GATE under this module's historical name).
+# The gate version and its reader now live in the trust boundary, not here.
+# "Verified" is a claim a specific rule version made, and everything that has
+# to know WHICH version — the serving gate, the remediation population query,
+# the ledger's idempotency key — must read the same answer. The catalogue of
+# what each version means stays with the code that implements it:
+#
+#   1  the department's field family alone. A proxy for the author and a poor
+#      one in both directions: Electrical & Computer Engineering spans nine
+#      fields including Computer Science and Environmental Science, so a
+#      conflated entity's search-agent and geochemistry papers all passed,
+#      while the professor's own imaging papers, filed under Medicine, did not.
+#   2  the author's own published fields, falling back to the family only when
+#      we don't have them (#846), with the roster's direct name evidence
+#      allowed to reclaim a record the field gate discarded (#853).
+#   3  the same, minus a book's front matter: "Introduction" and "Preface" are
+#      indexed as works and were being offered as recent publications (#857).
+#
 # Stamped on every write. A record made by an older gate is a target again and
 # its replacement supersedes at any paper count — under a stricter gate, fewer
 # papers is the correction, not a regression.
@@ -1551,12 +1613,17 @@ _record_gate = record_works_gate
 
 
 def _is_a_retraction(entry, record: dict) -> bool:
-    """Whether an EMPTY harvest answer should clear this record's papers.
+    """Whether an answer that yields NO citable paper should clear this record.
 
-    Only for an explicit answer — a dict entry carrying the resolved author id
-    and an empty work list, which ``harvest_works_by_roster`` writes only when
-    the request that produced it demonstrably worked. A missing entry means the
-    person was never asked about and must never clear anything.
+    Only for an explicit answer — a dict entry carrying the resolved author id,
+    which ``harvest_works_by_roster`` writes only when the request that
+    produced it demonstrably worked. A missing entry means the person was never
+    asked about and must never clear anything.
+
+    The caller decides emptiness, not this function: an answer can arrive with
+    works and still leave nothing citable once they are cleaned, which is what
+    happens to a record whose every paper is a book's front matter. "Answered,
+    and none of it may be cited" is the same conclusion either way.
 
     And only against papers an OLDER gate chose. A record already at the
     current gate holding papers this run happened not to return is a transient
@@ -1571,8 +1638,6 @@ def _is_a_retraction(entry, record: dict) -> bool:
     is what stopped it qualifying.
     """
     if not (isinstance(entry, dict) and entry.get("author_id")):
-        return False
-    if entry.get("works"):
         return False
     if not (record.get("metadata") or {}).get("recent_works"):
         return False
@@ -1635,6 +1700,8 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
         for w in works:
             title = str(w.get("title", ""))[:_TITLE_CAP]
             if not title or not isinstance(w.get("year"), int):
+                continue
+            if _is_front_matter(title):
                 continue
             # the committed store predates the _title_key dedup and can carry
             # punctuation-variant duplicates of one paper

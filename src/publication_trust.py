@@ -59,11 +59,17 @@ _KNOWN_STATUSES = frozenset({VERIFIED_AUTHOR_ID, NAME_MATCH, PENDING_REMEDIATION
 #   2  the author's own published fields, falling back to the family only when
 #      we don't have them (#846), with the roster's direct name evidence
 #      allowed to reclaim a record the field gate discarded (#853).
+#   3  the same, minus a book's front matter: OpenAlex indexes "Introduction"
+#      and "Preface" as works, and they were being offered to students as a
+#      professor's recent publications (#857).
 #
 # Bump this when the rule deciding "could this paper be theirs" changes. Every
 # record an older gate stamped then re-enters the remediation population by
-# construction — no migration, no hand-maintained list of affected ids.
-CURRENT_WORKS_GATE = 2
+# construction — no migration, no hand-maintained list of affected ids. That
+# is not theoretical: #857 bumped it to 3 while the gate-2 remediation was
+# still running, and the population recomputed itself without anyone editing
+# a list.
+CURRENT_WORKS_GATE = 3
 
 
 def attribution_status(opp: dict) -> str | None:
