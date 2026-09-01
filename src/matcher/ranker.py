@@ -22,6 +22,7 @@ from ..evidence import (
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
+    is_inferred,
     is_professor_rank,
     target_truth,
 )
@@ -1166,6 +1167,19 @@ def score_eligibility(
         else:
             missing_skills.append(r)
 
+    # Whether the requirement list is the program's or ours. 2,767 of the 6,349
+    # records carrying required skills — 43.6% — were written by the LLM tagger
+    # from page prose that never listed any: a wet-lab biology REU "requires"
+    # Python, an undergraduate research consortium "requires" Git. The stamp
+    # has been in the data since #826 and nothing in the matcher has ever read
+    # it, so those inventions came back to the student as fact, and as a
+    # shortfall: "Missing skills: Stata" on a program whose own page lists only
+    # timing and a deadline.
+    #
+    # The score still uses them — they carry a weak topic signal — but no
+    # SENTENCE may claim the program requires something nobody said it does.
+    requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
+
     if matched_skills:
         skill_detail_parts = []
         raw_skills = profile.get("hard_skills", [])
@@ -1192,8 +1206,11 @@ def score_eligibility(
             label = "Tech stack overlap"
         else:
             label = "Partial skill match"
-        reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)} — {len(matched_skills)}/{len(required_raw)} required")
-    if missing_skills:
+        if requirements_are_ours:
+            reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)}")
+        else:
+            reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)} — {len(matched_skills)}/{len(required_raw)} required")
+    if missing_skills and not requirements_are_ours:
         reasons_gap.append(f"Missing skills: {', '.join(missing_skills)}")
 
     # Type preference match (15% weight)
