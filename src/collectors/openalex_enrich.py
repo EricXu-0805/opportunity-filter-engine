@@ -95,6 +95,31 @@ _TITLE_CAP = 200
 # treats anything but verified_author_id as unverified and excludes it from
 # professor-specific output.
 
+# A book's front matter is indexed as a work with the section as its title, so
+# OpenAlex hands back "Introduction", "Preface", "Index" among a humanities
+# professor's recent publications and a cold email offers to discuss them.
+# Measured on the corpus: 63 of 18,699 citable papers, across 57 professors.
+#
+# Only unambiguous section names. "Methods", "Results", "Discussion",
+# "Summary" and "Abstract" are deliberately absent: they name real papers in
+# some fields, and dropping a real one is the worse error here.
+_FRONT_MATTER = frozenset({
+    "introduction", "conclusion", "conclusions", "preface", "foreword",
+    "afterword", "epilogue", "prologue", "dedication", "index", "author index",
+    "subject index", "contents", "table of contents", "acknowledgements",
+    "acknowledgments", "bibliography", "references", "appendix", "glossary",
+    "abbreviations", "notes", "editorial", "book review", "book reviews",
+    "reviews", "comment", "erratum", "errata", "corrigendum", "front matter",
+    "back matter", "frontmatter", "title page", "copyright", "contributors",
+    "list of contributors", "credits", "terms", "toolkits", "case studies",
+    "about",
+})
+
+
+def _is_front_matter(title: str) -> bool:
+    return " ".join(re.sub(r"[^a-z ]", " ", (title or "").lower()).split()) in _FRONT_MATTER
+
+
 # The committed "works library": the durable url -> [{title, year}] master record
 # of every OpenAlex paper we ever paid the metered API to harvest. recent_works is
 # the ONE faculty field no directory scrape reproduces, so this store is how we
@@ -711,6 +736,8 @@ def _usable_works(raw: list[dict], dept: str = "",
             if field not in allowed:
                 continue
         title = re.sub(r"\s+", " ", (w.get("display_name") or "")).strip()[:_TITLE_CAP]
+        if _is_front_matter(title):
+            continue
         year = w.get("publication_year")
         # preprint + published version of one paper share a display_name
         if title and isinstance(year, int) and _title_key(title) not in seen:
@@ -1560,10 +1587,12 @@ def _entry_works_and_status(entry) -> tuple[list[dict], str]:
 #      while the professor's own imaging papers, filed under Medicine, did not.
 #   2  the author's own published fields, falling back to the family only when
 #      we don't have them (#846).
+#   3  the same, minus a book's front matter: "Introduction" and "Preface" are
+#      indexed as works and were being offered as recent publications.
 # Stamped on every write. A record made by an older gate is a target again and
 # its replacement supersedes at any paper count — under a stricter gate, fewer
 # papers is the correction, not a regression.
-_WORKS_GATE = 2
+_WORKS_GATE = 3
 
 
 def _record_gate(record: dict) -> int:
@@ -1574,20 +1603,23 @@ def _record_gate(record: dict) -> int:
 
 
 def _is_a_retraction(entry, record: dict) -> bool:
-    """Whether an EMPTY harvest answer should clear this record's papers.
+    """Whether an answer that yields NO citable paper should clear this record.
 
-    Only for an explicit answer — a dict entry carrying the resolved author id
-    and an empty work list, which ``harvest_works_by_roster`` writes only when
-    the request that produced it demonstrably worked. A missing entry means the
-    person was never asked about and must never clear anything.
+    Only for an explicit answer — a dict entry carrying the resolved author id,
+    which ``harvest_works_by_roster`` writes only when the request that
+    produced it demonstrably worked. A missing entry means the person was never
+    asked about and must never clear anything.
+
+    The caller decides emptiness, not this function: an answer can arrive with
+    works and still leave nothing citable once they are cleaned, which is what
+    happens to a record whose every paper is a book's front matter. "Answered,
+    and none of it may be cited" is the same conclusion either way.
 
     And only against papers an OLDER gate chose. A record already at the
     current gate holding papers this run happened not to return is a transient
     difference, not a correction.
     """
     if not (isinstance(entry, dict) and entry.get("author_id")):
-        return False
-    if entry.get("works"):
         return False
     if not (record.get("metadata") or {}).get("recent_works"):
         return False
@@ -1648,6 +1680,8 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
         for w in works:
             title = str(w.get("title", ""))[:_TITLE_CAP]
             if not title or not isinstance(w.get("year"), int):
+                continue
+            if _is_front_matter(title):
                 continue
             # the committed store predates the _title_key dedup and can carry
             # punctuation-variant duplicates of one paper

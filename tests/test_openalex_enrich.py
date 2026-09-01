@@ -1690,3 +1690,56 @@ def test_a_hyphenated_surname_is_not_a_second_given_name():
     assert oa._writes_out_given_names("Ben Akih-Kumgeh", "Ben Akih‐Kumgeh")
     assert oa._writes_out_given_names("Matt O’Hara", "Matt O'Hara")
     assert not oa._writes_out_given_names("Zhi-Pei Liang", "Zhixiang Liang")
+
+
+def test_a_book_s_front_matter_is_not_a_recent_publication():
+    # OpenAlex indexes front matter as works, so a humanities professor's
+    # "recent publications" came back as Introduction / Preface / Index and a
+    # cold email offered to discuss them. 63 of 18,699 citable papers on the
+    # corpus, across 57 professors — and for one, Syracuse's Meghan Kelly,
+    # every paper on the record was of this kind.
+    raw = [
+        _work("Introduction", 2025, field="Social Sciences"),
+        _work("Preface", 2025, field="Social Sciences"),
+        _work("Mapping Refuge: Feminist Cartographies of Displacement", 2024,
+              field="Social Sciences"),
+    ]
+    out = oa._usable_works(raw, "Department of Geography and the Environment")
+    assert [w["title"] for w in out] == [
+        "Mapping Refuge: Feminist Cartographies of Displacement"]
+
+
+def test_a_short_real_title_is_not_front_matter():
+    # The rule is a list of section names, not a length test: 724 citable
+    # papers have three words or fewer and almost all of them are real.
+    # "Methods", "Results" and "Summary" are deliberately absent from the list
+    # for the same reason — dropping a real paper is the worse error.
+    for title in ("Klein bottle cosmology", "Ditransitives in Faroese",
+                  "Natural Law", "Slavery", "Oscillations and Resonance",
+                  "Methods", "Results", "Summary"):
+        assert not oa._is_front_matter(title), title
+    for title in ("Introduction", "PREFACE", "Book Reviews", "Index",
+                  "Acknowledgements", "Case Studies", "Toolkits"):
+        assert oa._is_front_matter(title), title
+
+
+def test_apply_drops_front_matter_a_previous_gate_already_stored():
+    # The harvest gate only protects future runs. 63 of these are already in
+    # the corpus, and apply is what cleans them: re-applying the SAME harvest
+    # file under a newer gate rewrites the record without buying anything.
+    opp = {"source_type": "faculty_research", "pi_name": "Meghan Kelly",
+           "url": "https://syracuse.edu/mkelly",
+           "metadata": {"recent_works": [{"title": "Terms", "year": 2024},
+                                         {"title": "Toolkits", "year": 2024},
+                                         {"title": "Case Studies", "year": 2023}],
+                        "publication_attribution_status": "verified_author_id",
+                        "works_gate": 2}}
+    entry = {"author_id": "https://openalex.org/A5060181269",
+             "works": [{"title": "Terms", "year": 2024},
+                       {"title": "Toolkits", "year": 2024},
+                       {"title": "Case Studies", "year": 2023}]}
+    assert oa.apply_works([opp], {oa._person_key(opp): entry}) == 1
+    # nothing citable is left, so the record must stop claiming any of it
+    assert "recent_works" not in opp["metadata"]
+    assert "publication_attribution_status" not in opp["metadata"]
+    assert opp["metadata"]["works_gate"] == oa._WORKS_GATE
