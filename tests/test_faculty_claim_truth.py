@@ -24,6 +24,7 @@ from src.evidence import (
     faculty_availability_status,
     faculty_safe_eligibility,
     faculty_safe_public_record,
+    stamp_inferred,
 )
 from src.matcher import ranker as ranker_module
 from src.matcher.ranker import rank_opportunity, score_upside
@@ -878,3 +879,72 @@ def test_citizenship_restriction_note_survives_a_second_projection():
         faculty_safe_public_record(with_empty_raw)["eligibility"]["work_auth_notes"]
         == excerpt
     )
+
+
+def _skills_profile(skills):
+    return {
+        "major": "Biology",
+        "grade": "Sophomore",
+        "seeking_type": ["research"],
+        "hard_skills": skills,
+        "coursework": [],
+        "experience_level": "none",
+        "resume_ready": True,
+        "can_cold_email": True,
+        "research_interests_text": "molecular biology",
+        "desired_fields": ["molecular biology"],
+        "home_school": "testu",
+    }
+
+
+def _skills_opportunity(*, inferred: bool):
+    opp = {
+        "id": "sro-invented",
+        "title": "Summer Molecular Sciences REU",
+        "source_type": "program",
+        "organization": "Test University",
+        "opportunity_type": "summer_program",
+        "eligibility": {"skills_required": ["Python", "MATLAB"]},
+        "metadata": {},
+    }
+    if inferred:
+        stamp_inferred(opp["metadata"], "eligibility.skills_required", "rule:llm_tagger")
+    return opp
+
+
+def test_a_requirement_we_invented_is_never_a_shortfall_told_to_the_student():
+    """Production, found by a tester walking the free flow: a wet-lab biology
+    REU whose own page lists only timing and a deadline showed "REQUIRED
+    SKILLS / Python / MATLAB" and returned reasons_gap ["Missing skills:
+    Python, MATLAB"]. 2,767 of the 6,349 records carrying required skills —
+    43.6% — are stamped rule:llm_tagger, and nothing in the matcher had ever
+    read that stamp.
+    """
+    profile = _skills_profile([])
+    stated = rank_opportunity(profile, _skills_opportunity(inferred=False), precomputed_sim=0.5)
+    assert any("Missing skills" in g for g in stated.reasons_gap)
+
+    ours = rank_opportunity(profile, _skills_opportunity(inferred=True), precomputed_sim=0.5)
+    assert not any("Missing skills" in g for g in ours.reasons_gap)
+
+
+def test_an_invented_requirement_is_not_counted_as_one_in_a_fit_reason():
+    # The positive half makes the same claim: "2/2 required" asserts the
+    # program requires two things. The overlap itself is still worth saying.
+    profile = _skills_profile([{"name": "Python", "level": "experienced"}])
+    stated = rank_opportunity(profile, _skills_opportunity(inferred=False), precomputed_sim=0.5)
+    assert any("required" in f for f in stated.reasons_fit)
+
+    ours = rank_opportunity(profile, _skills_opportunity(inferred=True), precomputed_sim=0.5)
+    assert any("Python" in f for f in ours.reasons_fit)
+    assert not any("required" in f for f in ours.reasons_fit)
+
+
+def test_the_score_still_uses_an_inferred_requirement():
+    # Only the SENTENCES are withdrawn. The tagger's guess carries a real topic
+    # signal, and dropping it from scoring would be a second, opposite error.
+    profile = _skills_profile([{"name": "Python", "level": "experienced"}])
+    with_skill = rank_opportunity(profile, _skills_opportunity(inferred=True), precomputed_sim=0.5)
+    without = rank_opportunity(_skills_profile([]), _skills_opportunity(inferred=True),
+                               precomputed_sim=0.5)
+    assert with_skill.final_score > without.final_score
