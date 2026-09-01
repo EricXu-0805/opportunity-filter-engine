@@ -1446,6 +1446,128 @@ async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
     }
 
 
+_MANUAL_REVIEW_ROLLUP = 25
+_REMEDIATION_LEDGER_PATH = _PROCESSED_DIR / "publication_remediation_ledger.jsonl"
+
+
+def _pending_publication_professors() -> int:
+    """How many corpus records are currently withdrawn from publication trust.
+
+    Counted off the loaded corpus rather than off the ledger: the ledger says
+    what the remediation did, the corpus says what is true now, and the
+    incident is about the second. A ledger that believes it finished while
+    records remain withdrawn is precisely the disagreement worth surfacing.
+    """
+    from backend.data_loader import load_opportunities
+    from src.publication_trust import is_pending_remediation
+
+    return sum(1 for o in load_opportunities() if is_pending_remediation(o))
+
+
+async def _scan_publication_remediation(rec: _Recorder, summary: dict) -> None:
+    """The publication-remediation ledger -> manual_review + data_drift incidents.
+
+    Two different facts needing two different incidents, because they need two
+    different people.
+
+    ``data_drift`` while professors remain withdrawn: those records serve no
+    paper personalization at all. That is the correct fail-closed state AND a
+    degraded product, and it is the operator's business that it persists — a
+    remediation nobody finishes is indistinguishable, from outside, from one
+    nobody started.
+
+    ``manual_review`` for units the current gate could not settle. An ambiguous
+    author is not a bug to fix in code; it is a judgement someone makes with
+    the evidence in front of them, which is what migration 031 added that kind
+    for. Rolled into ONE incident rather than one per professor: a few thousand
+    individually-keyed rows would bury every other incident, and the queue is
+    worth having only because a human reads it.
+    """
+    if not _REMEDIATION_LEDGER_PATH.exists():
+        summary["skipped"].append({
+            "detector": "publication_remediation",
+            "reason": "no remediation ledger on disk",
+        })
+        return
+
+    try:
+        from src.publication_remediation import Ledger
+
+        ledger = Ledger(_REMEDIATION_LEDGER_PATH)
+        report = ledger.report()
+        queue = ledger.manual_review_queue()
+        pending = _pending_publication_professors()
+    except Exception as e:
+        summary["skipped"].append({
+            "detector": "publication_remediation",
+            "reason": _truncate(f"{type(e).__name__}: {e}", 120),
+        })
+        return
+
+    summary["scanned"] += 1
+
+    drift_key = "data_drift:publication_remediation:pending"
+    if pending:
+        await rec.record(
+            kind="data_drift",
+            dedup_key=drift_key,
+            title=f"{pending} professor(s) awaiting publication re-attribution",
+            summary=(
+                "their papers are withheld from match reasons, Ask AI, resume and "
+                "cold email until the current gate has re-judged them"
+            ),
+            detail={
+                "metric": "pending_remediation_professors",
+                "current": pending,
+                "ledger_units": report["units"],
+                "ledger_completed": report["completed"],
+                "by_result": report["by_result"],
+                "retry_count": report["retry_count"],
+                "duplicate_logical_remediations": report["duplicate_logical_remediations"],
+            },
+            scope="publication_remediation",
+            field="pending_remediation_professors",
+            priority="normal",
+        )
+    elif drift_key in summary["_open_keys"]:
+        # Auto-resolvable because the evidence is exact and local: zero records
+        # carry the withdrawn status, which is the whole claim the incident made.
+        await rec.recover(
+            drift_key, auto_resolve=True,
+            note="no professor remains withdrawn pending re-attribution",
+        )
+
+    review_key = "manual_review:publication_attribution"
+    if queue:
+        await rec.record(
+            kind="manual_review",
+            dedup_key=review_key,
+            title=f"{len(queue)} professor-paper attribution(s) need a human",
+            summary=(
+                "the current gate could not settle who these records belong to; "
+                "the relationships stay untrusted until a review says otherwise"
+            ),
+            detail={
+                "count": len(queue),
+                "sample": queue[:_MANUAL_REVIEW_ROLLUP],
+                "truncated": max(0, len(queue) - _MANUAL_REVIEW_ROLLUP),
+            },
+            scope="publication_remediation",
+            priority="normal",
+        )
+    elif review_key in summary["_open_keys"]:
+        await rec.recover(
+            review_key, auto_resolve=False,
+            note="the ledger lists no unsettled attribution — confirm each was reviewed",
+        )
+
+    summary["detectors"]["publication_remediation"] = {
+        "pending_professors": pending,
+        "ledger": report,
+        "manual_review": len(queue),
+    }
+
+
 @router.post("/cron/ops-scan")
 async def ops_scan(authorization: str | None = Header(default=None)):
     """Detector entry point: turn the run artifacts into durable incidents.
@@ -1486,7 +1608,12 @@ async def ops_scan(authorization: str | None = Header(default=None)):
 
     async with _client() as client:
         rec = _Recorder(client, base, headers)
-        summary["_open_keys"] = await rec.open_keys(("collector_failure", "data_drift"))
+        # manual_review joins the two the scan has always read because the
+        # publication-remediation detector recovers one: without its open keys
+        # here, a settled review queue would never close its incident.
+        summary["_open_keys"] = await rec.open_keys(
+            ("collector_failure", "data_drift", "manual_review")
+        )
 
         # Each detector is independently fenced: one crashing artifact must
         # not cost the operator the other two detectors' findings.
@@ -1521,6 +1648,15 @@ async def ops_scan(authorization: str | None = Header(default=None)):
             logger.exception("ops-scan: professor_tracking detector crashed")
             summary["errors"].append({
                 "detector": "professor_tracking",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
+
+        try:
+            await _scan_publication_remediation(rec, summary)
+        except Exception as e:
+            logger.exception("ops-scan: publication_remediation detector crashed")
+            summary["errors"].append({
+                "detector": "publication_remediation",
                 "error": _truncate(f"{type(e).__name__}: {e}", 120),
             })
 

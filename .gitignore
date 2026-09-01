@@ -67,3 +67,8 @@ data/processed/opportunities.json
 
 # root-level scrape/debug scratch must never be committed
 /*.html
+
+# OpenAlex institution roster cache. Bought by the page and re-fetchable, but
+# large and per-machine — the remediation driver keeps it out of the tree so a
+# resumed run costs nothing without committing tens of MB of third-party data.
+data/openalex_rosters/

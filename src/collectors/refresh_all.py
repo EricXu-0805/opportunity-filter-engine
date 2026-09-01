@@ -35,6 +35,8 @@ def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
     return ledger
 from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
+from src.publication_remediation import invalidate_population, population_summary
+from src.publication_trust import CURRENT_WORKS_GATE
 
 from . import faculty_graph
 from .atomic_json import atomic_write_json, atomic_write_text
@@ -1506,6 +1508,51 @@ def refresh_all(
             sum(school_audience_counts.values()),
             len(school_audience_counts),
         )
+
+        # Publication-trust remediation: withdraw trust from any record whose
+        # papers a SUPERSEDED gate approved.
+        #
+        # This runs every refresh, unconditionally, and that is the point. The
+        # publication-trust boundary rests on "papers a living rule approved",
+        # and until now the only thing that could enforce it was a person
+        # remembering to run a CLI. Two ways that fails on its own: bumping
+        # CURRENT_WORKS_GATE retires thousands of records in one commit with
+        # nothing to notice, and a re-scrape can walk an old gate-1 stamp back
+        # into the corpus through a merge, a shard restore or a carried-forward
+        # enrichment.
+        #
+        # Cheap by construction — a dict lookup per faculty record, no network,
+        # no API key — and idempotent, so a clean corpus reports zero and
+        # writes nothing. The expensive half (re-harvesting the withdrawn
+        # records through metered OpenAlex) stays in
+        # scripts/remediate_publications.py, where a budget is spent
+        # deliberately and a ledger records what it bought.
+        withdrawn = invalidate_population(all_opps)
+        remediation_state = population_summary(all_opps)
+        summary["sources"]["publication_remediation"] = {
+            **withdrawn,
+            "pending_professors": remediation_state["pending_professors"],
+            "pending_relationships": remediation_state["pending_relationships"],
+            "current_gate_professors": remediation_state["current_gate_professors"],
+            "works_gate": CURRENT_WORKS_GATE,
+            "status": "ok",
+        }
+        if withdrawn["professors_withdrawn"]:
+            logger.warning(
+                "publication_remediation: withdrew trust from %d professor(s) / %d "
+                "relationship(s) chosen by a superseded gate — untrusted everywhere "
+                "until scripts/remediate_publications.py re-harvests them",
+                withdrawn["professors_withdrawn"],
+                withdrawn["relationships_withdrawn"],
+            )
+        else:
+            logger.info(
+                "publication_remediation: no superseded-gate trust in the corpus "
+                "(%d awaiting re-harvest, %d verified at gate %d)",
+                remediation_state["pending_professors"],
+                remediation_state["current_gate_professors"],
+                CURRENT_WORKS_GATE,
+            )
 
         # Rule-based auto-tag: fill unknown paid / international-friendly / skill /
         # year fields from text heuristics (free — no LLM). Collectors leave these
