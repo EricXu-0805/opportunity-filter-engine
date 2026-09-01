@@ -398,10 +398,10 @@ _SEVEN_TRUTH_KEYS = {
     "accepting_state", "reason_code", "verified_at", "expires_at",
 }
 
-# Written out, not imported. These are the ten internal paths that must never
-# reach a browser; the test below asserts production still equals this set, so
-# a key added or removed there is a deliberate edit here rather than a silent
-# narrowing of what is being checked.
+# Written out, not imported. These are the twelve internal paths that must
+# never reach a browser; the test below asserts production still equals this
+# set, so a key added or removed there is a deliberate edit here rather than a
+# silent narrowing of what is being checked.
 _EXPECTED_EVIDENCE_KEYS = frozenset({
     "is_active",
     "listing_status",
@@ -413,6 +413,17 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "faculty_availability_scan_version",
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
+    # The publication remediation's audit trail: when trust in a record's
+    # papers was withdrawn, and the OpenAlex author id the retired gate had
+    # resolved — an identity claim we have specifically stopped standing
+    # behind. `publication_attribution_status` is already stripped whenever it
+    # is not verified, and this block must not become the door that
+    # re-publishes what that strip removed.
+    "publication_remediation",
+    # Which gate version chose the papers. Real provenance, but a client can
+    # neither re-derive nor act on it, and branching on our internal rule
+    # version is reading the implementation rather than the contract.
+    "works_gate",
 })
 
 _LIVE_LISTING = {

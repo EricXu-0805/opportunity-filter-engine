@@ -251,6 +251,11 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         "campus_discovery_quarantine",  # scoped post-processing migration, not a source
         "faculty_joint_collapse",  # post-enrichment ucb joint-appointment collapse pass, not a source
         "professor_tracking",  # post-write tracking-ledger derivation (W8), not a source
+        # Withdraws publication trust from records a superseded attribution
+        # gate approved. It fetches nothing and emits no record — it edits the
+        # trust stamp on records other collectors produced — so it has no
+        # school/audience of its own to map.
+        "publication_remediation",
         # Run key, not a record source: ucb_campus records ship as
         # ucb_research_programs / ucb_external_research / ucb_labs, whose
         # SOURCE_DEFAULTS coverage is asserted by test_ucb_campus.TestRegistry.

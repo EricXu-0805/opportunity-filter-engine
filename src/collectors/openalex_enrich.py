@@ -64,12 +64,18 @@ import requests
 
 from ..evidence import stamp_inferred
 from ..publication_trust import (
+    CURRENT_WORKS_GATE as _WORKS_GATE,
+)
+from ..publication_trust import (
     NAME_MATCH as ATTRIBUTION_NAME_MATCH,
 )
 from ..publication_trust import (
     VERIFIED_AUTHOR_ID as ATTRIBUTION_VERIFIED,
 )
 from ..publication_trust import (
+    is_pending_remediation,
+    record_works_gate,
+    works_are_current_gate,
     works_are_verified,
 )
 from .ucb_common import PROCESSED_FILE
@@ -1459,7 +1465,11 @@ def _works_targets(opps: list[dict], schools: list[str] | None) -> list[dict]:
         # holding whatever that family let through, and #846 exists because
         # that included other people's work. Re-target it once; the stamp it
         # gets back stops it being selected again.
-        if works_are_verified(o) and _record_gate(o) >= _WORKS_GATE:
+        #
+        # A record the remediation has withdrawn (``pending_remediation``) is
+        # not verified, so it lands here by the same rule that selects the
+        # never-stamped: withdrawing trust is what puts it back in the queue.
+        if works_are_verified(o) and works_are_current_gate(o):
             continue
         out.append(o)
     return out
@@ -1530,25 +1540,14 @@ def _entry_works_and_status(entry) -> tuple[list[dict], str]:
     return entry or [], ATTRIBUTION_NAME_MATCH
 
 
-# Which per-work gate produced a record's stored papers.
-#   1  the department's field family alone. It is a proxy for the author and a
-#      poor one in both directions: Electrical & Computer Engineering spans
-#      nine fields including Computer Science and Environmental Science, so a
-#      conflated entity's search-agent and geochemistry papers all passed,
-#      while the professor's own imaging papers, filed under Medicine, did not.
-#   2  the author's own published fields, falling back to the family only when
-#      we don't have them (#846).
+# The gate version and its reader are the trust boundary's, not this module's:
+# "verified" is a claim a specific rule version made, and every consumer that
+# has to know which one imports the same answer. See src/publication_trust
+# (_WORKS_GATE is CURRENT_WORKS_GATE under this module's historical name).
 # Stamped on every write. A record made by an older gate is a target again and
 # its replacement supersedes at any paper count — under a stricter gate, fewer
 # papers is the correction, not a regression.
-_WORKS_GATE = 2
-
-
-def _record_gate(record: dict) -> int:
-    """The gate that produced this record's stored works. Absent means gate 1:
-    every write since the field has existed sets it."""
-    gate = (record.get("metadata") or {}).get("works_gate")
-    return gate if isinstance(gate, int) else 1
+_record_gate = record_works_gate
 
 
 def _is_a_retraction(entry, record: dict) -> bool:
@@ -1562,6 +1561,14 @@ def _is_a_retraction(entry, record: dict) -> bool:
     And only against papers an OLDER gate chose. A record already at the
     current gate holding papers this run happened not to return is a transient
     difference, not a correction.
+
+    ``pending_remediation`` counts alongside ``verified`` here. It is what the
+    historical remediation writes over a record an older gate had trusted: the
+    papers are still sitting on the record awaiting judgement, and an explicit
+    "none of these are theirs" is exactly the judgement the remediation asked
+    for. Reading only ``works_are_verified`` would have left every withdrawn
+    record holding its stranger's papers forever, because withdrawing the trust
+    is what stopped it qualifying.
     """
     if not (isinstance(entry, dict) and entry.get("author_id")):
         return False
@@ -1569,7 +1576,9 @@ def _is_a_retraction(entry, record: dict) -> bool:
         return False
     if not (record.get("metadata") or {}).get("recent_works"):
         return False
-    return works_are_verified(record) and _record_gate(record) < _WORKS_GATE
+    if works_are_current_gate(record):
+        return False
+    return works_are_verified(record) or is_pending_remediation(record)
 
 
 def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
@@ -1588,7 +1597,7 @@ def _is_an_upgrade(clean: list[dict], status: str, existing: list[dict],
     now_verified = status == ATTRIBUTION_VERIFIED
     if now_verified != was_verified:
         return now_verified
-    if now_verified and _record_gate(record) < _WORKS_GATE:
+    if now_verified and not works_are_current_gate(record):
         # Re-harvested under a stricter gate. Count cannot answer here either:
         # the whole point of the newer gate is that some of what the record
         # holds should never have been cited, so a shorter list is the

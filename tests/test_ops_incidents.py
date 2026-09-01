@@ -706,11 +706,20 @@ def _scan_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
 
 
-def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None, tracking=None):
-    """Point the detector at tmp artifacts; omit one to simulate it missing."""
+def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
+                     tracking=None, remediation_ledger=None):
+    """Point the detector at tmp artifacts; omit one to simulate it missing.
+
+    ``remediation_ledger`` joins the three originals for exactly the reason
+    they are here: the repository ships a real one, so a test about the
+    collector detector would otherwise open a publication-remediation incident
+    off whatever the last remediation run left on disk, and every RPC-count
+    assertion in this file would be measuring that too.
+    """
     status_path = tmp_path / "collector_status.json"
     history_path = tmp_path / "collector_status_history.jsonl"
     tracking_path = tmp_path / "professor_tracking.json"
+    ledger_path = tmp_path / "publication_remediation_ledger.jsonl"
     if snapshot is not None:
         status_path.write_text(json.dumps(snapshot), encoding="utf-8")
     if history is not None:
@@ -719,9 +728,14 @@ def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None, trac
         )
     if tracking is not None:
         tracking_path.write_text(json.dumps(tracking), encoding="utf-8")
+    if remediation_ledger is not None:
+        ledger_path.write_text(
+            "".join(json.dumps(e) + "\n" for e in remediation_ledger), encoding="utf-8"
+        )
     monkeypatch.setattr(ops_mod, "_COLLECTOR_STATUS_PATH", status_path)
     monkeypatch.setattr(ops_mod, "_COLLECTOR_HISTORY_PATH", history_path)
     monkeypatch.setattr(ops_mod, "_TRACKING_PATH", tracking_path)
+    monkeypatch.setattr(ops_mod, "_REMEDIATION_LEDGER_PATH", ledger_path)
 
 
 def _run_scan():
@@ -1074,6 +1088,91 @@ class TestOpsScanProfessorTracking:
         assert payload["p_auto_resolve"] is False
 
 
+class TestOpsScanPublicationRemediation:
+    """The remediation is only real if its unfinished state is visible.
+
+    A withdrawn professor serves no paper personalization, which is the
+    correct fail-closed answer AND a degraded product. Left off the operator
+    queue, a remediation nobody finishes looks exactly like one nobody started.
+    """
+
+    @staticmethod
+    def _ledger(result, professor_id="fac-1"):
+        key = f"{professor_id}@gate2"
+        return [
+            {"idempotency_key": key, "professor_id": professor_id,
+             "school": "uiuc", "status": "started", "from_gate_version": 1,
+             "to_gate_version": 2},
+            {"idempotency_key": key, "professor_id": professor_id,
+             "school": "uiuc", "status": "verified_complete", "result": result,
+             "from_gate_version": 1, "to_gate_version": 2},
+        ]
+
+    def test_pending_professors_open_a_drift_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("verified"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 4211)
+
+        body = _run_scan().json()
+        payloads = _rpcs(calls, "record_ops_incident")
+        drift = [p for p in payloads
+                 if p["p_dedup_key"] == "data_drift:publication_remediation:pending"]
+        assert len(drift) == 1
+        assert "4211" in drift[0]["p_title"]
+        assert drift[0]["p_detail"]["duplicate_logical_remediations"] == 0
+        assert body["detectors"]["publication_remediation"]["pending_professors"] == 4211
+
+    def test_ambiguous_units_reach_the_manual_review_queue(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("ambiguous"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 1)
+
+        _run_scan()
+        review = [p for p in _rpcs(calls, "record_ops_incident")
+                  if p["p_dedup_key"] == "manual_review:publication_attribution"]
+        assert len(review) == 1
+        assert review[0]["p_kind"] == "manual_review"
+        assert review[0]["p_detail"]["count"] == 1
+        assert review[0]["p_detail"]["sample"][0]["professor_id"] == "fac-1"
+
+    def test_a_settled_corpus_closes_the_drift_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "data_drift:publication_remediation:pending"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("verified"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 0)
+
+        _run_scan()
+        recoveries = _rpcs(calls, "record_ops_recovery")
+        assert len(recoveries) == 1
+        # Exact, local evidence — zero records carry the withdrawn status,
+        # which is the whole claim the incident made — so this one may close
+        # itself, unlike the tracking gate above.
+        assert recoveries[0]["p_auto_resolve"] is True
+
+    def test_no_ledger_skips_the_detector_rather_than_guessing(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path)   # no ledger written
+
+        body = _run_scan().json()
+        assert any(s["detector"] == "publication_remediation"
+                   for s in body["skipped"])
+        assert not _rpcs(calls, "record_ops_incident")
+
+
 class TestOpsScanResilience:
     def test_missing_artifacts_are_reported_not_fatal(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -1092,6 +1191,7 @@ class TestOpsScanResilience:
             "data_drift",
             "release_degradation",
             "professor_tracking",
+            "publication_remediation",
         }
         assert _rpcs(calls, "record_ops_incident") == []
 

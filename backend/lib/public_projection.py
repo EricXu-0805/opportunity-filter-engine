@@ -592,6 +592,19 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "faculty_availability_scan_version",
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
+    # The publication remediation's own audit trail: which gate stamped this
+    # record's papers, when we took the trust back, and the OpenAlex author id
+    # the retired rule had resolved. All of it is internal bookkeeping about
+    # our process, and one field of it — `prior_author_id` — is an identity
+    # claim we have specifically stopped standing behind. The contract a
+    # client reads is `publication_attribution_status`, which is already
+    # stripped whenever it is not verified; this block must never become the
+    # back door that re-publishes what that strip removed.
+    "publication_remediation",
+    # Which gate chose the papers. Real provenance, but a client cannot
+    # re-derive or act on it, and branching on our internal rule version is
+    # reading the implementation rather than the contract.
+    "works_gate",
 })
 
 # Everything that only means something for a confirmed listing. On a record

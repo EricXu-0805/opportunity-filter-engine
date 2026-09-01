@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from src.publication_trust import (
     NAME_MATCH,
+    PENDING_REMEDIATION,
     VERIFIED_AUTHOR_ID,
     attribution_status,
     can_use_publications_for_personalization,
@@ -25,8 +26,17 @@ _WORKS = [
 
 # Every way attribution can fail to be explicitly verified. The gate must
 # fail CLOSED on all of them — including statuses that do not exist yet.
+#
+# PENDING_REMEDIATION is in this tuple rather than in a suite of its own on
+# purpose: it is the status the historical remediation writes over 6,255
+# records whose papers a superseded gate approved, and it has to be excluded by
+# every surface below by the SAME rule that excludes name_match, not by a
+# second rule someone remembered to add. Listing it here runs it through all
+# fourteen downstream assertions — card, rerank, chat, brief, cold email,
+# tailor, gaps, batch, similar — for free, and any new surface added to this
+# file inherits the coverage.
 UNVERIFIED_STATUSES = (
-    NAME_MATCH, None, "", "pending", "rejected", "unknown",
+    NAME_MATCH, PENDING_REMEDIATION, None, "", "pending", "rejected", "unknown",
     "definitely_verified", "VERIFIED_AUTHOR_ID", 42, True,
 )
 
