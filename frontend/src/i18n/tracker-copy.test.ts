@@ -163,3 +163,22 @@ describe('every status pill the detail page can render has a label', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('the undated deadline chip says what it selects', () => {
+  // The chip filters on `is_rolling`, which campus_graph.py,
+  // simplify_internships.py and ucb_campus.py all write as a literal `True`
+  // whenever a scrape found no date. 6,690 non-faculty records carry it; 58
+  // have the scraped `deadline_note` that noDeadlineKind requires before any
+  // surface may say "rolling". Two testers walking production picked this chip
+  // and were shown programs whose own pages publish a deadline — Northwestern
+  // SynBREU, cohort already formed, and UIUC PRIMO.
+  //
+  // types.ts already states the rule ("`is_rolling` alone is a blanket
+  // collector default and must never be presented as a scraped fact") and the
+  // detail and compare surfaces obey it. This is the one that did not.
+  it.each(['en', 'zh'] as const)('%s promises no open window', (locale) => {
+    const label = dictionaries[locale].results.filters.deadlineRolling;
+    expect(label).toBeTruthy();
+    expect(label).not.toMatch(/rolling|anytime|常年|随时/i);
+  });
+});
