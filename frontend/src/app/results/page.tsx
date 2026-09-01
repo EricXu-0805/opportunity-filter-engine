@@ -344,11 +344,22 @@ function ResultsContent() {
   ], [data?.source_facets, t]);
 
   // Same rule as sourceOptions, applied to the one facet that was ignoring it.
-  // "Rolling" reads the explicit is_rolling contract and is offered as the
-  // undated option; every other value reads `deadline`, which 786 of 789
-  // records had already let expire — so on 2026-08-14 the three day-windows
-  // returned zero rows each and "passed" returned 786. Render each chip only
-  // when the server counted something it would return.
+  // The undated chip selects on `is_rolling`; every other value reads
+  // `deadline`, which 786 of 789 records had already let expire — so on
+  // 2026-08-14 the three day-windows returned zero rows each and "passed"
+  // returned 786. Render each chip only when the server counted something it
+  // would return.
+  //
+  // Its LABEL says "No deadline listed", not "Rolling — apply anytime", and
+  // that is not cosmetic. `is_rolling` is a blanket collector default written
+  // whenever a scrape found no date (campus_graph.py, simplify_internships.py
+  // and ucb_campus.py all set the literal True): 6,690 non-faculty records
+  // carry it and 58 have the scraped `deadline_note` evidence that
+  // noDeadlineKind requires before any surface may say "rolling". Two testers
+  // walking production picked the chip and were shown programs whose own
+  // pages publish a deadline — Northwestern SynBREU, whose cohort was already
+  // formed, and UIUC PRIMO. What the chip actually selects is records we
+  // found no deadline for, and now that is what it says.
   const deadlineOptions = useMemo<Array<[string, string]>>(() => {
     const facets = data?.deadline_facets ?? {};
     const label = (value: string) =>
