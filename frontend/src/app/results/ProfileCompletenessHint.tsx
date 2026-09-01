@@ -11,17 +11,25 @@ interface Props {
   t: Replier;
 }
 
-// The four signals the matcher actually leans on. A thin profile (most of
-// these empty) yields a large reach bucket that reads as "no good matches"
-// when it really means "tell us more about you" — this non-blocking hint
-// makes that legible and links straight to the profile form.
-const FIELDS = ['interests', 'skills', 'coursework', 'resume'] as const;
+// The signals the matcher leans on THAT THE STUDENT CAN ACTUALLY SUPPLY. A
+// thin profile (most of these empty) yields a large reach bucket that reads as
+// "no good matches" when it really means "tell us more about you" — this
+// non-blocking hint makes that legible and links straight to the profile form.
+//
+// Coursework was in this list and is not a field: nothing writes
+// profile.coursework except résumé PDF extraction (use-profile-form.ts), and
+// the profile form has no coursework control — the `courseworkLabel` and
+// `courseworkHint` strings sit in both dictionaries with no call site, which
+// is what an input that was designed and never built leaves behind. So a
+// student with no résumé was told "add coursework, résumé", sent to a page
+// where only one of the two is possible, and pinned below full forever. The
+// résumé item already covers the only way coursework can arrive.
+const FIELDS = ['interests', 'skills', 'resume'] as const;
 
 export function ProfileCompletenessHint({ profile, onEdit, t }: Props) {
   const filled: Record<(typeof FIELDS)[number], boolean> = {
     interests: !!profile.research_interests?.trim(),
     skills: (profile.skills?.length ?? 0) > 0,
-    coursework: (profile.coursework?.length ?? 0) > 0,
     resume: !!profile.resume_text?.trim(),
   };
   const missing = FIELDS.filter((f) => !filled[f]);
