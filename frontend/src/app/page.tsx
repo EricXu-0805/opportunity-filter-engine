@@ -115,7 +115,7 @@ function HomePageInner() {
       </div>
 
       {isValid && (
-        <ProfileStrength profile={profile} hasResume={!!profile.resume_text} t={t} />
+        <ProfileStrength profile={profile} t={t} />
       )}
 
       <SubmitRow
