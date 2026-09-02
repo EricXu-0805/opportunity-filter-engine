@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Card from '@/components/Card';
 import { useT } from '@/i18n/client';
+import { bySlug } from '@/lib/schools';
 import { track } from '@/lib/analytics';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import {
@@ -44,11 +45,23 @@ interface Snapshot {
   hasProfile: boolean;
 }
 
-function toSnapshot(raw: Record<string, unknown> | null): Snapshot {
+function toSnapshot(raw: Record<string, unknown> | null, locale: string): Snapshot {
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   const skills = Array.isArray(raw?.skills) ? raw!.skills : [];
   const name = str(raw?.name);
-  const school = str(raw?.institution) || str(raw?.home_school);
+  // `home_school` is the field the student actually sets — the campus picker
+  // writes it, the profile form renders bySlug(home_school) beside a "change
+  // school" button, and api.ts sends it as the matching scope. `institution`
+  // is a display mirror nothing keeps in sync: DEFAULT_PROFILE seeds it with
+  // "UIUC - University of Illinois Urbana-Champaign" and no code path ever
+  // rewrites it, so preferring it told a Utah student their school was UIUC
+  // while the rest of the product had them at Utah. Only a row with no
+  // home_school at all falls back to it.
+  const slug = str(raw?.home_school);
+  const known = slug ? bySlug(slug) : undefined;
+  const school = known
+    ? (locale === 'zh' ? known.nameZh : known.name)
+    : (slug || str(raw?.institution));
   const major = str(raw?.major);
   const year = str(raw?.grade);
   const interests = str(raw?.research_interests);
@@ -71,7 +84,7 @@ function toSnapshot(raw: Record<string, unknown> | null): Snapshot {
 const UNCONSTRAINED = Symbol('unconstrained');
 
 export default function AccountPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const { openModal } = useAuthModal();
   const [auth, setAuth] = useState<AuthState | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -121,7 +134,7 @@ export default function AccountPage() {
         return;
       }
       setAuth(authState);
-      setSnapshot(toSnapshot(hydration.profile as Record<string, unknown> | null));
+      setSnapshot(toSnapshot(hydration.profile as Record<string, unknown> | null, locale));
       setFavCount(favs.size);
       setTrackCount(interactions.size);
       setLoadError(false);
@@ -135,7 +148,7 @@ export default function AccountPage() {
     } finally {
       if (!cancelledRef.current && generationRef.current === generation) setLoading(false);
     }
-  }, []);
+  }, [locale]);
 
   const retry = useCallback(() => {
     setLoading(true);

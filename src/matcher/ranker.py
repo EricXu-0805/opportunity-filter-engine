@@ -1099,11 +1099,22 @@ def score_eligibility(
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is closely related to requirements")
-    elif major_score < 50 and elig.get("majors") and not major_is_label:
+    elif (
+        major_score < 50
+        and elig.get("majors")
+        and not major_is_label
+        and not is_inferred(opportunity, "eligibility.majors")
+    ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
         # A department label earns none either — "Prefers Bioengineering" put a
         # preference in a professor's mouth that no page of theirs states.
+        #
+        # Nor does a list we derived. uiuc_sro maps a coarse research-area
+        # label to a fixed bank of majors — _research_area_to_majors, whose own
+        # docstring says "approximate" — so a UW-Madison biology program filed
+        # under "Medicine & Health" came out preferring ECE, Physics and CS,
+        # and told a biology student so.
         reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
 
     intl_score = 100.0

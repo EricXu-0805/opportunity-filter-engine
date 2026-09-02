@@ -968,3 +968,61 @@ def test_the_score_still_uses_an_inferred_requirement():
     without = rank_opportunity(_skills_profile([]), _skills_opportunity(inferred=True),
                                precomputed_sim=0.5)
     assert with_skill.final_score > without.final_score
+
+
+def test_a_derived_major_list_is_not_a_stated_preference():
+    """Found on production: a UW-Madison biology summer program, listed on
+    UIUC's SRO under the research area "Medicine & Health", told a biology
+    sophomore it "Prefers ECE, Chemistry, Bioengineering, Physics,
+    Engineering, CS, Biology". The program's own page names no major at all —
+    _research_area_to_majors maps the coarse area label to a fixed bank, and
+    its docstring says "approximate".
+
+    Same rule the line above already applies to a department label: a
+    preference nobody stated is not a shortfall in the student.
+    """
+    profile = _skills_profile([])
+    profile["major"] = "Art History"
+
+    def program(*, inferred):
+        opp = {
+            "id": "sro-majors", "title": "Summer Research Program",
+            "source_type": "summer_program", "organization": "Test University",
+            "opportunity_type": "summer_program",
+            "eligibility": {"majors": ["ECE", "Physics", "CS"]},
+            "metadata": {},
+        }
+        if inferred:
+            stamp_inferred(opp["metadata"], "eligibility.majors",
+                           "rule:research_area_bank")
+        return opp
+
+    stated = rank_opportunity(profile, program(inferred=False), precomputed_sim=0.2)
+    assert any(g.startswith("Prefers ") for g in stated.reasons_gap)
+
+    ours = rank_opportunity(profile, program(inferred=True), precomputed_sim=0.2)
+    assert not any(g.startswith("Prefers ") for g in ours.reasons_gap)
+
+
+def test_the_sro_collector_stamps_the_majors_it_derives():
+    # The gate above is only reachable if the producer stamps. uiuc_sro never
+    # did, so all 279 of its records looked like stated preferences.
+    from src.collectors import uiuc_sro
+    from src.evidence import INFERRED_FIELDS_KEY
+
+    assert uiuc_sro._research_area_to_majors("Medicine & Health")
+    assert not uiuc_sro._research_area_to_majors("")
+
+    raw = uiuc_sro.RawOpportunity(
+        title="Cellular and Molecular Biology of Stress Summer Research Program",
+        url="https://researchops.web.illinois.edu/opportunity/x",
+        source_url="https://researchops.web.illinois.edu/",
+        source="uiuc_sro",
+        description_raw="Experience research at a premier research university.",
+        organization="",
+        extra_fields={"research_area": "Medicine & Health"},
+    )
+    rec = uiuc_sro.raw_to_normalized(raw)
+    assert rec["eligibility"]["majors"]
+    assert rec["metadata"][INFERRED_FIELDS_KEY]["eligibility.majors"] == \
+        uiuc_sro.MAJORS_METHOD

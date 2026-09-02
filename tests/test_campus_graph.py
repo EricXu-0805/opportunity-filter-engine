@@ -800,3 +800,38 @@ def test_the_four_walled_sources_carry_render():
     assert source(PRINCETON, "princeton_career")["render"] is True
     assert source(PRINCETON, "princeton_department_research")["render"] is True
     assert source(STANFORD, "stanford_lab")["render"] is True
+
+
+# ── application status: a future or finished cycle is not an open one ──────
+# Production, 2026-08-31. Northwestern SynBREU ranked #3 for a JHU biology
+# sophomore as "Northwestern SynBREU — Synthetic Biology REU (applications
+# open)". The program page, verbatim: "Thank you for your interest in SynBREU
+# 2026! Our cohort has been formed. Applications for 2027 will be open in
+# November 2026." — with an Apply Now button in the site chrome. The record's
+# own deadline_note had captured the truth; the status detector had not.
+
+SYNBREU = (
+    "Apply Now  Application Deadlines  Thank you for your interest in SynBREU 2026! "
+    "Our cohort has been formed. Applications for 2027 will be open in November 2026. "
+    "Stay tuned!  FAQ  Q: When will applications open? A: The application site opens "
+    "mid November 2026."
+)
+
+
+def test_a_formed_cohort_is_closed_whatever_the_navigation_says():
+    assert cg.detect_application_status(SYNBREU) == "closed"
+
+
+def test_a_cycle_that_opens_on_a_future_date_is_not_open_now():
+    # No cohort sentence, just the FAQ and the button. Not "closed" either: the
+    # detector has no calendar, and a page saying "opens November 2026" may be
+    # read in December. It is simply not evidence that applications are open.
+    page = "Apply Now  Q: When will applications open? A: The application site opens mid November 2026."
+    assert cg.detect_application_status(page) == "unknown"
+    page2 = "Apply now. Applications for 2027 will be open in November 2026."
+    assert cg.detect_application_status(page2) == "unknown"
+
+
+def test_a_present_tense_open_page_still_reads_open():
+    assert cg.detect_application_status("Applications are now open. Apply now.") == "open"
+    assert cg.detect_application_status("Applications are closed for this year.") == "closed"
