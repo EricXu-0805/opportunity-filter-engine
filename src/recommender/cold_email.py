@@ -82,7 +82,7 @@ _EMAIL_GENERIC_KW = frozenset({
 # UIUC undergrads actually face. Default is "dry" because our user base
 # skews STEM/Grainger, and a dry-lab template degrades the most gracefully
 # when applied to an ambiguous CS-adjacent posting.
-LabType = str  # "wet" | "dry" | "humanities"
+LabType = str  # "wet" | "dry" | "humanities"; None = no lab-type claim (business/economics)
 
 _WET_LAB_KEYWORDS = frozenset({
     # disciplines
@@ -123,6 +123,25 @@ _DRY_LAB_KEYWORDS = frozenset({
     "algorithm", "data structure", "simulation", "modeling",
 })
 
+# Departments this classifier has no category for. A business school is not
+# a wet lab, not a dry lab and not the humanities, yet every one of its
+# faculty was being handed one of those three — 4,784 "humanities", 6,572
+# "dry", 49 "wet" across the 11,405 records whose department names business
+# or economics (measured 2026-09-02). A strategy professor got the humanities
+# panel (Zotero, IRB training); a corporate-finance professor got the dry-lab
+# panel (link your GitHub, PyTorch). The honest answer is no claim: no badge,
+# no lab-type advice, neutral tone. Scored on the DEPARTMENT only — "economic
+# history" in a History professor's keywords is history, and "financial
+# mathematics" under Mathematics is mathematics.
+_BUSINESS_KEYWORDS = frozenset({
+    "business", "finance", "financial", "accounting", "accountancy",
+    "marketing", "economics", "economic", "econometrics", "entrepreneurship",
+    "mba", "commerce", "school of management", "department of management",
+    "management science", "strategic management", "operations management",
+    "organizational behavior", "real estate", "banking", "actuarial",
+    "supply chain", "insurance",
+})
+
 _HUMANITIES_KEYWORDS = frozenset({
     # disciplines
     "psychology", "behavioral", "cognitive science", "sociology",
@@ -155,8 +174,8 @@ def _entry_pattern(kw: str) -> re.Pattern[str]:
     return _SHORT_ENTRY_PATTERNS[kw]
 
 
-def _detect_lab_type(opportunity: dict) -> LabType:
-    """Classify an opportunity as wet / dry / humanities lab.
+def _detect_lab_type(opportunity: dict) -> LabType | None:
+    """Classify an opportunity as wet / dry / humanities lab, or None.
 
     Signal weighting:
       department > title > keywords > description excerpt > required skills.
@@ -244,6 +263,12 @@ def _detect_lab_type(opportunity: dict) -> LabType:
         + 1 * _score(keywords_text, _HUMANITIES_KEYWORDS)
         + 1 * _score(desc, _HUMANITIES_KEYWORDS)
     )
+
+    # A business or economics department gets no lab type at all (see
+    # _BUSINESS_KEYWORDS). Wet still wins: a bench in an agricultural
+    # economics department is still a bench.
+    if wet == 0 and _score(department, _BUSINESS_KEYWORDS):
+        return None
 
     # All-zero (no signal) -> default to dry.
     if wet == 0 and dry == 0 and hum == 0:
@@ -730,7 +755,7 @@ def _greeting(p: dict) -> str:
     return f"Dear {recipient}," if recipient else "Hello,"
 
 
-def _ask_for_lab_type(lab_type: LabType, is_faculty: bool = False) -> str:
+def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str:
     if is_faculty:
         return (
             "\n\nWould you be open to letting me know whether you have any"
@@ -754,6 +779,15 @@ def _ask_for_lab_type(lab_type: LabType, is_faculty: bool = False) -> str:
             " would be helpful to your research."
             "\n\nWould you have 15 minutes to discuss how I might"
             " support your work?"
+        )
+    if lab_type is None:
+        # No lab to speak of: a finance or marketing professor has a
+        # research group, not a bench.
+        return (
+            "\n\nI would welcome the chance to contribute to your research"
+            " and to learn more about your work."
+            "\n\nWould you be open to a short meeting?"
+            " I am happy to work around your availability."
         )
     return (
         "\n\nI would love the chance to contribute to your lab"
