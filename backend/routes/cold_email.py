@@ -789,13 +789,29 @@ _LAB_TYPE_TONE = {
 }
 
 
-def _lab_type_tone(lab_type: str, is_faculty: bool = False) -> str:
+# No lab type: the classifier declined to say (a business or economics
+# department). Nothing here may assume a bench, a code portfolio or IRB
+# experience — the three tones above each assume one of them.
+_NO_LAB_TYPE_TONE = (
+    "\n\nNo lab-type guidance applies to this recipient:\n"
+    "- Body length: 130-190 words.\n"
+    "- Lead with the sender's specific interest in the professor's research "
+    "topic and any directly relevant coursework.\n"
+    "- Mention only the skills the sender's profile actually supports; assume "
+    "nothing about their toolkit.\n"
+    "- Use 'research' and 'your work', not 'your lab'."
+)
+
+
+def _lab_type_tone(lab_type: str | None, is_faculty: bool = False) -> str:
     """Return the discipline-specific tone without miscasting faculty data.
 
     Ordinary opportunities retain the established copy. Faculty contacts get
     research/current-project language because their directory metadata does
     not establish a vacancy or an advertised skill stack.
     """
+    if lab_type is None:
+        return _NO_LAB_TYPE_TONE
     tone = _LAB_TYPE_TONE.get(lab_type, _LAB_TYPE_TONE["dry"])
     if is_faculty:
         tone = tone.replace(
@@ -955,7 +971,7 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
             f"FACULTY CONTACT PROFILE:\n"
             f"- Recipient: {recipient}\n"
             f"- Academic title: {faculty_title}\n"
-            f"- Detected lab type: {lab_type}\n"
+            f"- Detected lab type: {lab_type or 'not classified (no lab-type guidance applies)'}\n"
             f"- Faculty profile title: {title}\n"
             f"- Lab / program: {lab}\n"
             f"- Research area: {research_area}\n"
@@ -978,7 +994,7 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         f"OPPORTUNITY CONTACT:\n"
         f"- Recipient: {recipient}\n"
         f"- Contact title: {faculty_title}\n"
-        f"- Detected lab type: {lab_type}\n"
+        f"- Detected lab type: {lab_type or 'not classified (no lab-type guidance applies)'}\n"
         f"- Posting title: {title}\n"
         f"- Lab / program: {lab}\n"
         f"- Research area: {research_area}\n"

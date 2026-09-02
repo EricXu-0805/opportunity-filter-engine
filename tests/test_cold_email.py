@@ -2758,3 +2758,67 @@ class TestTopicDomainsReadWordsNotLetters:
         media studies. As a substring for the humanities term "communication" it
         is a signal-processing detector."""
         assert "hum" not in self._domains("wireless communications and signal processing")
+
+
+class TestBusinessFacultyGetNoLabType:
+    """A business school is not a wet lab, a dry lab or the humanities.
+
+    Three Utah business professors, checked against eccles.utah.edu by a
+    tester walking production: a strategy chair and a marketing professor got
+    the Humanities badge and a panel about Zotero and IRB training; a
+    corporate-finance chair got Dry Lab and was told to link a GitHub project.
+    11,405 faculty records sit in departments named for business or
+    economics, and every one of them was labelled one of the three.
+    """
+
+    @staticmethod
+    def _faculty(department, keywords):
+        from backend.data_loader import _sanitize_opportunity
+
+        opp = {
+            "id": "faculty-test-biz", "source_type": "faculty_research",
+            "pi_name": "Todd Zenger", "department": department,
+            "organization": "University of Utah",
+            "title": "Research with Prof. Todd Zenger",
+            "description_raw": "", "description_clean": "",
+            "keywords": keywords, "eligibility": {}, "application": {}, "metadata": {},
+        }
+        _sanitize_opportunity(opp)
+        return opp
+
+    def test_a_business_school_department_gets_no_claim(self):
+        from src.recommender.cold_email import _detect_lab_type
+
+        strategy = self._faculty("David Eccles School of Business",
+                                 ["business strategy and innovation", "entrepreneurship studies"])
+        finance = self._faculty("David Eccles School of Business",
+                                ["corporate finance and governance", "financial markets"])
+        economics = self._faculty("Department of Economics", ["labor economics"])
+        assert _detect_lab_type(strategy) is None
+        assert _detect_lab_type(finance) is None
+        assert _detect_lab_type(economics) is None
+
+    def test_the_department_decides_not_the_keywords(self):
+        # "economic history" is history; "financial mathematics" is
+        # mathematics; a chemist who consults for banks is still a chemist.
+        from src.recommender.cold_email import _detect_lab_type
+
+        assert _detect_lab_type(self._faculty("Department of History",
+                                              ["economic history", "archival research"])) == "humanities"
+        assert _detect_lab_type(self._faculty("Department of Mathematics",
+                                              ["financial mathematics", "stochastic analysis"])) == "dry"
+        assert _detect_lab_type(self._faculty("Department of Chemistry",
+                                              ["corporate finance", "catalysis"])) != None  # noqa: E711
+
+    def test_no_lab_type_means_no_lab_advice_anywhere(self):
+        from backend.routes.cold_email import _lab_type_tone
+        from src.recommender.cold_email import _ask_for_lab_type
+
+        tone = _lab_type_tone(None)
+        for assumed in ("GitHub", "IRB", "PCR", "bench", "coding challenge", "Zotero"):
+            assert assumed not in tone, assumed
+        assert "your lab" not in _ask_for_lab_type(None)
+        assert "your research" in _ask_for_lab_type(None)
+        # the other three are untouched
+        assert "GitHub" in _lab_type_tone("dry")
+        assert "IRB" in _lab_type_tone("humanities")
