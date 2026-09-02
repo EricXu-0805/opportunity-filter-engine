@@ -1589,7 +1589,14 @@ async def get_match_view(
         reach=snap.buckets["reach"],
         low_fit=snap.buckets["low_fit"],
         results=page_response,
-        field_relevant_count=snap.field_relevant_count,
+        # Over the view the person is looking at, not the snapshot behind it.
+        # Three testers walking production read "31 strong matches in your
+        # field" beside filter chips that had just dropped High Priority from
+        # 21 to 1 — the chips (view_counts, above) follow the filter, this
+        # number did not, and it sat directly over them. thin_inventory stays
+        # on the snapshot: it says how much of the corpus is in the student's
+        # field, and a deadline filter does not change that.
+        field_relevant_count=sum(1 for result in filtered if result.field_relevant),
         thin_inventory=snap.field_relevant_count < THIN_INVENTORY_FLOOR,
         matcher_version=MATCHER_VERSION,
         ai_refined=snap.refined,

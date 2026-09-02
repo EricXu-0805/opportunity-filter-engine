@@ -146,7 +146,7 @@ interface MatchCacheShape {
   results: MatchResult[];
   // Canonical-matcher metadata (absent on payloads written before _v4):
   // field_relevant_count previously vanished on every cache hit, silently
-  // hiding the "N strong matches in your field" header line on return visits.
+  // hiding the "N related to your field" header line on return visits.
   field_relevant_count?: number;
   thin_inventory?: boolean;
   matcher_version?: string;

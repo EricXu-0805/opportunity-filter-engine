@@ -182,3 +182,20 @@ describe('the undated deadline chip says what it selects', () => {
     expect(label).not.toMatch(/rolling|anytime|常年|随时/i);
   });
 });
+
+describe('the field-relevance line says what it counts', () => {
+  // Three testers read "1142 strong matches in your field" over chips saying
+  // High Priority 22 / Good Match 1296, and "31 strong matches" over a High
+  // Priority of 1 after a filter. The number counts results with any keyword
+  // overlap with the student's field (ranker.field_relevant) — no quality
+  // threshold at all. The app's own word for quality is the bucket label, so
+  // this line may not borrow it.
+  it.each(['en', 'zh'] as const)('%s does not claim strength', (locale) => {
+    const { fieldMatches, fieldMatchesOne } = dictionaries[locale].results;
+    for (const label of [fieldMatches, fieldMatchesOne]) {
+      expect(label).toBeTruthy();
+      expect(label).not.toMatch(/strong|强匹配|优质/i);
+    }
+    expect(fieldMatches).toMatch(/\{count\}/);
+  });
+});
