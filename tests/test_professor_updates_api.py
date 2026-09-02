@@ -6,7 +6,7 @@ evidence validates, and responses never contain contact details.
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,8 +22,18 @@ from src.tracking.professor_profiles import (
 
 client = TestClient(app)
 
-T0 = "2026-07-01T00:00:00"
-T1 = "2026-07-08T00:00:00"
+# Relative to the clock, not the calendar. The feed serves an artifact only
+# while its freshness window — FRESHNESS_TTL_DAYS from the OLDEST event — is
+# still open against the real datetime.now() (backend/routes/professors.py),
+# so absolute July dates here were a time bomb: the 3-event pagination test
+# expired on 2026-09-01 and failed an unrelated frontend PR's CI, and the
+# T1-based ones had five days left.
+def _days_ago(n: int) -> str:
+    return (datetime.now(UTC) - timedelta(days=n)).replace(tzinfo=None, microsecond=0).isoformat()
+
+
+T0 = _days_ago(20)
+T1 = _days_ago(13)
 
 
 def record(*, record_id="faculty-uiuc-ece-abcd1234", pi_name="Jane Doe",
@@ -58,7 +68,7 @@ def stamp_release(state):
         state["profiles"],
         state["events"],
         refresh_ok=True,
-        now=datetime(2026, 7, 20, tzinfo=UTC),
+        now=datetime.now(UTC),
         expected_schools={"uiuc"},
         expected_professors=expected_professors,
     )
@@ -137,7 +147,7 @@ class TestArtifactAvailability:
         state = state_with_event()
         state["release"] = compute_release_status(
             state["profiles"], state["events"], refresh_ok=True,
-            now=datetime(2026, 7, 20, tzinfo=UTC),
+            now=datetime.now(UTC),
             expected_professors={
                 professor_id: profile["school"]
                 for professor_id, profile in state["profiles"].items()
@@ -255,7 +265,7 @@ class TestEventServing:
         state = update_tracking_state([record()])
         for i in range(3):
             state = update_tracking_state(
-                [record(last_verified=f"2026-07-{i + 2:02d}T00:00:00", keywords=(f"kw-{i}",))],
+                [record(last_verified=_days_ago(18 - i), keywords=(f"kw-{i}",))],
                 state,
             )
         stamp_release(state)
