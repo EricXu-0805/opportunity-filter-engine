@@ -26,6 +26,34 @@ _CLOSED_RE = re.compile(
     |
     \b(?:the\s+)?(?:application\s+)?deadline\s+
         (?:has\s+)?(?:now\s+)?passed\b
+    |
+    \b(?:our\s+|the\s+|this\s+year['’]?s\s+)?(?:\d{4}\s+)?cohort\s+
+        (?:(?:has|have|is|are)\s+(?:already\s+|now\s+)?(?:been\s+)?
+            (?:formed|selected|filled|finalized|finalised|chosen|set|complete|full)
+        )\b
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# A cycle that opens LATER. "Applications for 2027 will be open in November
+# 2026" and "the application site opens mid November 2026" both say, in the
+# present, that applications are not open. They do not say "closed" either —
+# this detector has no calendar, and the same page read in December may be
+# describing the current cycle — so a match yields "unknown": no suffix, no
+# claim. Northwestern SynBREU carried exactly these two sentences under an
+# Apply Now button and was served as "(applications open)" (2026-08-31).
+_FUTURE_OPEN_RE = re.compile(
+    r"""
+    \bapplications?\s+(?:for\s+(?:the\s+)?\d{4}\s+)?(?:will|would|should)\s+(?:be\s+)?open(?:ing)?\b
+    |
+    \b(?:the\s+)?application(?:s)?\s+(?:site|portal|window|period|form|cycle)\s+
+        (?:will\s+)?(?:be\s+)?open(?:s|ing)?\s+
+        (?:in|on|by|around|mid|early|late)?[-\s]*
+        (?:january|february|march|april|may|june|july|august|september|october|november|december)\b
+    |
+    \bapplications?\s+(?:will\s+)?open(?:s)?\s+
+        (?:in|on|by|around|mid|early|late)[-\s]*
+        (?:january|february|march|april|may|june|july|august|september|october|november|december)\b
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -103,6 +131,8 @@ def detect_application_status(page_text: str) -> str:
     if _CLOSED_RE.search(page_text):
         return "closed"
     if _NEGATED_CURRENT_ACTION_RE.search(page_text):
+        return "unknown"
+    if _FUTURE_OPEN_RE.search(page_text):
         return "unknown"
     if _STRONG_CURRENT_OPEN_RE.search(page_text):
         return "open"
