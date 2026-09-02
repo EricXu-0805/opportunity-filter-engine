@@ -15,7 +15,13 @@
 import { Check, GraduationCap, MapPin, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '@/i18n/client';
-import { SCHOOLS, type School } from '@/lib/schools';
+import {
+  displayCoverageCount,
+  parseCoverageResponse,
+  resolveCoverage,
+  type SchoolCoverageResponse,
+} from '@/lib/school-coverage';
+import { SCHOOL_STATS, SCHOOLS, type School } from '@/lib/schools';
 
 interface UniversitySwitcherModalProps {
   initialSelectedSlug: string;
@@ -35,30 +41,41 @@ interface UniversitySwitcherModalProps {
   busy?: boolean;
 }
 
+/*
+ * The school-size chip. One number, from one contract: coverage is unique
+ * listings PLUS unique faculty contacts, resolved by resolveCoverage and never
+ * assembled here.
+ *
+ * It used to read `counts` out of the coverage response — the listings half of
+ * a two-map payload whose other half held ~97% of the corpus — so it showed
+ * JHU as 28 against a real 4,581, and the static fallback (which did count
+ * both) meant the chip fell from ~4,500 to 28 the moment the fetch landed.
+ * Both the switcher and the first-visit confirmation gate render this
+ * component, so they cannot disagree with each other by construction.
+ */
 function CoverageChip(
-  { school, t, liveCount }:
-  { school: School; t: ReturnType<typeof useT>['t']; liveCount?: number },
+  { school, t, live }:
+  { school: School; t: ReturnType<typeof useT>['t']; live: SchoolCoverageResponse | null },
 ) {
-  // Prefer the live corpus count (from /api/opportunities/coverage) so the chip
-  // reflects real coverage; fall back to the static schools.ts number when the
-  // fetch hasn't resolved or the school isn't in the response.
-  const staticCount = school.coverage.campusOpportunities;
-  const count = liveCount ?? (typeof staticCount === 'number' ? staticCount : null);
-  if (count === null) {
+  const coverage = resolveCoverage(school.slug, live, SCHOOL_STATS);
+  if (!coverage.available) {
+    // No trustworthy number — not a zero. Rendering "0 campus opportunities"
+    // for a campus nobody has collected yet would be a measurement we never
+    // made; the pending note says what is actually true.
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50/80 text-amber-600">
         {t(school.coverage.note)}
       </span>
     );
   }
-  const note = typeof staticCount === 'number' ? school.coverage.note : 'universitySwitcher.coverageCampus';
+  const count = displayCoverageCount(coverage.count);
   const cls = count >= 1000
     ? 'bg-emerald-50/80 text-emerald-600'
     : 'bg-indigo-50/80 text-indigo-600';
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium ${cls}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" aria-hidden="true" />
-      {t(note, { count: count.toLocaleString() })}
+      {t('universitySwitcher.coverageCampus', { count: count.toLocaleString() })}
     </span>
   );
 }
@@ -76,16 +93,22 @@ export default function UniversitySwitcherModal({
   const { t, locale } = useT();
   const [query, setQuery] = useState('');
   const [selectedSlug, setSelectedSlug] = useState(initialSelectedSlug);
-  const [liveCounts, setLiveCounts] = useState<Record<string, number> | null>(null);
+  const [liveCoverage, setLiveCoverage] = useState<SchoolCoverageResponse | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Live per-school coverage counts; falls back to the static schools.ts numbers
-  // if the fetch fails (see CoverageChip), so this never blocks or regresses.
+  // Live per-school coverage; falls back to the static numbers (same definition,
+  // built from the same function) if the fetch fails or returns a body that does
+  // not announce the current schema, so this never blocks and never regresses to
+  // a listings-only count. parseCoverageResponse is what rejects a pre-v2 body
+  // held by an HTTP cache or served by a not-yet-rolled instance.
   useEffect(() => {
     let cancelled = false;
     fetch('/api/opportunities/coverage')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d?.counts) setLiveCounts(d.counts as Record<string, number>); })
+      .then((d) => {
+        const parsed = parseCoverageResponse(d);
+        if (!cancelled && parsed) setLiveCoverage(parsed);
+      })
       .catch(() => { /* keep static fallback */ });
     return () => { cancelled = true; };
   }, []);
@@ -195,7 +218,7 @@ export default function UniversitySwitcherModal({
                         : t('universitySwitcher.catalogPending')}
                     </p>
                     <div className="mt-2.5">
-                      <CoverageChip school={entry} t={t} liveCount={liveCounts?.[entry.slug]} />
+                      <CoverageChip school={entry} t={t} live={liveCoverage} />
                     </div>
                   </button>
                 );

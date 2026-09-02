@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SCHOOLS, bySlug, detectSchoolFromEmail } from './schools';
+import { SCHOOL_COVERAGE_SCHEMA, type SchoolStatsFile } from './school-coverage';
+import { NATIONAL_OPPORTUNITY_COUNT, SCHOOLS, bySlug, detectSchoolFromEmail } from './schools';
 import stats from './school-stats.json';
 
 describe('detectSchoolFromEmail — known schools', () => {
@@ -95,28 +96,37 @@ describe('registry — switcher metadata', () => {
     }
   });
 
-  it('every school ships live campus coverage derived from the corpus stats', () => {
-    const entries = Object.values(stats) as { campus: number; national: number }[];
-    expect(entries.length).toBeGreaterThan(0);
-    const national = entries[0].national;
-    expect(national).toBeGreaterThan(0);
-    for (const entry of entries) expect(entry.national).toBe(national);
+  it('every school ships campus coverage that is listings + faculty contacts', () => {
+    const file = stats as SchoolStatsFile;
+    expect(file.schema).toBe(SCHOOL_COVERAGE_SCHEMA);
+    expect(file.national_count).toBeGreaterThan(0);
+    expect(Object.keys(file.schools).length).toBeGreaterThan(0);
 
     for (const school of SCHOOLS) {
-      const stat = (stats as Record<string, { campus: number; national: number }>)[school.slug];
+      const stat = file.schools[school.slug];
       expect(stat, school.slug).toBeDefined();
-      expect(stat.campus, school.slug).toBeGreaterThan(0);
+      expect(stat.total_count, school.slug).toBeGreaterThan(0);
+      // The invariant, on the artifact that actually ships: coverage is BOTH
+      // populations. Asserting it here is what makes a regression to a
+      // listings-only fallback a red test rather than a quiet 100x understatement.
+      expect(stat.total_count, school.slug).toBe(
+        stat.listing_count + stat.faculty_contact_count,
+      );
+      // Unreviewed records are counted, and deliberately excluded from the total.
+      expect(stat.unreviewed_count, school.slug).toBeGreaterThanOrEqual(0);
 
-      const c = school.coverage.campusOpportunities;
-      expect(typeof c, school.slug).toBe('number');
+      // The registry carries the raw total; flooring happens once, at render.
+      expect(school.coverage.campusOpportunities, school.slug).toBe(stat.total_count);
       // Every school's chip counts only its own campus records; the shared
       // national open-opportunity pool is explained in the footer, not per card.
-      const raw = stat.campus;
       expect(school.coverage.note).toBe('universitySwitcher.coverageCampus');
-      // Floored, never overstating, and within one floor step of the raw count.
-      expect(c as number, school.slug).toBeLessThanOrEqual(raw);
-      expect(raw - (c as number), school.slug).toBeLessThan(100);
     }
+
+    // The national pool is never folded into a school's own number.
+    const maxCampus = Math.max(...SCHOOLS.map((s) => s.coverage.campusOpportunities as number));
+    expect(NATIONAL_OPPORTUNITY_COUNT).toBe(file.national_count);
+    expect(SCHOOLS.every((s) => s.coverage.campusOpportunities !== maxCampus + file.national_count))
+      .toBe(true);
 
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);

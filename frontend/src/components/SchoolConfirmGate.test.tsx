@@ -45,6 +45,8 @@ import {
   type OwnerToken,
 } from '@/lib/identity-owner';
 import { resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { displayCoverageCount } from '@/lib/school-coverage';
+import { SCHOOL_STATS, SCHOOLS } from '@/lib/schools';
 
 /** Seed a PRIVATE key the way the app writes one. A raw `localStorage.setItem`
  *  targets an unprefixed name that belongs to whoever first claimed this
@@ -365,5 +367,31 @@ describe('soft dismissal', () => {
     sessionStorage.removeItem(DEFER_KEY);
     render(<SchoolConfirmGate />);
     expect(await screen.findByText('schoolConfirm.title')).toBeInTheDocument();
+  });
+});
+
+describe('coverage count — same number as the University Switcher', () => {
+  /* The gate and the switcher are the same picker with different copy, and this
+   * asserts the consequence: for one school they state one size. They used to
+   * agree on a wrong number (both read the listings half of the coverage
+   * response); agreeing is necessary, not sufficient, so the value itself is
+   * checked against the registry's listings + faculty contacts total. */
+  it('shows the listings + faculty contacts total, identical to the switcher', async () => {
+    seedExistingUser('jhu');
+    render(<SchoolConfirmGate />);
+    expect(await screen.findByText('schoolConfirm.title')).toBeInTheDocument();
+
+    const jhu = SCHOOLS.find((s) => s.slug === 'jhu')!;
+    const stat = SCHOOL_STATS.jhu!;
+    // The registry number is both halves — the bug showed listing_count alone.
+    expect(jhu.coverage.campusOpportunities).toBe(
+      stat.listing_count + stat.faculty_contact_count,
+    );
+    expect(jhu.coverage.campusOpportunities).not.toBe(stat.listing_count);
+
+    const expected = displayCoverageCount(jhu.coverage.campusOpportunities as number);
+    expect(
+      screen.getAllByText(`universitySwitcher.coverageCampus:${expected.toLocaleString()}`).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 });
