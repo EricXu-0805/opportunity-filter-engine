@@ -194,13 +194,33 @@ def fetch_reu_awards(max_results: int = 500) -> list[dict]:
     return all_awards
 
 
+# NSF's own program element for REU Sites. Sufficient on its own — but not
+# necessary: directorates fund Sites under their own elements too (physics,
+# astronomy, chemistry, EWFD), and those awards are still titled "REU Site:".
+_REU_SITES_PROGRAM = "UNDERGRAD SITES"
+
+
 def _is_reu_site(award: dict) -> bool:
-    """Only genuine REU Site awards — a supplement or an unrelated award that
-    merely surfaced in the keyword search must not ship with REU-specific
-    stipend/eligibility claims (truthfulness W11; the old ``or`` admitted
-    every non-supplement award)."""
+    """Only genuine REU Site awards.
+
+    The keyword search returns 2,311 awards for "REU Site", and most are not
+    one: EPSCoR fellows, MCA, EAGER, conferences and workshops, CAREER awards
+    with an REU supplement, RET Sites (teachers, not undergraduates). NSF
+    titles every genuine Site "REU Site: …", and the cross-directorate ones
+    also carry the Sites program element — those are the two signals, and
+    nothing else is one. The ``"reu:" in title`` clause this replaces was
+    meant for the same thing and admitted anything NSF had prefixed "REU:",
+    which is how a $20,000 conference grant — "Conference: Workshop on
+    Breakthrough Research in Intracortical Dynamics…", award 2624028 — shipped
+    as a paid summer position with an Apply now button (production,
+    2026-08-31). Everything a match here implies — the stipend, the summer
+    duration, the citizenship rule, the estimated deadline — is the REU Site
+    solicitation's, so a record that is not a Site gets every one of them
+    wrong.
+    """
     title = award.get("title", "").lower()
-    return "reu site" in title or ("reu:" in title and "supplement" not in title)
+    program = award.get("fundProgramName", "").upper()
+    return "reu site" in title or _REU_SITES_PROGRAM in program
 
 
 def normalize_award(award: dict) -> dict:

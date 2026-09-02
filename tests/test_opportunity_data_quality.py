@@ -1080,3 +1080,54 @@ def test_normalize_compensation_collapses_range_and_drops_absurd_hourly():
     assert nc("$25-$30 Per hour") == "$25-$30 Per hour"  # plausible hourly kept
     assert nc("") == ""
     assert nc("Paid") == "Paid"
+
+
+class TestNsfReuSiteFilter:
+    """Only genuine REU Sites may ship the REU-solicitation claims.
+
+    Every award below is real, fetched from api.nsf.gov on 2026-09-02. The
+    four that are not Sites were being served as paid summer positions with an
+    Apply now button — a $20,000 workshop grant among them, ranked #7 for a
+    UIUC freshman — because the old predicate admitted any title NSF had
+    prefixed "REU:". The three that ARE Sites carry no Sites program element;
+    they are funded by physics, astronomy and chemistry directly, and the
+    only thing that says what they are is the title.
+    """
+
+    def test_a_conference_a_supplement_and_a_fellowship_are_not_sites(self):
+        from src.collectors.nsf_reu import _is_reu_site
+
+        not_sites = [
+            ("Conference: Workshop on Breakthrough Research in Intracortical Dynamics and "
+             "Galvanizing Exploration of Sensorimotor Technology",
+             "Engineering of Biomed Systems, Cross-Directorate  Activities"),
+            ("REU: Research Experience in Multiscale Modeling of Matter Embracing Disciplines "
+             "in Engineering", "XC-Crosscutting Activities Pro"),
+            ("MCA: Genomic Tools for Detecting Short-Term Evolutionary Change in Long-Term "
+             "Ecological Research", "Cross-BIO Activities"),
+            ("NSFDEB-NERC: MIcrobial Nitrogen cycling in the Tropics (MINT)",
+             "Org Interaction & Ecology"),
+            ("Collaborative Research: Cooperative Processes at Surfaces: Ligand Binding at "
+             "the Single Molecule Level", "CSD-Chem Strcture and Dynamics"),
+        ]
+        for title, program in not_sites:
+            assert not _is_reu_site({"title": title, "fundProgramName": program}), title
+
+    def test_a_site_is_one_by_its_title_or_by_its_program_element(self):
+        from src.collectors.nsf_reu import _is_reu_site
+
+        by_title = [
+            ("REU Site: Physics at Kansas State University, Interactions of Matter, Light "
+             "and Learning", "Integrative Activities in Phys"),
+            ("REU Site: University of Hawaii Institute for Astronomy",
+             "SPECIAL PROGRAMS IN ASTRONOMY"),
+            ("REU Site: Experimental and Computational Spectroscopy: Fundamental Processes",
+             "UNDERGRADUATE PROGRAMS IN CHEM"),
+        ]
+        for title, program in by_title:
+            assert _is_reu_site({"title": title, "fundProgramName": program}), title
+        # and the program element alone, for a Site whose title is plain
+        assert _is_reu_site({"title": "Undergraduate Research in Coastal Ecology",
+                             "fundProgramName": "RSCH EXPER FOR UNDERGRAD SITES"})
+        # a missing program is not a match; the title has to carry it
+        assert not _is_reu_site({"title": "Undergraduate Research in Coastal Ecology"})
