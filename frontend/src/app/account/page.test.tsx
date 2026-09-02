@@ -138,6 +138,32 @@ describe('AccountPage — profile snapshot', () => {
     });
   });
 
+  it('names the school the student actually picked, not the seeded default', async () => {
+    // Found on production by a tester walking the free flow as a Utah
+    // business student: /account read "SCHOOL | UIUC - University of Illinois
+    // Urbana-Champaign" while localStorage held home_school "utah" and the
+    // rest of the product had them at Utah. DEFAULT_PROFILE seeds
+    // `institution` with the UIUC string and nothing ever rewrites it — the
+    // campus picker writes `home_school`, and the profile form renders
+    // bySlug(home_school) beside a "change school" button, so `institution`
+    // is a mirror of a value the student never set.
+    mockLoadProfile.mockResolvedValue({
+      major: 'Finance', grade: 'junior', home_school: 'utah',
+      institution: 'UIUC - University of Illinois Urbana-Champaign',
+    });
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('Finance')).toBeInTheDocument());
+    expect(screen.getByText('University of Utah')).toBeInTheDocument();
+    expect(screen.queryByText(/Illinois/)).toBeNull();
+  });
+
+  it('falls back to institution for a row that predates home_school', async () => {
+    mockLoadProfile.mockResolvedValue({ major: 'ECE', institution: 'Some Older School' });
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('ECE')).toBeInTheDocument());
+    expect(screen.getByText('Some Older School')).toBeInTheDocument();
+  });
+
   it('renders saved profile fields when a profile exists', async () => {
     mockLoadProfile.mockResolvedValue({
       major: 'ECE', research_interests: 'machine learning', institution: 'UIUC',
