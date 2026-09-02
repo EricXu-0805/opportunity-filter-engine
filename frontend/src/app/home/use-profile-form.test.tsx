@@ -10185,3 +10185,97 @@ describe('useProfileForm — a question stays answerable in the UI the person is
     expect(screen.queryByTestId('conflict-use-cloud')).toBeNull();
   });
 });
+
+// ── typing bursts ───────────────────────────────────────────────────────
+// The harness above sets research_interests to one fixed string. These need
+// to type: N successive values, one keystroke apart.
+function TypingHarness() {
+  const form = useProfileForm(stableT);
+  return (
+    <div>
+      <span data-testid="typing-major">{form.profile.major}</span>
+      <input
+        data-testid="typing-box"
+        value={form.profile.research_interests}
+        onChange={(e) => form.update('research_interests', e.target.value)}
+      />
+      <button data-testid="typing-major-ece" onClick={() => form.update('major', 'ECE')}>ece</button>
+      <button data-testid="typing-major-physics" onClick={() => form.update('major', 'Physics')}>physics</button>
+    </div>
+  );
+}
+function typeInterests(value: string) {
+  fireEvent.change(screen.getByTestId('typing-box'), { target: { value } });
+}
+function interestsOps(): JournalOp[] {
+  return journalOps()
+    .filter((op) => op.fields.some((f) => f.key === 'research_interests'))
+    .sort((a, b) => a.seq - b.seq);
+}
+function interestsValue(op: JournalOp): unknown {
+  const f = op.fields.find((x) => x.key === 'research_interests')!;
+  return f.desired.present ? f.desired.value : undefined;
+}
+
+describe('typing into the research-interests box is one burst, not one operation per keystroke', () => {
+  // Production, 2026-08-31. Every keystroke appended an immutable journal
+  // operation. MAX_OUTSTANDING_OPS is 500, and for a visitor who has not
+  // signed in nothing ever acknowledges one — so 500 was a lifetime budget
+  // of keystrokes, and a 1,062-character paragraph came back as exactly 500
+  // characters on reload. The matcher's one free-text field.
+  async function mountHydrated() {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ research_interests: '', major: 'CS', grade: 'Junior' }, 3));
+    const mounted = render(<Suspense fallback={null}><TypingHarness /></Suspense>);
+    await waitFor(() => expect(screen.getByTestId('typing-major').textContent).toBe('CS'));
+    return mounted;
+  }
+
+  it('records the first keystroke at once and the rest when the typing pauses', async () => {
+    await mountHydrated();
+    vi.useFakeTimers();
+    try {
+      let text = '';
+      for (let i = 0; i < 40; i += 1) {
+        text += 'x';
+        act(() => { typeInterests(text); });
+        await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+      }
+      // Mid-burst: the opener is on disk, and nothing else is.
+      const during = interestsOps();
+      expect(during).toHaveLength(1);
+      expect(interestsValue(during[0])).toBe('x');
+      expect((screen.getByTestId('typing-box') as HTMLInputElement).value).toBe(text);
+
+      await act(async () => { await vi.advanceTimersByTimeAsync(450); });
+      const after = interestsOps();
+      expect(after).toHaveLength(2);
+      expect(interestsValue(after[1])).toBe(text);
+
+      // A discrete field is untouched by the rule: one operation per action.
+      act(() => { screen.getByTestId('typing-major-ece').click(); });
+      act(() => { screen.getByTestId('typing-major-physics').click(); });
+      expect(journalOps().filter((op) => op.fields.some((f) => f.key === 'major'))).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a pause opens a new burst, and a burst cut off by unmount still reaches the journal', async () => {
+    const mounted = await mountHydrated();
+    vi.useFakeTimers();
+    try {
+      act(() => { typeInterests('a'); });
+      act(() => { typeInterests('ab'); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(450); });   // pause: burst 1 closes
+      act(() => { typeInterests('abc'); });                                  // burst 2 opens
+      act(() => { typeInterests('abcd'); });                                 // owed, timer armed
+      expect(interestsOps().map(interestsValue)).toEqual(['a', 'ab', 'abc']);
+
+      mounted.unmount();                                                      // 400 ms never elapses
+      // The unmount flush drains `unrecordedRef` before it sends anything.
+      expect(interestsOps().map(interestsValue)).toEqual(['a', 'ab', 'abc', 'abcd']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

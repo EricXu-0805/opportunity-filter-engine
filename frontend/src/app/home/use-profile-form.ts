@@ -179,6 +179,15 @@ function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): Sk
   return [...existing, ...incoming.filter((s) => !names.has(s.name))];
 }
 
+// Free-text fields where a person TYPES, one keystroke at a time. Every other
+// field changes in one action — a select, a chip, a slider, a pasted URL —
+// and records one operation per action as it always has.
+const TYPED_KEYS: ReadonlySet<keyof ProfileData> = new Set<keyof ProfileData>(['research_interests']);
+// How long the typing has to pause before the burst's final value is written
+// down. Shorter than the 1.5 s autosave debounce by design: the journal is
+// the crash record, the autosave is the send.
+const TYPING_BURST_MS = 400;
+
 export function useProfileForm(t: TFunc): UseProfileFormResult {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -392,6 +401,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // and write it into U2's journal.
   const loadingOriginRef = useRef<ScreenOrigin | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A typing burst in a free-text field: the operation that opened it is
+  // already on disk, the keystrokes since are owed in `unrecordedRef`, and
+  // this timer writes them down when the typing pauses. See TYPED_KEYS.
+  const textBurstRef = useRef<{ timer: ReturnType<typeof setTimeout> | null; origin: ScreenOrigin | null }>(
+    { timer: null, origin: null },
+  );
   const pendingSaveRef = useRef<ProfileData & { search_weight: number } | null>(null);
   // Captured at the moment a save intent is CREATED (the debounce timer's
   // creation, or handleSubmit's own start) — never re-captured just before
@@ -620,6 +635,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // U1's un-journalled keys must not survive into U2: a later U2 autosave
     // or retry would record them as an intent U2 never made.
     unrecordedRef.current.clear();
+    if (textBurstRef.current.timer !== null) clearTimeout(textBurstRef.current.timer);
+    textBurstRef.current = { timer: null, origin: null };
     dirtyKeysRef.current = new Set();
     weightDirtyRef.current = false;
     shareDraftActiveRef.current = false;
@@ -973,6 +990,42 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // unknown base, and has been since the journal existed. That survives
         // a crash; downgrading it here would trade one contract for another.
         for (const key of touched) unrecordedRef.current.add(key);
+      } else if ([...touched].every((key) => TYPED_KEYS.has(key))) {
+        // One operation opens the burst, synchronously — a crash a moment
+        // later still finds that the edit exists and where it began. The
+        // keystrokes after it are owed, not appended: each would otherwise be
+        // its own immutable operation, and MAX_OUTSTANDING_OPS is 500. For a
+        // visitor who has not signed in nothing ever acknowledges an
+        // operation, so 500 was a LIFETIME budget of keystrokes across every
+        // free-text field, and a paragraph typed past it came back truncated
+        // to exactly 500 characters on reload (production, 2026-08-31 — the
+        // matcher's one free-text field). The pause timer writes the burst's
+        // final value down; the 1.5 s autosave and the unmount flush both
+        // drain `unrecordedRef` first anyway, so nothing here can be lost to
+        // either of them.
+        const burst = textBurstRef.current;
+        if (burst.timer !== null && burst.origin !== null && ownsScreen(burst.origin)) {
+          for (const key of touched) unrecordedRef.current.add(key);
+          clearTimeout(burst.timer);
+        } else {
+          recordIntent(next, [...touched], { origin: origin! });
+        }
+        burst.origin = origin!;
+        burst.timer = setTimeout(() => {
+          const current = textBurstRef.current;
+          const owner = current.origin;
+          current.timer = null;
+          current.origin = null;
+          // A screen that changed hands mid-burst: resetForPendingLoad has
+          // already emptied the buffer, and the new owner's row is nobody
+          // else's to write into.
+          if (!owner || !ownsScreen(owner)) return;
+          const owed = [...unrecordedRef.current].filter((key) => TYPED_KEYS.has(key));
+          if (owed.length === 0) return;
+          if (recordIntent(profileRef.current, owed, { origin: owner })) {
+            for (const key of owed) unrecordedRef.current.delete(key);
+          }
+        }, TYPING_BURST_MS);
       } else {
         recordIntent(next, [...touched], { origin: origin! });
       }
@@ -981,7 +1034,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     profileRef.current = next;
     setProfile(next);
     if (!shareDraftActiveRef.current) republishRendered(next);
-  }, [bumpEditEpochs, recordIntent, republishRendered, editingOrigin, screenOrigin]);
+  }, [bumpEditEpochs, recordIntent, republishRendered, editingOrigin, screenOrigin, ownsScreen]);
 
   const editSearchWeight = useCallback((value: number) => {
     // Its own entry, so its own gate: a generic-edit gate that forgot the
@@ -2104,6 +2157,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
   useEffect(() => {
     return () => {
+      // The burst timer must not fire into an unmounted form. Its value is
+      // not lost: an armed burst always has a pending save, and the flush
+      // below drains `unrecordedRef` before anything is sent.
+      if (textBurstRef.current.timer !== null) clearTimeout(textBurstRef.current.timer);
+      textBurstRef.current = { timer: null, origin: null };
       // A shared draft is never flushed: the banner promises the visitor's
       // own profile stays untouched until they generate.
       const pending = shareDraftActiveRef.current ? null : pendingSaveRef.current;
