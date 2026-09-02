@@ -1593,6 +1593,29 @@ class TestMatchResponsesAttestToTheirOwnContract:
         assert facet_total <= len(LIVE_IDS)
         assert sum(body["deadline_facets"].values()) <= len(LIVE_IDS)
 
+    def test_the_field_relevance_count_follows_the_view(self, mixed_corpus):
+        """Three testers walking production read "31 strong matches in your
+        field" beside chips that a filter had just taken from High Priority 21
+        to 1. view_counts follows the filter; field_relevant_count was the
+        snapshot's and did not. It is the same number as /api/matches on an
+        unfiltered view, and it is what the filter keeps otherwise — a view
+        that keeps nothing has nothing in the student's field either.
+        """
+        unfiltered = client.post("/api/matches/view", json=_view_body()).json()
+        universe = client.post("/api/matches", json=_profile()).json()
+        # Precondition, so a fixture change cannot make the next assertion
+        # true for the wrong reason.
+        assert universe["field_relevant_count"] >= 1
+        assert unfiltered["field_relevant_count"] == universe["field_relevant_count"]
+
+        nothing = client.post(
+            "/api/matches/view", json=_view_body(tab="starred", favorite_ids=[]),
+        ).json()
+        assert nothing["filtered_total"] == 0
+        assert nothing["field_relevant_count"] == 0
+        # thin_inventory is about the corpus, not the view: still not thin.
+        assert nothing["thin_inventory"] == unfiltered["thin_inventory"]
+
     def test_an_empty_page_past_the_end_still_carries_the_marker(self, mixed_corpus):
         """The case a row-inspecting client cannot check for itself.
 
