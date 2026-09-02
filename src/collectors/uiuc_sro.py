@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup
 
 from src.normalizers.deadlines import normalize_deadline, to_legacy
 
+from ..evidence import INFERRED_FIELDS_KEY
 from .base import BaseCollector, RawOpportunity
 
 logger = logging.getLogger(__name__)
@@ -399,8 +400,20 @@ def _clean_compensation(raw: str) -> str:
     return ""
 
 
+#: How ``eligibility.majors`` is produced here, for ``stamp_inferred``. The SRO
+#: listing states a coarse research area ("Medicine & Health", "Natural
+#: Sciences") and never a major, so every value in that field is ours.
+MAJORS_METHOD = "rule:research_area_bank"
+
+
 def _research_area_to_majors(area: str) -> list[str]:
-    """Map SRO research areas to approximate majors."""
+    """Map SRO research areas to approximate majors.
+
+    APPROXIMATE is the operative word, and the reason callers must stamp the
+    result: "Medicine & Health" yields Biology, Bioengineering and Chemistry
+    for every listing under it, whether or not the program says anything about
+    who may apply.
+    """
     area_lower = area.lower()
     majors = []
     if "science & technology" in area_lower or "natural sciences" in area_lower:
@@ -519,6 +532,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "is_active": True,
             "manually_reviewed": False,
             "notes": "Auto-imported from UIUC SRO database" + (" (deep scraped)" if is_deep else ""),
+            **({INFERRED_FIELDS_KEY: {"eligibility.majors": MAJORS_METHOD}} if majors else {}),
         },
     }
 
