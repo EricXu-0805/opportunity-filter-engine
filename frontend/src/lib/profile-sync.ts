@@ -604,12 +604,36 @@ export function recordProfileIntent(
   // conflict resolved locally with zero requests. When the lineage cannot be
   // proven (see getJournalLineageId) there is nothing to continue and the
   // edit conflicts — fail closed.
+  //
+  // Named ONCE each, not by every descendant. An ancestor this origin has
+  // already superseded is reached through the operation that superseded it:
+  // effectiveOpBase walks the ancestry, finishedClosures and the stage
+  // capture take the connected component, and the plan and the cache union
+  // `supersedes` over the whole chain — so a link to the predecessor gives
+  // every one of them what the full list did. Listing the full list gave
+  // each keystroke 37 bytes of UUID per keystroke before it: storage grew with
+  // the SQUARE of the characters typed, 160 characters was 575 KB, and the
+  // origin's 5 MB quota died near 500 with the rest of the paragraph lost on
+  // reload (production, 2026-08-31).
+  //
+  // What stays fully named is the other origin's chain — the one a reload
+  // left behind. The plan's heir check is the single consumer that needs a
+  // whole set rather than a path: it decides between two chains by whether
+  // one's `supersedes` covers every id of the other, and chains are keyed by
+  // origin. So the first post-reload edit names all of them, once, and the
+  // next edit names only that one; the union over the new chain still covers
+  // the old one.
   const outstanding = readOutstandingOps();
   const liveOps = outstanding.ok ? outstanding.value : [];
   const mine = getJournalLineageId();
-  const supersedes = liveOps
-    .filter((o) => o.lineage === mine && o.fields.some((f) => effective.includes(f.key as ProfileKey)))
-    .map((o) => o.opId);
+  const origin = getJournalOriginId();
+  const continued = liveOps.filter(
+    (o) => o.lineage === mine && o.fields.some((f) => effective.includes(f.key as ProfileKey)),
+  );
+  const alreadyMine = new Set(
+    continued.filter((o) => o.originId === origin).flatMap((o) => o.supersedes ?? []),
+  );
+  const supersedes = continued.filter((o) => !alreadyMine.has(o.opId)).map((o) => o.opId);
   const op = appendJournalOp({
     fields,
     baseRevision,

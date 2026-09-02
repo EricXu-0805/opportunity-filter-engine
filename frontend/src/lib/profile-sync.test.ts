@@ -1195,6 +1195,68 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(journalOps()).toHaveLength(0);
   });
 
+  it('a typing burst names only its own predecessor, not every keystroke before it', async () => {
+    // Production, 2026-08-31. Each keystroke in the research-interests box
+    // appended an operation whose `supersedes` listed EVERY outstanding
+    // operation for the field — 37 bytes of UUID per ancestor, so storage grew
+    // with the square of the characters typed: 160 chars = 575 KB, and the 5 MB
+    // origin quota died near 500. Every consumer of `supersedes` walks it as a
+    // graph or unions it over a chain, so within one origin a link to the
+    // predecessor reaches everything the flat list did.
+    loadProfileMock.mockResolvedValue(cloud(FULL, 4));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+
+    let text = '';
+    for (let i = 0; i < 60; i += 1) {
+      text += 'x';
+      expect(recordProfileIntent({ ...FULL, research_interests: text }, ['research_interests'], token)).toBe(true);
+    }
+    const ops = journalOps().sort((a, b) => a.seq - b.seq);
+    expect(ops).toHaveLength(60);
+    expect(ops[0].supersedes ?? []).toEqual([]);
+    for (let i = 1; i < ops.length; i += 1) {
+      expect(ops[i].supersedes, `op ${i}`).toEqual([ops[i - 1].opId]);
+    }
+    const bytes = ops.reduce((n, op) => n + JSON.stringify(op).length, 0);
+    // linear: ~60 ops × (a few hundred bytes + the text so far), not 60² UUIDs
+    expect(bytes).toBeLessThan(60 * 600);
+  });
+
+  it('the first edit after a reload names every pre-reload operation, and the next names only it', async () => {
+    // The one consumer that needs the FULL set is the heir check in
+    // buildPlans: chains are keyed by origin, a reload is a new origin, and
+    // the post-reload chain wins only if its `supersedes` covers every id of
+    // the pre-reload chain. That is once per reload. Inside the new origin the
+    // linear rule resumes, and the union over the chain still covers them all.
+    loadProfileMock.mockResolvedValue(cloud(FULL, 4));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    for (const v of ['a', 'ab', 'abc']) {
+      expect(recordProfileIntent({ ...FULL, research_interests: v }, ['research_interests'], token)).toBe(true);
+    }
+    const before = journalOps().map((op) => op.opId).sort();
+
+    reloadDocument();
+    loadProfileMock.mockResolvedValue(cloud(FULL, 4));
+    await hydrateProfile();
+
+    expect(recordProfileIntent({ ...FULL, research_interests: 'abcd' }, ['research_interests'], token)).toBe(true);
+    const first = journalOps().find((op) => !before.includes(op.opId))!;
+    expect([...(first.supersedes ?? [])].sort()).toEqual(before);
+
+    expect(recordProfileIntent({ ...FULL, research_interests: 'abcde' }, ['research_interests'], token)).toBe(true);
+    const second = journalOps().find((op) => !before.includes(op.opId) && op.opId !== first.opId)!;
+    expect(second.supersedes).toEqual([first.opId]);
+
+    // and the plan still resolves to the newest value with nothing left behind
+    commitMock.mockResolvedValue(saved({ ...FULL, research_interests: 'abcde' }, 5));
+    const result = await stageProfilePatch({ ...FULL, research_interests: 'abcde' }, ['research_interests'], token);
+    expect(result.status).toBe('saved');
+    expect(commitMock.mock.calls[0][0].patch).toEqual({ research_interests: 'abcde' });
+    expect(journalOps()).toHaveLength(0);
+  });
+
   it('a window opened from this one — cloned sessionStorage and all — is NOT a continuation', async () => {
     // The hole a tab id alone cannot close. `window.open` hands the new
     // window a COPY of this one's sessionStorage, and "Duplicate tab" does
