@@ -191,11 +191,11 @@ describe('the field-relevance line says what it counts', () => {
   // threshold at all. The app's own word for quality is the bucket label, so
   // this line may not borrow it.
   it.each(['en', 'zh'] as const)('%s does not claim strength', (locale) => {
-    const r = dictionaries[locale].results as Record<string, string>;
-    for (const key of ['fieldMatches', 'fieldMatchesOne']) {
-      expect(r[key]).toBeTruthy();
-      expect(r[key]).not.toMatch(/strong|强匹配|优质/i);
+    const { fieldMatches, fieldMatchesOne } = dictionaries[locale].results;
+    for (const label of [fieldMatches, fieldMatchesOne]) {
+      expect(label).toBeTruthy();
+      expect(label).not.toMatch(/strong|强匹配|优质/i);
     }
-    expect(r.fieldMatches).toMatch(/\{count\}/);
+    expect(fieldMatches).toMatch(/\{count\}/);
   });
 });
