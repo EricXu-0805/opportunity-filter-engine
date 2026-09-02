@@ -1,24 +1,25 @@
 'use client';
 
 import type { ProfileData } from '@/lib/types';
+import { profileChecks, type ProfileCheckKey } from './home-utils';
 import type { TFunc } from './types';
+
+const LABEL_KEY: Record<ProfileCheckKey, string> = {
+  academic: 'home.cards.checkAcademic',
+  skills: 'home.cards.checkSkills',
+  interests: 'home.cards.checkInterests',
+  resume: 'home.cards.checkResume',
+  type: 'home.cards.checkType',
+};
 
 export function ProfileStrength({
   profile,
-  hasResume,
   t,
 }: {
   profile: ProfileData;
-  hasResume: boolean;
   t: TFunc;
 }) {
-  const checks = [
-    { done: !!profile.college && !!profile.major && !!profile.grade, label: t('home.cards.checkAcademic') },
-    { done: profile.skills.length >= 2, label: t('home.cards.checkSkills') },
-    { done: !!profile.research_interests?.trim(), label: t('home.cards.checkInterests') },
-    { done: hasResume, label: t('home.cards.checkResume') },
-    { done: !!(profile.seeking_types && profile.seeking_types.length > 0), label: t('home.cards.checkType') },
-  ];
+  const checks = profileChecks(profile).map((c) => ({ done: c.done, label: t(LABEL_KEY[c.key]) }));
 
   const completed = checks.filter((c) => c.done).length;
   const total = checks.length;
