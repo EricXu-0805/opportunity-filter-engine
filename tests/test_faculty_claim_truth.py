@@ -1026,3 +1026,63 @@ def test_the_sro_collector_stamps_the_majors_it_derives():
     assert rec["eligibility"]["majors"]
     assert rec["metadata"][INFERRED_FIELDS_KEY]["eligibility.majors"] == \
         uiuc_sro.MAJORS_METHOD
+
+
+def _openalex_faculty(*, inferred: bool):
+    """A faculty profile whose research areas came from an OpenAlex author
+    matched on surname plus institution — the shape 8,886 corpus records have."""
+    opp = {
+        "id": "faculty-openalex",
+        "title": "Prof. Rika Anderson — Biology",
+        "source_type": "faculty_research",
+        "organization": "Test College",
+        "department": "Department of Biology",
+        "pi_name": "Rika Anderson",
+        "opportunity_type": "research",
+        "keywords": ["microbial community ecology", "planetary science", "methane hydrates"],
+        "description_raw": "Faculty research profile. Contact this faculty member to ask "
+                           "whether undergraduate research opportunities are available.",
+        "eligibility": {},
+        "metadata": {"faculty_title": "Professor"},
+    }
+    if inferred:
+        stamp_inferred(opp["metadata"], "keywords", "derived:openalex_topics")
+    return opp
+
+
+def test_topics_we_guessed_are_never_stated_as_this_professors_own_work():
+    """A student expanding a card read "Prof. Rika Anderson (Department of
+    Biology) — microbial community ecology, planetary science, methane
+    hydrates". Those areas came from an OpenAlex author record matched by
+    surname and institution, which is exactly why `keywords_attribution:
+    'inferred'` exists on the wire. Two sibling consumers already refuse the
+    same data — cold_email._stated_keywords returns [] for a stamped record,
+    and public_projection publishes the attribution so the detail page can
+    caveat it. The ranker sentence was the one surface that spoke the guess as
+    fact, under the professor's own name.
+
+    The score is untouched: the keywords are still evidence of a topical
+    match, they are just not a claim about what this person works on.
+    """
+    profile = {
+        "major": "Biology", "grade": "Sophomore", "seeking_type": ["research"],
+        "hard_skills": [], "coursework": [], "experience_level": "none",
+        "resume_ready": True, "can_cold_email": True,
+        "research_interests_text": "microbial community ecology of ocean microbes",
+        "desired_fields": ["microbial community ecology"], "home_school": "testu",
+    }
+    stated = rank_opportunity(profile, _openalex_faculty(inferred=False), precomputed_sim=0.5)
+    ours = rank_opportunity(profile, _openalex_faculty(inferred=True), precomputed_sim=0.5)
+
+    def claims_authorship(reasons):
+        return [
+            r for r in reasons
+            if "methane hydrates" in r or "planetary science" in r
+            or "Anderson (Department of Biology) —" in r
+        ]
+
+    assert claims_authorship(stated.reasons_fit), stated.reasons_fit
+    assert not claims_authorship(ours.reasons_fit), ours.reasons_fit
+    # The match itself still stands, and so does its score.
+    assert ours.final_score == stated.final_score
+    assert ours.reasons_fit

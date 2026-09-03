@@ -30,7 +30,7 @@ import {
   onAuthChange,
   updateInteractionDetails,
 } from '@/lib/supabase';
-import type { InteractionType } from '@/lib/supabase';
+import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -88,6 +88,21 @@ interface ColdEmailModalProps {
    * reminder for it.
    */
   reminderTarget?: NonNullable<Parameters<typeof canDeliverReminder>[0]> & { id: string };
+  /**
+   * Called with the row the confirmation actually wrote, so the surface that
+   * opened this dialog can stop contradicting it.
+   *
+   * The write is atomic and this dialog owns it, but the host page's own
+   * interaction read re-runs only on mount and on a real identity change —
+   * closing the modal triggers neither. Without this the detail page shows
+   * "Pick a status above first" and a disabled notes box for a contact it just
+   * recorded, and the results list keeps the pre-contact chip for the session.
+   *
+   * Fires only inside the same post-await ownership check that paints the
+   * confirmed state, so a confirmation released after the owner moved tells
+   * the caller nothing, exactly as it paints nothing.
+   */
+  onContactConfirmed?: (record: InteractionRecord | null) => void;
 }
 
 /*
@@ -224,6 +239,7 @@ export default function ColdEmailModal({
   opportunityTitle,
   opportunitySchool,
   reminderTarget,
+  onContactConfirmed,
 }: ColdEmailModalProps) {
   const { t } = useT();
   const { openModal } = useAuthModal();
@@ -817,6 +833,7 @@ export default function ColdEmailModal({
         setConfirmedStatus(record?.type);
         setConfirmedForId(opportunityId);
         setSendConfirmed(true);
+        onContactConfirmed?.(record ?? null);
       }
       else setSendError('owner-changed');
     } catch {
@@ -831,7 +848,7 @@ export default function ColdEmailModal({
         setConfirming(false);
       }
     }
-  }, [opportunityId]);
+  }, [opportunityId, onContactConfirmed]);
 
   // Reminder-only. It must never call the contact recorder: that would move
   // last_contacted_at and record a second outreach the student never made.

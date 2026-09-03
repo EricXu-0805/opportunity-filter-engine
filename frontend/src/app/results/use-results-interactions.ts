@@ -27,6 +27,9 @@ type StatusIntent = { kind: 'set'; type: InteractionType } | { kind: 'remove'; t
 export interface UseResultsInteractionsResult {
   favs: Set<string>;
   interactions: Map<string, InteractionType>;
+  /** Records what the cold-email dialog just confirmed, so the card's status
+   *  chip stops showing the pre-contact value for the rest of the session. */
+  noteContactConfirmed: (oppId: string, type: InteractionType) => void;
   /** True once getFavorites() has primed the shared owner primitive for the
    *  CURRENT identity generation — see identity-owner.ts. A click before
    *  this is true would capture the unprimed {uid:null, epoch:0} sentinel,
@@ -455,9 +458,22 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
     void performTrackOp(oppId, intent);
   }, [performTrackOp]);
 
+  // The cold-email dialog writes the contact row itself; this only stops the
+  // list contradicting it. Nothing else re-reads the map after a modal
+  // confirm, so the chip kept its pre-contact value for the rest of the
+  // session. Same shape as a status write's optimistic apply, minus the
+  // rollback: the row is already persisted.
+  const noteContactConfirmed = useCallback((oppId: string, type: InteractionType) => {
+    const next = new Map(interactionsRef.current);
+    next.set(oppId, type);
+    interactionsRef.current = next;
+    setInteractions(next);
+  }, []);
+
   return {
     favs,
     interactions,
+    noteContactConfirmed,
     ownerReady,
     identityGeneration,
     ownerScopeKey,

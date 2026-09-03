@@ -1219,3 +1219,33 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
     expect(outcome).toEqual({ status: 'abandoned' });
   });
 });
+
+describe('useOpportunityDetail — a confirmed contact reaches the page', () => {
+  it('adopts the row the cold-email dialog wrote', async () => {
+    // The dialog writes the contact row and owns that write. This page's own
+    // read runs on mount and on a real identity change only, and closing a
+    // modal is neither — so before this, TrackerPanel kept saying "Pick a
+    // status above first" and kept the notes box disabled for a contact the
+    // product had just recorded.
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interaction).toBeUndefined());
+
+    act(() => {
+      result.current.noteContactConfirmed({
+        type: 'contacted',
+        last_contacted_at: '2026-09-03T12:00:00.000Z',
+      } as never);
+    });
+
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    expect(result.current.interactionDetail).toMatchObject({ type: 'contacted' });
+  });
+
+  it('ignores a confirmation that carried no row', async () => {
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interaction).toBeUndefined());
+
+    act(() => result.current.noteContactConfirmed(null));
+    expect(result.current.interaction).toBeUndefined();
+  });
+});
