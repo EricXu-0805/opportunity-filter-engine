@@ -716,6 +716,15 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     keywords_method = inferred_method(canonical_record, "keywords")
     if keywords_method and projected.get("keywords"):
         projected["keywords_attribution"] = "inferred"
+    # Same rule for required skills, which have it worse: 2,767 of the 6,349
+    # records carrying a list — 43.6% — were written by the LLM tagger from
+    # page prose that names none, and the detail page printed them under
+    # "REQUIRED SKILLS". A wet-lab biology REU "required" Python and MATLAB
+    # (#859 stopped the matcher turning them into a shortfall; this stops the
+    # page presenting them as the program's terms).
+    skills_method = inferred_method(canonical_record, "eligibility.skills_required")
+    if skills_method and (projected.get("eligibility") or {}).get("skills_required"):
+        projected["skills_attribution"] = "inferred"
 
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):

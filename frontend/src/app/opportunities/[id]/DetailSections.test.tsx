@@ -280,3 +280,35 @@ describe('KeywordsSection provenance', () => {
     expect(screen.getByText(kw[0])).toBeInTheDocument();
   });
 });
+
+describe('EligibilitySection skills provenance', () => {
+  // A tester walking production as a JHU biology sophomore read "REQUIRED
+  // SKILLS / Python / MATLAB" on a wet-lab summer program whose own page
+  // lists only timing and a deadline. 2,767 records carry a list the LLM
+  // tagger wrote; #859 stopped the matcher calling it a shortfall, and this
+  // stops the page calling it the program's terms.
+  const elig = {
+    international_friendly: 'unknown', preferred_year: [], majors: [],
+    skills_required: ['Python', 'MATLAB'], citizenship_required: false,
+  } as unknown as Opportunity['eligibility'];
+
+  it('calls a tagger-written list "skills mentioned" and says where it came from', () => {
+    render(
+      <EligibilitySection
+        opp={opp({}, { source_type: 'summer_program', eligibility: elig, skills_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.fields.skillsMentioned')).toBeInTheDocument();
+    expect(screen.getByTestId('skills-inferred-note')).toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.skills')).not.toBeInTheDocument();
+  });
+
+  it('keeps "required skills" with no note when the program stated them', () => {
+    render(
+      <EligibilitySection opp={opp({}, { source_type: 'summer_program', eligibility: elig })} t={tFn} />,
+    );
+    expect(screen.getByText('detail.fields.skills')).toBeInTheDocument();
+    expect(screen.queryByTestId('skills-inferred-note')).not.toBeInTheDocument();
+  });
+});

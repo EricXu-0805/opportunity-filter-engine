@@ -642,7 +642,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {isCurrentListing && opp.eligibility?.skills_required?.length > 0 && (
               <div className="pt-1">
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2">
-                  {t('favorites.requiredSkills')}
+                  {t(opp.skills_attribution === 'inferred' ? 'favorites.skillsMentioned' : 'favorites.requiredSkills')}
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
                   {opp.eligibility?.skills_required?.map((skill) => (

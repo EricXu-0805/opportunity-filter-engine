@@ -1280,3 +1280,12 @@ describe('the type and source badges say what they are', () => {
     expect(screen.getByText('New School Labs')).toBeInTheDocument();
   });
 });
+
+describe('the skills heading says whether the program asked for them', () => {
+  it('reads "skills mentioned" for a tagger-written list and "required skills" for a stated one', () => {
+    render(<MatchCard match={makeMatch({ skills_attribution: 'inferred' })} onDraftEmail={() => {}} />);
+    fireEvent.click(screen.getByText('card.showDetails'));
+    expect(screen.getByText('favorites.skillsMentioned')).toBeInTheDocument();
+    expect(screen.queryByText('favorites.requiredSkills')).toBeNull();
+  });
+});
