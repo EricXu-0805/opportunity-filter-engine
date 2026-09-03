@@ -2,6 +2,7 @@
 
 import { UserCog } from 'lucide-react';
 import type { ProfileData } from '@/lib/types';
+import { profileChecks } from '@/app/home/home-utils';
 
 type Replier = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -11,31 +12,16 @@ interface Props {
   t: Replier;
 }
 
-// The signals the matcher leans on THAT THE STUDENT CAN ACTUALLY SUPPLY. A
-// thin profile (most of these empty) yields a large reach bucket that reads as
-// "no good matches" when it really means "tell us more about you" — this
-// non-blocking hint makes that legible and links straight to the profile form.
-//
-// Coursework was in this list and is not a field: nothing writes
-// profile.coursework except résumé PDF extraction (use-profile-form.ts), and
-// the profile form has no coursework control — the `courseworkLabel` and
-// `courseworkHint` strings sit in both dictionaries with no call site, which
-// is what an input that was designed and never built leaves behind. So a
-// student with no résumé was told "add coursework, résumé", sent to a page
-// where only one of the two is possible, and pinned below full forever. The
-// résumé item already covers the only way coursework can arrive.
-const FIELDS = ['interests', 'skills', 'resume'] as const;
-
+// One list, shared with the home page's strength meter (see profileChecks):
+// the two surfaces used to keep their own, and a tester walking production
+// read "Profile strength 4/5" on one page and "Profile 2/4 complete" on the
+// next for the same profile in the same session.
 export function ProfileCompletenessHint({ profile, onEdit, t }: Props) {
-  const filled: Record<(typeof FIELDS)[number], boolean> = {
-    interests: !!profile.research_interests?.trim(),
-    skills: (profile.skills?.length ?? 0) > 0,
-    resume: !!profile.resume_text?.trim(),
-  };
-  const missing = FIELDS.filter((f) => !filled[f]);
+  const checks = profileChecks(profile);
+  const missing = checks.filter((c) => !c.done).map((c) => c.key);
   if (missing.length === 0) return null;
 
-  const complete = FIELDS.length - missing.length;
+  const complete = checks.length - missing.length;
   const missingLabels = missing.map((f) => t(`results.completeness.fields.${f}`)).join(', ');
 
   return (
@@ -44,7 +30,7 @@ export function ProfileCompletenessHint({ profile, onEdit, t }: Props) {
       <span className="leading-snug">
         {t('results.completeness.summary', {
           complete,
-          total: FIELDS.length,
+          total: checks.length,
           missing: missingLabels,
         })}
       </span>

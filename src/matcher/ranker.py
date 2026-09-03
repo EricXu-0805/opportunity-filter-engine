@@ -1426,13 +1426,21 @@ def score_upside(
                 reasons_fit.append(
                     f"Your interest in {interest_phrase} closely matches {lab_label}'s work on {work}"
                     if interest_phrase
-                    else f"Your research interests align closely with {lab_label}'s work on {work}"
+                    # No literal overlap: the similarity is between the student's
+                    # prose and the lab's description, and the words in `work`
+                    # are the lab's, not the student's. A tester whose profile
+                    # said "machine learning, artificial intelligence" was told
+                    # their interests "align closely with Prof. Tong's work on
+                    # security" — the one area they had not mentioned. State
+                    # what the lab works on; do not put the alignment in the
+                    # student's mouth.
+                    else f"{lab_label} also works on {work}"
                 )
             elif display_kw:
                 reasons_fit.append(
                     f"Your interest in {interest_phrase} closely matches their work on {work}"
                     if interest_phrase
-                    else f"Your research interests align closely with their work on {work}"
+                    else f"They also work on {work}"
                 )
             elif lab_label:
                 reasons_fit.append(

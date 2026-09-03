@@ -791,7 +791,7 @@ function poisonedPage(id: string, overrides: Partial<MatchesResponse> = {}) {
   const page = response(id, overrides);
   Object.assign(page.results[0].opportunity, {
     title: 'CACHED Vision Lab RA',
-    opportunity_type: 'POISON_TYPE',
+    opportunity_type: 'Poisontype',
     paid: 'yes',
     deadline: '2099-12-31',
     deadline_is_estimate: false,
@@ -813,7 +813,7 @@ function poisonedPage(id: string, overrides: Partial<MatchesResponse> = {}) {
 
 const OFFER_ON_SCREEN = [
   'card.applyNow', 'card.draftEmail', 'card.tailorResume',
-  'POISON_TYPE', 'badges.paid', 'badges.intlOk', '2099-12-31',
+  'Poisontype', 'badges.paid', 'badges.intlOk', '2099-12-31',
   'POISON $32/hr', 'CACHED Vision Lab RA',
 ];
 
@@ -911,7 +911,7 @@ describe('what a warm cache can put in front of a student', () => {
     await waitFor(() => expect(screen.getByTestId('list')).toBeInTheDocument());
     expect(screen.getByText('LIVE Vision Lab RA')).toBeInTheDocument();
     expect(screen.getByText('card.applyNow')).toBeInTheDocument();
-    expect(screen.getByText('POISON_TYPE')).toBeInTheDocument();
+    expect(screen.getByText('Poisontype')).toBeInTheDocument();
     // The cached row's title never appeared at any point.
     expect(screen.queryByText('CACHED Vision Lab RA')).toBeNull();
   });

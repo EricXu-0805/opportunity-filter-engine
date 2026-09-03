@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ProfileCompletenessHint } from './ProfileCompletenessHint';
+import { ProfileStrength } from '@/app/home/ProfileStrength';
 import type { ProfileData } from '@/lib/types';
 
 const t = (k: string, vars?: Record<string, string | number>) =>
@@ -15,8 +16,8 @@ function makeProfile(o: Partial<ProfileData> = {}): ProfileData {
     is_international: false,
     research_interests: '',
     skills: [],
-    coursework: [],
     resume_text: '',
+    seeking_types: [],
     ...o,
   } as ProfileData;
 }
@@ -27,8 +28,9 @@ describe('ProfileCompletenessHint', () => {
       <ProfileCompletenessHint
         profile={makeProfile({
           research_interests: 'ML',
-          skills: [{ name: 'Python', level: 'expert' }],
+          skills: [{ name: 'Python', level: 'expert' }, { name: 'R', level: 'beginner' }],
           resume_text: 'resume text',
+          seeking_types: ['research'],
         })}
         onEdit={() => {}}
         t={t}
@@ -41,13 +43,13 @@ describe('ProfileCompletenessHint', () => {
     const onEdit = vi.fn();
     render(
       <ProfileCompletenessHint
-        profile={makeProfile({ research_interests: 'ML' })} // only 1 of 3 filled
+        profile={makeProfile({ research_interests: 'ML' })} // academic + interests: 2 of 5
         onEdit={onEdit}
         t={t}
       />,
     );
     expect(
-      screen.getByText(/results\.completeness\.summary\{complete=1,total=3/),
+      screen.getByText(/results\.completeness\.summary\{complete=2,total=5/),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByText('results.completeness.edit'));
     expect(onEdit).toHaveBeenCalledTimes(1);
@@ -63,8 +65,9 @@ describe('ProfileCompletenessHint', () => {
       <ProfileCompletenessHint
         profile={makeProfile({
           research_interests: 'ML',
-          skills: [{ name: 'Python', level: 'expert' }],
+          skills: [{ name: 'Python', level: 'expert' }, { name: 'R', level: 'beginner' }],
           resume_text: 'resume text',
+          seeking_types: ['research'],
           coursework: [],
         })}
         onEdit={() => {}}
@@ -72,5 +75,27 @@ describe('ProfileCompletenessHint', () => {
       />,
     );
     expect(screen.queryByText(/coursework/)).toBeNull();
+  });
+});
+
+describe('the two profile meters cannot disagree', () => {
+  it('reads the same list the home page strength meter reads', () => {
+    // One profile, both surfaces: what one calls 3/5 the other must too, and
+    // the items it names must be the ones the other is missing.
+    const profile = makeProfile({
+      research_interests: 'ML',
+      skills: [{ name: 'Python', level: 'expert' }],   // one skill: not yet 2+
+    });
+    render(<ProfileCompletenessHint profile={profile} onEdit={() => {}} t={t} />);
+    expect(screen.getByText(/results\.completeness\.summary\{complete=2,total=5,missing=/)).toBeInTheDocument();
+    const summary = screen.getByText(/results\.completeness\.summary/).textContent ?? '';
+    for (const key of ['skills', 'resume', 'type']) {
+      expect(summary).toContain(`results.completeness.fields.${key}`);
+    }
+    expect(summary).not.toContain('results.completeness.fields.interests');
+    expect(summary).not.toContain('results.completeness.fields.academic');
+
+    const { container } = render(<ProfileStrength profile={profile} t={t} />);
+    expect(container.textContent).toContain('2/5');
   });
 });
