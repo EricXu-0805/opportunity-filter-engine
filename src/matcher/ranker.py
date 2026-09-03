@@ -1667,7 +1667,12 @@ def _extract_research_focus_from_desc(desc: str) -> str:
             continue
         if any(n in s_lower for n in noise_content):
             continue
-        return s[:100]
+        if len(s) <= 100:
+            return s
+        # Trim to the last space inside the budget: a hard slice handed the
+        # card half a word ("...at Northwestern Uni").
+        cut = s[:100].rsplit(" ", 1)[0].rstrip(" ,;:-")
+        return cut or s[:100]
     return ""
 
 
@@ -1686,7 +1691,15 @@ def _summarize_research(opportunity: dict) -> str:
     pi_label = f"Prof. {pi}" if pi and is_professor_rank(stated_rank) else pi
     lab = faculty_safe_lab_or_program(opportunity)
     dept = opportunity.get("department", "")
-    desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
+    # NOT for a faculty record: neutralize_unverified_faculty_claims overwrites
+    # both description fields on every one of them with prose this product
+    # generates, so mining it quotes our own filler back to the student under
+    # the professor's name. 67,083 records led "Why it fits" with exactly that.
+    desc = (
+        ""
+        if faculty_contact_claims_unverified(opportunity)
+        else (opportunity.get("description_raw") or opportunity.get("description_clean") or "")
+    )
 
     # Areas we matched from an OpenAlex author record (surname + institution)
     # are evidence of a topic, not a statement by this person about their own
