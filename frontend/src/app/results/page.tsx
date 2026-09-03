@@ -239,6 +239,7 @@ function ResultsContent() {
   const {
     favs,
     interactions,
+    noteContactConfirmed,
     ownerReady,
     identityGeneration,
     ownerScopeKey,
@@ -1037,6 +1038,9 @@ function ResultsContent() {
           reminderTarget={data?.results?.find(
             (m) => m.opportunity.id === emailModal.opportunityId,
           )?.opportunity}
+          onContactConfirmed={(record) => {
+            if (record?.type) noteContactConfirmed(emailModal.opportunityId, record.type);
+          }}
         />
       )}
 
