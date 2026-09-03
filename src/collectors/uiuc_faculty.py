@@ -1331,8 +1331,21 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
             # Same asymmetry: proof that described the OLD address must not
             # follow the new one, but a professor changing address on a row
             # nobody ever stamped is not a rejection of anything.
+            #
+            # A committed row with NO address is the third case, and neither
+            # answer fits it: a verdict needs an address to have been about.
+            # ``clear_contact_claim`` nulls the address in the same breath as
+            # it stamps, so the tombstone on an address-less row describes one
+            # that is already gone — and where the row never held an address
+            # at all, the stamp is residue from the 2026-08-17 mass-tombstoning
+            # rather than a review. Either way, restamping it onto a freshly
+            # harvested address applies a verdict about one address to a
+            # different one, which is the 104,528-address failure mode arriving
+            # one weekly refresh at a time.
             clear_contact_evidence(
-                incoming, tombstone=carries_contact_evidence(existing),
+                incoming,
+                tombstone=bool((existing.get("contact_email") or "").strip())
+                and carries_contact_evidence(existing),
             )
 
 
