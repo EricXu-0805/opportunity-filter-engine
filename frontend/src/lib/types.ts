@@ -179,6 +179,10 @@ export interface OpportunityMetadata {
   // STATED — every record that never went through enrichment carries nothing
   // here, so a render site must check for 'inferred', never for its absence.
   keywords_attribution?: 'inferred' | null;
+  // Same contract for eligibility.skills_required: 'inferred' means the LLM
+  // tagger wrote the list from page prose that names no skills. Absent means
+  // stated.
+  skills_attribution?: 'inferred' | null;
   // Scraped deadline prose (e.g. "Rolling admissions"). The ONLY accepted
   // evidence of genuinely rolling admissions — `is_rolling` alone is a blanket
   // collector default and must never be presented as a scraped fact.
@@ -261,6 +265,10 @@ export interface Opportunity {
   // STATED — every record that never went through enrichment carries nothing
   // here, so a render site must check for 'inferred', never for its absence.
   keywords_attribution?: 'inferred' | null;
+  // Same contract for eligibility.skills_required: 'inferred' means the LLM
+  // tagger wrote the list from page prose that names no skills. Absent means
+  // stated.
+  skills_attribution?: 'inferred' | null;
   // Match-card projection of metadata.faculty_title (scraped rank). Absent or
   // empty = unknown rank; gates "Professor" framing on card CTAs.
   faculty_title?: string;

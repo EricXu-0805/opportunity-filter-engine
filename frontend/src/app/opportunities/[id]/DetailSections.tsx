@@ -46,11 +46,17 @@ export function DetailRow({
   label,
   value,
   warn,
+  note,
+  noteTestId,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   warn?: boolean;
+  /** Provenance under the value — where this came from, when it was not the
+   *  record's own statement. */
+  note?: string;
+  noteTestId?: string;
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -60,6 +66,9 @@ export function DetailRow({
       <div className="min-w-0">
         <dt className="text-[11px] text-gray-400 uppercase tracking-wider mb-0.5">{label}</dt>
         <dd className={`text-[14px] break-words ${warn ? 'text-amber-700' : 'text-gray-800'}`}>{value}</dd>
+        {note && (
+          <dd className="mt-1 text-[11px] text-gray-400" data-testid={noteTestId}>{note}</dd>
+        )}
       </div>
     </div>
   );
@@ -151,10 +160,16 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           />
         )}
         {!isFaculty && e.skills_required?.length > 0 && (
+          // Checked for 'inferred', never for absence — same rule as
+          // KeywordsSection. 2,767 records carry a list the LLM tagger wrote
+          // from prose that names no skills; "REQUIRED SKILLS / Python /
+          // MATLAB" on a wet-lab biology REU was one of them.
           <DetailRow
             icon={<Briefcase />}
-            label={t('detail.fields.skills')}
+            label={t(opp.skills_attribution === 'inferred' ? 'detail.fields.skillsMentioned' : 'detail.fields.skills')}
             value={e.skills_required.join(', ')}
+            note={opp.skills_attribution === 'inferred' ? t('detail.skillsInferred') : undefined}
+            noteTestId="skills-inferred-note"
           />
         )}
         <DetailRow

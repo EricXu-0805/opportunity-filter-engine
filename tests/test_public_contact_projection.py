@@ -877,3 +877,43 @@ class TestKeywordProvenanceReachesTheClient:
                 "keywords": record["keywords"]}
         out = project_public_opportunity_payload(card, record)
         assert out["keywords_attribution"] == "inferred"
+
+
+class TestInventedSkillsAreLabelledOnTheWire:
+    """The detail page printed "REQUIRED SKILLS / Python / MATLAB" for a
+    wet-lab biology REU whose own page lists only timing and a deadline.
+    The stamp existed in the data (#826); nothing put it on the wire."""
+
+    @staticmethod
+    def _program(inferred: bool) -> dict:
+        record = {
+            "id": "sro-3c378261", "title": "Cellular and Molecular Biology of Stress Summer Research Program",
+            "source_type": "summer_program", "organization": "University of Wisconsin-Madison",
+            "eligibility": {"skills_required": ["Python", "MATLAB"]},
+            "metadata": {},
+        }
+        if inferred:
+            record["metadata"] = {"inferred_fields": {"eligibility.skills_required": "rule:llm_tagger"}}
+        return record
+
+    def test_a_tagger_written_requirement_is_labelled(self):
+        record = self._program(inferred=True)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["skills_attribution"] == "inferred"
+
+    def test_a_stated_requirement_carries_no_label(self):
+        record = self._program(inferred=False)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "skills_attribution" not in out
+
+    def test_an_empty_list_is_not_labelled(self):
+        record = self._program(inferred=True)
+        record["eligibility"]["skills_required"] = []
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "skills_attribution" not in out
+
+    def test_the_card_is_labelled_from_the_canonical_record(self):
+        record = self._program(inferred=True)
+        card = {"id": record["id"], "title": record["title"], "eligibility": dict(record["eligibility"])}
+        out = project_public_opportunity_payload(card, record)
+        assert out["skills_attribution"] == "inferred"
