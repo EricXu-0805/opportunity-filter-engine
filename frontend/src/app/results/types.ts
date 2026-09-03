@@ -213,6 +213,22 @@ const TYPE_LABEL_KEY: Record<string, string> = {
   fellowship: 'home.form.seekingFellowship',
 };
 
+// The empty page is the one place the product speaks about the student's WHOLE
+// match set ("None of your matches have a set deadline"), and it was deciding
+// that from `data.results`. But it is only ever read when `filtered_total === 0`,
+// and both come from the same response — so the array was empty by
+// construction and `[].some(...)` was always false. The claim printed itself.
+//
+// `deadline_facets` is counted over the visible universe BEFORE the view
+// filters, so it survives them and can actually establish the claim.
+export function noMatchCarriesADeadline(
+  deadline: string,
+  facets: Record<string, number> | undefined,
+): boolean {
+  if (!deadline || deadline === 'rolling') return false;
+  return !Object.values(facets ?? {}).some((count) => count > 0);
+}
+
 export function typeLabel(type: string, t: TFunc): string {
   const key = TYPE_LABEL_KEY[type];
   if (key) return t(key);
