@@ -155,3 +155,52 @@ def coverage_payload(opportunities: Iterable[dict]) -> dict[str, object]:
 def total_counts(coverage: Mapping[str, SchoolCoverage]) -> dict[str, int]:
     """``{slug: total_count}`` — for tests and reporting, never for the wire."""
     return {slug: entry.total_count for slug, entry in coverage.items()}
+
+
+# Display flooring, mirrored in frontend/src/lib/school-coverage.ts — change
+# both or neither, the same rule this module already follows for record_kind.
+# The chip reads "N+", so the number is rounded DOWN and never overstates.
+#
+# It lives here because the coverage contract's consistency guarantee is stated
+# at this granularity: the committed fallback and a fresh computation must
+# render the SAME chip. Exact equality is a stronger claim than the product
+# makes and than a live corpus can keep — the shards move every refresh, and a
+# retired listing among 2,799 is invisible behind this floor.
+def display_count(count: int) -> int:
+    """What the switcher chip actually shows for ``count``."""
+    if count >= 1000:
+        return count // 100 * 100
+    if count >= 100:
+        return count // 10 * 10
+    return count
+
+
+def national_count(opportunities: Iterable[dict]) -> int:
+    """Actionable records that belong to no campus — the open pool every school
+    also sees.
+
+    Counted through the same filter stack as the per-school numbers so the
+    switcher footer ("every school also sees N national opportunities") and the
+    cards describe one universe. Never folded into a school's total: a shared
+    pool added to each card would overstate every card and, summed across the
+    grid, count itself once per school.
+    """
+    records = actionable_opportunities(release_visible_opportunities(opportunities))
+    return sum(
+        1
+        for record in records
+        if not isinstance(record.get("school"), str) or not record["school"].strip()
+        if (record.get("metadata") or {}).get("is_active") is not False
+    )
+
+
+def school_stats_payload(opportunities: Iterable[dict]) -> dict[str, object]:
+    """The committed static fallback's full contents.
+
+    Lives beside the wire payload rather than in the generator script so the
+    file the frontend ships and the body the API serves are assembled by one
+    module — and so tests can rebuild it without shelling out.
+    """
+    payload = coverage_payload(opportunities)
+    payload["national_count"] = national_count(opportunities)
+    return payload

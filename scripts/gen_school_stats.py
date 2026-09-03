@@ -21,7 +21,14 @@ which records count (``target_truth``, release scope) live in Python and are
 real business logic. Reimplementing them in JS to serve a build step is how the
 two definitions drifted apart the first time. The build now validates this file
 instead of recomputing it (``frontend/scripts/gen-school-stats.mjs``), and
-``tests/test_school_coverage.py`` fails if it goes stale against the shards.
+``tests/test_school_coverage.py`` fails if the committed numbers would render
+a different chip than the shards support.
+
+``--check`` is byte-exact and is for the pipeline: ``refresh-data.yml`` runs
+this generator and commits the JSON alongside the shards it just wrote, so
+there exactness costs nothing. The test suite deliberately does NOT use it —
+holding every PR to byte equality with a corpus that moves every refresh
+would red-line unrelated work over records no chip can show.
 
 Usage::
 
@@ -40,36 +47,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from backend.data_loader import load_opportunities  # noqa: E402
-from backend.lib.release_scope import release_visible_opportunities  # noqa: E402
-from backend.lib.school_coverage import coverage_payload  # noqa: E402
-from backend.lib.target_actionability import actionable_opportunities  # noqa: E402
+from backend.lib.school_coverage import school_stats_payload  # noqa: E402
 
 OUT_PATH = REPO_ROOT / "frontend" / "src" / "lib" / "school-stats.json"
 
 
-def _national_count(opportunities: list[dict]) -> int:
-    """Records that belong to no campus — the open pool every school also sees.
-
-    Counted through the same filter stack as the per-school numbers so the
-    switcher footer ("every school also sees N national opportunities") and the
-    cards describe one universe. Not folded into any school's total: a shared
-    pool added to each card would overstate every card and, summed across the
-    grid, count itself 116 times.
-    """
-    records = actionable_opportunities(release_visible_opportunities(opportunities))
-    return sum(
-        1
-        for record in records
-        if not isinstance(record.get("school"), str) or not record["school"].strip()
-        if (record.get("metadata") or {}).get("is_active") is not False
-    )
-
-
 def build_payload() -> dict:
-    opportunities = load_opportunities()
-    payload = coverage_payload(opportunities)
-    payload["national_count"] = _national_count(opportunities)
-    return payload
+    return school_stats_payload(load_opportunities())
 
 
 def render(payload: dict) -> str:

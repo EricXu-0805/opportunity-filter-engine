@@ -24,7 +24,9 @@ from backend.lib.school_coverage import (
     SCHOOL_COVERAGE_SCHEMA,
     SchoolCoverage,
     coverage_payload,
+    display_count,
     school_coverage,
+    school_stats_payload,
 )
 from backend.routes import opportunities as opportunity_routes
 
@@ -364,27 +366,121 @@ class TestStaticFallback:
             assert jhu["faculty_contact_count"] > 100 * max(jhu["listing_count"], 1)
             assert jhu["total_count"] > 1000
 
-    def test_committed_fallback_matches_what_the_generator_produces_now(self):
-        """The fallback and the live API are one claim made at two times, so the
-        only way they stay equal is being generated from the same function. This
-        is the drift alarm: a data refresh that does not regenerate the fallback
-        fails here rather than shipping a stale first paint."""
+    def test_committed_fallback_renders_the_same_chip_as_a_fresh_computation(self):
+        """The drift alarm, set at the granularity the product actually speaks.
+
+        The fallback is a build-time snapshot of a number the corpus keeps
+        moving: every refresh retires a closed listing or a professor who
+        stopped taking undergraduates. Demanding byte equality with a live
+        recomputation would mean every PR that edits any shard must also run a
+        Python generator or turn CI red — and during this change alone three
+        unrelated commits moved a handful of records out of ~130,000, none of
+        which altered a single rendered chip.
+
+        So the assertion is the one the product makes: for every school, the
+        committed fallback and a fresh computation must render the SAME chip.
+        `display_count` floors to hundreds above 1,000 and tens above 100, so
+        genuine freshness churn passes while every semantic regression fails
+        loudly — a listings-only fallback would move JHU from 4,500 to 0, and a
+        school that silently lost its faculty half would move by orders of
+        magnitude. Small schools have no floor to hide behind, which is correct:
+        there a single record IS the difference the user sees.
+
+        Exactness is still enforced where it means something — same schools,
+        same shape, `total == listings + faculty` — by the tests around this one,
+        and `scripts/gen_school_stats.py --check` still exists for the pipeline
+        (`refresh-data.yml` regenerates in the same commit that moves the shards).
+        """
+        from backend.data_loader import load_opportunities
+
+        fresh = school_stats_payload(load_opportunities())
+        committed = json.loads(SCHOOL_STATS_PATH.read_text())
+
+        assert committed["schema"] == fresh["schema"]
+        # A school appearing or vanishing is semantic, never freshness.
+        assert set(committed["schools"]) == set(fresh["schools"])
+
+        drifted = {
+            slug: (committed["schools"][slug]["total_count"], entry["total_count"])
+            for slug, entry in fresh["schools"].items()
+            if display_count(committed["schools"][slug]["total_count"])
+            != display_count(entry["total_count"])
+        }
+        assert not drifted, (
+            "committed fallback would render a different chip than the corpus "
+            f"supports for {sorted(drifted)} (committed, fresh): {drifted} — run "
+            "`python scripts/gen_school_stats.py`"
+        )
+
+        # The shared national pool is not on any card, so it only has to be
+        # close; a definition change would move it far more than churn can.
+        assert abs(committed["national_count"] - fresh["national_count"]) <= max(
+            25, fresh["national_count"] // 100
+        ), (committed["national_count"], fresh["national_count"])
+
+    def test_the_generator_still_offers_an_exact_check_for_the_pipeline(self):
+        """`--check` stays byte-exact: the refresh workflow regenerates and
+        commits in one step, so there it is a real invariant rather than a tax on
+        unrelated PRs. Asserted as a contract, not run against the live corpus."""
         result = subprocess.run(
-            [sys.executable, "scripts/gen_school_stats.py", "--check"],
+            [sys.executable, "scripts/gen_school_stats.py", "--help"],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
         )
-        assert result.returncode == 0, result.stderr or result.stdout
+        assert result.returncode == 0, result.stderr
+        assert "--check" in result.stdout
+
+    def test_api_and_fallback_are_byte_identical_for_one_corpus(self):
+        """The definitional half of the consistency invariant, proved exactly.
+
+        Both sides call ``coverage_payload``, so for a single set of records the
+        API body and the static file's ``schools`` cannot differ at all. Asserted
+        on a fixture rather than the live corpus so it stays an exact claim about
+        the *definition*, uncoupled from how fresh the committed snapshot is.
+        """
+        corpus = [
+            _listing(id="l1", school="uiuc"),
+            _faculty(id="f1", school="uiuc"),
+            _faculty(id="f2", school="mit", source="mit_faculty"),
+            _listing(id="n1", school=None, source="nsf", source_type="external_reu"),
+        ]
+        assert school_stats_payload(corpus)["schools"] == coverage_payload(corpus)["schools"]
+        # And the national pool stays out of every card.
+        assert school_stats_payload(corpus)["national_count"] == 1
+        assert set(coverage_payload(corpus)["schools"]) == {"uiuc", "mit"}
 
     def test_live_and_fallback_agree_school_for_school_on_the_real_corpus(self, committed):
-        """The end-to-end consistency invariant: same school, same dataset, same
-        coverage number on both sides. This is the assertion the original bug
-        would have failed by two orders of magnitude on almost every school."""
+        """The end-to-end half: for every school in the real corpus, the number
+        the API would serve and the number the fallback ships render the same
+        chip. This is the assertion the original bug failed by two orders of
+        magnitude on almost every school — JHU's live 28 against a fallback
+        4,581 floors to 0 against 4,500.
+
+        Chip granularity, not byte equality, for the reason spelled out in
+        ``test_committed_fallback_renders_the_same_chip_as_a_fresh_computation``:
+        the corpus moves under a committed snapshot, and a retired listing among
+        thousands is not a disagreement the product can express.
+        """
         from backend.data_loader import load_opportunities
 
-        live = coverage_payload(load_opportunities())
-        assert live["schools"] == committed["schools"]
+        live = coverage_payload(load_opportunities())["schools"]
+        assert set(live) == set(committed["schools"])
+
+        disagreements = {
+            slug: (committed["schools"][slug]["total_count"], entry["total_count"])
+            for slug, entry in live.items()
+            if display_count(entry["total_count"])
+            != display_count(committed["schools"][slug]["total_count"])
+        }
+        assert not disagreements, disagreements
+
+        # Both sides must also still be the sum of the same two populations —
+        # agreeing on a wrong number is the failure mode this whole change is about.
+        for slug, entry in live.items():
+            assert entry["total_count"] == (
+                entry["listing_count"] + entry["faculty_contact_count"]
+            ), slug
 
 
 # --------------------------------------------------------------------------

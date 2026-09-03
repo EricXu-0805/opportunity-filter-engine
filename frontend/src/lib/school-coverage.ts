@@ -117,6 +117,11 @@ export function resolveCoverage(
 /**
  * Round down for the "N+" chip so the label never overstates.
  *
+ * Mirrors `display_count` in backend/lib/school_coverage.py — change both or
+ * neither. The backend needs the same rule because the static fallback's
+ * freshness guarantee is stated at this granularity: the committed file and a
+ * fresh computation must render the same chip.
+ *
  * Applied at the render site rather than baked into either data source, so the
  * live number and the static number pass through exactly one identical
  * transform. Flooring only one of them would reintroduce a visible hydration
