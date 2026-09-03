@@ -60,6 +60,9 @@ export interface UseOpportunityDetailResult {
    *  switch. See identity-owner.ts's isOwnerTokenValid contract. */
   ownerReady: boolean;
   interactionDetail: InteractionRecord | null;
+  /** Records what the cold-email dialog just confirmed, so this page stops
+   *  telling the student they have not tracked anything. */
+  noteContactConfirmed: (record: InteractionRecord | null) => void;
   interaction: InteractionType | undefined;
   /** True until the interaction read for the CURRENT generation has
    *  settled (success or failure). A read failure must never be
@@ -265,6 +268,18 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
       // is what gets another chance to prime it.
     });
   }, [opp.id]);
+
+  // The cold-email dialog writes the contact row itself and re-checks the
+  // token owner after its await, so this only has to stop the page
+  // contradicting it: fetchInteraction runs on mount and on a real identity
+  // change, and closing a modal is neither. Without it the panel says "Pick a
+  // status above first" and disables the notes box for a contact just
+  // recorded. No await here, so there is no generation window to guard: the
+  // dialog's own post-await owner check is what decides whether this fires.
+  const noteContactConfirmed = useCallback((record: InteractionRecord | null) => {
+    if (!record) return;
+    setInteractionDetail((d) => ({ ...(d ?? {}), ...record }));
+  }, []);
 
   // A read failure here must NEVER be represented as "no interaction" —
   // interactionDetail stays at whatever hydrate()'s reset left it, and
@@ -678,6 +693,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     ownerReady,
     interactionDetail,
     interaction,
+    noteContactConfirmed,
     interactionLoading,
     interactionError,
     retryInteractionHydration,

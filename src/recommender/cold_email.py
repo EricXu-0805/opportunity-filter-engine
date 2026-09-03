@@ -395,7 +395,7 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
     """
     parts = [
         str(keyword).strip()
-        for keyword in (opportunity.get("keywords") or [])[:20]
+        for keyword in _stated_keywords(opportunity)[:20]
         if str(keyword).strip()
     ]
     metadata = opportunity.get("metadata") or {}
@@ -533,7 +533,13 @@ def has_source_backed_target_evidence(
     separate scoring aid and may keep length thresholds; it must never decide
     whether evidence exists.
     """
-    signals: list[object] = list((opportunity.get("keywords") or [])[:20])
+    # _stated_keywords, not the raw list: this gate decides whether the
+    # provider runs, which body prompt it gets, whether the ungrounded-claim
+    # backstop is armed, and what the UI says about grounding. Reading the raw
+    # list made it disagree with the two helpers that already drop guessed
+    # topics — it reported a specific signal while every field the professor
+    # brief renders came back empty, which is an order to fabricate.
+    signals: list[object] = list(_stated_keywords(opportunity)[:20])
     metadata = opportunity.get("metadata") or {}
     if isinstance(metadata, dict):
         signals.append(metadata.get("research_areas_raw"))
@@ -571,6 +577,16 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
         # Multi-word skills ("machine learning") are specific enough to match as a
         # substring; single-token skills must match a WHOLE token so "R"/"C"/"AI"
         # don't match inside "Research"/"Algorithms". Exact required entries count.
+        # A one-character skill needs the posting to ask for it. findall is
+        # unanchored, so it pulls 'c' out of "19c", "C-H" and "37 degrees C",
+        # and 'r' out of "R&D" — an English professor's "transatlantic 19c
+        # cultural history" was evidence that a student's C is relevant to her
+        # research. No corpus record declares C or R as required, so gating on
+        # the declared requirements costs nothing and removes every one.
+        if len(sl) == 1:
+            if sl in req_tokens or sl in required:
+                matched.append(s)
+            continue
         if (" " in sl and sl in desc) or sl in desc_tokens or sl in req_tokens or sl in required:
             matched.append(s)
     return matched
@@ -593,7 +609,12 @@ def _common_parts(
     scholar_url = profile.get("scholar_url", "")
 
     is_faculty = faculty_contact_claims_unverified(opportunity)
-    pi_name = opportunity.get("pi_name") or ""
+    # pi_enricher derives a surname from the lab title when none was scraped
+    # and stamps it precisely so this generator can see it was never read off
+    # a page. Cold Spring Harbor Laboratory's program inbox was receiving
+    # "Dear Spring Harbor,". The fallbacks below already handle the empty
+    # case, and for these records that is "Program Coordinator".
+    pi_name = "" if inferred_method(opportunity, "pi_name") else (opportunity.get("pi_name") or "")
     lab = opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
     opp_type = opportunity.get("opportunity_type", "")
