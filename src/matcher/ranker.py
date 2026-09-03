@@ -285,9 +285,45 @@ for _group, _aliases in MAJOR_GROUPS.items():
         _MAJOR_ALIAS_LOOKUP.setdefault(_alias.upper(), _group)
 
 
+# Spellings that mean the same field. The taxonomy writes "Materials Science &
+# Engineering"; 25 school catalogs offer "Materials Science and Engineering"
+# and 433 faculty records carry that spelling, and an exact uppercase lookup
+# missed every one. It matters more than a cosmetic miss, because
+# MAJOR_TOPIC_KEYWORDS and RELATED_MAJORS are BOTH keyed on the result — so an
+# unrecognized major gets no topic steer AND no related-field fallback, which
+# is the one case the fallback exists for. 52.8% of the 5,024 entries the
+# product's own dropdowns offer resolved to nothing.
+_MAJOR_LEAD_IN_RE = re.compile(
+    r"^(?:the\s+)?(?:department|school|division|college)\s+of\s+", re.IGNORECASE
+)
+
+
+def _major_lookup_keys(major_upper: str) -> list[str]:
+    """The spellings of ``major_upper`` worth trying, most literal first."""
+    keys = [major_upper]
+    stripped = _MAJOR_LEAD_IN_RE.sub("", major_upper).strip()
+    for base in ([stripped] if stripped != major_upper else []) + [major_upper]:
+        for swapped in (base.replace(" AND ", " & "), base.replace(" & ", " AND ")):
+            keys.append(swapped)
+            words = swapped.split()
+            # A trailing plural on the LAST word only, in both directions: the
+            # taxonomy says "Animal Sciences" and the catalogs offer "Animal
+            # Science". Never folded mid-phrase, so "Sciences and Engineering"
+            # keeps its first word.
+            if words and len(words[-1]) > 3:
+                last = words[-1]
+                folded = last[:-1] if last.endswith("S") else last + "S"
+                keys.append(" ".join(words[:-1] + [folded]))
+    return keys
+
+
 def _normalize_major(major: str) -> str:
     major_upper = major.upper().strip()
-    return _MAJOR_ALIAS_LOOKUP.get(major_upper, major_upper)
+    for key in _major_lookup_keys(major_upper):
+        group = _MAJOR_ALIAS_LOOKUP.get(key)
+        if group is not None:
+            return group
+    return major_upper
 
 
 _STEM_MAJORS = frozenset({

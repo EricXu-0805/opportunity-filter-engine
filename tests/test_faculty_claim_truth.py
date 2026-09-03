@@ -1141,3 +1141,46 @@ def test_a_real_posting_still_gets_its_sentence_and_never_a_mid_word_cut():
     assert not out.endswith(" ")
     # Whatever it returns ends on a word the source actually contains.
     assert out.split()[-1] in long_sentence.split()
+
+def test_a_major_lookup_that_only_differs_by_an_ampersand_still_resolves():
+    """The taxonomy writes "Materials Science & Engineering"; 25 school
+    catalogs offer "Materials Science and Engineering", and 433 faculty
+    records carry the same spelling. An exact uppercase lookup missed all of
+    them, and both MAJOR_TOPIC_KEYWORDS and RELATED_MAJORS are keyed on the
+    result — so the docstring's promised fallback ("an unmapped major still
+    gets some field signal") could not fire, because the fallback is keyed on
+    the same unmapped string. 52.8% of the 5,024 offered dropdown entries
+    resolved to nothing.
+    """
+    from src.matcher.ranker import _major_match_score, _normalize_major
+
+    assert _normalize_major("Materials Science & Engineering") == "MSE"
+    for spelling in (
+        "Materials Science and Engineering",
+        "materials science and engineering",
+        "Department of Materials Science and Engineering",
+    ):
+        assert _normalize_major(spelling) == "MSE", spelling
+
+    assert _normalize_major("Molecular and Cellular Biology") == _normalize_major(
+        "Molecular & Cellular Biology"
+    )
+    # A trailing plural is the same field.
+    assert _normalize_major("Animal Science") == _normalize_major("Animal Sciences")
+
+    # And the match score follows: the ampersand form already scored 100.
+    assert _major_match_score(
+        ["Materials Science and Engineering"],
+        ["Materials Science & Engineering"],
+        label_only=True,
+    ) == 100.0
+
+
+def test_normalizing_never_collapses_two_different_fields():
+    """The folding must not turn one field into another: an unknown string
+    still comes back as itself, and two distinct groups stay distinct."""
+    from src.matcher.ranker import _normalize_major
+
+    assert _normalize_major("Underwater Basket Weaving") == "UNDERWATER BASKET WEAVING"
+    assert _normalize_major("Physics") != _normalize_major("Philosophy")
+    assert _normalize_major("") == ""
