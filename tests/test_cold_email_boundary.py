@@ -199,3 +199,26 @@ class TestNoOutboundSending:
     def test_no_send_route_exists_for_cold_email(self):
         src = (_REPO / "backend/routes/cold_email.py").read_text()
         assert "/cold-email/send" not in src
+
+
+def test_a_guessed_topic_is_not_anti_fabrication_vocabulary():
+    """`_build_email_corpus` is the belt: a draft naming a term outside it is
+    rejected as fabricated. Feeding it OpenAlex-derived keywords whitelisted
+    the guess, so "your work in microtubule and mitosis dynamics" passed the
+    final gate for a professor whose record got that topic by surname match.
+    Same rule the corpus already applies to unverified works.
+    """
+    from backend.routes.cold_email import _build_email_corpus
+    from src.evidence import stamp_inferred
+
+    base = {
+        "id": "faculty-y", "title": "Prof. A B — Biology", "source_type": "faculty_research",
+        "organization": "Duke", "department": "Department of Biology", "pi_name": "A B",
+        "keywords": ["microtubule and mitosis dynamics"], "metadata": {},
+    }
+    stated = _build_email_corpus({}, dict(base))
+    assert "microtubule" in stated
+
+    guessed = dict(base, metadata={})
+    stamp_inferred(guessed["metadata"], "keywords", "derived:openalex_topics")
+    assert "microtubule" not in _build_email_corpus({}, guessed)
