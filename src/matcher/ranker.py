@@ -1688,7 +1688,18 @@ def _summarize_research(opportunity: dict) -> str:
     dept = opportunity.get("department", "")
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
 
-    specific_kw = _topical_keywords(_extract_specific_keywords(opportunity))
+    # Areas we matched from an OpenAlex author record (surname + institution)
+    # are evidence of a topic, not a statement by this person about their own
+    # work — and this sentence puts them right after their name. The sibling
+    # consumers already refuse the same data: cold_email._stated_keywords
+    # returns [] for a stamped record, and public_projection publishes
+    # keywords_attribution so the detail page can caveat the chips. Fall
+    # through to the lab and description branches, which are read off the
+    # professor's own page.
+    specific_kw = (
+        [] if is_inferred(opportunity, "keywords")
+        else _topical_keywords(_extract_specific_keywords(opportunity))
+    )
     desc_focus = _extract_research_focus_from_desc(desc)
 
     lab_has_pi = pi and pi.split()[-1].lower() in lab.lower()
@@ -1941,7 +1952,13 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     kw_lower = tuple(k.lower() for k in keywords)
     kw_set = frozenset(kw_lower)
     specific_kw = tuple(dict.fromkeys(kw for kw in kw_lower if kw not in _GENERIC_KEYWORDS))
-    display_kw = tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
+    # display_kw is prose only ("...'s work on X", "They also work on X"), so
+    # emptying it for guessed areas drops the authorship claim while leaving
+    # specific_kw — which gates and feeds the similarity score — untouched.
+    display_kw = (
+        () if is_inferred(opp, "keywords")
+        else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
+    )
 
     # _desired_field_overlap's view of the keywords (stripped, non-empty).
     ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
