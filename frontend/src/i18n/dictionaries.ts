@@ -36,6 +36,7 @@ export const en = {
   },
   badges: {
     paid: 'Paid',
+    fundingMentioned: 'Funding mentioned',
     stipend: 'Stipend',
     unpaid: 'Unpaid',
     // R70-D: distinct label for paid='unknown' so the 1262 records (65.9%
@@ -4596,6 +4597,7 @@ export const zh = {
   },
   badges: {
     paid: '付费',
+    fundingMentioned: '提到有资助',
     stipend: '有津贴',
     unpaid: '无酬',
     // R70-D: 区分 paid='unknown' 与 'no'，避免把 1262 条（65.9%，多为

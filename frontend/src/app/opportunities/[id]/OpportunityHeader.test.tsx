@@ -92,6 +92,22 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
 }
 
 describe('OpportunityHeader MVP release surface', () => {
+  it('hedges the pay badge when the pay value was read off the page', () => {
+    // "in many cases, funding or a stipend" set paid: yes on 220 records via a
+    // substring scan. A green "Paid" is a student planning a summer around it.
+    renderHeader({
+      opp: { ...OPP, paid: 'yes', paid_attribution: 'inferred' } as unknown as typeof OPP,
+    });
+    expect(screen.getByText('badges.fundingMentioned')).toBeInTheDocument();
+    expect(screen.queryByText('badges.paid')).toBeNull();
+  });
+
+  it('keeps the plain pay badge when the posting stated it', () => {
+    renderHeader({ opp: { ...OPP, paid: 'yes' } as unknown as typeof OPP });
+    expect(screen.getByText('badges.paid')).toBeInTheDocument();
+    expect(screen.queryByText('badges.fundingMentioned')).toBeNull();
+  });
+
   it('keeps Tailor while hiding Professor Signals', () => {
     renderHeader();
 

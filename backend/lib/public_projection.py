@@ -9,7 +9,12 @@ from html.parser import HTMLParser
 from typing import TypeVar
 from urllib.parse import unquote, urlsplit
 
-from src.evidence import inferred_method, record_kind, target_truth
+from src.evidence import (
+    inferred_method,
+    is_read_off_the_page,
+    record_kind,
+    target_truth,
+)
 
 _EMAIL_IN_TEXT_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\."
@@ -733,6 +738,17 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     majors_method = inferred_method(canonical_record, "eligibility.majors")
     if majors_method and (projected.get("eligibility") or {}).get("majors"):
         projected["majors_attribution"] = "inferred"
+
+    # A green "Paid" badge on "in many cases, funding or a stipend" is a
+    # student planning a summer around money we guessed at: 220 records carry a
+    # pay value _detect_paid_from_text read off prose. The NSF Sites are the
+    # deliberate exception — `policy:` names a published requirement of the
+    # funding program (the REU solicitation mandates a stipend), not a reading
+    # of the page, and hedging those would hide real money.
+    if is_read_off_the_page(canonical_record, "paid") and projected.get("paid") in {
+        "yes", "stipend", "no",
+    }:
+        projected["paid_attribution"] = "inferred"
 
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):

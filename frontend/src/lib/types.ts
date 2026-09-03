@@ -184,6 +184,8 @@ export interface OpportunityMetadata {
   // stated.
   skills_attribution?: 'inferred' | null;
   majors_attribution?: 'inferred' | null;
+
+  paid_attribution?: 'inferred' | null;
   // Scraped deadline prose (e.g. "Rolling admissions"). The ONLY accepted
   // evidence of genuinely rolling admissions — `is_rolling` alone is a blanket
   // collector default and must never be presented as a scraped fact.
@@ -271,6 +273,8 @@ export interface Opportunity {
   // stated.
   skills_attribution?: 'inferred' | null;
   majors_attribution?: 'inferred' | null;
+
+  paid_attribution?: 'inferred' | null;
   // Match-card projection of metadata.faculty_title (scraped rank). Absent or
   // empty = unknown rank; gates "Professor" framing on card CTAs.
   faculty_title?: string;

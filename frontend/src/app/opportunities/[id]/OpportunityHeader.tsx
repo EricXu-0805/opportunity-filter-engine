@@ -167,7 +167,16 @@ export function OpportunityHeader({
             {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
               <DetailBadge tone="red">{t('card.facultyResearchInactive')}</DetailBadge>
             )}
-            {isCurrentListing && opp.paid === 'yes' && <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>}
+            {/* A green "Paid" is a student planning a summer around the money.
+                220 records carry a pay value read off page prose — one says
+                only "in many cases, funding or a stipend" — so those say what
+                we actually saw. NSF Sites keep the plain badge: the
+                solicitation requires a stipend. */}
+            {isCurrentListing && opp.paid === 'yes' && (
+              opp.paid_attribution === 'inferred'
+                ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.fundingMentioned')}</DetailBadge>
+                : <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>
+            )}
             {isCurrentListing && opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
             {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}

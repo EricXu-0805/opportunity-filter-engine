@@ -954,3 +954,46 @@ class TestApproximateMajorsAreLabelledOnTheWire:
         record["eligibility"]["majors"] = []
         out = project_public_opportunity_payload(dict(record), record)
         assert "majors_attribution" not in out
+
+class TestGuessedPayIsLabelledButAPublishedRequirementIsNot:
+    """A green "Paid" badge on "in many cases, funding or a stipend" is a
+    student planning a summer around money we guessed at. 220 records carry a
+    pay value the tagger read off prose.
+
+    NSF REU Sites are the deliberate exception: the solicitation requires a
+    stipend, so `policy:nsf_reu_solicitation` is a published requirement of the
+    funding program rather than a reading of the page. Hedging those 154 would
+    hide real money from a student who cannot take an unpaid summer.
+    """
+
+    @staticmethod
+    def _program(method: str | None) -> dict:
+        record = {
+            "id": "prog-pay", "title": "Undergraduate Research Program",
+            "source_type": "summer_program", "organization": "Test University",
+            "paid": "yes", "eligibility": {}, "metadata": {},
+        }
+        if method:
+            record["metadata"] = {"inferred_fields": {"paid": method}}
+        return record
+
+    def test_a_pay_value_read_off_prose_is_labelled(self):
+        record = self._program("rule:llm_tagger")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["paid_attribution"] == "inferred"
+
+    def test_a_published_funder_requirement_is_not_labelled(self):
+        record = self._program("policy:nsf_reu_solicitation")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
+
+    def test_a_stated_pay_value_carries_no_label(self):
+        record = self._program(None)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
+
+    def test_an_unknown_pay_value_is_not_labelled(self):
+        record = self._program("rule:llm_tagger")
+        record["paid"] = "unknown"
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
