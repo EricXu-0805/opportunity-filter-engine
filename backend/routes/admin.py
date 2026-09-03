@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 _HISTORY_PATH = _PROCESSED_DIR / "admin_history.jsonl"
 _COLLECTOR_STATUS_PATH = _PROCESSED_DIR / "collector_status.json"
+_SOURCE_HEALTH_PATH = _PROCESSED_DIR / "source_health.json"
 _COLLECTOR_HISTORY_PATH = _PROCESSED_DIR / "collector_status_history.jsonl"
 _HISTORY_MAX_ENTRIES = 365
 
@@ -513,6 +514,95 @@ async def collector_status(
         "last_run_at": payload.get("timestamp"),
         "duration_seconds": payload.get("duration_seconds"),
         "total_in_file": payload.get("total_in_file"),
+    }
+
+
+def _load_source_health():
+    """The per-source freshness ledger, or None when it is not available."""
+    try:
+        from src.collectors import source_health
+    except Exception:  # noqa: BLE001
+        return None, None
+    if not _SOURCE_HEALTH_PATH.exists():
+        return source_health, None
+    return source_health, source_health.load_ledger(_SOURCE_HEALTH_PATH)
+
+
+@router.get("/admin/source-health/shards")
+async def source_health_shards(
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+    school: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+):
+    """Per-department/source freshness — one row per collector.
+
+    The surface that did not exist while UC Berkeley sat 44 days stale.
+    ``/admin/collector-status`` shows only the LAST RUN's snapshot, and each
+    run rewrites it for its own shard alone, so a department that had been
+    dead for six weeks was indistinguishable from one that simply was not
+    scheduled today. These rows come from the durable ledger instead, and
+    keep ``last_attempt_at``, ``last_success_at`` and ``last_publish_at``
+    separate: a school publishing does not make its departments successful.
+
+    Filters narrow the rows only. The envelope's totals are always computed
+    over EVERY row, so filtering to one school can never hide that another is
+    on fire.
+    """
+    _authenticate(x_admin_token)
+    module, ledger = _load_source_health()
+    if module is None:
+        return {"rows": [], "totals": None, "available": False,
+                "reason": "source_health module unavailable"}
+    if ledger is None:
+        return {"rows": [], "totals": None, "available": False,
+                "reason": "ledger not written yet"}
+
+    now = datetime.now(UTC)
+    all_rows = module.source_rows(ledger, now)
+    totals = Counter(row["freshness"] for row in all_rows)
+    rows = all_rows
+    if school:
+        rows = [r for r in rows if r["school"] == school]
+    if status:
+        rows = [r for r in rows if r["status"] == status or r["freshness"] == status]
+    warn_days, stale_days = module.staleness_thresholds()
+    return {
+        "rows": rows,
+        "available": True,
+        "totals": {
+            "sources": len(all_rows),
+            "fresh": totals.get("fresh", 0),
+            "warn": totals.get("warn", 0),
+            "stale": totals.get("stale", 0) + totals.get("unknown", 0),
+        },
+        "thresholds": {"warn_days": warn_days, "stale_days": stale_days},
+        "filters": {"school": school, "status": status},
+        "returned": len(rows),
+    }
+
+
+@router.get("/admin/source-health/schools")
+async def source_health_schools(
+    x_admin_token: str | None = Header(default=None, alias="X-Admin-Token"),
+):
+    """Per-school shard health plus the corpus-wide freshness roll-up.
+
+    Makes the distinction that school-level freshness could not express:
+    "healthy school, one stale department" (``partially_degraded``) versus
+    "the school has stopped refreshing" (``fully_stale``). ``fully_stale`` is
+    computed from earned per-source successes, never from the publish
+    timestamp, so republishing a shard built out of retained records cannot
+    clear it.
+    """
+    _authenticate(x_admin_token)
+    module, ledger = _load_source_health()
+    if module is None or ledger is None:
+        return {"schools": [], "report": None, "available": False}
+    now = datetime.now(UTC)
+    return {
+        "schools": module.school_rows(ledger, now),
+        "report": module.corpus_report(ledger, now),
+        "available": True,
     }
 
 

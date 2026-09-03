@@ -69,7 +69,8 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
           keep_ratio: float = SHRINK_KEEP_RATIO,
           guard_floor: int = SHRINK_GUARD_FLOOR,
           prune: bool = False,
-          only_shards: set[str] | None = None) -> dict[str, int]:
+          only_shards: set[str] | None = None,
+          retained_out: set[str] | None = None) -> dict[str, int]:
     """Work file -> minified per-school shard files. Returns {shard: count}.
 
     Upsert-only by default: writes/updates a shard for every school PRESENT in
@@ -158,23 +159,19 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
         if old_n >= guard_floor and len(recs) < keep_ratio * old_n:
             kept.append((slug, len(recs), old_n))
 
-    # A scheduled target refresh must never report success while silently
-    # retaining an old target. Block the release before writing any target so
-    # the operator sees the partial/shrunk source and the artifact is not built.
-    if kept and only_shards is not None:
-        details = ", ".join(
-            f"{slug}:{new_n}/{old_n}" for slug, new_n, old_n in kept
-        )
-        raise ValueError(
-            f"target refresh hit the shrink guard and cannot publish: {details}"
-        )
-
+    # A shrunken target keeps its prior shard and says so LOUDLY - but only
+    # that target. This used to raise before writing anything, so one flaked
+    # school discarded every healthy school in the same run: the same
+    # one-failure-vetoes-everything shape that #8 removed from the release
+    # verdict and that source_health removes from the per-department gate.
+    # Retention is reported back to the caller (and printed by main) so
+    # "published" never silently means "kept the old one".
     kept_slugs = {slug for slug, _new_n, _old_n in kept}
     for slug, recs in sorted(by_school.items()):
         shard_path = shards_dir / f"{slug}.json"
         if slug in kept_slugs:
-            # Non-release/manual split retains the prior shard for backwards
-            # compatibility; target-only release mode failed above.
+            # Retained: the prior shard stays exactly as committed, and
+            # its siblings below are written regardless.
             counts[slug] = old_counts[slug]
             continue
         atomic_write_json(shard_path, recs, indent=None, separators=(",", ":"))
@@ -187,7 +184,38 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
                 f"flaked scrape, not committing the regression.",
                 file=sys.stderr,
             )
+    # Stamp last_publish_at for exactly the shards whose bytes changed. A
+    # retained shard is NOT a publish: recording one would let a
+    # permanently broken school look freshly published every week.
+    if retained_out is not None:
+        retained_out.update(kept_slugs)
+    written = {slug: n for slug, n in counts.items() if slug not in kept_slugs}
+    if written:
+        _record_publish(written, shards_dir)
     return counts
+
+
+def _record_publish(written: dict[str, int], shards_dir: Path) -> None:
+    """Stamp the publish moment for the shards just written.
+
+    Best-effort: sharding must not fail because a monitoring ledger could not
+    be updated. Per-SHARD only - publishing a school must never be mistaken
+    for its departments having succeeded (see source_health.record_publish).
+    """
+    try:
+        from datetime import UTC, datetime
+
+        from src.collectors import source_health
+
+        # Beside the shards being written, so a split into a tmp directory
+        # cannot stamp publish times into the committed ledger.
+        path = source_health.ledger_path_for(shards_dir.parent)
+        ledger = source_health.load_ledger(path)
+        source_health.record_publish(ledger, shards=written, now=datetime.now(UTC))
+        source_health.save_ledger(ledger, path)
+    except Exception as exc:  # noqa: BLE001
+        print(f"shard_corpus: could not record publish timestamps: {exc}",
+              file=sys.stderr)
 
 
 def load_shards(shards_dir: Path = SHARDS_DIR) -> list[dict]:
@@ -267,10 +295,12 @@ def main(argv: list[str] | None = None) -> int:
             if any(not value for value in values) or len(values) != len(set(values)):
                 parser.error("--only-shards must contain unique non-empty slugs")
             only_shards = set(values)
+        retained: set[str] = set()
         try:
             counts = split(
                 prune=args.prune,
                 only_shards=only_shards,
+                retained_out=retained,
             )
         except ValueError as exc:
             parser.error(str(exc))
@@ -280,6 +310,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"split{mode}: {total} records -> {len(counts)} shards "
               f"({', '.join(f'{s}:{n}' for s, n in counts.items())})")
+        if retained:
+            # Loud, and on the annotation channel so it surfaces in the run
+            # log - but NOT fatal: the shards that were written are correct
+            # and withholding them would repeat the bug this replaced.
+            print(
+                "::warning::shard_corpus: retained the previously committed "
+                f"shard(s) for {', '.join(sorted(retained))} (shrink guard); "
+                f"{len(counts) - len(retained)} shard(s) published normally. "
+                "Those schools keep their last-known-good data and are "
+                "reported stale until a run re-collects them.",
+                file=sys.stderr,
+            )
         return 0
     if args.command == "assemble":
         try:

@@ -323,6 +323,12 @@ class TestGoRequiresEverything:
                             lambda: gate._gate("truthfulness", gate.PASS, "stub"))
         monkeypatch.setattr(gate, "check_flag_parity",
                             lambda: gate._gate("flag_parity", gate.PASS, "stub"))
+        # Reads data/processed/source_health.json, whose contents change with
+        # every refresh run; stubbed like its peers so this asserts the GO
+        # PATH, not today's corpus freshness (which TestFullyStaleSchoolGate
+        # below covers directly).
+        monkeypatch.setattr(gate, "check_no_fully_stale_school",
+                            lambda: gate._gate("no_fully_stale_school", gate.PASS, "stub"))
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         assert ledger["final_decision"] == "GO", ledger["blocking_reasons"]
 
@@ -343,3 +349,91 @@ class TestGoRequiresEverything:
             partial = {k: v for k, v in full.items() if k != dropped}
             ledger = gate.build_ledger(SHA_A, partial, min_records=1)
             assert ledger["final_decision"] == "NO-GO", f"dropping {dropped} still GO"
+
+
+# ---------------------------------------------------------------------------
+# Per-source freshness: the record floor cannot see a frozen school
+# ---------------------------------------------------------------------------
+
+def _health(sources: dict) -> dict:
+    return {"schema_version": 1, "sources": sources, "shards": {}}
+
+
+def _row(school: str, days_ago: int, status: str = "success_nonzero") -> dict:
+    when = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+    return {
+        "school": school,
+        "last_attempt_at": datetime.now(UTC).isoformat(),
+        "last_success_at": when,
+        "status": status,
+        "current_count": 0 if status != "success_nonzero" else 10,
+        "last_good_count": 10,
+        "consecutive_failures": 0 if status == "success_nonzero" else 3,
+    }
+
+
+class TestFullyStaleSchoolGate:
+    """The corpus floor counts RECORDS, which a frozen school passes easily -
+    UC Berkeley's 3,106 records sat 44 days stale and counted every one."""
+
+    def _run(self, monkeypatch, tmp_path, ledger):
+        path = tmp_path / "source_health.json"
+        path.write_text(json.dumps(ledger), encoding="utf-8")
+        monkeypatch.setattr(gate, "_SOURCE_HEALTH_PATH", path)
+        return gate.check_no_fully_stale_school()
+
+    def test_a_school_with_no_fresh_source_fails_the_gate(
+        self, monkeypatch, tmp_path,
+    ):
+        result = self._run(monkeypatch, tmp_path, _health({
+            "ucb_ling_faculty": _row("ucb", 44, "suspicious_zero"),
+            "ucb_eecs_faculty": _row("ucb", 44, "suspicious_zero"),
+        }))
+        assert result["status"] == gate.FAIL
+        assert result["evidence"]["fully_stale_school_count"] == 1
+        assert result["evidence"]["fully_stale_schools"] == ["ucb"]
+
+    def test_one_stale_department_among_fresh_ones_passes(
+        self, monkeypatch, tmp_path,
+    ):
+        """Deliberately NOT a blocker: partial degradation is what the publish
+        path now allows on purpose. Failing the release for it would rebuild
+        the veto from the other direction."""
+        result = self._run(monkeypatch, tmp_path, _health({
+            "ucb_ling_faculty": _row("ucb", 44, "suspicious_zero"),
+            "ucb_eecs_faculty": _row("ucb", 2),
+            "ucb_math_faculty": _row("ucb", 2),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["fully_stale_school_count"] == 0
+        assert result["evidence"]["partially_degraded_school_count"] == 1
+        assert result["evidence"]["stale_shard_count"] == 1
+
+    def test_all_fresh_passes_cleanly(self, monkeypatch, tmp_path):
+        result = self._run(monkeypatch, tmp_path, _health({
+            "yale_faculty": _row("yale", 1),
+            "ucb_eecs_faculty": _row("ucb", 3),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["stale_shard_count"] == 0
+
+    def test_an_absent_ledger_is_unverified_not_a_pass(
+        self, monkeypatch, tmp_path,
+    ):
+        """Default NO-GO: not knowing must never read as knowing it is fine."""
+        monkeypatch.setattr(
+            gate, "_SOURCE_HEALTH_PATH", tmp_path / "absent.json",
+        )
+        result = gate.check_no_fully_stale_school()
+        assert result["status"] == gate.UNVERIFIED
+
+    def test_the_gate_is_part_of_the_ledger(self, monkeypatch, tmp_path):
+        """A gate nobody evaluates is not a gate."""
+        import subprocess
+        monkeypatch.setattr(gate, "check_release_sha",
+                            lambda sha: gate._gate("release_sha", gate.PASS, "s"))
+        monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(
+            cmd, 0, stdout=("" if "status" in cmd else SHA_A) + "\n", stderr=""))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
+        names = {g["gate"] for g in ledger["gates"]}
+        assert "no_fully_stale_school" in names

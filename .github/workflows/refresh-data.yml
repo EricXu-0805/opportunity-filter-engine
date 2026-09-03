@@ -266,6 +266,15 @@ jobs:
           if [ -f data/processed/collector_status_history.jsonl ]; then
             cp data/processed/collector_status_history.jsonl /tmp/refresh-collector_history.jsonl
           fi
+          # Per-source freshness ledger (source_health.json): the ONLY record
+          # of when each department last actually succeeded. The snapshot
+          # above is rewritten every run and only for that run's shard, so a
+          # department that has been dead for weeks is invisible in it - which
+          # is how ucb_ling_faculty went 44 days unnoticed. Losing this at the
+          # rebase would freeze the same fossil the history ledger used to be.
+          if [ -f data/processed/source_health.json ]; then
+            cp data/processed/source_health.json /tmp/refresh-source_health.json
+          fi
           # Professor tracking ledger (W8): best-effort artifact — refresh_all
           # writes it unless tracking errored, so guard the copies.
           if [ -f data/processed/professor_tracking.json ]; then
@@ -286,6 +295,9 @@ jobs:
             cp /tmp/refresh-collector_status.json data/processed/collector_status.json
             if [ -f /tmp/refresh-collector_history.jsonl ]; then
               cp /tmp/refresh-collector_history.jsonl data/processed/collector_status_history.jsonl
+            fi
+            if [ -f /tmp/refresh-source_health.json ]; then
+              cp /tmp/refresh-source_health.json data/processed/source_health.json
             fi
             if [ -f /tmp/refresh-professor_tracking.json ]; then
               cp /tmp/refresh-professor_tracking.json data/processed/professor_tracking.json
@@ -330,7 +342,30 @@ jobs:
             # the freshly fetched main, so it cannot revert a concurrent merge.
             python3 -m src.normalizers.deactivate_past --shards --save
 
+            # Seed ledger rows for sources this run did not visit, from the
+            # last_seen_at their committed records already carry. Each run
+            # touches one day's shard, so without this a corpus-wide freshness
+            # answer would take a full rotation to exist and would meanwhile
+            # report every unvisited school as never-successful. Gap-fill
+            # only: a row a real run wrote is never overwritten.
+            python3 scripts/source_freshness_report.py bootstrap
+            # Per-shard and per-school freshness, printed into the run log so
+            # the reviewer of this PR can see which departments are degraded
+            # rather than only that the totals moved.
+            python3 scripts/source_freshness_report.py report || true
+
+            # The switcher's static fallback is derived from the shards by the
+            # same function the coverage API uses, so it has to be rewritten in
+            # the same commit that moves them. Skipping it would ship a first
+            # paint counting last week's corpus, and tests/test_school_coverage.py
+            # fails the refresh PR rather than letting that land silently.
+            python3 scripts/gen_school_stats.py
+
             git add data/processed/shards data/processed/collector_status.json
+            git add frontend/src/lib/school-stats.json
+            if [ -f data/processed/source_health.json ]; then
+              git add data/processed/source_health.json
+            fi
             if [ -f data/processed/collector_status_history.jsonl ]; then
               git add data/processed/collector_status_history.jsonl
             fi

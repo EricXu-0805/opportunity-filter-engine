@@ -57,12 +57,25 @@ KNOWN_UNWIRED = {
 
 
 def _refresh_all_relative_imports() -> set[str]:
-    """Module names refresh_all imports via ``from .x import ...`` (level-1)."""
+    """Module names refresh_all imports relatively, in either spelling.
+
+    ``from .x import name`` carries the module in ``node.module``, but
+    ``from . import x`` carries it in the alias list with ``module=None`` —
+    and that spelling is how a module used through its namespace
+    (``source_health.classify(...)``) gets imported. Reading only the first
+    form reported such a module as unwired, which is a false alarm that this
+    test would otherwise push authors to silence by adding a real dependency
+    to KNOWN_UNWIRED.
+    """
     tree = ast.parse(Path(refresh_all.__file__).read_text(encoding="utf-8"))
     names: set[str] = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.level == 1 and node.module:
+        if not isinstance(node, ast.ImportFrom) or node.level != 1:
+            continue
+        if node.module:
             names.add(node.module.split(".")[0])
+        else:
+            names.update(alias.name.split(".")[0] for alias in node.names)
     return names
 
 

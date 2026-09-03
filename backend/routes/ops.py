@@ -82,6 +82,7 @@ _ROLLUP_LIMIT = 1000
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 _COLLECTOR_STATUS_PATH = _PROCESSED_DIR / "collector_status.json"
 _COLLECTOR_HISTORY_PATH = _PROCESSED_DIR / "collector_status_history.jsonl"
+_SOURCE_HEALTH_PATH = _PROCESSED_DIR / "source_health.json"
 _TRACKING_PATH = _PROCESSED_DIR / "professor_tracking.json"
 
 # Drift thresholds. Both must trip: the percentage catches a real collapse,
@@ -89,6 +90,10 @@ _TRACKING_PATH = _PROCESSED_DIR / "professor_tracking.json"
 # anyone.
 _DRIFT_DROP_PCT = 30.0
 _DRIFT_MIN_ABSOLUTE_DROP = 20
+
+# The status refresh_all writes for a source that emitted nothing while the
+# corpus still holds active records for it (src/collectors/source_health.py).
+_SUSPICIOUS_ZERO = "suspicious_zero"
 
 # professor_tracking.json is ~30 MB and the backend runs on a 2 GB instance;
 # json.loads on the whole artifact just to read one small block is a memory
@@ -1114,7 +1119,7 @@ async def _scan_collectors(rec: _Recorder, summary: dict) -> dict | None:
                 note="a later refresh run completed without a fatal error",
             )
 
-    errored, ok_sources = 0, 0
+    errored, ok_sources, suspicious = 0, 0, 0
     for name, info in sorted(sources.items()):
         if not isinstance(info, dict):
             continue
@@ -1138,19 +1143,61 @@ async def _scan_collectors(rec: _Recorder, summary: dict) -> dict | None:
                 priority="high" if not info.get("fetched") else "normal",
                 failure_state=_classify_failure_state(error_text),
             )
+        elif state == _SUSPICIOUS_ZERO:
+            suspicious += 1
+            baseline = info.get("suspicious_zero_baseline")
+            await rec.record(
+                kind="collector_failure",
+                dedup_key=dedup_key,
+                title=f"Collector '{name}' emitted zero records",
+                summary=(
+                    f"fetched 0 while the corpus holds "
+                    f"{baseline if isinstance(baseline, int) else 'existing'} "
+                    "active record(s) for this source"
+                ),
+                detail={
+                    "fetched": info.get("fetched"),
+                    "baseline": baseline,
+                    "zero_class": info.get("zero_class"),
+                    "run_timestamp": run_ts,
+                },
+                scope=name,
+                priority="high",
+                failure_state="suspicious_zero",
+            )
         elif state == "ok":
             ok_sources += 1
-            # Verified successful run: the ONE place auto-resolve is honest,
-            # because the evidence is exactly "this collector ran clean".
+            # Auto-resolve is honest here ONLY because a zero can no longer
+            # reach this branch. It used to: a collector whose department had
+            # moved reported {"fetched": 0, "status": "ok"}, so the queue
+            # closed its own alert every week as a "verified successful run"
+            # while the school went unpublished for 44 days. refresh_all now
+            # reports that as suspicious_zero (handled above), and this branch
+            # additionally refuses to resolve on a zero-record run whatever
+            # the status claims - recovery has to mean records came back.
+            fetched = info.get("fetched")
+            emitted_records = (
+                isinstance(fetched, int)
+                and not isinstance(fetched, bool)
+                and fetched > 0
+            )
             if dedup_key in summary["_open_keys"]:
-                await rec.recover(
-                    dedup_key, auto_resolve=True, note="verified successful run",
-                )
+                if emitted_records:
+                    await rec.recover(
+                        dedup_key, auto_resolve=True,
+                        note="verified successful run",
+                    )
+                else:
+                    logger.info(
+                        "ops_scan: not resolving %s - the run reported ok but "
+                        "emitted %r record(s)", dedup_key, fetched,
+                    )
 
     age = _snapshot_age(run_ts)
     summary["detectors"]["collector_failure"] = {
         "sources": len(sources),
         "errored": errored,
+        "suspicious_zero": suspicious,
         "ok": ok_sources,
         "fatal_error": bool(fatal),
         "run_timestamp": run_ts,
@@ -1392,6 +1439,112 @@ async def _scan_release_degradation(
     }
 
 
+async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
+    """source_health.json -> per-shard stale + fully-stale-school incidents.
+
+    School-level freshness alone could not see this failure mode: UC Berkeley
+    published a shard whose linguistics department had been dead for six
+    weeks, and every school-level signal was green because 53 other
+    departments were fresh. These two detectors read the per-source ledger
+    instead, so a single stale department is visible while its school is
+    healthy - and a school with no fresh source anywhere is escalated as its
+    own incident rather than being averaged away.
+
+    Neither auto-resolves on a stale-age improvement alone: the ledger's
+    ``last_success_at`` only moves on a real successful harvest, so recovery
+    is reported exactly when a source produced records again (the collector
+    detector's job) - not because a clock rolled over.
+    """
+    try:
+        from src.collectors import source_health
+    except Exception as e:  # noqa: BLE001
+        summary["skipped"].append({
+            "detector": "source_health",
+            "reason": f"module unavailable ({type(e).__name__})",
+        })
+        return
+
+    if not _SOURCE_HEALTH_PATH.exists():
+        summary["skipped"].append({
+            "detector": "source_health", "reason": "ledger not present",
+        })
+        return
+
+    ledger = source_health.load_ledger(_SOURCE_HEALTH_PATH)
+    if not (ledger.get("sources") or {}):
+        summary["skipped"].append({
+            "detector": "source_health", "reason": "ledger has no source rows",
+        })
+        return
+
+    now = datetime.now(UTC)
+    rows = source_health.source_rows(ledger, now)
+    stale_rows = [r for r in rows if r["freshness"] in ("stale", "unknown")]
+    for row in stale_rows:
+        summary["scanned"] += 1
+        age = row["freshness_age_days"]
+        await rec.record(
+            kind="collector_failure",
+            dedup_key=f"collector_failure:stale_shard:{row['source']}",
+            title=(
+                f"'{row['source']}' has not succeeded in "
+                + (f"{age:.0f} days" if isinstance(age, float) else "any recorded run")
+            ),
+            summary=(
+                f"last success {row['last_success_at'] or 'never recorded'}; "
+                f"last attempt {row['last_attempt_at'] or 'never'}; "
+                f"holding {row['last_good_record_count']} last-known-good record(s)"
+            ),
+            detail={
+                "school": row["school"],
+                "source": row["source"],
+                "last_attempt_at": row["last_attempt_at"],
+                "last_success_at": row["last_success_at"],
+                "last_publish_at": row["last_publish_at"],
+                "current_record_count": row["current_record_count"],
+                "last_good_record_count": row["last_good_record_count"],
+                "freshness_age_days": age,
+                "status": row["status"],
+                "failure_reason": row["failure_reason"],
+                "consecutive_failures": row["consecutive_failures"],
+            },
+            scope=row["source"],
+            priority="high" if row["consecutive_failures"] >= 2 else "normal",
+            failure_state="stale",
+        )
+
+    report = source_health.corpus_report(ledger, now)
+    for school in report["fully_stale_schools"]:
+        summary["scanned"] += 1
+        await rec.record(
+            kind="collector_failure",
+            dedup_key=f"collector_failure:fully_stale_school:{school}",
+            title=f"'{school}' has no fresh source at all",
+            summary=(
+                "every source for this school is stale - the school has "
+                "stopped refreshing, not merely one department"
+            ),
+            detail={"school": school, "report": report},
+            scope=school,
+            priority="urgent",
+            failure_state="stale",
+        )
+
+    summary["detectors"]["source_health"] = {
+        "sources": len(rows),
+        "stale": len(stale_rows),
+        "degraded": report["degraded_shard_count"],
+        "failed": report["failed_shard_count"],
+        "schools": report["school_count"],
+        "fully_stale_school_count": report["fully_stale_school_count"],
+        "fully_stale_schools": report["fully_stale_schools"][:20],
+        "partially_degraded_school_count": report[
+            "partially_degraded_school_count"
+        ],
+        "auto_resolve": False,
+    }
+
+
 async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
     """professor_tracking.json release gate -> data_drift incident."""
     block, err = _read_release_block(_TRACKING_PATH)
@@ -1505,6 +1658,15 @@ async def ops_scan(authorization: str | None = Header(default=None)):
         except Exception as e:
             logger.exception("ops-scan: data_drift detector crashed")
             summary["errors"].append({"detector": "data_drift", "error": _truncate(f"{type(e).__name__}: {e}", 120)})
+
+        try:
+            await _scan_source_health(rec, summary)
+        except Exception as e:
+            logger.exception("ops-scan: source_health detector crashed")
+            summary["errors"].append({
+                "detector": "source_health",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
 
         try:
             await _scan_release_degradation(rec, summary, payload)

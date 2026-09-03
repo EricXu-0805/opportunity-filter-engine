@@ -133,6 +133,65 @@ def check_corpus_floor(min_records: int) -> dict:
                  {"records": total, "shards": len(shards)})
 
 
+# Module-level so a test can point the gate at a fixture ledger instead of
+# asserting against whatever the committed corpus happens to look like today.
+_SOURCE_HEALTH_PATH = _REPO / "data" / "processed" / "source_health.json"
+
+
+def check_no_fully_stale_school() -> dict:
+    """No school may have stopped refreshing entirely.
+
+    The corpus floor above counts RECORDS, which a frozen school passes
+    without trouble: UC Berkeley's 3,106 records sat 44 days stale and
+    contributed every one of them to the total. Staleness is per source, so
+    it needs its own gate reading the per-source ledger.
+
+    ``fully_stale`` is deliberately the school-wide condition, not the
+    per-shard one: one stale department among fresh siblings is the
+    partial degradation the publish path now allows on purpose, and failing
+    the release for it would re-create the veto from the other direction.
+    A school with NO fresh source has stopped refreshing, and that is a
+    release blocker.
+    """
+    path = _SOURCE_HEALTH_PATH
+    if not path.exists():
+        return _gate("no_fully_stale_school", UNVERIFIED,
+                     "source_health.json absent: per-source freshness unknown")
+    try:
+        sys.path.insert(0, str(_REPO))
+        from src.collectors import source_health  # noqa: PLC0415
+        report = source_health.corpus_report(source_health.load_ledger(path))
+    except Exception as exc:  # noqa: BLE001
+        return _gate("no_fully_stale_school", UNVERIFIED,
+                     f"could not evaluate: {exc}")
+    count = report["fully_stale_school_count"]
+    detail = {
+        "fully_stale_school_count": count,
+        "fully_stale_schools": report["fully_stale_schools"][:20],
+        "school_count": report["school_count"],
+        "partially_degraded_school_count": report[
+            "partially_degraded_school_count"
+        ],
+        "stale_shard_count": report["stale_shard_count"],
+        "failed_shard_count": report["failed_shard_count"],
+        "stale_days": report["stale_days"],
+    }
+    if count:
+        return _gate(
+            "no_fully_stale_school", FAIL,
+            f"{count} school(s) have no fresh source at all: "
+            f"{', '.join(report['fully_stale_schools'][:10])}",
+            detail,
+        )
+    return _gate(
+        "no_fully_stale_school", PASS,
+        f"every one of {report['school_count']} school(s) has fresh data "
+        f"({report['partially_degraded_school_count']} partially degraded, "
+        f"{report['stale_shard_count']} stale shard(s))",
+        detail,
+    )
+
+
 def check_tracking_release_ready() -> dict:
     """The professor-tracking artifact's own strict release contract."""
     path = _REPO / "data" / "processed" / "professor_tracking.json"
@@ -320,6 +379,7 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int) -> dict:
         check_release_sha(sha),
         check_worktree_clean(sha),
         check_corpus_floor(min_records),
+        check_no_fully_stale_school(),
         check_tracking_release_ready(),
         check_truthfulness(),
         check_open_incidents(evidence.get("open_incidents")),

@@ -44,6 +44,18 @@ NATIONAL_SOURCES = frozenset(
 RELEASABLE_INCOMPLETE_STATUSES = frozenset(
     {"deferred_deadline", "partial_deadline"}
 )
+
+# refresh_all reports a source that emitted nothing while the corpus holds
+# active records for it (see src/collectors/source_health.py). Releasable for
+# the same reason the two above are: it cannot produce a false retirement.
+SUSPICIOUS_ZERO_STATUS = "suspicious_zero"
+
+# Sources for which emitting nothing is declared, expected behaviour — the
+# only way a zero is read as legitimate. Never inferred: an undeclared source
+# that has held records and now emits none is suspicious, which is the point.
+# ucb_urap_projects scrapes a live application window and its own docstring
+# records "0 off-season"; a seasonal empty is not a broken collector.
+CONFIRMED_EMPTY_SOURCES = frozenset({"ucb_urap_projects"})
 _ALWAYS_SPECIAL: dict[str, frozenset[str]] = {
     "uiuc": frozenset(
         {
@@ -132,6 +144,72 @@ def expected_sources(
     return dict(sorted(policies.items()))
 
 
+def shard_of_source(key: str) -> str | None:
+    """Which shard file a source's records publish into, or None if unknown.
+
+    ONE definition, because there were nearly two. The release verdict has
+    always resolved a source to its publication unit; the freshness ledger
+    needs the same answer, and a second implementation got it wrong for
+    exactly the sources whose summary key does not look like their school:
+    ``campus_graph:colgate`` and ``ucb_campus`` both resolved to None through
+    SOURCE_DEFAULTS alone, which silently dropped those rows out of
+    per-school aggregation.
+    """
+    if key in NATIONAL_SOURCES:
+        return NATIONAL_SHARD
+    if key.startswith("campus_graph:"):
+        return key.split(":", 1)[1]
+    entry = SOURCE_DEFAULTS.get(key)
+    if entry and entry[0]:
+        return entry[0]
+    for school, keys in _ALWAYS_SPECIAL.items():
+        if key in keys:
+            return school
+    for school, keys in _DEEP_SPECIAL.items():
+        if key in keys:
+            return school
+    return None
+
+
+def monitored_sources() -> frozenset[str]:
+    """Every source a scheduled run is REQUIRED to produce, across all shards.
+
+    The single answer to "which sources are eligible for weekly freshness
+    monitoring", reused by src/collectors/source_health.py so the monitoring
+    definition cannot drift away from the publication definition.
+
+    It matters because the corpus also carries sources that are not scheduled
+    producers and must not be judged on a weekly clock: ``manual`` (16
+    hand-curated records, by design never re-scraped) and the
+    ``*_external_research`` rows a campus crawl discovers opportunistically
+    and only re-stamps when it happens to rediscover the page. Counting those
+    as stale shards would report the national shard permanently degraded
+    while its three real producers are fresh, and a monitor that is always
+    amber is one nobody reads.
+    """
+    return frozenset(expected_sources(None, national=False, deep=True))
+
+
+def record_source_aliases() -> dict[str, str]:
+    """{source stamped on a record: the summary key its producer reports as}.
+
+    The pipeline names one producer two ways, and any monitoring that joins
+    stored records to run summaries has to reconcile them. A campus crawl
+    reports under ``campus_graph:<slug>`` but stamps its records
+    ``<slug>_research_programs``; UC Berkeley predates the shared engine and
+    reports under ``ucb_campus`` while stamping ``ucb_research_programs``.
+    Without this map a school's program shard looks like an unmonitored
+    source on one side and a never-recorded producer on the other.
+    """
+    aliases: dict[str, str] = {}
+    for key in expected_sources(None, national=False, deep=True):
+        if key.startswith("campus_graph:"):
+            slug = key.split(":", 1)[1]
+            aliases[f"{slug}_research_programs"] = key
+    aliases["ucb_research_programs"] = "ucb_campus"
+    return aliases
+
+
 def _expected_shard(
     schools: set[str] | frozenset[str] | None,
     *,
@@ -206,18 +284,18 @@ def evaluate_refresh_summary(
                 )
 
     def unit_of(key: str) -> str | None:
-        """Which shard file a source's failure actually affects."""
+        """Which shard file a source's failure actually affects.
+
+        This run's own policy wins where it has one (it was built for this
+        invocation); everything else defers to shard_of_source so the verdict
+        and the freshness ledger cannot disagree about who owns a source.
+        """
         if key in NATIONAL_SOURCES:
             return NATIONAL_SHARD
         policy = policies.get(key)
         if policy is not None and policy.school:
             return policy.school
-        if key.startswith("campus_graph:"):
-            return key.split(":", 1)[1]
-        entry = SOURCE_DEFAULTS.get(key)
-        if entry and entry[0]:
-            return entry[0]
-        return None
+        return shard_of_source(key)
 
     if not isinstance(summary, dict):
         return {
@@ -306,6 +384,39 @@ def evaluate_refresh_summary(
         if not isinstance(info, dict):
             block(f"required source missing: {key}", unit_of(key))
             continue
+        if info.get("status") == SUSPICIOUS_ZERO_STATUS:
+            # A department that emitted nothing degrades ITSELF. It used to
+            # block, and because unit_of() resolves a source to its shard
+            # file — one file per school — blocking withheld every sibling
+            # department with it: ucb_ling_faculty's silent zero froze all
+            # 3,106 UC Berkeley records for 44 days while 53 healthy
+            # departments were re-scraped and discarded twice.
+            #
+            # A zero costs coverage, never accuracy, and the layers below
+            # already prove it: merges are upsert-only so an empty harvest
+            # cannot delete a record, and deactivate_stale_faculty authorizes
+            # retirement only for sources reporting "ok" — which this is not —
+            # so the absent records are preserved rather than retired. What
+            # would publish is not wrong, there is just less of it than there
+            # should be.
+            #
+            # Note what is NOT waived: the verdict stays degraded every run
+            # until the source emits records again, its ledger
+            # ``last_success_at`` does not move, and ops opens an incident
+            # that only a verified successful run resolves.
+            baseline = info.get("suspicious_zero_baseline")
+            degrade(
+                SUSPICIOUS_ZERO_STATUS,
+                key,
+                f"0 records, previously {baseline}"
+                if isinstance(baseline, int) else "0 records",
+                f"required source {key} emitted zero records while the corpus "
+                f"holds {baseline if isinstance(baseline, int) else 'existing'} "
+                "record(s) for it; those records are preserved untouched and "
+                "the school still publishes, but this run cannot claim to "
+                "have seen the source",
+            )
+            continue
         if info.get("status") in RELEASABLE_INCOMPLETE_STATUSES:
             degrade(
                 "time_budget",
@@ -342,7 +453,27 @@ def evaluate_refresh_summary(
                 f"required source {key} has no valid emitted count", unit_of(key)
             )
         elif fetched == 0:
-            block(f"required source {key} emitted zero records", unit_of(key))
+            if key in CONFIRMED_EMPTY_SOURCES:
+                # Declared empty-capable (a seasonal listing outside its
+                # application window). Recorded, not treated as a fault.
+                warnings.append(
+                    f"required source {key} emitted zero records, which is "
+                    "declared expected behaviour for it"
+                )
+            else:
+                # Reached when the summary was produced without refresh_all's
+                # classification pass (a recompute, a hand-built summary).
+                # Fail SAFE, not closed: degrade the source rather than
+                # withhold its school's other departments.
+                degrade(
+                    SUSPICIOUS_ZERO_STATUS,
+                    key,
+                    "0 records, no baseline available",
+                    f"required source {key} emitted zero records; its "
+                    "previously collected records are preserved untouched and "
+                    "its school still publishes, but this run cannot claim "
+                    "to have seen the source",
+                )
 
         if deep and (key == "ucb_campus" or key.startswith("campus_graph:")):
             attempted = info.get("live_pages_attempted")
