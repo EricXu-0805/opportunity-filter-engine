@@ -940,7 +940,7 @@ describe('MatchCard target-truth postures', () => {
       paid: 'yes',
       compensation_details: 'POISON $32/hr',
       duration: 'POISON 12 weeks',
-      opportunity_type: 'POISON_TYPE',
+      opportunity_type: 'Poisontype',
       deadline: '2099-12-31',
       deadline_is_estimate: false,
       posted_date: '2099-01-01',
@@ -980,7 +980,7 @@ describe('MatchCard target-truth postures', () => {
     }
 
     const OFFER_TEXT = [
-      'POISON $32/hr', 'POISON 12 weeks', 'POISON_TYPE', '2099-12-31',
+      'POISON $32/hr', 'POISON 12 weeks', 'Poisontype', '2099-12-31',
       'badges.dueInDays', 'badges.new', 'results.newMatchBadge',
       'badges.intlOk', 'badges.paid',
     ];
@@ -1013,7 +1013,7 @@ describe('MatchCard target-truth postures', () => {
       // both tests above.
       renderKind('campus_program');
 
-      expect(screen.getByText('POISON_TYPE')).toBeInTheDocument();
+      expect(screen.getByText('Poisontype')).toBeInTheDocument();
       expect(screen.getByText('POISON $32/hr')).toBeInTheDocument();
       expect(screen.getByText('POISON 12 weeks')).toBeInTheDocument();
       expect(screen.getByText('badges.intlOk')).toBeInTheDocument();
@@ -1037,7 +1037,7 @@ describe('MatchCard target-truth postures', () => {
       paid: 'yes',
       compensation_details: 'POISON $32/hr',
       duration: 'POISON 12 weeks',
-      opportunity_type: 'POISON_TYPE',
+      opportunity_type: 'Poisontype',
       deadline: '2099-12-31',
       deadline_is_estimate: false,
       // Yesterday, not a date in 2099. A future posted_date does satisfy
@@ -1070,7 +1070,7 @@ describe('MatchCard target-truth postures', () => {
     // application requirements, the audience chip, and the description the
     // card has never republished (pinned so it stays that way).
     const OFFER_TEXT = [
-      'POISON_TYPE', 'POISON $32/hr', 'POISON 12 weeks',
+      'Poisontype', 'POISON $32/hr', 'POISON 12 weeks',
       '2099-12-31', 'badges.dueInDays', 'badges.deadlinePassed',
       'badges.estimated',
       'badges.new', 'results.newMatchBadge',
@@ -1183,7 +1183,7 @@ describe('MatchCard target-truth postures', () => {
           ownerReady
         />,
       );
-      expect(screen.getByText('POISON_TYPE')).toBeInTheDocument();
+      expect(screen.getByText('Poisontype')).toBeInTheDocument();
       expect(screen.getByText('POISON $32/hr')).toBeInTheDocument();
       expect(screen.getByText('POISON 12 weeks')).toBeInTheDocument();
       expect(screen.getByText('badges.intlOk')).toBeInTheDocument();
@@ -1257,5 +1257,26 @@ describe('MatchCard target-truth postures', () => {
     expect(screen.getByText('card.applyNow')).toBeInTheDocument();
     expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
     expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
+  });
+});
+
+describe('the type and source badges say what they are', () => {
+  // A tester walking production read, on every card in both languages:
+  // "High Priority | summer_program | US Only | Paid | ucb_external_research".
+  // The detail page rendered the same record as "Summer Program", and the
+  // source dropdown rendered the same slug as "UC Berkeley Research (External
+  // / REU)" — the labels existed; the card was the surface that skipped them.
+  it('renders the form\'s own label for the type and the filter\'s label for the source', () => {
+    render(<MatchCard match={makeMatch({ opportunity_type: 'summer_program', source: 'uiuc_sro' })} onDraftEmail={() => {}} />);
+    expect(screen.getByText('home.form.seekingSummer')).toBeInTheDocument();
+    expect(screen.getByText('results.filters.sourceUiucSro')).toBeInTheDocument();
+    expect(screen.queryByText('summer_program')).toBeNull();
+    expect(screen.queryByText('uiuc_sro')).toBeNull();
+  });
+
+  it('humanizes a type or source the dictionary does not know instead of showing the slug', () => {
+    render(<MatchCard match={makeMatch({ opportunity_type: 'field_study', source: 'new_school_labs' })} onDraftEmail={() => {}} />);
+    expect(screen.getByText('Field Study')).toBeInTheDocument();
+    expect(screen.getByText('New School Labs')).toBeInTheDocument();
   });
 });

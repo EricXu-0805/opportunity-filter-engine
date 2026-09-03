@@ -34,6 +34,7 @@ import type { InteractionType } from '@/lib/supabase';
 import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
+import { sourceLabel, typeLabel } from '@/app/results/types';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
 import {
   facultySafeInternational,
@@ -317,7 +318,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               publish it only where it describes something still on offer. An
               unreviewed record gets a badge saying exactly that instead; a
               closed one gets its reason below. */}
-          {isCurrentListing && <Badge variant="indigo">{opp.opportunity_type}</Badge>}
+          {isCurrentListing && <Badge variant="indigo">{typeLabel(opp.opportunity_type, t)}</Badge>}
           {!isConfirmedListing && !isFaculty && (
             <Badge variant="gray">{t('card.recordTypeUnconfirmed')}</Badge>
           )}
@@ -353,7 +354,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             </Badge>
           )}
           {RELEASE_SCOPE.professorSignals && <ResponsivenessBadge opportunityId={opp.id} />}
-          {opp.source && <Badge variant="gray">{opp.source}</Badge>}
+          {opp.source && <Badge variant="gray">{sourceLabel(opp.source, t)}</Badge>}
           {scopeChip && (
             <Badge variant={scopeChip.kind === 'open' ? 'green' : 'gray'} dot>
               {scopeChipText(scopeChip, t)}

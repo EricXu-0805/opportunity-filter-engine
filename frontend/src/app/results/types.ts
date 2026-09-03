@@ -203,6 +203,22 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   boulder_faculty: 'results.filters.sourceBoulderFaculty',
 };
 
+// The profile form's own labels for what a student is seeking, reused so a
+// card and the form never name the same thing two ways. Anything the corpus
+// invents that the form does not know is humanized rather than shown raw.
+const TYPE_LABEL_KEY: Record<string, string> = {
+  research: 'home.form.seekingResearch',
+  summer_program: 'home.form.seekingSummer',
+  internship: 'home.form.seekingInternship',
+  fellowship: 'home.form.seekingFellowship',
+};
+
+export function typeLabel(type: string, t: TFunc): string {
+  const key = TYPE_LABEL_KEY[type];
+  if (key) return t(key);
+  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function sourceLabel(source: string, t: TFunc): string {
   const key = SOURCE_LABEL_KEY[source];
   if (key) return t(key);
