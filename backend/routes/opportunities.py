@@ -203,7 +203,11 @@ async def list_opportunities(
     opportunity_type: str | None = None,
     paid: str | None = None,
     international_friendly: str | None = None,
-    limit: int = Query(default=100, le=500),
+    # ge=1 is not cosmetic: the body slices opportunities[offset:offset + limit],
+    # so a negative limit degenerates to [0:-1] — the whole filtered corpus, ~249
+    # MB, projected synchronously on the single worker's event loop. Every other
+    # bounded Query in backend/routes already carries its lower bound.
+    limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ):
     # Retired records are excluded from every discovery surface (/matches
