@@ -36,6 +36,7 @@ from collections.abc import Iterable
 from datetime import date, datetime
 
 from src.evidence import faculty_contact_claims_unverified
+from src.matcher.ranker import _word_re
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -108,6 +109,9 @@ def _matches_deadline(opp: dict, want: str) -> bool:
     return d is not None and 0 <= d <= cutoff
 
 
+_WORD_BOUNDARY_TERM_MAX_LEN = 3
+
+
 def _matches_query(opp: dict, query_lower: str) -> bool:
     if not query_lower:
         return True
@@ -120,6 +124,14 @@ def _matches_query(opp: dict, query_lower: str) -> bool:
     for kw in opp.get("keywords") or []:
         if isinstance(kw, str):
             haystacks.append(kw.lower())
+    # A term short enough to live inside ordinary English must match a whole
+    # word. Every faculty description ends "...opportunities are currently
+    # available", which contains av-AI-lable, re-SE-arch and depart-ME-nt, so
+    # a saved search for "ai" was mailing the student 92% of the corpus. Same
+    # rule and same threshold as the /matches/view predicate.
+    if len(query_lower) <= _WORD_BOUNDARY_TERM_MAX_LEN:
+        pattern = _word_re(query_lower)
+        return any(pattern.search(h) for h in haystacks)
     return any(query_lower in h for h in haystacks)
 
 
