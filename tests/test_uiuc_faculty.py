@@ -620,7 +620,10 @@ def test_clean_research_phrase_keeps_topical():
 
 def test_clean_research_phrase_rejects_noise():
     for junk in (
-        "Research Areas", "CS 498 SCU", "and freight applications",
+        "Research Areas", "Related News", "Springer", "Plenum", "Function", "Governments",
+        "Twitter", "Article 102052", "Entomology - Research - Behavior", "Background",
+        "from structural perspectives", "how actin filaments grow", "focusing on software",
+        "supporting graduate TAs", "CS 498 SCU", "and freight applications",
         "My research focuses on the design", "(guitars", "Books Authored",
         "education", "lab", "in particular", "monographs",
     ):
@@ -652,13 +655,68 @@ def test_derive_skips_dept_shared_nav_block():
     assert all(r["keywords"] == ["computer science"] for r in rows)
 
 
-def test_derive_skips_rows_with_specific_keyword():
+def test_derive_adds_stated_areas_ahead_of_keywords_the_row_already_had():
+    # Three bank substrings ("machine learning", "security") used to block a
+    # professor's own stated list for good; the stated areas come first, the
+    # earlier keywords survive behind them.
     rows = [_fac_raw(
         "Has Specific", "Department of Physics",
         "Nanophotonics, Biosensing", ["quantum optics"],
     )]
+    assert _derive_keywords_from_raw(rows) == 1
+    assert rows[0]["keywords"] == ["nanophotonics", "biosensing", "quantum optics"]
+
+
+def test_derive_leaves_rows_whose_stated_areas_add_nothing():
+    rows = [_fac_raw(
+        "Already There", "Department of Physics",
+        "Quantum Optics, Biosensing", ["biosensing", "quantum optics", "photonics"],
+    )]
     assert _derive_keywords_from_raw(rows) == 0
-    assert rows[0]["keywords"] == ["quantum optics"]
+    assert rows[0]["keywords"] == ["biosensing", "quantum optics", "photonics"]
+
+
+def test_derive_rejects_colleague_names_titles_org_names_and_bare_adjectives():
+    # Rows that already carry a keyword tend to have sidebar text for a raw:
+    # a co-author's surname, the department's own name, the person's title,
+    # a dangling adjective. None of those is a research area.
+    rows = [
+        _fac_raw("Susan Tolman", "Department of Mathematics",
+                 "Symplectic Geometry, Kessler, Department of Mathematics, "
+                 "Assistant Research Scientist, Sustainable, Temporal, "
+                 "particularly curiosity, University of Wisconsin-Madison, "
+                 "Panel Lead, RM Espinosa-Marzal, X Zhang, Mechanical Engineering, "
+                 "Mechanical Science and Engineering, Cultures & Linguistics Building, "
+                 "Anisotropic, Purdue Univeristy",
+                 ["international mathematics research notices"]),
+        _fac_raw("Ann Kessler", "Department of Mathematics", "Number Theory", ["number theory"]),
+        _fac_raw("Rosa Espinosa Marzal", "Department of Mathematics", "Rheology", ["rheology"]),
+        _fac_raw("Wei Zhang", "Department of Mathematics", "Rheology", ["rheology"]),
+        _fac_raw("Mech Prof", "Mechanical Science & Engineering", "Tribology", ["tribology"]),
+    ]
+    _derive_keywords_from_raw(rows)
+    assert rows[0]["keywords"] == ["symplectic geometry", "international mathematics research notices"]
+
+
+def test_derive_never_drops_a_keyword_the_row_had_to_make_room():
+    # Eight is the cap for the joined list, and the room is taken from the
+    # stated areas, never from what the row already carried.
+    six = ["k1 topic", "k2 topic", "k3 topic", "k4 topic", "k5 topic", "k6 topic"]
+    eight = six + ["k7 topic", "parallel computing"]
+    rows = [
+        _fac_raw("Long List", "Department of Physics",
+                 "Nanophotonics, Biosensing, Plasmonics, Metamaterials", six),
+        _fac_raw("Full Already", "Department of Physics",
+                 "Nanophotonics, Biosensing", eight),
+        # A stated area the full row already carries must not be cut by the cap
+        # on its way back in (Gropp lost "parallel computing" exactly so).
+        _fac_raw("Full And Stated", "Department of Physics",
+                 "Parallel Computing, Nanophotonics", eight),
+    ]
+    assert _derive_keywords_from_raw(rows) == 1
+    assert rows[0]["keywords"] == ["nanophotonics", "biosensing"] + six
+    assert rows[1]["keywords"] == eight
+    assert rows[2]["keywords"] == eight
 
 
 def test_derive_drops_self_name_token():
