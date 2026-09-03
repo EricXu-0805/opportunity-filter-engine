@@ -5865,6 +5865,22 @@ class TestResponsePayloadTrim:
             # card fields the results UI needs are present (when set on the record)
             assert "title" in opp
 
+    def test_a_negative_page_size_is_rejected_not_served_as_the_whole_corpus(self):
+        """`limit` carried an upper bound and no lower one, so ?limit=-1 sliced
+        opportunities[0:-1] — the entire filtered corpus minus one record, about
+        249 MB, built by a synchronous body on the single uvicorn worker's event
+        loop. One unauthenticated GET took the whole API down for the duration,
+        and the 60 req/60 s default bucket let it repeat. It was the only
+        bounded Query in backend/routes without a matching ge=.
+        """
+        capped = client.get("/api/opportunities?limit=500")
+        assert capped.status_code == 200
+        assert len(capped.json()["opportunities"]) <= 500
+
+        for bad in ("-1", "-9", "0"):
+            response = client.get(f"/api/opportunities?limit={bad}")
+            assert response.status_code == 422, (bad, response.status_code)
+
     def test_list_response_drops_heavy_fields(self):
         body = client.get("/api/opportunities?limit=20").json()
         assert body["opportunities"]
