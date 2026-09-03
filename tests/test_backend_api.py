@@ -5865,6 +5865,22 @@ class TestResponsePayloadTrim:
             # card fields the results UI needs are present (when set on the record)
             assert "title" in opp
 
+    def test_a_negative_page_size_is_rejected_not_served_as_the_whole_corpus(self):
+        """`limit` carried an upper bound and no lower one, so ?limit=-1 sliced
+        opportunities[0:-1] — the entire filtered corpus minus one record, about
+        249 MB, built by a synchronous body on the single uvicorn worker's event
+        loop. One unauthenticated GET took the whole API down for the duration,
+        and the 60 req/60 s default bucket let it repeat. It was the only
+        bounded Query in backend/routes without a matching ge=.
+        """
+        capped = client.get("/api/opportunities?limit=500")
+        assert capped.status_code == 200
+        assert len(capped.json()["opportunities"]) <= 500
+
+        for bad in ("-1", "-9", "0"):
+            response = client.get(f"/api/opportunities?limit={bad}")
+            assert response.status_code == 422, (bad, response.status_code)
+
     def test_list_response_drops_heavy_fields(self):
         body = client.get("/api/opportunities?limit=20").json()
         assert body["opportunities"]
@@ -7282,3 +7298,64 @@ class TestColdEmailStream:
         assert done["method"] == "template"
         assert done["body"]
         assert calls["n"] == 2  # crashed engine + template fallback
+
+
+class TestAShortSearchTermMustBeAWholeWord:
+    """Every faculty description ends "...opportunities are currently
+    available", which contains av-AI-lable, re-SE-arch and depart-ME-nt. With
+    bare containment the search box returned 91.8% of the served universe for
+    "ai", 99.3% for "se" and 97.8% for "me" — and `_SEARCH_ALIASES`, which
+    exists to turn "ai" into "artificial intelligence", could never take
+    effect, because the raw token had already admitted everything.
+
+    Same short-token family as 'cs' in economics (#837) and 'art' in
+    dep-ART-ment (#839), on the one surface that still had it.
+    """
+
+    FACULTY_BLURB = (
+        "faculty research profile for a b in the department of chemistry at "
+        "test university. contact this faculty member to ask whether "
+        "undergraduate research opportunities are currently available."
+    )
+
+    def test_short_terms_no_longer_match_inside_ordinary_words(self):
+        from backend.routes.matches import _search_matcher
+
+        for term in ("ai", "se", "me", "art", "ce", "os"):
+            assert not _search_matcher(term)(self.FACULTY_BLURB), term
+
+    def test_short_terms_still_match_the_whole_word(self):
+        from backend.routes.matches import _search_matcher
+
+        assert _search_matcher("ai")("we build ai systems")
+        assert _search_matcher("cs")("cs 498 machine learning")
+        assert _search_matcher("art")("art history and visual culture")
+
+    def test_longer_queries_stay_substrings_so_a_prefix_still_finds_the_word(self):
+        from backend.routes.matches import _search_matcher
+
+        assert _search_matcher("robotic")("we work on robotics and control")
+        assert _search_matcher("neuro")("computational neuroscience")
+
+    def test_the_alias_expansion_can_finally_do_its_job(self):
+        from backend.routes.matches import _expand_search_aliases, _search_matcher
+
+        terms = _expand_search_aliases("ai")
+        assert "artificial intelligence" in terms
+        matchers = [_search_matcher(t) for t in terms]
+        assert not any(m(self.FACULTY_BLURB) for m in matchers)
+        assert any(m("lab for artificial intelligence and robotics") for m in matchers)
+
+    def test_a_saved_search_uses_the_same_rule(self):
+        """The digest cron runs its own copy of this predicate; a saved search
+        for "ai" was mailing the student 92% of the corpus."""
+        from src.saved_searches.filter import _matches_query
+
+        opp = {
+            "title": "Prof A B", "organization": "Test University",
+            "department": "Department of Chemistry",
+            "description_clean": self.FACULTY_BLURB, "keywords": [],
+        }
+        assert _matches_query(opp, "ai") is False
+        assert _matches_query(opp, "chemistry") is True
+        assert _matches_query({**opp, "keywords": ["ai safety"]}, "ai") is True

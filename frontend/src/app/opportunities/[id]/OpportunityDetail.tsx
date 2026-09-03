@@ -61,6 +61,7 @@ export default function OpportunityDetail({
     favoriteSaveError,
     ownerReady,
     interactionDetail,
+    noteContactConfirmed,
     interaction,
     interactionLoading,
     interactionError,
@@ -291,6 +292,7 @@ export default function OpportunityDetail({
           opportunityTitle={opp.title}
           opportunitySchool={opp.school ?? null}
           reminderTarget={opp}
+          onContactConfirmed={noteContactConfirmed}
         />
       )}
 

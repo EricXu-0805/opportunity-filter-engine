@@ -304,6 +304,32 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.queryByText('detail.fields.skills')).not.toBeInTheDocument();
   });
 
+  it('says a major list is approximate when we wrote it', () => {
+    const elig = {
+      majors: ['Biology', 'Chemistry'], international_friendly: 'unknown',
+      preferred_year: [], skills_required: [], citizenship_required: false,
+    } as unknown as Opportunity['eligibility'];
+    render(
+      <EligibilitySection
+        opp={opp({}, { source_type: 'summer_program', eligibility: elig, majors_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.fields.majorsApproximate')).toBeInTheDocument();
+    expect(screen.getByTestId('majors-inferred-note')).toBeInTheDocument();
+    expect(screen.queryByText('detail.fields.majors')).toBeNull();
+  });
+
+  it('keeps "majors" with no note when the program stated them', () => {
+    const elig = {
+      majors: ['Biology', 'Chemistry'], international_friendly: 'unknown',
+      preferred_year: [], skills_required: [], citizenship_required: false,
+    } as unknown as Opportunity['eligibility'];
+    render(<EligibilitySection opp={opp({}, { source_type: 'summer_program', eligibility: elig })} t={tFn} />);
+    expect(screen.getByText('detail.fields.majors')).toBeInTheDocument();
+    expect(screen.queryByTestId('majors-inferred-note')).not.toBeInTheDocument();
+  });
+
   it('keeps "required skills" with no note when the program stated them', () => {
     render(
       <EligibilitySection opp={opp({}, { source_type: 'summer_program', eligibility: elig })} t={tFn} />,
