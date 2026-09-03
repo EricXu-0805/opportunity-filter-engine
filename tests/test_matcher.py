@@ -1407,6 +1407,22 @@ class TestInterestReasonDedup:
         assert "Matches your interests: robotics" in fit
         assert any("closely matches" in r for r in fit)
 
+    def test_no_literal_overlap_does_not_put_the_alignment_in_the_students_mouth(self):
+        # Production: a profile saying "machine learning, artificial
+        # intelligence" was told "Your research interests align closely with
+        # Prof. Hanghang Tong's work on security" — the one area the student
+        # had not mentioned. The similarity is between the student's prose and
+        # the lab's description; the words in `work` are the lab's. Say what
+        # the lab works on. The overlap case keeps its "closely matches" line.
+        profile = {
+            "research_interests_text": "machine learning and artificial intelligence",
+            "desired_fields": [],
+        }
+        _, fit, _ = score_upside(profile, self._opp(["security"]), precomputed_sim=0.5)
+        assert not any("align closely" in r for r in fit)
+        assert any("also work" in r and "security" in r for r in fit)
+        assert not any("closely matches" in r for r in fit)
+
     def test_partially_covered_overlap_keeps_bare_reason(self):
         profile = {
             "research_interests_text": "computer vision and deep learning",
