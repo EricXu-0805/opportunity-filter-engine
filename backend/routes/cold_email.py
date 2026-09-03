@@ -47,6 +47,7 @@ from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
     _common_parts,
     _detect_lab_type,
+    _stated_keywords,
     generate_cold_email,
     generate_variants,
     has_source_backed_target_evidence,
@@ -1141,7 +1142,7 @@ def _professor_anchors(p: dict, opp: dict) -> list[str]:
     so counting it made ``references_professor`` vacuously true — "Dear Prof.
     Tran" is not homework."""
     anchors: list[str] = []
-    for kw in (opp.get("keywords") or [])[:12]:
+    for kw in _stated_keywords(opp)[:12]:
         if len(str(kw)) >= 4:
             anchors.append(str(kw).lower())
     for field in ("research_area", "research_topic"):
@@ -1531,7 +1532,11 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
     parts.append(str(opp.get("organization", "")))
     parts.append(str(opp.get("department", "")))
     parts.append(str(opp.get("pi_name", "")))
-    parts.extend(str(k) for k in (opp.get("keywords") or []))
+    # Guessed topics stay OUT of the anti-fabrication vocabulary for the same
+    # reason unverified works do: they were never offered to the model, so a
+    # draft that names one is fabricating a claim about this professor and the
+    # gate must reject it. Including them whitelisted the guess.
+    parts.extend(str(k) for k in _stated_keywords(opp))
     # Verified paper titles/years offered to the prompt are legitimate
     # vocabulary; without them here the anti-fabrication gate would reject a
     # draft for citing the very publication we told it about. Unverified /
