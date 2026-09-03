@@ -1511,6 +1511,31 @@ class TestATombstoneMeansAReviewActuallyHappened:
         }
         assert "identity_bound" not in self._merge(existing, incoming)
 
+    def test_a_new_address_over_a_rejected_and_nulled_row_is_not_tombstoned(self):
+        """A verdict needs an address to have been about. ``clear_contact_claim``
+        nulls the address in the same breath as it stamps, so a tombstone on an
+        address-less row describes one that is gone; the fresh scrape's address
+        is a different one nobody reviewed.
+
+        1,093 committed records are in this shape. The 2026-09-03 refresh
+        re-harvested an address for one of them, faculty-brown-colt-588aa983,
+        and restamped the row's tombstone onto susan_bernstein@brown.edu. That
+        row held ``contact_email: None`` for its whole life (first seen
+        2026-07-12), so nothing was ever rejected: its ``identity_bound: False``
+        is residue from the 2026-08-17 mass-tombstoning, and the merge was
+        about to launder it into a verdict on a personal address."""
+        existing = {
+            "id": "f6", "pi_name": "K L", "department": "Comparative Literature",
+            "contact_email": None,
+            "metadata": {"identity_bound": False},
+        }
+        incoming = {
+            "id": "f6", "pi_name": "K L", "department": "Comparative Literature",
+            "contact_email": "k.l@uiuc.edu",
+            "metadata": {},
+        }
+        assert "identity_bound" not in self._merge(existing, incoming)
+
     def test_a_new_address_over_a_proven_row_is_tombstoned(self):
         """The proof described the OLD address. It must not follow the new one,
         and the new one must not inherit grandfathering to flow unproven."""
