@@ -1701,6 +1701,13 @@ def test_research_areas_stop_at_page_chrome_and_never_cut_mid_token():
     assert len(capped) <= 300 and not capped.endswith((" ", ",")) and capped.split(", ")[-1].startswith("topic number")
 
 
+def test_an_oxford_comma_fragment_is_the_area_without_its_conjunction():
+    from src.collectors.uiuc_faculty import _trim_research_areas
+
+    assert _trim_research_areas("Signal processing, and acoustics, Remote sensing, & imaging") == \
+        "Signal processing, acoustics, Remote sensing, imaging"
+
+
 def test_research_areas_marker_path_drops_the_sections_that_follow():
     from bs4 import BeautifulSoup
 

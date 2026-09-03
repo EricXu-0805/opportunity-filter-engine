@@ -2108,6 +2108,10 @@ def _trim_research_areas(text: str, cap: int = 300) -> str:
     items = [i.strip() for i in (text or "").split(",")]
     kept: list[str] = []
     for item in items:
+        # "signal processing, and acoustics" splits into "and acoustics": the
+        # Oxford comma is the source page's, not a research area of its own.
+        # 31 raws each carried "and acoustics" and "and remote sensing".
+        item = re.sub(r"^(?:and|or|&)\s+", "", item, flags=re.IGNORECASE).strip()
         low = item.lower()
         if not item or low in _AREA_LABEL_HEADINGS:
             continue
