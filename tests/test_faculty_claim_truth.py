@@ -1184,3 +1184,73 @@ def test_normalizing_never_collapses_two_different_fields():
     assert _normalize_major("Underwater Basket Weaving") == "UNDERWATER BASKET WEAVING"
     assert _normalize_major("Physics") != _normalize_major("Philosophy")
     assert _normalize_major("") == ""
+
+def _listing(*, prose: str, raw: bool, preferred_year=None, inferred_year=False):
+    opp = {
+        "id": "prog-desc", "title": "Summer Research Program",
+        "source_type": "summer_program", "opportunity_type": "summer_program",
+        "organization": "Test University", "keywords": [],
+        "eligibility": {"preferred_year": list(preferred_year or [])},
+        "metadata": {},
+    }
+    opp["description_raw" if raw else "description_clean"] = prose
+    if inferred_year:
+        stamp_inferred(opp["metadata"], "eligibility.preferred_year", "rule:llm_tagger")
+    return opp
+
+
+def test_the_upside_layer_reads_the_description_the_record_actually_has():
+    """`_build_opp_static` was the only description consumer in the file with no
+    `description_clean` fallback, and 7,537 of 8,361 listing records (90.1%)
+    keep their prose there. For those, mentor and pathway — a quarter to a
+    third of the upside layer — were the constants 35.0 and 40.0, and the
+    "Potential for publication or long-term involvement" bullet could never
+    appear at all.
+    """
+    prose = (
+        "Students are mentored by a faculty advisor, receive hands-on training "
+        "in the lab, and co-author a conference paper describing the work."
+    )
+    profile = {
+        "major": "Biology", "grade": "Sophomore", "seeking_type": ["summer_program"],
+        "hard_skills": [], "coursework": [], "experience_level": "none",
+        "resume_ready": True, "can_cold_email": True,
+        "research_interests_text": "biology", "desired_fields": ["biology"],
+        "home_school": "testu",
+    }
+    in_raw = rank_opportunity(profile, _listing(prose=prose, raw=True))
+    in_clean = rank_opportunity(profile, _listing(prose=prose, raw=False))
+    assert in_clean.upside_score == in_raw.upside_score
+    assert any("publication or long-term" in r for r in in_clean.reasons_fit)
+
+    # The control: a record with no such prose anywhere still scores lower.
+    bare = rank_opportunity(profile, _listing(prose="Data Science Intern.", raw=False))
+    assert bare.upside_score < in_clean.upside_score
+
+
+def test_a_class_year_we_derived_is_not_a_targeting_claim():
+    """The tagger read "graduating HIGH SCHOOL seniors" out of the Jackson
+    Laboratory program's own sentence and wrote preferred_year=['senior'].
+    The majors layer sixty lines below already refuses to make a gap out of a
+    derived list (#862); preferred_year is stamped by the same tagger in the
+    same call and never got the rule. 68 live records mis-score every student
+    whose class year is not the derived one.
+    """
+    profile = {
+        "major": "Biology", "year": "Freshman", "grade": "Freshman",
+        "seeking_type": ["summer_program"],
+        "hard_skills": [], "coursework": [], "experience_level": "none",
+        "resume_ready": True, "can_cold_email": True,
+        "research_interests_text": "biology", "desired_fields": ["biology"],
+        "home_school": "testu",
+    }
+    stated = rank_opportunity(
+        profile, _listing(prose="A program.", raw=False, preferred_year=["senior"]))
+    derived = rank_opportunity(
+        profile,
+        _listing(prose="A program.", raw=False, preferred_year=["senior"], inferred_year=True),
+    )
+    assert any("Typically targets" in g for g in stated.reasons_gap)
+    assert not any("Typically targets" in g for g in derived.reasons_gap)
+    # And it stops costing them 30% of the eligibility layer.
+    assert derived.eligibility_score > stated.eligibility_score

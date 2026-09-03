@@ -1075,11 +1075,19 @@ def score_eligibility(
 
     # Year match (30% weight)
     student_year = (profile.get("year") or "").strip()
-    year_score = _year_match_score(
-        student_year,
-        elig.get("preferred_year") or []
+    # A class-year list the tagger derived is not a targeting claim, and this
+    # layer is 30% of the eligibility score. The tagger read "graduating HIGH
+    # SCHOOL seniors" out of one program's own sentence and wrote ['senior'];
+    # the majors layer sixty lines below already refuses to grade against a
+    # derived list (#862), and preferred_year is stamped by the same tagger in
+    # the same call. Passing [] falls through to the neutral 40 that
+    # _year_match_score already returns for an unknown year.
+    stated_years = (
+        [] if is_inferred(opportunity, "eligibility.preferred_year")
+        else (elig.get("preferred_year") or [])
     )
-    pref_years = elig.get("preferred_year") or []
+    year_score = _year_match_score(student_year, stated_years)
+    pref_years = stated_years
     if year_score >= 80:
         reasons_fit.append(f"Accepts {student_year} students")
     elif not student_year or student_year.lower() == "unknown":
@@ -2049,7 +2057,12 @@ def _build_opp_static(opp: dict) -> _OppStatic:
             else "Prestigious institution — strong resume builder"
         )
 
-    desc = (opp.get("description_raw") or "").lower()
+    # description_clean too: 7,537 of 8,361 listing records (90.1%) keep their
+    # prose there, and every other description reader in this file already
+    # falls back. Without it mentor and pathway — a quarter to a third of the
+    # upside layer for a listing — were the constants 35.0 and 40.0, and the
+    # "publication or long-term involvement" reason could never be produced.
+    desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
     mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if k in desc)
     pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if k in desc)
 
