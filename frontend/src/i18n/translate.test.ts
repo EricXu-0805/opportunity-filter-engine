@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { translate, resolvePath, interpolate, normalizeLocale, isLocale } from './translate';
 import { dictionaries, en, zh } from './dictionaries';
+import { sourceLabel } from '@/app/results/types';
 
 describe('resolvePath', () => {
   it('resolves nested paths to strings', () => {
@@ -183,6 +184,41 @@ describe('dictionary parity', () => {
       const enVars = enVal.match(/\{(\w+)\}/g) ?? [];
       const zhVars = zhVal.match(/\{(\w+)\}/g) ?? [];
       expect(new Set(zhVars), `placeholders mismatch at ${k}`).toEqual(new Set(enVars));
+    }
+  });
+});
+
+// A student reads the source of every card and every filter row. The
+// per-school label map covers 81 of the 329 slugs in the corpus, so the
+// remaining 89.7% of records are named by composing the school's catalog name
+// with one of four kind phrases — and both halves have to exist in both
+// locales for that to read as a name rather than as a slug.
+describe('composed source labels read as names in both locales', () => {
+  const real = (locale: 'en' | 'zh') => (key: string) => translate(locale, key);
+
+  it('names the school and the kind in English', () => {
+    const t = real('en');
+    expect(sourceLabel('jhu_faculty', t)).toBe('Johns Hopkins Faculty');
+    expect(sourceLabel('uw_external_research', t)).toBe('UW Research (External / REU)');
+    expect(sourceLabel('utexas_research_programs', t)).toBe('UT Austin Research Programs');
+    expect(sourceLabel('wisc_labs', t)).toBe('UW–Madison Labs & Institutes');
+  });
+
+  it('names the school and the kind in Chinese', () => {
+    const t = real('zh');
+    expect(sourceLabel('jhu_faculty', t)).toBe('Johns Hopkins 教授');
+    expect(sourceLabel('uw_external_research', t)).toBe('UW 校外研究（REU）');
+    expect(sourceLabel('utexas_research_programs', t)).toBe('UT Austin 研究项目');
+    expect(sourceLabel('wisc_labs', t)).toBe('UW–Madison 实验室与研究所');
+  });
+
+  it('never leaves a kind phrase untranslated in either locale', () => {
+    for (const locale of ['en', 'zh'] as const) {
+      for (const kind of ['faculty', 'research_programs', 'labs', 'external_research']) {
+        const label = sourceLabel(`jhu_${kind}`, real(locale));
+        expect(label.startsWith('Johns Hopkins ')).toBe(true);
+        expect(label).not.toContain('results.filters.');
+      }
     }
   });
 });

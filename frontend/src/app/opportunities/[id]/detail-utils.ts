@@ -1,10 +1,6 @@
 import type { Opportunity } from '@/lib/types';
 import type { TFunc } from './types';
 
-export function formatType(t: string): string {
-  return t.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
 /**
  * Truthful no-deadline classification. `is_rolling=true` is a blanket
  * collector default on all faculty records and most campus programs — NOT
