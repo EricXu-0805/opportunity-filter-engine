@@ -1491,7 +1491,7 @@ _SHARED_PHRASE_NAV_THRESHOLD = 3
 
 # Page-furniture / non-topical labels that show up in scraped research-area text.
 _RESEARCH_AREA_NAV_NOISE = re.compile(
-    r"research area|book|monograph|selected article|articles? in|\bjournal|"
+    r"\bnews\b|research area|book|monograph|selected article|articles? in|\bjournal|"
     r"conference proceeding|linkedin|website|\bgroup\b|laborator|\blab\b|"
     r"master of|bachelor|\bphd\b|post-?doc|doctoral|usmle|step 1|review method|curriculum|teaching|"
     r"biography|publication|award|honor|wiki|original edition|focuses on|"
@@ -1505,7 +1505,10 @@ _RESEARCH_AREA_NAV_NOISE = re.compile(
     # "water resources").
     r"\bfacilities\b|\bscholars?\b|student resources|career services|"
     r"student research experience|interdisciplinary research|research cent|"
-    r"research programs?|related research|field research|colloqui",
+    r"research programs?|related research|field research|colloqui|"
+    # a publication list's publishers scraped as areas ("Springer, Plenum")
+    r"\bspringer\b|\belsevier\b|\bwiley\b|\bplenum\b|academic press|university press|mit press|"
+    r"twitter|facebook|instagram|youtube|bluesky|mastodon|\barticles?\b",
     re.IGNORECASE,
 )
 # "CS 591", "ECE 220" — a dept code + number. Exempt "ieee" so an IEEE
@@ -1516,7 +1519,8 @@ _COURSE_CODE_RE = re.compile(r"\b(?!ieee\b)[A-Za-z]{2,4}\s?\d{3}\b", re.IGNORECA
 # not topics (e.g. "and freight applications", "including best practices").
 _LEADING_NONTOPICAL_RE = re.compile(
     r"^(?:and|or|including|with|the|our|some|in|of|for|to|a|an|my|we|is|are|"
-    r"that|this|by|emphasis)\b",
+    r"that|this|by|emphasis|from|through|using|via|towards?|based on|"
+    r"how|what|why|where|when|which|who|supporting|focusing)\b",
     re.IGNORECASE,
 )
 _RESEARCH_FUNCTION_WORDS = frozenset({
@@ -1527,7 +1531,8 @@ _GENERIC_SINGLE_WORDS = frozenset({
     "education", "learning", "teaching", "solution", "solutions", "design",
     "analysis", "modeling", "modelling", "research", "science", "methods",
     "applications", "systems", "theory", "technology", "development",
-    "management", "computation",
+    "management", "computation", "function", "structure", "government", "governments",
+    "background", "planning",
     # standalone nav words that are real research terms only in a multi-word
     # phrase ("water resources"); reject them only when they stand alone.
     "resources", "resource", "people", "overview", "directory", "news", "events",
@@ -1680,6 +1685,8 @@ def _clean_research_phrase(phrase: str) -> str | None:
     p = re.sub(r"\s*\([^)]*\)", "", phrase).strip().strip(".;:,").strip()
     if "(" in p or ")" in p or _COURSE_CODE_RE.search(p):
         return None
+    if " - " in p or re.search(r"\d{4,}", p):  # a breadcrumb, an article number
+        return None
     if not re.match(r"^[A-Za-z][A-Za-z0-9 &/\-]+$", p):
         return None
     words = p.split()
@@ -1696,6 +1703,34 @@ def _clean_research_phrase(phrase: str) -> str | None:
     return p.lower()
 
 
+# What a profile's sidebar leaves in research_areas_raw once the nav block is
+# gone: the unit's own name, the person's title, a co-author's surname, a
+# dangling adjective. Names are recognised from the school's own roster — every
+# token of a one- or two-word phrase is a token of some UIUC faculty pi_name
+# (other schools' rosters carry junk names like "J Buchanan Motor Neuroscience").
+_ORG_NAME_RE = re.compile(
+    r"^(?:department|school|college|institute|center|centre|division|office|university) of\b"
+    r"|\buniver\w*|\b(?:building|hall)$"
+)
+_JOB_TITLE_RE = re.compile(
+    r"\b(?:professor|scientist|lecturer|director|chair|fellow|dean|head|instructor"
+    r"|coordinator|advisor|lead|emerit[ua]s?)$"
+)
+
+
+def _is_sidebar_residue(phrase: str, faculty_name_tokens: set[str]) -> bool:
+    words = phrase.split()
+    if _ORG_NAME_RE.match(phrase) or _ORG_NAME_RE.search(phrase) or _JOB_TITLE_RE.search(phrase):
+        return True
+    # "RM Espinosa-Marzal, X Zhang": initials dropped, surnames split on the hyphen
+    surnames = [t for t in re.split(r"\W+", phrase) if len(t) >= 3]
+    if len(words) <= 2 and surnames and all(t in faculty_name_tokens for t in surnames):
+        return True
+    if _KEYWORD_FRAGMENT_PREFIX_RE.match(phrase):
+        return True
+    return len(words) == 1 and phrase.endswith(("able", "ous", "al", "ive", "ic"))
+
+
 def _derive_keywords_from_raw(opps: list[dict]) -> int:
     """Enrich broad-field-only faculty with real keywords parsed from their stored
     research_areas_raw text (DQ-2). Mutates ``opps`` in place; returns the count
@@ -1703,6 +1738,17 @@ def _derive_keywords_from_raw(opps: list[dict]) -> int:
     re-introducing DQ-1 pollution, and self-name tokens to avoid collaborator
     surnames leaking in as topics."""
     fac = [o for o in opps if o.get("source") == "uiuc_faculty"]
+    faculty_name_tokens = {
+        t for o in fac for t in re.split(r"\W+", (o.get("pi_name") or "").lower())
+        if len(t) >= 3
+    }
+    # Another unit's umbrella ("mechanical engineering" on a Communication page)
+    # is the honest broad field of that unit, never a stated area of this person.
+    umbrellas = {_dept_broad_field(o.get("department", "")) for o in fac} | {
+        re.sub(r"^(?:the\s+)?(?:department|school|college)\s+of\s+", "",
+               o.get("department", ""), flags=re.IGNORECASE).replace(" & ", " and ").lower()
+        for o in fac
+    }
 
     dept_phrase_counts: dict[str, Counter] = defaultdict(Counter)
     for o in fac:
@@ -1714,15 +1760,15 @@ def _derive_keywords_from_raw(opps: list[dict]) -> int:
     for o in fac:
         broad = _dept_broad_field(o.get("department", ""))
         kws = [k.lower() for k in (o.get("keywords") or [])]
-        if kws not in ([], [broad]):
-            continue  # already carries a specific keyword, or no broad fallback
 
         raw_text = (o.get("metadata") or {}).get("research_areas_raw") or ""
         if not raw_text.strip():
             continue
         parts = _split_research_phrases(raw_text)
-        if len(raw_text) >= 295 and parts:
-            parts = parts[:-1]  # the 300-char cap usually truncates the last phrase
+        if len(raw_text) >= 250 and parts:
+            # The old 300-char cap cut the last phrase mid-word ("x-ray crystall")
+            # and the boundary-aware trim that replaced it kept the cut fragment.
+            parts = parts[:-1]
 
         name_tokens = {t.lower() for t in re.split(r"\W+", o.get("pi_name") or "") if t}
         counts = dept_phrase_counts[o.get("department", "")]
@@ -1735,11 +1781,20 @@ def _derive_keywords_from_raw(opps: list[dict]) -> int:
                 continue
             if cleaned in name_tokens:  # a collaborator/self surname, not a topic
                 continue
+            if cleaned in umbrellas or _is_sidebar_residue(cleaned, faculty_name_tokens):
+                continue
             derived.append(cleaned)
             if len(derived) >= 4:
                 break
-        if derived:
-            o["keywords"] = derived
+        # The stated areas the row lacked go in front; everything it already
+        # carried stays (a bank substring like "security" is weaker than the
+        # stated list but not wrong), minus the broad field once anything
+        # specific exists. Eight is the cap and the room comes out of the new
+        # phrases, never out of what the row had.
+        carried = [k for k in (o.get("keywords") or []) if k.lower() != broad]
+        fresh = [k for k in derived if k not in kws][:max(0, 8 - len(carried))]
+        if fresh:
+            o["keywords"] = fresh + carried
             enriched += 1
     return enriched
 
@@ -2343,7 +2398,7 @@ def _run_faculty_dq(opps: list[dict]) -> None:
         logger.info(f"Demoted {demoted} faculty record(s) with shared department-block keywords to the broad field")
     enriched = _derive_keywords_from_raw(opps)
     if enriched:
-        logger.info(f"Enriched {enriched} broad-field faculty record(s) with keywords derived from research_areas_raw")
+        logger.info(f"Enriched {enriched} faculty record(s) with keywords derived from research_areas_raw")
     split = _split_compound_keywords(opps)
     if split:
         logger.info(f"Atomized comma-joined compound keywords in {split} faculty record(s)")
