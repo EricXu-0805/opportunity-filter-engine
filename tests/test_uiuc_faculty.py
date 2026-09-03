@@ -1673,3 +1673,50 @@ def test_a_professor_seen_this_run_is_never_proposed_for_retirement():
     )
     assert result["would_deactivate"] == []
     assert result["newly_deactivated"] == 0
+
+
+def test_research_areas_stop_at_page_chrome_and_never_cut_mid_token():
+    # Verbatim from the corpus, 2026-09-02: what the marker path stored for
+    # Hanghang Tong and Ram Alagappan.
+    from src.collectors.uiuc_faculty import _trim_research_areas
+
+    tong = ("Large scale data mining and machine learning, especially for graph and multimedia "
+            "data with applications to social networks analysis, healthcare, cyber-security and "
+            "e-commerce., Research Areas, Artificial Intelligence, Data and Information Systems, "
+            "Recent Courses Taught, CS 412 CSP (CS 412 P3, CS 41")
+    out = _trim_research_areas(tong)
+    assert "Recent Courses Taught" not in out and "CS 41" not in out
+    assert "Research Areas" not in out.split(", ")
+    assert out.endswith(("e-commerce.", "Data and Information Systems"))
+    assert "Artificial Intelligence" in out
+
+    alagappan = ("Storage systems, Distributed systems, Operating systems, Research Areas, Systems and "
+                 "Networking, Teaching Honors, List of Teachers Ranked as Excellent, CS598: Storage Systems")
+    assert _trim_research_areas(alagappan) == \
+        "Storage systems, Distributed systems, Operating systems, Systems and Networking"
+
+    # the cap lands on an item boundary, not inside one
+    long = ", ".join(f"topic number {i:02d}" for i in range(40))
+    capped = _trim_research_areas(long, 300)
+    assert len(capped) <= 300 and not capped.endswith((" ", ",")) and capped.split(", ")[-1].startswith("topic number")
+
+
+def test_an_oxford_comma_fragment_is_the_area_without_its_conjunction():
+    from src.collectors.uiuc_faculty import _trim_research_areas
+
+    assert _trim_research_areas("Signal processing, and acoustics, Remote sensing, & imaging") == \
+        "Signal processing, acoustics, Remote sensing, imaging"
+
+
+def test_research_areas_marker_path_drops_the_sections_that_follow():
+    from bs4 import BeautifulSoup
+
+    from src.collectors.uiuc_faculty import _research_areas_from_soup
+
+    html = """<html><body><h2>Research Interests</h2>
+    <p>Storage systems</p><p>Distributed systems</p>
+    <h2>Research Areas</h2><p>Systems and Networking</p>
+    <h2>Recent Courses Taught</h2><p>CS 598: Storage Systems</p><p>CS 423</p>
+    </body></html>"""
+    out = _research_areas_from_soup(BeautifulSoup(html, "html.parser"))
+    assert out == "Storage systems, Distributed systems, Systems and Networking", out

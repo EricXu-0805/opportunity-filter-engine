@@ -818,7 +818,7 @@ def normalize_faculty(
         f"Faculty research profile for {title} {name} in the {dept_name} at UIUC.",
     ]
     if research_areas:
-        desc_parts.append(f"Research areas: {research_areas[:200]}")
+        desc_parts.append(f"Research areas: {_trim_research_areas(research_areas, 200)}")
     desc_parts.append(
         "Contact this faculty member to ask whether undergraduate research "
         "opportunities are currently available."
@@ -892,7 +892,7 @@ def normalize_faculty(
             "manually_reviewed": False,
             "notes": f"Auto-imported from {dept_name} faculty directory",
             "faculty_title": title,
-            "research_areas_raw": research_areas[:300] if research_areas else "",
+            "research_areas_raw": _trim_research_areas(research_areas) if research_areas else "",
             FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
@@ -2068,6 +2068,68 @@ _RESEARCH_SELECTORS = [
 ]
 
 
+# Section titles that follow a faculty page's research text. The marker path
+# below takes the eight lines after "Research Interests", and on Siebel School
+# pages those lines run straight into the next sections: "Research Areas,
+# Systems and Networking, Recent Courses Taught, CS 412 CSP (CS 412 P3, CS 41"
+# — cut mid-token by the 300-character cap — was stored as Hanghang Tong's
+# research areas and rendered on his page under "Research areas:". Measured:
+# 404 of 2,817 UIUC records carried a section title in the field and 759
+# ended mid-token.
+_AREA_LABEL_HEADINGS = frozenset({
+    "research areas", "research interests", "research focus", "research area",
+    "research description", "research topics", "research statement",
+    "primary research area", "primary research areas", "research", ":", "-",
+})
+_AREA_STOP_HEADINGS = (
+    "recent courses taught", "courses taught", "teaching honors", "teaching",
+    "education", "publications", "selected publications", "chapters in books",
+    "awards", "honors", "biography", "bio", "office hours", "contact",
+    "list of teachers ranked as excellent", "related news", "news", "in the news",
+    "recent news", "media", "press",
+    # site navigation that the broad selectors on other UIUC department pages
+    # sweep up after the research text: 134 raws carried "Faculty", 126
+    # "Resources", 112 "People", 93 "Edit Your Profile"
+    "faculty", "resources", "people", "staff", "administration & staff",
+    "graduate students", "edit your profile", "selected articles in journals",
+    "additional campus affiliations", "books authored or co-authored",
+    "books authored", "affiliations", "courses", "service", "grants",
+)
+
+
+def _trim_research_areas(text: str, cap: int = 300) -> str:
+    """The research text alone, whole items only, never longer than ``cap``.
+
+    Section titles are page chrome, not areas: a bare "Research Areas" item is
+    dropped and everything from a courses/teaching/education/publications
+    title onward is cut. The cap then lands on an item boundary — a 300th
+    character inside "CS 412" left "CS 41" on the page.
+    """
+    items = [i.strip() for i in (text or "").split(",")]
+    kept: list[str] = []
+    for item in items:
+        # "signal processing, and acoustics" splits into "and acoustics": the
+        # Oxford comma is the source page's, not a research area of its own.
+        # 31 raws each carried "and acoustics" and "and remote sensing".
+        item = re.sub(r"^(?:and|or|&)\s+", "", item, flags=re.IGNORECASE).strip()
+        low = item.lower()
+        if not item or low in _AREA_LABEL_HEADINGS:
+            continue
+        if low in _AREA_STOP_HEADINGS or any(
+            low.startswith(h + " ") or low.startswith(h + ":") or low.startswith(h + " (")
+            for h in _AREA_STOP_HEADINGS
+        ):
+            break
+        kept.append(item)
+    out = ", ".join(kept)
+    if len(out) <= cap:
+        return out
+    cut = out.rfind(", ", 0, cap)
+    if cut <= 0:
+        cut = out.rfind(" ", 0, cap)
+    return out[:cut].rstrip(" ,") if cut > 0 else out[:cap]
+
+
 def _research_areas_from_soup(soup) -> str:
     """Comma-separated research-area text from a labelled section or a 'Research
     Interests/Areas/Focus' text marker. Returns '' when none is present. (Prose
@@ -2077,7 +2139,7 @@ def _research_areas_from_soup(soup) -> str:
         if el:
             txt = el.get_text(separator=", ", strip=True)
             if len(txt) > 20:
-                return txt[:300]
+                return _trim_research_areas(txt)
     page_text = soup.get_text("\n")
     for marker in ("Research Interests", "Research Areas", "Research Focus"):
         idx = page_text.find(marker)
@@ -2085,7 +2147,7 @@ def _research_areas_from_soup(soup) -> str:
             chunk = page_text[idx + len(marker):idx + len(marker) + 400]
             lines = [ln.strip() for ln in chunk.split("\n") if ln.strip()][:8]
             if lines:
-                return ", ".join(lines)[:300]
+                return _trim_research_areas(", ".join(lines))
     return ""
 
 
@@ -2256,7 +2318,7 @@ def _reenrich_broad_only_faculty(
         else:
             o["keywords"] = kws
             if areas:
-                o.setdefault("metadata", {})["research_areas_raw"] = areas[:300]
+                o.setdefault("metadata", {})["research_areas_raw"] = _trim_research_areas(areas)
     return enriched, len(targets), changes
 
 
