@@ -477,6 +477,9 @@ def _fellowship_release_corpus() -> list[dict]:
         "keywords": ["machine learning", "vision"],
         "metadata": {"is_active": True},
         "source": "uiuc_release_contract",
+        # Coverage attributes a record by `school`, the field the shards are
+        # keyed by, so a campus record must carry one to be counted at all.
+        "school": "uiuc",
     }
     return [
         {
@@ -638,7 +641,12 @@ def test_hidden_fellowship_records_never_leave_discovery_apis(scope_closed, monk
     assert "fellowship" not in stats["by_type"]
 
     coverage = client.get("/api/opportunities/coverage").json()
-    assert coverage["counts"]["uiuc"] == 2
+    # Both halves are gated, not just listings: a release-hidden faculty record
+    # leaking into the faculty count would understate nothing but would still
+    # advertise a target the release does not serve.
+    assert coverage["schools"]["uiuc"]["listing_count"] == 2
+    assert coverage["schools"]["uiuc"]["faculty_contact_count"] == 0
+    assert coverage["schools"]["uiuc"]["total_count"] == 2
 
 
 def test_release_record_gate_checks_canonical_and_legacy_type_fields(scope_closed):

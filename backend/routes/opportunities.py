@@ -11,7 +11,11 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from backend.data_loader import load_opportunities, load_opportunities_by_id
+from backend.data_loader import (
+    corpus_version,
+    load_opportunities,
+    load_opportunities_by_id,
+)
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, run_blocking
 from backend.lib.contact_visibility import (
     STATUS_REVEALED,
@@ -37,6 +41,10 @@ from backend.lib.release_scope import (
     feature_enabled,
     release_visible_opportunities,
     release_visible_opportunity_by_id,
+)
+from backend.lib.school_coverage import (
+    SCHOOL_COVERAGE_SCHEMA,
+    coverage_payload,
 )
 from backend.lib.supabase_auth import authenticated_uid
 from backend.lib.target_actionability import (
@@ -239,54 +247,76 @@ async def list_opportunities(
     }
 
 
-# Schools whose coverage the university-switcher badge reports. The count comes
-# from each opportunity's ``source`` prefix (``umich_faculty`` -> ``umich``), so
-# the chip tracks the live corpus instead of a hardcoded number that drifts.
-_SCHOOL_SLUGS = frozenset({
-    "grinnell", "colby", "hamilton", "vassar", "smith", "wlu", "colgate", "wesleyan", "haverford", "bates", "barnard", "coloradocollege", "macalester", "kenyon", "brynmawr",  # LAC ranks 11-25 (2026-07-23)
-    "amherst", "swarthmore", "pomona", "wellesley", "bowdoin", "carleton", "cmc", "middlebury", "davidson",  # Top-10 liberal arts colleges (2026-07-21)
-    "bc", "emory", "georgetown", "nyu", "tufts", "uva",  # Wave-3 batch 1 (2026-07-20)
-    "umich", "princeton", "uchicago", "gatech", "ucla", "utexas",
-    "uw", "ucsd", "stanford", "wisc", "ucb", "uiuc",
-    "purdue", "duke", "uci", "ucsb", "boulder",
-    "jhu", "northwestern", "upenn", "caltech",
-    "cornell", "brown", "dartmouth", "columbia", "mit", "harvard", "rice", "vanderbilt",
-    "yale", "cmu",
-    "usc", "umn", "osu", "nd", "rochester", "uf", "umass",
-    "vt", "tamu", "umd", "neu", "sbu", "bu", "washu", "rutgers", "ncsu", "psu",
-    "ucsc", "arizona", "ucr", "asu", "pitt", "msu",
-    "casewestern", "houston", "iastate", "indiana", "miami", "rpi", "ucd", "ucf", "uconn", "udel", "uiowa", "utah",
-    "buffalo", "fsu", "usf", "utk", "clemson", "colostate", "oregonstate", "drexel",
-    "stevens", "njit", "wpi", "uky", "lehigh", "syracuse", "cincinnati", "unl", "lsu", "utdallas",
-    "uga",
-})
+class SchoolCoverageCounts(BaseModel):
+    """One school's coverage, every population explicit.
 
-
-@router.get("/opportunities/coverage")
-async def opportunity_coverage():
-    """Per-school active listing counts for the university-switcher badge.
-
-    Derived from the live corpus so the switcher chip reflects real coverage
-    instead of the hand-maintained ``campusOpportunities`` numbers in the
-    frontend's schools.ts (which drift as the data grows). ``school`` is the slug
-    the source name is prefixed with; inactive records are excluded.
+    ``total_count`` is served rather than left for each client to add up: two
+    pages summing two fields is two chances to use the wrong one, and the bug
+    this model replaces was exactly that — the switcher read the listings map of
+    a two-map response and never looked at the faculty map beside it.
     """
-    counts: Counter[str] = Counter()
-    faculty_contacts: Counter[str] = Counter()
-    for o in actionable_opportunities(release_visible_opportunities(load_opportunities())):
-        if (o.get("metadata") or {}).get("is_active") is False:
-            continue
-        slug = (o.get("source") or "").split("_", 1)[0]
-        if slug not in _SCHOOL_SLUGS:
-            continue
-        if o.get("source_type") == "faculty_research":
-            faculty_contacts[slug] += 1
-        else:
-            counts[slug] += 1
-    return {
-        "counts": dict(counts),
-        "faculty_contacts": dict(faculty_contacts),
-    }
+
+    listing_count: int
+    faculty_contact_count: int
+    #: Records whose source type is not on the reviewed allowlist. Outside
+    #: ``total_count`` on purpose; present so ``total_count`` is auditable and
+    #: this population never hides inside another.
+    unreviewed_count: int
+    #: The canonical coverage number: ``listing_count + faculty_contact_count``.
+    #: Clients render this and add nothing to it.
+    total_count: int
+
+
+class SchoolCoverageResponse(BaseModel):
+    """Response for ``/opportunities/coverage``.
+
+    ``schema_`` (wire name ``schema``) is the client's gate. A body without it is
+    a pre-v2 response — listings-only under a key called ``counts`` — replayed
+    from an HTTP cache or an older instance, and a client that read its numbers
+    anyway would understate every school by one to two orders of magnitude. It
+    is cheaper to make that undetectable-by-accident here than to hope no cache
+    holds one.
+    """
+
+    schema_: str = Field(default=SCHOOL_COVERAGE_SCHEMA, alias="schema")
+    #: Keyed by school slug. A school with no surviving records is ABSENT, which
+    #: means "nothing collected for this campus" — not zero. Clients must fall
+    #: back to their static number rather than rendering a 0 we did not verify.
+    schools: dict[str, SchoolCoverageCounts]
+
+    model_config = {"populate_by_name": True}
+
+
+# Coverage walks the whole corpus and runs target_truth per record, and the
+# switcher refetches on every open. Keyed by corpus version rather than a clock
+# so it can never outlive the data it counted: a refreshed corpus changes the
+# mtime, which changes the key, which is the invalidation. A TTL alone would
+# happily serve counts from the previous dataset for its remaining seconds.
+_coverage_cache: tuple[str, dict] | None = None
+
+
+@router.get("/opportunities/coverage", response_model=SchoolCoverageResponse)
+async def opportunity_coverage() -> dict:
+    """Per-school coverage for the university switcher and first-visit gate.
+
+    Coverage is ``listing_count + faculty_contact_count`` — see
+    ``backend/lib/school_coverage.py`` for why both halves, and why this route
+    computes the total instead of leaving each client to add the parts.
+
+    Derived from the live corpus so the chip tracks real coverage instead of the
+    hand-maintained numbers that drift as the data grows; the committed static
+    fallback in the frontend is generated from the same function
+    (``scripts/gen_school_stats.py``) so the two agree by construction.
+    """
+    global _coverage_cache
+
+    version = corpus_version()
+    if _coverage_cache is not None and _coverage_cache[0] == version:
+        return _coverage_cache[1]
+
+    payload = coverage_payload(load_opportunities())
+    _coverage_cache = (version, payload)
+    return payload
 
 
 @router.post("/opportunities/batch")

@@ -802,13 +802,19 @@ def test_faculty_contact_does_not_match_rolling_saved_search_even_with_legacy_st
 
 
 def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
+    # `school` — not the source-name prefix — is what attributes a record to a
+    # campus. It is the field the shards are keyed by, and the prefix heuristic
+    # it replaced credited UIUC with national records while dropping genuine
+    # UIUC ones whose collector was named for the platform, not the school.
     faculty = _legacy_faculty(
+        school="uiuc",
         source="uiuc_faculty",
         metadata={"is_active": True},
     )
     listing = {
         **_legacy_faculty(
             id="listing-active",
+            school="uiuc",
             source="uiuc_program",
             source_type="campus_program",
             metadata={"is_active": True},
@@ -826,10 +832,23 @@ def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
     )
     opportunity_routes._stats_cache = None
     opportunity_routes._stats_cache_time = 0
+    opportunity_routes._coverage_cache = None
 
+    # Coverage keeps both populations visible AND publishes their sum, because
+    # the switcher's question ("how big is this campus?") is answered by both
+    # halves. It is a different question from `stats["total"]` below, which is
+    # the discovery inventory of things to apply to. Separate fields, separate
+    # meanings — what must never happen again is a client reading one as if it
+    # were the other.
     coverage = asyncio.run(opportunity_routes.opportunity_coverage())
-    assert coverage["counts"] == {"uiuc": 1}
-    assert coverage["faculty_contacts"] == {"uiuc": 1}
+    assert coverage["schools"] == {
+        "uiuc": {
+            "listing_count": 1,
+            "faculty_contact_count": 1,
+            "unreviewed_count": 0,
+            "total_count": 2,
+        }
+    }
 
     stats = asyncio.run(opportunity_routes.get_stats())
     # `total` is the user-facing discovery count — what a student could act on
@@ -842,6 +861,7 @@ def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
     assert stats["faculty_contact_total"] == 1
     opportunity_routes._stats_cache = None
     opportunity_routes._stats_cache_time = 0
+    opportunity_routes._coverage_cache = None
 
 
 def test_citizenship_restriction_note_survives_a_second_projection():

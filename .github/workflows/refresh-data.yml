@@ -330,7 +330,15 @@ jobs:
             # the freshly fetched main, so it cannot revert a concurrent merge.
             python3 -m src.normalizers.deactivate_past --shards --save
 
+            # The switcher's static fallback is derived from the shards by the
+            # same function the coverage API uses, so it has to be rewritten in
+            # the same commit that moves them. Skipping it would ship a first
+            # paint counting last week's corpus, and tests/test_school_coverage.py
+            # fails the refresh PR rather than letting that land silently.
+            python3 scripts/gen_school_stats.py
+
             git add data/processed/shards data/processed/collector_status.json
+            git add frontend/src/lib/school-stats.json
             if [ -f data/processed/collector_status_history.jsonl ]; then
               git add data/processed/collector_status_history.jsonl
             fi
