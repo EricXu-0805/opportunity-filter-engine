@@ -228,7 +228,11 @@ function liveListingTarget(id = 'opp-A'): ReminderTarget {
   };
 }
 
-function renderModal(oppId = 'opp-A', target: ReminderTarget | undefined = liveListingTarget(oppId)) {
+function renderModal(
+  oppId = 'opp-A',
+  target: ReminderTarget | undefined = liveListingTarget(oppId),
+  onContactConfirmed?: (record: unknown) => void,
+) {
   const onClose = vi.fn();
   const utils = render(
     <ColdEmailModal
@@ -238,6 +242,7 @@ function renderModal(oppId = 'opp-A', target: ReminderTarget | undefined = liveL
       opportunityTitle="REU"
       profile={profile}
       reminderTarget={target}
+      onContactConfirmed={onContactConfirmed}
     />,
   );
   const show = (open: boolean, id: string, next: ReminderTarget | undefined = liveListingTarget(id)) =>
@@ -399,6 +404,46 @@ describe('CE0-3 — a failed confirmation is visible, retryable and unconfirmed'
 });
 
 // =====================================================================
+describe('CE0-5 — the host page is told what was recorded', () => {
+  it('hands the confirmed row to the caller', async () => {
+    // Without this the detail page keeps showing "Pick a status above first"
+    // and a disabled notes box for a contact it just recorded: its interaction
+    // read re-runs only on mount or a real identity change, and closing the
+    // modal triggers neither.
+    await becomeOwner('u1');
+    const onConfirmed = vi.fn();
+    renderModal('opp-A', liveListingTarget('opp-A'), onConfirmed);
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'confirmation started');
+    await resolveConfirm(0);
+
+    await screen.findByText('coldEmail.remindPrompt');
+    expect(onConfirmed).toHaveBeenCalledTimes(1);
+    // The row the RPC returned, verbatim — the caller decides what to do with
+    // it, and a status the server resolved to something other than 'contacted'
+    // (an existing 'applied' row it left alone) must reach the page as-is.
+    expect(onConfirmed).toHaveBeenCalledWith(APPLIED);
+  });
+
+  it('tells nobody when the confirmation resolved for an owner who has moved on', async () => {
+    await becomeOwner('u1');
+    const onConfirmed = vi.fn();
+    renderModal('opp-A', liveListingTarget('opp-A'), onConfirmed);
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'U1 confirmation started');
+    await becomeOwner('u2');
+    await resolveConfirm(0);
+
+    expect(onConfirmed).not.toHaveBeenCalled();
+  });
+});
+
 describe('CE0-4 — an owner move invalidates the confirmation in flight', () => {
   it('control: no move, so the U1 confirmation paints normally', async () => {
     await becomeOwner('u1');

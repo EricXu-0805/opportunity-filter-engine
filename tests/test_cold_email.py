@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from src.evidence import stamp_inferred
 from src.recommender.cold_email import (
     _build_concise,
     _common_parts,
@@ -2822,3 +2823,93 @@ class TestBusinessFacultyGetNoLabType:
         # the other three are untouched
         assert "GitHub" in _lab_type_tone("dry")
         assert "IRB" in _lab_type_tone("humanities")
+
+
+class TestTheModuleAppliesItsOwnEvidenceRuleEverywhere:
+    """#826 taught `_stated_keywords` that a keyword stamped
+    ``derived:openalex_topics`` came from an author entity matched by surname
+    and institution, so it is not evidence of what this person studies. Three
+    consumers in this module kept reading the raw list, and a fourth read a
+    guessed name. Every one of them speaks to a real professor.
+    """
+
+    @staticmethod
+    def _faculty(*, inferred_keywords: bool, keywords=("eeg and brain-computer interfaces",)):
+        opp = {
+            "id": "faculty-x", "title": "Prof. Sandra Rousseau — French",
+            "source_type": "faculty_research", "organization": "Carleton College",
+            "department": "Department of French and Francophone Studies",
+            "pi_name": "Sandra Rousseau", "keywords": list(keywords),
+            "eligibility": {}, "metadata": {},
+        }
+        if inferred_keywords:
+            stamp_inferred(opp["metadata"], "keywords", "derived:openalex_topics")
+        return opp
+
+    def test_guessed_topics_are_not_source_backed_evidence(self):
+        """The gate decides whether the AI runs at all, which body prompt is
+        used, whether the ungrounded-claim backstop is armed, and what the UI
+        says. It disagreed with the two helpers #826 fixed: it said the record
+        had a specific signal while every field the brief renders came back
+        empty, which is an order to fabricate."""
+        stated = self._faculty(inferred_keywords=False)
+        guessed = self._faculty(inferred_keywords=True)
+        assert has_source_backed_target_evidence(stated, _common_parts({}, stated)) is True
+        assert has_source_backed_target_evidence(guessed, _common_parts({}, guessed)) is False
+
+    def test_a_guessed_topic_is_not_evidence_a_skill_is_relevant(self):
+        """Rousseau teaches Algerian memory in graphic novels; the EEG keyword
+        is a same-name conflation. Without this a neuroscience student tells her
+        "my background in EEG is relevant to your research"."""
+        profile = {"name": "Eric", "year": "sophomore", "major": "Neuroscience",
+                   "school": "UIUC", "hard_skills": ["EEG"], "research_interests_text": "eeg"}
+        stated = _common_parts(profile, self._faculty(inferred_keywords=False))
+        guessed = _common_parts(profile, self._faculty(inferred_keywords=True))
+        assert "EEG" in stated["matching_skills"]
+        assert "EEG" not in guessed["matching_skills"]
+
+    def test_a_surname_cut_out_of_a_lab_title_is_not_a_person_to_greet(self):
+        """`pi_enricher` derives a PI surname from the lab title when none was
+        scraped and stamps it, saying verbatim that it does so "so 'Dear Prof.
+        Smith' generators and audits can see it was never read off a page".
+        No generator read it, and Cold Spring Harbor Laboratory's program inbox
+        received "Dear Spring Harbor,"."""
+        program = {
+            "id": "sro-eabcd415", "title": "Undergraduate Research Program",
+            "source_type": "program", "opportunity_type": "summer_program",
+            "organization": "Cold Spring Harbor Laboratory",
+            "pi_name": "Spring Harbor", "eligibility": {}, "metadata": {},
+        }
+        stated = _common_parts({}, dict(program))
+        assert stated["recipient"] == "Spring Harbor"
+
+        guessed = dict(program)
+        guessed["metadata"] = {}
+        stamp_inferred(guessed["metadata"], "pi_name", "rule:lab_title_surname")
+        assert _common_parts({}, guessed)["recipient"] == "Program Coordinator"
+
+    def test_a_one_letter_skill_needs_the_posting_to_ask_for_it(self):
+        """`_SKILL_TOKEN_RE.findall` is unanchored, so "19c" yields 'c' and
+        "R&D" yields 'r'. An English professor writing on "the transatlantic
+        19c cultural history" was telling a student their C background is
+        relevant to her research."""
+        english = {
+            "id": "faculty-buffalo-engl", "title": "Prof. Carrie Bramen — English",
+            "source_type": "faculty_research", "department": "Department of English",
+            "pi_name": "Carrie Bramen",
+            "keywords": ["nineteenth-century american literature",
+                         "the transatlantic 19c cultural history"],
+            "eligibility": {}, "metadata": {},
+        }
+        assert _match_skills_to_tasks(["C"], english) == []
+        # A listing that actually asks for it still matches. (A faculty record
+        # never can: `required` is empty for them by construction, because a
+        # directory page states no requirements.)
+        asked = {
+            "id": "prog-c", "title": "Systems REU", "source_type": "program",
+            "description_raw": "Build tooling for the group.",
+            "eligibility": {"skills_required": ["C"]}, "metadata": {},
+        }
+        assert _match_skills_to_tasks(["C"], asked) == ["C"]
+        # Multi-character skills are unaffected.
+        assert _match_skills_to_tasks(["literature"], english) == ["literature"]
