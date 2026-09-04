@@ -76,13 +76,28 @@ test.describe('Opportunity detail page', () => {
     await expect(page.getByRole('button', { name: /Remove from favorites/i })).toBeVisible();
   });
 
-  test('interaction tracking toggles status', async ({ page }) => {
+  test('a status can be set, changed, and only removed on purpose', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     const applied = page.getByRole('button', { name: 'Applied' });
+    const replied = page.getByRole('button', { name: 'Replied' });
+
     await applied.click();
     await expect(applied).toHaveAttribute('aria-pressed', 'true');
+
+    // Re-clicking the highlighted pill used to delete the whole tracker row —
+    // status, notes, reminder and the confirmed-contact timestamp — because it
+    // reads as an on-toggle. It is a no-op now; removal is its own confirmed
+    // control, as it already was on the results and tracker surfaces.
     await applied.click();
+    await expect(applied).toHaveAttribute('aria-pressed', 'true');
+
+    await replied.click();
+    await expect(replied).toHaveAttribute('aria-pressed', 'true');
     await expect(applied).toHaveAttribute('aria-pressed', 'false');
+
+    await page.getByRole('button', { name: /Remove from Tracker/i }).click();
+    await page.getByRole('button', { name: /^Remove$/ }).click();
+    await expect(replied).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('shows not-found UI (and noindex) for an unknown id — the route\'s loading.tsx streams a shell, so the top-level nav status is not a reliable signal here', async ({ page }) => {

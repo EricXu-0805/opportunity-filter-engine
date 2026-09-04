@@ -69,7 +69,6 @@ export function InteractionPills({
               type="button"
               aria-pressed={active}
               aria-busy={statusSaving}
-              aria-disabled={active || undefined}
               disabled={pillsDisabled}
               onClick={() => {
                 // Re-clicking the highlighted pill used to remove the whole
