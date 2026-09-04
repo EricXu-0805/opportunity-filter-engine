@@ -12,6 +12,7 @@ from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _carry_forward_enrichment,
     _clean_research_phrase,
+    _dedup_decredentialed_faculty,
     _dedup_faculty_by_email,
     _dedup_faculty_records,
     _demote_shared_keyword_pollution,
@@ -34,6 +35,7 @@ from src.collectors.uiuc_faculty import (
     _strip_fragment_keywords,
     _strip_furniture_keywords,
     _strip_pi_name_credentials,
+    clean_pi_name,
     enforce_final_shared_keyword_invariant,
     missing_departments,
     normalize_faculty,
@@ -1117,10 +1119,10 @@ def test_rebuild_title_keeps_genuine_specific_areas():
 
 def test_strip_pi_name_credential_suffix():
     rows = [
-        {"source": "uiuc_faculty", "pi_name": "Helene R Dickel Phd"},
-        {"source": "uiuc_faculty", "pi_name": "John Smith MD"},
-        {"source": "uiuc_faculty", "pi_name": "Jane Doe"},          # 2 tokens — untouched
-        {"source": "uiuc_faculty", "pi_name": "Ada Min Lovelace"},  # real 3-token name
+        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Helene R Dickel Phd"},
+        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "John Smith MD"},
+        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Jane Doe"},          # 2 tokens — untouched
+        {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Ada Min Lovelace"},  # real 3-token name
     ]
     assert _strip_pi_name_credentials(rows) == 2
     assert rows[0]["pi_name"] == "Helene R Dickel"
@@ -1286,7 +1288,7 @@ def test_drop_nonperson_faculty_removes_section_headings():
 
 
 def test_strip_pronoun_suffix_from_pi_name():
-    rows = [{"source": "uiuc_faculty", "pi_name": "Kathryn Clancy she/her"}]
+    rows = [{"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Kathryn Clancy she/her"}]
     assert _strip_pi_name_credentials(rows) == 1
     assert rows[0]["pi_name"] == "Kathryn Clancy"
 
@@ -1803,3 +1805,79 @@ def test_research_areas_marker_path_drops_the_sections_that_follow():
     </body></html>"""
     out = _research_areas_from_soup(BeautifulSoup(html, "html.parser"))
     assert out == "Storage systems, Distributed systems, Systems and Networking", out
+
+
+def test_a_name_is_cleaned_for_every_school_not_just_uiuc():
+    """The rule was gated on source == 'uiuc_faculty' while the greeting it
+    protects is school-agnostic, so 509 of the 513 professors carrying a
+    credential — every one outside UIUC — were addressed "Dear Professor
+    Megan Kobel, PhD, AuD,". _is_faculty_record is the gate every other
+    school-agnostic pass in this file already uses."""
+    rows = [
+        {"source": "pitt_faculty", "source_type": "faculty_research",
+         "pi_name": "Megan Kobel, PhD, AuD"},
+        {"source": "uiuc_faculty", "source_type": "faculty_research",
+         "pi_name": "Adina Cox PhD"},
+        {"source": "simplify_internships", "source_type": "internship",
+         "pi_name": "Acme Corp, Inc"},
+    ]
+    assert _strip_pi_name_credentials(rows) == 2
+    assert rows[0]["pi_name"] == "Megan Kobel"
+    assert rows[1]["pi_name"] == "Adina Cox"
+    assert rows[2]["pi_name"] == "Acme Corp, Inc"
+
+
+def test_cleaning_a_name_never_eats_a_surname():
+    """Ma, Ng and Ho are surnames AND degree abbreviations. Stripping them
+    unconditionally cost 123 professors their surname in an early draft of
+    this rule, so an ambiguous token needs a comma to introduce it."""
+    for name in ("Xiaolong Ma", "Chao Ma", "Shewry, Teresa", "Mark S. Massa, S.J.",
+                 "Thomas H. Welsh, Jr", "Jay Stauffer, Jr."):
+        assert clean_pi_name(name) == name, name
+
+
+def test_cleaning_a_name_strips_what_a_letter_should_not_carry():
+    assert clean_pi_name("Elise N. Erickson PhD CNM FACNM") == "Elise N. Erickson"
+    assert clean_pi_name("Erica Hansen, AuD, CCC-A, F-AAA") == "Erica Hansen"
+    assert clean_pi_name("Michelle O'Malley (she/her/hers)") == "Michelle O'Malley"
+    assert clean_pi_name("Kiera James PhD »") == "Kiera James"
+    assert clean_pi_name("Ashby  Fox") == "Ashby Fox"
+    # A comma may introduce an ambiguous one; a bare surname may not.
+    assert clean_pi_name("Megan Kobel, MS") == "Megan Kobel"
+
+
+def test_dedup_decredentialed_faculty_collapses_one_person_keeping_the_email():
+    """Stripping "PhD" can reveal that two rows were always one professor."""
+    opps = [
+        {
+            "id": "a", "school": "ucla", "source_type": "faculty_research",
+            "source_url": "https://snaoz.astro.ucla.edu/index.html",
+            "pi_name": "Smadar Naoz",
+        },
+        {
+            "id": "b", "school": "ucla", "source_type": "faculty_research",
+            "source_url": "https://snaoz.astro.ucla.edu/index.html",
+            "pi_name": "Smadar Naoz", "contact_email": "snaoz@astro.ucla.edu",
+        },
+    ]
+    kept, dropped = _dedup_decredentialed_faculty(opps)
+    assert dropped == 1
+    assert [o["id"] for o in kept] == ["b"]
+
+
+def test_dedup_decredentialed_faculty_keeps_namesakes_on_a_listing_page():
+    """Most collectors point a whole department at one URL, so a shared surname
+    there is two different people. Only the full name may collapse a row."""
+    opps = [
+        {
+            "id": "a", "school": "asu", "source_type": "faculty_research",
+            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Wei Wang",
+        },
+        {
+            "id": "b", "school": "asu", "source_type": "faculty_research",
+            "source_url": "https://sms.asu.edu/People/Faculty", "pi_name": "Xu Wang",
+        },
+    ]
+    kept, dropped = _dedup_decredentialed_faculty(opps)
+    assert dropped == 0
+    assert len(kept) == 2

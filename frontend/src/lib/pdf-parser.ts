@@ -76,6 +76,15 @@ function extractSkills(text: string): { skill: string; line: string }[] {
   return hits;
 }
 
+// A résumé's address block and grant citations have the same shape as a course
+// code, so "Urbana IL 61801 / APT 402" was reaching a student's profile as
+// coursework and from there into the sentence a cold email makes about what
+// they have studied. These prefixes are never a department.
+const NOT_A_DEPARTMENT = new Set([
+  'APT', 'STE', 'RM', 'BOX', 'PO', 'POB', 'FL', 'UNIT', 'NO', 'BLDG', 'DEPT',
+  'EXT', 'TEL', 'FAX', 'ISBN', 'DOI', 'GPA', 'ID', 'SSN', 'ZIP',
+]);
+
 function trimCourse(s: string): string {
   return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
 }
@@ -90,6 +99,7 @@ function extractCoursework(text: string): string[] {
     // are sacrificed; a labeled "Coursework:" line still captures them below.
     const num = Number(m[2]);
     if (num >= 1950 && num <= 2049) continue;
+    if (NOT_A_DEPARTMENT.has(m[1].toUpperCase())) continue;
     courses.push(`${m[1]} ${m[2]}`);
   }
   for (const line of text.split('\n')) {
