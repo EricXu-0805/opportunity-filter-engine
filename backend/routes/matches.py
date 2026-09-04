@@ -80,6 +80,7 @@ from src.matcher.ranker import (
     _word_re,
     canonical_sort_key,
     corpus_generation_lock,
+    expand_search_aliases,
     hard_exclusion,
     rank_all,
     rank_opportunity,
@@ -241,29 +242,6 @@ _SCORING_PROFILE_FIELDS = frozenset({
     "preferences",
 })
 
-_SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
-    "ml": ("machine learning",),
-    "ai": ("artificial intelligence",),
-    "nlp": ("natural language processing",),
-    "cv": ("computer vision",),
-    "dl": ("deep learning",),
-    "hci": ("human computer interaction", "human-computer interaction"),
-    "rl": ("reinforcement learning",),
-    "ds": ("data science",),
-    "se": ("software engineering",),
-    "pl": ("programming languages",),
-    "os": ("operating systems",),
-    "db": ("database",),
-    "ece": ("electrical", "computer engineering"),
-    "cs": ("computer science",),
-    "ee": ("electrical engineering",),
-    "me": ("mechanical engineering",),
-    "ce": ("civil engineering",),
-    "cheme": ("chemical engineering",),
-    "matsci": ("materials science",),
-    "neuro": ("neuroscience",),
-    "bioinfo": ("bioinformatics",),
-}
 
 # ── LLM rerank (default-on, OpenRouter-routed) ────────────────────────────
 # A bounded, batched LLM pass over the top rule-ranked results that does two
@@ -1164,17 +1142,6 @@ def _match_result_response(
     return MatchResultResponse(**payload)
 
 
-def _expand_search_aliases(query: str) -> list[str]:
-    query_lower = query.lower()
-    terms = [query_lower]
-    terms.extend(_SEARCH_ALIASES.get(query_lower, ()))
-    tokens = query_lower.split()
-    for abbreviation, expansions in _SEARCH_ALIASES.items():
-        if abbreviation == query_lower or abbreviation not in tokens:
-            continue
-        pattern = re.compile(rf"\b{re.escape(abbreviation)}\b")
-        terms.extend(pattern.sub(expansion, query_lower) for expansion in expansions)
-    return terms
 
 
 # Below this length a term is short enough to live inside ordinary English, so
@@ -1225,7 +1192,7 @@ def _apply_match_view(
     search_matchers = [
         _search_matcher(term)
         for term in (
-            _expand_search_aliases(view.search_query)
+            expand_search_aliases(view.search_query)
             if view.search_query.strip()
             else []
         )
