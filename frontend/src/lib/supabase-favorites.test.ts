@@ -41,7 +41,7 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 import { captureOwnerToken, isLocalOwnerReady, readUserScopedRaw } from './identity-owner';
-import { getStorageStatus, onAuthChange, toggleFavorite } from './supabase';
+import { getFavorites, getStorageStatus, onAuthChange, toggleFavorite } from './supabase';
 import { STORAGE_KEYS } from './storage-keys';
 
 const UID = '11111111-1111-4111-8111-111111111111';
@@ -136,5 +136,72 @@ describe('toggleFavorite (favoriting: insert path)', () => {
       status: 'local-only',
       error: 'permission denied for table favorites',
     });
+  });
+});
+
+
+describe('getFavorites: the local mirror is a queue, not a copy of the cloud', () => {
+  // The mirror holds favorites that have NOT reached the cloud. getFavorites
+  // used to end by writing the whole remote set into it, which made every
+  // synced id look like a pending local-only write on the next load.
+  const mockSelect = vi.fn();
+  const mockEq = vi.fn();
+  const mockDelete = vi.fn();
+  const mockDelEq = vi.fn();
+
+  beforeEach(() => {
+    [mockSelect, mockEq, mockDelete, mockDelEq].forEach((m) => m.mockReset());
+    mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert, delete: mockDelete });
+    mockSelect.mockReturnValue({ eq: mockEq });
+    mockDelete.mockReturnValue({ eq: mockDelEq });
+    mockDelEq.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+  });
+
+  const cloud = (...ids: string[]) =>
+    mockEq.mockResolvedValueOnce({ data: ids.map((opportunity_id) => ({ opportunity_id })), error: null });
+
+  it('does not resurrect a lab the student un-starred', async () => {
+    cloud('A', 'B', 'C');
+    expect([...(await getFavorites())].sort()).toEqual(['A', 'B', 'C']);
+
+    expect(await toggleFavorite('B', true, captureOwnerToken())).toBe(false);
+
+    // Next navigation: the cloud correctly has A and C.
+    cloud('A', 'C');
+    const second = await getFavorites();
+
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect([...second].sort()).toEqual(['A', 'C']);
+  });
+
+  it('keeps an offline-saved lab when the backfill insert fails, and says so', async () => {
+    mockInsert.mockResolvedValueOnce({ error: { message: 'permission denied' } });
+    await toggleFavorite('X', false, captureOwnerToken());
+    expect(localMirror()).toEqual(['X']);
+    expect(getStorageStatus().status).toBe('local-only');
+
+    // Reconnected: the SELECT works, but the backfill INSERT still fails.
+    cloud('A');
+    mockInsert.mockResolvedValueOnce({ error: { message: 'permission denied' } });
+    const loaded = await getFavorites();
+
+    // X is the student's, and it still has nowhere else to live.
+    expect([...loaded].sort()).toEqual(['A', 'X']);
+    expect(localMirror()).toEqual(['X']);
+    expect(getStorageStatus().status).toBe('local-only');
+  });
+
+  it('clears the queue and reports synced once the backfill lands', async () => {
+    mockInsert.mockResolvedValueOnce({ error: { message: 'offline' } });
+    await toggleFavorite('X', false, captureOwnerToken());
+    expect(localMirror()).toEqual(['X']);
+
+    cloud('A');
+    mockInsert.mockResolvedValueOnce({ error: null });
+    const loaded = await getFavorites();
+
+    expect([...loaded].sort()).toEqual(['A', 'X']);
+    expect(localMirror()).toEqual([]);
+    expect(getStorageStatus().status).toBe('synced');
   });
 });
