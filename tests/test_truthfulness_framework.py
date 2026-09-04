@@ -457,3 +457,39 @@ def test_an_unreviewed_directory_resamples_without_a_flag(tmp_path):
     corpus = _write_corpus(tmp_path)
     assert main(["sample", "--corpus", str(corpus), "--out", str(samples_dir),
                  "--seed", "1"]) == 0
+
+
+class TestAnEstimatedReuDeadlineIsNotBeforeItsAward:
+    """The estimate reads the award start's month and year and returns a spring
+    date in that SAME year. An award beginning in the autumn funds the
+    following summer's cohort, so all 398 such records carried a deadline five
+    to ten months before the grant that funds them began — and long past by the
+    time a student saw it."""
+
+    @staticmethod
+    def _estimate(start: str) -> str | None:
+        from src.collectors.nsf_reu import _estimate_reu_deadline
+
+        return _estimate_reu_deadline(start)
+
+    def test_an_autumn_award_points_at_the_next_spring(self):
+        assert self._estimate("12/15/2025") == "2026-02-15"
+        assert self._estimate("09/01/2026") == "2027-02-15"
+        assert self._estimate("10/01/2026") == "2027-02-15"
+
+    def test_a_summer_award_still_closes_before_it_starts(self):
+        # Applications for a summer cohort genuinely close two to three months
+        # before the award lands; only the autumn branch moved.
+        assert self._estimate("06/01/2026") == "2026-03-01"
+        assert self._estimate("05/01/2026") == "2026-03-01"
+        assert self._estimate("08/15/2026") == "2026-04-01"
+
+    def test_no_estimate_precedes_its_own_award_by_a_season(self):
+        from datetime import date
+
+        for month in range(1, 13):
+            start = date(2026, month, 1)
+            estimate = self._estimate(f"{month}/1/2026")
+            assert estimate is not None
+            gap = (start - date.fromisoformat(estimate)).days
+            assert gap < 150, f"month {month}: estimate {estimate} is {gap} days early"
