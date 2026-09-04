@@ -585,9 +585,32 @@ class TestRefreshAccumulatesNewMatches:
             "query": "",
             "last_result_ids": [],
             "new_match_ids": [],
+            # These cases are about accumulation ACROSS runs, so the row has
+            # run before. A row with no last_run_at is a first run, which
+            # establishes a baseline rather than calling everything new.
+            "last_run_at": "2026-09-01T00:00:00+00:00",
         }
         row.update(overrides)
         return row
+
+    def test_a_searchs_first_run_establishes_a_baseline_instead_of_mailing_it(
+        self, monkeypatch,
+    ):
+        """last_result_ids defaults to '{}', so the first diff called the whole
+        match-set new: a digest titled "200 new matches" hours after the search
+        was created, under copy reading "since we last checked"."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        row = self._refresh_row(last_run_at=None)
+        _install_stubs(monkeypatch, rows=[row], patches=patches)
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        body = patches[0]["json"]
+        assert body["new_match_ids"] == []
+        # The baseline itself is recorded, so the next run has something to
+        # diff against.
+        assert body["last_result_ids"] == ["opp-a", "opp-b"]
 
     def test_unions_fresh_diff_with_pending_ids(self, monkeypatch):
         _set_digest_env(monkeypatch)
@@ -1050,3 +1073,30 @@ class TestTheCronSendCarriesAllOfIt:
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+class TestTheDigestKeepsWhatItPromised:
+    """The email renders 10 matches and says "+5 more in the app", with a
+    button to go find them. The post-send patch cleared new_match_ids down to
+    the unresolvable ids, so the badge vanished, savedSearchToUrl dropped its
+    highlight, and the overflow could not be identified by any action the
+    student could take."""
+
+    def test_the_overflow_it_advertised_survives_the_send(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        opps = [{"id": f"opp-{i}", "title": f"Opp {i}", "organization": "Org",
+                 "source_type": "campus_program", "deadline": ""} for i in range(15)]
+        sends: list = []
+        patches: list = []
+        _install_stubs(
+            monkeypatch,
+            rows=[_digest_row(new_match_ids=[o["id"] for o in opps])],
+            sends=sends, patches=patches, opportunities=opps,
+        )
+
+        client.get("/api/cron/saved-searches/digest", headers=AUTH)
+
+        assert "+5 more in the app" in sends[0]["html"]
+        kept = patches[0]["json"]["new_match_ids"]
+        # The ten it showed close their window; the five it pointed at stay.
+        assert sorted(kept) == sorted(f"opp-{i}" for i in range(5))
