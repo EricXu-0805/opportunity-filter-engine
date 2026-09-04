@@ -8,7 +8,7 @@ import type { FeedbackCategory, FeedbackResult } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from '@/lib/use-local-storage-json';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 type ErrorKind = 'generic' | 'no-session' | 'timeout';
@@ -111,6 +111,17 @@ export default function FeedbackWidget() {
   const [copied, setCopied] = useState(false);
 
   const persistedRef = useRef(false);
+
+  // The widget is in the root layout, so it mounts during the first client
+  // render — before ensureAnonSession has resolved any identity. The scoped
+  // read therefore returns null, and useState froze that "nothing there" for
+  // the life of the page: the widget opened empty on every reload, and the
+  // first keystroke overwrote the stored draft and minted a new clientToken.
+  // Re-read once ownership resolves, and only into an untouched draft, so a
+  // late resolution can never overwrite what someone is typing.
+  useEffect(() => onLocalOwnerStateChange(() => {
+    setDraft((current) => (hasContent(current) ? current : readDraft()));
+  }), []);
 
   const close = useCallback(() => setOpen(false), []);
 
