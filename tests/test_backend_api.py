@@ -7338,9 +7338,9 @@ class TestAShortSearchTermMustBeAWholeWord:
         assert _search_matcher("neuro")("computational neuroscience")
 
     def test_the_alias_expansion_can_finally_do_its_job(self):
-        from backend.routes.matches import _expand_search_aliases, _search_matcher
+        from backend.routes.matches import _search_matcher, expand_search_aliases
 
-        terms = _expand_search_aliases("ai")
+        terms = expand_search_aliases("ai")
         assert "artificial intelligence" in terms
         matchers = [_search_matcher(t) for t in terms]
         assert not any(m(self.FACULTY_BLURB) for m in matchers)
