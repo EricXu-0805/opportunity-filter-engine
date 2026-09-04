@@ -103,6 +103,12 @@ interface ColdEmailModalProps {
    * the caller nothing, exactly as it paints nothing.
    */
   onContactConfirmed?: (record: InteractionRecord | null) => void;
+  /** The follow-up chips write remind_at straight to the row. Without this the
+   *  page that owns the tracker panel never learns, so its date field renders
+   *  empty and its status-change suggestion — gated on remind_at being unset —
+   *  offers to set a reminder that already exists, overwriting it on one
+   *  click. */
+  onReminderSet?: (date: string) => void;
 }
 
 /*
@@ -240,6 +246,7 @@ export default function ColdEmailModal({
   opportunitySchool,
   reminderTarget,
   onContactConfirmed,
+  onReminderSet,
 }: ColdEmailModalProps) {
   const { t } = useT();
   const { openModal } = useAuthModal();
@@ -878,9 +885,12 @@ export default function ColdEmailModal({
     if (!canDeliverReminder(reminderTarget, confirmedStatus)) return;
     const token = captureOwnerToken();
     const session = sendSessionRef.current;
+    // The student's own calendar day, not UTC's. After 7pm in Chicago the UTC
+    // date has already rolled over, so "in 1 week" landed on the eighth day —
+    // the same arithmetic the tracker's presets had.
     const d = new Date();
-    d.setUTCDate(d.getUTCDate() + days);
-    const date = d.toISOString().slice(0, 10);
+    d.setDate(d.getDate() + days);
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const stillCurrent = () =>
       sendSessionRef.current === session && isTokenOwnerStillCurrent(token);
     try {
@@ -892,8 +902,9 @@ export default function ColdEmailModal({
     if (stillCurrent()) {
       setSendError(null);
       setFollowUpDate(date);
+      onReminderSet?.(date);
     }
-  }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId]);
+  }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId, onReminderSet]);
 
   async function handleCopy() {
     try {
