@@ -811,22 +811,27 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                 # silently the user gets the same reminder every day. Verify,
                 # retry once, then log loudly so the operator alert fires on
                 # the response counter (W14).
+                # Filtered on the value this run actually READ, not just on
+                # the row. The batch is read once and then worked through with
+                # a network round trip per row, so a student who reschedules
+                # this reminder mid-run — the tracker accepts it and paints the
+                # new date — would otherwise have it overwritten with NULL by
+                # the clear below, silently and with no counter for it.
+                clear_params = {
+                    "device_id": f"eq.{device_id}",
+                    "opportunity_id": f"eq.{row['opportunity_id']}",
+                    "remind_at": f"eq.{row['remind_at']}",
+                }
                 cleared = await client.patch(
                     f"{supabase_url}/rest/v1/interactions",
-                    params={
-                        "device_id": f"eq.{device_id}",
-                        "opportunity_id": f"eq.{row['opportunity_id']}",
-                    },
+                    params=clear_params,
                     headers=headers,
                     json={"remind_at": None},
                 )
                 if cleared.status_code >= 400:
                     cleared = await client.patch(
                         f"{supabase_url}/rest/v1/interactions",
-                        params={
-                            "device_id": f"eq.{device_id}",
-                            "opportunity_id": f"eq.{row['opportunity_id']}",
-                        },
+                        params=clear_params,
                         headers=headers,
                         json={"remind_at": None},
                     )
