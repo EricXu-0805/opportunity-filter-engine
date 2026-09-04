@@ -159,6 +159,29 @@ describe('parseResumePDF — skill extraction', () => {
 });
 
 describe('parseResumePDF — coursework extraction', () => {
+  it('an address block is not coursework', async () => {
+    // "APT 402" and "BLDG 210" have the exact shape of a course code, and a
+    // résumé's address sits a few lines above its education section. They were
+    // reaching the profile as courses, and from there into what a cold email
+    // claims the student has studied.
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(fakePdf([
+        'Guoyi Xu',
+        '1203 W Main St APT 402',
+        'Urbana IL 61801',
+        'Office BLDG 210 RM 315',
+        'EDUCATION',
+        'Relevant Coursework: MATH 241, PHYS 211',
+      ])),
+    });
+    const out = await parseResumePDF(fakeFile());
+    expect(out.extracted_coursework).toContain('MATH 241');
+    expect(out.extracted_coursework).toContain('PHYS 211');
+    expect(out.extracted_coursework).not.toContain('APT 402');
+    expect(out.extracted_coursework).not.toContain('BLDG 210');
+    expect(out.extracted_coursework).not.toContain('RM 315');
+  });
+
   it('matches the COURSE_PATTERN (2-4 letter prefix + 3-4 digit number)', async () => {
     mockGetDocument.mockReturnValue({
       promise: Promise.resolve(fakePdf(['Took CS 225, MATH 241, and ECE 220 last term'])),
@@ -347,4 +370,5 @@ describe('parseResumePDF — the inferred experience level is gone', () => {
     const out = await parseResumePDF(fakeFile());
     expect('experience_level' in out).toBe(false);
   });
+
 });
