@@ -3601,6 +3601,8 @@ export const en = {
     // neither. Offering the prompt and then having nothing to offer is the
     // same false capability one step earlier.
     reminderUnavailable: 'Sent. A follow-up reminder is unavailable in the current state.',
+    confirmedKeptStatus: 'Sent. This one is still marked Rejected, so its status has not changed.',
+    confirmedKeptDismissed: 'Sent. This one is still marked Not interested, so it stays off your tracker — set a status on it to track this outreach.',
     reminderFailed: 'Couldn\'t save the reminder. Your contact is still recorded.',
     aiVariantLabel: '✨ AI',
     aiVariantTitle: 'Personalize with AI',
@@ -8105,6 +8107,8 @@ export const zh = {
     remind14: '2 周后',
     reminderSet: '已设置 {date} 的跟进提醒',
     reminderUnavailable: '已发送。当前状态下无法设置跟进提醒。',
+    confirmedKeptStatus: '已发送。这条仍然标记为「已被拒」，状态没有变化。',
+    confirmedKeptDismissed: '已发送。这条仍然标记为「不感兴趣」，所以不会出现在你的追踪板上 —— 给它设一个状态才能记录这次联系。',
     reminderFailed: '提醒没能保存。你的联系记录仍然有效。',
     aiVariantLabel: '✨ AI',
     aiVariantTitle: '使用 AI 个性化',
