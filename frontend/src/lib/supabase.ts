@@ -1533,13 +1533,25 @@ export async function getFavorites(): Promise<Set<string>> {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(), token);
     } else {
+      // These are the student's saved labs and they still have not reached the
+      // cloud, so they stay in the queue and stay in what this returns. Falling
+      // through used to overwrite the queue with `remote` — which is exactly
+      // the set that does not contain them — and then report 'synced'.
       console.warn('[ofe] favorites backfill failed:', insErr.message);
+      toPush.forEach(id => remote.add(id));
+      writeFavFallback(new Set(toPush), token);
+      setStorageStatus('local-only', insErr.message);
+      return remote;
     }
   } else if (local.size > 0) {
     writeFavFallback(new Set(), token);
   }
 
-  writeFavFallback(remote, token);
+  // The mirror is the queue of favorites that have NOT reached the cloud, not a
+  // copy of the cloud — a synced favorite lives in its cloud row. Writing the
+  // whole remote set here made every id look like a pending local-only write,
+  // so the next load pushed deleted favorites back: un-star a lab, navigate,
+  // and it was re-INSERTed and starred again on every device.
   setStorageStatus('synced');
   return remote;
 }
