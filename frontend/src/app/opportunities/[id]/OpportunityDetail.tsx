@@ -7,6 +7,7 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import { sourceLabel } from '@/app/results/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -247,7 +248,7 @@ export default function OpportunityDetail({
           <SimilarOpportunities similar={similar} t={t} />
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">
-            {opp.source && <p>{t('detail.source', { source: opp.source })}</p>}
+            {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}
             {/* From the truth envelope, not metadata: the server stopped
                 serving metadata.last_verified once target_truth carried it,
                 and one timestamp cannot disagree with itself. */}

@@ -9,8 +9,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+// Echoing only the key made every interpolated value invisible: "Source:
+// jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
+// `detail.source`, so no assertion in this file could tell them apart.
 vi.mock('@/i18n/client', () => ({
-  useT: () => ({ t: (key: string) => key }),
+  useT: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      params ? `${key}:${Object.values(params).join('|')}` : key,
+  }),
 }));
 
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
@@ -337,8 +343,9 @@ describe('OpportunityDetail target-truth postures', () => {
       source_type: 'campus_program', record_kind: 'listing',
       // Where it came from is rendered conditionally on this field. Without
       // it the "the source line survives" assertion below would fail for a
-      // missing fixture rather than a missing gate.
-      source: 'SOURCE_SENTINEL',
+      // missing fixture rather than a missing gate. A real slug whose school
+      // the label map never covered, so the assertion also pins the naming.
+      source: 'jhu_faculty',
     };
     if (truth !== undefined) record.target_truth = truth;
     return record as never;
@@ -492,8 +499,10 @@ describe('OpportunityDetail target-truth postures', () => {
     expect(
       screen.getByPlaceholderText('detail.tracker.notesPlaceholder'),
     ).toBeInTheDocument();
-    // Where it came from stays readable too.
-    expect(screen.getByText('detail.source')).toBeInTheDocument();
+    // Where it came from stays readable too, and it is named the way the
+    // match card names it rather than printed as the collector's slug.
+    expect(screen.getByText('detail.source:Johns Hopkins results.filters.kindFaculty')).toBeInTheDocument();
+    expect(screen.queryByText(/jhu_faculty/)).toBeNull();
   });
 
   it('mounts all four for a current listing', () => {

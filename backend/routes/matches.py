@@ -12,6 +12,7 @@ import re
 import secrets
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date
@@ -76,6 +77,7 @@ from src.matcher.ranker import (
     _diversify_explore,
     _filter_context,
     _profile_query_text,
+    _word_re,
     canonical_sort_key,
     corpus_generation_lock,
     hard_exclusion,
@@ -1175,6 +1177,26 @@ def _expand_search_aliases(query: str) -> list[str]:
     return terms
 
 
+# Below this length a term is short enough to live inside ordinary English, so
+# it must match a whole word. Every faculty description ends "...opportunities
+# are currently available", which contains av-AI-lable, re-SE-arch and
+# depart-ME-nt, so bare containment returned 91.8% of the served universe for
+# "ai", 99.3% for "se" and 97.8% for "me" — and the alias table, which exists
+# to turn "ai" into "artificial intelligence", could never take effect because
+# the raw token had already admitted everything. Longer queries stay
+# substrings so "robotic" still finds "robotics". Same family as the 'cs' in
+# economics (#837) and 'art' in dep-ART-ment (#839) fixes, on the one surface
+# that still had it.
+_WORD_BOUNDARY_TERM_MAX_LEN = 3
+
+
+def _search_matcher(term: str) -> Callable[[str], bool]:
+    if len(term) > _WORD_BOUNDARY_TERM_MAX_LEN:
+        return lambda haystack: term in haystack
+    pattern = _word_re(term)
+    return lambda haystack: pattern.search(haystack) is not None
+
+
 def _calendar_days_until(deadline: object, today: date) -> int | None:
     if not isinstance(deadline, str) or len(deadline) != 10:
         return None
@@ -1200,11 +1222,14 @@ def _apply_match_view(
     favorite_ids = set(view.favorite_ids)
     dismissed_ids = set(view.dismissed_ids)
     today = date.fromisoformat(view.today)
-    search_terms = (
-        _expand_search_aliases(view.search_query)
-        if view.search_query.strip()
-        else []
-    )
+    search_matchers = [
+        _search_matcher(term)
+        for term in (
+            _expand_search_aliases(view.search_query)
+            if view.search_query.strip()
+            else []
+        )
+    ]
 
     source_counts: dict[str, int] = {}
     scope_available = False
@@ -1290,7 +1315,7 @@ def _apply_match_view(
         }:
             continue
 
-        if search_terms:
+        if search_matchers:
             title = str(opportunity.get("title") or "").lower()
             organization = str(opportunity.get("organization") or "").lower()
             department = str(opportunity.get("department") or "").lower()
@@ -1306,13 +1331,13 @@ def _apply_match_view(
             ).lower()
             reasons = " ".join(result.reasons_fit).lower()
             if not any(
-                term in title
-                or term in organization
-                or term in department
-                or any(term in keyword for keyword in keywords)
-                or term in description
-                or term in reasons
-                for term in search_terms
+                matches(title)
+                or matches(organization)
+                or matches(department)
+                or any(matches(keyword) for keyword in keywords)
+                or matches(description)
+                or matches(reasons)
+                for matches in search_matchers
             ):
                 continue
 

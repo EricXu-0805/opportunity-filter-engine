@@ -594,7 +594,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {match.reasons_fit.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-emerald-600 uppercase tracking-widest mb-2.5">
-                  Why it fits
+                  {t('card.whyItFits')}
                 </h4>
                 <ul className="space-y-2">
                   {match.reasons_fit.map((s, i) => (
@@ -610,7 +610,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {match.reasons_gap.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-2.5">
-                  Potential concerns
+                  {t('card.potentialConcerns')}
                 </h4>
                 <ul className="space-y-2">
                   {match.reasons_gap.map((c, i) => (
@@ -626,7 +626,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
             {match.next_steps.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-indigo-600 uppercase tracking-widest mb-2.5">
-                  Next steps
+                  {t('card.nextSteps')}
                 </h4>
                 <ul className="space-y-2">
                   {match.next_steps.map((n, i) => (
@@ -682,7 +682,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 {gaps.missing_skills.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-2">
-                      Skills to learn
+                      {t('card.skillsToLearn')}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {gaps.missing_skills.map((s) => (
@@ -695,7 +695,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 {gaps.suggested_coursework.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-teal-600 uppercase tracking-widest mb-2">
-                      Recommended courses
+                      {t('card.recommendedCourses')}
                     </h4>
                     <div className="flex flex-wrap gap-1.5">
                       {gaps.suggested_coursework.map((c) => (
@@ -708,7 +708,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 {gaps.preparation_timeline.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-violet-600 uppercase tracking-widest mb-2">
-                      Preparation timeline
+                      {t('card.preparationTimeline')}
                     </h4>
                     <div className="space-y-1.5">
                       {gaps.preparation_timeline.map((item) => (

@@ -444,6 +444,40 @@ describe('CE0-5 — the host page is told what was recorded', () => {
   });
 });
 
+describe('CE0-6 — a send onto a terminal status says what the row kept', () => {
+  it('names the status a dismissed row kept, and that it stays off the tracker', async () => {
+    // confirm_interaction_contact deliberately never downgrades a status, so a
+    // row the student had marked "Not interested" comes back unchanged. The
+    // tracker omits 'dismissed' from every column, so the outreach lands
+    // nowhere the student can see and the strip said only that a reminder was
+    // unavailable — no error, no explanation, and a real send believed to be
+    // on their board.
+    await becomeOwner('u1');
+    renderModal();
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'confirmation started');
+    await resolveConfirm(0, { type: 'dismissed', last_contacted_at: '2026-09-03T12:00:00.000Z' });
+
+    expect(await screen.findByText('coldEmail.confirmedKeptDismissed')).toBeInTheDocument();
+  });
+
+  it('names the status a rejected row kept', async () => {
+    await becomeOwner('u1');
+    renderModal();
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'confirmation started');
+    await resolveConfirm(0, { type: 'rejected', last_contacted_at: '2026-09-03T12:00:00.000Z' });
+
+    expect(await screen.findByText('coldEmail.confirmedKeptStatus')).toBeInTheDocument();
+  });
+});
+
 describe('CE0-4 — an owner move invalidates the confirmation in flight', () => {
   it('control: no move, so the U1 confirmation paints normally', async () => {
     await becomeOwner('u1');
@@ -844,16 +878,19 @@ describe('ColdEmailModal — a follow-up reminder is only offered where one woul
   });
 
   it.each([
-    ['a rejected row', LIVE_LISTING_TARGET, 'rejected'],
-    ['a dismissed row', LIVE_LISTING_TARGET, 'dismissed'],
-    ['a closed target', CLOSED_TARGET, 'contacted'],
-    ['no provable target', undefined, 'contacted'],
-  ])('%s gets no reminder UI at all and writes nothing', async (_label, target, status) => {
+    // A row the confirm RPC left on a terminal status says which one it kept —
+    // "a reminder is unavailable" was true but told the student nothing about
+    // where their outreach went, and for 'dismissed' the answer is nowhere.
+    ['a rejected row', LIVE_LISTING_TARGET, 'rejected', 'coldEmail.confirmedKeptStatus'],
+    ['a dismissed row', LIVE_LISTING_TARGET, 'dismissed', 'coldEmail.confirmedKeptDismissed'],
+    ['a closed target', CLOSED_TARGET, 'contacted', 'coldEmail.reminderUnavailable'],
+    ['no provable target', undefined, 'contacted', 'coldEmail.reminderUnavailable'],
+  ])('%s gets no reminder UI at all and writes nothing', async (_label, target, status, message) => {
     await confirmWith(target, status);
 
     // The whole block, not just the chips: offering "want a reminder?" and
     // then having nothing to offer is the same false capability, earlier.
-    expect(await screen.findByText('coldEmail.reminderUnavailable')).toBeInTheDocument();
+    expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.remindPrompt')).toBeNull();
     expect(screen.queryByText(/^coldEmail\.reminderSet/)).toBeNull();
     expect(screen.queryByText('coldEmail.remind3')).toBeNull();
