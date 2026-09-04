@@ -88,6 +88,16 @@ def _estimate_reu_deadline(start_date: str) -> str | None:
         # Off-cycle or unknown — use Feb 15 as conservative default
         deadline_month, deadline_day = 2, 15
 
+    # An award beginning in the autumn funds the FOLLOWING summer's cohort, so
+    # its application cycle is the next spring. Reading only the year gave all
+    # 398 such records a deadline in the award's own year — between five and
+    # ten months before the grant that funds them began, and long past by the
+    # time a student saw it. A spring/summer start is different: applications
+    # genuinely close two to three months before the award lands, which is why
+    # only the autumn branch moves.
+    if month >= 9:
+        year += 1
+
     return f"{year:04d}-{deadline_month:02d}-{deadline_day:02d}"
 
 

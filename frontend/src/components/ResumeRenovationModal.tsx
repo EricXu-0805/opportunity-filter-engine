@@ -414,8 +414,14 @@ export default function ResumeRenovationModal({
     const lines: string[] = [];
     for (const s of doc.sections) {
       if (s.heading) lines.push(s.heading.toUpperCase());
-      for (const b of s.bullets) {
-        if (b.action === 'demote') continue;
+      // "demote" is defined for the model as "kept but de-emphasized (placed
+      // lower)", and the chip a student reads says "De-emphasized". This used
+      // to drop those bullets, so clicking "Copy renovated résumé" silently
+      // deleted the student's own experience from what they pasted back. Order
+      // by rank instead, which is what the plan actually asked for.
+      const rank = (action: string) =>
+        action === 'foreground' ? 0 : action === 'demote' ? 2 : 1;
+      for (const b of [...s.bullets].sort((a, c) => rank(a.action) - rank(c.action))) {
         lines.push(`• ${bulletCurrentText(b)}`);
       }
       lines.push('');

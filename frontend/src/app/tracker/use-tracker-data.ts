@@ -864,16 +864,26 @@ export function useTrackerData(): UseTrackerDataResult {
   };
 }
 
+/** Today's date on the student's own calendar, as YYYY-MM-DD. Reminders are
+ * bare dates a student picks and reads back, so they have to be counted in the
+ * student's day, not UTC's: after 7pm in Chicago the UTC date has already
+ * rolled over, and "remind me in 3 days" was landing on the fourth. */
+function localISODate(d: Date): string {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 /** ISO date (YYYY-MM-DD) `daysAhead` from today, for quick reminder presets. */
 export function dateInDays(daysAhead: number): string {
   const d = new Date();
-  d.setUTCDate(d.getUTCDate() + daysAhead);
-  return d.toISOString().slice(0, 10);
+  d.setDate(d.getDate() + daysAhead);
+  return localISODate(d);
 }
 
 /** A reminder is "due" when its date is today or earlier. */
 export function isReminderDue(date?: string): boolean {
-  return !!date && date <= new Date().toISOString().slice(0, 10);
+  return !!date && date <= localISODate(new Date());
 }
 
 // The pipeline columns, in order. "dismissed" is intentionally excluded — it is

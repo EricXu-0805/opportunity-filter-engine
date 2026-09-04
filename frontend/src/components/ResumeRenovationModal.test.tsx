@@ -410,4 +410,46 @@ describe('W13 save truthfulness + staleness', () => {
     await waitFor(() => expect(screen.getByText('renovate.restored')).toBeInTheDocument());
     expect(screen.queryByTestId('renovation-stale-resume')).toBeNull();
   });
+  it('copying the renovated résumé keeps de-emphasized bullets, placed lower', async () => {
+    // "demote" is defined to the model as "kept but de-emphasized (placed
+    // lower)" and the student sees a chip reading "De-emphasized". Dropping
+    // those bullets deleted the student's own experience from the text they
+    // pasted back into their résumé, with no warning.
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    const doc = makeDoc();
+    doc.sections[0].bullets.push({
+      id: 's1b3',
+      base_text: 'Tutored intro statistics for two semesters',
+      variants: [],
+      current: -1,
+      action: 'demote',
+    });
+    mockLoadRenovation.mockResolvedValue({
+      doc: doc as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '',
+    });
+    renderModal();
+    await waitFor(() =>
+      expect(screen.getByText('renovate.copyAll')).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied).toContain('Tutored intro statistics for two semesters');
+    // foreground first, keep next, de-emphasized last.
+    expect(copied.indexOf('fault-tolerant data pipeline')).toBeLessThan(
+      copied.indexOf('Led a robotics club project'),
+    );
+    expect(copied.indexOf('Led a robotics club project')).toBeLessThan(
+      copied.indexOf('Tutored intro statistics'),
+    );
+  });
+
 });
