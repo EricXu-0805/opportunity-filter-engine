@@ -178,6 +178,41 @@ class TestContactedReminders:
 # Bookkeeping is verified, retried, and loud — never silent
 # ---------------------------------------------------------------------------
 
+class TestARescheduleDuringTheRunSurvives:
+    """The batch is read once and then worked through with a network round trip
+    per row, so a student can reschedule a reminder while the job is still
+    running. The clear used to filter on (device, opportunity) only and set
+    remind_at to NULL unconditionally, so the new date the tracker had just
+    accepted and painted was silently deleted — with no counter for it.
+    """
+
+    def test_the_clear_names_the_value_this_run_read(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        patches: list = []
+        _install_stubs(monkeypatch, interactions=[_DUE], subscriptions=[_SUB],
+                       patches=patches)
+        assert _run().json()["sent"] == 1
+        clear = next(p for p in patches if "interactions" in p["url"])
+        assert clear["params"]["remind_at"] == f"eq.{_DUE['remind_at']}"
+        assert clear["params"]["device_id"] == f"eq.{_DUE['device_id']}"
+        assert clear["json"] == {"remind_at": None}
+
+    def test_the_retry_carries_the_same_guard(self, monkeypatch):
+        """A retry that dropped the guard would reintroduce the clobber on
+        exactly the runs where the first attempt was slowest."""
+        _set_push_env(monkeypatch)
+        patches: list = []
+        _install_stubs(
+            monkeypatch, interactions=[_DUE], subscriptions=[_SUB],
+            patches=patches, patch_plan={"interactions": [500, 204]},
+        )
+        _run()
+        clears = [p for p in patches if "interactions" in p["url"]]
+        assert len(clears) == 2
+        for attempt in clears:
+            assert attempt["params"]["remind_at"] == f"eq.{_DUE['remind_at']}"
+
+
 class TestBookkeepingTruth:
     def test_remind_at_clear_failure_is_counted(self, monkeypatch):
         _set_push_env(monkeypatch)

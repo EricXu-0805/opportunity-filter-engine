@@ -1307,13 +1307,25 @@ export default function ColdEmailModal({
                       </span>
                     )}
                   </>
+                ) : confirmedStatus === 'dismissed' || confirmedStatus === 'rejected' ? (
+                  // The confirm RPC never downgrades a status, so a row the
+                  // student had already marked reaches here after a perfectly
+                  // real send and comes back unchanged. Saying only that a
+                  // reminder is unavailable left them believing the outreach
+                  // was on their board — and for 'dismissed' the tracker omits
+                  // the row from every column, so it is nowhere at all.
+                  <span className="inline-flex items-center gap-1.5 text-gray-500">
+                    <BellRing className="w-4 h-4 text-gray-400" />
+                    {t(
+                      confirmedStatus === 'dismissed'
+                        ? 'coldEmail.confirmedKeptDismissed'
+                        : 'coldEmail.confirmedKeptStatus',
+                    )}
+                  </span>
                 ) : !followUpDeliverable ? (
                   // The whole reminder block, not just the chips. Offering
                   // "want a reminder?" and then having nothing to offer is
-                  // the same false capability one step earlier — and the
-                  // confirm RPC preserves an existing status, so a row
-                  // already marked rejected or dismissed reaches here after
-                  // a perfectly real send.
+                  // the same false capability one step earlier.
                   <span className="inline-flex items-center gap-1.5 text-gray-500">
                     <BellRing className="w-4 h-4 text-gray-400" />
                     {t('coldEmail.reminderUnavailable')}

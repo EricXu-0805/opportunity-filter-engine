@@ -2,35 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   allowsProfessorFraming,
   cleanCompensation,
-  formatType,
   friendlyLabel,
   noDeadlineKind,
 } from './detail-utils';
 import type { TFunc } from './types';
 
 const t: TFunc = (key) => key;
-
-describe('formatType', () => {
-  it('replaces underscores with spaces', () => {
-    expect(formatType('summer_program')).toBe('Summer Program');
-  });
-
-  it('title-cases each word', () => {
-    expect(formatType('research_internship')).toBe('Research Internship');
-  });
-
-  it('handles single-word input', () => {
-    expect(formatType('research')).toBe('Research');
-  });
-
-  it('handles empty string', () => {
-    expect(formatType('')).toBe('');
-  });
-
-  it('preserves already-capitalised letters', () => {
-    expect(formatType('REU_program')).toBe('REU Program');
-  });
-});
 
 describe('friendlyLabel', () => {
   it('returns the common.yes key for "yes"', () => {
