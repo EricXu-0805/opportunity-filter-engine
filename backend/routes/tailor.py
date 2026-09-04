@@ -75,7 +75,13 @@ logger = logging.getLogger("ofe.tailor")
 router = APIRouter()
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
-_DEFAULT_BULLETS_PER_REQUEST = 8
+# Every layer above this accepts 12: the modal prefills 12
+# (extractBulletLines), /extract-bullets returns 12, and TailorRequest.cap_bullets
+# keeps 12. At 8 the last four were silently never sent, and the modal then told
+# the student "Rewrote 8 of 12 bullets — the rest couldn't be grounded in your
+# profile", which named a grounding failure that never happened to bullets the
+# model never saw. Four more rewrites is a few hundred output tokens.
+_DEFAULT_BULLETS_PER_REQUEST = 12
 
 
 # Bumped whenever tailoring logic changes materially — stamped on every
@@ -672,6 +678,12 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
             opp,
             request.original_bullets,
             locale=request.locale,
+            # Positional pairing is the ONLY link between a rewrite and the
+            # bullet it rewrote. Without this an empty item is dropped rather
+            # than kept as a None, every later rewrite slides one slot left,
+            # and the modal shows each rewrite beside somebody else's original.
+            # The renovation path has always passed this for the same reason.
+            preserve_slots=True,
             timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
         )
     except BlockingWorkTimeout:
@@ -690,6 +702,10 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
     accepted: list[TailoredBullet] = []
     warnings: list[str] = []
     for i, item in enumerate(bullets):
+        # preserve_slots keeps a dropped item as a positional None so ``i`` still
+        # names the bullet this slot came from.
+        if item is None:
+            continue
         # LENIENT_PROSE, not STRICT. Claim-level grounding against the
         # STUDENT-ONLY corpus (the opportunity text is deliberately excluded —
         # see _build_evidence_corpus / TAILOR-2): a token is only fabricated
@@ -706,9 +722,10 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         if passed:
             # R71-E: ``i`` indexes into both the LLM response array and
             # ``original_bullets`` because the system prompt mandates the
-            # rewritten list stays in the same order. Clamp to the input
-            # bound defensively in case a misbehaving model returns more
-            # bullets than were submitted.
+            # rewritten list stays in the same order, and preserve_slots keeps
+            # that correspondence when the model returns an empty item. Clamp
+            # to the input bound defensively in case a misbehaving model
+            # returns more bullets than were submitted.
             accepted.append(TailoredBullet(
                 text=item["text"],
                 source_evidence=_verify_evidence(
