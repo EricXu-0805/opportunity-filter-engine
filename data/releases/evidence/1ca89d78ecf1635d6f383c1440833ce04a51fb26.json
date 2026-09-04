@@ -1,0 +1,71 @@
+{
+  "_note": "Operator evidence for release candidate 1ca89d78, gathered 2026-09-04T13:28Z. This SHA was chosen because it is the only one at which every canary agrees: Render's checksPass trigger and Vercel's fail-open deploy had the two environments on DIFFERENT builds at 12:04Z (be=ee64dd28, fe=a29262e0), a drift docs/RELEASE.md section 3 documents. Evidence was taken only once they converged. Gates with no key here stay UNVERIFIED and block.",
+  "ci": {
+    "head_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+    "_source": "GET /repos/EricXu-0805/opportunity-filter-engine/commits/1ca89d78ecf1635d6f383c1440833ce04a51fb26/check-runs",
+    "checks": [
+      {
+        "name": "Backend (lint + pytest)",
+        "conclusion": "SUCCESS",
+        "id": 101021270241,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33872415333/job/101021270241"
+      },
+      {
+        "name": "E2E (Playwright)",
+        "conclusion": "SUCCESS",
+        "id": 101026789393,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33872415333/job/101026789393"
+      },
+      {
+        "name": "Frontend (typecheck + build)",
+        "conclusion": "SUCCESS",
+        "id": 101021270572,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33872415333/job/101021270572"
+      },
+      {
+        "name": "Migrations (Flow B merge + CLI replay)",
+        "conclusion": "SUCCESS",
+        "id": 101021270576,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33872415333/job/101021270576"
+      }
+    ]
+  },
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+    "observed_at": "2026-09-04T13:28:00+00:00",
+    "detail": "GET /api/health 200: release_sha 1ca89d78ecf1635d6f383c1440833ce04a51fb26 == the release sha, environment 'render', api_version 2.7.0, started_at 2026-09-04T12:50:43.753174+00:00, self-reported from RENDER_GIT_COMMIT.",
+    "evidence": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+      "environment": "render",
+      "started_at": "2026-09-04T12:50:43.753174+00:00"
+    }
+  },
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+    "observed_at": "2026-09-04T13:28:00+00:00",
+    "detail": "GET / 200; served document carries data-release-sha=\"1ca89d78ecf1635d6f383c1440833ce04a51fb26\" and Vercel deployment id dpl_B4YkugcHMQtULebA927cBnvkRHcC. Confirmed equal to the backend's reported SHA at the same instant.",
+    "evidence": {
+      "deployment_id": "dpl_B4YkugcHMQtULebA927cBnvkRHcC",
+      "data_release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+      "http_status": 200
+    }
+  },
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+    "observed_at": "2026-09-04T13:28:00+00:00",
+    "detail": "GET /api/ready 200 ready:true, reasons=[] warnings=[], release_sha 1ca89d78ecf1635d6f383c1440833ce04a51fb26, api_version 2.7.0, checked_at 2026-09-04T13:28:00.170217+00:00. All five gating readiness checks pass on the deployed candidate.",
+    "evidence": {
+      "ready": true,
+      "checked_at": "2026-09-04T13:28:00.170217+00:00",
+      "api_version": "2.7.0",
+      "release_sha": "1ca89d78ecf1635d6f383c1440833ce04a51fb26",
+      "reasons": [],
+      "warnings": []
+    }
+  }
+}
