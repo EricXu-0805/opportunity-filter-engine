@@ -153,10 +153,16 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           />
         )}
         {!isFaculty && e.majors?.length > 0 && (
+          // Same rule as the skills row: 433 records carry a list our keyword
+          // bank wrote from the program's research areas, and #862 already
+          // stopped the matcher calling it a stated preference. Printing it
+          // under "MAJORS" made the same guess read as the program's terms.
           <DetailRow
             icon={<GraduationCap />}
-            label={t('detail.fields.majors')}
+            label={t(opp.majors_attribution === 'inferred' ? 'detail.fields.majorsApproximate' : 'detail.fields.majors')}
             value={e.majors.join(', ')}
+            note={opp.majors_attribution === 'inferred' ? t('detail.majorsInferred') : undefined}
+            noteTestId="majors-inferred-note"
           />
         )}
         {!isFaculty && e.skills_required?.length > 0 && (

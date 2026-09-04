@@ -917,3 +917,40 @@ class TestInventedSkillsAreLabelledOnTheWire:
         card = {"id": record["id"], "title": record["title"], "eligibility": dict(record["eligibility"])}
         out = project_public_opportunity_payload(card, record)
         assert out["skills_attribution"] == "inferred"
+
+
+class TestApproximateMajorsAreLabelledOnTheWire:
+    """#862 stamped the SRO major lists as ours and stopped the matcher calling
+    them a stated preference. The detail page still printed them under
+    "MAJORS", so the student read our keyword-bank guess as the program's own
+    eligibility terms. 433 live records carry such a list."""
+
+    @staticmethod
+    def _program(inferred: bool) -> dict:
+        record = {
+            "id": "sro-majors", "title": "Summer Research Opportunities Program",
+            "source_type": "summer_program", "organization": "Test University",
+            "eligibility": {"majors": ["Biology", "Chemistry"]},
+            "metadata": {},
+        }
+        if inferred:
+            record["metadata"] = {
+                "inferred_fields": {"eligibility.majors": "rule:research_area_bank"}
+            }
+        return record
+
+    def test_a_bank_written_major_list_is_labelled(self):
+        record = self._program(inferred=True)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["majors_attribution"] == "inferred"
+
+    def test_a_stated_major_list_carries_no_label(self):
+        record = self._program(inferred=False)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "majors_attribution" not in out
+
+    def test_an_empty_list_is_not_labelled(self):
+        record = self._program(inferred=True)
+        record["eligibility"]["majors"] = []
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "majors_attribution" not in out

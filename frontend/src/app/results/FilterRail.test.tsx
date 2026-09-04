@@ -228,6 +228,25 @@ describe('sourceLabel (derived source filter)', () => {
     expect(sourceLabel('umich_labs', t)).toBe('results.filters.sourceUmichLabs');
     expect(sourceLabel('umich_faculty', t)).toBe('results.filters.sourceUmichFaculty');
   });
+  it('names the school for a source the label map never grew to cover', () => {
+    // The map stopped at 86 entries while the registry reached 114 schools, so
+    // 89.7% of active records fell to the humanizer and cards read "Jhu
+    // Faculty" / "Uw External Research". The school's own catalog name is
+    // already on hand; only the kind needs a phrase.
+    expect(sourceLabel('jhu_faculty', t)).toBe('Johns Hopkins results.filters.kindFaculty');
+    expect(sourceLabel('uw_external_research', t)).toBe('UW results.filters.kindExternalResearch');
+    expect(sourceLabel('utexas_research_programs', t)).toBe(
+      'UT Austin results.filters.kindResearchPrograms',
+    );
+    expect(sourceLabel('wisc_labs', t)).toBe('UW–Madison results.filters.kindLabs');
+  });
+  it('still humanizes a source whose school or kind it cannot name', () => {
+    // simplify_internships is an aggregator, not a school; unc is not in the
+    // catalog; ucb_urca_projects is a one-off kind. Humanizing beats a raw slug.
+    expect(sourceLabel('simplify_internships', t)).toBe('Simplify Internships');
+    expect(sourceLabel('unc_faculty', t)).toBe('Unc Faculty');
+    expect(sourceLabel('jhu_urca_projects', t)).toBe('Jhu Urca Projects');
+  });
   it('every UC Berkeley faculty source maps to a label (no humanized fallback)', () => {
     // Mirrors the ucb_*_faculty collectors wired in refresh_all
     // (deactivate_stale_faculty.FACULTY_SOURCES). Each MUST resolve to a real

@@ -726,6 +726,14 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     if skills_method and (projected.get("eligibility") or {}).get("skills_required"):
         projected["skills_attribution"] = "inferred"
 
+    # Same rule for the major list. #862 stamped the SRO lists as ours and
+    # stopped the matcher calling them a stated preference; the detail page
+    # still printed them under "MAJORS", so the student read our keyword-bank
+    # guess as the program's own eligibility terms.
+    majors_method = inferred_method(canonical_record, "eligibility.majors")
+    if majors_method and (projected.get("eligibility") or {}).get("majors"):
+        projected["majors_attribution"] = "inferred"
+
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):
         projected["metadata"] = {
