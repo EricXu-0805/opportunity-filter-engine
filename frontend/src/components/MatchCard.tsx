@@ -218,8 +218,8 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   const compensation = cleanCompensation(opp.compensation_details);
   const tier = getBucketLabel(match.bucket, t);
   const effectiveIntl = facultySafeInternational(opp) ?? 'unknown';
-  const intl = getIntlBadge(effectiveIntl, t);
-  const paid = getPaidBadge(opp.paid, t);
+  const intl = getIntlBadge(effectiveIntl, t, opp.international_attribution);
+  const paid = getPaidBadge(opp.paid, t, opp.paid_attribution);
   // Home-campus records get no chip (the majority — avoid noise); only
   // open/unknown/foreign-campus records carry the host+audience chip. Who may
   // apply is a term of an application, so a target with no current application
