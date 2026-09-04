@@ -6,6 +6,7 @@
 
 import { Filter, Zap, Target, TrendingUp, Star } from 'lucide-react';
 import type { ScopeValue } from '@/lib/discovery-scope';
+import { bySlug } from '@/lib/schools';
 import type { DeadlineFilterValue, ProfileData } from '@/lib/types';
 
 export type Tab = 'all' | 'high_priority' | 'good_match' | 'reach' | 'starred';
@@ -216,11 +217,34 @@ const TYPE_LABEL_KEY: Record<string, string> = {
 export function typeLabel(type: string, t: TFunc): string {
   const key = TYPE_LABEL_KEY[type];
   if (key) return t(key);
-  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return humanizeSlug(type);
+}
+
+// The four buckets every campus-graph school emits. SOURCE_LABEL_KEY names
+// them school by school and stopped at 86 entries while the registry grew to
+// 114 schools, so most of the corpus fell to the humanizer and read "Jhu
+// Faculty" / "Uw External Research". The school's display name is already in
+// the catalog; composing it with the kind covers the rest without adding a
+// dictionary entry per school.
+const SOURCE_KIND_KEY: Record<string, string> = {
+  faculty: 'results.filters.kindFaculty',
+  research_programs: 'results.filters.kindResearchPrograms',
+  labs: 'results.filters.kindLabs',
+  external_research: 'results.filters.kindExternalResearch',
+};
+
+function humanizeSlug(slug: string): string {
+  return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export function sourceLabel(source: string, t: TFunc): string {
   const key = SOURCE_LABEL_KEY[source];
   if (key) return t(key);
-  return source.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const cut = source.indexOf('_');
+  if (cut > 0) {
+    const school = bySlug(source.slice(0, cut));
+    const kindKey = SOURCE_KIND_KEY[source.slice(cut + 1)];
+    if (school && kindKey) return `${school.shortName} ${t(kindKey)}`;
+  }
+  return humanizeSlug(source);
 }

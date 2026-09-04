@@ -33,7 +33,7 @@ import {
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import ResponsivenessBadge from '@/components/ResponsivenessBadge';
 import { DetailBadge } from './DetailBadge';
-import { formatType } from './detail-utils';
+import { typeLabel } from '@/app/results/types';
 import type { TFunc } from './types';
 
 /**
@@ -156,7 +156,7 @@ export function OpportunityHeader({
             {/* The record's own claim about what it is, published only where
                 it still describes something on offer. */}
             {isCurrentListing && (
-              <DetailBadge tone="blue">{formatType(opp.opportunity_type)}</DetailBadge>
+              <DetailBadge tone="blue">{typeLabel(opp.opportunity_type, t)}</DetailBadge>
             )}
             {isFaculty && !facultyUnavailable && opp.faculty_availability_status !== 'research_inactive' && (
               <DetailBadge tone="amber">{t('card.facultyContactUnconfirmed')}</DetailBadge>

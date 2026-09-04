@@ -543,6 +543,27 @@ describe('MatchCard', () => {
     });
   });
 
+  describe('the explanation panel speaks the reader language', () => {
+    it('names every heading through the dictionary, not in hardcoded English', () => {
+      // The expanded panel is the card's primary explanation surface. Its six
+      // headings were literal English in the JSX, so a Chinese session read
+      // "Why it fits" / "Potential concerns" above translated body copy.
+      const match = makeMatch();
+      match.reasons_fit = ['a fit reason'];
+      match.reasons_gap = ['a gap reason'];
+      match.next_steps = ['a next step'];
+      render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+
+      expect(screen.getByText('card.whyItFits')).toBeInTheDocument();
+      expect(screen.getByText('card.potentialConcerns')).toBeInTheDocument();
+      expect(screen.getByText('card.nextSteps')).toBeInTheDocument();
+      for (const english of ['Why it fits', 'Potential concerns', 'Next steps']) {
+        expect(screen.queryByText(english)).toBeNull();
+      }
+    });
+  });
+
   describe('MVP release surface', () => {
     it('keeps Tailor and Renovate while hiding the Roadmap preparation plan', () => {
       render(<MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} />);
