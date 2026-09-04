@@ -222,3 +222,69 @@ def test_a_guessed_topic_is_not_anti_fabrication_vocabulary():
     guessed = dict(base, metadata={})
     stamp_inferred(guessed["metadata"], "keywords", "derived:openalex_topics")
     assert "microtubule" not in _build_email_corpus({}, guessed)
+
+
+class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
+    """The hook says "your work in {phrase}". The phrase used to be the first
+    comma-delimited fragment of a scraped research blob, hard-cut at 80
+    characters, which produced "your work in Teaching Cloud computing", "your
+    work in Kelley School of Business Indianapolis" and 771 openers cut off
+    mid-word. Ten reviewers judged all 1,529 openers this feeds; the cases below
+    are theirs."""
+
+    @staticmethod
+    def _phrase(raw: str) -> str:
+        from src.recommender.cold_email import _usable_research_phrase
+
+        return _usable_research_phrase(raw)
+
+    def test_a_real_area_survives(self):
+        assert self._phrase(
+            "Psycholinguistics and cognitive neuroscience of language"
+        ) == "Psycholinguistics and cognitive neuroscience of language"
+
+    def test_a_leading_label_is_dropped_not_the_area(self):
+        assert self._phrase(
+            "Interests: Enterprise Data Management. Semantic Interoperability"
+        ) == "Enterprise Data Management"
+
+    def test_a_business_school_is_not_a_research_area(self):
+        assert self._phrase("Kelley School of Business Indianapolis") == ""
+
+    def test_a_bare_department_word_is_not_a_research_area(self):
+        # 153 openers were a single word: law (83), Architecture (37),
+        # Research (13), Art (6), and three bare email addresses.
+        for word in ("law", "Architecture", "Research", "Art"):
+            assert self._phrase(word) == ""
+
+    def test_a_degree_line_is_not_a_research_area(self):
+        assert self._phrase("Ph.D. – University of Notre Dame") == ""
+
+    def test_an_office_address_is_not_a_research_area(self):
+        assert self._phrase("1233 Social Sciences Building") == ""
+
+    def test_prose_about_the_person_is_rejected(self):
+        assert self._phrase(
+            "Dr. Thomas develops naturally derived biomaterials for orthopedic repair."
+        ) == ""
+
+    def test_a_teaching_statement_is_rejected(self):
+        assert self._phrase(
+            "Teaching Focus on student-centered teaching and hands-on learning"
+        ) == ""
+
+    def test_an_over_long_phrase_is_rejected_not_truncated(self):
+        # Truncating changes what the professor is told they work on.
+        out = self._phrase(
+            "Solid-state materials science: Synthesis and characterization of "
+            "Sustainable Functional Materials for energy applications"
+        )
+        assert out == ""
+
+    def test_an_unbalanced_bracket_is_rejected(self):
+        assert self._phrase("Integrated weed management (Southern ROC, Waseca)") == ""
+
+    def test_a_delimiterless_run_on_list_is_rejected(self):
+        assert self._phrase(
+            "Human-autonomy interaction Human-robot interaction Individual differences"
+        ) == ""

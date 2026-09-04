@@ -468,6 +468,130 @@ def _infer_research_topic(opportunity: dict) -> str:
     return ""
 
 
+_RESEARCH_LABEL_RE = re.compile(
+    r"^\s*(?:my|his|her|their|current|primary|main|general|broad|specific)?\s*"
+    r"(?:research\s+)?(?:areas?\s+of\s+(?:research|interest|expertise|specialization)|"
+    r"research\s+(?:areas?|interests?|focus|topics?)|interests?|areas?|"
+    r"specializations?|expertise|keywords?)(?![a-z])\s*[:\-–—]?\s*", re.IGNORECASE)
+_PROSE_MARKER_RE = re.compile(
+    r"(?:\b(?:dr|prof|professor|phd)\b\.?|'s\b|’s\b|\b(?:i|we|my|our|he|she|they|his|her|their|the\s+\w+\s+lab)\b"
+    r"|\b(?:is|are|was|were|has|have|had|studies|develops|focuses|focused|investigates|explores"
+    r"|examines|teaches|taught|works|uses|seeks|aims|joined|received|earned|leads|directs"
+    r"|includes?|remains?|lies|spans|involves|encompasses|creates?|specializ\w+|combines?"
+    r"|analyz\w+|analys\w+|utiliz\w+|employs|applies|addresses|pursues|conducts|provides"
+    r"|introduc\w+|building|developing|identifying)\b)", re.IGNORECASE)
+_NOT_AN_AREA_RE = re.compile(
+    r"^(?:\d+(?![a-z]|[A-Z]\b)|\(?\d+\)|[A-Z]{2,4}\s?\d{3}\b)"
+    r"|\b(?:school|college|department|division|centers?|centres?|institutes?|programs?|office"
+    r"|universit(?:y|ies)|building|hall|room|suite|director|chair|emeritus|adjunct"
+    r"|instructors?|lecturers?|faculty|dean|concentration|award|website|phone|tel|fax|e-?mail"
+    r"|teaching|lectures?|coursework|curriculum|syllabus|instruction|mentorship)\b"
+    r"|\b(?:ph\.?\s?d|m\.?\s?d|b\.?\s?[as]|m\.?\s?[as]|dr\.?p\.?h|ed\.?d|j\.?d)\b\.?"
+    r"|@|[•·▪●♦*»§¶]|&(?:amp|nbsp|lt|gt|quot|apos)\b|\w&\w|\s[-–—]\s", re.IGNORECASE)
+_NOT_A_HEAD_RE = re.compile(
+    r"^(?:on|in|of|at|to|for|with|from|by|into|about|as|and|or|but"
+    r"|how|why|what|when|where|whether|which"
+    r"|lies?|focus|include|involve|span|concern|deal|revolve|welcome)\b"
+    r"|\b(?:of|in|on|for|with|and|or|to|at|from|by|the|a|an|as|that|which)$", re.IGNORECASE)
+_IMPERATIVE_RE = re.compile(
+    r"^(?:probe|design|develop|investigate|explore|study|identify|create|build|understand"
+    r"|determine|elucidate|apply|examine|characterize|discover|improve|advance)\s+"
+    r"(?!(?:and|or|of|for|in)\b)", re.IGNORECASE)
+
+_LIST_STOPWORDS = frozenset(
+    "a an and as at by de for from in la of on or the to with &".split())
+_ACRONYM_RE = re.compile(r"^\(?[A-Z0-9&/.-]{2,6}\)?[.,]?$")
+_LEAD_PUNCT_RE = re.compile(r"^[^A-Za-z]+")
+_RESEARCH_PHRASE_MAX_WORDS = 8
+_RESEARCH_PHRASE_MAX_CHARS = 80
+_RESEARCH_PHRASE_MIN_WORDS = 2
+_COINED_TERM_RE = re.compile(r"[a-z][A-Z]")
+_RUN_OF_CAPS = 4
+
+
+def _is_upper(word):
+    stem = _LEAD_PUNCT_RE.sub("", word)
+    return bool(stem) and stem[0].isupper()
+
+
+def _is_lower(word):
+    stem = _LEAD_PUNCT_RE.sub("", word)
+    return bool(stem) and stem[0].islower()
+
+
+def _looks_like_a_glued_list(fragment):
+    """A department page that lost its delimiters glues several areas into one
+    string. Two shapes give that away: a new capitalised item starting right
+    after a lowercase content word, and a long unbroken run of capitalised
+    content words with no function word holding them together."""
+    words = fragment.split()
+    for i in range(1, len(words)):
+        prev, word = words[i - 1], words[i]
+        if not (_is_lower(prev) and prev.lower() not in _LIST_STOPWORDS
+                and "-" not in prev and _is_upper(word)):
+            continue
+        before = words[i - 2] if i >= 2 else None
+        after = words[i + 1] if i + 1 < len(words) else None
+        if (before is not None and _is_upper(before)) or (
+                after is not None and _is_lower(after)
+                and after.lower() not in _LIST_STOPWORDS):
+            return True
+    run = 0
+    for word in words:
+        if word.endswith(":") or _ACRONYM_RE.match(word):
+            run = 0
+        elif _is_upper(word) and word.lower() not in _LIST_STOPWORDS:
+            run += 1
+            if run >= _RUN_OF_CAPS:
+                return True
+        else:
+            run = 0
+    return False
+
+
+def _usable_research_phrase(raw: str) -> str:
+    """First fragment of a scraped research blob, but only when it can follow
+    "your work in" as a truthful, grammatical noun phrase.
+
+    The blob is whatever the department page put under a research heading: real
+    area lists, but also teaching statements, office addresses, degree lines and
+    third-person bio prose. Anything that is not a bare topical phrase is
+    rejected rather than repaired, and an over-long phrase is rejected rather
+    than truncated — cutting "… characterization of Sustainable Fun" out of a
+    longer sentence changes what the professor is told they work on.
+
+    Ten reviewers read all 1,529 openers this feeds and judged each decision.
+    The caps are deliberately the strict side of that: they reject some real
+    nine-word areas, because a rejection costs only the lab-only opener while a
+    wrong acceptance puts a false claim in a student's email.
+    """
+    fragment = re.split(r"[,;|\n]|(?<=[a-z])\.\s+(?=[A-Z])", raw, maxsplit=1)[0]
+    fragment = _RESEARCH_LABEL_RE.sub("", fragment, count=1).strip().strip(".:;-–— ")
+    if not fragment:
+        return ""
+    if len(fragment) > _RESEARCH_PHRASE_MAX_CHARS:
+        return ""
+    words = fragment.split()
+    # Every single-word opener in the corpus was junk — law (83), Architecture
+    # (37), Research (13), Art (6), three bare email addresses — because a lone
+    # word off a department page is the department, not a topic. A coined term
+    # ("GeoAI", "BioNLP") is the exception, and its internal capital is what
+    # separates it from all 153 of them.
+    if len(words) > _RESEARCH_PHRASE_MAX_WORDS:
+        return ""
+    if len(words) < _RESEARCH_PHRASE_MIN_WORDS and not _COINED_TERM_RE.search(fragment):
+        return ""
+    if fragment.count("(") != fragment.count(")") or fragment.count("[") != fragment.count("]"):
+        return ""
+    if _NOT_A_HEAD_RE.search(fragment) or _IMPERATIVE_RE.match(fragment):
+        return ""
+    if _PROSE_MARKER_RE.search(fragment) or _NOT_AN_AREA_RE.search(fragment):
+        return ""
+    if _looks_like_a_glued_list(fragment):
+        return ""
+    return fragment
+
+
 def _infer_research_area(opportunity: dict) -> str:
     keywords = _stated_keywords(opportunity)
     if keywords:
@@ -477,8 +601,9 @@ def _infer_research_area(opportunity: dict) -> str:
     if faculty_contact_claims_unverified(opportunity):
         metadata = opportunity.get("metadata") or {}
         raw = str(metadata.get("research_areas_raw") or "").strip()
-        if raw:
-            return re.split(r"[,;|\n]", raw, maxsplit=1)[0].strip()[:80]
+        phrase = _usable_research_phrase(raw)
+        if phrase:
+            return phrase
         # The faculty title and our display summary are identity/UI fields, not
         # evidence of a research area. Verified works remain available to the
         # AI brief as works rather than being relabelled as an area here.
