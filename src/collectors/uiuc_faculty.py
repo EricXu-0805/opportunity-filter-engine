@@ -1022,25 +1022,66 @@ _NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 # Academic credentials scraped onto the end of a name ("Helene R Dickel Phd").
 # They are not part of the name, leak into the title, and "phd" trips the
 # grad-level penalty regex — so strip a trailing credential token.
-_NAME_CREDENTIALS = {"phd", "ph.d", "md", "m.d", "dsc", "d.sc", "dphil", "edd", "ed.d", "dvm"}
+# Tokens that cannot be a surname, so they are safe to strip wherever they sit.
+_NAME_CREDENTIALS = {
+    "phd", "ph.d", "phd(c)", "md", "m.d", "dsc", "d.sc", "scd", "sc.d", "dphil",
+    "edd", "ed.d", "dvm", "aud", "au.d", "psyd", "psy.d", "drph", "dr.p.h",
+    "mph", "mba", "dds", "pharmd", "clinscd", "drmedsc", "facnm", "ccc-a",
+    "ccc-slp", "f-aaa", "faia", "fasme", "facs", "facp", "lcsw", "rdn",
+    "m.pharm", "m.ed", "r.ph", "cnm", "crna", "aprn", "dnp", "msn", "bsn", "fnp",
+}
+# These ARE common surnames — Ma, Ng, Ho — so they may only be stripped when a
+# comma introduces them ("Megan Kobel, MS" yes; "Xiaolong Ma" never). Without
+# the split, 123 professors lost their surname.
+_COMMA_ONLY_CREDENTIALS = {"ma", "ms", "msc", "m.sc", "mfa", "mpa", "rn", "np", "pa", "pe", "od", "esq"}
+_NAME_PRONOUNS_RE = re.compile(
+    r"\s*[\(\[]?\s*\b(?:she|he|they|ze|xe)\s*/\s*[\w/]+\s*[\)\]]?", re.IGNORECASE
+)
+_NAME_TRAILING_JUNK_RE = re.compile(r"[\s\u00bb\u203a\u25ca\u2022|]+$")
+
+
+def clean_pi_name(name: str) -> str:
+    """A person's name as a letter would address them.
+
+    Strips appended pronouns, scraped trailing glyphs, and academic credentials
+    — repeatedly, because a directory writes "Elise N. Erickson PhD CNM FACNM".
+    Never reduces a name below two tokens and never removes a generational
+    suffix: "Jr" is part of someone's name, not a credential.
+    """
+    cleaned = _NAME_PRONOUNS_RE.sub("", name or "").strip()
+    cleaned = _NAME_TRAILING_JUNK_RE.sub("", cleaned).strip()
+    while True:
+        match = re.search(r"(,\s*|\s+)([A-Za-z.\-()]{1,10})\.?\s*$", cleaned)
+        if not match:
+            break
+        token = match.group(2).lower().strip(".")
+        comma_introduced = "," in match.group(1)
+        if token not in _NAME_CREDENTIALS and not (
+            comma_introduced and token in _COMMA_ONLY_CREDENTIALS
+        ):
+            break
+        candidate = cleaned[: match.start()].rstrip(" ,").strip()
+        if len(candidate.split()) < 2:
+            break
+        cleaned = candidate
+    return re.sub(r"\s{2,}", " ", cleaned).strip(" ,")
 
 
 def _strip_pi_name_credentials(opps: list[dict]) -> int:
-    """Drop a trailing academic-credential token from faculty pi_name (whole
-    token only, so a real surname is never truncated). Mutates in place; returns
-    the count changed. Run before the title/description rebuild so the cleaned
-    name flows into both."""
+    """Apply ``clean_pi_name`` to every faculty record. Mutates in place;
+    returns the count changed. Run before the title/description rebuild so the
+    cleaned name flows into both.
+
+    Gated on _is_faculty_record, not on source == 'uiuc_faculty': the rule is
+    school-agnostic and the gate meant 509 of the 513 affected professors —
+    every one outside UIUC — kept "Dear Professor <name>, PhD, AuD".
+    """
     changed = 0
     for opp in opps:
-        if opp.get("source") != "uiuc_faculty":
+        if not _is_faculty_record(opp):
             continue
         original = (opp.get("pi_name") or "").strip()
-        # Strip appended pronouns ("Kathryn Clancy she/her" -> "Kathryn Clancy").
-        name = re.sub(r"\s+(?:she|he|they|ze|xe)\s*/\s*\w+\b.*$", "", original,
-                      flags=re.IGNORECASE).strip()
-        tokens = name.split()
-        if len(tokens) >= 3 and tokens[-1].lower().strip(".") in _NAME_CREDENTIALS:
-            name = " ".join(tokens[:-1])
+        name = clean_pi_name(original)
         if name and name != original:
             opp["pi_name"] = name
             changed += 1
@@ -1383,6 +1424,54 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
         meta["is_active"] = True
         meta.pop("deactivated_at", None)
         meta.pop("deactivation_reason", None)
+
+
+def _dedup_decredentialed_faculty(opps: list[dict]) -> tuple[list[dict], int]:
+    """Drop faculty rows that duplicate another row at the same school and URL
+    under the same full name, keeping the richer one.
+
+    This runs after ``_strip_pi_name_credentials``, which is what exposes them:
+    UCLA listed Smadar Naoz twice, the two rows distinguishable only by a "PhD"
+    suffix until the suffix came off. The key is the *full* name deliberately.
+    ``_dedup_faculty_records`` keys on the surname alone, which is safe only for
+    uiuc_faculty because that collector gives every professor their own
+    source_url; most collectors point a whole department at one listing page,
+    where 230 of 231 surname collisions measured were different people.
+    """
+    def _is_better_copy(a: dict, b: dict) -> bool:
+        # Same person, so keep the copy a student can actually write to. Only
+        # then fall back to the shared richness order.
+        ae, be = bool(a.get("contact_email")), bool(b.get("contact_email"))
+        if ae != be:
+            return ae
+        return _faculty_is_richer(a, b)
+
+    best: dict[tuple, int] = {}
+    for i, opp in enumerate(opps):
+        if not _is_faculty_record(opp):
+            continue
+        url = (opp.get("source_url") or "").strip()
+        name = " ".join((opp.get("pi_name") or "").split()).lower()
+        if not url or not name:
+            continue
+        key = (opp.get("school"), url, name)
+        if key not in best or _is_better_copy(opp, opps[best[key]]):
+            best[key] = i
+
+    def keep(i: int, opp: dict) -> bool:
+        if not _is_faculty_record(opp):
+            return True
+        url = (opp.get("source_url") or "").strip()
+        name = " ".join((opp.get("pi_name") or "").split()).lower()
+        if not url or not name:
+            return True
+        return best[(opp.get("school"), url, name)] == i
+
+    for i, opp in enumerate(opps):
+        if not keep(i, opp):
+            _carry_newest_liveness(opps[best[(opp.get("school"), (opp.get("source_url") or "").strip(), " ".join((opp.get("pi_name") or "").split()).lower())]], opp)
+    kept = [opp for i, opp in enumerate(opps) if keep(i, opp)]
+    return kept, len(opps) - len(kept)
 
 
 def _dedup_faculty_records(opps: list[dict]) -> list[dict]:
@@ -2475,6 +2564,9 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
         logger.info(f"Removed {removed_email} cross-department duplicate faculty record(s) sharing a contact email")
 
     _run_faculty_dq(all_opps)
+    all_opps, dropped_decred = _dedup_decredentialed_faculty(all_opps)
+    if dropped_decred:
+        logger.info(f"Removed {dropped_decred} faculty record(s) duplicated under one name after credential stripping")
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
@@ -2538,6 +2630,9 @@ if __name__ == "__main__":
         else:
             corpus, dropped = _drop_nonperson_faculty(corpus)
             _run_faculty_dq(corpus)
+            corpus, dropped_decred = _dedup_decredentialed_faculty(corpus)
+            if dropped_decred:
+                logger.info(f"Removed {dropped_decred} faculty record(s) duplicated under one name after credential stripping")
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(corpus, f, indent=2, ensure_ascii=False, default=str)
             print(f"\nRe-enriched {enriched}/{attempted} broad-only faculty; "
