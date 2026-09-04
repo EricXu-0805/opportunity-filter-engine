@@ -20,19 +20,39 @@ export interface BadgeResult<V> {
   variant: V;
 }
 
+/** 'inferred' means our pipeline read the value off the posting text rather
+ *  than the program stating it. The detail page hedges those; the cards render
+ *  through here, so without it the same record says two different things on
+ *  two screens. Absent means stated — the same contract the wire uses. */
+type Attribution = 'inferred' | null | undefined;
+
 export function getIntlBadge(
   friendly: string | undefined,
   t: (key: string) => string,
+  attribution?: Attribution,
 ): BadgeResult<IntlBadgeVariant> {
   if (friendly === 'yes') return { label: t('badges.intlOk'), variant: 'green' };
-  if (friendly === 'no') return { label: t('badges.intlUsOnly'), variant: 'red' };
+  // A guessed restriction becomes the verify state, not a red no: 32 live
+  // records say 'no' only because the tagger matched a federal-organisation
+  // name or a title substring, and a red "US only" chip is what makes an
+  // international student close the tab on a program that would take them.
+  if (friendly === 'no' && attribution !== 'inferred') {
+    return { label: t('badges.intlUsOnly'), variant: 'red' };
+  }
   return { label: t('badges.intlVerify'), variant: 'orange' };
 }
 
 export function getPaidBadge(
   paid: string | undefined,
   t: (key: string) => string,
+  attribution?: Attribution,
 ): BadgeResult<PaidBadgeVariant> {
+  // 201 live records carry paid='yes' because _detect_paid_from_text read it
+  // off prose — one says only "in many cases, funding or a stipend". The
+  // detail page calls those "Funding mentioned"; so does the card now.
+  if (attribution === 'inferred' && (paid === 'yes' || paid === 'stipend')) {
+    return { label: t('badges.fundingMentioned'), variant: 'gray' };
+  }
   if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
   if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };
   // Canonical unknown semantics: ONLY an explicit 'no' is "Unpaid".

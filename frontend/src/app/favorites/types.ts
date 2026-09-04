@@ -10,6 +10,11 @@ export interface Opp {
   department?: string;
   opportunity_type?: string;
   paid?: string;
+  /** Absent means the program stated it; 'inferred' means our pipeline read it
+   *  off the posting text. The badges hedge the second kind, the same way the
+   *  detail page does. */
+  paid_attribution?: 'inferred' | null;
+  international_attribution?: 'inferred' | null;
   location?: string;
   url?: string;
   // The page the collector actually read. A historical record may carry only
