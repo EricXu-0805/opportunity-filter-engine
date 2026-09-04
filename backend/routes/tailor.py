@@ -277,6 +277,20 @@ def _system_prompt_for(locale: str) -> str:
     return _SYSTEM_PROMPT_ZH if locale == "zh" else _SYSTEM_PROMPT_EN
 
 
+def _keywords_line(opp: dict, value: str) -> str:
+    """The keywords line for a prompt, labelled by where the list came from.
+
+    8,858 records carry keywords derived from the professor's OpenAlex topic
+    clusters rather than anything the lab wrote. Those are broad field labels
+    ("planetary science and exploration") that the model will happily steer a
+    resume rewrite toward, which is the same failure ``_skills_line`` guards
+    against one line below. Same wording the detail page uses for the stamp.
+    """
+    if is_inferred(opp, "keywords"):
+        return f"- Research topics inferred from the professor's publications (not stated by the lab): {value}\n"
+    return f"- Keywords: {value}\n"
+
+
 def _skills_line(opp: dict, value: str) -> str:
     """The skills line for a prompt, labelled by where the list came from.
 
@@ -374,8 +388,8 @@ def _ai_tailor_bullets(
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
         + _skills_line(opp, required)
         + f"- Preferred skills: {preferred}\n"
-        f"- Keywords: {keywords}\n"
-        f"- Description excerpt: {opp_desc or '(no description)'}\n"
+        + _keywords_line(opp, keywords)
+        + f"- Description excerpt: {opp_desc or '(no description)'}\n"
         f"\n"
         f"ORIGINAL BULLETS to rewrite ({len(original_bullets)} provided, "
         f"rewriting up to {_DEFAULT_BULLETS_PER_REQUEST}):\n"
@@ -975,8 +989,8 @@ def _ai_renovation_plan(
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
         f"- Professor / lab: {pi}\n"
         + _skills_line(opp, required)
-        + f"- Keywords: {keywords}\n"
-        f"- Description excerpt: {opp_desc or '(no description)'}\n"
+        + _keywords_line(opp, keywords)
+        + f"- Description excerpt: {opp_desc or '(no description)'}\n"
         f"\n"
         f"STUDENT RÉSUMÉ (IDs are authoritative — use only these):\n"
         f"{resume_block}\n"
@@ -1246,8 +1260,8 @@ def _ai_optimize_bullet(
         f"OPPORTUNITY:\n"
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
         + _skills_line(opp, required)
-        + f"- Keywords: {keywords}\n"
-        f"\n"
+        + _keywords_line(opp, keywords)
+        + f"\n"
         f"BULLET to rewrite:\n{_sanitize_field(current_text, max_len=500)}\n"
         + (f"\nSTUDENT'S INSTRUCTION (obey if it doesn't require inventing anything): {instr}\n" if instr else "")
         + "\nReturn the JSON object now."
