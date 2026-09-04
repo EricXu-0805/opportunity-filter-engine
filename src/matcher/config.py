@@ -274,7 +274,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # constant and quieter interest matching. Readiness now stops at its midpoint
 # weight, eligibility takes what it was given, and coursework relevance earns an
 # additive lift of its own.
-_MATCHER_VERSION_BASE = "12"
+# 13: the mentor and pathway keyword scans anchor their stems on the left.
+# They stay substring scans so inflections still count ("mentored", "teaching",
+# "publications"), but a stem inside an unrelated word no longer does:
+# "synthesis" was scoring as thesis on 399 of the 453 records matching it, and
+# "machine learning" drew a mentorship point on 1,160 records for naming the
+# lab's own research topic. A formula change the fingerprint cannot see.
+_MATCHER_VERSION_BASE = "13"
 
 
 def _matcher_fingerprint() -> str:
