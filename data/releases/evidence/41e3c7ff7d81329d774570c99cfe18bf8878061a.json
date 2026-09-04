@@ -1,0 +1,71 @@
+{
+  "_note": "Operator evidence for the release candidate. Gathered 2026-09-04 by direct observation of the deployed services and the GitHub check-runs API. Gates with no key here stay UNVERIFIED and block, which is the honest state -- see docs/RELEASE.md section 2.",
+  "ci": {
+    "head_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+    "_source": "GET /repos/EricXu-0805/opportunity-filter-engine/commits/41e3c7ff7d81329d774570c99cfe18bf8878061a/check-runs",
+    "checks": [
+      {
+        "name": "Backend (lint + pytest)",
+        "conclusion": "SUCCESS",
+        "id": 100889230822,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33829490363/job/100889230822"
+      },
+      {
+        "name": "E2E (Playwright)",
+        "conclusion": "SUCCESS",
+        "id": 100892703127,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33829490363/job/100892703127"
+      },
+      {
+        "name": "Frontend (typecheck + build)",
+        "conclusion": "SUCCESS",
+        "id": 100889230978,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33829490363/job/100889230978"
+      },
+      {
+        "name": "Migrations (Flow B merge + CLI replay)",
+        "conclusion": "SUCCESS",
+        "id": 100889231074,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33829490363/job/100889231074"
+      }
+    ]
+  },
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+    "observed_at": "2026-09-04T04:39:12+00:00",
+    "detail": "GET /api/health 200: release_sha 41e3c7ff7d81329d774570c99cfe18bf8878061a == the release sha, environment 'render', api_version 2.7.0, started_at 2026-09-04T02:52:27.729559+00:00. The running backend is this candidate, self-reported via backend/lib/build_info.py rather than assumed.",
+    "evidence": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+      "environment": "render",
+      "started_at": "2026-09-04T02:52:27.729559+00:00"
+    }
+  },
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+    "observed_at": "2026-09-04T04:39:12+00:00",
+    "detail": "GET https://opportunity-filter-engine.vercel.app/ 200; the served document carries data-release-sha=\"41e3c7ff7d81329d774570c99cfe18bf8878061a\" and Vercel deployment id dpl_gmeg1cKWJk1UAzHSJaByd4zKM6h6. The frontend build in production is this candidate.",
+    "evidence": {
+      "deployment_id": "dpl_gmeg1cKWJk1UAzHSJaByd4zKM6h6",
+      "data_release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+      "http_status": 200
+    }
+  },
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+    "observed_at": "2026-09-04T04:39:12+00:00",
+    "detail": "GET /api/ready 200 ready:true, no reasons and no warnings, release_sha 41e3c7ff7d81329d774570c99cfe18bf8878061a, api_version 2.7.0, checked_at 2026-09-04T04:39:11.675728+00:00. All gating readiness checks pass on the deployed candidate.",
+    "evidence": {
+      "ready": true,
+      "checked_at": "2026-09-04T04:39:11.675728+00:00",
+      "api_version": "2.7.0",
+      "release_sha": "41e3c7ff7d81329d774570c99cfe18bf8878061a",
+      "reasons": [],
+      "warnings": []
+    }
+  }
+}
