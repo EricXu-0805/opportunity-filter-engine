@@ -112,8 +112,9 @@ function pending<T>(): Promise<T> {
   return new Promise<T>(() => {});
 }
 
-/** The four tracker-fed funnel tiles (saved-summary is fed separately). */
+/** The tracker-fed funnel tiles (saved-summary is fed separately). */
 const FUNNEL_CARDS = [
+  'contacted-summary',
   'applied-summary',
   'replied-summary',
   'interviewing-summary',
@@ -417,6 +418,26 @@ describe('DashboardPage — stat tile state vocabulary', () => {
     expect(screen.getByTestId('rejected-summary')).toHaveTextContent('0');
     expect(screen.getByTestId('applied-summary')).toHaveTextContent('1');
     expect(screen.queryAllByText('—')).toHaveLength(0);
+  });
+
+  it('counts the status the product itself writes', async () => {
+    // Migration 024 added 'contacted' so a confirmed cold-email send would
+    // stop being mislabelled 'applied'. It is the default outcome of step 7
+    // and the only status the product writes on the student's behalf, and
+    // this one enumeration never got a bucket — a student with a full
+    // Contacted column read "Applied 0 · Got reply 0 · Interviewing 0".
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-1', { type: 'contacted' }],
+      ['opp-2', { type: 'contacted' }],
+      ['opp-3', { type: 'applied' }],
+    ]));
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contacted-summary')).toHaveAttribute('data-state', 'ready');
+    });
+    expect(screen.getByTestId('contacted-summary')).toHaveTextContent('2');
+    expect(screen.getByTestId('applied-summary')).toHaveTextContent('1');
   });
 
   it('offers a retry from the error state that re-runs the loads', async () => {

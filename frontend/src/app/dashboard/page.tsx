@@ -53,6 +53,8 @@ function isCurrentListing(opportunity: Record<string, unknown>): boolean {
     && targetPosture(record) === 'actionable';
 }
 
+const FUNNEL_STATUSES = ['contacted', 'applied', 'replied', 'interviewing', 'rejected'] as const;
+
 const STATUS_CONFIG: Record<InteractionType, { labelKey: string; icon: React.ElementType; color: string; bg: string }> = {
   contacted: { labelKey: 'tracker.status.contacted', icon: Send, color: 'text-sky-600', bg: 'bg-sky-50' },
   applied: { labelKey: 'tracker.status.applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
@@ -376,7 +378,16 @@ export default function DashboardPage() {
 
   const retry = () => setReloadNonce((n) => n + 1);
 
-  const statusCounts: Record<string, number> = { applied: 0, replied: 0, rejected: 0, interviewing: 0 };
+  // One list, so a status added to the tracker cannot be missed here. It was:
+  // migration 024 introduced 'contacted' precisely so a confirmed cold-email
+  // send would stop being mislabelled 'applied', every other consumer was
+  // updated, and this enumeration was not — a student whose whole funnel is
+  // outreach read "Applied 0 · Got reply 0 · Interviewing 0 · Rejected 0" on
+  // the one page meant to summarise their progress. 'dismissed' is absent on
+  // purpose: it is a hidden row, not a stage.
+  const statusCounts: Record<string, number> = Object.fromEntries(
+    FUNNEL_STATUSES.map((status) => [status, 0]),
+  );
   for (const item of tracker.items) {
     if (item.status in statusCounts) statusCounts[item.status] += 1;
   }
@@ -401,7 +412,7 @@ export default function DashboardPage() {
         <h2 id="dashboard-summary" className="mb-4 text-sm font-semibold text-gray-900">
           {t('dashboard.summary.title')}
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
           {/* Each tile carries its OWN load state. Before W16 every
               non-ready tile rendered the same em-dash, so "still loading",
               "the request failed", and "genuinely unknown" were
@@ -415,38 +426,17 @@ export default function DashboardPage() {
             color="text-amber-600"
             t={t}
           />
-          <StatCard
-            testId="applied-summary"
-            state={tracker.status}
-            value={statusCounts.applied}
-            label={t('tracker.status.applied')}
-            color="text-indigo-600"
-            t={t}
-          />
-          <StatCard
-            testId="replied-summary"
-            state={tracker.status}
-            value={statusCounts.replied}
-            label={t('tracker.status.replied')}
-            color="text-emerald-600"
-            t={t}
-          />
-          <StatCard
-            testId="interviewing-summary"
-            state={tracker.status}
-            value={statusCounts.interviewing}
-            label={t('tracker.status.interviewing')}
-            color="text-violet-600"
-            t={t}
-          />
-          <StatCard
-            testId="rejected-summary"
-            state={tracker.status}
-            value={statusCounts.rejected}
-            label={t('tracker.status.rejected')}
-            color="text-red-500"
-            t={t}
-          />
+          {FUNNEL_STATUSES.map((status) => (
+            <StatCard
+              key={status}
+              testId={`${status}-summary`}
+              state={tracker.status}
+              value={statusCounts[status]}
+              label={t(STATUS_CONFIG[status].labelKey)}
+              color={STATUS_CONFIG[status].color}
+              t={t}
+            />
+          ))}
         </div>
         <div className="mt-3 space-y-1">
           {saved.status === 'error' && (
