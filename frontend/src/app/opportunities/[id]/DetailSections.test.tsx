@@ -304,6 +304,42 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.queryByText('detail.fields.skills')).not.toBeInTheDocument();
   });
 
+  it('says an eligibility restriction is ours rather than the program stated one', () => {
+    // An international student who reads "Not open to international students"
+    // self-selects out and never applies. 32 live listings carry that pair
+    // because the tagger matched a federal-organisation or title substring.
+    const elig = {
+      majors: [], international_friendly: 'no', citizenship_required: true,
+      preferred_year: ['senior'], skills_required: [],
+    } as unknown as Opportunity['eligibility'];
+    render(
+      <EligibilitySection
+        opp={opp({}, {
+          source_type: 'summer_program', eligibility: elig,
+          international_attribution: 'inferred',
+          citizenship_attribution: 'inferred',
+          preferred_year_attribution: 'inferred',
+        })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('international-inferred-note')).toBeInTheDocument();
+    expect(screen.getByTestId('citizenship-inferred-note')).toBeInTheDocument();
+    expect(screen.getByTestId('year-inferred-note')).toBeInTheDocument();
+    expect(screen.getByText('detail.fields.preferredYearMentioned')).toBeInTheDocument();
+  });
+
+  it('leaves a stated restriction unqualified', () => {
+    const elig = {
+      majors: [], international_friendly: 'no', citizenship_required: true,
+      preferred_year: ['senior'], skills_required: [],
+    } as unknown as Opportunity['eligibility'];
+    render(<EligibilitySection opp={opp({}, { source_type: 'summer_program', eligibility: elig })} t={tFn} />);
+    expect(screen.queryByTestId('international-inferred-note')).toBeNull();
+    expect(screen.queryByTestId('citizenship-inferred-note')).toBeNull();
+    expect(screen.getByText('detail.fields.preferredYear')).toBeInTheDocument();
+  });
+
   it('says a major list is approximate when we wrote it', () => {
     const elig = {
       majors: ['Biology', 'Chemistry'], international_friendly: 'unknown',

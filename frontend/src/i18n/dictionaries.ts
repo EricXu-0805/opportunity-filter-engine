@@ -36,6 +36,7 @@ export const en = {
   },
   badges: {
     paid: 'Paid',
+    fundingMentioned: 'Funding mentioned',
     stipend: 'Stipend',
     unpaid: 'Unpaid',
     // R70-D: distinct label for paid='unknown' so the 1262 records (65.9%
@@ -49,6 +50,7 @@ export const en = {
     intlVerify: 'Verify',
     onCampus: 'On campus',
     remoteOk: 'Remote OK',
+    hybrid: 'Hybrid',
     internationalFriendly: 'International friendly',
     pastDeadline: 'Past deadline',
     deadlinePassed: 'Deadline passed',
@@ -3173,6 +3175,8 @@ export const en = {
     keywordsInferred: 'Inferred from their publication record, not stated on their page — worth checking before you write to them.',
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
     majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
+    yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
+    eligibilityInferred: 'Read from the posting text by our pipeline, not a restriction the program published — check the program’s own page before ruling yourself out.',
     concierge: {
       title: 'Want us to handle this one?',
       body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
@@ -3204,6 +3208,7 @@ export const en = {
       skills: 'Required skills',
       skillsMentioned: 'Skills mentioned',
       majorsApproximate: 'Majors this looks aimed at',
+      preferredYearMentioned: 'Class years mentioned',
       international: 'International friendly',
       citizenship: 'Citizenship required',
       citizenshipNote: 'US citizenship required',
@@ -4597,6 +4602,7 @@ export const zh = {
   },
   badges: {
     paid: '付费',
+    fundingMentioned: '提到有资助',
     stipend: '有津贴',
     unpaid: '无酬',
     // R70-D: 区分 paid='unknown' 与 'no'，避免把 1262 条（65.9%，多为
@@ -4609,6 +4615,7 @@ export const zh = {
     intlVerify: '需确认',
     onCampus: '校内',
     remoteOk: '支持远程',
+    hybrid: '混合办公',
     internationalFriendly: '国际友好',
     pastDeadline: '已过截止',
     deadlinePassed: '已过截止',
@@ -7709,6 +7716,8 @@ export const zh = {
     keywordsInferred: '根据他的论文发表记录推断，不是他主页上写的 —— 写信前值得自己核一下。',
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
     majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
+    yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
+    eligibilityInferred: '由我们的系统从招募文本中推断，不是项目公布的限制 —— 在放弃之前先看项目自己的页面。',
     concierge: {
       title: '这个要不要我们替你办？',
       body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',
@@ -7740,6 +7749,7 @@ export const zh = {
       skills: '所需技能',
       skillsMentioned: '提到的技能',
       majorsApproximate: '大致面向的专业',
+      preferredYearMentioned: '提到的年级',
       international: '国际生友好',
       citizenship: '公民身份要求',
       citizenshipNote: '需要美国公民身份',

@@ -24,6 +24,7 @@ from ..evidence import (
     faculty_safe_lab_or_program,
     is_inferred,
     is_professor_rank,
+    is_read_off_the_page,
     target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
@@ -1382,7 +1383,12 @@ def score_upside(
     paid_map = {"yes": 100, "stipend": 80, "unknown": 40, "no": 25}
     paid_value = "unknown" if is_faculty_contact else (opportunity.get("paid") or "unknown")
     paid_score = paid_map.get(paid_value, 40)
-    if paid_score >= 70:
+    # The score is the record's pay value either way; the SENTENCE is a claim
+    # about the program's terms, and 220 records carry a value _detect_paid_
+    # from_text read off prose — one of them says only "in many cases, funding
+    # or a stipend". An NSF Site keeps the sentence: `policy:` names a
+    # published requirement of the funding program, not a reading of its page.
+    if paid_score >= 70 and not is_read_off_the_page(opportunity, "paid"):
         reasons_fit.append("Paid opportunity" if paid_score == 100 else "Includes stipend")
 
     # First-experience friendly (25%). Class-year eligibility is not evidence

@@ -9,7 +9,12 @@ from html.parser import HTMLParser
 from typing import TypeVar
 from urllib.parse import unquote, urlsplit
 
-from src.evidence import inferred_method, record_kind, target_truth
+from src.evidence import (
+    inferred_method,
+    is_read_off_the_page,
+    record_kind,
+    target_truth,
+)
 
 _EMAIL_IN_TEXT_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\."
@@ -733,6 +738,42 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     majors_method = inferred_method(canonical_record, "eligibility.majors")
     if majors_method and (projected.get("eligibility") or {}).get("majors"):
         projected["majors_attribution"] = "inferred"
+
+    # An eligibility restriction we read off the page, told to a student as the
+    # program's own terms, is the most expensive guess here: they self-select
+    # out and never apply. 32 live listings carry an international_friendly /
+    # citizenship_required pair the tagger derived from a federal-organisation
+    # or title substring, and 70 carry a class-year list it read out of prose
+    # ("graduating HIGH SCHOOL seniors"). The 154 NSF Sites are excluded by the
+    # same rule as the pay badge: `policy:` names a published requirement of
+    # the funding program, and the REU solicitation really does restrict
+    # eligibility to citizens and permanent residents.
+    # isinstance, not `or {}`: a malformed record can carry eligibility as a
+    # list or a string, and this projector is the boundary that has to survive
+    # that (TestTheCentralProjector exercises both shapes).
+    restricted = projected.get("eligibility")
+    if isinstance(restricted, dict):
+        for field, wire_key in (
+            ("international_friendly", "international_attribution"),
+            ("citizenship_required", "citizenship_attribution"),
+            ("preferred_year", "preferred_year_attribution"),
+        ):
+            value = restricted.get(field)
+            if value in (None, "", [], {}) or value == "unknown":
+                continue
+            if is_read_off_the_page(canonical_record, f"eligibility.{field}"):
+                projected[wire_key] = "inferred"
+
+    # A green "Paid" badge on "in many cases, funding or a stipend" is a
+    # student planning a summer around money we guessed at: 220 records carry a
+    # pay value _detect_paid_from_text read off prose. The NSF Sites are the
+    # deliberate exception — `policy:` names a published requirement of the
+    # funding program (the REU solicitation mandates a stipend), not a reading
+    # of the page, and hedging those would hide real money.
+    if is_read_off_the_page(canonical_record, "paid") and projected.get("paid") in {
+        "yes", "stipend", "no",
+    }:
+        projected["paid_attribution"] = "inferred"
 
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):

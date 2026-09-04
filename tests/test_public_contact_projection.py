@@ -954,3 +954,107 @@ class TestApproximateMajorsAreLabelledOnTheWire:
         record["eligibility"]["majors"] = []
         out = project_public_opportunity_payload(dict(record), record)
         assert "majors_attribution" not in out
+
+class TestGuessedPayIsLabelledButAPublishedRequirementIsNot:
+    """A green "Paid" badge on "in many cases, funding or a stipend" is a
+    student planning a summer around money we guessed at. 220 records carry a
+    pay value the tagger read off prose.
+
+    NSF REU Sites are the deliberate exception: the solicitation requires a
+    stipend, so `policy:nsf_reu_solicitation` is a published requirement of the
+    funding program rather than a reading of the page. Hedging those 154 would
+    hide real money from a student who cannot take an unpaid summer.
+    """
+
+    @staticmethod
+    def _program(method: str | None) -> dict:
+        record = {
+            "id": "prog-pay", "title": "Undergraduate Research Program",
+            "source_type": "summer_program", "organization": "Test University",
+            "paid": "yes", "eligibility": {}, "metadata": {},
+        }
+        if method:
+            record["metadata"] = {"inferred_fields": {"paid": method}}
+        return record
+
+    def test_a_pay_value_read_off_prose_is_labelled(self):
+        record = self._program("rule:llm_tagger")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["paid_attribution"] == "inferred"
+
+    def test_a_published_funder_requirement_is_not_labelled(self):
+        record = self._program("policy:nsf_reu_solicitation")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
+
+    def test_a_stated_pay_value_carries_no_label(self):
+        record = self._program(None)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
+
+    def test_an_unknown_pay_value_is_not_labelled(self):
+        record = self._program("rule:llm_tagger")
+        record["paid"] = "unknown"
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "paid_attribution" not in out
+
+
+class TestAGuessedEligibilityRestrictionIsLabelled:
+    """186 live listings say international_friendly='no' and
+    citizenship_required=True. 154 are NSF REU Sites, where the solicitation
+    really does restrict eligibility to US citizens and permanent residents.
+    The other 32 are the LLM tagger reading a federal-organisation or title
+    substring, and an international student who believes one self-selects out
+    of a program that would have taken them. 70 more carry a class-year list
+    the tagger read out of prose.
+
+    Same predicate as the pay badge: `policy:` is a published requirement of
+    the funding program; everything else is a reading of the page.
+    """
+
+    @staticmethod
+    def _program(method: str | None) -> dict:
+        record = {
+            "id": "prog-intl", "title": "Summer Research Program",
+            "source_type": "summer_program", "organization": "Test University",
+            "eligibility": {
+                "international_friendly": "no", "citizenship_required": True,
+                "preferred_year": ["senior"],
+            },
+            "metadata": {},
+        }
+        if method:
+            record["metadata"] = {"inferred_fields": {
+                "eligibility.international_friendly": method,
+                "eligibility.citizenship_required": method,
+                "eligibility.preferred_year": method,
+            }}
+        return record
+
+    def test_a_tagger_read_restriction_is_labelled(self):
+        record = self._program("rule:llm_tagger")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["international_attribution"] == "inferred"
+        assert out["citizenship_attribution"] == "inferred"
+        assert out["preferred_year_attribution"] == "inferred"
+
+    def test_the_nsf_solicitation_is_not_a_guess(self):
+        record = self._program("policy:nsf_reu_solicitation")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "international_attribution" not in out
+        assert "citizenship_attribution" not in out
+
+    def test_a_stated_restriction_carries_no_label(self):
+        record = self._program(None)
+        out = project_public_opportunity_payload(dict(record), record)
+        for key in ("international_attribution", "citizenship_attribution",
+                    "preferred_year_attribution"):
+            assert key not in out
+
+    def test_an_absent_value_is_not_labelled(self):
+        record = self._program("rule:llm_tagger")
+        record["eligibility"] = {}
+        out = project_public_opportunity_payload(dict(record), record)
+        for key in ("international_attribution", "citizenship_attribution",
+                    "preferred_year_attribution"):
+            assert key not in out

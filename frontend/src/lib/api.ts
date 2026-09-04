@@ -884,12 +884,21 @@ export async function generateColdEmailStream(
 export async function getEmailVariants(
   profile: ProfileData,
   opportunityId: string,
+  /** The student's own résumé bullets. #803 wired these through the endpoint —
+   *  "leaving them out here would keep three of the four generated emails empty
+   *  of the student's own work" — and no caller ever sent any, so every
+   *  template variant was built without them. */
+  resumeBullets: string[] = [],
 ): Promise<EmailVariantsResponse> {
   return requestWithRevealRetry<EmailVariantsResponse>(
     '/cold-email/variants',
     {
       method: 'POST',
-      body: JSON.stringify({ profile: toProfileRequest(profile), opportunity_id: opportunityId }),
+      body: JSON.stringify({
+        profile: toProfileRequest(profile),
+        opportunity_id: opportunityId,
+        resume_bullets: resumeBullets,
+      }),
     },
     (resp) => resp.recipient_status === 'sign_in_required',
   );

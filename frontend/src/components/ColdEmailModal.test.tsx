@@ -195,7 +195,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGetVariants).toHaveBeenCalledTimes(1));
-      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42');
+      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', []);
     });
 
     it('shows a loading spinner before variants resolve', () => {

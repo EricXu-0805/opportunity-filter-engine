@@ -140,6 +140,12 @@ jobs:
             esac
           done
           echo "restore-drill records found: $(ls -1 /tmp/drills 2>/dev/null | wc -l)"
+          # Same reasoning for the committed ledger: it is generated AFTER the
+          # candidate, so at the candidate's own tree it can only ever describe
+          # an earlier SHA. Absent is fine — ledger_currency then reports
+          # evidence_absent, which blocks, which is the honest answer.
+          git show "FETCH_HEAD:data/releases/CURRENT.json" > /tmp/CURRENT.json 2>/dev/null \
+            || echo '{}' > /tmp/CURRENT.json
 
       - name: Run the gate
         id: gate
@@ -150,6 +156,7 @@ jobs:
             --evidence /tmp/evidence.json \
             --evidence /tmp/operator-evidence.json \
             --drill-dir /tmp/drills \
+            --ledger /tmp/CURRENT.json \
             --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
             | tee /tmp/gate.txt
           # PIPESTATUS[0], not $?. After a pipeline `$?` is the LAST command's

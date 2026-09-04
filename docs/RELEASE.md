@@ -77,11 +77,25 @@ option at all.
 `ci:*` carries no age limit on purpose: it is keyed on the commit, so a result
 for the candidate SHA cannot predate a change to the candidate.
 
-The ledger checks itself the same way. `ledger_currency` fails when
-`data/releases/CURRENT.json` describes another SHA or is more than 7 days old —
-the state it was in on 2026-09-03, when it was 127 commits behind and still
-read as the project's release posture. Refresh it with `--update-current`
-rather than editing it.
+The ledger checks itself the same way. `ledger_currency` fails when the
+committed ledger describes another SHA or is more than 7 days old — the state
+`data/releases/CURRENT.json` was in on 2026-09-03, when it was 127 commits
+behind and still read as the project's release posture.
+
+Two flags keep that check satisfiable rather than permanently red, because a
+ledger is written *after* the candidate it describes and can never sit inside
+that candidate's own tree:
+
+- `--update-current` makes the run itself the refresh. The gate reports
+  `ledger_currency` PASS on that basis and says so in the evidence — the
+  statement is made true by the run. It excuses nothing else; a refreshing run
+  that is missing evidence is still NO-GO, and `--update-current` cannot
+  publish a GO the evidence does not support.
+- `--ledger PATH` reads the ledger from somewhere other than the checkout. The
+  release-gate workflow points it at the default branch's copy, for the same
+  reason it reads operator evidence and drill records from there.
+
+Refresh the ledger by regenerating it. Never edit it.
 
 ### `NOT_APPLICABLE` — the only verdict that does not block
 

@@ -164,6 +164,22 @@ def is_inferred(record: dict, field: str) -> bool:
     return inferred_method(record, field) is not None
 
 
+def is_read_off_the_page(record: dict, field: str) -> bool:
+    """True when ``field`` was inferred by reading the source text.
+
+    The stamp namespace separates two very different claims. ``rule:``,
+    ``llm:``, ``derived:`` and ``estimate:`` all mean a scan of the page
+    produced the value, so it is only as good as the sentence it came from —
+    "in many cases, funding or a stipend" becomes ``paid: yes``. ``policy:``
+    means a published requirement of the funding program produced it: an NSF
+    REU Site must pay a stipend because the solicitation says so, which is a
+    fact about the program type rather than a reading of its page. Surfaces
+    that hedge a guess should hedge the first kind and not the second.
+    """
+    method = inferred_method(record, field)
+    return method is not None and not method.startswith("policy:")
+
+
 # ---------------------------------------------------------------------------
 # Faculty-directory claim boundary
 # ---------------------------------------------------------------------------
