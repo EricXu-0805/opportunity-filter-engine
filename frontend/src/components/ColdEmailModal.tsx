@@ -337,6 +337,8 @@ export default function ColdEmailModal({
   // so an unkeyed cache would keep serving bullets from a résumé the user has
   // since replaced. null = not yet attempted.
   const resumeBulletsRef = useRef<{ forText: string; bullets: string[] } | null>(null);
+  // How many résumé bullets the currently-shown variants were generated from.
+  const variantsBuiltWithRef = useRef(0);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   // AI is the default engine: one automatic pipeline run per open, kicked off
   // once the template variants land. Reset on close.
@@ -379,7 +381,11 @@ export default function ColdEmailModal({
     setError(null);
     setNameRequired(false);
     try {
-      const data = await getEmailVariants(profile, opportunityId);
+      // The bullets this fetch was built with, so the re-fetch below happens
+      // exactly once — when extraction turns [] into real work.
+      const bullets = resumeBulletsRef.current?.bullets ?? [];
+      variantsBuiltWithRef.current = bullets.length;
+      const data = await getEmailVariants(profile, opportunityId, bullets);
       setVariants(data.variants);
       const inferredLabType =
         data.lab_type
@@ -654,6 +660,13 @@ export default function ColdEmailModal({
       const bullets = grounding === 'no_target_data'
         ? []
         : (resumeBulletsRef.current?.bullets ?? []);
+      // The templates are fetched before extraction has run, so the first set
+      // is always built without the student's own work — and those are what a
+      // variant tab shows, and what the student sends whenever the AI pass
+      // degrades. Refetch once, when extraction turns [] into real bullets.
+      if (bullets.length > 0 && variantsBuiltWithRef.current === 0) {
+        void fetchVariants();
+      }
       const opts = {
         engine: 'ai' as const,
         style,
@@ -703,7 +716,7 @@ export default function ColdEmailModal({
       setAiLoading(false);
       setAiStage(null);
     }
-  }, [aiLoading, missingStudentName, variants.length, profile, opportunityId, labType, grounding, t]);
+  }, [aiLoading, missingStudentName, variants.length, profile, opportunityId, labType, grounding, t, fetchVariants]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
