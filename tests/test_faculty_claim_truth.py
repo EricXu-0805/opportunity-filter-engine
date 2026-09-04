@@ -1254,3 +1254,43 @@ def test_a_class_year_we_derived_is_not_a_targeting_claim():
     assert not any("Typically targets" in g for g in derived.reasons_gap)
     # And it stops costing them 30% of the eligibility layer.
     assert derived.eligibility_score > stated.eligibility_score
+
+def _paid_program(method: str | None):
+    opp = {
+        "id": "prog-pay", "title": "Undergraduate Research Program",
+        "source_type": "summer_program", "organization": "Test University",
+        "opportunity_type": "summer_program", "paid": "yes",
+        "description_raw": "Each program pairs students with faculty-mentored research "
+                           "and, in many cases, funding or a stipend.",
+        "eligibility": {}, "metadata": {},
+    }
+    if method:
+        stamp_inferred(opp["metadata"], "paid", method)
+    return opp
+
+
+def test_pay_we_read_off_the_page_is_not_announced_as_a_paid_opportunity():
+    """"Paid opportunity" sat in reasons_fit for any record whose paid value
+    was 'yes', including the 220 the tagger set from a substring scan. One of
+    them says only "in many cases, funding or a stipend" — an explicit maybe,
+    and a student who cannot take an unpaid summer plans around it.
+
+    An NSF REU Site keeps the sentence: `policy:` names a published
+    requirement of the funding program, not a reading of the page.
+    """
+    profile = {
+        "major": "Biology", "grade": "Sophomore", "seeking_type": ["summer_program"],
+        "hard_skills": [], "coursework": [], "experience_level": "none",
+        "resume_ready": True, "can_cold_email": True,
+        "research_interests_text": "biology", "desired_fields": ["biology"],
+        "home_school": "testu",
+    }
+    stated = rank_opportunity(profile, _paid_program(None))
+    guessed = rank_opportunity(profile, _paid_program("rule:llm_tagger"))
+    policy = rank_opportunity(profile, _paid_program("policy:nsf_reu_solicitation"))
+
+    assert "Paid opportunity" in stated.reasons_fit
+    assert "Paid opportunity" not in guessed.reasons_fit
+    assert "Paid opportunity" in policy.reasons_fit
+    # The score is the record's pay value either way; only the claim changes.
+    assert guessed.final_score == stated.final_score
