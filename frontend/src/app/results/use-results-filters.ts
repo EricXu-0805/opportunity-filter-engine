@@ -54,6 +54,15 @@ const EMPTY_COUNTS: Record<Tab, number> = {
   starred: 0,
 };
 
+// The student's own calendar day. A deadline is a bare date they read, so
+// "already passed" has to be decided on their day, not UTC's.
+function localToday(): string {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 export function useResultsFilters({
   data,
   activeTab,
@@ -182,14 +191,29 @@ export function useResultsFilters({
     }
 
     if (sortBy === 'deadline') {
+      // 831 of the 836 listings carrying a deadline have already passed, so a
+      // plain ascending sort answered "soonest" with February 2025 — the thing
+      // the student missed by the widest margin, at the top of the page. A
+      // deadline that is gone is not soon; it sorts after everything a student
+      // can still act on, and among themselves most-recent first so the page
+      // does not open on 2024.
+      const today = localToday();
+      const key = (m: typeof results[number]) => {
+        if (m.opportunity.source_type === 'faculty_research') return null;
+        const d = m.opportunity.deadline;
+        return d ? String(d).slice(0, 10) : null;
+      };
       results = [...results].sort((a, b) => {
-        const da = a.opportunity.source_type === 'faculty_research'
-          ? '9999'
-          : a.opportunity.deadline || '9999';
-        const db = b.opportunity.source_type === 'faculty_research'
-          ? '9999'
-          : b.opportunity.deadline || '9999';
-        return da.localeCompare(db);
+        const da = key(a);
+        const db = key(b);
+        // Rolling and faculty rows keep their old position: after the dated
+        // ones a student can still meet, before the expired.
+        const rank = (d: string | null) => (d === null ? 1 : d < today ? 2 : 0);
+        const ra = rank(da);
+        const rb = rank(db);
+        if (ra !== rb) return ra - rb;
+        if (ra === 1) return 0;
+        return ra === 2 ? String(db).localeCompare(String(da)) : String(da).localeCompare(String(db));
       });
     } else if (sortBy === 'newest') {
       results = [...results].sort((a, b) => {
