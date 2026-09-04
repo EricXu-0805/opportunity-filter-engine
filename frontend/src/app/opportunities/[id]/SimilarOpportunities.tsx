@@ -6,7 +6,7 @@ import type { SimilarOpportunity } from '@/lib/api-server';
 import { opportunityRecordKind } from '@/lib/record-kind';
 import { targetPosture } from '@/lib/target-truth';
 import { DetailBadge } from './DetailBadge';
-import { formatType } from './detail-utils';
+import { typeLabel } from '@/app/results/types';
 import type { TFunc } from './types';
 
 export function SimilarOpportunities({
@@ -44,7 +44,7 @@ export function SimilarOpportunities({
               <div className="flex items-start gap-2 mb-2">
                 <DetailBadge tone="blue">
                   {isListing
-                    ? formatType(s.opportunity_type)
+                    ? typeLabel(s.opportunity_type, t)
                     : t(kind === 'faculty_contact'
                       ? 'card.facultyContactUnconfirmed'
                       : 'card.recordTypeUnconfirmed')}
