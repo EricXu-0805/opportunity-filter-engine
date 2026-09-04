@@ -176,10 +176,23 @@ describe('the undated deadline chip says what it selects', () => {
   // types.ts already states the rule ("`is_rolling` alone is a blanket
   // collector default and must never be presented as a scraped fact") and the
   // detail and compare surfaces obey it. This is the one that did not.
+  // EVERY key that names this filter, not just the chip. The button in the
+  // empty state applies the identical filter and still said "Show listings
+  // marked rolling" / "查看标注为滚动招生的项目" — the guard could not fail on it
+  // because it only ever read the sibling. 滚动 is in the alternation for the
+  // same reason: it is the word this product's own zh dictionary uses for
+  // rolling, so without it the zh half could not catch the regression either.
+  const ROLLING_LABEL_KEYS = [
+    ['results', 'filters', 'deadlineRolling'],
+    ['results', 'empty', 'showRolling'],
+  ] as const;
+
   it.each(['en', 'zh'] as const)('%s promises no open window', (locale) => {
-    const label = dictionaries[locale].results.filters.deadlineRolling;
-    expect(label).toBeTruthy();
-    expect(label).not.toMatch(/rolling|anytime|常年|随时/i);
+    for (const path of ROLLING_LABEL_KEYS) {
+      const label = path.reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dictionaries[locale]);
+      expect(label, path.join('.')).toBeTruthy();
+      expect(label as string, path.join('.')).not.toMatch(/rolling|anytime|滚动|常年|随时/i);
+    }
   });
 });
 

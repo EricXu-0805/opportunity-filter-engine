@@ -19,7 +19,12 @@ export function EmptyState({
 }) {
   // Explain the missing deadline evidence without converting an undated
   // faculty contact into a supposedly open/rolling position. The optional
-  // action selects only records that are explicitly marked rolling.
+  // action does NOT select records "marked rolling" — it selects
+  // `is_rolling: true`, which campus_graph, simplify_internships and
+  // ucb_campus all write whenever a scrape found no date. It returns 6,690
+  // live records and only 58 of them carry the scraped `deadline_note` that
+  // noDeadlineKind requires before any surface may say "rolling", so it is
+  // labelled for what it selects. Same rule the chip already follows.
   if (deadlineFilterFoundNothing) {
     return (
       <div className="text-center py-16 space-y-3">
