@@ -63,6 +63,7 @@ export interface UseOpportunityDetailResult {
   /** Records what the cold-email dialog just confirmed, so this page stops
    *  telling the student they have not tracked anything. */
   noteContactConfirmed: (record: InteractionRecord | null) => void;
+  noteReminderSet: (date: string) => void;
   interaction: InteractionType | undefined;
   /** True until the interaction read for the CURRENT generation has
    *  settled (success or failure). A read failure must never be
@@ -279,6 +280,19 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   const noteContactConfirmed = useCallback((record: InteractionRecord | null) => {
     if (!record) return;
     setInteractionDetail((d) => ({ ...(d ?? {}), ...record }));
+  }, []);
+
+  // The cold-email follow-up chips write remind_at straight to the row, and the
+  // confirm record they arrive after does not carry it. Left unmerged, the
+  // tracker panel's date field rendered empty for a reminder the student had
+  // just set, and the status-change suggestion — which fires only when
+  // remind_at is unset — offered to set one and overwrote it on a single click.
+  const noteReminderSet = useCallback((date: string) => {
+    // Only ever a patch onto a row that exists. The chips are reachable solely
+    // after a confirmed send, so there is always an interaction here; a null
+    // would mean the read had failed, and inventing a record from one field is
+    // exactly what interactionError exists to prevent.
+    setInteractionDetail((d) => (d ? { ...d, remind_at: date } : d));
   }, []);
 
   // A read failure here must NEVER be represented as "no interaction" —
@@ -694,6 +708,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     interactionDetail,
     interaction,
     noteContactConfirmed,
+    noteReminderSet,
     interactionLoading,
     interactionError,
     retryInteractionHydration,

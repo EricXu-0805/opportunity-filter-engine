@@ -232,6 +232,7 @@ function renderModal(
   oppId = 'opp-A',
   target: ReminderTarget | undefined = liveListingTarget(oppId),
   onContactConfirmed?: (record: unknown) => void,
+  onReminderSet?: (date: string) => void,
 ) {
   const onClose = vi.fn();
   const utils = render(
@@ -243,6 +244,7 @@ function renderModal(
       profile={profile}
       reminderTarget={target}
       onContactConfirmed={onContactConfirmed}
+      onReminderSet={onReminderSet}
     />,
   );
   const show = (open: boolean, id: string, next: ReminderTarget | undefined = liveListingTarget(id)) =>
@@ -1060,5 +1062,42 @@ describe('ColdEmailModal — a follow-up reminder is only offered where one woul
     expect(screen.queryByText('coldEmail.remindPrompt')).toBeNull();
     expect(screen.queryByText('coldEmail.remind7')).toBeNull();
     expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('a follow-up reminder the page can see', () => {
+  it('tells the parent the same date it wrote', async () => {
+    // The chips write remind_at straight to the row and the modal told nobody.
+    // The tracker panel on the same page seeds its date field from
+    // interactionDetail.remind_at, so it rendered empty for a reminder just
+    // set — and the status-change suggestion, which fires only when remind_at
+    // is unset, then offered to set one and overwrote it on a single click.
+    const seen: string[] = [];
+    await becomeOwner('u1');
+    renderModal('opp-A', liveListingTarget('opp-A'), undefined, (d) => seen.push(d));
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'the confirm started');
+    await resolveConfirm(0);
+    await screen.findByText('coldEmail.remindPrompt');
+
+    fireEvent.click(screen.getByText('coldEmail.remind3'));
+    await until(() => updateCalls.length === 1, 'the reminder write started');
+    await settle(updateCalls[0], () => updateCalls[0].resolve());
+    await until(() => seen.length === 1, 'the parent was told');
+
+    const written = updateInteractionDetailsMock.mock.calls.at(-1)?.[1] as { remind_at: string };
+    expect(seen[0]).toBe(written.remind_at);
+
+    // Three days on the student's own calendar. Counting in UTC put it on the
+    // fourth for anyone west of Greenwich after their evening rolled over —
+    // the same arithmetic the tracker's presets had.
+    const expected = new Date();
+    expected.setDate(expected.getDate() + 3);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    expect(written.remind_at).toBe(
+      `${expected.getFullYear()}-${pad(expected.getMonth() + 1)}-${pad(expected.getDate())}`,
+    );
   });
 });
