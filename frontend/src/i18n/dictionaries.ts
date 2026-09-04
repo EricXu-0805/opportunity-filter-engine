@@ -2385,6 +2385,7 @@ export const en = {
     intentCta: 'I want this',
     intentEmailPlaceholder: 'Email to reach you',
     intentSubmit: 'Register',
+    intentFailed: "That didn't save. Nothing was recorded — please try again.",
     intentDone: 'Got it — we will be in touch.',
   },
   nav: {
@@ -6949,6 +6950,7 @@ export const zh = {
     intentCta: '我要',
     intentEmailPlaceholder: '联系你的邮箱',
     intentSubmit: '登记',
+    intentFailed: '没能保存，什么都没有记录，请再试一次。',
     intentDone: '已记下,我们会尽快联系你。',
   },
   nav: {

@@ -190,7 +190,15 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               if (e.key === 'Enter') {
                 e.preventDefault();
                 if (trimmed.length === 0) return;
-                if (available.length > 0) addSkill(available[0]);
+                // The list is a substring filter in declaration order, so the
+                // first entry is rarely the one that was typed: "R" led with
+                // JavaScript, "C" with C++, "Physics" with Astrophysics. If
+                // what they typed is itself on the list, that is the answer.
+                const exact = available.find(
+                  (option) => option.toLowerCase() === trimmed.toLowerCase(),
+                );
+                if (exact) addSkill(exact);
+                else if (available.length > 0) addSkill(available[0]);
                 else if (canAddCustom) addSkill(trimmed);
               }
             }}
