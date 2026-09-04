@@ -1356,6 +1356,25 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
 _MENTOR_KEYWORDS = ("mentor", "training", "learn", "guided", "supervision", "teach", "onboard")
 _PATHWAY_KEYWORDS = ("publication", "paper", "co-author", "return", "continue", "conference", "thesis")
 
+# These are stems, so a suffix must still count ("mentored", "teaching",
+# "publications" are all the signal). What must not count is the stem buried
+# inside an unrelated word: "synthesis" was scoring as thesis on 399 of the 453
+# records that matched it, and "newspaper" as paper. Anchoring the left side
+# only keeps every inflection and drops every embedding.
+_UPSIDE_STEM_RES = {
+    stem: re.compile(rf"(?<!\w){re.escape(stem)}")
+    for stem in _MENTOR_KEYWORDS + _PATHWAY_KEYWORDS
+}
+
+# "machine learning" is what a lab studies, not an offer to teach the student
+# anything. It was the only "learn" token in 1,160 records, each of which drew a
+# mentorship point for naming its own research topic.
+_ML_TOPIC_RE = re.compile(
+    r"(?:machine|deep|reinforcement|statistical|transfer|federated|supervised"
+    r"|unsupervised|representation|self-?supervised|contrastive|adversarial"
+    r"|continual|meta)[\s-]+learning"
+)
+
 
 def score_upside(
     profile: dict,
@@ -2069,8 +2088,9 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # upside layer for a listing — were the constants 35.0 and 40.0, and the
     # "publication or long-term involvement" reason could never be produced.
     desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
-    mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if k in desc)
-    pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if k in desc)
+    stem_scan = _ML_TOPIC_RE.sub(" ", desc)
+    mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if _UPSIDE_STEM_RES[k].search(stem_scan))
+    pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if _UPSIDE_STEM_RES[k].search(stem_scan))
 
     lab = faculty_safe_lab_or_program(opp)
     pi_name = opp.get("pi_name", "")
