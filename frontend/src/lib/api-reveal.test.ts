@@ -124,6 +124,28 @@ describe('getEmailVariants (reveal-aware)', () => {
     expect(body.recipient_status).toBe('revealed');
   });
 
+  it('sends the student\'s own resume bullets with the request', async () => {
+    // #803 wired resume_bullets through /cold-email/variants — its message
+    // says leaving them out "would keep three of the four generated emails
+    // empty of the student's own work" — and no caller ever sent any, so
+    // every template variant was built without them.
+    fetchMock.mockResolvedValueOnce(okJson({ recipient_status: 'revealed', variants: [] }));
+
+    await getEmailVariants(profile, 'opp-1', ['Built a CV pipeline in PyTorch']);
+
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+    expect(sent.resume_bullets).toEqual(['Built a CV pipeline in PyTorch']);
+  });
+
+  it('sends an empty list when the student has no parsed resume', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ recipient_status: 'revealed', variants: [] }));
+
+    await getEmailVariants(profile, 'opp-1');
+
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+    expect(sent.resume_bullets).toEqual([]);
+  });
+
   it('treats "unavailable" as final — no retry burned on it', async () => {
     mockGetToken.mockResolvedValue('tok-1');
     fetchMock.mockResolvedValueOnce(okJson({ variants: [], recipient_status: 'unavailable' }));
