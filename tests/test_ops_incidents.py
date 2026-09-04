@@ -1053,6 +1053,80 @@ class TestOpsScanProfessorTracking:
         ]
         assert payload["p_detail"]["freshness_pct"] == 81.2
 
+    def test_a_disabled_feature_does_not_open_its_own_release_blocker(
+            self, monkeypatch, tmp_path):
+        """professor_signals is off, so nothing user-facing reads this artifact.
+
+        Filing a `high` incident here every day was blocking the release
+        through `open_incidents` — a disabled feature manufacturing its own
+        blocker, which is how a queue nobody can drain becomes a queue nobody
+        reads.
+        """
+        from backend.routes import ops as ops_module
+        monkeypatch.setattr(ops_module, "feature_enabled",
+                            lambda feature: feature != "professor_signals")
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, tracking={
+            "schema_version": 2,
+            "profiles": {},
+            "release": {
+                "release_ready": False,
+                "freshness_pct": 34.8,
+                "fully_stale_school_count": 39,
+                "computed_at": "2026-09-03T10:26:57+00:00",
+                "checks": {"schema_v2": True, "freshness_min_pct": False},
+            },
+        })
+
+        body = _run_scan().json()
+        assert _rpcs(calls, "record_ops_incident") == []
+        # Not silence: still measured, still reported, with the reason.
+        detector = body["detectors"]["professor_tracking"]
+        assert detector["release_ready"] is False
+        assert detector["incident_applicable"] is False
+        assert detector["failing_checks"] == ["freshness_min_pct"]
+
+    def test_disabling_the_feature_does_not_auto_close_an_open_incident(
+            self, monkeypatch, tmp_path):
+        """Turning a flag off does not vouch for what shipped while it was on."""
+        from backend.routes import ops as ops_module
+        monkeypatch.setattr(ops_module, "feature_enabled",
+                            lambda feature: feature != "professor_signals")
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "data_drift:professor_tracking:release_ready"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, tracking={
+            "schema_version": 2,
+            "release": {"release_ready": False, "checks": {"schema_v2": True}},
+        })
+
+        _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_recovery")
+        assert payload["p_auto_resolve"] is False
+        assert "professor_signals is disabled" in payload["p_note"]
+
+    def test_re_enabling_the_feature_re_arms_the_detector(self, monkeypatch, tmp_path):
+        """The flag is read at scan time, so no artifact change is needed."""
+        from backend.routes import ops as ops_module
+        monkeypatch.setattr(ops_module, "feature_enabled", lambda _feature: True)
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, tracking={
+            "schema_version": 2,
+            "release": {"release_ready": False, "checks": {"freshness_min_pct": False}},
+        })
+
+        _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_incident")
+        assert payload["p_dedup_key"] == "data_drift:professor_tracking:release_ready"
+
     def test_release_ready_again_needs_human_confirmation(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
         calls: list = []

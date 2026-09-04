@@ -169,3 +169,52 @@ class TestDocumentRoundTripTripwire:
         src = (_REPO / "backend/routes/tailor.py").read_text()
         for needle in ("/tailor/export", "/tailor/download", "/tailor/docx", "/tailor/pdf"):
             assert needle not in src, f"undocumented renovation export route: {needle}"
+
+
+class TestAGuessedSkillListIsNotCalledARequirement:
+    """`rule_based_tag` writes `eligibility.skills_required` from a regex sweep
+    over the posting prose for 2,767 of the 6,349 records that carry it. The
+    tailor system prompt authorises the model to reuse "required skills"
+    vocabulary when reframing the student's experience, so calling our guess a
+    requirement steers the resume they actually send: a bench-and-field biology
+    REU whose list reads "Python" pulls the rewrite toward one scripting
+    course. #859 stopped the matcher calling it a shortfall and #875 relabelled
+    it on the detail page; all three prompt builders still said "Required".
+    """
+
+    @staticmethod
+    def _opp(inferred: bool) -> dict:
+        opp = {
+            "id": "buffalo-reu", "title": "Summer REU in Biological Sciences",
+            "source_type": "summer_program",
+            "eligibility": {"skills_required": ["Python"]}, "metadata": {},
+        }
+        if inferred:
+            opp["metadata"] = {
+                "inferred_fields": {"eligibility.skills_required": "rule:llm_tagger"}
+            }
+        return opp
+
+    def test_a_stated_requirement_is_still_called_one(self):
+        from backend.routes.tailor import _skills_line
+
+        assert _skills_line(self._opp(False), "Python") == "- Required skills: Python\n"
+
+    def test_a_tagger_written_list_says_where_it_came_from(self):
+        from backend.routes.tailor import _skills_line
+
+        line = _skills_line(self._opp(True), "Python")
+        assert "Required skills" not in line
+        assert "not stated requirements" in line
+        assert "Python" in line
+
+    def test_every_prompt_builder_uses_the_helper(self):
+        """Three builders duplicated the same two lines; a fourth copy would
+        reintroduce this silently."""
+        import inspect
+
+        from backend.routes import tailor
+
+        source = inspect.getsource(tailor)
+        assert source.count('f"- Required skills: {required}\\n"') == 0
+        assert source.count("_skills_line(opp, required)") == 3

@@ -66,6 +66,7 @@ from backend.schemas import (
     TailorRequest,
     TailorResponse,
 )
+from src.evidence import is_inferred
 from src.recommender.cold_email import filter_course_entries
 from src.student_evidence import claimable_skill_level
 
@@ -276,6 +277,22 @@ def _system_prompt_for(locale: str) -> str:
     return _SYSTEM_PROMPT_ZH if locale == "zh" else _SYSTEM_PROMPT_EN
 
 
+def _skills_line(opp: dict, value: str) -> str:
+    """The skills line for a prompt, labelled by where the list came from.
+
+    2,767 of the 6,349 records carrying ``eligibility.skills_required`` were
+    written by ``rule_based_tag``'s regex sweep over the posting prose, not by
+    the program. System prompt rule 2 authorises the model to reuse "required
+    skills" vocabulary when reframing the student's own experience, so calling
+    our guess a requirement steers the resume they actually send — a bench-and
+    -field biology REU whose list reads "Python" pulls the rewrite toward one
+    scripting course. Same wording the detail page uses for the same stamp.
+    """
+    if is_inferred(opp, "eligibility.skills_required"):
+        return f"- Skills mentioned in the posting text (not stated requirements): {value}\n"
+    return f"- Required skills: {value}\n"
+
+
 def _ai_tailor_bullets(
     profile_dict: dict,
     opp: dict,
@@ -355,8 +372,8 @@ def _ai_tailor_bullets(
         f"\n"
         f"OPPORTUNITY:\n"
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
-        f"- Required skills: {required}\n"
-        f"- Preferred skills: {preferred}\n"
+        + _skills_line(opp, required)
+        + f"- Preferred skills: {preferred}\n"
         f"- Keywords: {keywords}\n"
         f"- Description excerpt: {opp_desc or '(no description)'}\n"
         f"\n"
@@ -957,8 +974,8 @@ def _ai_renovation_plan(
         f"OPPORTUNITY:\n"
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
         f"- Professor / lab: {pi}\n"
-        f"- Required skills: {required}\n"
-        f"- Keywords: {keywords}\n"
+        + _skills_line(opp, required)
+        + f"- Keywords: {keywords}\n"
         f"- Description excerpt: {opp_desc or '(no description)'}\n"
         f"\n"
         f"STUDENT RÉSUMÉ (IDs are authoritative — use only these):\n"
@@ -1228,8 +1245,8 @@ def _ai_optimize_bullet(
     user_prompt = (
         f"OPPORTUNITY:\n"
         f"- Title: {_sanitize_field(opp.get('title', ''), max_len=200)}\n"
-        f"- Required skills: {required}\n"
-        f"- Keywords: {keywords}\n"
+        + _skills_line(opp, required)
+        + f"- Keywords: {keywords}\n"
         f"\n"
         f"BULLET to rewrite:\n{_sanitize_field(current_text, max_len=500)}\n"
         + (f"\nSTUDENT'S INSTRUCTION (obey if it doesn't require inventing anything): {instr}\n" if instr else "")

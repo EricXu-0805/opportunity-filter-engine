@@ -4,7 +4,10 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { CollectorStatus, TFunc } from './types';
 
 export function CollectorStatusSection({ status, t }: { status: CollectorStatus | null; t: TFunc }) {
-  const cols = t('admin.collectorStatusCols') as unknown as Record<string, string>;
+  // t() resolves a path to a STRING or hands the key back; it never returns
+  // a dictionary subtree, so `cols` was the literal 'admin.collectorStatusCols'
+  // and every header rendered undefined.
+  const col = (name: string) => t(`admin.collectorStatusCols.${name}`);
   return (
     <section className="mt-10">
       <h2 className="text-[15px] font-semibold text-gray-900 mb-3">{t('admin.collectorStatusTitle')}</h2>
@@ -15,11 +18,11 @@ export function CollectorStatusSection({ status, t }: { status: CollectorStatus 
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
               <tr>
-                <th className="px-4 py-2.5 text-left">{cols.source}</th>
-                <th className="px-4 py-2.5 text-left">{cols.status}</th>
-                <th className="px-4 py-2.5 text-right">{cols.fetched}</th>
-                <th className="px-4 py-2.5 text-right">{cols.new}</th>
-                <th className="px-4 py-2.5 text-right">{cols.updated}</th>
+                <th className="px-4 py-2.5 text-left">{col('source')}</th>
+                <th className="px-4 py-2.5 text-left">{col('status')}</th>
+                <th className="px-4 py-2.5 text-right">{col('fetched')}</th>
+                <th className="px-4 py-2.5 text-right">{col('new')}</th>
+                <th className="px-4 py-2.5 text-right">{col('updated')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
