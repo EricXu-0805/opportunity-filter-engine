@@ -222,3 +222,34 @@ describe('composed source labels read as names in both locales', () => {
     }
   });
 });
+
+// Three admin tables rendered nine, five and four blank column headers for
+// months because t() was called on a dictionary subtree — which resolves to
+// no string — and the tests handed back an object the real translator never
+// produces. These assert against the real dictionary in both locales.
+describe('admin table column headers resolve', () => {
+  const GROUPS: Record<string, string[]> = {
+    'admin.bySourceCols': [
+      'source', 'total', 'emptyMajors', 'emptyKeywords', 'rolling',
+      'missingDeadline', 'past', 'inactive', 'unreviewedRecordKind',
+    ],
+    'admin.collectorStatusCols': ['source', 'status', 'fetched'],
+    'admin.worstFieldsCols': ['title', 'fields', 'source'],
+  };
+
+  it('every column name is a real string in en and zh', () => {
+    for (const locale of ['en', 'zh'] as const) {
+      for (const [group, names] of Object.entries(GROUPS)) {
+        for (const name of names) {
+          const value = translate(locale, `${group}.${name}`);
+          expect(value, `${locale} ${group}.${name}`).not.toBe(`${group}.${name}`);
+          expect(value.trim().length, `${locale} ${group}.${name}`).toBeGreaterThan(0);
+        }
+      }
+      // And the subtree itself is NOT a usable label — the shape of the bug.
+      for (const group of Object.keys(GROUPS)) {
+        expect(translate(locale, group)).toBe(group);
+      }
+    }
+  });
+});
