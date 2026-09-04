@@ -1139,3 +1139,58 @@ class TestNsfReuSiteFilter:
                              "fundProgramName": "RSCH EXPER FOR UNDERGRAD SITES"})
         # a missing program is not a match; the title has to carry it
         assert not _is_reu_site({"title": "Undergraduate Research in Coastal Ecology"})
+
+
+class TestTwoWaysACitationGoesWrong:
+    """Both of these put a false or embarrassing sentence in a student's email
+    to a real professor, which is the most expensive mistake this product can
+    make."""
+
+    def test_a_correction_notice_is_not_a_paper_to_open_a_letter_with(self):
+        """`_is_front_matter` compares the WHOLE title against a word list, so
+        it catches a bare "Erratum" and misses every real one — "Corrigendum
+        to 'Poromechanical cohesive interface element...'". 421 records carry
+        one, and a draft opening "your recent paper 'Correction: Mixed
+        Uncertainty Quantification...'" reads as a machine that cannot tell a
+        paper from its correction notice.
+        """
+        from src.collectors.openalex_enrich import _is_front_matter
+
+        for title in (
+            "Correction: Mixed Uncertainty Quantification for Hypersonic Entry",
+            "Corrigendum to “Poromechanical cohesive interface element”",
+            "Erratum: Repurposing lattice QCD results for composite phenomenology",
+            "RETRACTED: A study of something",
+            "Author Correction: Deep learning for protein folding",
+            "Publisher Correction: Something else",
+            "Editorial Expression of Concern: A paper",
+        ):
+            assert _is_front_matter(title), title
+
+        # A real paper whose title merely contains one of those words stays.
+        for title in (
+            "Error correction in quantum computing",
+            "A retracted-gene model of development",
+            "Correcting for measurement error in survey data",
+        ):
+            assert not _is_front_matter(title), title
+
+    def test_one_author_id_is_never_shared_by_two_different_people(self):
+        """OpenAlex hands back one author entity for a name it could not
+        separate, and the result is three different Smiths in three different
+        departments each told the same papers are theirs. A nickname or a
+        fuller given name is the SAME person (Dan/Daniel Rubenstein, Edward
+        J./Edward Joseph Bernacki) and must not be flagged.
+        """
+        from src.collectors.openalex_enrich import ambiguous_author_ids
+
+        records = [
+            {"id": "a", "pi_name": "James Smith", "metadata": {"publication_author_id": "A1"}},
+            {"id": "b", "pi_name": "Jason Smith", "metadata": {"publication_author_id": "A1"}},
+            {"id": "c", "pi_name": "Dan Rubenstein", "metadata": {"publication_author_id": "A2"}},
+            {"id": "d", "pi_name": "Daniel Stuart Rubenstein", "metadata": {"publication_author_id": "A2"}},
+            {"id": "e", "pi_name": "Edward J. Bernacki", "metadata": {"publication_author_id": "A3"}},
+            {"id": "f", "pi_name": "Edward Joseph Bernacki", "metadata": {"publication_author_id": "A3"}},
+            {"id": "g", "pi_name": "Ada Lovelace", "metadata": {"publication_author_id": "A4"}},
+        ]
+        assert ambiguous_author_ids(records) == {"A1"}
