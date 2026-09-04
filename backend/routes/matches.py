@@ -1366,18 +1366,26 @@ def _apply_match_view(
         filtered = [result for result in base if result.bucket == view.tab]
 
     if view.sort_by == "deadline":
-        filtered.sort(
-            key=lambda result: str(
-                (
-                    opportunities_by_id.get(result.opportunity_id, {}).get("deadline")
-                    if record_kind(
-                        opportunities_by_id.get(result.opportunity_id, {}),
-                    ) == "listing"
-                    else None
-                )
-                or "9999"
+        # 831 of the 836 listings carrying a deadline have already passed, so
+        # ordering by the raw string answered "soonest" with February 2025 —
+        # the one the student missed by the widest margin — at the top. A
+        # deadline that is gone is not soon: dated listings they can still meet
+        # come first, then rolling and faculty rows, then the expired ones
+        # most-recent first. `today` is the student's own calendar day, which
+        # the request already carries.
+        def _deadline_order(result: MatchResult) -> tuple[int, int]:
+            record = opportunities_by_id.get(result.opportunity_id, {})
+            deadline = (
+                record.get("deadline") if record_kind(record) == "listing" else None
             )
-        )
+            days = _calendar_days_until(deadline, today)
+            if days is None:
+                return (1, 0)
+            # Expired days are negative, so -days grows with staleness and the
+            # least stale sorts first within the group.
+            return (2, -days) if days < 0 else (0, days)
+
+        filtered.sort(key=_deadline_order)
     elif view.sort_by == "newest":
         filtered.sort(
             key=lambda result: str(
