@@ -180,7 +180,13 @@ export function OpportunityHeader({
             {isCurrentListing && opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
             {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
-            {isCurrentListing && opp.remote_option === 'yes' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
+            {/* The values the pipeline actually writes. This tested 'yes',
+                which the corpus vocabulary {unknown, no, remote, hybrid, null}
+                does not contain — so the badge was unreachable for 100% of
+                traffic while 67 genuinely remote or hybrid postings showed
+                nothing, indistinguishable from an on-site one. */}
+            {isCurrentListing && opp.remote_option === 'remote' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
+            {isCurrentListing && opp.remote_option === 'hybrid' && <DetailBadge tone="gray">{t('badges.hybrid')}</DetailBadge>}
             {isCurrentListing && effectiveIntl === 'yes' && (
               <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}

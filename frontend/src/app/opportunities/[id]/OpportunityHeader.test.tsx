@@ -92,6 +92,32 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Opportunity
 }
 
 describe('OpportunityHeader MVP release surface', () => {
+  it('badges a remote posting using the values the pipeline writes', () => {
+    // The badge tested `remote_option === 'yes'`. The corpus vocabulary is
+    // {unknown, no, remote, hybrid, null} — 'yes' does not occur once — so it
+    // was unreachable for 100% of traffic while 67 genuinely remote or hybrid
+    // records showed nothing.
+    renderHeader({ opp: { ...OPP, remote_option: 'remote' } as unknown as typeof OPP });
+    expect(screen.getByText('badges.remoteOk')).toBeInTheDocument();
+  });
+
+  it('distinguishes hybrid from fully remote', () => {
+    renderHeader({ opp: { ...OPP, remote_option: 'hybrid' } as unknown as typeof OPP });
+    expect(screen.getByText('badges.hybrid')).toBeInTheDocument();
+    expect(screen.queryByText('badges.remoteOk')).toBeNull();
+  });
+
+  it('badges nothing when the posting says on-site or says nothing', () => {
+    for (const value of ['no', 'unknown']) {
+      const { unmount } = renderHeader({
+        opp: { ...OPP, remote_option: value } as unknown as typeof OPP,
+      });
+      expect(screen.queryByText('badges.remoteOk')).toBeNull();
+      expect(screen.queryByText('badges.hybrid')).toBeNull();
+      unmount();
+    }
+  });
+
   it('hedges the pay badge when the pay value was read off the page', () => {
     // "in many cases, funding or a stipend" set paid: yes on 220 records via a
     // substring scan. A green "Paid" is a student planning a summer around it.
@@ -283,7 +309,11 @@ const OFFER_POISON = {
   opportunity_type: 'POISON_TYPE',
   paid: 'yes',
   on_campus: true,
-  remote_option: 'yes',
+  // The value the pipeline writes. This said 'yes', which the corpus
+  // vocabulary {unknown, no, remote, hybrid, null} does not contain — so the
+  // control below asserted a badge that production could never render, and
+  // the dead badge went unnoticed.
+  remote_option: 'remote',
   location: 'POISON Urbana, IL',
   // Tomorrow, computed at run time. A date in 2099 produces no urgency band
   // at all, so every "no countdown" assertion below would hold with the
