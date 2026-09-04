@@ -256,6 +256,22 @@ describe('the CSV sink writes only pages it can vouch for', () => {
     expect(window.alert).not.toHaveBeenCalled();
   });
 
+  it('says so when the active view excludes every favorite, instead of doing nothing', async () => {
+    // 93.9% of the corpus is faculty contacts and no faculty record can
+    // satisfy any deadline chip, so one starred professor plus the one chip
+    // that renders is an empty intersection. The header still reads "Export 1
+    // starred CSV", and the click used to fire a real round trip and return in
+    // silence — repeatably, with no file and no explanation.
+    mockGetMatchView.mockResolvedValue(response([]));
+
+    await (await exporter())();
+
+    expect(mockDownloadCSV).not.toHaveBeenCalled();
+    expect(window.alert).toHaveBeenCalledWith(
+      expect.stringContaining('exportNothingInView'),
+    );
+  });
+
   it('downloads once, after both pages, when a two-page fetch checks out', async () => {
     // The positive control for every multi-page assertion below. If the export
     // is the only caller of getMatchView, this is exactly two requests with
@@ -312,14 +328,17 @@ describe('the CSV sink writes only pages it can vouch for', () => {
   });
 
   it('treats a marked empty page as a legitimate nothing, not a failure', async () => {
-    // No rows to write, and no error to report: a student with no starred
-    // matches should get silence, not an alert claiming the load failed.
+    // No rows to write and no error to report. It still has to say something:
+    // the button is labelled "Export N starred CSV" from an unfiltered count,
+    // so silence reads as a broken control. What it must NOT say is that the
+    // load failed.
     mockGetMatchView.mockResolvedValue(response([]));
 
     await (await exporter())();
 
     expect(mockDownloadCSV).not.toHaveBeenCalled();
-    expect(window.alert).not.toHaveBeenCalled();
+    expect(window.alert).toHaveBeenCalledTimes(1);
+    expect(window.alert).not.toHaveBeenCalledWith(expect.stringContaining('loadFailed'));
   });
 
   const BAD_PAGES: [string, () => unknown][] = [

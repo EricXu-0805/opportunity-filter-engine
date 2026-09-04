@@ -4,21 +4,25 @@ import { SourceTable } from './SourceTable';
 import { QUALITY_SCOPE } from './types';
 import type { SourceRow, TFunc } from './types';
 
-const columns = {
-  source: 'Source',
-  total: 'Total',
-  emptyMajors: 'Empty majors',
-  emptyKeywords: 'Empty keywords',
-  rolling: 'Rolling',
-  missingDeadline: 'Missing deadline',
-  past: 'Past',
-  inactive: 'Inactive',
-  unreviewedRecordKind: 'Unreviewed type',
-};
+// The real translator resolves a path to a STRING or gives the key back; it
+// never returns a dictionary subtree. A mock that handed one over made the
+// header row look populated in every test while the page rendered nine blank
+// cells, so this one behaves the way translate() does.
+const t = ((key: string) => key) as unknown as TFunc;
 
-const t = ((key: string) => (
-  key === 'admin.bySourceCols' ? columns : key
-)) as unknown as TFunc;
+const COLUMN_KEYS = [
+  'source', 'total', 'emptyMajors', 'emptyKeywords', 'rolling',
+  'missingDeadline', 'past', 'inactive', 'unreviewedRecordKind',
+];
+
+describe('column headers', () => {
+  it('names every column through a resolvable key', () => {
+    render(<SourceTable rows={[]} qualityScope={QUALITY_SCOPE} t={t} />);
+    for (const key of COLUMN_KEYS) {
+      expect(screen.getByText(`admin.bySourceCols.${key}`)).toBeInTheDocument();
+    }
+  });
+});
 
 // The scope is REQUIRED here on purpose. With a default, a case meaning
 // "legacy" could pass `undefined` and be silently handed the current scope
@@ -97,7 +101,7 @@ describe('SourceTable unreviewed record kinds', () => {
     const cells = screen.getAllByText('3');
     expect(cells).toHaveLength(2);
     for (const cell of cells) expect(cell).toHaveClass('text-indigo-700');
-    expect(screen.getAllByText('Unreviewed type')).toHaveLength(2);
+    expect(screen.getAllByText('admin.bySourceCols.unreviewedRecordKind')).toHaveLength(2);
   });
 
   it('shows an explicit zero when the backend sent one', () => {

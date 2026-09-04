@@ -47,7 +47,12 @@ jobs:
   security-advisory:
     name: Security advisory (non-blocking)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Runs pip install + pip-audit, then a full `npm ci` before `npm audit`.
+    # That crossed 10 minutes and the job was killed mid-`npm audit`, which
+    # shows up as a red check — and "non-blocking" is about branch protection,
+    # not about Render, whose checksPass gate does not distinguish required
+    # from optional. A timeout here silently holds up the backend deploy.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 

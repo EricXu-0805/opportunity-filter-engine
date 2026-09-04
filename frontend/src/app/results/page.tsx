@@ -76,6 +76,7 @@ import {
   type LegacyProfileShape,
   type SortKey,
   type Tab,
+  noMatchCarriesADeadline,
 } from './types';
 import {
   readInitialFiltersFromUrl,
@@ -779,7 +780,15 @@ function ResultsContent() {
       // complete bucket (and colliding with the view rate limit).
       const rows = await fetchCompleteView(favoriteExportView(matchView));
       const exportRows = favoriteRowsForTab(rows, activeTab);
-      if (exportRows.length === 0) return;
+      if (exportRows.length === 0) {
+        // The button is rendered and labelled from favs.size, which ignores
+        // the tab and every filter — and no faculty record can satisfy any
+        // deadline chip, so "Export 1 starred CSV" on a starred professor plus
+        // any deadline filter is an empty intersection. Returning silently
+        // left the student clicking a control that promised N rows.
+        window.alert(t('results.exportNothingInView'));
+        return;
+      }
       downloadCSV(
         `opportunities-${new Date().toISOString().slice(0, 10)}.csv`,
         matchesToCSV(exportRows),
@@ -962,9 +971,7 @@ function ResultsContent() {
             <EmptyState
               hasFilters={activeFilterCount > 0 || !!debouncedQuery.trim()}
               deadlineFilterFoundNothing={
-                !!filters.deadline
-                && filters.deadline !== 'rolling'
-                && !(data.results ?? []).some((m) => !!m.opportunity.deadline)
+                noMatchCarriesADeadline(filters.deadline, data.deadline_facets)
               }
               tab={activeTab}
               onClearFilters={handleClearAll}
