@@ -1708,3 +1708,43 @@ class TestMatchResponsesAttestToTheirOwnContract:
                 total=0, high_priority=0, good_match=0, reach=0, low_fit=0,
                 results=[], contract_version="match-page-v3-faculty-trust",
             )
+
+
+class TestAnEstimatedDeadlineAnswersNoDeadlineQuestion:
+    """An NSF REU date is derived from the award start and stamped an estimate.
+    The card renders it "· estimated" and getDeadlineUrgency deliberately
+    refuses a 'passed' verdict — but the facet counted it, so "Deadline passed"
+    became the only deadline chip on the page and selected 151 records not one
+    of which says passed."""
+
+    @staticmethod
+    def _view(**kw):
+        from backend.schemas import MatchViewState
+
+        return MatchViewState(tab="all", today="2026-09-04", **kw)
+
+    def _run(self, view):
+        from backend.routes import matches as m_module
+        from src.matcher.ranker import MatchResult
+
+        opportunities = {
+            "estimated": {**_opp("estimated"), "source_type": "campus_program",
+                          "deadline": "2025-02-15", "deadline_is_estimate": True},
+            "real": {**_opp("real"), "source_type": "campus_program",
+                     "deadline": "2025-03-01"},
+        }
+        results = [
+            MatchResult(opportunity_id=i, eligibility_score=80, readiness_score=80,
+                        upside_score=80, final_score=80, bucket="good_match",
+                        reasons_fit=[], reasons_gap=[], next_steps=[])
+            for i in opportunities
+        ]
+        return m_module._apply_match_view(results, opportunities, view, "uiuc")
+
+    def test_it_is_not_counted_as_passed(self):
+        *_rest, facets = self._run(self._view())
+        assert facets["passed"] == 1
+
+    def test_it_is_not_selected_by_the_passed_filter(self):
+        filtered, *_ = self._run(self._view(deadline="passed"))
+        assert [r.opportunity_id for r in filtered] == ["real"]
