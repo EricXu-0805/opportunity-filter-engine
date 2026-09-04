@@ -205,3 +205,33 @@ describe('getFavorites: the local mirror is a queue, not a copy of the cloud', (
     expect(getStorageStatus().status).toBe('synced');
   });
 });
+
+
+describe('getFavorites: an unverifiable read is never a confirmed empty shortlist', () => {
+  // The cloud is not queried on these paths, so the empty set they return
+  // means "could not check". use-favorites-data stamps a zero-id load as "a
+  // true empty state" and the page renders "Star any opportunity from the
+  // matches page to save it here" — to someone with three saved labs, with no
+  // banner, because StorageStatusBanner shows nothing for 'unknown'.
+  const mockSelect = vi.fn();
+  const mockEq = vi.fn();
+
+  beforeEach(() => {
+    [mockSelect, mockEq].forEach((m) => m.mockReset());
+    mockFrom.mockReturnValue({ select: mockSelect, insert: mockInsert });
+    mockSelect.mockReturnValue({ eq: mockEq });
+  });
+
+  it('says local-only when the identity cannot be confirmed', async () => {
+    // The owner moves to a different account mid-flight: a known identity was
+    // abandoned, so the read degrades rather than reaching the cloud.
+    fireAuth('SIGNED_IN', session('22222222-2222-4222-8222-222222222222').data.session);
+
+    const ids = await getFavorites();
+
+    expect(ids.size).toBe(0);
+    expect(mockEq, 'no cloud query was issued').not.toHaveBeenCalled();
+    expect(getStorageStatus().status).toBe('local-only');
+    expect(getStorageStatus().error).toBeTruthy();
+  });
+});
