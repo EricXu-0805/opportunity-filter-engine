@@ -1104,3 +1104,73 @@ class TestUnitHelpers:
         assert "cs 225" in corpus
         assert "machine learning" in corpus
         assert "did python projects" in corpus
+
+
+class TestEachRewriteStaysWithItsOwnBullet:
+    """Positional pairing is the only link between a rewrite and the bullet it
+    rewrote. The renovation path passes preserve_slots for exactly this reason;
+    /api/tailor did not, so one empty item from the model slid every later
+    rewrite one slot left and the modal showed each rewrite beside somebody
+    else's original."""
+
+    def test_an_empty_item_does_not_shift_the_later_rewrites(
+        self, monkeypatch, java_profile, real_opp_id,
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        originals = [
+            "Tutored 30 students in circuits lab each week",
+            "Led the robotics club fundraising drive",
+            "Wrote MATLAB analysis for EEG recordings",
+        ]
+        fake = json.dumps({
+            "bullets": [
+                {"text": "Tutored 30 students in circuits lab weekly",
+                 "source_evidence": originals[0]},
+                # The model returns the slot but leaves it empty.
+                {"text": "", "source_evidence": ""},
+                {"text": "Wrote MATLAB analysis of EEG recordings",
+                 "source_evidence": originals[2]},
+            ],
+        })
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+
+        resp = client.post("/api/tailor", json={
+            "profile": java_profile,
+            "opportunity_id": real_opp_id,
+            "original_bullets": originals,
+        })
+        assert resp.status_code == 200
+        pairs = {b["source_index"]: b["text"] for b in resp.json()["tailored_bullets"]}
+        # Slot 1 was empty and is simply absent — slot 2 keeps its own index.
+        assert 1 not in pairs
+        assert "circuits lab" in pairs[0]
+        assert "EEG" in pairs[2]
+
+
+class TestEveryBulletTheStudentSubmittedIsSent:
+    """The modal prefills 12, /extract-bullets returns 12 and the schema keeps
+    12, but the prompt was built from the first 8. The last four were never
+    sent, and the modal then told the student they "couldn't be grounded in
+    your profile" — naming a grounding failure that never happened."""
+
+    def test_all_twelve_reach_the_prompt(self, monkeypatch, java_profile, real_opp_id):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        originals = [f"Ran experiment number {n} in the fluids lab" for n in range(1, 13)]
+        seen: dict[str, str] = {}
+
+        def capture(*args, **kwargs):
+            messages = args[0] if args else kwargs.get("messages", [])
+            seen["prompt"] = " ".join(str(m.get("content", "")) for m in messages)
+            return json.dumps({"bullets": [
+                {"text": b, "source_evidence": b} for b in originals
+            ]})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", capture)
+        resp = client.post("/api/tailor", json={
+            "profile": java_profile,
+            "opportunity_id": real_opp_id,
+            "original_bullets": originals,
+        })
+        assert resp.status_code == 200
+        assert "experiment number 12" in seen["prompt"]
+        assert len(resp.json()["tailored_bullets"]) == 12
