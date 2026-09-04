@@ -309,4 +309,51 @@ describe('useResultsFilters — canonical consistency guards', () => {
     expect(effectivePage).toBe(3);
     expect(paginated.length).toBeGreaterThan(0); // never a blank grid
   });
+  it('"Deadline soonest" puts what you can still apply to first', () => {
+    // 831 of the 836 listings carrying a deadline have already passed, so the
+    // plain ascending sort answered "soonest" with February 2025 — the thing
+    // the student missed by the widest margin — at the top of the page.
+    const day = (n: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + n);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const withDeadline = (id: string, deadline?: string) => {
+      const m = mr(id, 'nsf_reu', 'good_match');
+      m.opportunity.source_type = 'program';
+      m.opportunity.deadline = deadline;
+      return m;
+    };
+    const results = [
+      withDeadline('long-expired', '2025-02-15'),
+      withDeadline('soon', day(10)),
+      withDeadline('recently-expired', day(-3)),
+      withDeadline('later', day(90)),
+      withDeadline('rolling'),
+    ];
+    const data = { ...DATA, total: results.length, results } as MatchesResponse;
+    const ids = renderHook(() =>
+      useResultsFilters({
+        data,
+        activeTab: 'all',
+        debouncedQuery: '',
+        filters: { ...DEFAULT_FILTERS },
+        favs: new Set<string>(),
+        sortBy: 'deadline',
+        interactions: new Map(),
+        showDismissed: true,
+        page: 1,
+        pageSize: 50,
+        homeSchool: 'test',
+      }),
+    ).result.current.filtered.map((match) => match.opportunity.id);
+
+    expect(ids).toEqual([
+      'soon', 'later',           // still open, soonest first
+      'rolling',                 // no date
+      'recently-expired',        // gone, least-stale first
+      'long-expired',
+    ]);
+  });
+
 });
