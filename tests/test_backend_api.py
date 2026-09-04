@@ -7359,3 +7359,44 @@ class TestAShortSearchTermMustBeAWholeWord:
         assert _matches_query(opp, "ai") is False
         assert _matches_query(opp, "chemistry") is True
         assert _matches_query({**opp, "keywords": ["ai safety"]}, "ai") is True
+
+
+class TestABoundaryThatWorksForCPlusPlus:
+    """`\\b` is a boundary between a word character and a non-word one, so
+    `\\bc\\+\\+\\b` can never match: the character after `+` would have to be a
+    word character for the trailing `\\b` to fire, and then the `+` would not
+    be the end of the term. Every short query whose first or last character is
+    not alphanumeric matched NOTHING — c++, c#, f#, .net — including on a
+    record titled "C++ Developer Intern".
+
+    The fix asserts "not adjacent to a word character" only at the ends that
+    ARE word characters, which is exactly `\\b...\\b` for an alphanumeric term
+    and correct for the rest. The same helper backs the ranker's profile-side
+    interest chips, where a student who writes "c++" had the identical problem.
+    """
+
+    HAY = "we hire a c++ developer intern, some c# too, on .net, and ai research"
+
+    def test_a_term_with_punctuation_at_its_edge_matches(self):
+        from backend.routes.matches import _search_matcher
+
+        for term in ("c++", "c#", ".net"):
+            assert _search_matcher(term)(self.HAY), term
+
+    def test_it_is_still_a_boundary_and_not_a_substring(self):
+        from backend.routes.matches import _search_matcher
+
+        assert not _search_matcher("c++")("abc++ is not the language")
+        assert not _search_matcher("ai")("this text is unavailable")
+        assert not _search_matcher("c")("research and computing")
+
+    def test_alphanumeric_terms_behave_exactly_as_before(self):
+        import re
+
+        from src.matcher.ranker import _word_re
+
+        for term in ("ai", "cs", "art", "reu"):
+            for text in (self.HAY, "art history", "department of art", "the cs 498 course", "an reu site"):
+                assert bool(_word_re(term).search(text)) == bool(
+                    re.search(rf"\b{re.escape(term)}\b", text)
+                ), (term, text)

@@ -2270,9 +2270,24 @@ def _corpus_sims_precomputed(research_text: str, opportunities: list[dict]) -> l
 
 @lru_cache(maxsize=4096)
 def _word_re(term: str) -> "re.Pattern[str]":
-    """Word-boundary containment pattern for PROFILE-side terms (interest
-    chips). Bounded LRU because the terms are user input."""
-    return re.compile(rf"\b{re.escape(term)}\b")
+    """Whole-term containment pattern for user-supplied terms (interest chips,
+    search queries). Bounded LRU because the terms are user input.
+
+    NOT `\b...\b`. `\b` is a boundary between a word character and a non-word
+    one, so `\bc\\+\\+\b` can never match: the character after the `+` would
+    have to be a word character for the trailing `\b` to fire, and then the
+    `+` would not be the term's end. Every term whose first or last character
+    is punctuation matched nothing — c++, c#, f#, .net — including on text
+    reading "C++ Developer Intern".
+
+    Asserting "not adjacent to a word character" only at the ends that ARE
+    word characters is exactly equivalent to `\b...\b` for an alphanumeric
+    term, and correct for the rest.
+    """
+    escaped = re.escape(term)
+    left = r"(?<!\w)" if term[:1].isalnum() or term[:1] == "_" else ""
+    right = r"(?!\w)" if term[-1:].isalnum() or term[-1:] == "_" else ""
+    return re.compile(rf"{left}{escaped}{right}")
 
 
 # Corpus-side intern table for keyword containment patterns — bounded by the
