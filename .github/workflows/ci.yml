@@ -74,7 +74,13 @@ jobs:
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 10 was set when the unit suite was a fraction of its current size. The
+    # suite is now 3,846 tests — 4.5 minutes of pure vitest on a warm laptop —
+    # and this job also runs npm ci, tsc, lint and a full Next build on top.
+    # Every run was being killed at 10m14s, which reads as a test failure and
+    # is not one: the log ends in "Terminate orphan process: npm test". Same
+    # shape as the Backend job's 10 -> 30 bump for the same reason.
+    timeout-minutes: 22
     defaults:
       run:
         working-directory: frontend
