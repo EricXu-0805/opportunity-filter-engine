@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, Lightbulb } from 'lucide-react';
+import { useState } from 'react';
 import type { InteractionType } from '@/lib/supabase';
 import type { ReminderSuggestion } from '@/lib/status-suggestions';
 import { INTERACTION_OPTIONS, INTERACTION_PILL } from './types';
@@ -54,6 +55,7 @@ export function InteractionPills({
   // in use-opportunity-detail.ts, which enforce this at the hook level too
   // — this is the matching UI-level disable, not the only guard).
   const pillsDisabled = statusSaving || interactionUnready || suggestionSaving;
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const suggestionActionsDisabled = suggestionSaving || statusSaving;
   return (
     <div className="border-t border-gray-100 px-5 sm:px-8 py-4 bg-gray-50/50 space-y-2">
@@ -67,8 +69,19 @@ export function InteractionPills({
               type="button"
               aria-pressed={active}
               aria-busy={statusSaving}
+              aria-disabled={active || undefined}
               disabled={pillsDisabled}
-              onClick={() => onTrack(type)}
+              onClick={() => {
+                // Re-clicking the highlighted pill used to remove the whole
+                // tracker row — status, notes, reminder and the
+                // last_contacted_at that Confirm Contact wrote — with no
+                // confirmation, because it reads as an on-toggle. Destructive
+                // removal is reachable only through the confirmed control
+                // below, exactly as InteractionStatusMenu already decided for
+                // the results and tracker surfaces.
+                if (active) return;
+                onTrack(type);
+              }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-wait ${
                 active ? INTERACTION_PILL[type] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
               }`}
@@ -77,7 +90,45 @@ export function InteractionPills({
             </button>
           );
         })}
+        {interaction && !confirmingRemove && (
+          <button
+            type="button"
+            disabled={pillsDisabled}
+            onClick={() => setConfirmingRemove(true)}
+            className="ml-auto text-[11px] text-gray-400 underline underline-offset-2 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded disabled:opacity-50"
+          >
+            {t('results.statusMenu.remove')}
+          </button>
+        )}
       </div>
+      {confirmingRemove && interaction && (
+        <div role="dialog" aria-label={t('results.statusMenu.remove')} className="rounded-lg border border-gray-200 bg-white p-3">
+          <p className="mb-3 text-[12px] leading-relaxed text-gray-600">
+            {t('results.statusMenu.removeConfirmBody')}
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmingRemove(false)}
+              className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-gray-100"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmingRemove(false);
+                // The same same-type callback the REMOVE contract already
+                // expects — only the trigger changed, not the write path.
+                onTrack(interaction);
+              }}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-red-700"
+            >
+              {t('results.statusMenu.removeConfirmYes')}
+            </button>
+          </div>
+        </div>
+      )}
       {statusError && (
         <p role="alert" className="flex items-center gap-2 text-[12px] text-red-700">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
