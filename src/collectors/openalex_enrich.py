@@ -116,8 +116,61 @@ _FRONT_MATTER = frozenset({
 })
 
 
+# A correction notice IS the professor's own work, but a letter opening "your
+# recent paper 'Corrigendum to ...'" reads as a machine that cannot tell a paper
+# from its erratum. The whole-title check below catches a bare "Erratum" and
+# missed every real one, because a real one carries the corrected paper's title
+# after it. 421 records hold one; exactly 1 has nothing else to cite.
+_CORRECTION_NOTICE_RE = re.compile(
+    r"^\s*(?:retracted(?:\s+article)?|withdrawn|corrigend(?:um|a)|errat(?:um|a)|"
+    r"(?:author|publisher)?\s*correction|editorial expression of concern)"
+    r"\s*(?:[:.\u2014-]|\bto\b)",
+    re.IGNORECASE,
+)
+
+
 def _is_front_matter(title: str) -> bool:
+    if _CORRECTION_NOTICE_RE.match(title or ""):
+        return True
     return " ".join(re.sub(r"[^a-z ]", " ", (title or "").lower()).split()) in _FRONT_MATTER
+
+
+def _given_name_variant(a: str, b: str) -> bool:
+    """Whether two scraped names are the same person under a different spelling.
+
+    A nickname or a fuller given name is the same human — Dan/Daniel
+    Rubenstein, Badri/Badrinath Roysam, Edward J./Edward Joseph Bernacki — and
+    a directory that lists someone twice across a joint appointment is not a
+    collision. Requires the surname to match and one given name to be a prefix
+    of the other.
+    """
+    def parts(name: str) -> list[str]:
+        return [w.lower() for w in re.split(r"\W+", re.sub(r"\([^)]*\)", " ", name or "")) if w]
+
+    pa, pb = parts(a), parts(b)
+    if not pa or not pb or pa[-1] != pb[-1]:
+        return False
+    return pa[0].startswith(pb[0]) or pb[0].startswith(pa[0])
+
+
+def ambiguous_author_ids(records: list[dict]) -> set[str]:
+    """OpenAlex author ids stamped on people who are not the same person.
+
+    OpenAlex returns one author entity for names it could not separate, and the
+    result is three different Smiths in three departments each told the same
+    papers are theirs. We cannot tell which one is right, so every record in
+    such a group must lose its attribution — fail closed.
+    """
+    by_id: dict[str, list[str]] = {}
+    for record in records:
+        author_id = (record.get("metadata") or {}).get("publication_author_id")
+        if author_id:
+            by_id.setdefault(author_id, []).append(record.get("pi_name") or "")
+    return {
+        author_id
+        for author_id, names in by_id.items()
+        if any(not _given_name_variant(names[0], other) for other in names[1:])
+    }
 
 
 # The committed "works library": the durable url -> [{title, year}] master record
@@ -1721,7 +1774,31 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
             else:
                 md.pop("publication_author_id", None)
             n += 1
+    n -= _strip_ambiguous_attributions(opps)
     return n
+
+
+def _strip_ambiguous_attributions(opps: list[dict]) -> int:
+    """Drop the citation from every record in an id group that spans two people.
+
+    Runs over the WHOLE corpus after an apply, not over the batch, because the
+    second professor sharing an id may have been stamped by an earlier harvest.
+    Fail closed: we cannot tell which of them the papers belong to, so none of
+    them may cite.
+    """
+    ambiguous = ambiguous_author_ids(opps)
+    if not ambiguous:
+        return 0
+    stripped = 0
+    for record in opps:
+        md = record.get("metadata") or {}
+        if md.get("publication_author_id") in ambiguous:
+            md.pop("publication_author_id", None)
+            md.pop("publication_attribution_status", None)
+            md.pop("works_gate", None)
+            md.pop("recent_works", None)
+            stripped += 1
+    return stripped
 
 
 def _load_dotenv() -> None:
