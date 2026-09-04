@@ -1,5 +1,5 @@
 import { createElement, StrictMode } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, render, act, waitFor } from '@testing-library/react';
 
 import { useTrackerData, TRACKER_COLUMNS, dateInDays, isReminderDue } from './use-tracker-data';
@@ -1083,5 +1083,38 @@ describe('useTrackerData — React StrictMode (dev double-invoke of effects)', (
     // Resolving after unmount must not throw, warn, or otherwise indicate
     // an attempted state update on a component that's gone.
     await act(async () => { resolveDismiss?.(); });
+  });
+});
+
+describe('reminders are counted on the student evening they are set', () => {
+  // 2026-09-04T02:00Z is 2026-09-03 21:00 in Chicago: the UTC calendar has
+  // already rolled to the 4th while the student is still on the 3rd. Counting
+  // in UTC made every "+N days" chip land a day late for a whole evening.
+  const chicagoEvening = new Date('2026-09-04T02:00:00Z');
+  let originalTZ: string | undefined;
+
+  beforeEach(() => {
+    originalTZ = process.env.TZ;
+    process.env.TZ = 'America/Chicago';
+    vi.useFakeTimers();
+    vi.setSystemTime(chicagoEvening);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTZ;
+  });
+
+  it('the 3-day chip lands three days later, not four', () => {
+    expect(dateInDays(3)).toBe('2026-09-06');
+  });
+
+  it('"today" is the student’s today', () => {
+    expect(dateInDays(0)).toBe('2026-09-03');
+  });
+
+  it('tomorrow is not already due', () => {
+    expect(isReminderDue('2026-09-04')).toBe(false);
+    expect(isReminderDue('2026-09-03')).toBe(true);
   });
 });
