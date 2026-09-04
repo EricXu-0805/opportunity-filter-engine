@@ -3173,6 +3173,8 @@ export const en = {
     keywordsInferred: 'Inferred from their publication record, not stated on their page — worth checking before you write to them.',
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
     majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
+    yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
+    eligibilityInferred: 'Read from the posting text by our pipeline, not a restriction the program published — check the program’s own page before ruling yourself out.',
     concierge: {
       title: 'Want us to handle this one?',
       body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
@@ -3204,6 +3206,7 @@ export const en = {
       skills: 'Required skills',
       skillsMentioned: 'Skills mentioned',
       majorsApproximate: 'Majors this looks aimed at',
+      preferredYearMentioned: 'Class years mentioned',
       international: 'International friendly',
       citizenship: 'Citizenship required',
       citizenshipNote: 'US citizenship required',
@@ -7709,6 +7712,8 @@ export const zh = {
     keywordsInferred: '根据他的论文发表记录推断，不是他主页上写的 —— 写信前值得自己核一下。',
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
     majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
+    yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
+    eligibilityInferred: '由我们的系统从招募文本中推断，不是项目公布的限制 —— 在放弃之前先看项目自己的页面。',
     concierge: {
       title: '这个要不要我们替你办？',
       body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',
@@ -7740,6 +7745,7 @@ export const zh = {
       skills: '所需技能',
       skillsMentioned: '提到的技能',
       majorsApproximate: '大致面向的专业',
+      preferredYearMentioned: '提到的年级',
       international: '国际生友好',
       citizenship: '公民身份要求',
       citizenshipNote: '需要美国公民身份',
