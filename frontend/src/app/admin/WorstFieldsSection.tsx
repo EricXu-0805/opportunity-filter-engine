@@ -14,7 +14,10 @@ export function WorstFieldsSection({
   onClearFilter: () => void;
   t: TFunc;
 }) {
-  const cols = t('admin.worstFieldsCols') as unknown as Record<string, string>;
+  // t() resolves a path to a STRING or hands the key back; it never returns
+  // a dictionary subtree, so `cols` was the literal 'admin.worstFieldsCols'
+  // and every header rendered undefined.
+  const col = (name: string) => t(`admin.worstFieldsCols.${name}`);
   return (
     <section>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -30,10 +33,10 @@ export function WorstFieldsSection({
         <table className="w-full text-sm min-w-[600px]">
           <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
-              <th className="px-4 py-2.5 text-left">{cols.title}</th>
-              <th className="px-4 py-2.5 text-left hidden md:table-cell">{cols.fields}</th>
-              <th className="px-4 py-2.5 text-left">{cols.source}</th>
-              <th className="px-4 py-2.5 text-right">{cols.missing}</th>
+              <th className="px-4 py-2.5 text-left">{col('title')}</th>
+              <th className="px-4 py-2.5 text-left hidden md:table-cell">{col('fields')}</th>
+              <th className="px-4 py-2.5 text-left">{col('source')}</th>
+              <th className="px-4 py-2.5 text-right">{col('missing')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

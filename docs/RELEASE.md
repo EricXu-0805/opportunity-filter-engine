@@ -31,12 +31,16 @@ would say nothing about what is actually running). `/api/health` and
 | Gate | Source | Who can produce it |
 |---|---|---|
 | `release_sha`, `worktree` | this repo | the gate itself |
+| `ledger_currency` | `data/releases/CURRENT.json` vs the candidate | the gate itself |
 | `corpus` | shard record floor | the gate itself |
+| `freshness` | `professor_tracking.json` counts vs `FRESHNESS_MIN_PCT` | the gate itself |
 | `tracking_release_ready` | `professor_tracking.json` strict contract | the gate itself |
 | `truthfulness` | `data/audits/truthfulness_report.json` (GO + age ≤30d) | the gate itself |
 | `flag_parity` | backend vs frontend release-scope tables | the gate itself |
+| `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
 | `ci:*` (4 required checks) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
 | `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` | an operator with `ADMIN_TOKEN` |
+| `provider_readiness` | `GET /api/ready` → `reported.providers` | an operator with `ADMIN_TOKEN` |
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
 | `render_canary`, `vercel_canary`, `supabase_canary` | the deployed environments | an operator |
 | `backup`, `restore` | see `docs/DISASTER_RECOVERY.md` | an operator |
@@ -59,6 +63,56 @@ consulting.
 means "we have no evidence either way" and the second means "we have evidence
 of a problem". Collapsing them would hide which gates need infrastructure
 access and which need fixing.
+
+### Evidence expires
+
+Every gate describing a live observation — the canaries, `api_ready`,
+`promotion`, `scheduler`, `dead_man`, `rollback`, `backup`, `open_incidents`,
+`provider_readiness` — must carry `observed_at`. Undated evidence is
+`UNVERIFIED`, and evidence past that gate's maximum age is `FAIL`. The limits
+live in `_EVIDENCE_MAX_AGE_DAYS`; `backup` is 7 days because that is the
+retention window, so an older recovery point is not a worse option but no
+option at all.
+
+`ci:*` carries no age limit on purpose: it is keyed on the commit, so a result
+for the candidate SHA cannot predate a change to the candidate.
+
+The ledger checks itself the same way. `ledger_currency` fails when
+`data/releases/CURRENT.json` describes another SHA or is more than 7 days old —
+the state it was in on 2026-09-03, when it was 127 commits behind and still
+read as the project's release posture. Refresh it with `--update-current`
+rather than editing it.
+
+### `NOT_APPLICABLE` — the only verdict that does not block
+
+A gate exists to protect a shipped path. When every path it protects sits
+behind a source-controlled-off flag, `FAIL` is a lie of a different kind: an
+unexplained permanent red that nobody can action and everybody learns to skip.
+The gate reports `NOT_APPLICABLE` instead, always naming the flag, and keeps
+the underlying verdict under `evidence.would_be` so the gap stays visible and
+the check re-arms by itself when the flag flips.
+
+Today that covers `freshness` and `tracking_release_ready`: every consumer of
+`professor_tracking.json` is behind `professor_signals`, which is `False`.
+Their real numbers are still reported in the ledger's `freshness_percent` and
+`fully_stale_school_count` — "not applicable" is a statement about the release
+surface, never a reason to stop measuring.
+
+Three rules keep this from becoming an escape hatch:
+
+- A gate stops applying only when **every** feature requiring it is off. One
+  enabled consumer keeps it blocking — which is why a missing LLM key still
+  blocks with `ask_ai` closed, because `resume_renovate` is accepted and shares
+  it.
+- An unknown flag state — unreadable table, unrecognised flag name — leaves
+  every gate applying. Uncertainty never buys an exemption.
+- An operator may declare an external gate `NOT_APPLICABLE` only **with** a
+  `reason`. A bare `"status": "NOT_APPLICABLE"` is rejected as
+  `exemption_unexplained`; that is how a real blocker gets retired without
+  being fixed.
+
+`restore_drill` is deliberately absent from the applicability map. Recovery is
+not a feature, so no flag may retire it.
 
 ## 3. Promotion stages
 

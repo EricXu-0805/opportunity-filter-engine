@@ -43,6 +43,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
+from backend.lib.release_scope import feature_enabled
 from backend.routes.admin import require_admin
 from backend.routes.push import _required_env
 
@@ -1393,7 +1394,20 @@ async def _scan_release_degradation(
 
 
 async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
-    """professor_tracking.json release gate -> data_drift incident."""
+    """professor_tracking.json release gate -> data_drift incident.
+
+    Only while Professor Signals actually ships. Every consumer of this
+    artifact is behind ``professor_signals``, and with the flag off this
+    detector was filing a ``high`` incident, every day, about a feature no user
+    can reach — which then blocked the release through ``open_incidents``. A
+    disabled feature manufacturing its own release blocker is the loop that
+    turns a queue nobody can drain into a queue nobody reads.
+
+    The state is still measured and still reported in the run summary; what
+    stops is opening an incident about it. When the flag flips on, this starts
+    filing again with no further change, because the condition is read at scan
+    time rather than baked into the artifact.
+    """
     block, err = _read_release_block(_TRACKING_PATH)
     if err or block is None:
         summary["skipped"].append({"detector": "professor_tracking", "reason": err})
@@ -1404,8 +1418,20 @@ async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
     checks = block.get("checks") if isinstance(block.get("checks"), dict) else {}
     failing = sorted(k for k, v in checks.items() if v is not True)
     ready = block.get("release_ready") is True
+    shipped = feature_enabled("professor_signals")
 
-    if not ready:
+    if not ready and not shipped:
+        # Not a pass, and not silence: recorded in the summary below, and an
+        # already-open incident is annotated rather than auto-resolved — the
+        # flag going off does not vouch for what shipped while it was on.
+        if dedup_key in summary["_open_keys"]:
+            await rec.recover(
+                dedup_key,
+                auto_resolve=False,
+                note=("professor_signals is disabled, so this artifact reaches no "
+                      "user; confirm the gap was reviewed before closing"),
+            )
+    elif not ready:
         await rec.record(
             kind="data_drift",
             dedup_key=dedup_key,
@@ -1443,6 +1469,9 @@ async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
         "release_ready": ready,
         "failing_checks": failing,
         "computed_at": block.get("computed_at"),
+        # Why no incident, when release_ready is false and nothing was filed.
+        "professor_signals_enabled": shipped,
+        "incident_applicable": shipped,
     }
 
 

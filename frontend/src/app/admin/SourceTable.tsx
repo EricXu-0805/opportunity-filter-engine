@@ -45,7 +45,10 @@ export function SourceTable(
   { rows, qualityScope, t }:
   { rows: SourceRow[]; qualityScope?: string; t: TFunc },
 ) {
-  const cols = t('admin.bySourceCols') as unknown as Record<string, string>;
+  // t() resolves a path to a STRING or hands the key back; it never returns
+  // a dictionary subtree, so `cols` was the literal 'admin.bySourceCols'
+  // and every header rendered undefined.
+  const col = (name: string) => t(`admin.bySourceCols.${name}`);
   const currentScope = qualityScope === QUALITY_SCOPE;
   return (
     <section className="mb-10">
@@ -54,15 +57,15 @@ export function SourceTable(
         <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
             <tr>
-              <th className="px-4 py-2.5 text-left">{cols.source}</th>
-              <th className="px-4 py-2.5 text-right">{cols.total}</th>
-              <th className="px-4 py-2.5 text-right">{cols.emptyMajors}</th>
-              <th className="px-4 py-2.5 text-right">{cols.emptyKeywords}</th>
-              <th className="px-4 py-2.5 text-right">{cols.rolling}</th>
-              <th className="px-4 py-2.5 text-right">{cols.missingDeadline}</th>
-              <th className="px-4 py-2.5 text-right">{cols.past}</th>
-              <th className="px-4 py-2.5 text-right">{cols.inactive}</th>
-              <th className="px-4 py-2.5 text-right">{cols.unreviewedRecordKind}</th>
+              <th className="px-4 py-2.5 text-left">{col('source')}</th>
+              <th className="px-4 py-2.5 text-right">{col('total')}</th>
+              <th className="px-4 py-2.5 text-right">{col('emptyMajors')}</th>
+              <th className="px-4 py-2.5 text-right">{col('emptyKeywords')}</th>
+              <th className="px-4 py-2.5 text-right">{col('rolling')}</th>
+              <th className="px-4 py-2.5 text-right">{col('missingDeadline')}</th>
+              <th className="px-4 py-2.5 text-right">{col('past')}</th>
+              <th className="px-4 py-2.5 text-right">{col('inactive')}</th>
+              <th className="px-4 py-2.5 text-right">{col('unreviewedRecordKind')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -89,22 +92,22 @@ export function SourceTable(
           <div key={row.source} className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="font-semibold text-gray-900">{row.source}</p>
-              <p className="text-[12px] tabular-nums text-gray-500">{cols.total}: <span className="font-medium text-gray-700">{row.total}</span></p>
+              <p className="text-[12px] tabular-nums text-gray-500">{col('total')}: <span className="font-medium text-gray-700">{row.total}</span></p>
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
-              <dt className="text-gray-500">{cols.emptyMajors}</dt>
+              <dt className="text-gray-500">{col('emptyMajors')}</dt>
               <dd className="text-right tabular-nums"><Cell v={row.empty_majors || 0} listingTotal={row.listing_total} currentScope={currentScope} /></dd>
-              <dt className="text-gray-500">{cols.emptyKeywords}</dt>
+              <dt className="text-gray-500">{col('emptyKeywords')}</dt>
               <dd className="text-right tabular-nums"><Cell v={row.empty_keywords || 0} listingTotal={row.listing_total} currentScope={currentScope} /></dd>
-              <dt className="text-gray-500">{cols.rolling}</dt>
+              <dt className="text-gray-500">{col('rolling')}</dt>
               <dd className="text-right tabular-nums text-emerald-600">{row.rolling_deadline || 0}</dd>
-              <dt className="text-gray-500">{cols.missingDeadline}</dt>
+              <dt className="text-gray-500">{col('missingDeadline')}</dt>
               <dd className="text-right tabular-nums"><Cell v={row.missing_deadline || 0} listingTotal={row.listing_total} currentScope={currentScope} /></dd>
-              <dt className="text-gray-500">{cols.past}</dt>
+              <dt className="text-gray-500">{col('past')}</dt>
               <dd className="text-right tabular-nums text-gray-500">{row.past_deadline || 0}</dd>
-              <dt className="text-gray-500">{cols.inactive}</dt>
+              <dt className="text-gray-500">{col('inactive')}</dt>
               <dd className="text-right tabular-nums text-gray-500">{row.flagged_inactive || 0}</dd>
-              <dt className="text-gray-500">{cols.unreviewedRecordKind}</dt>
+              <dt className="text-gray-500">{col('unreviewedRecordKind')}</dt>
               <dd className="text-right tabular-nums"><UnreviewedCell v={row.unreviewed_record_kind} currentScope={currentScope} /></dd>
             </dl>
           </div>
