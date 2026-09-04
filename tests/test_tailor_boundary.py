@@ -218,3 +218,45 @@ class TestAGuessedSkillListIsNotCalledARequirement:
         source = inspect.getsource(tailor)
         assert source.count('f"- Required skills: {required}\\n"') == 0
         assert source.count("_skills_line(opp, required)") == 3
+
+
+class TestKeywordsProvenanceReachesThePrompt:
+    """8,858 records carry keywords derived from a professor's OpenAlex topic
+    clusters. Handing the model "Keywords: planetary science and exploration"
+    steers a resume rewrite toward a guess the lab never made."""
+
+    @staticmethod
+    def _opp(inferred: bool) -> dict:
+        opp = {
+            "id": "bowdoin-eos", "title": "Research with Prof. Rachel J. Beane",
+            "source_type": "faculty_research",
+            "keywords": ["earthquake and tectonic"], "metadata": {},
+        }
+        if inferred:
+            opp["metadata"] = {
+                "inferred_fields": {"keywords": "derived:openalex_topics"}
+            }
+        return opp
+
+    def test_keywords_the_lab_wrote_are_still_called_keywords(self):
+        from backend.routes.tailor import _keywords_line
+
+        line = _keywords_line(self._opp(False), "earthquake and tectonic")
+        assert line == "- Keywords: earthquake and tectonic\n"
+
+    def test_topics_read_off_publications_say_so(self):
+        from backend.routes.tailor import _keywords_line
+
+        line = _keywords_line(self._opp(True), "earthquake and tectonic")
+        assert "- Keywords:" not in line
+        assert "not stated by the lab" in line
+        assert "earthquake and tectonic" in line
+
+    def test_every_prompt_builder_uses_the_helper(self):
+        import inspect
+
+        from backend.routes import tailor
+
+        source = inspect.getsource(tailor)
+        assert source.count('f"- Keywords: {keywords}\\n"') == 0
+        assert source.count("_keywords_line(opp, keywords)") == 3
