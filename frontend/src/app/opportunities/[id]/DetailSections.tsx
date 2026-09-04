@@ -146,10 +146,17 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
     <Section title={t('detail.sections.eligibility')}>
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
         {!isFaculty && statedYears.length > 0 && (
+          // The variable is called statedYears, and for 70 records it is not:
+          // the tagger read "graduating HIGH SCHOOL seniors" out of one
+          // program's own sentence and wrote ['senior']. #895 stopped the
+          // matcher grading students against those; this stops the page
+          // printing one as the program's own class-year restriction.
           <DetailRow
             icon={<GraduationCap />}
-            label={t('detail.fields.preferredYear')}
+            label={t(opp.preferred_year_attribution === 'inferred' ? 'detail.fields.preferredYearMentioned' : 'detail.fields.preferredYear')}
             value={statedYears.join(', ')}
+            note={opp.preferred_year_attribution === 'inferred' ? t('detail.yearInferred') : undefined}
+            noteTestId="year-inferred-note"
           />
         )}
         {!isFaculty && e.majors?.length > 0 && (
@@ -178,16 +185,25 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             noteTestId="skills-inferred-note"
           />
         )}
+        {/* The most expensive guess on this page: a student who reads "not
+            open to international students" self-selects out and never
+            applies. 32 live listings carry that value because the tagger
+            matched a federal-organisation or title substring. NSF Sites are
+            not marked — their solicitation really does restrict eligibility. */}
         <DetailRow
           icon={<Globe />}
           label={t('detail.fields.international')}
           value={friendlyLabel(effectiveIntl ?? 'unknown', t)}
+          note={opp.international_attribution === 'inferred' ? t('detail.eligibilityInferred') : undefined}
+          noteTestId="international-inferred-note"
         />
         {e.citizenship_required && (
           <DetailRow
             icon={<AlertTriangle />}
             label={t('detail.fields.citizenship')}
             value={t('detail.fields.citizenshipNote')}
+            note={opp.citizenship_attribution === 'inferred' ? t('detail.eligibilityInferred') : undefined}
+            noteTestId="citizenship-inferred-note"
             warn
           />
         )}

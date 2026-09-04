@@ -167,11 +167,26 @@ export function OpportunityHeader({
             {isFaculty && opp.faculty_availability_status === 'research_inactive' && (
               <DetailBadge tone="red">{t('card.facultyResearchInactive')}</DetailBadge>
             )}
-            {isCurrentListing && opp.paid === 'yes' && <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>}
+            {/* A green "Paid" is a student planning a summer around the money.
+                220 records carry a pay value read off page prose — one says
+                only "in many cases, funding or a stipend" — so those say what
+                we actually saw. NSF Sites keep the plain badge: the
+                solicitation requires a stipend. */}
+            {isCurrentListing && opp.paid === 'yes' && (
+              opp.paid_attribution === 'inferred'
+                ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.fundingMentioned')}</DetailBadge>
+                : <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>
+            )}
             {isCurrentListing && opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
             {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
-            {isCurrentListing && opp.remote_option === 'yes' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
+            {/* The values the pipeline actually writes. This tested 'yes',
+                which the corpus vocabulary {unknown, no, remote, hybrid, null}
+                does not contain — so the badge was unreachable for 100% of
+                traffic while 67 genuinely remote or hybrid postings showed
+                nothing, indistinguishable from an on-site one. */}
+            {isCurrentListing && opp.remote_option === 'remote' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
+            {isCurrentListing && opp.remote_option === 'hybrid' && <DetailBadge tone="gray">{t('badges.hybrid')}</DetailBadge>}
             {isCurrentListing && effectiveIntl === 'yes' && (
               <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
