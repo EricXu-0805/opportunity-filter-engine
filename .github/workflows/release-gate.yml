@@ -7,10 +7,16 @@ name: Release gate
 # verdict nobody regenerates is a gate nobody consults.
 #
 # This collects the half of the evidence a workflow can actually produce — the
-# four required CI conclusions for the exact SHA being considered — runs the
-# gate, and publishes the ledger as an artifact. The other eleven gates need
-# infrastructure access and stay UNVERIFIED, which is the honest answer and
-# blocks by design (docs/RELEASE.md §"UNVERIFIED is not FAIL, both block").
+# four required CI conclusions for the exact SHA being considered, plus any
+# operator evidence and restore-drill records already on the default branch —
+# runs the gate, and publishes the ledger as an artifact. The remaining gates
+# need infrastructure access and stay UNVERIFIED, which is the honest answer
+# and blocks by design (docs/RELEASE.md §"Evidence expires").
+#
+# The ledger this produces is an ARTIFACT, not a commit. Refreshing the
+# committed data/releases/CURRENT.json is a deliberate act by the operator
+# (`--update-current`), because that file is what humans read as the project's
+# release posture and it should change when someone decided it should.
 #
 # WHY workflow_dispatch ONLY, and why that matters here of all places:
 # Render's autoDeployTrigger: checksPass waits for EVERY check run on a commit
@@ -118,6 +124,23 @@ jobs:
             echo '{}' > /tmp/operator-evidence.json
           fi
 
+      - name: Collect restore-drill records from the default branch
+        # Same reason as the step above, and the same mechanism: a drill is
+        # recorded AFTER the candidate it vouches for, so it cannot exist in
+        # that commit — while check_worktree_clean requires HEAD to equal the
+        # release SHA. Extract them to /tmp and point the gate there rather
+        # than checking them out, which would dirty the worktree and turn a
+        # correct gate into a failing one.
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/drills
+          for path in $(git ls-tree --name-only FETCH_HEAD data/releases/drills/ 2>/dev/null || true); do
+            case "$path" in
+              *.json) git show "FETCH_HEAD:$path" > "/tmp/drills/$(basename "$path")" ;;
+            esac
+          done
+          echo "restore-drill records found: $(ls -1 /tmp/drills 2>/dev/null | wc -l)"
+
       - name: Run the gate
         id: gate
         run: |
@@ -126,6 +149,7 @@ jobs:
             --release-sha "${{ steps.sha.outputs.sha }}" \
             --evidence /tmp/evidence.json \
             --evidence /tmp/operator-evidence.json \
+            --drill-dir /tmp/drills \
             --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
             | tee /tmp/gate.txt
           # PIPESTATUS[0], not $?. After a pipeline `$?` is the LAST command's
