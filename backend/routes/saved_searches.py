@@ -344,7 +344,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,filters_json,query,last_result_ids,new_match_ids",
+                "select": "id,filters_json,query,last_result_ids,new_match_ids,last_run_at",
                 "limit": str(SUPABASE_BATCH_LIMIT),
                 "order": "last_run_at.asc.nullsfirst",
             },
@@ -369,7 +369,20 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 ]
 
                 current_ids = matching_ids(opportunities, filters, query)
-                new_ids = [oid for oid in current_ids if oid not in prior_ids]
+                # A search that has never run has no prior set to diff against
+                # — last_result_ids defaults to '{}' — so everything it matches
+                # looked new. The first digest went out hours after the search
+                # was created, titled "200 new matches", under copy reading
+                # "that started matching your saved search since we last
+                # checked". Nothing had started matching anything. The first
+                # run establishes the baseline instead; the next one reports
+                # against it.
+                first_run = not row.get("last_run_at")
+                new_ids = (
+                    []
+                    if first_run
+                    else [oid for oid in current_ids if oid not in prior_ids]
+                )
                 total_new_matches += len(new_ids)
 
                 pending_set = set(pending_ids)
@@ -647,7 +660,15 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                 # of a transient load failure on our side. They stay; every id
                 # that resolved is cleared, mailed or overflowed alike, per the
                 # existing "one digest closes the window" contract.
-                unresolved_ids = [i for i in new_ids if i not in opp_by_id]
+                # The overflow stays for the same reason: the email says
+                # "+190 more in the app" and offers a button to go find them.
+                # Clearing them emptied new_match_ids, so the badge vanished,
+                # savedSearchToUrl dropped its highlight, and the 190 records
+                # the student was just told about could not be identified by
+                # any action they could take. Only the ids actually rendered in
+                # the email close their window.
+                mailed_ids = {opportunity["id"] for opportunity in items}
+                unresolved_ids = [i for i in new_ids if i not in mailed_ids]
                 # The provider accepted the send; this stamp is what prevents
                 # a duplicate digest tomorrow (throttle keys off
                 # last_digest_sent_at). Retry once on failure and record a

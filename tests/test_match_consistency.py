@@ -1509,6 +1509,50 @@ def _view_body(**view):
     }
 
 
+class TestDeadlineSoonestMeansSoonest:
+    """831 of the 836 listings carrying a deadline have already passed, so
+    ordering by the raw date string answered "soonest" with February 2025 — the
+    one the student missed by the widest margin — at the top of the page.
+    This is the authoritative sort; the client re-sorts the same way."""
+
+    def test_expired_listings_sort_after_the_ones_still_open(self):
+        from backend.routes import matches as m_module
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        def result(opportunity_id):
+            return MatchResult(
+                opportunity_id=opportunity_id, eligibility_score=80,
+                readiness_score=80, upside_score=80, final_score=80,
+                bucket="good_match", reasons_fit=[], reasons_gap=[], next_steps=[],
+            )
+
+        opportunities = {
+            "long-expired": {**_opp("long-expired"), "source_type": "campus_program",
+                             "deadline": "2025-02-15"},
+            "recently-expired": {**_opp("recently-expired"), "source_type": "campus_program",
+                                 "deadline": "2026-07-28"},
+            "soon": {**_opp("soon"), "source_type": "campus_program",
+                     "deadline": "2026-08-10"},
+            "later": {**_opp("later"), "source_type": "campus_program",
+                      "deadline": "2026-11-01"},
+            "rolling": {**_opp("rolling"), "source_type": "campus_program"},
+        }
+        ordered, *_ = m_module._apply_match_view(
+            [result(i) for i in ("long-expired", "soon", "recently-expired",
+                                 "later", "rolling")],
+            opportunities,
+            MatchViewState(tab="all", sort_by="deadline", today="2026-07-31"),
+            "uiuc",
+        )
+        assert [r.opportunity_id for r in ordered] == [
+            "soon", "later",        # still open, soonest first
+            "rolling",              # no date
+            "recently-expired",     # gone, least stale first
+            "long-expired",
+        ]
+
+
 class TestMatchResponsesAttestToTheirOwnContract:
     """What a client is entitled to assume, asserted at the endpoint.
 
