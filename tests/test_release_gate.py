@@ -95,7 +95,7 @@ def _stub_repo_gates(monkeypatch, sha: str, *, drill: dict | None = None) -> Non
     monkeypatch.setattr(gate, "check_flag_parity",
                         lambda: gate._gate("flag_parity", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "check_ledger_currency",
-                        lambda s: gate._gate("ledger_currency", gate.PASS, "stub"))
+                        lambda s, **kw: gate._gate("ledger_currency", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "load_latest_drill",
                         lambda: (drill if drill is not None else _passing_drill(), None))
 
@@ -442,8 +442,8 @@ class TestLedgerCurrency:
         # Applied after the stub, so this is the ledger_currency the build sees.
         monkeypatch.setattr(
             gate, "check_ledger_currency",
-            lambda s: gate._gate("ledger_currency", gate.FAIL, "stale",
-                                 reason="evidence_stale"))
+            lambda s, **kw: gate._gate("ledger_currency", gate.FAIL, "stale",
+                                       reason="evidence_stale"))
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         assert ledger["final_decision"] == "NO-GO"
         assert any(b["check"] == "ledger_currency" for b in ledger["blockers"])
@@ -878,3 +878,33 @@ class TestUnknownNeverDefaultsToPass:
     def test_every_blocking_status_actually_blocks(self):
         for status in (gate.FAIL, gate.UNVERIFIED, gate.SKIPPED, gate.NOT_RUN):
             assert status in gate._BLOCKING
+
+
+class TestLedgerRefreshIsNotAnExemption:
+    def test_a_refreshing_run_satisfies_ledger_currency(self, monkeypatch, tmp_path):
+        """A ledger is written after its candidate, so the copy in that
+        candidate's own tree always describes an earlier commit. Without this,
+        the gate would be unsatisfiable for a tip candidate no matter what
+        anyone did — which is how a check stops being read."""
+        _write_ledger(tmp_path, monkeypatch, release_sha=SHA_B)
+        assert gate.check_ledger_currency(SHA_A)["status"] == gate.FAIL
+        got = gate.check_ledger_currency(SHA_A, refreshing=True)
+        assert got["status"] == gate.PASS
+        assert got["evidence"]["refreshed"] is True
+
+    def test_refreshing_excuses_only_the_ledger_gate(self, monkeypatch):
+        """--update-current must not become a way to publish a GO."""
+        _stub_repo_gates(monkeypatch, SHA_A)
+        monkeypatch.setattr(gate, "load_latest_drill",
+                            lambda: (None, "no restore-drill record"))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A),
+                                   min_records=1, refreshing=True)
+        assert ledger["final_decision"] == "NO-GO"
+        assert [b["check"] for b in ledger["blockers"]] == ["restore_drill"]
+
+    def test_a_non_refreshing_run_still_catches_a_stale_ledger(
+            self, monkeypatch, tmp_path):
+        old = (datetime.now(UTC)
+               - timedelta(days=gate.LEDGER_MAX_AGE_DAYS + 1)).isoformat()
+        _write_ledger(tmp_path, monkeypatch, generated_at=old)
+        assert gate.check_ledger_currency(SHA_A)["status"] == gate.FAIL
