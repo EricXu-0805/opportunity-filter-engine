@@ -288,3 +288,56 @@ class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
         assert self._phrase(
             "Human-autonomy interaction Human-robot interaction Individual differences"
         ) == ""
+
+
+class TestTheAlignmentSentenceUsesTheSameGate:
+    """_infer_research_topic feeds "your research on {topic} closely aligns
+    with my interest in {theirs}". It had the same unchecked 80-character slice
+    of the same blob, so gating only _infer_research_area left 86% of those
+    1,529 emails still making the claim — including one that read "your
+    research on While I am not currently research active, I have worked in
+    computational a"."""
+
+    @staticmethod
+    def _faculty(raw: str) -> dict:
+        return {
+            "id": "faculty-iu-kelley", "title": "Prof. Martin J. Birr — KELLEY",
+            "source_type": "faculty_research", "pi_name": "Martin J. Birr",
+            "department": "Kelley School of Business", "keywords": [],
+            "description_raw": "", "description_clean": "",
+            "eligibility": {}, "application": {},
+            "metadata": {"research_areas_raw": raw},
+        }
+
+    def test_a_unit_name_never_becomes_their_research(self):
+        from src.recommender.cold_email import _infer_research_topic
+
+        assert _infer_research_topic(
+            self._faculty("Kelley School of Business Indianapolis")
+        ) == ""
+
+    def test_a_disclaimer_is_never_quoted_back_as_research(self):
+        from src.recommender.cold_email import _infer_research_topic
+
+        assert _infer_research_topic(
+            self._faculty("While I am not currently research active, I have worked in "
+                          "computational approaches to protein design.")
+        ) == ""
+
+    def test_the_generated_email_makes_no_alignment_claim(self):
+        from src.recommender.cold_email import generate_cold_email
+
+        email = generate_cold_email(
+            {"name": "Guoyi Xu", "year": "sophomore", "major": "Electrical Engineering",
+             "school": "UIUC", "research_interests_text": "machine learning"},
+            self._faculty("Kelley School of Business Indianapolis"),
+        )
+        assert "your research on Kelley" not in email
+        assert "closely aligns" not in email
+
+    def test_a_real_area_still_produces_the_sentence(self):
+        from src.recommender.cold_email import _infer_research_topic
+
+        assert _infer_research_topic(
+            self._faculty("Psycholinguistics and cognitive neuroscience of language")
+        ) == "Psycholinguistics and cognitive neuroscience of language"

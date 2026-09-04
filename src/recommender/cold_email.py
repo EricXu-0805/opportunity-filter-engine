@@ -448,9 +448,14 @@ def _infer_research_topic(opportunity: dict) -> str:
     # neither that nor keywords there is no topic, and the caller degrades to a
     # neutral inquiry.
     if faculty_contact_claims_unverified(opportunity):
+        # Same blob and same gate as _infer_research_area. This one feeds "your
+        # research on {topic} closely aligns with my interest", so an unchecked
+        # slice here produced "your research on Kelley School of Business
+        # Indianapolis closely aligns with my interest in medical imaging" —
+        # the exact false-alignment sentence the rest of this file exists to
+        # prevent.
         metadata = opportunity.get("metadata") or {}
-        areas = str(metadata.get("research_areas_raw") or "").strip()
-        return areas[:80]
+        return _usable_research_phrase(str(metadata.get("research_areas_raw") or "").strip())
 
     desc = opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     if desc:
