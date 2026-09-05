@@ -175,8 +175,13 @@ def _ready_status(
             "national": national,
         }
     if not ready:
+        # An ERRORED source, not an empty one. A source that emitted nothing
+        # now degrades its own entry and its school still publishes (that is
+        # the department-level isolation), so a zero no longer produces a
+        # blocked verdict and could not exercise this rejection path. An
+        # error still blocks: the run cannot vouch for what it collected.
         first = next(iter(policies))
-        sources[first]["fetched"] = 0
+        sources[first] = {"status": "error", "error": "simulated failure"}
     payload["release"] = evaluate_refresh_summary(
         payload,
         schools=schools,

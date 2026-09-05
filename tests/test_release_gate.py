@@ -88,8 +88,15 @@ def _stub_repo_gates(monkeypatch, sha: str, *, drill: dict | None = None) -> Non
         cmd, 0, stdout=("" if "status" in cmd else sha) + "\n", stderr=""))
     monkeypatch.setattr(gate, "check_tracking_release_ready",
                         lambda: gate._gate("tracking_release_ready", gate.PASS, "stub"))
-    monkeypatch.setattr(gate, "check_freshness",
-                        lambda: gate._gate("freshness", gate.PASS, "stub"))
+    monkeypatch.setattr(gate, "check_corpus_freshness",
+                        lambda: gate._gate("corpus_freshness", gate.PASS, "stub"))
+    monkeypatch.setattr(gate, "check_tracking_freshness",
+                        lambda: gate._gate("tracking_freshness", gate.PASS, "stub"))
+    # Reads data/processed/source_health.json, whose contents change with every
+    # refresh run; stubbed like its peers so this asserts the GO PATH, not
+    # today's corpus freshness, which its own tests cover directly.
+    monkeypatch.setattr(gate, "check_no_fully_stale_school",
+                        lambda: gate._gate("no_fully_stale_school", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "check_truthfulness",
                         lambda: gate._gate("truthfulness", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "check_flag_parity",
@@ -110,10 +117,20 @@ class TestDefaultNoGo:
         assert ledger["final_decision"] == "NO-GO"
         assert ledger["blocking_reasons"]
 
-    def test_every_external_gate_starts_unverified_not_passing(self):
+    def test_every_external_gate_starts_blocking_not_passing(self):
+        """Absent evidence never reads as PASS, whichever blocking flavour it is."""
         ledger = gate.build_ledger(SHA_A, {}, min_records=1)
         for name in gate._EXTERNAL_GATES:
-            assert _find(ledger, name)["status"] == gate.UNVERIFIED, name
+            got = _find(ledger, name)
+            assert got["status"] in gate._BLOCKING, (name, got["status"])
+            assert got["status"] != gate.PASS, name
+
+    def test_access_gated_evidence_is_blocked_not_merely_unverified(self):
+        """"Go and look" and "somebody must grant access" are different asks."""
+        ledger = gate.build_ledger(SHA_A, {}, min_records=1)
+        assert _find(ledger, "backup")["status"] == gate.BLOCKED
+        assert _find(ledger, "restore")["status"] == gate.BLOCKED
+        assert _find(ledger, "render_canary")["status"] == gate.UNVERIFIED
 
     def test_unverified_is_distinct_from_failed(self):
         # Conflating them would hide which gates need infrastructure access
@@ -359,8 +376,10 @@ class TestIncidentGate:
              "rollup": {"open_total": 0, "truncated": False}})
         assert got["status"] == gate.PASS
 
-    def test_absent_rollup_is_unverified(self):
-        assert gate.check_open_incidents(None)["status"] == gate.UNVERIFIED
+    def test_absent_rollup_is_blocked_on_admin_access(self):
+        got = gate.check_open_incidents(None)
+        assert got["status"] == gate.BLOCKED
+        assert got["reason"] == "access_required"
 
 
 class TestFlagParity:
@@ -481,14 +500,14 @@ def _freshness_block(fresh: int, total: int, **over) -> dict:
 class TestFreshnessGate:
     def test_below_the_approved_floor_blocks(self, monkeypatch, tmp_path):
         _write_release_block(tmp_path, monkeypatch, _freshness_block(94, 100))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "below_threshold"
         assert got["evidence"]["freshness_threshold"] == 95.0
 
     def test_at_the_approved_floor_can_pass(self, monkeypatch, tmp_path):
         _write_release_block(tmp_path, monkeypatch, _freshness_block(95, 100))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.PASS
         assert got["evidence"]["freshness_percent"] == 95.0
 
@@ -497,7 +516,7 @@ class TestFreshnessGate:
         """A school-wide outage averages away against enough fresh siblings."""
         _write_release_block(tmp_path, monkeypatch, _freshness_block(
             99, 100, fully_stale_school_count=1, fully_stale_schools=["caltech"]))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "fully_stale_schools"
 
@@ -505,7 +524,7 @@ class TestFreshnessGate:
         """Counting only the already-tracked subset is not a freshness gain."""
         _write_release_block(tmp_path, monkeypatch, _freshness_block(
             100, 100, expected_profile_count=129060))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "denominator_shrunk"
 
@@ -513,7 +532,7 @@ class TestFreshnessGate:
         """The percent is recomputed from the counts, never trusted."""
         _write_release_block(tmp_path, monkeypatch,
                              _freshness_block(34, 100, freshness_pct=99.9))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "freshness_inconsistent"
 
@@ -528,11 +547,11 @@ class TestFreshnessGate:
         """
         before = _freshness_block(34, 100, computed_at="2026-08-01T00:00:00+00:00")
         _write_release_block(tmp_path, monkeypatch, before)
-        assert gate.check_freshness()["status"] == gate.FAIL
+        assert gate.check_tracking_freshness()["status"] == gate.FAIL
 
         after = _freshness_block(34, 100)  # computed_at is now
         _write_release_block(tmp_path, monkeypatch, after)
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "below_threshold"
         assert got["evidence"]["freshness_percent"] == 34.0
@@ -540,7 +559,7 @@ class TestFreshnessGate:
     def test_an_empty_denominator_is_never_vacuously_fresh(
             self, monkeypatch, tmp_path):
         _write_release_block(tmp_path, monkeypatch, _freshness_block(0, 0))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.UNVERIFIED
         assert got["reason"] == "denominator_absent"
 
@@ -548,7 +567,7 @@ class TestFreshnessGate:
         old = (datetime.now(UTC) - timedelta(days=400)).isoformat()
         _write_release_block(tmp_path, monkeypatch,
                              _freshness_block(99, 100, computed_at=old))
-        got = gate.check_freshness()
+        got = gate.check_tracking_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "evidence_stale"
 
@@ -570,14 +589,14 @@ class TestFeatureFlagApplicability:
 
     def test_the_underlying_failure_is_kept_not_erased(self):
         """NOT_APPLICABLE is a statement about the surface, not an all-clear."""
-        failing = gate._gate("freshness", gate.FAIL, "34.14% below 95.0%",
+        failing = gate._gate("tracking_freshness", gate.FAIL, "34.14% below 95.0%",
                              {"freshness_percent": 34.14})
         got = gate.apply_applicability(failing, {"professor_signals": False})
         assert got["evidence"]["would_be"]["status"] == gate.FAIL
         assert got["evidence"]["would_be"]["evidence"]["freshness_percent"] == 34.14
 
     def test_a_disabled_feature_is_never_relabelled_pass(self):
-        failing = gate._gate("freshness", gate.FAIL, "below floor")
+        failing = gate._gate("tracking_freshness", gate.FAIL, "below floor")
         got = gate.apply_applicability(failing, {"professor_signals": False})
         assert got["status"] != gate.PASS
 
@@ -656,8 +675,8 @@ class TestProviderApplicability:
         assert not_applicable == []
         assert set(required) == set(gate._PROVIDER_REQUIRED_BY)
 
-    def test_absent_provider_evidence_is_unverified(self):
-        assert gate.check_providers(None, {})["status"] == gate.UNVERIFIED
+    def test_absent_provider_evidence_is_blocked_on_admin_access(self):
+        assert gate.check_providers(None, {})["status"] == gate.BLOCKED
 
 
 # ---------------------------------------------------------------------------
@@ -700,12 +719,16 @@ class TestEvidenceStaleness:
 # ---------------------------------------------------------------------------
 
 class TestRestoreDrillGate:
-    def test_a_never_performed_drill_blocks(self, monkeypatch, tmp_path):
+    def test_a_never_performed_drill_is_blocked_on_scratch_access(
+            self, monkeypatch, tmp_path):
+        """Not "nobody looked" — nobody CAN, until a project is provisioned."""
         monkeypatch.setattr(gate, "_REPO", tmp_path)
         got = gate.check_restore_drill()
-        assert got["status"] == gate.UNVERIFIED
-        assert got["reason"] == "drill_never_performed"
+        assert got["status"] == gate.BLOCKED
+        assert got["reason"] == "scratch_project_access_required"
         assert got["release_blocking"] is True
+        assert got["owner"].startswith("infrastructure owner")
+        assert "scratch Supabase project" in got["evidence"]["required_access"]
 
     def test_a_failed_drill_blocks(self, monkeypatch):
         record = _passing_drill() | {"final_result": "FAIL",
@@ -767,7 +790,7 @@ class TestRestoreDrillGate:
                             lambda: (None, "no restore-drill record"))
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         assert ledger["final_decision"] == "NO-GO"
-        assert ledger["restore_drill_status"] == gate.UNVERIFIED
+        assert ledger["restore_drill_status"] == gate.BLOCKED
 
     def test_the_latest_drill_is_the_one_that_counts(self, monkeypatch, tmp_path):
         drills = tmp_path / "data" / "releases" / "drills"
@@ -835,26 +858,50 @@ class TestLedgerShape:
     def test_not_applicable_gates_are_listed_with_their_reason(self, monkeypatch):
         _stub_repo_gates(monkeypatch, SHA_A)
         monkeypatch.setattr(
-            gate, "check_freshness",
-            lambda: gate._gate("freshness", gate.FAIL, "34.14% below 95.0%"))
+            gate, "check_tracking_freshness",
+            lambda: gate._gate("tracking_freshness", gate.FAIL, "34.14% below 95.0%"))
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         entry = next(e for e in ledger["not_applicable_gates"]
-                     if e["gate"] == "freshness")
+                     if e["gate"] == "tracking_freshness")
         assert entry["reason"] == "feature_flag_disabled"
 
-    def test_freshness_is_reported_even_when_it_does_not_gate(self, monkeypatch):
+    def test_tracking_freshness_is_reported_even_when_it_does_not_gate(
+            self, monkeypatch):
         """"Not applicable" is about the surface, not a reason to stop measuring."""
         _stub_repo_gates(monkeypatch, SHA_A)
         monkeypatch.setattr(
-            gate, "check_freshness",
-            lambda: gate._gate("freshness", gate.FAIL, "below floor",
+            gate, "check_tracking_freshness",
+            lambda: gate._gate("tracking_freshness", gate.FAIL, "below floor",
                                {"freshness_percent": 34.8,
                                 "freshness_threshold": 95.0,
                                 "fully_stale_school_count": 39}))
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
-        assert ledger["freshness_percent"] == 34.8
-        assert ledger["freshness_threshold"] == 95.0
-        assert ledger["fully_stale_school_count"] == 39
+        assert ledger["tracking_freshness_percent"] == 34.8
+        assert ledger["tracking_fully_stale_school_count"] == 39
+
+    def test_the_headline_freshness_is_the_corpus_one(self, monkeypatch):
+        """The release requirement is corpus freshness, not tracking coverage.
+
+        Reporting the tracking number under the bare name `freshness` is how a
+        34.8% coverage gap and a 91.2% corpus reading were read as one fact.
+        """
+        _stub_repo_gates(monkeypatch, SHA_A)
+        monkeypatch.setattr(
+            gate, "check_corpus_freshness",
+            lambda: gate._gate("corpus_freshness", gate.PASS, "fine",
+                               {"freshness_percent": 96.5,
+                                "freshness_threshold": 95.0,
+                                "fully_stale_school_count": 0}))
+        monkeypatch.setattr(
+            gate, "check_tracking_freshness",
+            lambda: gate._gate("tracking_freshness", gate.FAIL, "below floor",
+                               {"freshness_percent": 34.8,
+                                "freshness_threshold": 95.0,
+                                "fully_stale_school_count": 39}))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
+        assert ledger["freshness_percent"] == 96.5
+        assert ledger["fully_stale_school_count"] == 0
+        assert ledger["tracking_freshness_percent"] == 34.8
 
     def test_the_candidate_can_regenerate_the_committed_ledger(
             self, monkeypatch, tmp_path):
@@ -907,4 +954,253 @@ class TestLedgerRefreshIsNotAnExemption:
         old = (datetime.now(UTC)
                - timedelta(days=gate.LEDGER_MAX_AGE_DAYS + 1)).isoformat()
         _write_ledger(tmp_path, monkeypatch, generated_at=old)
+        assert gate.check_ledger_currency(SHA_A)["status"] == gate.FAIL
+# Per-source freshness: the record floor cannot see a frozen school
+# ---------------------------------------------------------------------------
+
+def _health(sources: dict) -> dict:
+    return {"schema_version": 1, "sources": sources, "shards": {}}
+
+
+def _row(school: str, days_ago: int, status: str = "success_nonzero") -> dict:
+    when = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
+    return {
+        "school": school,
+        "last_attempt_at": datetime.now(UTC).isoformat(),
+        "last_success_at": when,
+        "status": status,
+        "current_count": 0 if status != "success_nonzero" else 10,
+        "last_good_count": 10,
+        "consecutive_failures": 0 if status == "success_nonzero" else 3,
+    }
+
+
+class TestFullyStaleSchoolGate:
+    """The corpus floor counts RECORDS, which a frozen school passes easily -
+    UC Berkeley's 3,106 records sat 44 days stale and counted every one."""
+
+    def _run(self, monkeypatch, tmp_path, ledger):
+        path = tmp_path / "source_health.json"
+        path.write_text(json.dumps(ledger), encoding="utf-8")
+        monkeypatch.setattr(gate, "_SOURCE_HEALTH_PATH", path)
+        return gate.check_no_fully_stale_school()
+
+    def test_a_school_with_no_fresh_source_fails_the_gate(
+        self, monkeypatch, tmp_path,
+    ):
+        result = self._run(monkeypatch, tmp_path, _health({
+            "ucb_ling_faculty": _row("ucb", 44, "suspicious_zero"),
+            "ucb_eecs_faculty": _row("ucb", 44, "suspicious_zero"),
+        }))
+        assert result["status"] == gate.FAIL
+        assert result["evidence"]["fully_stale_school_count"] == 1
+        assert result["evidence"]["fully_stale_schools"] == ["ucb"]
+
+    def test_one_stale_department_among_fresh_ones_passes(
+        self, monkeypatch, tmp_path,
+    ):
+        """Deliberately NOT a blocker: partial degradation is what the publish
+        path now allows on purpose. Failing the release for it would rebuild
+        the veto from the other direction."""
+        result = self._run(monkeypatch, tmp_path, _health({
+            "ucb_ling_faculty": _row("ucb", 44, "suspicious_zero"),
+            "ucb_eecs_faculty": _row("ucb", 2),
+            "ucb_math_faculty": _row("ucb", 2),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["fully_stale_school_count"] == 0
+        assert result["evidence"]["partially_degraded_school_count"] == 1
+        assert result["evidence"]["stale_shard_count"] == 1
+
+    def test_all_fresh_passes_cleanly(self, monkeypatch, tmp_path):
+        result = self._run(monkeypatch, tmp_path, _health({
+            "yale_faculty": _row("yale", 1),
+            "ucb_eecs_faculty": _row("ucb", 3),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["stale_shard_count"] == 0
+
+    def test_an_absent_ledger_cannot_be_verified_and_is_not_a_pass(
+        self, monkeypatch, tmp_path,
+    ):
+        """Default NO-GO: not knowing must never read as knowing it is fine."""
+        monkeypatch.setattr(
+            gate, "_SOURCE_HEALTH_PATH", tmp_path / "absent.json",
+        )
+        result = gate.check_no_fully_stale_school()
+        assert result["status"] == gate.CANNOT_VERIFY
+        assert result["status"] in gate._BLOCKING
+
+    def test_the_gate_is_part_of_the_ledger(self, monkeypatch, tmp_path):
+        """A gate nobody evaluates is not a gate."""
+        import subprocess
+        monkeypatch.setattr(gate, "check_release_sha",
+                            lambda sha: gate._gate("release_sha", gate.PASS, "s"))
+        monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(
+            cmd, 0, stdout=("" if "status" in cmd else SHA_A) + "\n", stderr=""))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
+        names = {g["gate"] for g in ledger["gates"]}
+        assert "no_fully_stale_school" in names
+
+
+# ---------------------------------------------------------------------------
+# Corpus freshness is a release requirement, not a report. These tests exist
+# because it spent a release cycle being measured, printed, and not enforced.
+# ---------------------------------------------------------------------------
+
+def _write_shard(tmp_path, monkeypatch, schools: dict[str, list[tuple[bool, int]]]):
+    """schools -> [(is_active, days_since_last_seen), ...] per record."""
+    shard_dir = tmp_path / "data" / "processed" / "shards"
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(UTC)
+    for school, records in schools.items():
+        payload = [
+            {"id": f"{school}-{i}", "metadata": {
+                "is_active": active,
+                "last_seen_at": (now - timedelta(days=age)).isoformat(),
+            }}
+            for i, (active, age) in enumerate(records)
+        ]
+        (shard_dir / f"{school}.json").write_text(json.dumps(payload))
+    monkeypatch.setattr(gate, "_REPO", tmp_path)
+    # The policy constants live in the real tree, not the fixture one.
+    monkeypatch.setattr(gate, "corpus_freshness_policy", lambda: (95.0, 14.0))
+
+
+class TestCorpusFreshnessIsEnforced:
+    def test_below_the_configured_floor_is_fail_not_unverified(
+            self, monkeypatch, tmp_path):
+        """The failure this whole round is about."""
+        _write_shard(tmp_path, monkeypatch, {
+            "a": [(True, 1)] * 91 + [(True, 40)] * 9,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.FAIL
+        assert got["status"] != gate.UNVERIFIED
+        assert got["reason"] == "below_threshold"
+        assert got["evidence"]["freshness_percent"] == 91.0
+
+    def test_any_fully_stale_school_is_fail(self, monkeypatch, tmp_path):
+        """Even at a passing percentage: one dead school is a release blocker."""
+        _write_shard(tmp_path, monkeypatch, {
+            "big": [(True, 1)] * 990,
+            "dead": [(True, 40)] * 10,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["evidence"]["freshness_percent"] == 99.0
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["fully_stale_school_count"] == 1
+        assert got["evidence"]["fully_stale_schools"] == ["dead"]
+
+    def test_at_or_above_the_floor_with_no_dead_school_passes(
+            self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {
+            "a": [(True, 1)] * 95 + [(True, 40)] * 5,
+            "b": [(True, 2)] * 10,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.PASS
+
+    def test_it_blocks_the_release(self, monkeypatch, tmp_path):
+        _stub_repo_gates(monkeypatch, SHA_A)
+        monkeypatch.setattr(
+            gate, "check_corpus_freshness",
+            lambda: gate._gate("corpus_freshness", gate.FAIL, "91.17% < 95.0%",
+                               reason="below_threshold"))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
+        assert ledger["final_decision"] == "NO-GO"
+        assert "corpus_freshness" in [b["check"] for b in ledger["blockers"]]
+
+    def test_no_feature_flag_can_retire_it(self):
+        """Every surface reads the corpus; no optional feature owns it."""
+        assert "corpus_freshness" not in gate._GATE_REQUIRED_BY
+        failing = gate._gate("corpus_freshness", gate.FAIL, "below floor")
+        for scope in ({"professor_signals": False}, {}, None):
+            assert gate.apply_applicability(failing, scope)["status"] == gate.FAIL
+
+    def test_deactivated_records_are_excluded_from_both_sides(
+            self, monkeypatch, tmp_path):
+        """Retired records are not stale data being served."""
+        _write_shard(tmp_path, monkeypatch, {
+            "a": [(True, 1)] * 10 + [(False, 400)] * 90,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.PASS
+        assert got["evidence"]["active_records"] == 10
+        assert got["evidence"]["inactive_records"] == 90
+
+    def test_a_rewritten_shard_carrying_old_stamps_is_still_stale(
+            self, monkeypatch, tmp_path):
+        """Republishing retained records is not a refresh.
+
+        The stamp only moves when a collector really re-observed the record, so
+        a run that executed and fetched nothing cannot raise this number.
+        """
+        _write_shard(tmp_path, monkeypatch, {"a": [(True, 40)] * 100})
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["fresh_records"] == 0
+
+    def test_an_empty_corpus_is_never_vacuously_fresh(self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {"a": [(False, 1)] * 5})
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.CANNOT_VERIFY
+        assert got["reason"] == "denominator_absent"
+
+    def test_the_threshold_comes_from_the_project_not_this_module(self):
+        """Imported, never restated, so the gate cannot drift off the pipeline."""
+        import src.normalizers.deactivate_stale_faculty as dsf
+        import src.tracking.professor_profiles as pp
+        min_pct, stale_days = gate.corpus_freshness_policy()
+        assert min_pct == pp.FRESHNESS_MIN_PCT
+        assert stale_days == float(dsf.GRACE_DAYS)
+
+
+class TestBlockingStatusesAreDistinct:
+    def test_all_four_non_pass_states_block(self):
+        for status in (gate.FAIL, gate.UNVERIFIED, gate.BLOCKED,
+                       gate.CANNOT_VERIFY):
+            assert status in gate._BLOCKING
+
+    def test_not_applicable_is_the_only_non_blocking_non_pass(self):
+        assert gate.NOT_APPLICABLE not in gate._BLOCKING
+
+    def test_a_known_numeric_failure_is_never_reported_as_unverified(
+            self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {"a": [(True, 40)] * 100})
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.FAIL
+        assert got["status"] not in (gate.UNVERIFIED, gate.BLOCKED,
+                                     gate.CANNOT_VERIFY, gate.NOT_APPLICABLE)
+
+    def test_missing_restore_access_is_blocked_never_pass(
+            self, monkeypatch, tmp_path):
+        monkeypatch.setattr(gate, "_REPO", tmp_path)
+        got = gate.check_restore_drill()
+        assert got["status"] == gate.BLOCKED
+        assert got["status"] != gate.PASS
+
+    def test_the_summary_separates_every_state(self, monkeypatch):
+        _stub_repo_gates(monkeypatch, SHA_A)
+        ledger = gate.build_ledger(SHA_A, {}, min_records=1)
+        s = ledger["summary"]
+        for key in ("passed", "failed", "blocked", "cannot_verify", "unverified",
+                    "not_applicable", "release_blocking"):
+            assert key in s, key
+        assert s["release_blocking"] == len(ledger["blockers"])
+
+
+class TestCandidateProvenance:
+    def test_changing_the_candidate_sha_invalidates_old_evidence(self, monkeypatch):
+        """Evidence gathered for one build says nothing about another."""
+        _stub_repo_gates(monkeypatch, SHA_A)
+        old = _all_external_pass(SHA_A)
+        ledger = gate.build_ledger(SHA_B, old, min_records=1)
+        assert ledger["final_decision"] == "NO-GO"
+        mismatched = [g for g in ledger["gates"]
+                      if g.get("reason") == "sha_mismatch"]
+        assert mismatched, "evidence for another SHA must not be reused"
+
+    def test_a_stale_ledger_cannot_satisfy_a_candidate(self, monkeypatch, tmp_path):
+        _write_ledger(tmp_path, monkeypatch, release_sha=SHA_B)
         assert gate.check_ledger_currency(SHA_A)["status"] == gate.FAIL

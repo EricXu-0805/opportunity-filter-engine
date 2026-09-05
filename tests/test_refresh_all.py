@@ -675,7 +675,16 @@ def test_unknown_or_empty_shard_raises(monkeypatch, tmp_path):
 
 def test_release_contract_drives_tracking_refresh_ok(monkeypatch, tmp_path):
     """A process that finishes with empty mandatory sources is not a
-    successful producing refresh for the tracking artifact."""
+    successful producing refresh for the tracking artifact.
+
+    Two gates of different widths, asserted together because the difference
+    is the point. The opportunity corpus PUBLISHES on this verdict: refusing
+    to, because one department emitted nothing, is what froze UC Berkeley for
+    44 days. Professor tracking stays fail-closed on the same evidence - its
+    baselines are per-professor claims about what a directory says today, so
+    a mandatory producer that emitted nothing is not a successful producing
+    refresh for it.
+    """
 
     _stub_with_processed_file(
         monkeypatch,
@@ -698,12 +707,27 @@ def test_release_contract_drives_tracking_refresh_ok(monkeypatch, tmp_path):
     )
     summary = refresh_all.refresh_all(deep=True, schools={"uw"})
 
+    # The stricter gate: tracking does not treat this as a successful run.
     assert captured["refresh_ok"] is False
-    assert summary["release"]["ready"] is False
+
+    # The wider one: the corpus still publishes, and says it is degraded.
+    assert summary["release"]["ready"] is True
+    assert summary["release"]["status"] == "degraded"
+    assert summary["release"]["publishable"] == ["uw"]
+    assert summary["release"]["reasons"] == []
     assert any(
-        "emitted zero records" in reason
-        for reason in summary["release"]["reasons"]
+        "emitted zero records" in warning
+        for warning in summary["release"]["warnings"]
     )
+    assert {
+        item["source"]
+        for item in summary["release"]["degradations"]
+        if item["kind"] == "suspicious_zero"
+    } == {"uw_faculty", "campus_graph:uw"}
+
+    # And the zero is named as a zero, not as an "ok" run.
+    assert summary["sources"]["uw_faculty"]["status"] == "suspicious_zero"
+    assert summary["sources"]["uw_faculty"]["suspicious_zero_baseline"] == 1
 
 
 def test_cli_returns_two_after_writing_blocked_diagnostics(monkeypatch):

@@ -45,7 +45,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
@@ -63,11 +63,28 @@ _REPO = Path(__file__).resolve().parents[1]
 PASS = "PASS"
 FAIL = "FAIL"
 UNVERIFIED = "UNVERIFIED"
+BLOCKED = "BLOCKED"
+CANNOT_VERIFY = "CANNOT_VERIFY"
 SKIPPED = "SKIPPED"
 NOT_RUN = "NOT_RUN"
 NOT_APPLICABLE = "NOT_APPLICABLE"
 
-_BLOCKING = (FAIL, UNVERIFIED, SKIPPED, NOT_RUN)
+# All of these block. They are kept apart because they need different people
+# on different days:
+#
+#   FAIL           we measured it and the requirement is not met. Fix the thing.
+#   UNVERIFIED     nobody has gathered the evidence yet. Go and gather it.
+#   BLOCKED        the evidence CANNOT be gathered without access or
+#                  authorization that does not currently exist. Someone has to
+#                  provision something first.
+#   CANNOT_VERIFY  we tried and the answer was indeterminate — an unreadable
+#                  artifact, an unparseable threshold. Repair the input.
+#
+# The distinction that actually cost this project a release cycle is FAIL vs
+# UNVERIFIED: a known-failing number reported as "no evidence" reads like
+# paperwork, and paperwork gets deferred. A measured 91.17% against a 95%
+# floor is not missing evidence. It is a failure.
+_BLOCKING = (FAIL, UNVERIFIED, BLOCKED, CANNOT_VERIFY, SKIPPED, NOT_RUN)
 
 # Gates whose evidence can only come from outside this repository: a deployed
 # service, a provider dashboard, or a restore drill. The gate cannot fabricate
@@ -117,7 +134,9 @@ _OWNERS: dict[str, str] = {
     "worktree": "release operator",
     "corpus": "data pipeline owner",
     "ledger_currency": "release operator",
-    "freshness": "data pipeline owner",
+    "corpus_freshness": "data pipeline owner",
+    "tracking_freshness": "data pipeline owner",
+    "no_fully_stale_school": "data pipeline owner",
     "tracking_release_ready": "data pipeline owner",
     "truthfulness": "data pipeline owner",
     "open_incidents": "ops on-call",
@@ -140,8 +159,12 @@ _DEFAULT_OWNER = "release operator"
 _ACTIONS: dict[str, str] = {
     "ledger_currency": "re-run scripts/release_gate.py against the candidate SHA "
                        "with --update-current",
-    "freshness": "run a refresh that profile-verifies the stale baselines, or keep "
-                 "professor_signals closed",
+    "corpus_freshness": "repair the collectors behind the stale sources and re-run "
+                        "their shard; see scripts/source_freshness_report.py report",
+    "tracking_freshness": "run a refresh that profile-verifies the stale baselines, or "
+                          "keep professor_signals closed",
+    "no_fully_stale_school": "repair the collectors for the named schools and re-run "
+                             "their shards",
     "tracking_release_ready": "raise professor-tracking coverage, or keep "
                               "professor_signals closed",
     "truthfulness": "re-run scripts/truthfulness_audit.py against the current corpus",
@@ -158,6 +181,25 @@ _ACTIONS: dict[str, str] = {
 _DEFAULT_ACTION = ("gather the evidence named in docs/RELEASE.md §2 and add it to "
                    "data/releases/evidence/<sha>.json")
 
+# Gates whose evidence cannot be produced by anyone without credentials or a
+# provisioning decision. Absent evidence here is BLOCKED, not UNVERIFIED: the
+# difference is whether the next step is "go and look" or "someone has to grant
+# access first", and only the second one needs escalating.
+_ACCESS_REQUIRED = frozenset({
+    "restore_drill",   # a billed scratch project the owner must provision
+    "backup",          # Supabase dashboard
+    "restore",         # depends on the drill above
+    "supabase_canary", # authenticated project read
+    "open_incidents",  # ADMIN_TOKEN
+    "provider_readiness",  # ADMIN_TOKEN
+    "dead_man",        # SQL against production
+})
+
+
+def _absent_status(name: str) -> str:
+    """UNVERIFIED when someone could just go and look; BLOCKED when they can't."""
+    return BLOCKED if name in _ACCESS_REQUIRED else UNVERIFIED
+
 
 def _now() -> datetime:
     return datetime.now(UTC)
@@ -171,6 +213,8 @@ def _default_reason(status: str) -> str:
     return {
         FAIL: "check_failed",
         UNVERIFIED: "evidence_absent",
+        BLOCKED: "access_required",
+        CANNOT_VERIFY: "indeterminate",
         SKIPPED: "required_check_skipped",
         NOT_RUN: "required_check_not_run",
         NOT_APPLICABLE: "not_applicable",
@@ -237,7 +281,7 @@ _GATE_REQUIRED_BY: dict[str, tuple[str, ...]] = {
     # is skipped (backend/routes/matches.py). /api/ready reads the artifact but
     # reports it under "reported", explicitly outside the gating checks.
     "tracking_release_ready": ("professor_signals",),
-    "freshness": ("professor_signals",),
+    "tracking_freshness": ("professor_signals",),
 }
 
 # Providers, and the features that need them. Same rule: a provider stops
@@ -513,8 +557,8 @@ def _tracking_release_block() -> tuple[dict | None, str | None]:
     return block, None
 
 
-def check_freshness() -> dict:
-    """Baseline freshness against the project's approved 95% floor.
+def check_tracking_freshness() -> dict:
+    """Professor-tracking baseline freshness against the project's approved 95% floor.
 
     The threshold and the TTL are read from the producer
     (``src.tracking.professor_profiles``) rather than restated here, so this
@@ -530,7 +574,7 @@ def check_freshness() -> dict:
     """
     block, err = _tracking_release_block()
     if block is None:
-        return _gate("freshness", UNVERIFIED,
+        return _gate("tracking_freshness", UNVERIFIED,
                      f"freshness cannot be established: {err}",
                      reason="artifact_unreadable")
     try:
@@ -540,7 +584,7 @@ def check_freshness() -> dict:
             FRESHNESS_TTL_DAYS,
         )
     except Exception as exc:  # noqa: BLE001
-        return _gate("freshness", UNVERIFIED,
+        return _gate("tracking_freshness", UNVERIFIED,
                      f"freshness threshold unreadable: {exc}",
                      reason="threshold_unreadable")
 
@@ -567,7 +611,7 @@ def check_freshness() -> dict:
     }
 
     if not isinstance(fresh, int) or not isinstance(total, int) or total <= 0:
-        return _gate("freshness", UNVERIFIED,
+        return _gate("tracking_freshness", UNVERIFIED,
                      "artifact carries no usable fresh/total counts, so freshness "
                      "has no denominator and cannot be vacuously satisfied",
                      evidence, reason="denominator_absent")
@@ -576,7 +620,7 @@ def check_freshness() -> dict:
         # denominator is not that number, the artifact is measuring the subset
         # it already tracks — a shrunken denominator, which is the classic way
         # this percentage improves while coverage does not.
-        return _gate("freshness", FAIL,
+        return _gate("tracking_freshness", FAIL,
                      f"denominator {total} is not the active corpus count "
                      f"{expected!r}: freshness computed over a shrunken population "
                      "is not freshness",
@@ -585,36 +629,257 @@ def check_freshness() -> dict:
     actual_pct = 100.0 * fresh / total
     evidence["freshness_percent"] = round(actual_pct, 2)
     if isinstance(stored_pct, int | float) and abs(float(stored_pct) - actual_pct) > 0.05:
-        return _gate("freshness", FAIL,
+        return _gate("tracking_freshness", FAIL,
                      f"stored freshness_pct {stored_pct} does not match "
                      f"{fresh}/{total} = {actual_pct:.2f}%: the recorded number was "
                      "not produced by the recorded counts",
                      evidence, reason="freshness_inconsistent")
     if age is None:
-        return _gate("freshness", UNVERIFIED,
+        return _gate("tracking_freshness", UNVERIFIED,
                      "artifact has no parseable computed_at, so the currency of this "
                      "freshness reading cannot be established",
                      evidence, reason="evidence_undated")
     if age > FRESHNESS_TTL_DAYS:
-        return _gate("freshness", FAIL,
+        return _gate("tracking_freshness", FAIL,
                      f"freshness was computed {age:.1f}d ago, beyond the "
                      f"{FRESHNESS_TTL_DAYS}d TTL: it describes a corpus that has "
                      "since moved",
                      evidence, reason="evidence_stale")
     if actual_pct < FRESHNESS_MIN_PCT:
-        return _gate("freshness", FAIL,
+        return _gate("tracking_freshness", FAIL,
                      f"{actual_pct:.2f}% of {total} active professor records are "
                      f"profile-verified within {FRESHNESS_TTL_DAYS}d, below the "
                      f"{FRESHNESS_MIN_PCT}% floor",
                      evidence, reason="below_threshold")
     if fully_stale:
-        return _gate("freshness", FAIL,
+        return _gate("tracking_freshness", FAIL,
                      f"{fully_stale} school(s) have no fresh baseline at all: "
                      f"{', '.join(evidence['fully_stale_schools'][:10])}",
                      evidence, reason="fully_stale_schools")
-    return _gate("freshness", PASS,
+    return _gate("tracking_freshness", PASS,
                  f"{actual_pct:.2f}% >= {FRESHNESS_MIN_PCT}% across {total} active "
                  "records, no fully-stale school", evidence)
+# Module-level so a test can point the gate at a fixture ledger instead of
+# asserting against whatever the committed corpus happens to look like today.
+_SOURCE_HEALTH_PATH = _REPO / "data" / "processed" / "source_health.json"
+
+
+def check_no_fully_stale_school() -> dict:
+    """No school may have stopped refreshing entirely.
+
+    The corpus floor above counts RECORDS, which a frozen school passes
+    without trouble: UC Berkeley's 3,106 records sat 44 days stale and
+    contributed every one of them to the total. Staleness is per source, so
+    it needs its own gate reading the per-source ledger.
+
+    ``fully_stale`` is deliberately the school-wide condition, not the
+    per-shard one: one stale department among fresh siblings is the
+    partial degradation the publish path now allows on purpose, and failing
+    the release for it would re-create the veto from the other direction.
+    A school with NO fresh source has stopped refreshing, and that is a
+    release blocker.
+    """
+    path = _SOURCE_HEALTH_PATH
+    if not path.exists():
+        return _gate("no_fully_stale_school", CANNOT_VERIFY,
+                     "source_health.json absent: per-source freshness unknown. "
+                     "corpus_freshness above still answers the record-level "
+                     "question from the shards themselves",
+                     reason="ledger_absent")
+    try:
+        sys.path.insert(0, str(_REPO))
+        from src.collectors import source_health  # noqa: PLC0415
+        report = source_health.corpus_report(source_health.load_ledger(path))
+    except Exception as exc:  # noqa: BLE001
+        return _gate("no_fully_stale_school", CANNOT_VERIFY,
+                     f"could not evaluate: {exc}", reason="ledger_unreadable")
+    count = report["fully_stale_school_count"]
+    detail = {
+        "fully_stale_school_count": count,
+        "fully_stale_schools": report["fully_stale_schools"][:20],
+        "school_count": report["school_count"],
+        "partially_degraded_school_count": report[
+            "partially_degraded_school_count"
+        ],
+        "stale_shard_count": report["stale_shard_count"],
+        "failed_shard_count": report["failed_shard_count"],
+        "stale_days": report["stale_days"],
+    }
+    if count:
+        return _gate(
+            "no_fully_stale_school", FAIL,
+            f"{count} school(s) have no fresh source at all: "
+            f"{', '.join(report['fully_stale_schools'][:10])}",
+            detail,
+        )
+    return _gate(
+        "no_fully_stale_school", PASS,
+        f"every one of {report['school_count']} school(s) has fresh data "
+        f"({report['partially_degraded_school_count']} partially degraded, "
+        f"{report['stale_shard_count']} stale shard(s))",
+        detail,
+    )
+
+
+# The corpus-freshness bound and floor are both existing project constants,
+# imported rather than restated: GRACE_DAYS is what deactivate_stale_faculty
+# already treats as "unseen for two missed weekly deep runs", and
+# FRESHNESS_MIN_PCT is the percentage floor the tracking contract was written
+# against. Re-declaring either here would let the gate drift away from the
+# pipeline it is judging.
+def corpus_freshness_policy() -> tuple[float, float]:
+    """``(min_percent, stale_days)`` for corpus-record freshness."""
+    sys.path.insert(0, str(_REPO))
+    from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
+        GRACE_DAYS,
+    )
+    from src.tracking.professor_profiles import (  # noqa: PLC0415
+        FRESHNESS_MIN_PCT,
+    )
+
+    return float(FRESHNESS_MIN_PCT), float(GRACE_DAYS)
+
+
+def corpus_freshness_report(now: datetime | None = None) -> dict:
+    """Record-level freshness of the committed corpus, computed from the shards.
+
+    This reads what actually shipped: every record's own ``last_seen_at``, the
+    stamp a collector writes only when it really re-observed that record. A
+    run that executed and fetched nothing moves no stamp, so an attempted
+    refresh cannot raise this number — which is the property the whole gate
+    depends on.
+
+    Deactivated records are excluded from BOTH sides of the ratio. They are
+    not stale data being served; they are data the pipeline has already
+    retired, and counting them as stale would report a working deactivation
+    pass as a freshness failure.
+    """
+    now = now or _now()
+    min_pct, stale_days = corpus_freshness_policy()
+    cutoff = now - timedelta(days=stale_days)
+
+    shard_dir = _REPO / "data" / "processed" / "shards"
+    if not shard_dir.is_dir():
+        raise FileNotFoundError("data/processed/shards is missing")
+
+    active = fresh = inactive = 0
+    schools: dict[str, dict] = {}
+    for path in sorted(shard_dir.glob("*.json")):
+        school = path.stem
+        with path.open(encoding="utf-8") as handle:
+            records = json.load(handle)
+        row = {"active": 0, "fresh": 0, "last_seen_at": None}
+        for record in records:
+            meta = record.get("metadata") or {}
+            if not meta.get("is_active"):
+                inactive += 1
+                continue
+            row["active"] += 1
+            seen = _parse_stamp(meta.get("last_seen_at"))
+            if seen is not None and (row["last_seen_at"] is None
+                                     or seen > row["last_seen_at"]):
+                row["last_seen_at"] = seen
+            if seen is not None and seen >= cutoff:
+                row["fresh"] += 1
+        active += row["active"]
+        fresh += row["fresh"]
+        schools[school] = row
+
+    def _state(row: dict) -> str:
+        if row["active"] == 0:
+            return "no_active_records"
+        if row["fresh"] == row["active"]:
+            return "fully_fresh"
+        return "partially_stale" if row["fresh"] else "fully_stale"
+
+    states = {name: _state(row) for name, row in schools.items()}
+    fully_stale = sorted(n for n, st in states.items() if st == "fully_stale")
+    return {
+        "generated_at": now.isoformat(),
+        "freshness_percent": round(100.0 * fresh / active, 2) if active else None,
+        "freshness_threshold": min_pct,
+        "stale_days": stale_days,
+        "active_records": active,
+        "fresh_records": fresh,
+        "stale_records": active - fresh,
+        "inactive_records": inactive,
+        "school_count": len(schools),
+        "fully_fresh_school_count": sum(1 for v in states.values() if v == "fully_fresh"),
+        "partially_stale_school_count": sum(
+            1 for v in states.values() if v == "partially_stale"),
+        "fully_stale_school_count": len(fully_stale),
+        "fully_stale_schools": fully_stale,
+        "no_active_record_school_count": sum(
+            1 for v in states.values() if v == "no_active_records"),
+        "schools": {
+            name: {
+                "active": row["active"],
+                "fresh": row["fresh"],
+                "state": states[name],
+                "last_seen_at": (row["last_seen_at"].isoformat()
+                                 if row["last_seen_at"] else None),
+            }
+            for name, row in schools.items()
+        },
+    }
+
+
+def check_corpus_freshness() -> dict:
+    """Corpus freshness against the configured floor. Always applicable.
+
+    This is the gate the release requirement actually names, and it does not
+    depend on any feature flag: every student-facing surface reads the corpus,
+    so a corpus that has stopped refreshing is a release problem no matter
+    which optional features are open.
+
+    It is deliberately separate from ``tracking_freshness``. Those two numbers
+    measure different populations — this one, whether the records we serve were
+    re-observed recently; that one, whether professor-tracking baselines exist
+    and are current. Reporting either as "freshness" without saying which is
+    how a 34.8% coverage gap and a 91.2% corpus reading got read as the same
+    fact.
+    """
+    try:
+        report = corpus_freshness_report()
+    except Exception as exc:  # noqa: BLE001
+        return _gate("corpus_freshness", CANNOT_VERIFY,
+                     f"corpus freshness could not be computed: {exc}",
+                     reason="corpus_unreadable")
+
+    evidence = {k: v for k, v in report.items() if k != "schools"}
+    evidence["fully_stale_schools"] = report["fully_stale_schools"][:20]
+    evidence["worst_schools"] = sorted(
+        ({"school": name, **row} for name, row in report["schools"].items()
+         if row["state"] != "fully_fresh"),
+        key=lambda r: (r["fresh"] - r["active"]),
+    )[:15]
+
+    pct = report["freshness_percent"]
+    threshold = report["freshness_threshold"]
+    if pct is None:
+        return _gate("corpus_freshness", CANNOT_VERIFY,
+                     "no active records: freshness has no denominator and must "
+                     "not be read as satisfied",
+                     evidence, reason="denominator_absent")
+
+    failures = []
+    if pct < threshold:
+        failures.append(
+            f"{pct:.2f}% of {report['active_records']:,} active records were "
+            f"re-observed within {report['stale_days']:.0f}d, below the "
+            f"{threshold}% floor")
+    if report["fully_stale_school_count"]:
+        failures.append(
+            f"{report['fully_stale_school_count']} school(s) have no fresh "
+            f"record at all: {', '.join(report['fully_stale_schools'][:10])}")
+    if failures:
+        return _gate("corpus_freshness", FAIL, "; ".join(failures), evidence,
+                     reason="below_threshold" if pct < threshold
+                     else "fully_stale_schools")
+    return _gate("corpus_freshness", PASS,
+                 f"{pct:.2f}% >= {threshold}% across "
+                 f"{report['active_records']:,} active records, "
+                 f"no fully-stale school", evidence)
 
 
 def check_tracking_release_ready() -> dict:
@@ -791,11 +1056,15 @@ def check_restore_drill(migrations: dict | None = None) -> dict:
     expected = migrations if migrations is not None else migration_set_identity()
     record, err = load_latest_drill()
     if record is None:
-        return _gate("restore_drill", UNVERIFIED,
-                     f"{err}: recovery capability is assumed, not proven "
-                     "(docs/DISASTER_RECOVERY.md §2)",
-                     {"expected_schema_version": expected},
-                     reason="drill_never_performed")
+        return _gate("restore_drill", BLOCKED,
+                     f"{err}: recovery capability is assumed, not proven. The "
+                     "drill needs an isolated scratch Supabase project, which is "
+                     "a provisioning decision, not a task anyone here can do "
+                     "(docs/DISASTER_RECOVERY.md §2, §5)",
+                     {"expected_schema_version": expected,
+                      "required_access": "scratch Supabase project + management "
+                                         "access authorised by the project owner"},
+                     reason="scratch_project_access_required")
 
     drill_id = record.get("drill_id")
     result = str(record.get("final_result") or "").upper()
@@ -879,9 +1148,10 @@ def check_open_incidents(evidence: dict | None) -> dict:
     count must be supplied as evidence from an authenticated admin call.
     """
     if not evidence:
-        return _gate("open_incidents", UNVERIFIED,
-                     "no incident rollup supplied (GET /api/admin/ops/incidents"
-                     "?unresolved_only=true)", reason="evidence_absent")
+        return _gate("open_incidents", BLOCKED,
+                     "no incident rollup supplied and none can be: "
+                     "GET /api/admin/ops/incidents?unresolved_only=true needs "
+                     "ADMIN_TOKEN", reason="access_required")
     stale = _stale_evidence("open_incidents", evidence)
     if stale is not None:
         return stale
@@ -962,9 +1232,10 @@ def check_providers(evidence: dict | None, scope: dict[str, bool] | None) -> dic
                "not_applicable_providers": not_applicable,
                "flag_state": "unknown" if scope is None else "known"}
     if not evidence:
-        return _gate("provider_readiness", UNVERIFIED,
-                     "no provider report supplied (GET /api/ready with X-Admin-Token "
-                     "-> reported.providers)", summary, reason="evidence_absent")
+        return _gate("provider_readiness", BLOCKED,
+                     "no provider report supplied and none can be: GET /api/ready "
+                     "-> reported.providers needs X-Admin-Token",
+                     summary, reason="access_required")
     stale = _stale_evidence("provider_readiness", evidence)
     if stale is not None:
         return stale
@@ -1072,10 +1343,13 @@ def _stale_evidence(name: str, evidence: dict) -> dict | None:
 def check_external(name: str, evidence: dict | None, sha: str | None) -> dict:
     """A gate whose evidence must come from outside the repo."""
     if not evidence:
-        return _gate(name, UNVERIFIED,
+        blocked = name in _ACCESS_REQUIRED
+        return _gate(name, _absent_status(name),
                      "no evidence supplied; this gate cannot be verified from "
-                     "inside the repository and must not be assumed",
-                     reason="evidence_absent")
+                     "inside the repository and must not be assumed"
+                     + (" — and cannot be gathered without access nobody here has"
+                        if blocked else ""),
+                     reason="access_required" if blocked else "evidence_absent")
     got_sha = evidence.get("release_sha")
     if sha and got_sha and str(got_sha).lower() != sha.lower():
         return _gate(name, FAIL,
@@ -1119,7 +1393,9 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
         check_worktree_clean(sha),
         check_ledger_currency(sha, refreshing=refreshing),
         check_corpus_floor(min_records),
-        check_freshness(),
+        check_corpus_freshness(),
+        check_no_fully_stale_school(),
+        check_tracking_freshness(),
         check_tracking_release_ready(),
         check_truthfulness(),
         check_open_incidents(evidence.get("open_incidents")),
@@ -1139,12 +1415,16 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
     def _find(name: str) -> dict:
         return next((g for g in gates if g["gate"] == name), {})
 
-    fresh_gate = _find("freshness")
-    fresh_ev = fresh_gate.get("evidence") or {}
-    if fresh_gate.get("status") == NOT_APPLICABLE:
-        # Still report the numbers: "not applicable" is a statement about the
-        # release surface, never a reason to stop measuring.
-        fresh_ev = ((fresh_ev.get("would_be") or {}).get("evidence")) or {}
+    def _reported(name: str) -> dict:
+        """A gate's numbers, even when applicability moved it out of the way."""
+        found = _find(name)
+        ev = found.get("evidence") or {}
+        if found.get("status") == NOT_APPLICABLE:
+            ev = ((ev.get("would_be") or {}).get("evidence")) or {}
+        return ev
+
+    corpus_ev = _reported("corpus_freshness")
+    fresh_ev = _reported("tracking_freshness")
     drill_gate = _find("restore_drill")
     drill_ev = drill_gate.get("evidence") or {}
 
@@ -1158,17 +1438,28 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
         "summary": {
             "passed": sum(1 for g in gates if g["status"] == PASS),
             "failed": sum(1 for g in gates if g["status"] == FAIL),
+            "blocked": sum(1 for g in gates if g["status"] == BLOCKED),
+            "cannot_verify": sum(1 for g in gates if g["status"] == CANNOT_VERIFY),
             "unverified": sum(1 for g in gates if g["status"] == UNVERIFIED),
             "skipped": sum(1 for g in gates if g["status"] == SKIPPED),
             "not_run": sum(1 for g in gates if g["status"] == NOT_RUN),
             "not_applicable": sum(1 for g in gates if g["status"] == NOT_APPLICABLE),
+            "release_blocking": len(blocking),
         },
         # The named fields a reader looks for without walking the gate list.
         "release_gate_status": "GO" if not blocking else "NO-GO",
         "tracking_release_ready": _find("tracking_release_ready").get("status"),
-        "freshness_percent": fresh_ev.get("freshness_percent"),
-        "freshness_threshold": fresh_ev.get("freshness_threshold"),
-        "fully_stale_school_count": fresh_ev.get("fully_stale_school_count"),
+        # The release requirement. Always applicable, always measured.
+        "freshness_percent": corpus_ev.get("freshness_percent"),
+        "freshness_threshold": corpus_ev.get("freshness_threshold"),
+        "fully_stale_school_count": corpus_ev.get("fully_stale_school_count"),
+        "fully_stale_schools": corpus_ev.get("fully_stale_schools"),
+        "stale_records": corpus_ev.get("stale_records"),
+        "active_records": corpus_ev.get("active_records"),
+        # A different population, kept under its own name so the two can never
+        # be confused for one number again.
+        "tracking_freshness_percent": fresh_ev.get("freshness_percent"),
+        "tracking_fully_stale_school_count": fresh_ev.get("fully_stale_school_count"),
         "backend_test_status": _find("ci:Backend (lint + pytest)").get("status"),
         "frontend_test_status": _find("ci:Frontend (typecheck + build)").get("status"),
         "migration_status": _find(
@@ -1250,8 +1541,24 @@ def main() -> int:
 
     s = ledger["summary"]
     print(f"release_sha: {ledger['release_sha'] or '(none)'}")
-    print(f"passed={s['passed']} failed={s['failed']} unverified={s['unverified']} "
-          f"skipped={s['skipped']} not_run={s['not_run']} n/a={s['not_applicable']}")
+    print()
+    # Counts first, and FAIL on its own line. The previous format printed
+    # "failed=0" beside nine other numbers, which read as "almost ready" while
+    # a measured requirement sat under its floor.
+    print(f"  PASS           {s['passed']:>3}")
+    print(f"  FAIL           {s['failed']:>3}   <- measured, requirement not met")
+    print(f"  BLOCKED        {s['blocked']:>3}   <- needs access nobody here has")
+    print(f"  CANNOT_VERIFY  {s['cannot_verify']:>3}   <- attempted, indeterminate")
+    print(f"  UNVERIFIED     {s['unverified']:>3}   <- evidence not gathered yet")
+    print(f"  SKIPPED        {s['skipped']:>3}")
+    print(f"  NOT_RUN        {s['not_run']:>3}")
+    print(f"  NOT_APPLICABLE {s['not_applicable']:>3}   (does not block)")
+    print(f"\n  release-blocking items: {s['release_blocking']}")
+    if ledger.get("freshness_percent") is not None:
+        print(f"  corpus freshness: {ledger['freshness_percent']}% "
+              f"(floor {ledger['freshness_threshold']}%), "
+              f"fully-stale schools: {ledger['fully_stale_school_count']}")
+    print()
     for gate in ledger["gates"]:
         print(f"  [{gate['status']:<14}] {gate['gate']}: {gate['detail']}")
     if ledger["not_applicable_gates"]:

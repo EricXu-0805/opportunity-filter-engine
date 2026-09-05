@@ -48,22 +48,23 @@ from .. import faculty_graph
 _DIR = "https://www.colgate.edu/about/directory"
 
 # Shared selectors for the college-wide Drupal directory View (stacked table).
-# The rank is a bare text node in the name cell, so it is recovered from the row
-# text via ``title_re`` (capturing any leading Visiting/Assistant/... modifiers
-# so the ladder gate can see them) and trimmed of the trailing email / phone /
-# "Faculty" role columns via ``title_strip_after``.
+# The View was re-themed onto the shared ``table-results-view`` component
+# between 2026-07-29 and 2026-08-19: the name link moved from a ``class="h3"``
+# wrapper to ``h3.table-results-view__link``, so ``.h3 a`` stopped matching and
+# EVERY row was dropped for want of a name — the collector returned 0 with
+# status "ok" and, because a zero-emitting source was attributed to its school,
+# withheld the whole Colgate shard (314 faculty frozen at 2026-07-29).
+#
+# Both name shapes are accepted so neither template regresses the other. The
+# re-theme also gave the rank its own element (``.directory__member-title``),
+# so the old recover-the-bare-text-node pair (``title_re`` +
+# ``title_strip_after``) is gone: it can only ever be a lossier read of the
+# same string, and leaving it in would override the clean element.
 _SELECTORS = {
     "card": "table.directory__results tbody tr",
-    "name": ".h3 a",
-    "link": ".h3 a",
-    "title_re": (
-        r"((?:Visiting |Adjunct |Interim |Acting |Distinguished |Senior |"
-        r"Associate |Assistant |University |Research |Clinical |Laboratory |"
-        r"Endowed |Family )*"
-        r"(?:Professor|Lecturer|Instructor|Artist[- ]in[- ]Residence)[^;]*)"
-    ),
-    # Cut everything from the first email / phone / trailing role-column word.
-    "title_strip_after": r"\s+(?:[\w.+-]+@|\(?\d{3}\)?[\s.-]?\d|Faculty\b|Staff\b)",
+    "name": "h3.table-results-view__link a, .h3 a",
+    "link": "h3.table-results-view__link a, .h3 a",
+    "title": ".directory__member-title",
     "email": "a[href^='mailto:']",
 }
 

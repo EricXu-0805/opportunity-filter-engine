@@ -706,11 +706,22 @@ def _scan_env(monkeypatch):
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
 
 
-def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None, tracking=None):
-    """Point the detector at tmp artifacts; omit one to simulate it missing."""
+def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
+                     tracking=None, source_health=None):
+    """Point the detector at tmp artifacts; omit one to simulate it missing.
+
+    Every path is redirected, including the ones a test does not populate:
+    left pointing at the repo the detector would scan the real committed
+    ledger and open incidents for whatever is genuinely stale today, so a
+    test's assertions would depend on the state of production data.
+    """
     status_path = tmp_path / "collector_status.json"
     history_path = tmp_path / "collector_status_history.jsonl"
     tracking_path = tmp_path / "professor_tracking.json"
+    health_path = tmp_path / "source_health.json"
+    if source_health is not None:
+        health_path.write_text(json.dumps(source_health), encoding="utf-8")
+    monkeypatch.setattr(ops_mod, "_SOURCE_HEALTH_PATH", health_path)
     if snapshot is not None:
         status_path.write_text(json.dumps(snapshot), encoding="utf-8")
     if history is not None:
@@ -1148,6 +1159,262 @@ class TestOpsScanProfessorTracking:
         assert payload["p_auto_resolve"] is False
 
 
+class TestOpsScanSuspiciousZero:
+    """A collector that emitted nothing must alert - and must not self-clear.
+
+    Before this, a source whose department had moved reported
+    {"fetched": 0, "status": "ok"} and the queue closed its own alert every
+    week as a "verified successful run", while the school went unpublished
+    for 44 days. Nothing anywhere paged a human.
+    """
+
+    def test_suspicious_zero_opens_a_shard_level_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "2026-08-25T06:07:36+00:00",
+            "sources": {
+                "ucb_ling_faculty": {
+                    "status": "suspicious_zero", "fetched": 0,
+                    "suspicious_zero_baseline": 17,
+                    "zero_class": "suspicious_zero",
+                },
+                "ucb_eecs_faculty": {"status": "ok", "fetched": 145},
+            },
+        })
+
+        r = _run_scan()
+        assert r.status_code == 200
+        payload = _incident_for(calls, "collector_failure:ucb_ling_faculty")
+        assert payload["p_kind"] == "collector_failure"
+        assert payload["p_scope"] == "ucb_ling_faculty"
+        assert payload["p_failure_state"] == "suspicious_zero"
+        assert payload["p_priority"] == "high"
+        assert payload["p_detail"]["baseline"] == 17
+        assert payload["p_detail"]["fetched"] == 0
+        # The healthy sibling is not implicated.
+        assert not [
+            c for c in _rpcs(calls, "record_ops_incident")
+            if c["p_dedup_key"] == "collector_failure:ucb_eecs_faculty"
+        ]
+        assert r.json()["detectors"]["collector_failure"]["suspicious_zero"] == 1
+
+    def test_a_suspicious_zero_never_resolves_its_own_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "collector_failure:ucb_ling_faculty"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {
+                "ucb_ling_faculty": {
+                    "status": "suspicious_zero", "fetched": 0,
+                    "suspicious_zero_baseline": 17,
+                },
+            },
+        })
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_an_ok_status_with_zero_records_does_not_resolve_either(
+        self, monkeypatch, tmp_path,
+    ):
+        """Defence in depth: even if a producer still claims "ok" on a zero,
+        recovery has to mean records came back."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "collector_failure:swarthmore_faculty"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"swarthmore_faculty": {"status": "ok", "fetched": 0}},
+        })
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_records_coming_back_is_what_resolves_it(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "collector_failure:colgate_faculty"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path, snapshot={
+            "timestamp": "t",
+            "sources": {"colgate_faculty": {"status": "ok", "fetched": 308}},
+        })
+        r = _run_scan()
+        (payload,) = _rpcs(calls, "record_ops_recovery")
+        assert payload["p_dedup_key"] == "collector_failure:colgate_faculty"
+        assert payload["p_auto_resolve"] is True
+        assert r.json()["recovered"] == 1
+
+
+def _health_ledger(rows):
+    """rows: {source: (school, last_success_iso, status, last_good)}."""
+    return {
+        "schema_version": 1,
+        "sources": {
+            source: {
+                "school": school,
+                "last_attempt_at": "2026-09-02T06:00:00+00:00",
+                "last_success_at": success,
+                "status": status,
+                "current_count": 0 if status != "success_nonzero" else last_good,
+                "last_good_count": last_good,
+                "consecutive_failures": 0 if status == "success_nonzero" else 3,
+                "failure_reason": None if status == "success_nonzero" else "emitted 0",
+            }
+            for source, (school, success, status, last_good) in rows.items()
+        },
+        "shards": {},
+    }
+
+
+class TestOpsScanSourceHealth:
+    """Per-shard and per-school stale monitoring off the durable ledger."""
+
+    def test_stale_shard_opens_an_incident_naming_what_it_holds(
+        self, monkeypatch, tmp_path,
+    ):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "ucb_eecs_faculty": ("ucb", "2026-09-01T06:00:00+00:00",
+                                     "success_nonzero", 145),
+                "ucb_ling_faculty": ("ucb", "2026-07-21T07:08:46+00:00",
+                                     "suspicious_zero", 17),
+            }),
+        )
+        _run_scan()
+        payload = _incident_for(
+            calls, "collector_failure:stale_shard:ucb_ling_faculty",
+        )
+        assert payload["p_scope"] == "ucb_ling_faculty"
+        assert payload["p_failure_state"] == "stale"
+        assert payload["p_detail"]["last_success_at"] == "2026-07-21T07:08:46+00:00"
+        assert payload["p_detail"]["last_good_record_count"] == 17
+        assert payload["p_detail"]["school"] == "ucb"
+
+    def test_a_fresh_sibling_does_not_hide_the_stale_shard(
+        self, monkeypatch, tmp_path,
+    ):
+        """School-level freshness could not see this: 53 fresh departments
+        averaged the dead one away."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "ucb_eecs_faculty": ("ucb", "2026-09-01T06:00:00+00:00",
+                                     "success_nonzero", 145),
+                "ucb_math_faculty": ("ucb", "2026-09-01T06:00:00+00:00",
+                                     "success_nonzero", 105),
+                "ucb_ling_faculty": ("ucb", "2026-07-21T07:08:46+00:00",
+                                     "suspicious_zero", 17),
+            }),
+        )
+        body = _run_scan().json()
+        detector = body["detectors"]["source_health"]
+        assert detector["stale"] == 1
+        assert detector["sources"] == 3
+        assert detector["degraded"] == 1
+        # One stale department is NOT a dead school.
+        assert detector["fully_stale_school_count"] == 0
+        assert detector["partially_degraded_school_count"] == 1
+        assert not [
+            c for c in _rpcs(calls, "record_ops_incident")
+            if "fully_stale_school" in c["p_dedup_key"]
+        ]
+
+    def test_a_school_with_no_fresh_source_is_escalated(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "colgate_faculty": ("colgate", "2026-07-29T06:00:00+00:00",
+                                    "suspicious_zero", 314),
+                "campus_graph:colgate": ("colgate", "2026-07-23T06:00:00+00:00",
+                                         "suspicious_zero", 9),
+            }),
+        )
+        body = _run_scan().json()
+        assert body["detectors"]["source_health"]["fully_stale_school_count"] == 1
+        payload = _incident_for(
+            calls, "collector_failure:fully_stale_school:colgate",
+        )
+        assert payload["p_priority"] == "urgent"
+        assert payload["p_scope"] == "colgate"
+
+    def test_repeated_failure_raises_the_priority(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        ledger = _health_ledger({
+            "swarthmore_faculty": ("swarthmore", "2026-07-29T06:00:00+00:00",
+                                   "failed", 228),
+        })
+        ledger["sources"]["swarthmore_faculty"]["consecutive_failures"] = 4
+        _write_artifacts(monkeypatch, tmp_path, source_health=ledger)
+        _run_scan()
+        payload = _incident_for(
+            calls, "collector_failure:stale_shard:swarthmore_faculty",
+        )
+        assert payload["p_priority"] == "high"
+        assert payload["p_detail"]["consecutive_failures"] == 4
+
+    def test_all_fresh_ledger_opens_nothing(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "yale_faculty": ("yale", "2026-09-02T06:00:00+00:00",
+                                 "success_nonzero", 1224),
+            }),
+        )
+        body = _run_scan().json()
+        assert body["detectors"]["source_health"]["stale"] == 0
+        assert _rpcs(calls, "record_ops_incident") == []
+
+    def test_stale_detection_never_auto_resolves(self, monkeypatch, tmp_path):
+        """A clock rolling over is not a recovery. Only a real harvest moves
+        last_success_at, so resolution comes from the collector detector."""
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{
+                "dedup_key": "collector_failure:stale_shard:ucb_ling_faculty",
+            }],
+            calls=calls,
+        )
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "ucb_ling_faculty": ("ucb", "2026-09-02T06:00:00+00:00",
+                                     "success_nonzero", 16),
+            }),
+        )
+        _run_scan()
+        assert _rpcs(calls, "record_ops_recovery") == []
+
+
 class TestOpsScanResilience:
     def test_missing_artifacts_are_reported_not_fatal(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -1166,6 +1433,7 @@ class TestOpsScanResilience:
             "data_drift",
             "release_degradation",
             "professor_tracking",
+            "source_health",
         }
         assert _rpcs(calls, "record_ops_incident") == []
 

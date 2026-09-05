@@ -36,7 +36,7 @@ def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
 from src.normalizers.school_audience import SOURCE_DEFAULTS, apply_school_audience
 from src.parsers.llm_tagger import apply_updates, needs_tagging, rule_based_tag
 
-from . import faculty_graph
+from . import faculty_graph, source_health
 from .atomic_json import atomic_write_json, atomic_write_text
 from .campus_graph import (
     RECURSIVE,
@@ -51,7 +51,11 @@ from .campus_graph import (
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
-from .refresh_contract import evaluate_refresh_summary
+from .refresh_contract import (
+    CONFIRMED_EMPTY_SOURCES,
+    evaluate_refresh_summary,
+    shard_of_source,
+)
 from .schools import SCHOOL_CONFIGS
 from .schools.amherst_faculty import fetch_and_normalize as fetch_amherst_faculty
 from .schools.amherst_faculty import merge_into_processed as merge_amherst_faculty
@@ -1445,6 +1449,95 @@ def refresh_all(
             summary["sources"]["simplify_internships"]["deactivated_stale"] = simplify_stale
             logger.info("Simplify: %d stale internships deactivated", simplify_stale)
 
+        # Classify every source's output BEFORE anything reads its status.
+        # A collector that fetched nothing because its department moved host
+        # (ucb_ling_faculty), was re-themed (colgate_faculty), or was refused
+        # by a bot wall (swarthmore_faculty from CI egress) used to report
+        # {"fetched": 0, "status": "ok"} — indistinguishable from a department
+        # that genuinely has no faculty. Two things then went wrong at once:
+        # the release contract read the zero as an accuracy failure and
+        # withheld the source's ENTIRE SCHOOL, and the operator queue read the
+        # "ok" as a verified recovery and closed the alert. Naming the outcome
+        # here fixes both, and does it before deactivate_stale_faculty's
+        # status=="ok" gate below, so a suspicious zero also loses its
+        # authority to retire records for absence.
+        baselines = source_health.active_baselines(all_opps)
+        zero_classes: dict[str, str] = {}
+        for name, info in summary["sources"].items():
+            if not isinstance(info, dict) or "fetched" not in info:
+                continue
+            if info.get("status") not in ("ok", None):
+                # error / deferred_deadline / partial_deadline already say
+                # what happened; re-labelling them would lose that detail.
+                continue
+            outcome = source_health.classify(
+                emitted=info.get("fetched"),
+                baseline=baselines.get(name, 0),
+                allow_confirmed_empty=name in CONFIRMED_EMPTY_SOURCES,
+            )
+            zero_classes[name] = outcome
+            info["zero_class"] = outcome
+            if outcome == source_health.SUSPICIOUS_ZERO:
+                baseline = baselines.get(name, 0)
+                info["status"] = source_health.SUSPICIOUS_ZERO
+                info["suspicious_zero_baseline"] = baseline
+                logger.error(
+                    "%s emitted 0 records while the corpus holds %d active "
+                    "record(s) for it — treating as a suspicious zero: its "
+                    "records are preserved, its school still publishes, and "
+                    "the source is reported degraded",
+                    name, baseline,
+                )
+        summary["zero_classes"] = zero_classes
+
+        # Fold this run into the per-source freshness ledger. This is the
+        # only place last_success_at can advance, and it advances only for a
+        # source that actually produced trustworthy output this run - the
+        # discipline that makes a permanently broken department visible
+        # behind its fresh siblings instead of being masked by them.
+        try:
+            # Derived from PROCESSED_FILE so a run pointed at a tmp corpus
+            # writes that corpus's ledger, never the committed one.
+            ledger_path = source_health.ledger_path_for(PROCESSED_FILE.parent)
+            ledger = source_health.load_ledger(ledger_path)
+            now = datetime.now(UTC)
+            for name, info in summary["sources"].items():
+                if not isinstance(info, dict) or "fetched" not in info:
+                    continue
+                status = info.get("status")
+                if status == "error":
+                    outcome = source_health.FAILED
+                    reason = str(info.get("error") or "collector reported an error")
+                elif status == source_health.SUSPICIOUS_ZERO:
+                    outcome = source_health.SUSPICIOUS_ZERO
+                    reason = (
+                        f"emitted 0 records against a baseline of "
+                        f"{info.get('suspicious_zero_baseline')} active record(s)"
+                    )
+                elif status in ("deferred_deadline", "partial_deadline"):
+                    # Truncated by the run clock, not broken - but it did not
+                    # complete, so it has not earned a fresh success stamp.
+                    outcome = source_health.FAILED
+                    reason = f"stopped at the run time budget ({status})"
+                else:
+                    outcome = zero_classes.get(name) or source_health.SUCCESS_NONZERO
+                    reason = None
+                source_health.record_attempt(
+                    ledger,
+                    source=name,
+                    school=shard_of_source(name),
+                    outcome=outcome,
+                    emitted=info.get("fetched"),
+                    baseline=baselines.get(name, 0),
+                    now=now,
+                    failure_reason=reason,
+                )
+            source_health.save_ledger(ledger, ledger_path)
+            summary["source_health"] = source_health.corpus_report(ledger, now)
+        except Exception as e:  # noqa: BLE001
+            # Diagnostic artifact: a ledger write must never lose a scrape.
+            logger.warning("source_health ledger update failed: %s", e)
+
         # Faculty records have no deadline, so deactivate_past never retires
         # them; this source-specific pass deactivates professors who have been
         # absent from their directory re-scrape past the grace window. Only
@@ -1618,10 +1711,29 @@ def refresh_all(
             deep=deep,
             require_tracking=False,
         )
+        # Two gates, deliberately different widths. The opportunity corpus
+        # publishes on a degraded verdict - withholding a whole school
+        # because one department emitted nothing is the bug this release
+        # removes. Professor tracking is stricter and stays fail-closed: its
+        # baselines are per-professor claims about what a directory says
+        # today, so a mandatory producer that emitted nothing is not a
+        # successful producing refresh for it, even though the corpus is
+        # still safe to publish.
+        suspicious = [
+            item["source"]
+            for item in preliminary_release.get("degradations") or ()
+            if item.get("kind") == source_health.SUSPICIOUS_ZERO
+        ]
+        if suspicious:
+            logger.warning(
+                "professor tracking treats this run as unsuccessful: "
+                "%d source(s) emitted nothing (%s)",
+                len(suspicious), ", ".join(sorted(suspicious)[:8]),
+            )
         _update_professor_tracking(
             all_opps,
             summary,
-            refresh_ok=preliminary_release["ready"],
+            refresh_ok=preliminary_release["ready"] and not suspicious,
         )
 
         summary["sources"]["deactivate_past"] = {

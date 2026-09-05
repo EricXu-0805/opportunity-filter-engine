@@ -7431,3 +7431,124 @@ class TestABoundaryThatWorksForCPlusPlus:
                 assert bool(_word_re(term).search(text)) == bool(
                     re.search(rf"\b{re.escape(term)}\b", text)
                 ), (term, text)
+class TestSourceHealthSurfaces:
+    """Schema lock for the two surfaces that did not exist while UC Berkeley
+    sat 44 days stale.
+
+    ``/admin/collector-status`` shows only the LAST RUN's snapshot, and each
+    run rewrites it for its own shard alone, so a department dead for six
+    weeks was indistinguishable from one not scheduled today. These read the
+    durable per-source ledger instead.
+    """
+
+    _LEDGER = {
+        "schema_version": 1,
+        "sources": {
+            "ucb_eecs_faculty": {
+                "school": "ucb",
+                "last_attempt_at": "2026-09-02T06:00:00+00:00",
+                "last_success_at": "2026-09-02T06:00:00+00:00",
+                "status": "success_nonzero",
+                "current_count": 145,
+                "last_good_count": 145,
+                "consecutive_failures": 0,
+                "failure_reason": None,
+            },
+            "ucb_ling_faculty": {
+                "school": "ucb",
+                "last_attempt_at": "2026-09-02T06:00:00+00:00",
+                "last_success_at": "2026-07-21T07:08:46+00:00",
+                "status": "suspicious_zero",
+                "current_count": 0,
+                "last_good_count": 17,
+                "consecutive_failures": 3,
+                "failure_reason": "emitted 0 against a baseline of 17",
+            },
+        },
+        "shards": {"ucb": {"last_publish_at": "2026-09-02T06:30:00+00:00"}},
+    }
+
+    def _install(self, monkeypatch, tmp_path, ledger=None):
+        from backend.routes import admin as admin_mod
+        path = tmp_path / "source_health.json"
+        path.write_text(json.dumps(ledger or self._LEDGER), encoding="utf-8")
+        monkeypatch.setattr(admin_mod, "_SOURCE_HEALTH_PATH", path)
+
+    def test_503_when_token_unset(self, monkeypatch):
+        monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+        assert client.get("/api/admin/source-health/shards").status_code == 503
+        assert client.get("/api/admin/source-health/schools").status_code == 503
+
+    def test_401_when_wrong_token(self, monkeypatch):
+        monkeypatch.setenv("ADMIN_TOKEN", "secret-health")
+        r = client.get(
+            "/api/admin/source-health/shards",
+            headers={"X-Admin-Token": "wrong"},
+        )
+        assert r.status_code == 401
+
+    def test_absent_ledger_says_unavailable_rather_than_healthy(
+        self, monkeypatch, tmp_path,
+    ):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(
+            admin_mod, "_SOURCE_HEALTH_PATH", tmp_path / "nope.json",
+        )
+        body = client.get(
+            "/api/admin/source-health/shards", headers={"X-Admin-Token": "ok"},
+        ).json()
+        assert body["available"] is False
+        assert body["rows"] == []
+
+    def test_shard_rows_separate_attempt_success_and_publish(
+        self, monkeypatch, tmp_path,
+    ):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        self._install(monkeypatch, tmp_path)
+        body = client.get(
+            "/api/admin/source-health/shards", headers={"X-Admin-Token": "ok"},
+        ).json()
+        rows = {r["source"]: r for r in body["rows"]}
+
+        broken = rows["ucb_ling_faculty"]
+        assert broken["last_attempt_at"] == "2026-09-02T06:00:00+00:00"
+        assert broken["last_success_at"] == "2026-07-21T07:08:46+00:00"
+        # Its school published; that does NOT make the department successful.
+        assert broken["last_publish_at"] == "2026-09-02T06:30:00+00:00"
+        assert broken["current_record_count"] == 0
+        assert broken["last_good_record_count"] == 17
+        assert broken["freshness"] == "stale"
+        assert broken["consecutive_failures"] == 3
+        assert broken["failure_reason"]
+
+        assert rows["ucb_eecs_faculty"]["freshness"] == "fresh"
+
+    def test_filtering_never_hides_the_totals(self, monkeypatch, tmp_path):
+        """Narrowing to one school must not make another look healthy."""
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        self._install(monkeypatch, tmp_path)
+        body = client.get(
+            "/api/admin/source-health/shards?status=stale",
+            headers={"X-Admin-Token": "ok"},
+        ).json()
+        assert body["returned"] == 1
+        assert body["totals"]["sources"] == 2
+        assert body["totals"]["stale"] == 1
+        assert body["totals"]["fresh"] == 1
+
+    def test_school_view_distinguishes_degraded_from_dead(
+        self, monkeypatch, tmp_path,
+    ):
+        monkeypatch.setenv("ADMIN_TOKEN", "ok")
+        self._install(monkeypatch, tmp_path)
+        body = client.get(
+            "/api/admin/source-health/schools", headers={"X-Admin-Token": "ok"},
+        ).json()
+        (ucb,) = (s for s in body["schools"] if s["school"] == "ucb")
+        assert ucb["fully_stale"] is False
+        assert ucb["state"] == "partially_degraded"
+        assert ucb["fresh_shard_count"] == 1
+        assert ucb["stale_shard_count"] == 1
+        assert body["report"]["fully_stale_school_count"] == 0
+        assert body["report"]["partially_degraded_school_count"] == 1
