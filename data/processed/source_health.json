@@ -1,0 +1,4290 @@
+{
+  "schema_version": 1,
+  "shards": {
+    "amherst": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 275
+    },
+    "arizona": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1495
+    },
+    "asu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2481
+    },
+    "barnard": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 221
+    },
+    "bates": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 187
+    },
+    "bc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 843
+    },
+    "boulder": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1619
+    },
+    "bowdoin": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 243
+    },
+    "brown": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1204
+    },
+    "brynmawr": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 160
+    },
+    "bu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1836
+    },
+    "buffalo": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 850
+    },
+    "caltech": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 450
+    },
+    "carleton": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 311
+    },
+    "casewestern": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 740
+    },
+    "cincinnati": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1075
+    },
+    "clemson": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 921
+    },
+    "cmc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 165
+    },
+    "cmu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 911
+    },
+    "colby": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 246
+    },
+    "colgate": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 328
+    },
+    "coloradocollege": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 214
+    },
+    "colostate": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 937
+    },
+    "columbia": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1090
+    },
+    "cornell": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1641
+    },
+    "dartmouth": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 928
+    },
+    "davidson": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 234
+    },
+    "drexel": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 583
+    },
+    "duke": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1262
+    },
+    "emory": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1455
+    },
+    "fsu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 664
+    },
+    "gatech": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1316
+    },
+    "georgetown": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 869
+    },
+    "grinnell": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 255
+    },
+    "hamilton": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 252
+    },
+    "harvard": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 471
+    },
+    "haverford": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 126
+    },
+    "houston": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1077
+    },
+    "iastate": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 674
+    },
+    "indiana": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1670
+    },
+    "jhu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 4593
+    },
+    "kenyon": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 181
+    },
+    "lehigh": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 579
+    },
+    "lsu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1222
+    },
+    "macalester": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 207
+    },
+    "miami": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 468
+    },
+    "middlebury": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 328
+    },
+    "mit": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1418
+    },
+    "msu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 987
+    },
+    "national": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 5864
+    },
+    "ncsu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2313
+    },
+    "nd": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1284
+    },
+    "neu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2004
+    },
+    "njit": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 509
+    },
+    "northwestern": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2806
+    },
+    "nyu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2168
+    },
+    "oregonstate": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 608
+    },
+    "osu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2520
+    },
+    "pitt": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1136
+    },
+    "pomona": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 279
+    },
+    "princeton": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 652
+    },
+    "psu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2771
+    },
+    "purdue": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2268
+    },
+    "rice": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1005
+    },
+    "rochester": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 856
+    },
+    "rpi": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 464
+    },
+    "rutgers": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2039
+    },
+    "sbu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 914
+    },
+    "smith": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 314
+    },
+    "stanford": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1406
+    },
+    "stevens": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 342
+    },
+    "swarthmore": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 241
+    },
+    "syracuse": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 841
+    },
+    "tamu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 3260
+    },
+    "tufts": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2071
+    },
+    "ucb": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 3106
+    },
+    "ucd": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 7
+    },
+    "ucf": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 816
+    },
+    "uchicago": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1182
+    },
+    "uci": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1207
+    },
+    "ucla": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2082
+    },
+    "uconn": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1175
+    },
+    "ucr": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1160
+    },
+    "ucsb": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1131
+    },
+    "ucsc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 740
+    },
+    "ucsd": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1504
+    },
+    "udel": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1023
+    },
+    "uf": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2050
+    },
+    "uga": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2169
+    },
+    "uiowa": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 958
+    },
+    "uiuc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 3418
+    },
+    "uky": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 773
+    },
+    "umass": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1585
+    },
+    "umd": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1306
+    },
+    "umich": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1485
+    },
+    "umn": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1458
+    },
+    "unc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 367
+    },
+    "unl": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1216
+    },
+    "upenn": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1940
+    },
+    "usc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1583
+    },
+    "usf": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 780
+    },
+    "utah": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1117
+    },
+    "utdallas": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1090
+    },
+    "utexas": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2299
+    },
+    "utk": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1071
+    },
+    "uva": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1642
+    },
+    "uw": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 2268
+    },
+    "vanderbilt": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1165
+    },
+    "vassar": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 270
+    },
+    "vt": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1899
+    },
+    "washu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1116
+    },
+    "wellesley": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 288
+    },
+    "wesleyan": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 368
+    },
+    "wisc": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1805
+    },
+    "wlu": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 245
+    },
+    "wpi": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 469
+    },
+    "yale": {
+      "last_publish_at": "2026-09-05T03:58:57.942635+00:00",
+      "last_publish_record_count": 1259
+    }
+  },
+  "sources": {
+    "amherst_faculty": {
+      "baseline_count": 266,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 266,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:38:37.634438+00:00",
+      "last_good_count": 266,
+      "last_success_at": "2026-08-31T08:38:37.634438+00:00",
+      "school": "amherst",
+      "status": "success_nonzero"
+    },
+    "arizona_faculty": {
+      "baseline_count": 1490,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1490,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:18:47.030096+00:00",
+      "last_good_count": 1490,
+      "last_success_at": "2026-09-03T08:18:47.030096+00:00",
+      "school": "arizona",
+      "status": "success_nonzero"
+    },
+    "asu_faculty": {
+      "baseline_count": 2475,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2475,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:25:45.502241+00:00",
+      "last_good_count": 2475,
+      "last_success_at": "2026-08-31T08:25:45.502241+00:00",
+      "school": "asu",
+      "status": "success_nonzero"
+    },
+    "barnard_faculty": {
+      "baseline_count": 212,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 212,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:10:26.800836+00:00",
+      "last_good_count": 212,
+      "last_success_at": "2026-08-29T08:10:26.800836+00:00",
+      "school": "barnard",
+      "status": "success_nonzero"
+    },
+    "bates_faculty": {
+      "baseline_count": 176,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 176,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:06:54.626307+00:00",
+      "last_good_count": 176,
+      "last_success_at": "2026-08-29T08:06:54.626307+00:00",
+      "school": "bates",
+      "status": "success_nonzero"
+    },
+    "bc_faculty": {
+      "baseline_count": 839,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 839,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:48:31.153120+00:00",
+      "last_good_count": 839,
+      "last_success_at": "2026-08-31T08:48:31.153120+00:00",
+      "school": "bc",
+      "status": "success_nonzero"
+    },
+    "boulder_faculty": {
+      "baseline_count": 1604,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1604,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T09:42:19.024631+00:00",
+      "last_good_count": 1604,
+      "last_success_at": "2026-09-03T09:42:19.024631+00:00",
+      "school": "boulder",
+      "status": "success_nonzero"
+    },
+    "boulder_labs": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:07:32.181564+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:07:32.181564+00:00",
+      "school": "boulder",
+      "status": "success_nonzero"
+    },
+    "bowdoin_faculty": {
+      "baseline_count": 233,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 233,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:14:09.504894+00:00",
+      "last_good_count": 233,
+      "last_success_at": "2026-08-26T07:14:09.504894+00:00",
+      "school": "bowdoin",
+      "status": "success_nonzero"
+    },
+    "brown_faculty": {
+      "baseline_count": 1192,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1192,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T07:14:38.126060+00:00",
+      "last_good_count": 1192,
+      "last_success_at": "2026-09-03T07:14:38.126060+00:00",
+      "school": "brown",
+      "status": "success_nonzero"
+    },
+    "brynmawr_faculty": {
+      "baseline_count": 152,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 152,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:11:36.399071+00:00",
+      "last_good_count": 152,
+      "last_success_at": "2026-08-29T08:11:36.399071+00:00",
+      "school": "brynmawr",
+      "status": "success_nonzero"
+    },
+    "bu_faculty": {
+      "baseline_count": 1830,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1830,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:28:57.609210+00:00",
+      "last_good_count": 1830,
+      "last_success_at": "2026-08-26T06:28:57.609210+00:00",
+      "school": "bu",
+      "status": "success_nonzero"
+    },
+    "buffalo_faculty": {
+      "baseline_count": 844,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 844,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:26:10.476038+00:00",
+      "last_good_count": 844,
+      "last_success_at": "2026-08-31T08:26:10.476038+00:00",
+      "school": "buffalo",
+      "status": "success_nonzero"
+    },
+    "caltech_external_research": {
+      "baseline_count": 14,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 14,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:41:25.377638+00:00",
+      "last_good_count": 14,
+      "last_success_at": "2026-07-18T06:41:25.377638+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "caltech_faculty": {
+      "baseline_count": 434,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 434,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:06:05.787608+00:00",
+      "last_good_count": 434,
+      "last_success_at": "2026-08-29T08:06:05.787608+00:00",
+      "school": "caltech",
+      "status": "success_nonzero"
+    },
+    "caltech_labs": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:08:09.574586+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:08:09.574586+00:00",
+      "school": "caltech",
+      "status": "success_nonzero"
+    },
+    "campus_graph:amherst": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:11:49.684375+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-31T08:11:49.684375+00:00",
+      "school": "amherst",
+      "status": "success_nonzero"
+    },
+    "campus_graph:arizona": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:09:38.250077+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:09:38.250077+00:00",
+      "school": "arizona",
+      "status": "success_nonzero"
+    },
+    "campus_graph:asu": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:14:26.135619+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-31T08:14:26.135619+00:00",
+      "school": "asu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:barnard": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:09:04.593969+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-29T06:09:04.593969+00:00",
+      "school": "barnard",
+      "status": "success_nonzero"
+    },
+    "campus_graph:bates": {
+      "baseline_count": 11,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 11,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:08:45.754273+00:00",
+      "last_good_count": 11,
+      "last_success_at": "2026-08-29T06:08:45.754273+00:00",
+      "school": "bates",
+      "status": "success_nonzero"
+    },
+    "campus_graph:bc": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:15:59.653574+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-31T08:15:59.653574+00:00",
+      "school": "bc",
+      "status": "success_nonzero"
+    },
+    "campus_graph:boulder": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:07:19.286144+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-09-03T06:07:19.286144+00:00",
+      "school": "boulder",
+      "status": "success_nonzero"
+    },
+    "campus_graph:bowdoin": {
+      "baseline_count": 10,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:14:43.339776+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-08-26T06:14:43.339776+00:00",
+      "school": "bowdoin",
+      "status": "success_nonzero"
+    },
+    "campus_graph:brown": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:07:51.513287+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:07:51.513287+00:00",
+      "school": "brown",
+      "status": "success_nonzero"
+    },
+    "campus_graph:brynmawr": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:09:22.466545+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:09:22.466545+00:00",
+      "school": "brynmawr",
+      "status": "success_nonzero"
+    },
+    "campus_graph:bu": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:16:39.886627+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-26T06:16:39.886627+00:00",
+      "school": "bu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:buffalo": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:14:44.912727+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-31T08:14:44.912727+00:00",
+      "school": "buffalo",
+      "status": "success_nonzero"
+    },
+    "campus_graph:caltech": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:08:06.634966+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:08:06.634966+00:00",
+      "school": "caltech",
+      "status": "success_nonzero"
+    },
+    "campus_graph:carleton": {
+      "baseline_count": 10,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:12:08.475032+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-08-31T08:12:08.475032+00:00",
+      "school": "carleton",
+      "status": "success_nonzero"
+    },
+    "campus_graph:casewestern": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:12:04.466323+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-29T06:12:04.466323+00:00",
+      "school": "casewestern",
+      "status": "success_nonzero"
+    },
+    "campus_graph:cincinnati": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:10:39.061377+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-28T09:10:39.061377+00:00",
+      "school": "cincinnati",
+      "status": "success_nonzero"
+    },
+    "campus_graph:clemson": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:09:24.964827+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-28T09:09:24.964827+00:00",
+      "school": "clemson",
+      "status": "success_nonzero"
+    },
+    "campus_graph:cmc": {
+      "baseline_count": 10,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:12:26.234096+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-08-31T08:12:26.234096+00:00",
+      "school": "cmc",
+      "status": "success_nonzero"
+    },
+    "campus_graph:cmu": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:10:19.996267+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-28T09:10:19.996267+00:00",
+      "school": "cmu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:colby": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:08:26.684969+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:08:26.684969+00:00",
+      "school": "colby",
+      "status": "success_nonzero"
+    },
+    "campus_graph:colgate": {
+      "baseline_count": 0,
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T03:45:00.802770+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-09-05T03:45:00.802770+00:00",
+      "school": "colgate",
+      "status": "success_nonzero"
+    },
+    "campus_graph:coloradocollege": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:13:48.974718+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-26T06:13:48.974718+00:00",
+      "school": "coloradocollege",
+      "status": "success_nonzero"
+    },
+    "campus_graph:colostate": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:11:47.113448+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-29T06:11:47.113448+00:00",
+      "school": "colostate",
+      "status": "success_nonzero"
+    },
+    "campus_graph:columbia": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:08:10.327946+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-28T09:08:10.327946+00:00",
+      "school": "columbia",
+      "status": "success_nonzero"
+    },
+    "campus_graph:cornell": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:08:09.872208+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:08:09.872208+00:00",
+      "school": "cornell",
+      "status": "success_nonzero"
+    },
+    "campus_graph:dartmouth": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:15:03.229528+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-26T06:15:03.229528+00:00",
+      "school": "dartmouth",
+      "status": "success_nonzero"
+    },
+    "campus_graph:davidson": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:13:02.433143+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-31T08:13:02.433143+00:00",
+      "school": "davidson",
+      "status": "success_nonzero"
+    },
+    "campus_graph:drexel": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:16:58.343152+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-26T06:16:58.343152+00:00",
+      "school": "drexel",
+      "status": "success_nonzero"
+    },
+    "campus_graph:duke": {
+      "baseline_count": 53,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 53,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:11:14.313568+00:00",
+      "last_good_count": 53,
+      "last_success_at": "2026-08-26T06:11:14.313568+00:00",
+      "school": "duke",
+      "status": "success_nonzero"
+    },
+    "campus_graph:emory": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:16:17.924304+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-31T08:16:17.924304+00:00",
+      "school": "emory",
+      "status": "success_nonzero"
+    },
+    "campus_graph:fsu": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:15:03.061395+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-31T08:15:03.061395+00:00",
+      "school": "fsu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:gatech": {
+      "baseline_count": 17,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 17,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:00.543593+00:00",
+      "last_good_count": 17,
+      "last_success_at": "2026-08-29T06:06:00.543593+00:00",
+      "school": "gatech",
+      "status": "success_nonzero"
+    },
+    "campus_graph:georgetown": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:11:33.944279+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-25T06:11:33.944279+00:00",
+      "school": "georgetown",
+      "status": "success_nonzero"
+    },
+    "campus_graph:grinnell": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:10:54.782602+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-31T08:10:54.782602+00:00",
+      "school": "grinnell",
+      "status": "success_nonzero"
+    },
+    "campus_graph:hamilton": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:11:12.829208+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-31T08:11:12.829208+00:00",
+      "school": "hamilton",
+      "status": "success_nonzero"
+    },
+    "campus_graph:harvard": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:15:20.623825+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-26T06:15:20.623825+00:00",
+      "school": "harvard",
+      "status": "success_nonzero"
+    },
+    "campus_graph:haverford": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:13:30.052441+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-26T06:13:30.052441+00:00",
+      "school": "haverford",
+      "status": "success_nonzero"
+    },
+    "campus_graph:houston": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:10:28.563023+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-09-03T06:10:28.563023+00:00",
+      "school": "houston",
+      "status": "success_nonzero"
+    },
+    "campus_graph:iastate": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:15:21.297752+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-31T08:15:21.297752+00:00",
+      "school": "iastate",
+      "status": "success_nonzero"
+    },
+    "campus_graph:indiana": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:17:15.759965+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-26T06:17:15.759965+00:00",
+      "school": "indiana",
+      "status": "success_nonzero"
+    },
+    "campus_graph:jhu": {
+      "baseline_count": 23,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 23,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:07:09.771124+00:00",
+      "last_good_count": 23,
+      "last_success_at": "2026-08-28T09:07:09.771124+00:00",
+      "school": "jhu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:kenyon": {
+      "baseline_count": 11,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 11,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:14:06.539276+00:00",
+      "last_good_count": 11,
+      "last_success_at": "2026-08-26T06:14:06.539276+00:00",
+      "school": "kenyon",
+      "status": "success_nonzero"
+    },
+    "campus_graph:lehigh": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:18:08.596470+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-26T06:18:08.596470+00:00",
+      "school": "lehigh",
+      "status": "success_nonzero"
+    },
+    "campus_graph:lsu": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:12:22.648268+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-29T06:12:22.648268+00:00",
+      "school": "lsu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:macalester": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:11:30.958856+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-31T08:11:30.958856+00:00",
+      "school": "macalester",
+      "status": "success_nonzero"
+    },
+    "campus_graph:miami": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:09:42.896470+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-28T09:09:42.896470+00:00",
+      "school": "miami",
+      "status": "success_nonzero"
+    },
+    "campus_graph:middlebury": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:12:44.262370+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-31T08:12:44.262370+00:00",
+      "school": "middlebury",
+      "status": "success_nonzero"
+    },
+    "campus_graph:mit": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:08:57.903481+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-25T06:08:57.903481+00:00",
+      "school": "mit",
+      "status": "success_nonzero"
+    },
+    "campus_graph:msu": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:10:26.028946+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-25T06:10:26.028946+00:00",
+      "school": "msu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ncsu": {
+      "baseline_count": 11,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 11,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:13:47.355562+00:00",
+      "last_good_count": 11,
+      "last_success_at": "2026-08-31T08:13:47.355562+00:00",
+      "school": "ncsu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:nd": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:09:04.265368+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-09-03T06:09:04.265368+00:00",
+      "school": "nd",
+      "status": "success_nonzero"
+    },
+    "campus_graph:neu": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:10:53.463372+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:10:53.463372+00:00",
+      "school": "neu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:njit": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:12:38.940671+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-25T06:12:38.940671+00:00",
+      "school": "njit",
+      "status": "success_nonzero"
+    },
+    "campus_graph:northwestern": {
+      "baseline_count": 18,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 18,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:07:51.319464+00:00",
+      "last_good_count": 18,
+      "last_success_at": "2026-08-28T09:07:51.319464+00:00",
+      "school": "northwestern",
+      "status": "success_nonzero"
+    },
+    "campus_graph:nyu": {
+      "baseline_count": 11,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 11,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:11:55.716683+00:00",
+      "last_good_count": 11,
+      "last_success_at": "2026-08-25T06:11:55.716683+00:00",
+      "school": "nyu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:oregonstate": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:10:12.683343+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:10:12.683343+00:00",
+      "school": "oregonstate",
+      "status": "success_nonzero"
+    },
+    "campus_graph:osu": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:10:15.197633+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:10:15.197633+00:00",
+      "school": "osu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:pitt": {
+      "baseline_count": 3,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:09:55.194793+00:00",
+      "last_good_count": 3,
+      "last_success_at": "2026-09-03T06:09:55.194793+00:00",
+      "school": "pitt",
+      "status": "success_nonzero"
+    },
+    "campus_graph:pomona": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:09:56.594843+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-29T06:09:56.594843+00:00",
+      "school": "pomona",
+      "status": "success_nonzero"
+    },
+    "campus_graph:princeton": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:04:15.677446+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-28T09:04:15.677446+00:00",
+      "school": "princeton",
+      "status": "success_nonzero"
+    },
+    "campus_graph:psu": {
+      "baseline_count": 10,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:10:07.985408+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-08-25T06:10:07.985408+00:00",
+      "school": "psu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:purdue": {
+      "baseline_count": 47,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 47,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:10:41.978876+00:00",
+      "last_good_count": 47,
+      "last_success_at": "2026-08-26T06:10:41.978876+00:00",
+      "school": "purdue",
+      "status": "success_nonzero"
+    },
+    "campus_graph:rice": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:08:26.457705+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-09-03T06:08:26.457705+00:00",
+      "school": "rice",
+      "status": "success_nonzero"
+    },
+    "campus_graph:rochester": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:15:43.137224+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-26T06:15:43.137224+00:00",
+      "school": "rochester",
+      "status": "success_nonzero"
+    },
+    "campus_graph:rpi": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:17:33.576679+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-26T06:17:33.576679+00:00",
+      "school": "rpi",
+      "status": "success_nonzero"
+    },
+    "campus_graph:rutgers": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:13:20.481063+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-31T08:13:20.481063+00:00",
+      "school": "rutgers",
+      "status": "success_nonzero"
+    },
+    "campus_graph:sbu": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:11:11.930977+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-29T06:11:11.930977+00:00",
+      "school": "sbu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:smith": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:12:12.433971+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-26T06:12:12.433971+00:00",
+      "school": "smith",
+      "status": "success_nonzero"
+    },
+    "campus_graph:stanford": {
+      "baseline_count": 26,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 26,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:05:06.285402+00:00",
+      "last_good_count": 26,
+      "last_success_at": "2026-08-28T09:05:06.285402+00:00",
+      "school": "stanford",
+      "status": "success_nonzero"
+    },
+    "campus_graph:stevens": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:16:55.268371+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-31T08:16:55.268371+00:00",
+      "school": "stevens",
+      "status": "success_nonzero"
+    },
+    "campus_graph:swarthmore": {
+      "baseline_count": 0,
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T03:45:00.802770+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-09-05T03:45:00.802770+00:00",
+      "school": "swarthmore",
+      "status": "success_nonzero"
+    },
+    "campus_graph:syracuse": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:11:24.346244+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-09-03T06:11:24.346244+00:00",
+      "school": "syracuse",
+      "status": "success_nonzero"
+    },
+    "campus_graph:tamu": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:09:50.864359+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-25T06:09:50.864359+00:00",
+      "school": "tamu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:tufts": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:16:36.281714+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-31T08:16:36.281714+00:00",
+      "school": "tufts",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucd": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-21T12:34:51.833483+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-07-21T12:34:51.833483+00:00",
+      "school": "ucd",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucf": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:10:01.521052+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-28T09:10:01.521052+00:00",
+      "school": "ucf",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uchicago": {
+      "baseline_count": 11,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 11,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:26.472580+00:00",
+      "last_good_count": 11,
+      "last_success_at": "2026-08-29T06:06:26.472580+00:00",
+      "school": "uchicago",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uci": {
+      "baseline_count": 13,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 13,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:48.368958+00:00",
+      "last_good_count": 13,
+      "last_success_at": "2026-08-29T06:06:48.368958+00:00",
+      "school": "uci",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucla": {
+      "baseline_count": 20,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 20,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:07:01.284530+00:00",
+      "last_good_count": 20,
+      "last_success_at": "2026-09-03T06:07:01.284530+00:00",
+      "school": "ucla",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uconn": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:11:00.176450+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-25T06:11:00.176450+00:00",
+      "school": "uconn",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucr": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:14:07.523534+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-31T08:14:07.523534+00:00",
+      "school": "ucr",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucsb": {
+      "baseline_count": 13,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 13,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:07:10.702317+00:00",
+      "last_good_count": 13,
+      "last_success_at": "2026-08-29T06:07:10.702317+00:00",
+      "school": "ucsb",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucsc": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:09:06.163175+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-28T09:09:06.163175+00:00",
+      "school": "ucsc",
+      "status": "success_nonzero"
+    },
+    "campus_graph:ucsd": {
+      "baseline_count": 29,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 29,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:05:50.144565+00:00",
+      "last_good_count": 29,
+      "last_success_at": "2026-08-28T09:05:50.144565+00:00",
+      "school": "ucsd",
+      "status": "success_nonzero"
+    },
+    "campus_graph:udel": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:10:48.832040+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-09-03T06:10:48.832040+00:00",
+      "school": "udel",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uf": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:08:29.279048+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-28T09:08:29.279048+00:00",
+      "school": "uf",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uga": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:11:06.855898+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-09-03T06:11:06.855898+00:00",
+      "school": "uga",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uiowa": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:15:40.807137+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-31T08:15:40.807137+00:00",
+      "school": "uiowa",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uky": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:17:51.168635+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-26T06:17:51.168635+00:00",
+      "school": "uky",
+      "status": "success_nonzero"
+    },
+    "campus_graph:umass": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:10:34.091859+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-29T06:10:34.091859+00:00",
+      "school": "umass",
+      "status": "success_nonzero"
+    },
+    "campus_graph:umd": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:16:20.280254+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-26T06:16:20.280254+00:00",
+      "school": "umd",
+      "status": "success_nonzero"
+    },
+    "campus_graph:umich": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:04:42.703000+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-08-29T06:04:42.703000+00:00",
+      "school": "umich",
+      "status": "success_nonzero"
+    },
+    "campus_graph:umn": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:09:34.280042+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-25T06:09:34.280042+00:00",
+      "school": "umn",
+      "status": "success_nonzero"
+    },
+    "campus_graph:unl": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:10:57.296243+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-28T09:10:57.296243+00:00",
+      "school": "unl",
+      "status": "success_nonzero"
+    },
+    "campus_graph:upenn": {
+      "baseline_count": 26,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 26,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:07:33.736755+00:00",
+      "last_good_count": 26,
+      "last_success_at": "2026-08-29T06:07:33.736755+00:00",
+      "school": "upenn",
+      "status": "success_nonzero"
+    },
+    "campus_graph:usc": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:09:17.569028+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-25T06:09:17.569028+00:00",
+      "school": "usc",
+      "status": "success_nonzero"
+    },
+    "campus_graph:usf": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:10:42.523270+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-25T06:10:42.523270+00:00",
+      "school": "usf",
+      "status": "success_nonzero"
+    },
+    "campus_graph:utah": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:11:17.603913+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-25T06:11:17.603913+00:00",
+      "school": "utah",
+      "status": "success_nonzero"
+    },
+    "campus_graph:utdallas": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:12:41.440940+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-29T06:12:41.440940+00:00",
+      "school": "utdallas",
+      "status": "success_nonzero"
+    },
+    "campus_graph:utexas": {
+      "baseline_count": 24,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 24,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:06:16.146271+00:00",
+      "last_good_count": 24,
+      "last_success_at": "2026-09-03T06:06:16.146271+00:00",
+      "school": "utexas",
+      "status": "success_nonzero"
+    },
+    "campus_graph:utk": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:11:29.513267+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-29T06:11:29.513267+00:00",
+      "school": "utk",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uva": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:12:22.261002+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-25T06:12:22.261002+00:00",
+      "school": "uva",
+      "status": "success_nonzero"
+    },
+    "campus_graph:uw": {
+      "baseline_count": 27,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 27,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:08:34.661199+00:00",
+      "last_good_count": 27,
+      "last_success_at": "2026-08-26T06:08:34.661199+00:00",
+      "school": "uw",
+      "status": "success_nonzero"
+    },
+    "campus_graph:vanderbilt": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:08:46.141669+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-03T06:08:46.141669+00:00",
+      "school": "vanderbilt",
+      "status": "success_nonzero"
+    },
+    "campus_graph:vassar": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:11:34.638351+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-26T06:11:34.638351+00:00",
+      "school": "vassar",
+      "status": "success_nonzero"
+    },
+    "campus_graph:vt": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:09:20.443445+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-09-03T06:09:20.443445+00:00",
+      "school": "vt",
+      "status": "success_nonzero"
+    },
+    "campus_graph:washu": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:08:46.932781+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-28T09:08:46.932781+00:00",
+      "school": "washu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:wellesley": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:14:25.642394+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-08-26T06:14:25.642394+00:00",
+      "school": "wellesley",
+      "status": "success_nonzero"
+    },
+    "campus_graph:wesleyan": {
+      "baseline_count": 10,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 10,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:13:12.744169+00:00",
+      "last_good_count": 10,
+      "last_success_at": "2026-08-26T06:13:12.744169+00:00",
+      "school": "wesleyan",
+      "status": "success_nonzero"
+    },
+    "campus_graph:wisc": {
+      "baseline_count": 21,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 21,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:09:20.239337+00:00",
+      "last_good_count": 21,
+      "last_success_at": "2026-08-26T06:09:20.239337+00:00",
+      "school": "wisc",
+      "status": "success_nonzero"
+    },
+    "campus_graph:wlu": {
+      "baseline_count": 8,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 8,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:12:36.122922+00:00",
+      "last_good_count": 8,
+      "last_success_at": "2026-08-26T06:12:36.122922+00:00",
+      "school": "wlu",
+      "status": "success_nonzero"
+    },
+    "campus_graph:wpi": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T06:12:55.514910+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-25T06:12:55.514910+00:00",
+      "school": "wpi",
+      "status": "success_nonzero"
+    },
+    "campus_graph:yale": {
+      "baseline_count": 5,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 5,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:16:02.323109+00:00",
+      "last_good_count": 5,
+      "last_success_at": "2026-08-26T06:16:02.323109+00:00",
+      "school": "yale",
+      "status": "success_nonzero"
+    },
+    "carleton_faculty": {
+      "baseline_count": 301,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 301,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:40:17.071232+00:00",
+      "last_good_count": 301,
+      "last_success_at": "2026-08-31T08:40:17.071232+00:00",
+      "school": "carleton",
+      "status": "success_nonzero"
+    },
+    "casewestern_faculty": {
+      "baseline_count": 736,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 736,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:47:51.656288+00:00",
+      "last_good_count": 736,
+      "last_success_at": "2026-08-29T06:47:51.656288+00:00",
+      "school": "casewestern",
+      "status": "success_nonzero"
+    },
+    "cincinnati_faculty": {
+      "baseline_count": 1071,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1071,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:25:03.181998+00:00",
+      "last_good_count": 1071,
+      "last_success_at": "2026-08-28T09:25:03.181998+00:00",
+      "school": "cincinnati",
+      "status": "success_nonzero"
+    },
+    "clemson_faculty": {
+      "baseline_count": 917,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 917,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:24:07.524297+00:00",
+      "last_good_count": 917,
+      "last_success_at": "2026-08-28T09:24:07.524297+00:00",
+      "school": "clemson",
+      "status": "success_nonzero"
+    },
+    "cmc_faculty": {
+      "baseline_count": 155,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 155,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:47:14.660932+00:00",
+      "last_good_count": 155,
+      "last_success_at": "2026-08-31T08:47:14.660932+00:00",
+      "school": "cmc",
+      "status": "success_nonzero"
+    },
+    "cmu_faculty": {
+      "baseline_count": 905,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 905,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:20:27.729129+00:00",
+      "last_good_count": 905,
+      "last_success_at": "2026-08-28T09:20:27.729129+00:00",
+      "school": "cmu",
+      "status": "success_nonzero"
+    },
+    "colby_faculty": {
+      "baseline_count": 238,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 238,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:06:20.521799+00:00",
+      "last_good_count": 238,
+      "last_success_at": "2026-08-29T08:06:20.521799+00:00",
+      "school": "colby",
+      "status": "success_nonzero"
+    },
+    "colgate_faculty": {
+      "baseline_count": 320,
+      "consecutive_failures": 0,
+      "current_count": 308,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T03:45:00.802770+00:00",
+      "last_good_count": 308,
+      "last_success_at": "2026-09-05T03:45:00.802770+00:00",
+      "school": "colgate",
+      "status": "success_nonzero"
+    },
+    "coloradocollege_faculty": {
+      "baseline_count": 207,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 207,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:13:00.262171+00:00",
+      "last_good_count": 207,
+      "last_success_at": "2026-08-26T07:13:00.262171+00:00",
+      "school": "coloradocollege",
+      "status": "success_nonzero"
+    },
+    "colostate_faculty": {
+      "baseline_count": 932,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 932,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:41:29.310644+00:00",
+      "last_good_count": 932,
+      "last_success_at": "2026-08-29T06:41:29.310644+00:00",
+      "school": "colostate",
+      "status": "success_nonzero"
+    },
+    "columbia_faculty": {
+      "baseline_count": 1075,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1075,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:18:07.532052+00:00",
+      "last_good_count": 1075,
+      "last_success_at": "2026-08-28T09:18:07.532052+00:00",
+      "school": "columbia",
+      "status": "success_nonzero"
+    },
+    "cornell_faculty": {
+      "baseline_count": 1634,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1634,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T07:28:21.088452+00:00",
+      "last_good_count": 1634,
+      "last_success_at": "2026-09-03T07:28:21.088452+00:00",
+      "school": "cornell",
+      "status": "success_nonzero"
+    },
+    "dartmouth_faculty": {
+      "baseline_count": 917,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 917,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:24:54.150848+00:00",
+      "last_good_count": 917,
+      "last_success_at": "2026-08-26T06:24:54.150848+00:00",
+      "school": "dartmouth",
+      "status": "success_nonzero"
+    },
+    "davidson_faculty": {
+      "baseline_count": 226,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 226,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:48:03.881222+00:00",
+      "last_good_count": 226,
+      "last_success_at": "2026-08-31T08:48:03.881222+00:00",
+      "school": "davidson",
+      "status": "success_nonzero"
+    },
+    "drexel_faculty": {
+      "baseline_count": 578,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 578,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:35:37.803480+00:00",
+      "last_good_count": 578,
+      "last_success_at": "2026-08-26T06:35:37.803480+00:00",
+      "school": "drexel",
+      "status": "success_nonzero"
+    },
+    "duke_external_research": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-29T06:54:34.168503+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-07-29T06:54:34.168503+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "duke_faculty": {
+      "baseline_count": 1180,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1180,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:05:18.312489+00:00",
+      "last_good_count": 1180,
+      "last_success_at": "2026-08-26T07:05:18.312489+00:00",
+      "school": "duke",
+      "status": "success_nonzero"
+    },
+    "duke_labs": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:11:07.823192+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-26T06:11:07.823192+00:00",
+      "school": "duke",
+      "status": "success_nonzero"
+    },
+    "emory_faculty": {
+      "baseline_count": 1447,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1447,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:49:55.610087+00:00",
+      "last_good_count": 1447,
+      "last_success_at": "2026-08-31T08:49:55.610087+00:00",
+      "school": "emory",
+      "status": "success_nonzero"
+    },
+    "fsu_faculty": {
+      "baseline_count": 659,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 659,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:27:11.349817+00:00",
+      "last_good_count": 659,
+      "last_success_at": "2026-08-31T08:27:11.349817+00:00",
+      "school": "fsu",
+      "status": "success_nonzero"
+    },
+    "gatech_external_research": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:38:51.297297+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-07-18T06:38:51.297297+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "gatech_faculty": {
+      "baseline_count": 1277,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1277,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:23:04.857001+00:00",
+      "last_good_count": 1277,
+      "last_success_at": "2026-08-29T06:23:04.857001+00:00",
+      "school": "gatech",
+      "status": "success_nonzero"
+    },
+    "gatech_labs": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:00.994669+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-29T06:06:00.994669+00:00",
+      "school": "gatech",
+      "status": "success_nonzero"
+    },
+    "georgetown_faculty": {
+      "baseline_count": 861,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 861,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T08:04:51.406771+00:00",
+      "last_good_count": 861,
+      "last_success_at": "2026-08-25T08:04:51.406771+00:00",
+      "school": "georgetown",
+      "status": "success_nonzero"
+    },
+    "grinnell_faculty": {
+      "baseline_count": 246,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 246,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:34:55.838644+00:00",
+      "last_good_count": 246,
+      "last_success_at": "2026-08-31T08:34:55.838644+00:00",
+      "school": "grinnell",
+      "status": "success_nonzero"
+    },
+    "hamilton_faculty": {
+      "baseline_count": 245,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 245,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:37:34.044719+00:00",
+      "last_good_count": 245,
+      "last_success_at": "2026-08-31T08:37:34.044719+00:00",
+      "school": "hamilton",
+      "status": "success_nonzero"
+    },
+    "harvard_faculty": {
+      "baseline_count": 463,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 463,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:25:41.629888+00:00",
+      "last_good_count": 463,
+      "last_success_at": "2026-08-26T06:25:41.629888+00:00",
+      "school": "harvard",
+      "status": "success_nonzero"
+    },
+    "haverford_faculty": {
+      "baseline_count": 121,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 121,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:12:26.781223+00:00",
+      "last_good_count": 121,
+      "last_success_at": "2026-08-26T07:12:26.781223+00:00",
+      "school": "haverford",
+      "status": "success_nonzero"
+    },
+    "houston_faculty": {
+      "baseline_count": 1071,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1071,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:41:00.098272+00:00",
+      "last_good_count": 1071,
+      "last_success_at": "2026-09-03T08:41:00.098272+00:00",
+      "school": "houston",
+      "status": "success_nonzero"
+    },
+    "iastate_faculty": {
+      "baseline_count": 670,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 670,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:33:39.794376+00:00",
+      "last_good_count": 670,
+      "last_success_at": "2026-08-31T08:33:39.794376+00:00",
+      "school": "iastate",
+      "status": "success_nonzero"
+    },
+    "indiana_faculty": {
+      "baseline_count": 1666,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1666,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:49:37.889349+00:00",
+      "last_good_count": 1666,
+      "last_success_at": "2026-08-26T06:49:37.889349+00:00",
+      "school": "indiana",
+      "status": "success_nonzero"
+    },
+    "jhu_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-31T06:59:41.982014+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-07-31T06:59:41.982014+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "jhu_faculty": {
+      "baseline_count": 4554,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4554,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T10:26:53.745603+00:00",
+      "last_good_count": 4554,
+      "last_success_at": "2026-08-28T10:26:53.745603+00:00",
+      "school": "jhu",
+      "status": "success_nonzero"
+    },
+    "jhu_labs": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:07:10.580590+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-08-28T09:07:10.580590+00:00",
+      "school": "jhu",
+      "status": "success_nonzero"
+    },
+    "kenyon_faculty": {
+      "baseline_count": 170,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 170,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:13:29.899655+00:00",
+      "last_good_count": 170,
+      "last_success_at": "2026-08-26T07:13:29.899655+00:00",
+      "school": "kenyon",
+      "status": "success_nonzero"
+    },
+    "lehigh_faculty": {
+      "baseline_count": 575,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 575,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:47:52.711833+00:00",
+      "last_good_count": 575,
+      "last_success_at": "2026-08-26T06:47:52.711833+00:00",
+      "school": "lehigh",
+      "status": "success_nonzero"
+    },
+    "lsu_faculty": {
+      "baseline_count": 1216,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1216,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:44:06.561725+00:00",
+      "last_good_count": 1216,
+      "last_success_at": "2026-08-29T06:44:06.561725+00:00",
+      "school": "lsu",
+      "status": "success_nonzero"
+    },
+    "macalester_faculty": {
+      "baseline_count": 199,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 199,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:37:57.457087+00:00",
+      "last_good_count": 199,
+      "last_success_at": "2026-08-31T08:37:57.457087+00:00",
+      "school": "macalester",
+      "status": "success_nonzero"
+    },
+    "manual": {
+      "baseline_count": 16,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 16,
+      "failure_reason": null,
+      "last_attempt_at": "2026-03-24T05:50:23.427647+00:00",
+      "last_good_count": 16,
+      "last_success_at": "2026-03-24T05:50:23.427647+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "miami_faculty": {
+      "baseline_count": 463,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 463,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:49:30.269456+00:00",
+      "last_good_count": 463,
+      "last_success_at": "2026-08-28T09:49:30.269456+00:00",
+      "school": "miami",
+      "status": "success_nonzero"
+    },
+    "middlebury_faculty": {
+      "baseline_count": 319,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 319,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:47:41.551105+00:00",
+      "last_good_count": 319,
+      "last_success_at": "2026-08-31T08:47:41.551105+00:00",
+      "school": "middlebury",
+      "status": "success_nonzero"
+    },
+    "mit_faculty": {
+      "baseline_count": 1411,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1411,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:02:04.989386+00:00",
+      "last_good_count": 1411,
+      "last_success_at": "2026-08-25T07:02:04.989386+00:00",
+      "school": "mit",
+      "status": "success_nonzero"
+    },
+    "msu_faculty": {
+      "baseline_count": 981,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 981,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:33:47.693954+00:00",
+      "last_good_count": 981,
+      "last_success_at": "2026-08-25T07:33:47.693954+00:00",
+      "school": "msu",
+      "status": "success_nonzero"
+    },
+    "ncsu_faculty": {
+      "baseline_count": 2302,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2302,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:23:55.178175+00:00",
+      "last_good_count": 2302,
+      "last_success_at": "2026-08-31T08:23:55.178175+00:00",
+      "school": "ncsu",
+      "status": "success_nonzero"
+    },
+    "nd_faculty": {
+      "baseline_count": 1273,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1273,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T07:54:51.294048+00:00",
+      "last_good_count": 1273,
+      "last_success_at": "2026-09-03T07:54:51.294048+00:00",
+      "school": "nd",
+      "status": "success_nonzero"
+    },
+    "neu_faculty": {
+      "baseline_count": 1996,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1996,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:38:20.133671+00:00",
+      "last_good_count": 1996,
+      "last_success_at": "2026-08-29T06:38:20.133671+00:00",
+      "school": "neu",
+      "status": "success_nonzero"
+    },
+    "njit_faculty": {
+      "baseline_count": 505,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 505,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:46:16.888079+00:00",
+      "last_good_count": 505,
+      "last_success_at": "2026-08-25T07:46:16.888079+00:00",
+      "school": "njit",
+      "status": "success_nonzero"
+    },
+    "northwestern_faculty": {
+      "baseline_count": 2776,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2776,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T10:33:27.709662+00:00",
+      "last_good_count": 2776,
+      "last_success_at": "2026-08-28T10:33:27.709662+00:00",
+      "school": "northwestern",
+      "status": "success_nonzero"
+    },
+    "northwestern_labs": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:07:38.012127+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-08-28T09:07:38.012127+00:00",
+      "school": "northwestern",
+      "status": "success_nonzero"
+    },
+    "nsf_reu": {
+      "baseline_count": 153,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 153,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-30T06:20:18.905303+00:00",
+      "last_good_count": 153,
+      "last_success_at": "2026-08-30T06:20:18.905303+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "nyu_faculty": {
+      "baseline_count": 2157,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2157,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T08:05:52.637538+00:00",
+      "last_good_count": 2157,
+      "last_success_at": "2026-08-25T08:05:52.637538+00:00",
+      "school": "nyu",
+      "status": "success_nonzero"
+    },
+    "oregonstate_faculty": {
+      "baseline_count": 604,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 604,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:32:40.843945+00:00",
+      "last_good_count": 604,
+      "last_success_at": "2026-09-03T08:32:40.843945+00:00",
+      "school": "oregonstate",
+      "status": "success_nonzero"
+    },
+    "osu_faculty": {
+      "baseline_count": 2512,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2512,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:27:20.753900+00:00",
+      "last_good_count": 2512,
+      "last_success_at": "2026-08-29T06:27:20.753900+00:00",
+      "school": "osu",
+      "status": "success_nonzero"
+    },
+    "pitt_faculty": {
+      "baseline_count": 1132,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1132,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:30:21.137166+00:00",
+      "last_good_count": 1132,
+      "last_success_at": "2026-09-03T08:30:21.137166+00:00",
+      "school": "pitt",
+      "status": "success_nonzero"
+    },
+    "pomona_faculty": {
+      "baseline_count": 271,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 271,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:12:02.189747+00:00",
+      "last_good_count": 271,
+      "last_success_at": "2026-08-29T08:12:02.189747+00:00",
+      "school": "pomona",
+      "status": "success_nonzero"
+    },
+    "princeton_faculty": {
+      "baseline_count": 629,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 629,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:13:59.144943+00:00",
+      "last_good_count": 629,
+      "last_success_at": "2026-08-28T09:13:59.144943+00:00",
+      "school": "princeton",
+      "status": "success_nonzero"
+    },
+    "princeton_labs": {
+      "baseline_count": 4,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:04:33.606290+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-08-28T09:04:33.606290+00:00",
+      "school": "princeton",
+      "status": "success_nonzero"
+    },
+    "psu_faculty": {
+      "baseline_count": 2761,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2761,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:21:39.670724+00:00",
+      "last_good_count": 2761,
+      "last_success_at": "2026-08-25T07:21:39.670724+00:00",
+      "school": "psu",
+      "status": "success_nonzero"
+    },
+    "purdue_external_research": {
+      "baseline_count": 6,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 6,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-29T06:53:32.323892+00:00",
+      "last_good_count": 6,
+      "last_success_at": "2026-07-29T06:53:32.323892+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "purdue_faculty": {
+      "baseline_count": 2183,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2183,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:52:34.470021+00:00",
+      "last_good_count": 2183,
+      "last_success_at": "2026-08-26T06:52:34.470021+00:00",
+      "school": "purdue",
+      "status": "success_nonzero"
+    },
+    "purdue_labs": {
+      "baseline_count": 16,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 16,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:10:16.979278+00:00",
+      "last_good_count": 16,
+      "last_success_at": "2026-08-26T06:10:16.979278+00:00",
+      "school": "purdue",
+      "status": "success_nonzero"
+    },
+    "rice_faculty": {
+      "baseline_count": 998,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 998,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T07:35:25.845228+00:00",
+      "last_good_count": 998,
+      "last_success_at": "2026-09-03T07:35:25.845228+00:00",
+      "school": "rice",
+      "status": "success_nonzero"
+    },
+    "rochester_faculty": {
+      "baseline_count": 848,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 848,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:26:06.471872+00:00",
+      "last_good_count": 848,
+      "last_success_at": "2026-08-26T06:26:06.471872+00:00",
+      "school": "rochester",
+      "status": "success_nonzero"
+    },
+    "rpi_faculty": {
+      "baseline_count": 460,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 460,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:50:56.474565+00:00",
+      "last_good_count": 460,
+      "last_success_at": "2026-08-26T06:50:56.474565+00:00",
+      "school": "rpi",
+      "status": "success_nonzero"
+    },
+    "rutgers_faculty": {
+      "baseline_count": 2031,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2031,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:21:11.499673+00:00",
+      "last_good_count": 2031,
+      "last_success_at": "2026-08-31T08:21:11.499673+00:00",
+      "school": "rutgers",
+      "status": "success_nonzero"
+    },
+    "sbu_faculty": {
+      "baseline_count": 909,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 909,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:38:46.385251+00:00",
+      "last_good_count": 909,
+      "last_success_at": "2026-08-29T06:38:46.385251+00:00",
+      "school": "sbu",
+      "status": "success_nonzero"
+    },
+    "simplify_internships": {
+      "baseline_count": 2250,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2250,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-30T06:20:34.016625+00:00",
+      "last_good_count": 2250,
+      "last_success_at": "2026-08-30T06:20:34.016625+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "smith_faculty": {
+      "baseline_count": 308,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 308,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:07:26.801069+00:00",
+      "last_good_count": 308,
+      "last_success_at": "2026-08-26T07:07:26.801069+00:00",
+      "school": "smith",
+      "status": "success_nonzero"
+    },
+    "stanford_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-31T06:57:53.800143+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-07-31T06:57:53.800143+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "stanford_faculty": {
+      "baseline_count": 1364,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1364,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:12:12.725337+00:00",
+      "last_good_count": 1364,
+      "last_success_at": "2026-08-28T09:12:12.725337+00:00",
+      "school": "stanford",
+      "status": "success_nonzero"
+    },
+    "stanford_labs": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:05:15.463024+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-28T09:05:15.463024+00:00",
+      "school": "stanford",
+      "status": "success_nonzero"
+    },
+    "stevens_faculty": {
+      "baseline_count": 337,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 337,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:27:32.552776+00:00",
+      "last_good_count": 337,
+      "last_success_at": "2026-08-31T08:27:32.552776+00:00",
+      "school": "stevens",
+      "status": "success_nonzero"
+    },
+    "swarthmore_faculty": {
+      "baseline_count": 234,
+      "consecutive_failures": 0,
+      "current_count": 224,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T03:45:00.802770+00:00",
+      "last_good_count": 224,
+      "last_success_at": "2026-09-05T03:45:00.802770+00:00",
+      "school": "swarthmore",
+      "status": "success_nonzero"
+    },
+    "syracuse_faculty": {
+      "baseline_count": 835,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 835,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:38:09.540381+00:00",
+      "last_good_count": 835,
+      "last_success_at": "2026-09-03T08:38:09.540381+00:00",
+      "school": "syracuse",
+      "status": "success_nonzero"
+    },
+    "tamu_faculty": {
+      "baseline_count": 3252,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3252,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:11:19.139373+00:00",
+      "last_good_count": 3252,
+      "last_success_at": "2026-08-25T07:11:19.139373+00:00",
+      "school": "tamu",
+      "status": "success_nonzero"
+    },
+    "tufts_faculty": {
+      "baseline_count": 2063,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2063,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:51:10.592840+00:00",
+      "last_good_count": 2063,
+      "last_success_at": "2026-08-31T08:51:10.592840+00:00",
+      "school": "tufts",
+      "status": "success_nonzero"
+    },
+    "ucb_anthro_faculty": {
+      "baseline_count": 26,
+      "consecutive_failures": 0,
+      "current_count": 26,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 26,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_arch_faculty": {
+      "baseline_count": 50,
+      "consecutive_failures": 0,
+      "current_count": 50,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 50,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_astro_faculty": {
+      "baseline_count": 18,
+      "consecutive_failures": 0,
+      "current_count": 19,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 19,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_bioe_faculty": {
+      "baseline_count": 32,
+      "consecutive_failures": 0,
+      "current_count": 35,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 35,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_campus": {
+      "baseline_count": 0,
+      "consecutive_failures": 0,
+      "current_count": 84,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 84,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_cbe_faculty": {
+      "baseline_count": 19,
+      "consecutive_failures": 0,
+      "current_count": 27,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 27,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_cee_faculty": {
+      "baseline_count": 63,
+      "consecutive_failures": 0,
+      "current_count": 64,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 64,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_chem_faculty": {
+      "baseline_count": 53,
+      "consecutive_failures": 0,
+      "current_count": 51,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 51,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_classics_faculty": {
+      "baseline_count": 18,
+      "consecutive_failures": 0,
+      "current_count": 27,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 27,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_complit_faculty": {
+      "baseline_count": 17,
+      "consecutive_failures": 0,
+      "current_count": 21,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 21,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_datascience_faculty": {
+      "baseline_count": 6,
+      "consecutive_failures": 0,
+      "current_count": 4,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 4,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_dcrp_faculty": {
+      "baseline_count": 26,
+      "consecutive_failures": 0,
+      "current_count": 26,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 26,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_econ_faculty": {
+      "baseline_count": 59,
+      "consecutive_failures": 0,
+      "current_count": 55,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 55,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_education_faculty": {
+      "baseline_count": 46,
+      "consecutive_failures": 0,
+      "current_count": 46,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 46,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_eecs_faculty": {
+      "baseline_count": 144,
+      "consecutive_failures": 1,
+      "current_count": 0,
+      "failure_reason": "emitted 0 records against a baseline of 144 active record(s)",
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 144,
+      "school": "ucb",
+      "status": "suspicious_zero"
+    },
+    "ucb_english_faculty": {
+      "baseline_count": 52,
+      "consecutive_failures": 0,
+      "current_count": 51,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 51,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_eps_faculty": {
+      "baseline_count": 29,
+      "consecutive_failures": 0,
+      "current_count": 35,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 35,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_espm_faculty": {
+      "baseline_count": 67,
+      "consecutive_failures": 0,
+      "current_count": 67,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 67,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_external_research": {
+      "baseline_count": 7,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 7,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-21T06:51:31.064296+00:00",
+      "last_good_count": 7,
+      "last_success_at": "2026-07-21T06:51:31.064296+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "ucb_extra_faculty": {
+      "baseline_count": 161,
+      "consecutive_failures": 0,
+      "current_count": 187,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 187,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_filmmedia_faculty": {
+      "baseline_count": 8,
+      "consecutive_failures": 0,
+      "current_count": 13,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 13,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_french_faculty": {
+      "baseline_count": 11,
+      "consecutive_failures": 0,
+      "current_count": 14,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 14,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_geog_faculty": {
+      "baseline_count": 20,
+      "consecutive_failures": 0,
+      "current_count": 23,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 23,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_german_faculty": {
+      "baseline_count": 8,
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_haas_faculty": {
+      "baseline_count": 104,
+      "consecutive_failures": 0,
+      "current_count": 120,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 120,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_history_faculty": {
+      "baseline_count": 59,
+      "consecutive_failures": 0,
+      "current_count": 61,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 61,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_ib_faculty": {
+      "baseline_count": 44,
+      "consecutive_failures": 0,
+      "current_count": 47,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 47,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_ieor_faculty": {
+      "baseline_count": 19,
+      "consecutive_failures": 0,
+      "current_count": 21,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 21,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_journalism_faculty": {
+      "baseline_count": 36,
+      "consecutive_failures": 0,
+      "current_count": 37,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 37,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_labs": {
+      "baseline_count": 17,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 17,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-21T06:51:30.544242+00:00",
+      "last_good_count": 17,
+      "last_success_at": "2026-07-21T06:51:30.544242+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_larch_faculty": {
+      "baseline_count": 19,
+      "consecutive_failures": 0,
+      "current_count": 19,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 19,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_law_faculty": {
+      "baseline_count": 81,
+      "consecutive_failures": 0,
+      "current_count": 82,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 82,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_ling_faculty": {
+      "baseline_count": 18,
+      "consecutive_failures": 0,
+      "current_count": 16,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 16,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_math_faculty": {
+      "baseline_count": 100,
+      "consecutive_failures": 0,
+      "current_count": 105,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 105,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_mcb_faculty": {
+      "baseline_count": 80,
+      "consecutive_failures": 0,
+      "current_count": 92,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 92,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_me_faculty": {
+      "baseline_count": 65,
+      "consecutive_failures": 0,
+      "current_count": 72,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 72,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_mse_faculty": {
+      "baseline_count": 19,
+      "consecutive_failures": 0,
+      "current_count": 29,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 29,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_music_faculty": {
+      "baseline_count": 18,
+      "consecutive_failures": 0,
+      "current_count": 19,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 19,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_ne_faculty": {
+      "baseline_count": 16,
+      "consecutive_failures": 0,
+      "current_count": 17,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 17,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_neuro_faculty": {
+      "baseline_count": 16,
+      "consecutive_failures": 0,
+      "current_count": 41,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 41,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_nst_faculty": {
+      "baseline_count": 17,
+      "consecutive_failures": 0,
+      "current_count": 20,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 20,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_philos_faculty": {
+      "baseline_count": 38,
+      "consecutive_failures": 0,
+      "current_count": 46,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 46,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_physics_faculty": {
+      "baseline_count": 41,
+      "consecutive_failures": 0,
+      "current_count": 59,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 59,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_pmb_faculty": {
+      "baseline_count": 25,
+      "consecutive_failures": 0,
+      "current_count": 31,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 31,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_polisci_faculty": {
+      "baseline_count": 44,
+      "consecutive_failures": 0,
+      "current_count": 49,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 49,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_psych_faculty": {
+      "baseline_count": 35,
+      "consecutive_failures": 0,
+      "current_count": 36,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 36,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_publicpolicy_faculty": {
+      "baseline_count": 19,
+      "consecutive_failures": 0,
+      "current_count": 32,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 32,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_rhetoric_faculty": {
+      "baseline_count": 23,
+      "consecutive_failures": 0,
+      "current_count": 32,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 32,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_scandinavian_faculty": {
+      "baseline_count": 10,
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_slavic_faculty": {
+      "baseline_count": 15,
+      "consecutive_failures": 0,
+      "current_count": 16,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 16,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_soc_faculty": {
+      "baseline_count": 38,
+      "consecutive_failures": 0,
+      "current_count": 36,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 36,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_socwel_faculty": {
+      "baseline_count": 27,
+      "consecutive_failures": 0,
+      "current_count": 27,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 27,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_spanish_portuguese_faculty": {
+      "baseline_count": 23,
+      "consecutive_failures": 0,
+      "current_count": 24,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 24,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_sph_faculty": {
+      "baseline_count": 131,
+      "consecutive_failures": 0,
+      "current_count": 139,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 139,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_stat_faculty": {
+      "baseline_count": 47,
+      "consecutive_failures": 0,
+      "current_count": 58,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 58,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_tdps_faculty": {
+      "baseline_count": 34,
+      "consecutive_failures": 0,
+      "current_count": 34,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 34,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_urap": {
+      "baseline_count": 1,
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucb_urap_projects": {
+      "baseline_count": 241,
+      "consecutive_failures": 0,
+      "current_count": 771,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-05T05:21:47.502304+00:00",
+      "last_good_count": 771,
+      "last_success_at": "2026-09-05T05:21:47.502304+00:00",
+      "school": "ucb",
+      "status": "success_nonzero"
+    },
+    "ucf_faculty": {
+      "baseline_count": 811,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 811,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:51:36.190934+00:00",
+      "last_good_count": 811,
+      "last_success_at": "2026-08-28T09:51:36.190934+00:00",
+      "school": "ucf",
+      "status": "success_nonzero"
+    },
+    "uchicago_external_research": {
+      "baseline_count": 3,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:39:28.123381+00:00",
+      "last_good_count": 3,
+      "last_success_at": "2026-07-18T06:39:28.123381+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "uchicago_faculty": {
+      "baseline_count": 1168,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1168,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:49:45.614075+00:00",
+      "last_good_count": 1168,
+      "last_success_at": "2026-08-29T06:49:45.614075+00:00",
+      "school": "uchicago",
+      "status": "success_nonzero"
+    },
+    "uchicago_labs": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:26.802513+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-29T06:06:26.802513+00:00",
+      "school": "uchicago",
+      "status": "success_nonzero"
+    },
+    "uci_faculty": {
+      "baseline_count": 1187,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1187,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T07:03:24.405350+00:00",
+      "last_good_count": 1187,
+      "last_success_at": "2026-08-29T07:03:24.405350+00:00",
+      "school": "uci",
+      "status": "success_nonzero"
+    },
+    "uci_labs": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:06:50.454425+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-08-29T06:06:50.454425+00:00",
+      "school": "uci",
+      "status": "success_nonzero"
+    },
+    "ucla_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-06T06:57:25.151077+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-06T06:57:25.151077+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "ucla_faculty": {
+      "baseline_count": 1988,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1988,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:54:36.704446+00:00",
+      "last_good_count": 1988,
+      "last_success_at": "2026-09-03T06:54:36.704446+00:00",
+      "school": "ucla",
+      "status": "success_nonzero"
+    },
+    "ucla_labs": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:07:01.517522+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-09-03T06:07:01.517522+00:00",
+      "school": "ucla",
+      "status": "success_nonzero"
+    },
+    "uconn_faculty": {
+      "baseline_count": 1169,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1169,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:54:44.539051+00:00",
+      "last_good_count": 1169,
+      "last_success_at": "2026-08-25T07:54:44.539051+00:00",
+      "school": "uconn",
+      "status": "success_nonzero"
+    },
+    "ucr_faculty": {
+      "baseline_count": 1154,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1154,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:24:50.699915+00:00",
+      "last_good_count": 1154,
+      "last_success_at": "2026-08-31T08:24:50.699915+00:00",
+      "school": "ucr",
+      "status": "success_nonzero"
+    },
+    "ucsb_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:40:22.437361+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-07-18T06:40:22.437361+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "ucsb_faculty": {
+      "baseline_count": 857,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 857,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T07:04:14.183696+00:00",
+      "last_good_count": 857,
+      "last_success_at": "2026-08-29T07:04:14.183696+00:00",
+      "school": "ucsb",
+      "status": "success_nonzero"
+    },
+    "ucsb_labs": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:07:11.212373+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-08-29T06:07:11.212373+00:00",
+      "school": "ucsb",
+      "status": "success_nonzero"
+    },
+    "ucsb_urca_projects": {
+      "baseline_count": 249,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 249,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:12:18.291429+00:00",
+      "last_good_count": 249,
+      "last_success_at": "2026-08-29T08:12:18.291429+00:00",
+      "school": "ucsb",
+      "status": "success_nonzero"
+    },
+    "ucsc_faculty": {
+      "baseline_count": 736,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 736,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:23:17.622024+00:00",
+      "last_good_count": 736,
+      "last_success_at": "2026-08-28T09:23:17.622024+00:00",
+      "school": "ucsc",
+      "status": "success_nonzero"
+    },
+    "ucsd_faculty": {
+      "baseline_count": 1467,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1467,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:58:32.787238+00:00",
+      "last_good_count": 1467,
+      "last_success_at": "2026-08-28T09:58:32.787238+00:00",
+      "school": "ucsd",
+      "status": "success_nonzero"
+    },
+    "ucsd_labs": {
+      "baseline_count": 3,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:05:51.887025+00:00",
+      "last_good_count": 3,
+      "last_success_at": "2026-08-28T09:05:51.887025+00:00",
+      "school": "ucsd",
+      "status": "success_nonzero"
+    },
+    "udel_faculty": {
+      "baseline_count": 1018,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1018,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:47:54.467820+00:00",
+      "last_good_count": 1018,
+      "last_success_at": "2026-09-03T08:47:54.467820+00:00",
+      "school": "udel",
+      "status": "success_nonzero"
+    },
+    "uf_faculty": {
+      "baseline_count": 2042,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2042,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:19:50.594459+00:00",
+      "last_good_count": 2042,
+      "last_success_at": "2026-08-28T09:19:50.594459+00:00",
+      "school": "uf",
+      "status": "success_nonzero"
+    },
+    "uga_faculty": {
+      "baseline_count": 2155,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2155,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T09:04:39.482591+00:00",
+      "last_good_count": 2155,
+      "last_success_at": "2026-09-03T09:04:39.482591+00:00",
+      "school": "uga",
+      "status": "success_nonzero"
+    },
+    "uiowa_faculty": {
+      "baseline_count": 954,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 954,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:34:28.180721+00:00",
+      "last_good_count": 954,
+      "last_success_at": "2026-08-31T08:34:28.180721+00:00",
+      "school": "uiowa",
+      "status": "success_nonzero"
+    },
+    "uiuc_faculty": {
+      "baseline_count": 3263,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3263,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T08:08:54.045249+00:00",
+      "last_good_count": 3263,
+      "last_success_at": "2026-08-31T08:08:54.045249+00:00",
+      "school": "uiuc",
+      "status": "success_nonzero"
+    },
+    "uiuc_our_rss": {
+      "baseline_count": 17,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 17,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-31T06:05:42.068605+00:00",
+      "last_good_count": 17,
+      "last_success_at": "2026-08-31T06:05:42.068605+00:00",
+      "school": "uiuc",
+      "status": "success_nonzero"
+    },
+    "uiuc_sro": {
+      "baseline_count": 279,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 279,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-30T06:20:01.504821+00:00",
+      "last_good_count": 279,
+      "last_success_at": "2026-08-30T06:20:01.504821+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "uky_faculty": {
+      "baseline_count": 767,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 767,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:46:01.661659+00:00",
+      "last_good_count": 767,
+      "last_success_at": "2026-08-26T06:46:01.661659+00:00",
+      "school": "uky",
+      "status": "success_nonzero"
+    },
+    "umass_faculty": {
+      "baseline_count": 1576,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1576,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:35:18.701973+00:00",
+      "last_good_count": 1576,
+      "last_success_at": "2026-08-29T06:35:18.701973+00:00",
+      "school": "umass",
+      "status": "success_nonzero"
+    },
+    "umd_faculty": {
+      "baseline_count": 1299,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1299,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:27:42.953989+00:00",
+      "last_good_count": 1299,
+      "last_success_at": "2026-08-26T06:27:42.953989+00:00",
+      "school": "umd",
+      "status": "success_nonzero"
+    },
+    "umich_external_research": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:38:34.477499+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-07-18T06:38:34.477499+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "umich_faculty": {
+      "baseline_count": 1476,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1476,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:21:41.831130+00:00",
+      "last_good_count": 1476,
+      "last_success_at": "2026-08-29T06:21:41.831130+00:00",
+      "school": "umich",
+      "status": "success_nonzero"
+    },
+    "umich_labs": {
+      "baseline_count": 3,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:04:43.369990+00:00",
+      "last_good_count": 3,
+      "last_success_at": "2026-08-29T06:04:43.369990+00:00",
+      "school": "umich",
+      "status": "success_nonzero"
+    },
+    "umn_faculty": {
+      "baseline_count": 1451,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1451,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:05:42.647547+00:00",
+      "last_good_count": 1451,
+      "last_success_at": "2026-08-25T07:05:42.647547+00:00",
+      "school": "umn",
+      "status": "success_nonzero"
+    },
+    "unc_faculty": {
+      "baseline_count": 367,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 367,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:19:22.175294+00:00",
+      "last_good_count": 367,
+      "last_success_at": "2026-08-26T07:19:22.175294+00:00",
+      "school": "unc",
+      "status": "success_nonzero"
+    },
+    "unl_faculty": {
+      "baseline_count": 1211,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1211,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:48:00.814436+00:00",
+      "last_good_count": 1211,
+      "last_success_at": "2026-08-28T09:48:00.814436+00:00",
+      "school": "unl",
+      "status": "success_nonzero"
+    },
+    "upenn_external_research": {
+      "baseline_count": 9,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 9,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-18T06:40:40.352241+00:00",
+      "last_good_count": 9,
+      "last_success_at": "2026-07-18T06:40:40.352241+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "upenn_faculty": {
+      "baseline_count": 1873,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1873,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T08:05:21.031320+00:00",
+      "last_good_count": 1873,
+      "last_success_at": "2026-08-29T08:05:21.031320+00:00",
+      "school": "upenn",
+      "status": "success_nonzero"
+    },
+    "upenn_labs": {
+      "baseline_count": 2,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:07:46.317048+00:00",
+      "last_good_count": 2,
+      "last_success_at": "2026-08-29T06:07:46.317048+00:00",
+      "school": "upenn",
+      "status": "success_nonzero"
+    },
+    "usc_faculty": {
+      "baseline_count": 1575,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1575,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:03:40.864529+00:00",
+      "last_good_count": 1575,
+      "last_success_at": "2026-08-25T07:03:40.864529+00:00",
+      "school": "usc",
+      "status": "success_nonzero"
+    },
+    "usf_faculty": {
+      "baseline_count": 775,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 775,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:35:22.909814+00:00",
+      "last_good_count": 775,
+      "last_success_at": "2026-08-25T07:35:22.909814+00:00",
+      "school": "usf",
+      "status": "success_nonzero"
+    },
+    "utah_faculty": {
+      "baseline_count": 1112,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1112,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T08:04:29.984582+00:00",
+      "last_good_count": 1112,
+      "last_success_at": "2026-08-25T08:04:29.984582+00:00",
+      "school": "utah",
+      "status": "success_nonzero"
+    },
+    "utdallas_faculty": {
+      "baseline_count": 1086,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1086,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:46:58.209451+00:00",
+      "last_good_count": 1086,
+      "last_success_at": "2026-08-29T06:46:58.209451+00:00",
+      "school": "utdallas",
+      "status": "success_nonzero"
+    },
+    "utexas_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-06T06:51:41.587537+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-06T06:51:41.587537+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "utexas_faculty": {
+      "baseline_count": 2212,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2212,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T06:26:12.600399+00:00",
+      "last_good_count": 2212,
+      "last_success_at": "2026-09-03T06:26:12.600399+00:00",
+      "school": "utexas",
+      "status": "success_nonzero"
+    },
+    "utk_faculty": {
+      "baseline_count": 1066,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1066,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-29T06:40:31.098111+00:00",
+      "last_good_count": 1066,
+      "last_success_at": "2026-08-29T06:40:31.098111+00:00",
+      "school": "utk",
+      "status": "success_nonzero"
+    },
+    "uva_faculty": {
+      "baseline_count": 1633,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1633,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T08:12:15.708630+00:00",
+      "last_good_count": 1633,
+      "last_success_at": "2026-08-25T08:12:15.708630+00:00",
+      "school": "uva",
+      "status": "success_nonzero"
+    },
+    "uw_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-29T06:51:27.327956+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-07-29T06:51:27.327956+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "uw_faculty": {
+      "baseline_count": 2223,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 2223,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:20:36.617353+00:00",
+      "last_good_count": 2223,
+      "last_success_at": "2026-08-26T06:20:36.617353+00:00",
+      "school": "uw",
+      "status": "success_nonzero"
+    },
+    "uw_labs": {
+      "baseline_count": 3,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 3,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:08:37.061468+00:00",
+      "last_good_count": 3,
+      "last_success_at": "2026-08-26T06:08:37.061468+00:00",
+      "school": "uw",
+      "status": "success_nonzero"
+    },
+    "vanderbilt_faculty": {
+      "baseline_count": 1158,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1158,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T07:42:10.561617+00:00",
+      "last_good_count": 1158,
+      "last_success_at": "2026-09-03T07:42:10.561617+00:00",
+      "school": "vanderbilt",
+      "status": "success_nonzero"
+    },
+    "vassar_faculty": {
+      "baseline_count": 262,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 262,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:05:58.774446+00:00",
+      "last_good_count": 262,
+      "last_success_at": "2026-08-26T07:05:58.774446+00:00",
+      "school": "vassar",
+      "status": "success_nonzero"
+    },
+    "vt_faculty": {
+      "baseline_count": 1890,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1890,
+      "failure_reason": null,
+      "last_attempt_at": "2026-09-03T08:04:03.295564+00:00",
+      "last_good_count": 1890,
+      "last_success_at": "2026-09-03T08:04:03.295564+00:00",
+      "school": "vt",
+      "status": "success_nonzero"
+    },
+    "washu_faculty": {
+      "baseline_count": 1108,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1108,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-28T09:22:32.207440+00:00",
+      "last_good_count": 1108,
+      "last_success_at": "2026-08-28T09:22:32.207440+00:00",
+      "school": "washu",
+      "status": "success_nonzero"
+    },
+    "wellesley_faculty": {
+      "baseline_count": 286,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 286,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:13:51.375623+00:00",
+      "last_good_count": 286,
+      "last_success_at": "2026-08-26T07:13:51.375623+00:00",
+      "school": "wellesley",
+      "status": "success_nonzero"
+    },
+    "wesleyan_faculty": {
+      "baseline_count": 358,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 358,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:10:16.396426+00:00",
+      "last_good_count": 358,
+      "last_success_at": "2026-08-26T07:10:16.396426+00:00",
+      "school": "wesleyan",
+      "status": "success_nonzero"
+    },
+    "wisc_external_research": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-07-29T06:52:11.656777+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-07-29T06:52:11.656777+00:00",
+      "school": "national",
+      "status": "success_nonzero"
+    },
+    "wisc_faculty": {
+      "baseline_count": 1765,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1765,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:22:17.631966+00:00",
+      "last_good_count": 1765,
+      "last_success_at": "2026-08-26T06:22:17.631966+00:00",
+      "school": "wisc",
+      "status": "success_nonzero"
+    },
+    "wisc_labs": {
+      "baseline_count": 1,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:09:21.079601+00:00",
+      "last_good_count": 1,
+      "last_success_at": "2026-08-26T06:09:21.079601+00:00",
+      "school": "wisc",
+      "status": "success_nonzero"
+    },
+    "wlu_faculty": {
+      "baseline_count": 237,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 237,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T07:08:21.012365+00:00",
+      "last_good_count": 237,
+      "last_success_at": "2026-08-26T07:08:21.012365+00:00",
+      "school": "wlu",
+      "status": "success_nonzero"
+    },
+    "wpi_faculty": {
+      "baseline_count": 465,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 465,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-25T07:46:45.349542+00:00",
+      "last_good_count": 465,
+      "last_success_at": "2026-08-25T07:46:45.349542+00:00",
+      "school": "wpi",
+      "status": "success_nonzero"
+    },
+    "yale_faculty": {
+      "baseline_count": 1254,
+      "bootstrapped_from": "corpus_last_seen_at",
+      "consecutive_failures": 0,
+      "current_count": 1254,
+      "failure_reason": null,
+      "last_attempt_at": "2026-08-26T06:26:42.706618+00:00",
+      "last_good_count": 1254,
+      "last_success_at": "2026-08-26T06:26:42.706618+00:00",
+      "school": "yale",
+      "status": "success_nonzero"
+    }
+  }
+}

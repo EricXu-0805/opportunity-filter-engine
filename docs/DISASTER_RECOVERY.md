@@ -8,10 +8,19 @@
 > backup exists  !=  recovery verified
 > ```
 >
-> `scripts/release_gate.py` reports `restore_drill` as `UNVERIFIED` with reason
-> `drill_never_performed`, which keeps the release at NO-GO on its own. That is
-> the correct state until the drill in §3 is performed and its record lands in
-> `data/releases/drills/`.
+> `scripts/release_gate.py` reports `restore_drill` as **`BLOCKED`** with reason
+> `scratch_project_access_required`, which keeps the release at NO-GO on its
+> own. `BLOCKED` rather than `UNVERIFIED` on purpose: this is not evidence
+> nobody has got around to gathering, it is evidence nobody *can* gather until
+> a scratch project exists. The two need different people on different days.
+>
+> ```
+> status:              BLOCKED
+> owner:               project owner
+> reason:              scratch Supabase project / management access required
+> recommended_action:  provision an isolated scratch project and authorize the
+>                      restore drill in §3
+> ```
 >
 > A drill was attempted on 2026-09-04 and could not be started. What blocked it
 > is recorded in §5 — the blocker is access, not procedure.
@@ -176,12 +185,16 @@ facts, and only the second one names what to fix.
 | `docker` / `podman` / `colima` | not installed |
 | Existing scratch or staging project | none — `docs/release_gate_report.md` records "no staging" |
 
-**Conclusion: `CANNOT VERIFY`; the release stays `NO-GO`.** The blocker is
-access and billing authority, both of which sit with the project owner. The
-procedure above is executable and its tooling is committed and tested. Nothing
-here can be worked around from inside the repository, and it must not be: a
-drill record written without a restore would make the one gate that has never
-lied start lying.
+**Conclusion: `BLOCKED`; the release stays `NO-GO`.** The blocker is access
+and billing authority, both of which sit with the project owner. The procedure
+above is executable and its tooling is committed and tested. Nothing here can
+be worked around from inside the repository, and it must not be: a drill record
+written without a restore would make the one gate that has never lied start
+lying.
+
+The fixture that proves the gate's PASS path is reachable is **not** release
+evidence and is deliberately not committed — `data/releases/drills/` holds only
+its README. A drill record counts only when a real restore produced it.
 
 **To clear it:** the project owner runs §3 against a scratch project. Expected
 cost is one restored project for the duration of the drill.
