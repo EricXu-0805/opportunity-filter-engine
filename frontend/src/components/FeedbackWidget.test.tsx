@@ -17,6 +17,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   advanceOwnerEpoch,
+  captureOwnerToken,
   isLocalOwnerReady,
   readUserScopedRaw,
   syncLocalIdentityOwner,
@@ -133,7 +134,7 @@ describe('FeedbackWidget', () => {
       category: 'idea',
       subject: 'dark mode',
       clientToken: expect.any(String),
-    }));
+    }), captureOwnerToken());
     expect(mockTrack).toHaveBeenCalledWith('feedback_submitted');
   });
 
@@ -143,7 +144,7 @@ describe('FeedbackWidget', () => {
     fireEvent.click(screen.getByTestId('feedback-send'));
 
     await waitFor(() => expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument());
-    expect(mockSubmitFeedback).toHaveBeenCalledWith(expect.objectContaining({ category: null }));
+    expect(mockSubmitFeedback).toHaveBeenCalledWith(expect.objectContaining({ category: null }), captureOwnerToken());
   });
 
   it('shows an inline error when the submit fails', async () => {
@@ -337,7 +338,7 @@ describe('validation', () => {
     openAndType('anonymous note');
     fireEvent.click(screen.getByTestId('feedback-send'));
     await waitFor(() => expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument());
-    expect(mockSubmitFeedback).toHaveBeenCalledWith(expect.objectContaining({ email: null }));
+    expect(mockSubmitFeedback).toHaveBeenCalledWith(expect.objectContaining({ email: null }), captureOwnerToken());
   });
 
   it('caps the message at 4000 chars and counts what is typed', () => {
@@ -405,5 +406,55 @@ describe('a draft written before the page could know who you are', () => {
     fireEvent.click(screen.getByTestId('feedback-open'));
     const box = screen.getByPlaceholderText('feedback.placeholder') as HTMLTextAreaElement;
     expect(box.value).toBe('half-written thought');
+  });
+});
+
+describe('feedback owner lifecycle', () => {
+  async function switchOwner() {
+    await act(async () => {
+      advanceOwnerEpoch('feedback-owner-b');
+      await syncLocalIdentityOwner('feedback-owner-b');
+    });
+    await waitFor(() => expect(isLocalOwnerReady('feedback-owner-b')).toBe(true));
+  }
+
+  it('clears the visible draft and never mirrors it into the next owner namespace', async () => {
+    render(<FeedbackWidget />);
+    openAndType('Owner A private feedback');
+    const firstToken = storedDraft()?.clientToken;
+    await switchOwner();
+    expect(screen.queryByTestId('feedback-panel')).toBeNull();
+    expect(storedDraft()).toBeNull();
+    openAndType('Owner B fresh feedback');
+    expect(storedDraft()?.message).toBe('Owner B fresh feedback');
+    expect(storedDraft()?.clientToken).not.toBe(firstToken);
+  });
+
+  it.each([true, false])('ignores a late feedback response (success=%s) after switching owners', async (success) => {
+    let finish!: (result: unknown) => void;
+    mockSubmitFeedback.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    render(<FeedbackWidget />);
+    openAndType('Owner A old request');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    expect(mockSubmitFeedback.mock.calls[0][1].uid).toBe(OWNER_UID);
+    await switchOwner();
+    openAndType('Owner B draft to preserve');
+    await act(async () => { finish(success
+      ? { ok: true, reason: 'created', id: TICKET_ID }
+      : { ok: false, reason: 'error' }); });
+    expect(screen.getByPlaceholderText('feedback.placeholder')).toHaveValue('Owner B draft to preserve');
+    expect(storedDraft()?.message).toBe('Owner B draft to preserve');
+    expect(screen.queryByTestId('feedback-thanks')).toBeNull();
+    expect(screen.queryByTestId('feedback-error')).toBeNull();
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it('keeps a draft and its retry token during a same-owner session refresh', async () => {
+    render(<FeedbackWidget />);
+    openAndType('Still my draft');
+    const token = storedDraft()?.clientToken;
+    await act(async () => { advanceOwnerEpoch(OWNER_UID); await syncLocalIdentityOwner(OWNER_UID); });
+    expect(screen.getByPlaceholderText('feedback.placeholder')).toHaveValue('Still my draft');
+    expect(storedDraft()?.clientToken).toBe(token);
   });
 });

@@ -17,6 +17,7 @@ stay in their ASCII form.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 
 # 5+ char lowercase tokens with optional tech punctuation (c++, scikit-learn,
 # node.js). Anything shorter is too generic to count as a hard claim.
@@ -598,22 +599,20 @@ def policy_divergence(
 
 _COMPETENCE_RE = re.compile(
     r"\b(?:"
-    r"i\s+have\s+(?:\w+\s+){0,2}?(?:experience|expertise|proficiency|background|skills?)"
-    r"|i\s+am\s+(?:proficient|skilled|experienced|adept|versed)"
-    r"|i(?:'ve|\s+have)\s+(?:worked|built|developed|implemented|used|studied|trained|published)"
-    r"|my\s+(?:\w+\s+)?(?:experience|expertise|proficiency|background|skills?|projects?|research|coursework)\s+(?:in|with|on|includes?|spans?)"
+    r"i\s+have\s+(?:[\w-]+\s+){0,2}?(?:experience|expertise|proficiency|background|skills?)"
+    r"|i(?:\s+am|'m|’m)\s+(?:(?:an?|highly|very)\s+)?(?:expert|proficient|skilled|experienced|adept|versed)"
+    r"|i(?:'ve|’ve|\s+have)\s+(?:worked|built|developed|implemented|used|studied|trained|published)"
+    r"|my\s+(?:\w+\s+)?(?:experience|expertise|proficiency|background|skills?|projects?|research|coursework)\s+(?:(?:is|lies)\s+)?(?:in|with|on|includes?|spans?)"
     r"|i\s+(?:know|use|write|program)\b"
     r")",
 )
-
-_SENTENCE_SPLIT_RE = re.compile(r"[.!?\n]+")
-
 
 def competence_violations(
     text: str,
     student_corpus: str,
     *,
     extra_allow: frozenset[str] = frozenset(),
+    interest_topics: str = "",
 ) -> list[str]:
     """Tokens claimed as the SENDER's own competence that their own facts do
     not support. For each sentence matching a first-person competence pattern,
@@ -624,8 +623,21 @@ def competence_violations(
     corpus_lower = student_corpus.lower()
     corpus_tokens = _corpus_tokens(corpus_lower)
     violations: set[str] = set()
-    for sentence in _SENTENCE_SPLIT_RE.split(text.lower()):
-        if not _COMPETENCE_RE.search(sentence):
+    # Interest phrases can consist entirely of common prose ("machine
+    # learning"). They still cannot support a claim of experience. Check the
+    # explicitly supplied topics as phrases, without tightening the shared
+    # filler vocabulary for all callers.
+    topics = [_norm_phrase(t) for t in re.split(r"[,;\n]|\band\b", interest_topics, flags=re.I)]
+    source_phrases = f" {_norm_phrase(student_corpus)} "
+    # A single sentence can contain separate assertions: "I have experience
+    # with Python and I am interested in ML" must not turn the interest clause
+    # into a competence claim. Keep coordinated skill lists together.
+    for sentence in re.split(
+        r"[.!?\n;]+|\bbut\b|\band(?=\s+(?:i\b|we\b|my\b|our\b|am\b|would\b|hope\b|want\b|plan\b))",
+        text.lower(),
+    ):
+        claim = _COMPETENCE_RE.search(sentence)
+        if not claim or re.search(r"\b(?:no|not|never)\b", claim.group()):
             continue
         for token in hard_claims(sentence):
             if token in _COMMON_FILLER or token in extra_allow:
@@ -633,4 +645,79 @@ def competence_violations(
             if _in_corpus(token, corpus_lower, corpus_tokens):
                 continue
             violations.add(token)
+        for topic in topics:
+            if len(topic) > 3 and f" {topic} " in f" {_norm_phrase(sentence)} " and f" {topic} " not in source_phrases:
+                violations.add(topic)
+    return sorted(violations)
+
+
+# Cold email contains harmless numbers that a resume rewrite does not: a
+# proposed 15-minute conversation, a course identifier, or a publication date.
+# Apply numeric checking to first-person achievement clauses, not the entire
+# email. Keep quantities distinct: 4.5% is not 45%, and 45 samples is not 45%.
+_ACHIEVEMENT_RE = re.compile(
+    r"\b(?:built|developed|improved|increased|reduced|achieved|processed|analy[sz]ed|"
+    r"collected|led|managed|published|trained|evaluated|tested|deployed|served|"
+    r"won|earned|scored|reached|experience|accuracy|precision|recall|throughput|"
+    r"latency|runtime|gpa|results?)\b", re.I,
+)
+_QUANTITY_RE = re.compile(
+    r"(?<![\w.])(?P<value>\d+(?:,\d{3})*(?:\.\d+)?)(?!\.\d)(?=\W|x\b|$)"
+    r"\s*(?:[-–]\s*)?(?P<unit>%|percent(?:age points)?\b|times\b|x\b|"
+    r"(?:year|month|week|day|hour|minute|second|sample|participant|user|"
+    r"patient|paper|publication|project|experiment|model|record|student)s?\b)?", re.I,
+)
+_MONTH_RE = re.compile(
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*$", re.I,
+)
+
+
+def _email_quantities(text: str) -> set[tuple[Decimal, str]]:
+    quantities: set[tuple[Decimal, str]] = set()
+    for match in _QUANTITY_RE.finditer(text):
+        value = Decimal(match["value"].replace(",", ""))
+        unit = (match["unit"] or "").lower()
+        before = text[:match.start()]
+        # Dates and course labels are outside this achievements-only check;
+        # the caller's vocabulary/target checks still apply.
+        if not unit and (
+            1900 <= value <= 2100
+            or re.search(r"\b[A-Z]{2,5}\s*[- ]\s*$", before)
+            or _MONTH_RE.search(before)
+            or re.search(r"\d[-/]$", before)
+            or re.match(r"[-/]\d", text[match.end():])
+        ):
+            continue
+        if unit in ("%", "percent"):
+            unit = "%"
+        elif unit in ("x", "times"):
+            unit = "times"
+        else:
+            unit = unit.removesuffix("s")
+        # A meeting request can share a sentence with a real work example.
+        if unit in ("minute", "hour") and re.search(
+            r"\b(?:meet|meeting|conversation|chat|call)\b",
+            text[max(0, match.start() - 40):match.end() + 40], re.I,
+        ):
+            continue
+        quantities.add((value, unit))
+    return quantities
+
+
+def numeric_achievement_violations(text: str, student_evidence: str) -> list[str]:
+    """Unsupported numeric achievements, grounded only in student evidence.
+
+    This is a bounded English claim check, not semantic entailment or a general
+    date validator. The caller must exclude interests, target facts and the
+    draft itself from ``student_evidence``.
+    """
+    supported = _email_quantities(student_evidence)
+    violations: set[str] = set()
+    # Do not split decimal points, unlike the older prose sentence splitter.
+    for clause in re.split(r"(?<!\d)\.(?!\d)|[!?\n;]+|\bbut\b", text):
+        if not re.search(r"\b(?:i|i've|my|we|we've|our)\b", clause, re.I) or not _ACHIEVEMENT_RE.search(clause):
+            continue
+        for value, unit in _email_quantities(clause) - supported:
+            violations.add(f"{value.normalize():f}{' ' + unit if unit else ''}")
     return sorted(violations)

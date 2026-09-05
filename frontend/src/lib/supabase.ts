@@ -1780,8 +1780,13 @@ export type FeedbackResult =
  * Never throws; the widget branches on the discriminated result.
  * See supabase/migrations/016_feedback.sql + 026_feedback_tickets.sql.
  */
-export async function submitFeedback(input: FeedbackSubmission): Promise<FeedbackResult> {
+export async function submitFeedback(
+  input: FeedbackSubmission,
+  token: OwnerToken,
+): Promise<FeedbackResult> {
+  if (!isTokenOwnerStillCurrent(token)) return { ok: false, reason: 'no-session' };
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) return { ok: false, reason: 'no-session' };
   if (!deviceId) return { ok: false, reason: 'no-session' };
 
   const clientToken = input.clientToken || null;
@@ -1799,6 +1804,7 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<Feedbac
     .select('id')
     .single();
 
+  if (!isOwnerTokenValid(token, deviceId)) return { ok: false, reason: 'no-session' };
   if (!error && data?.id) return { ok: true, reason: 'created', id: data.id as string };
 
   if (error?.code === '23505' && clientToken) {
@@ -1808,6 +1814,7 @@ export async function submitFeedback(input: FeedbackSubmission): Promise<Feedbac
       .eq('device_id', deviceId)
       .eq('client_token', clientToken)
       .maybeSingle();
+    if (!isOwnerTokenValid(token, deviceId)) return { ok: false, reason: 'no-session' };
     if (readError) {
       console.warn('[ofe] feedback duplicate re-read failed:', readError.message);
     }
@@ -2318,7 +2325,8 @@ export async function getAttachmentSignedUrl(
 // in-memory doc regardless, but the RESULT is reported truthfully (W13):
 // the UI may only show "Saved" when the working-doc upsert actually
 // succeeded — a swallowed failure flashing "Saved" is a false persistence
-// claim. The version snapshot stays fire-and-forget (recovery sugar).
+// claim. The version snapshot stays best-effort and cannot hold the working
+// save hostage. These writes are not a database transaction or cross-device CAS.
 // See supabase/migrations/020_resume_renovations.sql.
 
 export async function saveRenovation(
@@ -2327,14 +2335,16 @@ export async function saveRenovation(
   baseSnapshot: Record<string, unknown>,
   method: string,
   warnings: string[],
+  token: OwnerToken,
 ): Promise<boolean> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return false;
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from('resume_renovations')
-    .upsert(
+  // Keep the action's original capability through the queue and every await.
+  // An anonymous session is a valid owner; an unresolved or changed one is not.
+  return enqueuePrivateWrite(token, `renovation:${opportunityId}`, async () => {
+    if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) return false;
+    const { error } = await supabase.from('resume_renovations').upsert(
       {
         device_id: deviceId,
         opportunity_id: opportunityId,
@@ -2342,24 +2352,29 @@ export async function saveRenovation(
         base_snapshot: baseSnapshot,
         method,
         warnings,
-        updated_at: now,
+        updated_at: new Date().toISOString(),
       },
       { onConflict: 'device_id,opportunity_id' },
     );
-  if (error) {
-    console.warn('[ofe] renovation save failed:', error.message);
-    return false;
-  }
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error) {
+      console.warn('[ofe] renovation save failed:', error.message);
+      return false;
+    }
 
-  supabase
-    .from('resume_renovation_versions')
-    .insert({ device_id: deviceId, opportunity_id: opportunityId, doc })
-    .then(({ error: vErr }) => {
-      if (vErr && !vErr.message.includes('does not exist')) {
-        console.warn('[ofe] renovation version snapshot failed:', vErr.message);
-      }
-    });
-  return true;
+    // Best-effort history remains a separate write; do not start it for a
+    // context that changed while the working document was being saved.
+    void Promise.resolve(supabase
+      .from('resume_renovation_versions')
+      .insert({ device_id: deviceId, opportunity_id: opportunityId, doc }))
+      .then(({ error: versionError }) => {
+        if (versionError && !versionError.message.includes('does not exist')) {
+          console.warn('[ofe] renovation version snapshot failed:', versionError.message);
+        }
+      })
+      .catch(() => { console.warn('[ofe] renovation version snapshot unavailable'); });
+    return true;
+  });
 }
 
 export interface StoredRenovation {
@@ -2372,8 +2387,11 @@ export interface StoredRenovation {
 
 export async function loadRenovation(
   opportunityId: string,
+  token: OwnerToken = captureOwnerToken(),
 ): Promise<StoredRenovation | null> {
+  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
   if (!deviceId) return null;
   const { data, error } = await supabase
     .from('resume_renovations')
@@ -2381,6 +2399,7 @@ export async function loadRenovation(
     .eq('device_id', deviceId)
     .eq('opportunity_id', opportunityId)
     .maybeSingle();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (error) {
     console.warn('[ofe] renovation load failed:', error.message);
     return null;
@@ -2404,8 +2423,11 @@ export interface RenovationVersion {
 export async function listRenovationVersions(
   opportunityId: string,
   limit = 10,
+  token: OwnerToken = captureOwnerToken(),
 ): Promise<RenovationVersion[]> {
+  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
   if (!deviceId) return [];
   const { data, error } = await supabase
     .from('resume_renovation_versions')
@@ -2414,6 +2436,7 @@ export async function listRenovationVersions(
     .eq('opportunity_id', opportunityId)
     .order('created_at', { ascending: false })
     .limit(limit);
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (error) {
     console.warn('[ofe] renovation versions load failed:', error.message);
     return [];

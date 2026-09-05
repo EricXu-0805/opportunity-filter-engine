@@ -77,6 +77,7 @@ from src.matcher.ranker import (
     _diversify_explore,
     _filter_context,
     _profile_query_text,
+    _stated_deadline_date,
     _word_re,
     canonical_sort_key,
     corpus_generation_lock,
@@ -1164,13 +1165,12 @@ def _search_matcher(term: str) -> Callable[[str], bool]:
     return lambda haystack: pattern.search(haystack) is not None
 
 
-def _calendar_days_until(deadline: object, today: date) -> int | None:
-    if not isinstance(deadline, str) or len(deadline) != 10:
+def _calendar_days_until(opportunity: dict, today: date) -> int | None:
+    """Use the scorer's deadline evidence bar for facets, filters and sorting."""
+    if record_kind(opportunity) != "listing":
         return None
-    try:
-        return (date.fromisoformat(deadline) - today).days
-    except ValueError:
-        return None
+    deadline = _stated_deadline_date(opportunity)
+    return (deadline - today).days if deadline is not None else None
 
 
 def _apply_match_view(
@@ -1229,12 +1229,8 @@ def _apply_match_view(
         # renders "· estimated" and deliberately refuses a passed/countdown
         # verdict. Counting it made "Deadline passed" the only deadline chip on
         # the page, selecting 151 records not one of which says passed.
-        if opportunity.get("deadline_is_estimate"):
-            days_left = None
-        else:
-            days_left = _calendar_days_until(
-                opportunity.get("deadline"), today,
-            ) if is_confirmed_listing else None
+        # The scorer also recognizes inference stamps without the older flag.
+        days_left = _calendar_days_until(opportunity, today)
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1277,9 +1273,7 @@ def _apply_match_view(
             # Same rule as the facet counts above: an estimate answers no
             # deadline question, so it is in no deadline window and is not
             # "passed" either.
-            if opportunity.get("deadline_is_estimate"):
-                continue
-            days = _calendar_days_until(opportunity.get("deadline"), today)
+            days = days_left
             if view.deadline == "passed":
                 if days is None or days >= 0:
                     continue
@@ -1355,10 +1349,7 @@ def _apply_match_view(
         # the request already carries.
         def _deadline_order(result: MatchResult) -> tuple[int, int]:
             record = opportunities_by_id.get(result.opportunity_id, {})
-            deadline = (
-                record.get("deadline") if record_kind(record) == "listing" else None
-            )
-            days = _calendar_days_until(deadline, today)
+            days = _calendar_days_until(record, today)
             if days is None:
                 return (1, 0)
             # Expired days are negative, so -days grows with staleness and the

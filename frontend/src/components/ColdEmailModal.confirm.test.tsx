@@ -515,24 +515,17 @@ describe('CE0-4 — an owner move invalidates the confirmation in flight', () =>
     fireEvent.click(confirmButton());
     await until(() => confirmCalls.length === 1, 'U1 confirmation started');
 
-    // Owner-only movement: the global owner really changes and U2's realm is
-    // really ready, but no auth callback is delivered to any component — the
-    // modal has no such subscription, which is exactly why a component-level
-    // generation counter cannot be the thing that saves us here.
+    // The real owner transition also retires the old private draft, even if
+    // the parent has not yet changed its props or closed the modal.
     await act(async () => { await becomeOwner('u2'); });
 
     await resolveConfirm(0);
 
-    expectNoConfirmedUi("after U1's success landed under U2");
+    expect(screen.queryByRole('dialog'), 'old private draft is retired').toBeNull();
     expect(confirmContactMock, 'no write attributed to U2').toHaveBeenCalledTimes(1);
     expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
-    // Not silence: the click is answered, but with the one thing that is true
-    // for whoever is signed in NOW — nothing was marked for them. U1's outcome
-    // itself is never shown.
-    expect(await screen.findByText('coldEmail.confirmOwnerChanged')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.confirmFailed'), "not U1's failure").toBeNull();
-    expect(confirmButton(), 'the current account can still attest for itself')
-      .toHaveTextContent('coldEmail.confirmSent');
+    expect(screen.queryByTestId('cold-email-confirm-sent'), 'U2 cannot attest against U1 draft').toBeNull();
   });
 
   it('a failure released after the owner moved to U2 paints nothing either', async () => {
@@ -547,8 +540,8 @@ describe('CE0-4 — an owner move invalidates the confirmation in flight', () =>
     await rejectConfirm(0);
 
     expect(screen.queryByText('coldEmail.confirmFailed'), "U1's failure is not U2's error").toBeNull();
-    expectNoConfirmedUi("after U1's failure landed under U2");
-    expect(await screen.findByText('coldEmail.confirmOwnerChanged')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog'), 'old private draft is retired').toBeNull();
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
   });
 
   it('same uid, new epoch (sign out and back in) is a different capability', async () => {
@@ -567,7 +560,7 @@ describe('CE0-4 — an owner move invalidates the confirmation in flight', () =>
     });
 
     await resolveConfirm(0);
-    expectNoConfirmedUi('after a sign-out/sign-in cycle under the same uid');
+    expect(screen.queryByRole('dialog'), 'old epoch cannot reopen its private draft').toBeNull();
   });
 });
 

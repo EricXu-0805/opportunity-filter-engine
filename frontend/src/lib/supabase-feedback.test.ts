@@ -54,6 +54,8 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 import { submitFeedback } from './supabase';
+import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
+import { waitFor } from '@testing-library/react';
 
 const UID = '11111111-1111-4111-8111-111111111111';
 const TICKET_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
@@ -73,8 +75,11 @@ function baseInput() {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.clear();
+  advanceOwnerEpoch(UID);
+  await syncLocalIdentityOwner(UID);
+  await waitFor(() => expect(isLocalOwnerReady(UID)).toBe(true));
   readFilters = [];
 
   mockGetSession.mockReset().mockResolvedValue({
@@ -102,7 +107,7 @@ beforeEach(() => {
 
 describe('submitFeedback (happy path)', () => {
   it('writes the ticket columns and returns the server-assigned UUID', async () => {
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     expect(result).toEqual({ ok: true, reason: 'created', id: TICKET_ID });
     expect(mockFrom).toHaveBeenCalledWith('feedback');
@@ -118,7 +123,7 @@ describe('submitFeedback (happy path)', () => {
   });
 
   it('normalises omitted optional fields to null rather than empty strings', async () => {
-    const result = await submitFeedback({ message: 'just this' });
+    const result = await submitFeedback({ message: 'just this' }, captureOwnerToken());
 
     expect(result.ok).toBe(true);
     expect(mockInsert).toHaveBeenCalledWith({
@@ -143,7 +148,7 @@ describe('submitFeedback (23505 duplicate → idempotent success)', () => {
       },
     });
 
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     expect(result).toEqual({ ok: true, reason: 'duplicate', id: TICKET_ID });
     // Scoped to THIS submitter's token — never a bare token lookup.
@@ -159,7 +164,7 @@ describe('submitFeedback (23505 duplicate → idempotent success)', () => {
     });
     mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'read blocked' } });
 
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     expect(result).toEqual({ ok: true, reason: 'duplicate', id: null });
   });
@@ -172,7 +177,7 @@ describe('submitFeedback (23505 duplicate → idempotent success)', () => {
       error: { code: '23505', message: 'duplicate key value' },
     });
 
-    const result = await submitFeedback({ message: 'no token' });
+    const result = await submitFeedback({ message: 'no token' }, captureOwnerToken());
 
     expect(result).toEqual({ ok: false, reason: 'error' });
     expect(readFilters).toEqual([]);
@@ -187,7 +192,7 @@ describe('submitFeedback (failures)', () => {
       error: { message: 'Anonymous sign-ins are disabled' },
     });
 
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     expect(result).toEqual({ ok: false, reason: 'no-session' });
     expect(mockInsert).not.toHaveBeenCalled();
@@ -199,7 +204,7 @@ describe('submitFeedback (failures)', () => {
       error: { code: '42501', message: 'new row violates row-level security policy' },
     });
 
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     expect(result).toEqual({ ok: false, reason: 'error' });
   });
@@ -207,10 +212,56 @@ describe('submitFeedback (failures)', () => {
   it('reports error when the insert returns no row (026 not applied — no SELECT policy)', async () => {
     mockInsertSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    const result = await submitFeedback(baseInput());
+    const result = await submitFeedback(baseInput(), captureOwnerToken());
 
     // The retry then collides on the token and resolves to 'duplicate', so
     // the user converges on the truth instead of filing a second ticket.
     expect(result).toEqual({ ok: false, reason: 'error' });
+  });
+});
+
+describe('feedback owner capability', () => {
+  const nextUid = '22222222-2222-4222-8222-222222222222';
+
+  it('refuses an old capability without beginning a write', async () => {
+    const owner = captureOwnerToken();
+    advanceOwnerEpoch(nextUid);
+    const result = await submitFeedback(baseInput(), owner);
+    expect(result).toEqual({ ok: false, reason: 'no-session' });
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('never adopts the account resolved after an in-flight session lookup', async () => {
+    let resolveSession!: (value: unknown) => void;
+    mockGetSession.mockReturnValueOnce(new Promise((resolve) => { resolveSession = resolve; }));
+    const result = submitFeedback(baseInput(), captureOwnerToken());
+    await waitFor(() => expect(mockGetSession).toHaveBeenCalled());
+    advanceOwnerEpoch(nextUid);
+    await syncLocalIdentityOwner(nextUid);
+    resolveSession({ data: { session: { user: { id: nextUid, is_anonymous: true } } } });
+    expect(await result).toEqual({ ok: false, reason: 'no-session' });
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('does not start a duplicate-ticket read after the insert owner changes', async () => {
+    let finish!: (value: unknown) => void;
+    mockInsertSingle.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const result = submitFeedback(baseInput(), captureOwnerToken());
+    await waitFor(() => expect(mockInsertSingle).toHaveBeenCalled());
+    advanceOwnerEpoch(nextUid);
+    finish({ data: null, error: { code: '23505', message: 'duplicate' } });
+    expect(await result).toEqual({ ok: false, reason: 'no-session' });
+    expect(mockReadSelect).not.toHaveBeenCalled();
+  });
+
+  it('drops a duplicate-ticket reference after its read owner changes', async () => {
+    let finish!: (value: unknown) => void;
+    mockInsertSingle.mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'duplicate' } });
+    mockMaybeSingle.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const result = submitFeedback(baseInput(), captureOwnerToken());
+    await waitFor(() => expect(mockMaybeSingle).toHaveBeenCalled());
+    advanceOwnerEpoch(nextUid);
+    finish({ data: { id: TICKET_ID }, error: null });
+    expect(await result).toEqual({ ok: false, reason: 'no-session' });
   });
 });

@@ -46,7 +46,7 @@ BUCKET_THRESHOLDS: tuple[tuple[float, str], ...] = (
     (0.0, "low_fit"),
 )
 
-# high_priority is a focused "apply to these now" shortlist: the top N results
+# high_priority is a focused "review these first" shortlist: at most N results
 # that ALSO clear OFE_BUCKET_HIGH. A flat absolute floor alone produced wildly
 # uneven counts (5 for one profile, 80 for another) because score distributions
 # differ per profile; capping at a target count normalizes it while the floor
@@ -280,7 +280,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # "synthesis" was scoring as thesis on 399 of the 453 records matching it, and
 # "machine learning" drew a mentorship point on 1,160 records for naming the
 # lab's own research topic. A formula change the fingerprint cannot see.
-_MATCHER_VERSION_BASE = "13"
+# 14: estimated/inferred deadlines cannot drive urgency or seasonal scoring;
+# selected opportunity types are a set; the high-priority shortlist has a
+# strict canonical top-N cap (including ties), with ordered lower-band cutoffs.
+# No layer weights changed, so the manual base retires the old conclusions.
+_MATCHER_VERSION_BASE = "14"
 
 
 def _matcher_fingerprint() -> str:
