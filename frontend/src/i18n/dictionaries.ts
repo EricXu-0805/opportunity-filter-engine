@@ -4294,6 +4294,7 @@ export const en = {
       unconfigured: 'Supabase not configured — requests appear once SUPABASE_URL is set on the backend.',
       empty: 'Nobody has asked yet.',
       openTarget: 'Open target',
+      untargeted: 'General application help (no specific lab)',
       noEmail: 'No email left — reachable only through their session.',
     },
     savedSearch: {
@@ -8802,6 +8803,7 @@ export const zh = {
       unconfigured: '未配置 Supabase——backend 设好 SUPABASE_URL 后这里会显示请求。',
       empty: '还没有人提。',
       openTarget: '打开目标页',
+      untargeted: '通用申请协助（没有指定实验室）',
       noEmail: '没留邮箱——只能在他下次登录时找到人。',
     },
     savedSearch: {

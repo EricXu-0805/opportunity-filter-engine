@@ -372,3 +372,38 @@ describe('timeout escape', () => {
     expect(storedDraft()?.message).toBe('hangs forever');
   });
 });
+
+describe('a draft written before the page could know who you are', () => {
+  async function resolveOwnership() {
+    advanceOwnerEpoch(OWNER_UID);
+    await syncLocalIdentityOwner(OWNER_UID);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(OWNER_UID); i += 1) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  it('comes back once ownership resolves, instead of being overwritten', async () => {
+    // The widget is in the root layout, so it mounts during the first client
+    // render — before ensureAnonSession resolves. The scoped read returned
+    // null and useState froze that for the life of the page: the widget opened
+    // empty, and one keystroke overwrote the stored draft.
+    render(<FeedbackWidget />);
+    fireEvent.click(screen.getByTestId('feedback-open'));
+    fireEvent.change(screen.getByPlaceholderText('feedback.placeholder'), {
+      target: { value: 'half-written thought' },
+    });
+    expect(storedDraft()?.message).toBe('half-written thought');
+
+    // A reload: unmount, and start the next document with nothing resolved.
+    cleanup();
+    advanceOwnerEpoch(null);
+
+    render(<FeedbackWidget />);
+    await act(async () => { await resolveOwnership(); });
+    await waitFor(() => {});
+
+    fireEvent.click(screen.getByTestId('feedback-open'));
+    const box = screen.getByPlaceholderText('feedback.placeholder') as HTMLTextAreaElement;
+    expect(box.value).toBe('half-written thought');
+  });
+});

@@ -872,8 +872,22 @@ async def concierge_requests(
             resp = await client.get(
                 f"{supabase_url}/rest/v1/waitlist",
                 params={
-                    "select": "id,device_id,email,opportunity_id,created_at",
-                    "opportunity_id": "not.is.null",
+                    "select": "id,device_id,email,opportunity_id,props,created_at",
+                    # Targeted rows, plus untargeted ones a live surface
+                    # wrote. /account's Plan card promises "we will review your
+                    # request manually and contact you" and writes a row with
+                    # opportunity_id NULL, so `not.is.null` alone excluded every
+                    # one of them — and this route is the only reader of the
+                    # table anywhere, so nobody was ever in touch.
+                    #
+                    # The exclusion was right about what it was aimed at: the
+                    # 015-era rows say somebody wanted help without saying with
+                    # what, and they are still not work anyone can do. `intent`
+                    # cannot tell the two apart (015 defaults it to
+                    # 'apply_for_me'), but props can — a live request carries
+                    # the surface that made it, and a legacy row has the column
+                    # default '{}'.
+                    "or": "(opportunity_id.not.is.null,props->>source.not.is.null)",
                     "order": "created_at.desc",
                     "limit": str(limit),
                 },

@@ -2310,6 +2310,51 @@ def _word_re(term: str) -> "re.Pattern[str]":
     return re.compile(rf"{left}{escaped}{right}")
 
 
+SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
+    "ml": ("machine learning",),
+    "ai": ("artificial intelligence",),
+    "nlp": ("natural language processing",),
+    "cv": ("computer vision",),
+    "dl": ("deep learning",),
+    "hci": ("human computer interaction", "human-computer interaction"),
+    "rl": ("reinforcement learning",),
+    "ds": ("data science",),
+    "se": ("software engineering",),
+    "pl": ("programming languages",),
+    "os": ("operating systems",),
+    "db": ("database",),
+    "ece": ("electrical", "computer engineering"),
+    "cs": ("computer science",),
+    "ee": ("electrical engineering",),
+    "me": ("mechanical engineering",),
+    "ce": ("civil engineering",),
+    "cheme": ("chemical engineering",),
+    "matsci": ("materials science",),
+    "neuro": ("neuroscience",),
+    "bioinfo": ("bioinformatics",),
+}
+
+
+def expand_search_aliases(query: str) -> list[str]:
+    """Every term a search for ``query`` should match.
+
+    Shared so the emailed digest cannot narrow what the site showed.
+    The results page tells the student "(also matching: machine
+    learning)"; the saved-search cron used the bare token, and a saved
+    "nlp" matched 37 records by mail against 324 on the site.
+    """
+    query_lower = query.lower()
+    terms = [query_lower]
+    terms.extend(SEARCH_ALIASES.get(query_lower, ()))
+    tokens = query_lower.split()
+    for abbreviation, expansions in SEARCH_ALIASES.items():
+        if abbreviation == query_lower or abbreviation not in tokens:
+            continue
+        pattern = re.compile(rf"\b{re.escape(abbreviation)}\b")
+        terms.extend(pattern.sub(expansion, query_lower) for expansion in expansions)
+    return terms
+
+
 # Corpus-side intern table for keyword containment patterns — bounded by the
 # corpus keyword vocabulary, reset on corpus registration so it can't grow
 # across reloads.
