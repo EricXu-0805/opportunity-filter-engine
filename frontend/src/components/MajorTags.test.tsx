@@ -78,3 +78,36 @@ describe('MajorTags', () => {
     expect(onChange).toHaveBeenCalledWith(['Economics']);
   });
 });
+
+describe('MajorTags — Enter adds the major you typed', () => {
+  // Same substring-in-declaration-order filter as SkillTags. Measured against
+  // the real catalog: at UIUC Liberal Arts & Sciences, typing "Physics" — which
+  // IS in that list — added "Astrophysics", and "Art" added "Earth, Society &
+  // Environmental Sustainability". The wrong extra major becomes
+  // secondary_interests and feeds the eligibility major score.
+  const OPTS = ['Astrophysics', 'Physics', 'Applied Physics'];
+
+  function render1(selected: string[] = []) {
+    const onChange = vi.fn();
+    render(
+      <MajorTags selected={selected} options={OPTS} onChange={onChange} translate={identity} />,
+    );
+    return onChange;
+  }
+
+  it('prefers an exact match over the first substring hit', () => {
+    const onChange = render1();
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Physics' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith(['Physics']);
+  });
+
+  it('still takes the first match when nothing matches exactly', () => {
+    const onChange = render1();
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'Astro' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith(['Astrophysics']);
+  });
+});

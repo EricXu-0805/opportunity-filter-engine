@@ -7431,3 +7431,50 @@ class TestABoundaryThatWorksForCPlusPlus:
                 assert bool(_word_re(term).search(text)) == bool(
                     re.search(rf"\b{re.escape(term)}\b", text)
                 ), (term, text)
+
+
+class TestGitHubImportDoesNotReFetchTheSameUser:
+    """Unauthenticated GitHub allows 60 requests an hour for the whole service
+    — one egress IP — and GITHUB_TOKEN is set nowhere. `_billable_class`
+    returns None for a GET, so this route draws on no global ceiling either.
+    Once GitHub answers 403, every other student's profile step reports
+    "GitHub import failed" for the rest of the hour."""
+
+    def test_a_repeat_lookup_is_served_from_cache(self, monkeypatch):
+        import httpx
+
+        from backend.routes import resume as resume_module
+
+        resume_module._github_cache.clear()
+        calls: list[str] = []
+
+        class _Resp:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return [{"name": "engine", "language": "Python", "topics": ["fastapi"],
+                         "fork": False}]
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def get(self, url, **kwargs):
+                calls.append(url)
+                return _Resp()
+
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _Client())
+
+        first = client.get("/api/resume/github/octocat")
+        second = client.get("/api/resume/github/OctoCat")
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert first.json()["extracted_skills"] == second.json()["extracted_skills"]
+        # One provider round-trip, not two — and the second spelling of the
+        # same username does not buy another.
+        assert len(calls) == 1
