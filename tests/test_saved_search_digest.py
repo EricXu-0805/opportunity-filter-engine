@@ -69,7 +69,7 @@ def _set_digest_env(monkeypatch):
 
 
 def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
-                   opportunities=None):
+                   opportunities=None, profiles=None):
     """Stub the digest route's three exits: Supabase httpx traffic,
     the Resend send helper, and the opportunities data file."""
 
@@ -96,6 +96,12 @@ def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
             return False
 
         async def get(self, url, **kwargs):
+            # The route reads the student's own profile to decide what its
+            # matcher would exclude for them. Unsupplied means "unreadable",
+            # which the route treats as "filter nothing" — so every test
+            # written before this behaviour existed still describes it.
+            if "/rest/v1/profiles" in url:
+                return _Resp(profiles or [])
             return _Resp(rows)
 
         async def patch(self, url, **kwargs):
@@ -1100,3 +1106,78 @@ class TestTheDigestKeepsWhatItPromised:
         kept = patches[0]["json"]["new_match_ids"]
         # The ten it showed close their window; the five it pointed at stay.
         assert sorted(kept) == sorted(f"opp-{i}" for i in range(5))
+
+
+class TestTheDigestSendsWhatTheSiteWouldShow:
+    """ranker.hard_exclusion calls itself "the single reason-coded
+    implementation of every rule that drops a record from a profile's result
+    universe" and lists its consumers. This cron was not one of them: it built
+    the universe from release scope and target truth alone, both
+    profile-independent. Replaying the real path for a JHU profile, 2,085 of
+    3,122 matched ids (66.8%) were records the site would never show that
+    student — Berkeley campus-only programs a JHU student cannot join."""
+
+    DEVICE = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
+    @staticmethod
+    def _campus_opp(opportunity_id: str, school: str) -> dict:
+        return {
+            "id": opportunity_id, "title": f"{school} lab", "organization": school,
+            "source_type": "campus_program", "deadline": "2026-07-01",
+            "school": school, "audience": "campus_only",
+        }
+
+    def _run(self, monkeypatch, *, profiles, queue, opportunities):
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        patches: list = []
+        _install_stubs(
+            monkeypatch,
+            rows=[_digest_row(device_id=self.DEVICE, new_match_ids=queue)],
+            sends=sends, patches=patches,
+            opportunities=opportunities, profiles=profiles,
+        )
+        client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        return sends, patches
+
+    def test_another_campus_only_program_is_not_mailed(self, monkeypatch):
+        mine = self._campus_opp("opp-mine", "jhu")
+        theirs = self._campus_opp("opp-theirs", "ucb")
+        sends, _ = self._run(
+            monkeypatch,
+            profiles=[{"id": self.DEVICE, "profile_data": {"home_school": "jhu"}}],
+            queue=["opp-mine", "opp-theirs"],
+            opportunities=[mine, theirs],
+        )
+        assert len(sends) == 1
+        html = sends[0]["html"]
+        assert "jhu lab" in html
+        assert "ucb lab" not in html
+
+    def test_an_id_the_corpus_cannot_see_is_still_left_alone(self, monkeypatch):
+        """The exclusion set is positive — built over the corpus — so absence
+        from tonight's load is never mistaken for "not for you". A negative
+        test against the eligible set would empty the queue on a bad shard."""
+        mine = self._campus_opp("opp-mine", "jhu")
+        _, patches = self._run(
+            monkeypatch,
+            profiles=[{"id": self.DEVICE, "profile_data": {"home_school": "jhu"}}],
+            queue=["opp-mine", "opp-vanished"],
+            opportunities=[mine],
+        )
+        cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
+        assert cleanups == [], "an absent record is unknown, not ineligible"
+
+    def test_an_unreadable_profile_filters_nothing(self, monkeypatch):
+        """A profile the cron cannot read must leave the digest exactly as it
+        was, rather than filtering on a guess."""
+        mine = self._campus_opp("opp-mine", "jhu")
+        theirs = self._campus_opp("opp-theirs", "ucb")
+        sends, _ = self._run(
+            monkeypatch,
+            profiles=[],
+            queue=["opp-mine", "opp-theirs"],
+            opportunities=[mine, theirs],
+        )
+        assert len(sends) == 1
+        assert "ucb lab" in sends[0]["html"]
