@@ -12,6 +12,10 @@ import { canDeliverReminder } from '@/lib/reminders';
 
 import { dateInDays, isReminderDue } from './use-tracker-data';
 
+// supabase/migrations/005_interaction_notes.sql:13 —
+// CHECK (notes IS NULL OR length(notes) <= 2000)
+const NOTES_MAX_LENGTH = 2000;
+
 export function TrackerCard({
   opp,
   status,
@@ -237,6 +241,13 @@ export function TrackerCard({
         onBlur={() => { if (!leavingPending) onSaveNotes(opp.id, draft); }}
         placeholder={t('tracker.notesPlaceholder')}
         rows={2}
+        // The column is CHECK (length(notes) <= 2000). Pasting a professor's
+        // reply email past that produced a save that could never succeed:
+        // Postgres rejected it, Retry replayed the same over-long draft
+        // forever, and the text stayed on screen looking saved until a reload
+        // took it. The same draft also blocked "Not interested", which hands
+        // the notes to the dismiss write in the same statement.
+        maxLength={NOTES_MAX_LENGTH}
         disabled={leavingPending}
         // Never disabled by notesPending — a save is invoked on every blur,
         // so disabling here could block the very next edit from ever being

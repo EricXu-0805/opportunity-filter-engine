@@ -269,6 +269,19 @@ function SlideVisual({ slide, t }: { slide: SlideKey; t: T }) {
 function SchoolPicker({ t, locale, selected, onSelect }: {
   t: T; locale: string; selected: string; onSelect: (slug: string) => void;
 }) {
+  // The list is ordered by ranking and shows about four rows at a time, so the
+  // default sits at row 30 of 115 — off-screen. A stranger opened the gate on
+  // Princeton, MIT and Harvard, pressed Continue, and was recorded as a UIUC
+  // student they had never claimed to be, which is what weights their matches.
+  // Scrolling the selection into view is what makes the default a choice.
+  const selectedRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: 'center' });
+    // Runs once per mount of the gate: re-running on every pick would yank the
+    // list under the finger of someone browsing it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="max-h-[220px] overflow-y-auto -mx-0.5 px-0.5 space-y-1.5" data-testid="onboarding-school-list">
       {SCHOOLS.map((s) => {
@@ -277,6 +290,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
         return (
           <button
             key={s.slug}
+            ref={isSel ? selectedRef : undefined}
             type="button"
             onClick={() => onSelect(s.slug)}
             aria-pressed={isSel}
