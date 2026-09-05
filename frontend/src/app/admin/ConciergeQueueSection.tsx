@@ -53,7 +53,12 @@ export function ConciergeQueueSection({
                     /* The target is gone from the corpus; naming the id is the
                        honest fallback — it is still what the student asked
                        for, and it is still resolvable by hand. */
-                    || request.opportunity_id}
+                    || request.opportunity_id
+                    /* No target at all: the /account and /results cards both
+                       take a request for general application help, which has no
+                       opportunity. Those rows used to be filtered out of this
+                       queue entirely. */
+                    || t('admin.concierge.untargeted')}
                 </span>
                 <span className="text-[11px] text-gray-400">
                   {new Date(request.created_at).toLocaleString()}

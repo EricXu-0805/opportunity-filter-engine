@@ -100,7 +100,13 @@ class ProfileRequest(BaseModel):
     @field_validator("coursework")
     @classmethod
     def cap_coursework(cls, v: list) -> list:
-        return [str(c)[:20] for c in v[:50]]
+        # 100 to match every other string list on this model. At 20 the cap was
+        # sized for a course code ("MATH 241") and silently halved the course
+        # names the resume parser goes out of its way to extract — it accepts
+        # names up to 40 characters precisely so "Data Structures" survives
+        # alongside the codes. "Introduction to Machine Learning" reached the
+        # ranker and the tailor prompt as "Introduction to Mach".
+        return [str(c)[:100] for c in v[:50]]
 
     @field_validator("seeking_type", "desired_fields", "secondary_interests")
     @classmethod

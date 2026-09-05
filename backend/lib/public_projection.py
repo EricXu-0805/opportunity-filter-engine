@@ -721,6 +721,21 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     keywords_method = inferred_method(canonical_record, "keywords")
     if keywords_method and projected.get("keywords"):
         projected["keywords_attribution"] = "inferred"
+    # pi_name is the exception that gets removed rather than marked. It is
+    # derived by taking the word before "Laboratory" or "Group" in the program
+    # title, and on the served corpus it is wrong every time: all 36 distinct
+    # derived names are institutions or plain nouns — Volkswagen, Cigna,
+    # Expedia, Boston Consulting, Jackson, Spring Harbor, Analysis, Market.
+    # The collector already guards with _is_person_name, and cannot win: Stone,
+    # Lee and Jackson are perfectly good surnames, they are just not the PI
+    # here. So there is no version of this the page can honestly show, and a
+    # badge would only say we think the professor might be Volkswagen. The
+    # cold-email builder already ignores it and addresses the Program
+    # Coordinator instead; this gives every other reader of the wire the same
+    # protection.
+    if inferred_method(canonical_record, "pi_name"):
+        projected.pop("pi_name", None)
+
     # Same rule for required skills, which have it worse: 2,767 of the 6,349
     # records carrying a list — 43.6% — were written by the LLM tagger from
     # page prose that names none, and the detail page printed them under

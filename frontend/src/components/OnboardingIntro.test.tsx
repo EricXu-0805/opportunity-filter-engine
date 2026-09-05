@@ -50,6 +50,9 @@ const SLIDE_COUNT = 6;
 
 beforeEach(() => {
   localStorage.clear();
+  // jsdom has no scrollIntoView; the gate scrolls its pre-selected campus into
+  // view so the default is a choice rather than a silent one.
+  Element.prototype.scrollIntoView = vi.fn();
   // jsdom has no Web Locks. The campus is written through the coordinator,
   // which serializes every change to shared local state through one — without
   // a fake the write reports a device failure and the gate correctly refuses
@@ -265,4 +268,22 @@ describe('OnboardingIntro', () => {
     expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'ucb' });
     expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('ucb');
   });
+  it('scrolls the pre-selected campus into view so the default is a visible choice', async () => {
+    // The list is ranking-ordered and shows about four rows; the UIUC default
+    // sits at row 30 of 115. A stranger saw Princeton, MIT and Harvard, pressed
+    // Continue, and was recorded as a UIUC student they never claimed to be.
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this); };
+    try {
+      render(<OnboardingIntro />);
+      await waitFor(() => screen.getByTestId('onboarding-skip'));
+      fireEvent.click(screen.getByTestId('onboarding-skip'));
+      await waitFor(() => screen.getByTestId('onboarding-school-list'));
+      expect(scrolled).toContain(screen.getByTestId('onboarding-school-uiuc'));
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
 });
