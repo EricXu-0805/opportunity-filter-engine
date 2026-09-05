@@ -114,3 +114,58 @@ describe('AcademicProfileCard — catalog loading state', () => {
     expect(majorSelect().value).toBe('Bioengineering');
   });
 });
+
+describe('AcademicProfileCard — a college from the school you left', () => {
+  // Switching campus left the previous school's college and major on the
+  // profile, where the student could no longer see or edit them: both selects
+  // render empty because the new catalog has no such option, while isValid
+  // still counted them filled and the matcher still scored them. A stale
+  // "Grainger College of Engineering" earned college affinity on 219 JHU
+  // records, 517 Berkeley and 321 Stanford.
+  const JHU: Catalog = { 'Whiting School of Engineering': ['Computer Science'] };
+
+  it('clears it once the new school’s catalog says it is not one of theirs', async () => {
+    const { update } = renderCard({
+      home_school: 'jhu',
+      college: 'Grainger College of Engineering',
+      major: 'Computer Science',
+    });
+    expect(update).not.toHaveBeenCalled();
+
+    await resolveCatalog('jhu', JHU);
+
+    expect(update).toHaveBeenCalledWith('college', '');
+  });
+
+  it('keeps a college the new school does offer', async () => {
+    const { update } = renderCard({
+      home_school: 'jhu',
+      college: 'Whiting School of Engineering',
+      major: 'Computer Science',
+    });
+
+    await resolveCatalog('jhu', JHU);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('says nothing while the catalog is still loading', async () => {
+    const { update } = renderCard({
+      home_school: 'jhu',
+      college: 'Grainger College of Engineering',
+    });
+    // Nothing resolved yet: an unloaded catalog cannot call a value wrong.
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('says nothing for a school that has no catalog at all', async () => {
+    const { update } = renderCard({
+      home_school: 'jhu',
+      college: 'Grainger College of Engineering',
+    });
+
+    await resolveCatalog('jhu', null);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+});
