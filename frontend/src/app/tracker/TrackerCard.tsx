@@ -131,7 +131,14 @@ export function TrackerCard({
       {isCurrentListing && opp.deadline && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-400">
           <Calendar className="h-3 w-3" />
-          {opp.deadline}
+          {/* An NSF date derived from the award start is a guess, and every
+              other surface says so — the favorites badge, the detail page and
+              the dashboard list all append the qualifier. The tracker printed
+              the bare date, directly above the student's own notes about
+              chasing that deadline. */}
+          {opp.deadline_is_estimate
+            ? `${opp.deadline} · ${t('badges.estimated')}`
+            : opp.deadline}
         </p>
       )}
 

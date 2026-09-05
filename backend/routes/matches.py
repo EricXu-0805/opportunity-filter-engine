@@ -1224,9 +1224,17 @@ def _apply_match_view(
         # pay value to the paid filter, and an on-campus flag — every one of
         # them a term of an application that may not exist.
         is_confirmed_listing = record_kind(opportunity) == "listing"
-        days_left = _calendar_days_until(
-            opportunity.get("deadline"), today,
-        ) if is_confirmed_listing else None
+        # An estimated date contributes to no deadline facet. It is derived
+        # from an NSF award start date, and the card that would be shown for it
+        # renders "· estimated" and deliberately refuses a passed/countdown
+        # verdict. Counting it made "Deadline passed" the only deadline chip on
+        # the page, selecting 151 records not one of which says passed.
+        if opportunity.get("deadline_is_estimate"):
+            days_left = None
+        else:
+            days_left = _calendar_days_until(
+                opportunity.get("deadline"), today,
+            ) if is_confirmed_listing else None
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1265,6 +1273,11 @@ def _apply_match_view(
                 continue
         elif view.deadline:
             if not is_confirmed_listing:
+                continue
+            # Same rule as the facet counts above: an estimate answers no
+            # deadline question, so it is in no deadline window and is not
+            # "passed" either.
+            if opportunity.get("deadline_is_estimate"):
                 continue
             days = _calendar_days_until(opportunity.get("deadline"), today)
             if view.deadline == "passed":
