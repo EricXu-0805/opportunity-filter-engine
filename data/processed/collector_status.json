@@ -1,16 +1,10 @@
 {
-  "duration_seconds": 4975.0,
+  "duration_seconds": 4365.4,
   "release": {
     "by_unit": {
       "ucb": {
-        "ready": false,
-        "reasons": [
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
-        ]
+        "ready": true,
+        "reasons": []
       }
     },
     "degradations": [
@@ -33,6 +27,31 @@
         "detail": "0 records, previously 144",
         "kind": "suspicious_zero",
         "source": "ucb_eecs_faculty"
+      },
+      {
+        "detail": "scrape short of the stored active count",
+        "kind": "partial_scrape",
+        "source": "ucb_datascience_faculty"
+      },
+      {
+        "detail": "scrape short of the stored active count",
+        "kind": "partial_scrape",
+        "source": "ucb_econ_faculty"
+      },
+      {
+        "detail": "scrape short of the stored active count",
+        "kind": "partial_scrape",
+        "source": "ucb_ling_faculty"
+      },
+      {
+        "detail": "scrape short of the stored active count",
+        "kind": "partial_scrape",
+        "source": "ucb_scandinavian_faculty"
+      },
+      {
+        "detail": "scrape short of the stored active count",
+        "kind": "partial_scrape",
+        "source": "ucb_soc_faculty"
       }
     ],
     "expected": [
@@ -499,12 +518,12 @@
         "summary_key": "ucb_urap_projects"
       }
     ],
-    "publishable": [],
-    "ready": false,
-    "reasons": [
-      "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
+    "publishable": [
+      "ucb"
     ],
-    "status": "blocked",
+    "ready": true,
+    "reasons": [],
+    "status": "degraded",
     "structural_reasons": [],
     "warnings": [
       "deep source ucb_campus crawled 9/14 configured crawl sources; the unreached ones keep their previous records",
@@ -512,6 +531,11 @@
       "deep source ucb_campus reported crawl errors: ['ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/', 'ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities', 'ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research', 'ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/', 'ucb_eecs_summer: seed fetch failed: https://eecs.berkeley.edu/resources/undergrads/research/sure', 'ucb_eecs_summer: seed fetch failed: https://www2.eecs.berkeley.edu/Research/Areas/', 'ucb_engineering_internships: seed fetch failed: https://engineering.berkeley.edu/students/undergraduate-guide/academic-opportunities/research/', 'ucb_external_fellowships: seed fetch failed: https://research.berkeley.edu/our/scholarships-and-honors/', 'ucb_external_reu: seed fetch failed: https://math.berkeley.edu/programs/undergraduate/reu', 'ucb_lab_recruiting: seed fetch failed: https://bair.berkeley.edu/', 'ucb_more_departments: seed fetch failed: https://chemistry.berkeley.edu/research', 'ucb_more_departments: seed fetch failed: https://math.berkeley.edu/programs/undergraduate', 'ucb_more_departments: seed fetch failed: https://me.berkeley.edu/research/', 'ucb_more_departments: seed fetch failed: https://psychology.berkeley.edu/students/undergraduate-program/research-opportunities', 'ucb_more_departments: seed fetch failed: https://www.econ.berkeley.edu/undergrad/research', 'ucb_newsletters: seed fetch failed: https://research.berkeley.edu/our/newsletter/', 'ucb_ours_hub: seed fetch failed: https://research.berkeley.edu/undergraduate-research/', 'ucb_signature_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/', 'ucb_summer_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/']",
       "deep source ucb_campus degraded on recursive discovered pages: ['ucb_more_departments: discovered-page fetch failed: http://research.berkeley.edu/opportunities.php?option=bab', 'ucb_more_departments: discovered-page fetch failed: https://career.berkeley.edu/Internships/Internships.stm']",
       "required source ucb_eecs_faculty emitted zero records while the corpus holds 144 record(s) for it; those records are preserved untouched and the school still publishes, but this run cannot claim to have seen the source",
+      "required source ucb_datascience_faculty scraped short of its stored active count; deactivate_stale_faculty preserved its records rather than retiring them, and the school still publishes, but this run cannot claim the source is complete",
+      "required source ucb_econ_faculty scraped short of its stored active count; deactivate_stale_faculty preserved its records rather than retiring them, and the school still publishes, but this run cannot claim the source is complete",
+      "required source ucb_ling_faculty scraped short of its stored active count; deactivate_stale_faculty preserved its records rather than retiring them, and the school still publishes, but this run cannot claim the source is complete",
+      "required source ucb_scandinavian_faculty scraped short of its stored active count; deactivate_stale_faculty preserved its records rather than retiring them, and the school still publishes, but this run cannot claim the source is complete",
+      "required source ucb_soc_faculty scraped short of its stored active count; deactivate_stale_faculty preserved its records rather than retiring them, and the school still publishes, but this run cannot claim the source is complete",
       "faculty stale retirement is held pending per-unit lineage: ['ucb_extra_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
@@ -532,15 +556,17 @@
   "source_health": {
     "degraded_shard_count": 1,
     "failed_shard_count": 0,
-    "fully_fresh_school_count": 2,
-    "fully_stale_school_count": 0,
-    "fully_stale_schools": [],
-    "generated_at": "2026-09-05T05:21:47.502304+00:00",
+    "fully_fresh_school_count": 115,
+    "fully_stale_school_count": 1,
+    "fully_stale_schools": [
+      "ucd"
+    ],
+    "generated_at": "2026-09-05T22:01:19.882709+00:00",
     "partially_degraded_school_count": 1,
-    "school_count": 3,
+    "school_count": 117,
     "stale_days": 17.0,
-    "stale_shard_count": 1,
-    "total_shard_count": 60,
+    "stale_shard_count": 2,
+    "total_shard_count": 288,
     "warn_days": 10.0
   },
   "sources": {
@@ -613,7 +639,7 @@
       "fully_stale_school_count": 39,
       "missing_profile_count": 84195,
       "missing_school_count": 39,
-      "new_events": 6,
+      "new_events": 0,
       "profiles": 45164,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
@@ -1389,11 +1415,11 @@
     }
   },
   "time_budget": {
-    "budget_minutes": 90.0,
+    "budget_minutes": 100.0,
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-05T03:59:29.733019",
+  "timestamp": "2026-09-05T20:49:02.191237",
   "total_in_file": 137985,
   "total_new": 216,
   "total_updated": 2655,
