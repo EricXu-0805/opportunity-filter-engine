@@ -3604,6 +3604,8 @@ export const en = {
     remind7: 'in 1 week',
     remind14: 'in 2 weeks',
     reminderSet: 'Follow-up reminder set for {date}',
+    reminderInAppOnly: 'It will show on your Tracker. Turn on notifications to get it on this device too.',
+    reminderEnablePush: 'Turn on notifications',
     // A confirmed send whose row cannot take a reminder — the confirm RPC
     // preserves an existing rejected/dismissed status, and the cron selects
     // neither. Offering the prompt and then having nothing to offer is the
@@ -8123,6 +8125,8 @@ export const zh = {
     remind7: '1 周后',
     remind14: '2 周后',
     reminderSet: '已设置 {date} 的跟进提醒',
+    reminderInAppOnly: '它会出现在你的 Tracker 里。想在这台设备上也收到，就打开通知。',
+    reminderEnablePush: '打开通知',
     reminderUnavailable: '已发送。当前状态下无法设置跟进提醒。',
     confirmedKeptStatus: '已发送。这条仍然标记为「已拒绝」，状态没有变化。',
     confirmedKeptDismissed: '已发送。这条仍然标记为「不感兴趣」，所以不会出现在你的追踪板上 —— 给它设一个状态才能记录这次联系。',
