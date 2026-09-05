@@ -1,384 +1,518 @@
 {
-  "duration_seconds": 15654.8,
+  "duration_seconds": 4975.0,
   "release": {
     "by_unit": {
-      "arizona": {
-        "ready": true,
-        "reasons": []
-      },
-      "boulder": {
-        "ready": true,
-        "reasons": []
-      },
-      "brown": {
-        "ready": true,
-        "reasons": []
-      },
-      "cornell": {
-        "ready": true,
-        "reasons": []
-      },
-      "houston": {
-        "ready": true,
-        "reasons": []
-      },
-      "nd": {
-        "ready": true,
-        "reasons": []
-      },
-      "oregonstate": {
-        "ready": true,
-        "reasons": []
-      },
-      "pitt": {
-        "ready": true,
-        "reasons": []
-      },
-      "rice": {
-        "ready": true,
-        "reasons": []
-      },
-      "syracuse": {
-        "ready": true,
-        "reasons": []
-      },
-      "ucla": {
-        "ready": true,
-        "reasons": []
-      },
-      "udel": {
-        "ready": true,
-        "reasons": []
-      },
-      "uga": {
-        "ready": true,
-        "reasons": []
-      },
-      "utexas": {
-        "ready": true,
-        "reasons": []
-      },
-      "vanderbilt": {
-        "ready": true,
-        "reasons": []
-      },
-      "vt": {
-        "ready": true,
-        "reasons": []
+      "ucb": {
+        "ready": false,
+        "reasons": [
+          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
+          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
+          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
+          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
+          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
+        ]
       }
     },
     "degradations": [
       {
-        "detail": "9/10, 1 failed",
-        "kind": "seed_pages_unreached",
-        "source": "campus_graph:utexas"
+        "detail": "9/14",
+        "kind": "crawl_sources_unreached",
+        "source": "ucb_campus"
       },
       {
-        "detail": "utexas_announcement: seed fetch failed: https://undergraduates.utexas.edu/academics/undergraduate-research",
+        "detail": "21/40, 19 failed",
+        "kind": "seed_pages_unreached",
+        "source": "ucb_campus"
+      },
+      {
+        "detail": "ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/; ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities; ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research; ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/; ucb_eecs_su",
         "kind": "crawl_errors",
-        "source": "campus_graph:utexas"
+        "source": "ucb_campus"
+      },
+      {
+        "detail": "0 records, previously 144",
+        "kind": "suspicious_zero",
+        "source": "ucb_eecs_faculty"
       }
     ],
     "expected": [
-      "arizona_faculty",
-      "boulder_faculty",
-      "brown_faculty",
-      "campus_graph:arizona",
-      "campus_graph:boulder",
-      "campus_graph:brown",
-      "campus_graph:cornell",
-      "campus_graph:houston",
-      "campus_graph:nd",
-      "campus_graph:oregonstate",
-      "campus_graph:pitt",
-      "campus_graph:rice",
-      "campus_graph:syracuse",
-      "campus_graph:ucla",
-      "campus_graph:udel",
-      "campus_graph:uga",
-      "campus_graph:utexas",
-      "campus_graph:vanderbilt",
-      "campus_graph:vt",
-      "cornell_faculty",
-      "houston_faculty",
-      "nd_faculty",
-      "oregonstate_faculty",
-      "pitt_faculty",
-      "rice_faculty",
-      "syracuse_faculty",
-      "ucla_faculty",
-      "udel_faculty",
-      "uga_faculty",
-      "utexas_faculty",
-      "vanderbilt_faculty",
-      "vt_faculty"
+      "ucb_anthro_faculty",
+      "ucb_arch_faculty",
+      "ucb_astro_faculty",
+      "ucb_bioe_faculty",
+      "ucb_campus",
+      "ucb_cbe_faculty",
+      "ucb_cee_faculty",
+      "ucb_chem_faculty",
+      "ucb_classics_faculty",
+      "ucb_complit_faculty",
+      "ucb_datascience_faculty",
+      "ucb_dcrp_faculty",
+      "ucb_econ_faculty",
+      "ucb_education_faculty",
+      "ucb_eecs_faculty",
+      "ucb_english_faculty",
+      "ucb_eps_faculty",
+      "ucb_espm_faculty",
+      "ucb_extra_faculty",
+      "ucb_filmmedia_faculty",
+      "ucb_french_faculty",
+      "ucb_geog_faculty",
+      "ucb_german_faculty",
+      "ucb_haas_faculty",
+      "ucb_history_faculty",
+      "ucb_ib_faculty",
+      "ucb_ieor_faculty",
+      "ucb_journalism_faculty",
+      "ucb_larch_faculty",
+      "ucb_law_faculty",
+      "ucb_ling_faculty",
+      "ucb_math_faculty",
+      "ucb_mcb_faculty",
+      "ucb_me_faculty",
+      "ucb_mse_faculty",
+      "ucb_music_faculty",
+      "ucb_ne_faculty",
+      "ucb_neuro_faculty",
+      "ucb_nst_faculty",
+      "ucb_philos_faculty",
+      "ucb_physics_faculty",
+      "ucb_pmb_faculty",
+      "ucb_polisci_faculty",
+      "ucb_psych_faculty",
+      "ucb_publicpolicy_faculty",
+      "ucb_rhetoric_faculty",
+      "ucb_scandinavian_faculty",
+      "ucb_slavic_faculty",
+      "ucb_soc_faculty",
+      "ucb_socwel_faculty",
+      "ucb_spanish_portuguese_faculty",
+      "ucb_sph_faculty",
+      "ucb_stat_faculty",
+      "ucb_tdps_faculty",
+      "ucb_urap",
+      "ucb_urap_projects"
     ],
     "observed": [
-      "arizona_faculty",
       "auto_tagger",
-      "boulder_faculty",
-      "brown_faculty",
       "campus_discovery_quarantine",
-      "campus_graph:arizona",
-      "campus_graph:boulder",
-      "campus_graph:brown",
-      "campus_graph:cornell",
-      "campus_graph:houston",
-      "campus_graph:nd",
-      "campus_graph:oregonstate",
-      "campus_graph:pitt",
-      "campus_graph:rice",
-      "campus_graph:syracuse",
-      "campus_graph:ucla",
-      "campus_graph:udel",
-      "campus_graph:uga",
-      "campus_graph:utexas",
-      "campus_graph:vanderbilt",
-      "campus_graph:vt",
-      "cornell_faculty",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
-      "houston_faculty",
       "intl_reconciliation",
-      "nd_faculty",
-      "oregonstate_faculty",
       "pi_enricher",
-      "pitt_faculty",
       "professor_tracking",
-      "rice_faculty",
       "school_audience",
-      "syracuse_faculty",
-      "ucla_faculty",
-      "udel_faculty",
-      "uga_faculty",
-      "utexas_faculty",
-      "vanderbilt_faculty",
-      "vt_faculty"
+      "ucb_anthro_faculty",
+      "ucb_arch_faculty",
+      "ucb_astro_faculty",
+      "ucb_bioe_faculty",
+      "ucb_campus",
+      "ucb_cbe_faculty",
+      "ucb_cee_faculty",
+      "ucb_chem_faculty",
+      "ucb_classics_faculty",
+      "ucb_complit_faculty",
+      "ucb_datascience_faculty",
+      "ucb_dcrp_faculty",
+      "ucb_econ_faculty",
+      "ucb_education_faculty",
+      "ucb_eecs_faculty",
+      "ucb_english_faculty",
+      "ucb_eps_faculty",
+      "ucb_espm_faculty",
+      "ucb_extra_faculty",
+      "ucb_filmmedia_faculty",
+      "ucb_french_faculty",
+      "ucb_geog_faculty",
+      "ucb_german_faculty",
+      "ucb_haas_faculty",
+      "ucb_history_faculty",
+      "ucb_ib_faculty",
+      "ucb_ieor_faculty",
+      "ucb_journalism_faculty",
+      "ucb_larch_faculty",
+      "ucb_law_faculty",
+      "ucb_ling_faculty",
+      "ucb_math_faculty",
+      "ucb_mcb_faculty",
+      "ucb_me_faculty",
+      "ucb_mse_faculty",
+      "ucb_music_faculty",
+      "ucb_ne_faculty",
+      "ucb_neuro_faculty",
+      "ucb_nst_faculty",
+      "ucb_philos_faculty",
+      "ucb_physics_faculty",
+      "ucb_pmb_faculty",
+      "ucb_polisci_faculty",
+      "ucb_psych_faculty",
+      "ucb_publicpolicy_faculty",
+      "ucb_rhetoric_faculty",
+      "ucb_scandinavian_faculty",
+      "ucb_slavic_faculty",
+      "ucb_soc_faculty",
+      "ucb_socwel_faculty",
+      "ucb_spanish_portuguese_faculty",
+      "ucb_sph_faculty",
+      "ucb_stat_faculty",
+      "ucb_tdps_faculty",
+      "ucb_urap",
+      "ucb_urap_projects"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "arizona",
-        "summary_key": "arizona_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_anthro_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "boulder",
-        "summary_key": "boulder_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_arch_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "brown",
-        "summary_key": "brown_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_astro_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "arizona",
-        "summary_key": "campus_graph:arizona"
+        "school": "ucb",
+        "summary_key": "ucb_bioe_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "boulder",
-        "summary_key": "campus_graph:boulder"
+        "school": "ucb",
+        "summary_key": "ucb_campus"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "brown",
-        "summary_key": "campus_graph:brown"
+        "school": "ucb",
+        "summary_key": "ucb_cbe_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cornell",
-        "summary_key": "campus_graph:cornell"
+        "school": "ucb",
+        "summary_key": "ucb_cee_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "houston",
-        "summary_key": "campus_graph:houston"
+        "school": "ucb",
+        "summary_key": "ucb_chem_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "nd",
-        "summary_key": "campus_graph:nd"
+        "school": "ucb",
+        "summary_key": "ucb_classics_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "oregonstate",
-        "summary_key": "campus_graph:oregonstate"
+        "school": "ucb",
+        "summary_key": "ucb_complit_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "pitt",
-        "summary_key": "campus_graph:pitt"
+        "school": "ucb",
+        "summary_key": "ucb_datascience_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "rice",
-        "summary_key": "campus_graph:rice"
+        "school": "ucb",
+        "summary_key": "ucb_dcrp_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "syracuse",
-        "summary_key": "campus_graph:syracuse"
+        "school": "ucb",
+        "summary_key": "ucb_econ_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucla",
-        "summary_key": "campus_graph:ucla"
+        "school": "ucb",
+        "summary_key": "ucb_education_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "udel",
-        "summary_key": "campus_graph:udel"
+        "school": "ucb",
+        "summary_key": "ucb_eecs_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uga",
-        "summary_key": "campus_graph:uga"
+        "school": "ucb",
+        "summary_key": "ucb_english_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "utexas",
-        "summary_key": "campus_graph:utexas"
+        "school": "ucb",
+        "summary_key": "ucb_eps_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "vanderbilt",
-        "summary_key": "campus_graph:vanderbilt"
+        "school": "ucb",
+        "summary_key": "ucb_espm_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "vt",
-        "summary_key": "campus_graph:vt"
+        "school": "ucb",
+        "summary_key": "ucb_extra_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "cornell",
-        "summary_key": "cornell_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_filmmedia_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "houston",
-        "summary_key": "houston_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_french_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "nd",
-        "summary_key": "nd_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_geog_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "oregonstate",
-        "summary_key": "oregonstate_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_german_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "pitt",
-        "summary_key": "pitt_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_haas_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "rice",
-        "summary_key": "rice_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_history_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "syracuse",
-        "summary_key": "syracuse_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_ib_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucla",
-        "summary_key": "ucla_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_ieor_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "udel",
-        "summary_key": "udel_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_journalism_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "uga",
-        "summary_key": "uga_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_larch_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "utexas",
-        "summary_key": "utexas_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_law_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "vanderbilt",
-        "summary_key": "vanderbilt_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_ling_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "vt",
-        "summary_key": "vt_faculty"
+        "school": "ucb",
+        "summary_key": "ucb_math_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_mcb_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_me_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_mse_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_music_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_ne_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_neuro_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_nst_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_philos_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_physics_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_pmb_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_polisci_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_psych_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_publicpolicy_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_rhetoric_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_scandinavian_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_slavic_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_soc_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_socwel_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_spanish_portuguese_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_sph_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_stat_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_tdps_faculty"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_urap"
+      },
+      {
+        "allow_confirmed_empty": false,
+        "mode": "deep",
+        "school": "ucb",
+        "summary_key": "ucb_urap_projects"
       }
     ],
-    "publishable": [
-      "arizona",
-      "boulder",
-      "brown",
-      "cornell",
-      "houston",
-      "nd",
-      "oregonstate",
-      "pitt",
-      "rice",
-      "syracuse",
-      "ucla",
-      "udel",
-      "uga",
-      "utexas",
-      "vanderbilt",
-      "vt"
+    "publishable": [],
+    "ready": false,
+    "reasons": [
+      "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
     ],
-    "ready": true,
-    "reasons": [],
-    "status": "degraded",
+    "status": "blocked",
     "structural_reasons": [],
     "warnings": [
-      "deep source campus_graph:boulder degraded on recursive discovered pages: ['boulder_institutes: discovered-page fetch failed: https://jobs.colorado.edu/jobs/JobDetail/Senior-Spaceflight-Electronics-Design-Engineer/74227', 'boulder_institutes: discovered-page fetch failed: https://jobs.colorado.edu/jobs/JobDetail/Senior-Systems-Engineering-Deputy-Project-Systems-Engineer/74203']",
-      "deep source campus_graph:utexas loaded 9/10 configured seed pages (1 failed); those sources kept their previous records",
-      "deep source campus_graph:utexas reported crawl errors: ['utexas_announcement: seed fetch failed: https://undergraduates.utexas.edu/academics/undergraduate-research']",
-      "deep source campus_graph:utexas degraded on recursive discovered pages: ['utexas_announcement: discovered-page fetch failed: https://cns.utexas.edu/info-undergraduate-students/communities-experience/explore-research-opportunities/funding-your', 'utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/psychology/areas-of-study/developmental-psychology/program-information/fellowships-and-awards-for-graduate-students/undergraduate-research-opportunities/', 'utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/mmuf-program', 'utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/student-research-in-cola/undergraduate-research/undergraduate-research-apprenticeship-program.html', 'utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/undergraduate-research-apprenticeship-program.html']",
-      "faculty stale retirement is held pending per-unit lineage: ['arizona_faculty', 'boulder_faculty', 'brown_faculty', 'cornell_faculty', 'houston_faculty', 'nd_faculty', 'oregonstate_faculty', 'pitt_faculty', 'rice_faculty', 'syracuse_faculty', 'ucla_faculty', 'udel_faculty', 'uga_faculty', 'utexas_faculty', 'vanderbilt_faculty', 'vt_faculty']",
+      "deep source ucb_campus crawled 9/14 configured crawl sources; the unreached ones keep their previous records",
+      "deep source ucb_campus loaded 21/40 configured seed pages (19 failed); those sources kept their previous records",
+      "deep source ucb_campus reported crawl errors: ['ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/', 'ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities', 'ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research', 'ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/', 'ucb_eecs_summer: seed fetch failed: https://eecs.berkeley.edu/resources/undergrads/research/sure', 'ucb_eecs_summer: seed fetch failed: https://www2.eecs.berkeley.edu/Research/Areas/', 'ucb_engineering_internships: seed fetch failed: https://engineering.berkeley.edu/students/undergraduate-guide/academic-opportunities/research/', 'ucb_external_fellowships: seed fetch failed: https://research.berkeley.edu/our/scholarships-and-honors/', 'ucb_external_reu: seed fetch failed: https://math.berkeley.edu/programs/undergraduate/reu', 'ucb_lab_recruiting: seed fetch failed: https://bair.berkeley.edu/', 'ucb_more_departments: seed fetch failed: https://chemistry.berkeley.edu/research', 'ucb_more_departments: seed fetch failed: https://math.berkeley.edu/programs/undergraduate', 'ucb_more_departments: seed fetch failed: https://me.berkeley.edu/research/', 'ucb_more_departments: seed fetch failed: https://psychology.berkeley.edu/students/undergraduate-program/research-opportunities', 'ucb_more_departments: seed fetch failed: https://www.econ.berkeley.edu/undergrad/research', 'ucb_newsletters: seed fetch failed: https://research.berkeley.edu/our/newsletter/', 'ucb_ours_hub: seed fetch failed: https://research.berkeley.edu/undergraduate-research/', 'ucb_signature_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/', 'ucb_summer_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/']",
+      "deep source ucb_campus degraded on recursive discovered pages: ['ucb_more_departments: discovered-page fetch failed: http://research.berkeley.edu/opportunities.php?option=bab', 'ucb_more_departments: discovered-page fetch failed: https://career.berkeley.edu/Internships/Internships.stm']",
+      "required source ucb_eecs_faculty emitted zero records while the corpus holds 144 record(s) for it; those records are preserved untouched and the school still publishes, but this run cannot claim to have seen the source",
+      "faculty stale retirement is held pending per-unit lineage: ['ucb_extra_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -386,535 +520,111 @@
     "deep": true,
     "national": false,
     "schools": [
-      "arizona",
-      "boulder",
-      "brown",
-      "cornell",
-      "houston",
-      "nd",
-      "oregonstate",
-      "pitt",
-      "rice",
-      "syracuse",
-      "ucla",
-      "udel",
-      "uga",
-      "utexas",
-      "vanderbilt",
-      "vt"
+      "ucb"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "arizona",
-      "boulder",
-      "brown",
-      "cornell",
-      "houston",
-      "nd",
-      "oregonstate",
-      "pitt",
-      "rice",
-      "syracuse",
-      "ucla",
-      "udel",
-      "uga",
-      "utexas",
-      "vanderbilt",
-      "vt"
+      "ucb"
     ]
   },
+  "source_health": {
+    "degraded_shard_count": 1,
+    "failed_shard_count": 0,
+    "fully_fresh_school_count": 2,
+    "fully_stale_school_count": 0,
+    "fully_stale_schools": [],
+    "generated_at": "2026-09-05T05:21:47.502304+00:00",
+    "partially_degraded_school_count": 1,
+    "school_count": 3,
+    "stale_days": 17.0,
+    "stale_shard_count": 1,
+    "total_shard_count": 60,
+    "warn_days": 10.0
+  },
   "sources": {
-    "arizona_faculty": {
-      "fetched": 1471,
-      "new": 18,
-      "status": "ok",
-      "updated": 1453
-    },
     "auto_tagger": {
-      "rule_based_tagged": 41,
+      "rule_based_tagged": 661,
       "status": "ok"
-    },
-    "boulder_faculty": {
-      "fetched": 1593,
-      "new": 4,
-      "status": "ok",
-      "updated": 1589
-    },
-    "brown_faculty": {
-      "fetched": 1159,
-      "new": 19,
-      "status": "ok",
-      "updated": 1140
     },
     "campus_discovery_quarantine": {
-      "quarantined": 0,
+      "quarantined": 4,
       "status": "ok"
-    },
-    "campus_graph:arizona": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:boulder": {
-      "complete_recursive_sources": [
-        "boulder_research_hub"
-      ],
-      "crawl_errors": [],
-      "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [
-        "boulder_institutes: discovered-page fetch failed: https://jobs.colorado.edu/jobs/JobDetail/Senior-Spaceflight-Electronics-Design-Engineer/74227",
-        "boulder_institutes: discovered-page fetch failed: https://jobs.colorado.edu/jobs/JobDetail/Senior-Systems-Engineering-Deputy-Project-Systems-Engineer/74203"
-      ],
-      "discovered_records": 3,
-      "fetched": 12,
-      "live_pages_attempted": 28,
-      "live_pages_loaded": 26,
-      "new": 0,
-      "seed_pages_expected": 9,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 9,
-      "seed_records": 9,
-      "status": "ok",
-      "updated": 12
-    },
-    "campus_graph:brown": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 4,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 4,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:cornell": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 4,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 4,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:houston": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 6,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 6,
-      "status": "ok",
-      "updated": 6
-    },
-    "campus_graph:nd": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 8,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 8,
-      "status": "ok",
-      "updated": 8
-    },
-    "campus_graph:oregonstate": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 4,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 4,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:pitt": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 4,
-      "live_pages_attempted": 4,
-      "live_pages_loaded": 4,
-      "new": 0,
-      "seed_pages_expected": 4,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 4,
-      "seed_records": 4,
-      "status": "ok",
-      "updated": 4
-    },
-    "campus_graph:rice": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 5,
-      "live_pages_loaded": 5,
-      "new": 0,
-      "seed_pages_expected": 5,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 5,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:syracuse": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:ucla": {
-      "complete_recursive_sources": [
-        "ucla_lab"
-      ],
-      "crawl_errors": [],
-      "crawl_sources_expected": 6,
-      "crawl_sources_loaded": 6,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 28,
-      "fetched": 23,
-      "live_pages_attempted": 57,
-      "live_pages_loaded": 57,
-      "new": 0,
-      "seed_pages_expected": 11,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 11,
-      "seed_records": 11,
-      "status": "ok",
-      "updated": 19
-    },
-    "campus_graph:udel": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:uga": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 7,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 7,
-      "status": "ok",
-      "updated": 7
-    },
-    "campus_graph:utexas": {
-      "complete_recursive_sources": [
-        "utexas_department"
-      ],
-      "crawl_errors": [
-        "utexas_announcement: seed fetch failed: https://undergraduates.utexas.edu/academics/undergraduate-research"
-      ],
-      "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [
-        "utexas_announcement: discovered-page fetch failed: https://cns.utexas.edu/info-undergraduate-students/communities-experience/explore-research-opportunities/funding-your",
-        "utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/psychology/areas-of-study/developmental-psychology/program-information/fellowships-and-awards-for-graduate-students/undergraduate-research-opportunities/",
-        "utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/student-research-in-cola/undergraduate-research/undergraduate-research-apprenticeship-program.html",
-        "utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/mmuf-program",
-        "utexas_announcement: discovered-page fetch failed: https://liberalarts.utexas.edu/research/undergraduate-research-apprenticeship-program.html"
-      ],
-      "discovered_records": 17,
-      "fetched": 28,
-      "live_pages_attempted": 41,
-      "live_pages_loaded": 35,
-      "new": 0,
-      "seed_pages_expected": 10,
-      "seed_pages_failed": 1,
-      "seed_pages_loaded": 9,
-      "seed_records": 11,
-      "status": "ok",
-      "updated": 28
-    },
-    "campus_graph:vanderbilt": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 5,
-      "live_pages_loaded": 5,
-      "new": 0,
-      "seed_pages_expected": 5,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 5,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5
-    },
-    "campus_graph:vt": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 9,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 9,
-      "status": "ok",
-      "updated": 9
-    },
-    "cornell_faculty": {
-      "fetched": 1736,
-      "new": 127,
-      "status": "ok",
-      "updated": 1609
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 17684,
+      "skipped_rolling": 15257,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
       "deactivation_not_authorized": [],
-      "kept_fresh": 0,
-      "newly_deactivated": 0,
+      "kept_fresh": 1730,
+      "newly_deactivated": 28,
       "skipped_missing_unit_ledger": [
-        "arizona_faculty",
-        "boulder_faculty",
-        "brown_faculty",
-        "cornell_faculty",
-        "houston_faculty",
-        "nd_faculty",
-        "oregonstate_faculty",
-        "pitt_faculty",
-        "rice_faculty",
-        "syracuse_faculty",
-        "ucla_faculty",
-        "udel_faculty",
-        "uga_faculty",
-        "utexas_faculty",
-        "vanderbilt_faculty",
-        "vt_faculty"
+        "ucb_extra_faculty"
       ],
-      "skipped_partial_scrape": [],
+      "skipped_partial_scrape": [
+        "ucb_datascience_faculty",
+        "ucb_econ_faculty",
+        "ucb_ling_faculty",
+        "ucb_scandinavian_faculty",
+        "ucb_soc_faculty"
+      ],
       "status": "ok",
       "would_deactivate": [],
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 323,
-      "keywords_cleaned": 124,
+      "duplicates_removed": 3,
+      "keywords_cleaned": 385,
       "removed_by_school": {
-        "arizona": 17,
-        "boulder": 2,
-        "brown": 11,
-        "columbia": 5,
-        "cornell": 141,
-        "duke": 1,
-        "houston": 5,
-        "nd": 19,
-        "oregonstate": 1,
-        "pitt": 24,
-        "rice": 6,
-        "syracuse": 2,
-        "ucla": 14,
-        "udel": 1,
-        "uga": 14,
-        "utah": 3,
-        "utexas": 18,
-        "utk": 2,
-        "vanderbilt": 6,
-        "vt": 7,
-        "yale": 24
+        "ucb": 3
       },
       "retitled": 0,
-      "shared_inbox_nulled": {
-        "brown": 10,
-        "pitt": 4,
-        "ucla": 2
-      },
+      "shared_inbox_nulled": {},
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
     "faculty_joint_collapse": {
-      "duplicates_removed": 0,
-      "shared_mailbox_nulled": 0,
+      "duplicates_removed": 17,
+      "shared_mailbox_nulled": 38,
       "status": "ok"
-    },
-    "houston_faculty": {
-      "fetched": 1041,
-      "new": 36,
-      "status": "ok",
-      "updated": 1005
     },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nd_faculty": {
-      "fetched": 1254,
-      "new": 17,
-      "status": "ok",
-      "updated": 1237
-    },
-    "oregonstate_faculty": {
-      "fetched": 359,
-      "new": 1,
-      "status": "ok",
-      "updated": 358
-    },
     "pi_enricher": {
-      "already_had": 20661,
-      "enriched": 429,
-      "nulled_unit_inboxes": 10,
-      "renulled_shared_emails": 336,
-      "scraped": 1000,
-      "skipped_budget": 1169,
+      "already_had": 2011,
+      "enriched": 53,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 0,
+      "scraped": 242,
+      "skipped_budget": 0,
       "status": "ok"
     },
-    "pitt_faculty": {
-      "fetched": 1111,
-      "new": 14,
-      "status": "ok",
-      "updated": 1097
-    },
     "professor_tracking": {
-      "active_profile_coverage_pct": 34.8,
-      "events": 12163,
-      "freshness_pct": 34.8,
+      "active_profile_coverage_pct": 34.79,
+      "events": 12169,
+      "freshness_pct": 34.79,
       "fully_stale_school_count": 39,
-      "missing_profile_count": 84144,
+      "missing_profile_count": 84195,
       "missing_school_count": 39,
-      "new_events": 487,
-      "profiles": 45138,
+      "new_events": 6,
+      "profiles": 45164,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
       "untrackable_active_count": 0
     },
-    "rice_faculty": {
-      "fetched": 995,
-      "new": 9,
-      "status": "ok",
-      "updated": 986
-    },
     "school_audience": {
       "by_source": {
         "amherst_faculty": 266,
         "amherst_research_programs": 9,
-        "arizona_faculty": 1507,
+        "arizona_faculty": 1490,
         "arizona_research_programs": 5,
         "asu_faculty": 2475,
         "asu_research_programs": 6,
@@ -924,12 +634,12 @@
         "bates_research_programs": 11,
         "bc_faculty": 839,
         "bc_research_programs": 4,
-        "boulder_faculty": 1608,
+        "boulder_faculty": 1606,
         "boulder_labs": 5,
         "boulder_research_programs": 8,
         "bowdoin_faculty": 233,
         "bowdoin_research_programs": 10,
-        "brown_faculty": 1211,
+        "brown_faculty": 1200,
         "brown_research_programs": 4,
         "brynmawr_faculty": 152,
         "brynmawr_research_programs": 8,
@@ -955,15 +665,15 @@
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
-        "colgate_faculty": 314,
+        "colgate_faculty": 319,
         "colgate_research_programs": 9,
         "coloradocollege_faculty": 207,
         "coloradocollege_research_programs": 7,
         "colostate_faculty": 932,
         "colostate_research_programs": 5,
-        "columbia_faculty": 1088,
+        "columbia_faculty": 1083,
         "columbia_research_programs": 7,
-        "cornell_faculty": 1778,
+        "cornell_faculty": 1637,
         "cornell_research_programs": 4,
         "dartmouth_faculty": 920,
         "dartmouth_research_programs": 8,
@@ -972,7 +682,7 @@
         "drexel_faculty": 578,
         "drexel_research_programs": 5,
         "duke_external_research": 4,
-        "duke_faculty": 1192,
+        "duke_faculty": 1191,
         "duke_labs": 9,
         "duke_research_programs": 62,
         "emory_faculty": 1447,
@@ -994,7 +704,7 @@
         "harvard_research_programs": 8,
         "haverford_faculty": 121,
         "haverford_research_programs": 5,
-        "houston_faculty": 1076,
+        "houston_faculty": 1071,
         "houston_research_programs": 6,
         "iastate_faculty": 670,
         "iastate_research_programs": 4,
@@ -1023,7 +733,7 @@
         "msu_research_programs": 6,
         "ncsu_faculty": 2302,
         "ncsu_research_programs": 11,
-        "nd_faculty": 1295,
+        "nd_faculty": 1276,
         "nd_research_programs": 8,
         "neu_faculty": 1996,
         "neu_research_programs": 8,
@@ -1035,11 +745,11 @@
         "nsf_reu": 756,
         "nyu_faculty": 2157,
         "nyu_research_programs": 11,
-        "oregonstate_faculty": 605,
+        "oregonstate_faculty": 604,
         "oregonstate_research_programs": 4,
         "osu_faculty": 2512,
         "osu_research_programs": 8,
-        "pitt_faculty": 1156,
+        "pitt_faculty": 1132,
         "pitt_research_programs": 4,
         "pomona_faculty": 271,
         "pomona_research_programs": 8,
@@ -1052,7 +762,7 @@
         "purdue_faculty": 2188,
         "purdue_labs": 18,
         "purdue_research_programs": 62,
-        "rice_faculty": 1006,
+        "rice_faculty": 1000,
         "rice_research_programs": 5,
         "rochester_faculty": 848,
         "rochester_research_programs": 8,
@@ -1071,72 +781,72 @@
         "stanford_research_programs": 38,
         "stevens_faculty": 337,
         "stevens_research_programs": 5,
-        "swarthmore_faculty": 228,
+        "swarthmore_faculty": 231,
         "swarthmore_research_programs": 10,
-        "syracuse_faculty": 838,
+        "syracuse_faculty": 836,
         "syracuse_research_programs": 5,
         "tamu_faculty": 3252,
         "tamu_research_programs": 8,
         "tufts_faculty": 2063,
         "tufts_research_programs": 8,
         "ucb_anthro_faculty": 26,
-        "ucb_arch_faculty": 50,
+        "ucb_arch_faculty": 60,
         "ucb_astro_faculty": 18,
         "ucb_bioe_faculty": 32,
-        "ucb_cbe_faculty": 18,
+        "ucb_cbe_faculty": 19,
         "ucb_cee_faculty": 63,
         "ucb_chem_faculty": 55,
-        "ucb_classics_faculty": 16,
-        "ucb_complit_faculty": 16,
+        "ucb_classics_faculty": 18,
+        "ucb_complit_faculty": 17,
         "ucb_datascience_faculty": 6,
-        "ucb_dcrp_faculty": 22,
-        "ucb_econ_faculty": 57,
+        "ucb_dcrp_faculty": 27,
+        "ucb_econ_faculty": 59,
         "ucb_education_faculty": 46,
         "ucb_eecs_faculty": 154,
         "ucb_english_faculty": 52,
         "ucb_eps_faculty": 29,
-        "ucb_espm_faculty": 66,
+        "ucb_espm_faculty": 68,
         "ucb_external_research": 7,
-        "ucb_extra_faculty": 153,
-        "ucb_filmmedia_faculty": 6,
+        "ucb_extra_faculty": 161,
+        "ucb_filmmedia_faculty": 8,
         "ucb_french_faculty": 11,
         "ucb_geog_faculty": 20,
         "ucb_german_faculty": 8,
         "ucb_haas_faculty": 104,
         "ucb_history_faculty": 59,
-        "ucb_ib_faculty": 43,
+        "ucb_ib_faculty": 44,
         "ucb_ieor_faculty": 19,
-        "ucb_journalism_faculty": 28,
-        "ucb_labs": 17,
-        "ucb_larch_faculty": 22,
-        "ucb_law_faculty": 80,
-        "ucb_ling_faculty": 17,
-        "ucb_math_faculty": 106,
+        "ucb_journalism_faculty": 36,
+        "ucb_labs": 21,
+        "ucb_larch_faculty": 24,
+        "ucb_law_faculty": 81,
+        "ucb_ling_faculty": 18,
+        "ucb_math_faculty": 108,
         "ucb_mcb_faculty": 80,
         "ucb_me_faculty": 65,
         "ucb_mse_faculty": 19,
-        "ucb_music_faculty": 17,
+        "ucb_music_faculty": 18,
         "ucb_ne_faculty": 16,
-        "ucb_neuro_faculty": 14,
+        "ucb_neuro_faculty": 16,
         "ucb_nst_faculty": 17,
         "ucb_philos_faculty": 38,
         "ucb_physics_faculty": 41,
         "ucb_pmb_faculty": 25,
         "ucb_polisci_faculty": 45,
-        "ucb_psych_faculty": 33,
-        "ucb_publicpolicy_faculty": 18,
+        "ucb_psych_faculty": 35,
+        "ucb_publicpolicy_faculty": 19,
         "ucb_research_programs": 59,
         "ucb_rhetoric_faculty": 23,
-        "ucb_scandinavian_faculty": 9,
-        "ucb_slavic_faculty": 13,
-        "ucb_soc_faculty": 37,
-        "ucb_socwel_faculty": 26,
-        "ucb_spanish_portuguese_faculty": 22,
-        "ucb_sph_faculty": 126,
+        "ucb_scandinavian_faculty": 10,
+        "ucb_slavic_faculty": 15,
+        "ucb_soc_faculty": 38,
+        "ucb_socwel_faculty": 29,
+        "ucb_spanish_portuguese_faculty": 23,
+        "ucb_sph_faculty": 132,
         "ucb_stat_faculty": 49,
-        "ucb_tdps_faculty": 33,
+        "ucb_tdps_faculty": 34,
         "ucb_urap": 1,
-        "ucb_urap_projects": 861,
+        "ucb_urap_projects": 987,
         "ucd_research_programs": 7,
         "ucf_faculty": 811,
         "ucf_research_programs": 5,
@@ -1148,7 +858,7 @@
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
-        "ucla_faculty": 2063,
+        "ucla_faculty": 2048,
         "ucla_labs": 2,
         "ucla_research_programs": 32,
         "uconn_faculty": 1169,
@@ -1165,11 +875,11 @@
         "ucsd_faculty": 1472,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
-        "udel_faculty": 1019,
+        "udel_faculty": 1018,
         "udel_research_programs": 5,
         "uf_faculty": 2042,
         "uf_research_programs": 8,
-        "uga_faculty": 2176,
+        "uga_faculty": 2162,
         "uga_research_programs": 7,
         "uiowa_faculty": 954,
         "uiowa_research_programs": 4,
@@ -1204,14 +914,14 @@
         "usc_research_programs": 8,
         "usf_faculty": 775,
         "usf_research_programs": 5,
-        "utah_faculty": 1115,
+        "utah_faculty": 1112,
         "utah_research_programs": 5,
         "utdallas_faculty": 1086,
         "utdallas_research_programs": 4,
         "utexas_external_research": 1,
-        "utexas_faculty": 2282,
+        "utexas_faculty": 2264,
         "utexas_research_programs": 35,
-        "utk_faculty": 1068,
+        "utk_faculty": 1066,
         "utk_research_programs": 5,
         "uva_faculty": 1633,
         "uva_research_programs": 9,
@@ -1219,11 +929,11 @@
         "uw_faculty": 2235,
         "uw_labs": 3,
         "uw_research_programs": 30,
-        "vanderbilt_faculty": 1166,
+        "vanderbilt_faculty": 1160,
         "vanderbilt_research_programs": 5,
         "vassar_faculty": 262,
         "vassar_research_programs": 8,
-        "vt_faculty": 1897,
+        "vt_faculty": 1890,
         "vt_research_programs": 9,
         "washu_faculty": 1108,
         "washu_research_programs": 8,
@@ -1239,62 +949,510 @@
         "wlu_research_programs": 8,
         "wpi_faculty": 465,
         "wpi_research_programs": 4,
-        "yale_faculty": 1278,
+        "yale_faculty": 1254,
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 138105
+      "tagged": 137988
     },
-    "syracuse_faculty": {
-      "fetched": 823,
-      "new": 3,
+    "ucb_anthro_faculty": {
+      "fetched": 26,
+      "new": 0,
       "status": "ok",
-      "updated": 820
+      "updated": 26,
+      "zero_class": "success_nonzero"
     },
-    "ucla_faculty": {
-      "fetched": 1738,
-      "new": 17,
-      "status": "ok",
-      "updated": 1721
-    },
-    "udel_faculty": {
-      "fetched": 999,
+    "ucb_arch_faculty": {
+      "fetched": 50,
       "new": 10,
       "status": "ok",
-      "updated": 989
+      "updated": 39,
+      "zero_class": "success_nonzero"
     },
-    "uga_faculty": {
-      "fetched": 1873,
-      "new": 16,
+    "ucb_astro_faculty": {
+      "fetched": 19,
+      "new": 0,
       "status": "ok",
-      "updated": 1857
+      "updated": 18,
+      "zero_class": "success_nonzero"
     },
-    "utexas_faculty": {
-      "fetched": 2019,
-      "new": 23,
+    "ucb_bioe_faculty": {
+      "fetched": 35,
+      "new": 0,
       "status": "ok",
-      "updated": 1996
+      "updated": 32,
+      "zero_class": "success_nonzero"
     },
-    "vanderbilt_faculty": {
-      "fetched": 982,
-      "new": 7,
+    "ucb_campus": {
+      "complete_recursive_sources": [
+        "ucb_research_news",
+        "ucb_research_centers"
+      ],
+      "crawl_errors": [
+        "ucb_ours_hub: seed fetch failed: https://research.berkeley.edu/undergraduate-research/",
+        "ucb_summer_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/",
+        "ucb_eecs_summer: seed fetch failed: https://eecs.berkeley.edu/resources/undergrads/research/sure",
+        "ucb_eecs_summer: seed fetch failed: https://www2.eecs.berkeley.edu/Research/Areas/",
+        "ucb_external_fellowships: seed fetch failed: https://research.berkeley.edu/our/scholarships-and-honors/",
+        "ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/",
+        "ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research",
+        "ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities",
+        "ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/",
+        "ucb_engineering_internships: seed fetch failed: https://engineering.berkeley.edu/students/undergraduate-guide/academic-opportunities/research/",
+        "ucb_lab_recruiting: seed fetch failed: https://bair.berkeley.edu/",
+        "ucb_more_departments: seed fetch failed: https://chemistry.berkeley.edu/research",
+        "ucb_more_departments: seed fetch failed: https://me.berkeley.edu/research/",
+        "ucb_more_departments: seed fetch failed: https://psychology.berkeley.edu/students/undergraduate-program/research-opportunities",
+        "ucb_more_departments: seed fetch failed: https://www.econ.berkeley.edu/undergrad/research",
+        "ucb_more_departments: seed fetch failed: https://math.berkeley.edu/programs/undergraduate",
+        "ucb_signature_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/",
+        "ucb_external_reu: seed fetch failed: https://math.berkeley.edu/programs/undergraduate/reu",
+        "ucb_newsletters: seed fetch failed: https://research.berkeley.edu/our/newsletter/"
+      ],
+      "crawl_sources_expected": 14,
+      "crawl_sources_loaded": 9,
+      "deep": true,
+      "degraded_page_errors": [
+        "ucb_more_departments: discovered-page fetch failed: https://career.berkeley.edu/Internships/Internships.stm",
+        "ucb_more_departments: discovered-page fetch failed: http://research.berkeley.edu/opportunities.php?option=bab"
+      ],
+      "discovered_records": 32,
+      "fetched": 84,
+      "live_pages_attempted": 101,
+      "live_pages_loaded": 80,
+      "new": 4,
+      "seed_pages_expected": 40,
+      "seed_pages_failed": 19,
+      "seed_pages_loaded": 21,
+      "seed_records": 59,
       "status": "ok",
-      "updated": 975
+      "updated": 79,
+      "zero_class": "success_nonzero"
     },
-    "vt_faculty": {
-      "fetched": 771,
+    "ucb_cbe_faculty": {
+      "fetched": 27,
+      "new": 1,
+      "status": "ok",
+      "updated": 18,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_cee_faculty": {
+      "fetched": 64,
+      "new": 1,
+      "status": "ok",
+      "updated": 63,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_chem_faculty": {
+      "fetched": 51,
+      "new": 0,
+      "status": "ok",
+      "updated": 51,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_classics_faculty": {
+      "fetched": 27,
+      "new": 2,
+      "status": "ok",
+      "updated": 15,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_complit_faculty": {
+      "fetched": 21,
+      "new": 1,
+      "status": "ok",
+      "updated": 16,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_datascience_faculty": {
+      "fetched": 4,
+      "new": 4,
+      "status": "ok",
+      "updated": 0,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_dcrp_faculty": {
+      "fetched": 26,
+      "new": 5,
+      "status": "ok",
+      "updated": 20,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_econ_faculty": {
+      "fetched": 55,
+      "new": 2,
+      "status": "ok",
+      "updated": 53,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_education_faculty": {
+      "fetched": 46,
+      "new": 0,
+      "status": "ok",
+      "updated": 46,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_eecs_faculty": {
+      "fetched": 0,
+      "new": 0,
+      "status": "suspicious_zero",
+      "suspicious_zero_baseline": 144,
+      "updated": 0,
+      "zero_class": "suspicious_zero"
+    },
+    "ucb_english_faculty": {
+      "fetched": 51,
+      "new": 0,
+      "status": "ok",
+      "updated": 51,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_eps_faculty": {
+      "fetched": 35,
+      "new": 0,
+      "status": "ok",
+      "updated": 29,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_espm_faculty": {
+      "fetched": 67,
+      "new": 2,
+      "status": "ok",
+      "updated": 62,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_extra_faculty": {
+      "fetched": 187,
+      "new": 11,
+      "status": "ok",
+      "updated": 146,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_filmmedia_faculty": {
+      "fetched": 13,
+      "new": 2,
+      "status": "ok",
+      "updated": 6,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_french_faculty": {
+      "fetched": 14,
+      "new": 0,
+      "status": "ok",
+      "updated": 11,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_geog_faculty": {
+      "fetched": 23,
+      "new": 0,
+      "status": "ok",
+      "updated": 19,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_german_faculty": {
+      "fetched": 9,
+      "new": 0,
+      "status": "ok",
+      "updated": 8,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_haas_faculty": {
+      "fetched": 120,
+      "new": 2,
+      "status": "ok",
+      "updated": 104,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_history_faculty": {
+      "fetched": 61,
+      "new": 1,
+      "status": "ok",
+      "updated": 58,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_ib_faculty": {
+      "fetched": 47,
+      "new": 1,
+      "status": "ok",
+      "updated": 43,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_ieor_faculty": {
+      "fetched": 21,
+      "new": 0,
+      "status": "ok",
+      "updated": 19,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_journalism_faculty": {
+      "fetched": 37,
       "new": 8,
       "status": "ok",
-      "updated": 763
+      "updated": 27,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_larch_faculty": {
+      "fetched": 19,
+      "new": 2,
+      "status": "ok",
+      "updated": 16,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_law_faculty": {
+      "fetched": 82,
+      "new": 1,
+      "status": "ok",
+      "updated": 80,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_ling_faculty": {
+      "fetched": 16,
+      "new": 1,
+      "status": "ok",
+      "updated": 15,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_math_faculty": {
+      "fetched": 105,
+      "new": 2,
+      "status": "ok",
+      "updated": 95,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_mcb_faculty": {
+      "fetched": 92,
+      "new": 1,
+      "status": "ok",
+      "updated": 80,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_me_faculty": {
+      "fetched": 72,
+      "new": 0,
+      "status": "ok",
+      "updated": 64,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_mse_faculty": {
+      "fetched": 29,
+      "new": 1,
+      "status": "ok",
+      "updated": 19,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_music_faculty": {
+      "fetched": 19,
+      "new": 1,
+      "status": "ok",
+      "updated": 17,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_ne_faculty": {
+      "fetched": 17,
+      "new": 0,
+      "status": "ok",
+      "updated": 15,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_neuro_faculty": {
+      "fetched": 41,
+      "new": 2,
+      "status": "ok",
+      "updated": 14,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_nst_faculty": {
+      "fetched": 20,
+      "new": 0,
+      "status": "ok",
+      "updated": 17,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_philos_faculty": {
+      "fetched": 46,
+      "new": 0,
+      "status": "ok",
+      "updated": 37,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_physics_faculty": {
+      "fetched": 59,
+      "new": 0,
+      "status": "ok",
+      "updated": 41,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_pmb_faculty": {
+      "fetched": 31,
+      "new": 0,
+      "status": "ok",
+      "updated": 25,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_polisci_faculty": {
+      "fetched": 49,
+      "new": 0,
+      "status": "ok",
+      "updated": 44,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_psych_faculty": {
+      "fetched": 36,
+      "new": 2,
+      "status": "ok",
+      "updated": 33,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_publicpolicy_faculty": {
+      "fetched": 32,
+      "new": 4,
+      "status": "ok",
+      "updated": 17,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_rhetoric_faculty": {
+      "fetched": 32,
+      "new": 1,
+      "status": "ok",
+      "updated": 23,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_scandinavian_faculty": {
+      "fetched": 9,
+      "new": 1,
+      "status": "ok",
+      "updated": 8,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_slavic_faculty": {
+      "fetched": 16,
+      "new": 2,
+      "status": "ok",
+      "updated": 12,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_soc_faculty": {
+      "fetched": 36,
+      "new": 1,
+      "status": "ok",
+      "updated": 35,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_socwel_faculty": {
+      "fetched": 27,
+      "new": 3,
+      "status": "ok",
+      "updated": 22,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_spanish_portuguese_faculty": {
+      "fetched": 24,
+      "new": 1,
+      "status": "ok",
+      "updated": 21,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_sph_faculty": {
+      "fetched": 139,
+      "new": 6,
+      "status": "ok",
+      "updated": 121,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_stat_faculty": {
+      "fetched": 58,
+      "new": 0,
+      "status": "ok",
+      "updated": 47,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_tdps_faculty": {
+      "fetched": 34,
+      "new": 1,
+      "status": "ok",
+      "updated": 33,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_urap": {
+      "fetched": 1,
+      "new": 0,
+      "status": "ok",
+      "updated": 0,
+      "zero_class": "success_nonzero"
+    },
+    "ucb_urap_projects": {
+      "fetched": 771,
+      "new": 126,
+      "status": "ok",
+      "updated": 645,
+      "zero_class": "success_nonzero"
     }
   },
   "time_budget": {
-    "budget_minutes": 260.0,
+    "budget_minutes": 90.0,
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-03T06:06:05.322302",
-  "total_in_file": 137782,
-  "total_new": 329,
-  "total_updated": 19725
+  "timestamp": "2026-09-05T03:59:29.733019",
+  "total_in_file": 137985,
+  "total_new": 216,
+  "total_updated": 2655,
+  "zero_classes": {
+    "ucb_anthro_faculty": "success_nonzero",
+    "ucb_arch_faculty": "success_nonzero",
+    "ucb_astro_faculty": "success_nonzero",
+    "ucb_bioe_faculty": "success_nonzero",
+    "ucb_campus": "success_nonzero",
+    "ucb_cbe_faculty": "success_nonzero",
+    "ucb_cee_faculty": "success_nonzero",
+    "ucb_chem_faculty": "success_nonzero",
+    "ucb_classics_faculty": "success_nonzero",
+    "ucb_complit_faculty": "success_nonzero",
+    "ucb_datascience_faculty": "success_nonzero",
+    "ucb_dcrp_faculty": "success_nonzero",
+    "ucb_econ_faculty": "success_nonzero",
+    "ucb_education_faculty": "success_nonzero",
+    "ucb_eecs_faculty": "suspicious_zero",
+    "ucb_english_faculty": "success_nonzero",
+    "ucb_eps_faculty": "success_nonzero",
+    "ucb_espm_faculty": "success_nonzero",
+    "ucb_extra_faculty": "success_nonzero",
+    "ucb_filmmedia_faculty": "success_nonzero",
+    "ucb_french_faculty": "success_nonzero",
+    "ucb_geog_faculty": "success_nonzero",
+    "ucb_german_faculty": "success_nonzero",
+    "ucb_haas_faculty": "success_nonzero",
+    "ucb_history_faculty": "success_nonzero",
+    "ucb_ib_faculty": "success_nonzero",
+    "ucb_ieor_faculty": "success_nonzero",
+    "ucb_journalism_faculty": "success_nonzero",
+    "ucb_larch_faculty": "success_nonzero",
+    "ucb_law_faculty": "success_nonzero",
+    "ucb_ling_faculty": "success_nonzero",
+    "ucb_math_faculty": "success_nonzero",
+    "ucb_mcb_faculty": "success_nonzero",
+    "ucb_me_faculty": "success_nonzero",
+    "ucb_mse_faculty": "success_nonzero",
+    "ucb_music_faculty": "success_nonzero",
+    "ucb_ne_faculty": "success_nonzero",
+    "ucb_neuro_faculty": "success_nonzero",
+    "ucb_nst_faculty": "success_nonzero",
+    "ucb_philos_faculty": "success_nonzero",
+    "ucb_physics_faculty": "success_nonzero",
+    "ucb_pmb_faculty": "success_nonzero",
+    "ucb_polisci_faculty": "success_nonzero",
+    "ucb_psych_faculty": "success_nonzero",
+    "ucb_publicpolicy_faculty": "success_nonzero",
+    "ucb_rhetoric_faculty": "success_nonzero",
+    "ucb_scandinavian_faculty": "success_nonzero",
+    "ucb_slavic_faculty": "success_nonzero",
+    "ucb_soc_faculty": "success_nonzero",
+    "ucb_socwel_faculty": "success_nonzero",
+    "ucb_spanish_portuguese_faculty": "success_nonzero",
+    "ucb_sph_faculty": "success_nonzero",
+    "ucb_stat_faculty": "success_nonzero",
+    "ucb_tdps_faculty": "success_nonzero",
+    "ucb_urap": "success_nonzero",
+    "ucb_urap_projects": "success_nonzero"
+  }
 }

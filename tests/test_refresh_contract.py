@@ -326,11 +326,18 @@ def test_uiuc_and_ucb_special_source_sets_are_explicit():
     assert "ucb_pmb_faculty" in ucb
 
 
-def test_missing_error_and_zero_required_sources_block_release():
+def test_missing_and_errored_required_sources_block_release():
+    """Accuracy failures still fail closed.
+
+    A source absent from the summary, or one that reported an error, means
+    what we would publish may be WRONG - the run cannot vouch for it. That
+    still blocks. Only the EMPTY case is reclassified (next test): a zero
+    costs coverage, never accuracy, and blocking on it withheld every sibling
+    department in the school.
+    """
     cases = [
         {},
         {"campus_graph:uw": _graph_ok(), "uw_faculty": {"status": "error", "error": "down"}},
-        {"campus_graph:uw": _graph_ok(), "uw_faculty": _ok(0)},
     ]
     for sources in cases:
         verdict = evaluate_refresh_summary(
@@ -341,9 +348,28 @@ def test_missing_error_and_zero_required_sources_block_release():
         )
         assert verdict["ready"] is False
         assert verdict["reasons"]
+        assert verdict["publishable"] == []
 
 
-def test_reconciled_raw_fetch_with_zero_emitted_blocks_publication():
+def test_zero_emitting_required_source_degrades_instead_of_blocking():
+    """The department-vetoes-school fix, at the contract's own level."""
+    verdict = evaluate_refresh_summary(
+        _summary({"uw"}, {"campus_graph:uw": _graph_ok(), "uw_faculty": _ok(0)}),
+        schools={"uw"},
+        national=False,
+        deep=True,
+    )
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert verdict["publishable"] == ["uw"]
+    assert verdict["reasons"] == []
+    assert any(
+        item["kind"] == "suspicious_zero" and item["source"] == "uw_faculty"
+        for item in verdict["degradations"]
+    )
+
+
+def test_reconciled_raw_fetch_with_zero_emitted_degrades_publication():
     verdict = evaluate_refresh_summary(
         _summary(
             {"uw"},
@@ -362,8 +388,16 @@ def test_reconciled_raw_fetch_with_zero_emitted_blocks_publication():
         national=False,
         deep=True,
     )
-    assert verdict["ready"] is False
-    assert any("emitted zero records" in reason for reason in verdict["reasons"])
+    # Fetched 20 and kept none. Still a zero - it publishes nothing - so it
+    # degrades its own source rather than withholding its school, and the
+    # emptiness is reported rather than swallowed.
+    assert verdict["ready"] is True
+    assert verdict["publishable"] == ["uw"]
+    assert any("emitted zero records" in warning for warning in verdict["warnings"])
+    assert any(
+        item["kind"] == "suspicious_zero" and item["source"] == "uw_faculty"
+        for item in verdict["degradations"]
+    )
 
 
 def test_incomplete_or_inconsistent_source_count_accounting_blocks_release():
@@ -396,7 +430,7 @@ def test_incomplete_or_inconsistent_source_count_accounting_blocks_release():
         assert any("count" in reason for reason in verdict["reasons"])
 
 
-def test_quick_uiuc_still_requires_nonempty_static_faculty():
+def test_quick_uiuc_empty_static_faculty_is_reported_every_run():
     expected = expected_sources({"uiuc"}, national=False, deep=False)
     assert "uiuc_faculty" in expected
     sources = {key: _ok(1) for key in expected}
@@ -412,8 +446,15 @@ def test_quick_uiuc_still_requires_nonempty_static_faculty():
         deep=False,
     )
 
-    assert verdict["ready"] is False
-    assert any("uiuc_faculty" in reason for reason in verdict["reasons"])
+    # Reported, every run, until it emits records again - but the other UIUC
+    # producers are not withheld along with it.
+    assert verdict["status"] == "degraded"
+    assert verdict["publishable"] == ["uiuc"]
+    assert any("uiuc_faculty" in warning for warning in verdict["warnings"])
+    assert any(
+        item["kind"] == "suspicious_zero" and item["source"] == "uiuc_faculty"
+        for item in verdict["degradations"]
+    )
 
 
 def test_uiuc_release_requires_explicit_stale_deactivation_hold():
@@ -457,7 +498,7 @@ def test_national_and_school_selector_cannot_be_combined():
     assert any("mutually exclusive" in reason for reason in verdict["reasons"])
 
 
-def test_urca_single_empty_snapshot_cannot_authorize_publication():
+def test_urca_empty_snapshot_blocks_on_evidence_not_on_emptiness():
     base = {
         "campus_graph:ucsb": _graph_ok(),
         "ucsb_faculty": _ok(100),
@@ -490,8 +531,18 @@ def test_urca_single_empty_snapshot_cannot_authorize_publication():
         national=False,
         deep=True,
     )
+    # Still blocked - but now on the reason that was always the real one.
+    # ``sitemap_complete`` is false, so the snapshot cannot be trusted for
+    # what it DID emit; that is an accuracy failure and stays fail-closed.
+    # It no longer ALSO blocks for being empty, which is what used to take
+    # the rest of UC Santa Barbara down with it.
     assert structurally_complete_but_empty["ready"] is False
+    assert structurally_complete_but_empty["publishable"] == []
     assert any(
+        "lacks complete sitemap evidence" in reason
+        for reason in structurally_complete_but_empty["reasons"]
+    )
+    assert not any(
         "emitted zero records" in reason
         for reason in structurally_complete_but_empty["reasons"]
     )
@@ -558,7 +609,7 @@ def test_partial_faculty_and_uiuc_empty_departments_block_release():
     assert any("empty departments" in reason for reason in uiuc["reasons"])
 
 
-def test_ucd_zero_is_explicitly_degraded_and_blocked():
+def test_ucd_zero_is_explicitly_degraded_without_withholding_ucd():
     verdict = evaluate_refresh_summary(
         _summary(
             {"ucd"},
@@ -571,9 +622,17 @@ def test_ucd_zero_is_explicitly_degraded_and_blocked():
         national=False,
         deep=True,
     )
-    assert verdict["ready"] is False
-    assert verdict["status"] == "blocked"
+    # UC Davis faculty is walled off by Cloudflare and has never emitted a
+    # record. It is degraded, and reported so on every run - but it no longer
+    # withholds the seven UC Davis programs that DO collect.
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert verdict["publishable"] == ["ucd"]
     assert any("UC Davis" in warning for warning in verdict["warnings"])
+    assert any(
+        item["kind"] == "suspicious_zero" and item["source"] == "ucd_faculty"
+        for item in verdict["degradations"]
+    )
 
 
 def test_ucd_quick_mode_cannot_skip_faculty_and_report_ready():
@@ -699,8 +758,12 @@ def test_budget_truncated_source_is_degraded_not_blocked():
 
 
 def test_budget_status_does_not_excuse_an_empty_completed_source():
-    """The budget exemption must not become a way to publish nothing: a source
-    that reports "ok" with zero records still blocks."""
+    """The budget exemption must not launder an empty completed source.
+
+    A source that finished and found nothing is NOT "stopped at the run time
+    budget", and must not be reported as though it were - the two have
+    different causes and different fixes. It gets its own degradation kind.
+    """
     verdict = evaluate_refresh_summary(
         _summary(
             {"uw"},
@@ -714,8 +777,14 @@ def test_budget_status_does_not_excuse_an_empty_completed_source():
         deep=True,
     )
 
-    assert verdict["ready"] is False
-    assert any("emitted zero records" in reason for reason in verdict["reasons"])
+    assert verdict["ready"] is True
+    kinds = {
+        item["kind"] for item in verdict["degradations"]
+        if item["source"] == "uw_faculty"
+    }
+    assert kinds == {"suspicious_zero"}
+    assert "time_budget" not in kinds
+    assert any("emitted zero records" in warning for warning in verdict["warnings"])
 
 
 def test_every_budget_status_the_engine_emits_is_known_to_the_contract():

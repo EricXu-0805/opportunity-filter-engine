@@ -169,7 +169,15 @@ def test_target_only_split_rejects_missing_targets_and_prune(tmp_path):
         split(wf, sd, prune=True, only_shards={"alpha"})
 
 
-def test_target_only_shrink_blocks_before_any_target_is_written(tmp_path):
+def test_target_only_shrink_retains_one_shard_without_blocking_the_others(tmp_path):
+    """One flaked school keeps its prior shard; its healthy siblings publish.
+
+    This used to raise before writing ANYTHING, so a single shrunken school
+    discarded every other school in the same run - the same
+    one-failure-vetoes-everything shape that #8 removed from the release
+    verdict. The retained shard is reported back to the caller so
+    "published" never silently means "kept the old one".
+    """
     wf, sd = tmp_path / "work.json", tmp_path / "shards"
     sd.mkdir()
     alpha_before = json.dumps(_recs("alpha", 200))
@@ -178,11 +186,40 @@ def test_target_only_shrink_blocks_before_any_target_is_written(tmp_path):
     (sd / "beta.json").write_text(beta_before, encoding="utf-8")
     _write(wf, _recs("alpha", 180) + _recs("beta", 10))
 
-    with pytest.raises(ValueError, match="shrink guard"):
-        split(wf, sd, only_shards={"alpha", "beta"})
+    retained: set[str] = set()
+    counts = split(wf, sd, only_shards={"alpha", "beta"}, retained_out=retained)
 
-    assert (sd / "alpha.json").read_text(encoding="utf-8") == alpha_before
+    # beta flaked: prior bytes untouched, and it says so.
+    assert retained == {"beta"}
     assert (sd / "beta.json").read_text(encoding="utf-8") == beta_before
+    assert counts["beta"] == 200  # what is actually on disk
+
+    # alpha is healthy and publishes regardless.
+    assert (sd / "alpha.json").read_text(encoding="utf-8") != alpha_before
+    assert _shard_count(sd, "alpha") == 180
+    assert counts["alpha"] == 180
+
+
+def test_retained_shard_gets_no_publish_timestamp(tmp_path, monkeypatch):
+    """A retained shard is NOT a publish. Stamping one would let a
+    permanently broken school look freshly published every week."""
+    from src.collectors import source_health
+
+    ledger_path = tmp_path / "source_health.json"
+    monkeypatch.setattr(source_health, "LEDGER_FILE", ledger_path)
+
+    wf, sd = tmp_path / "work.json", tmp_path / "shards"
+    sd.mkdir()
+    (sd / "alpha.json").write_text(json.dumps(_recs("alpha", 200)), encoding="utf-8")
+    (sd / "beta.json").write_text(json.dumps(_recs("beta", 200)), encoding="utf-8")
+    _write(wf, _recs("alpha", 190) + _recs("beta", 10))
+
+    split(wf, sd, only_shards={"alpha", "beta"})
+
+    shards = source_health.load_ledger(ledger_path)["shards"]
+    assert "alpha" in shards and shards["alpha"]["last_publish_at"]
+    assert shards["alpha"]["last_publish_record_count"] == 190
+    assert "beta" not in shards
 
 
 def test_record_school_slug_cannot_escape_shards_directory(tmp_path):
