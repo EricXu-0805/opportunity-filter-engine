@@ -45,6 +45,17 @@ vi.mock('@/lib/api', () => ({
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),
   refineEmail: vi.fn(),
   extractResumeBullets: async () => ({ bullets: [], method: 'heuristic' }),
+  getVapidPublicKey: async () => 'test-vapid-key',
+}));
+
+// The notification offer only appears for a device that could actually
+// receive one, so these tests drive the browser's push state directly.
+let pushStatus: 'default' | 'subscribed' | 'denied' | 'unsupported' = 'default';
+vi.mock('@/lib/push', () => ({
+  isPushSupported: () => pushStatus !== 'unsupported',
+  getPushStatus: async () => pushStatus,
+  subscribeToPush: async () => true,
+  unsubscribeFromPush: async () => true,
 }));
 
 vi.mock('@/lib/auth-modal-context', () => ({
@@ -175,6 +186,7 @@ function expectNoConfirmedUi(when: string): void {
 const confirmButton = () => screen.getByTestId('cold-email-confirm-sent');
 
 beforeEach(() => {
+  pushStatus = 'default';
   confirmCalls.length = 0;
   updateCalls.length = 0;
   confirmContactMock.mockReset().mockImplementation(() => {
@@ -1099,5 +1111,53 @@ describe('a follow-up reminder the page can see', () => {
     expect(written.remind_at).toBe(
       `${expected.getFullYear()}-${pad(expected.getMonth() + 1)}-${pad(expected.getDate())}`,
     );
+  });
+});
+
+
+describe('offering notifications once a reminder exists', () => {
+  // The reminders cron has a third filter the controls never checked: a
+  // channel to reach this student. push.py counts no_channel when the device
+  // has no push_subscriptions row and _account_email returns None, which is
+  // always true for an anonymous one. The reminder still works in the app —
+  // it renders on the Tracker card and flips to "Follow-up due" — but nothing
+  // arrived outside it, and nothing offered to change that.
+  async function reachReminderStrip() {
+    await becomeOwner('u1');
+    renderModal();
+    await openedOn('opp-A');
+    await reachConfirmStrip();
+    fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'the confirm started');
+    await resolveConfirm(0);
+    await screen.findByText('coldEmail.remindPrompt');
+  }
+
+  it('says nothing until a reminder actually exists', async () => {
+    await reachReminderStrip();
+    expect(screen.queryByText('coldEmail.reminderEnablePush')).toBeNull();
+  });
+
+  it('offers notifications after one is set, when the device could receive them', async () => {
+    await reachReminderStrip();
+
+    fireEvent.click(screen.getByText('coldEmail.remind3'));
+    await until(() => updateCalls.length === 1, 'the reminder write started');
+    await settle(updateCalls[0], () => updateCalls[0].resolve());
+
+    expect(await screen.findByText('coldEmail.reminderEnablePush')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.reminderInAppOnly')).toBeInTheDocument();
+  });
+
+  it('stays quiet when the device is already subscribed', async () => {
+    pushStatus = 'subscribed';
+    await reachReminderStrip();
+
+    fireEvent.click(screen.getByText('coldEmail.remind3'));
+    await until(() => updateCalls.length === 1, 'the reminder write started');
+    await settle(updateCalls[0], () => updateCalls[0].resolve());
+    await screen.findByText(/^coldEmail\.reminderSet/);
+
+    expect(screen.queryByText('coldEmail.reminderEnablePush')).toBeNull();
   });
 });
