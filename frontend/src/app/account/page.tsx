@@ -361,6 +361,7 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
   const [phase, setPhase] = useState<'idle' | 'form' | 'done'>('idle');
   const [email, setEmail] = useState(defaultEmail);
   const [submitting, setSubmitting] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   if (phase === 'done') {
     return (
@@ -391,9 +392,16 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
         e.preventDefault();
         if (submitting) return;
         setSubmitting(true);
+        setFailed(false);
         const ok = await joinWaitlist(email.trim() || null, { source: 'account' });
         setSubmitting(false);
+        // joinWaitlist returns false without touching the network when there
+        // is no session — local-only mode, or anonymous sign-ins disabled.
+        // With no else branch the form simply re-rendered identically, so the
+        // student clicked Register again and again with no feedback either
+        // way. Same shape as the concierge request, which already says so.
         if (ok) setPhase('done');
+        else setFailed(true);
       }}
       className="flex items-center gap-2 shrink-0"
     >
@@ -413,6 +421,11 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
       >
         {t('account.intentSubmit')}
       </button>
+      {failed && (
+        <p className="text-[12px] text-red-700" role="alert">
+          {t('account.intentFailed')}
+        </p>
+      )}
     </form>
   );
 }

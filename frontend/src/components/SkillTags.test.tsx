@@ -140,3 +140,29 @@ describe('SkillTags — level cycling', () => {
     ]);
   });
 });
+
+describe('SkillTags — Enter adds the skill you typed', () => {
+  // `available` is a substring filter in declaration order, so its first entry
+  // is rarely the one typed: "R" led with JavaScript, "C" with C++. The wrong
+  // skill then goes out in the cold email's brief as self-reported.
+  it('prefers an exact match over the first substring hit', () => {
+    const { onChange, input } = setup();
+    fireEvent.change(input, { target: { value: 'R' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith([{ name: 'R', level: 'beginner' }]);
+  });
+
+  it('is case-insensitive about it', () => {
+    const { onChange, input } = setup();
+    fireEvent.change(input, { target: { value: 'python' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'beginner' }]);
+  });
+
+  it('still takes the first match when nothing matches exactly', () => {
+    const { onChange, input } = setup();
+    fireEvent.change(input, { target: { value: 'Pyth' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith([{ name: 'Python', level: 'beginner' }]);
+  });
+});
