@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
+import { getPushStatus, isPushSupported, subscribeToPush } from '@/lib/push';
+import { getVapidPublicKey } from '@/lib/api';
 import {
   X,
   Copy,
@@ -307,6 +309,15 @@ export default function ColdEmailModal({
   const contactedHere = contacted && contactedForId === opportunityId;
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
+  // The reminders cron has a third filter the reminder controls never checked:
+  // a channel to reach this student. push.py counts `no_channel` when there is
+  // no push_subscriptions row for the device AND _account_email returns None,
+  // which is always true for an anonymous one. Those students still get the
+  // reminder — it renders on the Tracker card and flips to "Follow-up due" —
+  // but nothing arrives outside the app, and nothing offered to change that.
+  // null = not determined yet; the offer stays hidden until it is known.
+  const [pushOffer, setPushOffer] = useState<'available' | 'subscribed' | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
   // The status the confirm RPC actually landed on. It is an upsert that
   // PRESERVES an existing status, so a row already marked rejected or
   // dismissed stays that way — and the reminders cron never selects those.
@@ -870,6 +881,32 @@ export default function ColdEmailModal({
     }
   }, [opportunityId, onContactConfirmed]);
 
+  // Only asked once a reminder actually exists, so nobody is prompted about
+  // notifications for a thing they have not done. 'subscribed' hides the offer;
+  // an unsupported browser or a denied permission leaves it null, because
+  // neither can be fixed by a button here.
+  useEffect(() => {
+    if (!followUpDate || pushOffer !== null) return;
+    if (!isPushSupported()) return;
+    let cancelled = false;
+    getPushStatus().then((status) => {
+      if (cancelled) return;
+      if (status === 'subscribed') setPushOffer('subscribed');
+      else if (status === 'default') setPushOffer('available');
+    }).catch(() => { /* leave it unknown rather than offer on a guess */ });
+    return () => { cancelled = true; };
+  }, [followUpDate, pushOffer]);
+
+  const enableNotifications = useCallback(async () => {
+    setPushBusy(true);
+    try {
+      const key = await getVapidPublicKey();
+      if (key && await subscribeToPush(key)) setPushOffer('subscribed');
+    } catch { /* the offer simply stays; nothing was promised */ } finally {
+      setPushBusy(false);
+    }
+  }, []);
+
   // Reminder-only. It must never call the contact recorder: that would move
   // last_contacted_at and record a second outreach the student never made.
   const setFollowUp = useCallback(async (days: number) => {
@@ -1368,6 +1405,19 @@ export default function ColdEmailModal({
                           {t(key)}
                         </button>
                       ),
+                    )}
+                    {followUpDate && pushOffer === 'available' && (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-500">
+                        {t('coldEmail.reminderInAppOnly')}
+                        <button
+                          type="button"
+                          disabled={pushBusy}
+                          onClick={() => { void enableNotifications(); }}
+                          className="font-semibold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                        >
+                          {t('coldEmail.reminderEnablePush')}
+                        </button>
+                      </span>
                     )}
                     {sendError === 'reminder' && (
                       <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
