@@ -1,0 +1,71 @@
+{
+  "_note": "Operator evidence for release candidate 0fd4fe82, gathered 2026-09-05T12:52Z. Both environments were already serving this SHA when evidence was taken. Gates absent here stay blocking.",
+  "ci": {
+    "head_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+    "_source": "GET /repos/EricXu-0805/opportunity-filter-engine/commits/0fd4fe825a17a3d6bdd3f606b7052d8295787f73/check-runs",
+    "checks": [
+      {
+        "name": "Backend (lint + pytest)",
+        "conclusion": "SUCCESS",
+        "id": 101281011225,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33956624259/job/101281011225"
+      },
+      {
+        "name": "E2E (Playwright)",
+        "conclusion": "SUCCESS",
+        "id": 101283999166,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33956624259/job/101283999166"
+      },
+      {
+        "name": "Frontend (typecheck + build)",
+        "conclusion": "SUCCESS",
+        "id": 101281011419,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33956624259/job/101281011419"
+      },
+      {
+        "name": "Migrations (Flow B merge + CLI replay)",
+        "conclusion": "SUCCESS",
+        "id": 101281011299,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/33956624259/job/101281011299"
+      }
+    ]
+  },
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+    "observed_at": "2026-09-05T12:52:13+00:00",
+    "detail": "GET /api/health 200: release_sha 0fd4fe825a17a3d6bdd3f606b7052d8295787f73 == the release sha, environment 'render', api_version 2.7.0, started_at 2026-09-05T09:29:35.084490+00:00, self-reported from RENDER_GIT_COMMIT.",
+    "evidence": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+      "environment": "render",
+      "started_at": "2026-09-05T09:29:35.084490+00:00"
+    }
+  },
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+    "observed_at": "2026-09-05T12:52:13+00:00",
+    "detail": "GET / 200; served document carries data-release-sha=\"0fd4fe825a17a3d6bdd3f606b7052d8295787f73\" and Vercel deployment id dpl_3nJoG125nnAzmstpYDPnucwUGMeF, equal to the backend's reported SHA at the same instant.",
+    "evidence": {
+      "deployment_id": "dpl_3nJoG125nnAzmstpYDPnucwUGMeF",
+      "data_release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+      "http_status": 200
+    }
+  },
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+    "observed_at": "2026-09-05T12:52:13+00:00",
+    "detail": "GET /api/ready 200 ready:true, reasons=[] warnings=[], release_sha 0fd4fe825a17a3d6bdd3f606b7052d8295787f73, api_version 2.7.0, checked_at 2026-09-05T12:52:11.604709+00:00.",
+    "evidence": {
+      "ready": true,
+      "checked_at": "2026-09-05T12:52:11.604709+00:00",
+      "api_version": "2.7.0",
+      "release_sha": "0fd4fe825a17a3d6bdd3f606b7052d8295787f73",
+      "reasons": [],
+      "warnings": []
+    }
+  }
+}
