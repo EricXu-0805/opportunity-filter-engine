@@ -1,518 +1,595 @@
 {
-  "duration_seconds": 4975.0,
+  "duration_seconds": 17240.7,
   "release": {
     "by_unit": {
-      "ucb": {
+      "barnard": {
         "ready": false,
         "reasons": [
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']",
-          "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
+          "required source barnard_faculty emitted zero records"
         ]
+      },
+      "bates": {
+        "ready": true,
+        "reasons": []
+      },
+      "brynmawr": {
+        "ready": true,
+        "reasons": []
+      },
+      "caltech": {
+        "ready": true,
+        "reasons": []
+      },
+      "casewestern": {
+        "ready": true,
+        "reasons": []
+      },
+      "colby": {
+        "ready": true,
+        "reasons": []
+      },
+      "colostate": {
+        "ready": true,
+        "reasons": []
+      },
+      "gatech": {
+        "ready": true,
+        "reasons": []
+      },
+      "lsu": {
+        "ready": true,
+        "reasons": []
+      },
+      "neu": {
+        "ready": true,
+        "reasons": []
+      },
+      "osu": {
+        "ready": true,
+        "reasons": []
+      },
+      "pomona": {
+        "ready": true,
+        "reasons": []
+      },
+      "sbu": {
+        "ready": true,
+        "reasons": []
+      },
+      "swarthmore": {
+        "ready": false,
+        "reasons": [
+          "required source swarthmore_faculty emitted zero records"
+        ]
+      },
+      "uchicago": {
+        "ready": true,
+        "reasons": []
+      },
+      "uci": {
+        "ready": true,
+        "reasons": []
+      },
+      "ucsb": {
+        "ready": true,
+        "reasons": []
+      },
+      "umass": {
+        "ready": true,
+        "reasons": []
+      },
+      "umich": {
+        "ready": true,
+        "reasons": []
+      },
+      "upenn": {
+        "ready": true,
+        "reasons": []
+      },
+      "utdallas": {
+        "ready": true,
+        "reasons": []
+      },
+      "utk": {
+        "ready": true,
+        "reasons": []
       }
     },
     "degradations": [
       {
-        "detail": "9/14",
-        "kind": "crawl_sources_unreached",
-        "source": "ucb_campus"
-      },
-      {
-        "detail": "21/40, 19 failed",
+        "detail": "2/3, 1 failed",
         "kind": "seed_pages_unreached",
-        "source": "ucb_campus"
+        "source": "campus_graph:barnard"
       },
       {
-        "detail": "ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/; ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities; ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research; ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/; ucb_eecs_su",
+        "detail": "barnard_ugr_hub: seed fetch failed: https://barnard.edu/undergraduate-research",
         "kind": "crawl_errors",
-        "source": "ucb_campus"
+        "source": "campus_graph:barnard"
       },
       {
-        "detail": "0 records, previously 144",
-        "kind": "suspicious_zero",
-        "source": "ucb_eecs_faculty"
+        "detail": "16/17, 1 failed",
+        "kind": "seed_pages_unreached",
+        "source": "campus_graph:caltech"
+      },
+      {
+        "detail": "caltech_program_open: seed fetch failed: https://labcit.ligo.caltech.edu/LIGO_web/students/SURF/",
+        "kind": "crawl_errors",
+        "source": "campus_graph:caltech"
+      },
+      {
+        "detail": "0/2 seed pages, 0/1 crawl sources",
+        "kind": "dark_crawl",
+        "source": "campus_graph:colby"
+      },
+      {
+        "detail": "colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/; colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/",
+        "kind": "crawl_errors",
+        "source": "campus_graph:colby"
+      },
+      {
+        "detail": "4/6",
+        "kind": "crawl_sources_unreached",
+        "source": "campus_graph:uchicago"
+      },
+      {
+        "detail": "8/13, 5 failed",
+        "kind": "seed_pages_unreached",
+        "source": "campus_graph:uchicago"
+      },
+      {
+        "detail": "uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars; uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office",
+        "kind": "crawl_errors",
+        "source": "campus_graph:uchicago"
+      },
+      {
+        "detail": "4/5",
+        "kind": "crawl_sources_unreached",
+        "source": "campus_graph:ucsb"
+      },
+      {
+        "detail": "9/10, 1 failed",
+        "kind": "seed_pages_unreached",
+        "source": "campus_graph:ucsb"
+      },
+      {
+        "detail": "ucsb_external: seed fetch failed: https://www.cal-bridge.org/",
+        "kind": "crawl_errors",
+        "source": "campus_graph:ucsb"
+      },
+      {
+        "detail": "0/9 seed pages, 0/6 crawl sources",
+        "kind": "dark_crawl",
+        "source": "campus_graph:umich"
+      },
+      {
+        "detail": "umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads; umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research; umich_department_research: seed fetch failed: https://sure.engin.umich.edu/; umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/; ",
+        "kind": "crawl_errors",
+        "source": "campus_graph:umich"
       }
     ],
     "expected": [
-      "ucb_anthro_faculty",
-      "ucb_arch_faculty",
-      "ucb_astro_faculty",
-      "ucb_bioe_faculty",
-      "ucb_campus",
-      "ucb_cbe_faculty",
-      "ucb_cee_faculty",
-      "ucb_chem_faculty",
-      "ucb_classics_faculty",
-      "ucb_complit_faculty",
-      "ucb_datascience_faculty",
-      "ucb_dcrp_faculty",
-      "ucb_econ_faculty",
-      "ucb_education_faculty",
-      "ucb_eecs_faculty",
-      "ucb_english_faculty",
-      "ucb_eps_faculty",
-      "ucb_espm_faculty",
-      "ucb_extra_faculty",
-      "ucb_filmmedia_faculty",
-      "ucb_french_faculty",
-      "ucb_geog_faculty",
-      "ucb_german_faculty",
-      "ucb_haas_faculty",
-      "ucb_history_faculty",
-      "ucb_ib_faculty",
-      "ucb_ieor_faculty",
-      "ucb_journalism_faculty",
-      "ucb_larch_faculty",
-      "ucb_law_faculty",
-      "ucb_ling_faculty",
-      "ucb_math_faculty",
-      "ucb_mcb_faculty",
-      "ucb_me_faculty",
-      "ucb_mse_faculty",
-      "ucb_music_faculty",
-      "ucb_ne_faculty",
-      "ucb_neuro_faculty",
-      "ucb_nst_faculty",
-      "ucb_philos_faculty",
-      "ucb_physics_faculty",
-      "ucb_pmb_faculty",
-      "ucb_polisci_faculty",
-      "ucb_psych_faculty",
-      "ucb_publicpolicy_faculty",
-      "ucb_rhetoric_faculty",
-      "ucb_scandinavian_faculty",
-      "ucb_slavic_faculty",
-      "ucb_soc_faculty",
-      "ucb_socwel_faculty",
-      "ucb_spanish_portuguese_faculty",
-      "ucb_sph_faculty",
-      "ucb_stat_faculty",
-      "ucb_tdps_faculty",
-      "ucb_urap",
-      "ucb_urap_projects"
+      "barnard_faculty",
+      "bates_faculty",
+      "brynmawr_faculty",
+      "caltech_faculty",
+      "campus_graph:barnard",
+      "campus_graph:bates",
+      "campus_graph:brynmawr",
+      "campus_graph:caltech",
+      "campus_graph:casewestern",
+      "campus_graph:colby",
+      "campus_graph:colostate",
+      "campus_graph:gatech",
+      "campus_graph:lsu",
+      "campus_graph:neu",
+      "campus_graph:osu",
+      "campus_graph:pomona",
+      "campus_graph:sbu",
+      "campus_graph:swarthmore",
+      "campus_graph:uchicago",
+      "campus_graph:uci",
+      "campus_graph:ucsb",
+      "campus_graph:umass",
+      "campus_graph:umich",
+      "campus_graph:upenn",
+      "campus_graph:utdallas",
+      "campus_graph:utk",
+      "casewestern_faculty",
+      "colby_faculty",
+      "colostate_faculty",
+      "gatech_faculty",
+      "lsu_faculty",
+      "neu_faculty",
+      "osu_faculty",
+      "pomona_faculty",
+      "sbu_faculty",
+      "swarthmore_faculty",
+      "uchicago_faculty",
+      "uci_faculty",
+      "ucsb_faculty",
+      "ucsb_urca_projects",
+      "umass_faculty",
+      "umich_faculty",
+      "upenn_faculty",
+      "utdallas_faculty",
+      "utk_faculty"
     ],
     "observed": [
       "auto_tagger",
+      "barnard_faculty",
+      "bates_faculty",
+      "brynmawr_faculty",
+      "caltech_faculty",
       "campus_discovery_quarantine",
+      "campus_graph:barnard",
+      "campus_graph:bates",
+      "campus_graph:brynmawr",
+      "campus_graph:caltech",
+      "campus_graph:casewestern",
+      "campus_graph:colby",
+      "campus_graph:colostate",
+      "campus_graph:gatech",
+      "campus_graph:lsu",
+      "campus_graph:neu",
+      "campus_graph:osu",
+      "campus_graph:pomona",
+      "campus_graph:sbu",
+      "campus_graph:swarthmore",
+      "campus_graph:uchicago",
+      "campus_graph:uci",
+      "campus_graph:ucsb",
+      "campus_graph:umass",
+      "campus_graph:umich",
+      "campus_graph:upenn",
+      "campus_graph:utdallas",
+      "campus_graph:utk",
+      "casewestern_faculty",
+      "colby_faculty",
+      "colostate_faculty",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
+      "gatech_faculty",
       "intl_reconciliation",
+      "lsu_faculty",
+      "neu_faculty",
+      "osu_faculty",
       "pi_enricher",
+      "pomona_faculty",
       "professor_tracking",
+      "sbu_faculty",
       "school_audience",
-      "ucb_anthro_faculty",
-      "ucb_arch_faculty",
-      "ucb_astro_faculty",
-      "ucb_bioe_faculty",
-      "ucb_campus",
-      "ucb_cbe_faculty",
-      "ucb_cee_faculty",
-      "ucb_chem_faculty",
-      "ucb_classics_faculty",
-      "ucb_complit_faculty",
-      "ucb_datascience_faculty",
-      "ucb_dcrp_faculty",
-      "ucb_econ_faculty",
-      "ucb_education_faculty",
-      "ucb_eecs_faculty",
-      "ucb_english_faculty",
-      "ucb_eps_faculty",
-      "ucb_espm_faculty",
-      "ucb_extra_faculty",
-      "ucb_filmmedia_faculty",
-      "ucb_french_faculty",
-      "ucb_geog_faculty",
-      "ucb_german_faculty",
-      "ucb_haas_faculty",
-      "ucb_history_faculty",
-      "ucb_ib_faculty",
-      "ucb_ieor_faculty",
-      "ucb_journalism_faculty",
-      "ucb_larch_faculty",
-      "ucb_law_faculty",
-      "ucb_ling_faculty",
-      "ucb_math_faculty",
-      "ucb_mcb_faculty",
-      "ucb_me_faculty",
-      "ucb_mse_faculty",
-      "ucb_music_faculty",
-      "ucb_ne_faculty",
-      "ucb_neuro_faculty",
-      "ucb_nst_faculty",
-      "ucb_philos_faculty",
-      "ucb_physics_faculty",
-      "ucb_pmb_faculty",
-      "ucb_polisci_faculty",
-      "ucb_psych_faculty",
-      "ucb_publicpolicy_faculty",
-      "ucb_rhetoric_faculty",
-      "ucb_scandinavian_faculty",
-      "ucb_slavic_faculty",
-      "ucb_soc_faculty",
-      "ucb_socwel_faculty",
-      "ucb_spanish_portuguese_faculty",
-      "ucb_sph_faculty",
-      "ucb_stat_faculty",
-      "ucb_tdps_faculty",
-      "ucb_urap",
-      "ucb_urap_projects"
+      "swarthmore_faculty",
+      "uchicago_faculty",
+      "uci_faculty",
+      "ucsb_faculty",
+      "ucsb_urca_projects",
+      "umass_faculty",
+      "umich_faculty",
+      "upenn_faculty",
+      "utdallas_faculty",
+      "utk_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_anthro_faculty"
+        "school": "barnard",
+        "summary_key": "barnard_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_arch_faculty"
+        "school": "bates",
+        "summary_key": "bates_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_astro_faculty"
+        "school": "brynmawr",
+        "summary_key": "brynmawr_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_bioe_faculty"
+        "school": "caltech",
+        "summary_key": "caltech_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_campus"
+        "school": "barnard",
+        "summary_key": "campus_graph:barnard"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_cbe_faculty"
+        "school": "bates",
+        "summary_key": "campus_graph:bates"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_cee_faculty"
+        "school": "brynmawr",
+        "summary_key": "campus_graph:brynmawr"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_chem_faculty"
+        "school": "caltech",
+        "summary_key": "campus_graph:caltech"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_classics_faculty"
+        "school": "casewestern",
+        "summary_key": "campus_graph:casewestern"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_complit_faculty"
+        "school": "colby",
+        "summary_key": "campus_graph:colby"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_datascience_faculty"
+        "school": "colostate",
+        "summary_key": "campus_graph:colostate"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_dcrp_faculty"
+        "school": "gatech",
+        "summary_key": "campus_graph:gatech"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_econ_faculty"
+        "school": "lsu",
+        "summary_key": "campus_graph:lsu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_education_faculty"
+        "school": "neu",
+        "summary_key": "campus_graph:neu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_eecs_faculty"
+        "school": "osu",
+        "summary_key": "campus_graph:osu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_english_faculty"
+        "school": "pomona",
+        "summary_key": "campus_graph:pomona"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_eps_faculty"
+        "school": "sbu",
+        "summary_key": "campus_graph:sbu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_espm_faculty"
+        "school": "swarthmore",
+        "summary_key": "campus_graph:swarthmore"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_extra_faculty"
+        "school": "uchicago",
+        "summary_key": "campus_graph:uchicago"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_filmmedia_faculty"
+        "school": "uci",
+        "summary_key": "campus_graph:uci"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_french_faculty"
+        "school": "ucsb",
+        "summary_key": "campus_graph:ucsb"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_geog_faculty"
+        "school": "umass",
+        "summary_key": "campus_graph:umass"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_german_faculty"
+        "school": "umich",
+        "summary_key": "campus_graph:umich"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_haas_faculty"
+        "school": "upenn",
+        "summary_key": "campus_graph:upenn"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_history_faculty"
+        "school": "utdallas",
+        "summary_key": "campus_graph:utdallas"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_ib_faculty"
+        "school": "utk",
+        "summary_key": "campus_graph:utk"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_ieor_faculty"
+        "school": "casewestern",
+        "summary_key": "casewestern_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_journalism_faculty"
+        "school": "colby",
+        "summary_key": "colby_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_larch_faculty"
+        "school": "colostate",
+        "summary_key": "colostate_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_law_faculty"
+        "school": "gatech",
+        "summary_key": "gatech_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_ling_faculty"
+        "school": "lsu",
+        "summary_key": "lsu_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_math_faculty"
+        "school": "neu",
+        "summary_key": "neu_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_mcb_faculty"
+        "school": "osu",
+        "summary_key": "osu_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_me_faculty"
+        "school": "pomona",
+        "summary_key": "pomona_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_mse_faculty"
+        "school": "sbu",
+        "summary_key": "sbu_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_music_faculty"
+        "school": "swarthmore",
+        "summary_key": "swarthmore_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_ne_faculty"
+        "school": "uchicago",
+        "summary_key": "uchicago_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_neuro_faculty"
+        "school": "uci",
+        "summary_key": "uci_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_nst_faculty"
+        "school": "ucsb",
+        "summary_key": "ucsb_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_philos_faculty"
+        "school": "ucsb",
+        "summary_key": "ucsb_urca_projects"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_physics_faculty"
+        "school": "umass",
+        "summary_key": "umass_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_pmb_faculty"
+        "school": "umich",
+        "summary_key": "umich_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_polisci_faculty"
+        "school": "upenn",
+        "summary_key": "upenn_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_psych_faculty"
+        "school": "utdallas",
+        "summary_key": "utdallas_faculty"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_publicpolicy_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_rhetoric_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_scandinavian_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_slavic_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_soc_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_socwel_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_spanish_portuguese_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_sph_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_stat_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_tdps_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_urap"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucb",
-        "summary_key": "ucb_urap_projects"
+        "school": "utk",
+        "summary_key": "utk_faculty"
       }
     ],
-    "publishable": [],
+    "publishable": [
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
+    ],
     "ready": false,
     "reasons": [
-      "required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', 'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']"
+      "required source barnard_faculty emitted zero records",
+      "required source swarthmore_faculty emitted zero records"
     ],
     "status": "blocked",
     "structural_reasons": [],
     "warnings": [
-      "deep source ucb_campus crawled 9/14 configured crawl sources; the unreached ones keep their previous records",
-      "deep source ucb_campus loaded 21/40 configured seed pages (19 failed); those sources kept their previous records",
-      "deep source ucb_campus reported crawl errors: ['ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/', 'ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities', 'ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research', 'ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/', 'ucb_eecs_summer: seed fetch failed: https://eecs.berkeley.edu/resources/undergrads/research/sure', 'ucb_eecs_summer: seed fetch failed: https://www2.eecs.berkeley.edu/Research/Areas/', 'ucb_engineering_internships: seed fetch failed: https://engineering.berkeley.edu/students/undergraduate-guide/academic-opportunities/research/', 'ucb_external_fellowships: seed fetch failed: https://research.berkeley.edu/our/scholarships-and-honors/', 'ucb_external_reu: seed fetch failed: https://math.berkeley.edu/programs/undergraduate/reu', 'ucb_lab_recruiting: seed fetch failed: https://bair.berkeley.edu/', 'ucb_more_departments: seed fetch failed: https://chemistry.berkeley.edu/research', 'ucb_more_departments: seed fetch failed: https://math.berkeley.edu/programs/undergraduate', 'ucb_more_departments: seed fetch failed: https://me.berkeley.edu/research/', 'ucb_more_departments: seed fetch failed: https://psychology.berkeley.edu/students/undergraduate-program/research-opportunities', 'ucb_more_departments: seed fetch failed: https://www.econ.berkeley.edu/undergrad/research', 'ucb_newsletters: seed fetch failed: https://research.berkeley.edu/our/newsletter/', 'ucb_ours_hub: seed fetch failed: https://research.berkeley.edu/undergraduate-research/', 'ucb_signature_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/', 'ucb_summer_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/']",
-      "deep source ucb_campus degraded on recursive discovered pages: ['ucb_more_departments: discovered-page fetch failed: http://research.berkeley.edu/opportunities.php?option=bab', 'ucb_more_departments: discovered-page fetch failed: https://career.berkeley.edu/Internships/Internships.stm']",
-      "required source ucb_eecs_faculty emitted zero records while the corpus holds 144 record(s) for it; those records are preserved untouched and the school still publishes, but this run cannot claim to have seen the source",
-      "faculty stale retirement is held pending per-unit lineage: ['ucb_extra_faculty']",
+      "deep source campus_graph:barnard loaded 2/3 configured seed pages (1 failed); those sources kept their previous records",
+      "deep source campus_graph:barnard reported crawl errors: ['barnard_ugr_hub: seed fetch failed: https://barnard.edu/undergraduate-research']",
+      "deep source campus_graph:caltech loaded 16/17 configured seed pages (1 failed); those sources kept their previous records",
+      "deep source campus_graph:caltech reported crawl errors: ['caltech_program_open: seed fetch failed: https://labcit.ligo.caltech.edu/LIGO_web/students/SURF/']",
+      "deep source campus_graph:colby loaded no live page at all (0/2 seed pages, 0/1 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
+      "deep source campus_graph:colby reported crawl errors: ['colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/', 'colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/']",
+      "deep source campus_graph:gatech degraded on recursive discovered pages: ['gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0']",
+      "deep source campus_graph:uchicago crawled 4/6 configured crawl sources; the unreached ones keep their previous records",
+      "deep source campus_graph:uchicago loaded 8/13 configured seed pages (5 failed); those sources kept their previous records",
+      "deep source campus_graph:uchicago reported crawl errors: ['uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-undergraduate-research-scholars-program', 'uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program']",
+      "deep source campus_graph:uchicago degraded on recursive discovered pages: ['uchicago_department: discovered-page fetch failed: http://bfi.uchicago.edu/kapani-metcalf-summer-internship-program/', 'uchicago_department: discovered-page fetch failed: https://ccrf.uchicago.edu/content/jeff-metcalf-summer-undergraduate-research-fellows-surf-marine-biological-laboratory-mbl']",
+      "deep source campus_graph:ucsb crawled 4/5 configured crawl sources; the unreached ones keep their previous records",
+      "deep source campus_graph:ucsb loaded 9/10 configured seed pages (1 failed); those sources kept their previous records",
+      "deep source campus_graph:ucsb reported crawl errors: ['ucsb_external: seed fetch failed: https://www.cal-bridge.org/']",
+      "deep source campus_graph:umich loaded no live page at all (0/9 seed pages, 0/6 crawl sources); its records keep the previous run's verification and this run cannot claim to have seen the school",
+      "deep source campus_graph:umich reported crawl errors: ['umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads', 'umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research', 'umich_department_research: seed fetch failed: https://sure.engin.umich.edu/', 'umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/', 'umich_institutes: seed fetch failed: https://isr.umich.edu/training-opportunities/student-research-opportunities/', 'umich_institutes: seed fetch failed: https://www.lsi.umich.edu/education/undergrads', 'umich_research_programs: seed fetch failed: https://lsa.umich.edu/urop/prospective-students/summer-programs.html', 'umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop', 'umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop/prospective-students.html']",
+      "faculty stale retirement is held pending per-unit lineage: ['barnard_faculty', 'bates_faculty', 'brynmawr_faculty', 'caltech_faculty', 'casewestern_faculty', 'colby_faculty', 'colostate_faculty', 'gatech_faculty', 'lsu_faculty', 'neu_faculty', 'osu_faculty', 'pomona_faculty', 'sbu_faculty', 'swarthmore_faculty', 'uchicago_faculty', 'uci_faculty', 'ucsb_faculty', 'umass_faculty', 'umich_faculty', 'upenn_faculty', 'utdallas_faculty', 'utk_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -520,105 +597,703 @@
     "deep": true,
     "national": false,
     "schools": [
-      "ucb"
+      "barnard",
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "swarthmore",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "ucb"
+      "barnard",
+      "bates",
+      "brynmawr",
+      "caltech",
+      "casewestern",
+      "colby",
+      "colostate",
+      "gatech",
+      "lsu",
+      "neu",
+      "osu",
+      "pomona",
+      "sbu",
+      "swarthmore",
+      "uchicago",
+      "uci",
+      "ucsb",
+      "umass",
+      "umich",
+      "upenn",
+      "utdallas",
+      "utk"
     ]
-  },
-  "source_health": {
-    "degraded_shard_count": 1,
-    "failed_shard_count": 0,
-    "fully_fresh_school_count": 2,
-    "fully_stale_school_count": 0,
-    "fully_stale_schools": [],
-    "generated_at": "2026-09-05T05:21:47.502304+00:00",
-    "partially_degraded_school_count": 1,
-    "school_count": 3,
-    "stale_days": 17.0,
-    "stale_shard_count": 1,
-    "total_shard_count": 60,
-    "warn_days": 10.0
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 661,
+      "rule_based_tagged": 141,
       "status": "ok"
     },
+    "barnard_faculty": {
+      "fetched": 0,
+      "new": 0,
+      "status": "ok",
+      "updated": 0
+    },
+    "bates_faculty": {
+      "fetched": 215,
+      "new": 40,
+      "status": "ok",
+      "updated": 175
+    },
+    "brynmawr_faculty": {
+      "fetched": 152,
+      "new": 2,
+      "status": "ok",
+      "updated": 150
+    },
+    "caltech_faculty": {
+      "fetched": 449,
+      "new": 41,
+      "status": "ok",
+      "updated": 408
+    },
     "campus_discovery_quarantine": {
-      "quarantined": 4,
+      "quarantined": 0,
       "status": "ok"
+    },
+    "campus_graph:barnard": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "barnard_ugr_hub: seed fetch failed: https://barnard.edu/undergraduate-research"
+      ],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 1,
+      "seed_pages_loaded": 2,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:bates": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 11,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 11,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:brynmawr": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:caltech": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "caltech_program_open: seed fetch failed: https://labcit.ligo.caltech.edu/LIGO_web/students/SURF/"
+      ],
+      "crawl_sources_expected": 4,
+      "crawl_sources_loaded": 4,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 31,
+      "live_pages_attempted": 17,
+      "live_pages_loaded": 16,
+      "new": 0,
+      "seed_pages_expected": 17,
+      "seed_pages_failed": 1,
+      "seed_pages_loaded": 16,
+      "seed_records": 31,
+      "status": "ok",
+      "updated": 30
+    },
+    "campus_graph:casewestern": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 4,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 4,
+      "status": "ok",
+      "updated": 4
+    },
+    "campus_graph:colby": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "colby_ugr_hub: seed fetch failed: https://www.colby.edu/research/",
+        "colby_ugr_hub: seed fetch failed: https://www.colby.edu/academics/research/"
+      ],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 0,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 0,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 2,
+      "seed_pages_loaded": 0,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:colostate": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 5,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 5,
+      "status": "ok",
+      "updated": 5
+    },
+    "campus_graph:gatech": {
+      "complete_recursive_sources": [
+        "gatech_lab"
+      ],
+      "crawl_errors": [],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 6,
+      "deep": true,
+      "degraded_page_errors": [
+        "gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0"
+      ],
+      "discovered_records": 17,
+      "fetched": 26,
+      "live_pages_attempted": 45,
+      "live_pages_loaded": 44,
+      "new": 1,
+      "seed_pages_expected": 10,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 10,
+      "seed_records": 10,
+      "status": "ok",
+      "updated": 24
+    },
+    "campus_graph:lsu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 6,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 6,
+      "status": "ok",
+      "updated": 6
+    },
+    "campus_graph:neu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:osu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:pomona": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8
+    },
+    "campus_graph:sbu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 5,
+      "live_pages_attempted": 3,
+      "live_pages_loaded": 3,
+      "new": 0,
+      "seed_pages_expected": 3,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 3,
+      "seed_records": 7,
+      "status": "ok",
+      "updated": 5
+    },
+    "campus_graph:swarthmore": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 10,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 10,
+      "status": "ok",
+      "updated": 10
+    },
+    "campus_graph:uchicago": {
+      "complete_recursive_sources": [
+        "uchicago_lab"
+      ],
+      "crawl_errors": [
+        "uchicago_announcement: seed fetch failed: https://ccrf.uchicago.edu/",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/college-summer-institute-csi",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-summer-undergraduate-research-scholars",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/office-undergraduate-research/quad-undergraduate-research-scholars-program",
+        "uchicago_program: seed fetch failed: https://ccrf.uchicago.edu/undergraduate-research/college-research-fellows-program"
+      ],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 4,
+      "deep": true,
+      "degraded_page_errors": [
+        "uchicago_department: discovered-page fetch failed: http://bfi.uchicago.edu/kapani-metcalf-summer-internship-program/",
+        "uchicago_department: discovered-page fetch failed: https://ccrf.uchicago.edu/content/jeff-metcalf-summer-undergraduate-research-fellows-surf-marine-biological-laboratory-mbl"
+      ],
+      "discovered_records": 3,
+      "fetched": 15,
+      "live_pages_attempted": 19,
+      "live_pages_loaded": 12,
+      "new": 0,
+      "seed_pages_expected": 13,
+      "seed_pages_failed": 5,
+      "seed_pages_loaded": 8,
+      "seed_records": 13,
+      "status": "ok",
+      "updated": 14
+    },
+    "campus_graph:uci": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 5,
+      "crawl_sources_loaded": 5,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 15,
+      "live_pages_attempted": 9,
+      "live_pages_loaded": 9,
+      "new": 0,
+      "seed_pages_expected": 9,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 9,
+      "seed_records": 15,
+      "status": "ok",
+      "updated": 15
+    },
+    "campus_graph:ucsb": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "ucsb_external: seed fetch failed: https://www.cal-bridge.org/"
+      ],
+      "crawl_sources_expected": 5,
+      "crawl_sources_loaded": 4,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 16,
+      "live_pages_attempted": 10,
+      "live_pages_loaded": 9,
+      "new": 0,
+      "seed_pages_expected": 10,
+      "seed_pages_failed": 1,
+      "seed_pages_loaded": 9,
+      "seed_records": 16,
+      "status": "ok",
+      "updated": 16
+    },
+    "campus_graph:umass": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 9,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 9,
+      "status": "ok",
+      "updated": 9
+    },
+    "campus_graph:umich": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [
+        "umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop",
+        "umich_urop_hub: seed fetch failed: https://lsa.umich.edu/urop/prospective-students.html",
+        "umich_research_programs: seed fetch failed: https://lsa.umich.edu/urop/prospective-students/summer-programs.html",
+        "umich_external_programs: seed fetch failed: https://rackham.umich.edu/prospective-students/srop/",
+        "umich_department_research: seed fetch failed: https://sure.engin.umich.edu/",
+        "umich_department_research: seed fetch failed: https://medschool.umich.edu/programs-admissions/non-degree-programs/undergrad-summer-research",
+        "umich_career: seed fetch failed: https://careercenter.umich.edu/content/undergrads",
+        "umich_institutes: seed fetch failed: https://www.lsi.umich.edu/education/undergrads",
+        "umich_institutes: seed fetch failed: https://isr.umich.edu/training-opportunities/student-research-opportunities/"
+      ],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 0,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 12,
+      "live_pages_attempted": 9,
+      "live_pages_loaded": 0,
+      "new": 0,
+      "seed_pages_expected": 9,
+      "seed_pages_failed": 9,
+      "seed_pages_loaded": 0,
+      "seed_records": 12,
+      "status": "ok",
+      "updated": 11
+    },
+    "campus_graph:upenn": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 6,
+      "crawl_sources_loaded": 6,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 38,
+      "live_pages_attempted": 18,
+      "live_pages_loaded": 18,
+      "new": 0,
+      "seed_pages_expected": 18,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 18,
+      "seed_records": 38,
+      "status": "ok",
+      "updated": 37
+    },
+    "campus_graph:utdallas": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 4,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 4,
+      "status": "ok",
+      "updated": 4
+    },
+    "campus_graph:utk": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 5,
+      "live_pages_attempted": 2,
+      "live_pages_loaded": 2,
+      "new": 0,
+      "seed_pages_expected": 2,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 2,
+      "seed_records": 5,
+      "status": "ok",
+      "updated": 5
+    },
+    "casewestern_faculty": {
+      "fetched": 721,
+      "new": 34,
+      "status": "ok",
+      "updated": 687
+    },
+    "colby_faculty": {
+      "fetched": 238,
+      "new": 0,
+      "status": "ok",
+      "updated": 238
+    },
+    "colostate_faculty": {
+      "fetched": 925,
+      "new": 7,
+      "status": "ok",
+      "updated": 918
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 15257,
+      "skipped_rolling": 17636,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
       "deactivation_not_authorized": [],
-      "kept_fresh": 1730,
-      "newly_deactivated": 28,
+      "kept_fresh": 0,
+      "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "ucb_extra_faculty"
+        "barnard_faculty",
+        "bates_faculty",
+        "brynmawr_faculty",
+        "caltech_faculty",
+        "casewestern_faculty",
+        "colby_faculty",
+        "colostate_faculty",
+        "gatech_faculty",
+        "lsu_faculty",
+        "neu_faculty",
+        "osu_faculty",
+        "pomona_faculty",
+        "sbu_faculty",
+        "swarthmore_faculty",
+        "uchicago_faculty",
+        "uci_faculty",
+        "ucsb_faculty",
+        "umass_faculty",
+        "umich_faculty",
+        "upenn_faculty",
+        "utdallas_faculty",
+        "utk_faculty"
       ],
-      "skipped_partial_scrape": [
-        "ucb_datascience_faculty",
-        "ucb_econ_faculty",
-        "ucb_ling_faculty",
-        "ucb_scandinavian_faculty",
-        "ucb_soc_faculty"
-      ],
+      "skipped_partial_scrape": [],
       "status": "ok",
       "would_deactivate": [],
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 3,
-      "keywords_cleaned": 385,
+      "duplicates_removed": 532,
+      "keywords_cleaned": 65,
       "removed_by_school": {
-        "ucb": 3
+        "bates": 42,
+        "caltech": 44,
+        "casewestern": 32,
+        "colostate": 2,
+        "columbia": 5,
+        "duke": 1,
+        "gatech": 92,
+        "lsu": 2,
+        "neu": 102,
+        "osu": 12,
+        "sbu": 14,
+        "uchicago": 48,
+        "uci": 10,
+        "ucsb": 31,
+        "umass": 15,
+        "umich": 38,
+        "upenn": 12,
+        "utah": 3,
+        "utk": 3,
+        "yale": 24
       },
       "retitled": 0,
-      "shared_inbox_nulled": {},
+      "shared_inbox_nulled": {
+        "barnard": 2,
+        "bates": 2,
+        "casewestern": 4,
+        "lsu": 2,
+        "sbu": 6
+      },
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
     "faculty_joint_collapse": {
-      "duplicates_removed": 17,
-      "shared_mailbox_nulled": 38,
+      "duplicates_removed": 0,
+      "shared_mailbox_nulled": 0,
       "status": "ok"
+    },
+    "gatech_faculty": {
+      "fetched": 1221,
+      "new": 136,
+      "status": "ok",
+      "updated": 1085
     },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
+    "lsu_faculty": {
+      "fetched": 1141,
+      "new": 8,
+      "status": "ok",
+      "updated": 1133
+    },
+    "neu_faculty": {
+      "fetched": 1631,
+      "new": 99,
+      "status": "ok",
+      "updated": 1532
+    },
+    "osu_faculty": {
+      "fetched": 2226,
+      "new": 33,
+      "status": "ok",
+      "updated": 2193
+    },
     "pi_enricher": {
-      "already_had": 2011,
-      "enriched": 53,
-      "nulled_unit_inboxes": 1,
-      "renulled_shared_emails": 0,
-      "scraped": 242,
-      "skipped_budget": 0,
+      "already_had": 20097,
+      "enriched": 156,
+      "nulled_unit_inboxes": 9,
+      "renulled_shared_emails": 57,
+      "scraped": 1000,
+      "skipped_budget": 1168,
       "status": "ok"
     },
+    "pomona_faculty": {
+      "fetched": 274,
+      "new": 4,
+      "status": "ok",
+      "updated": 270
+    },
     "professor_tracking": {
-      "active_profile_coverage_pct": 34.79,
-      "events": 12169,
-      "freshness_pct": 34.79,
-      "fully_stale_school_count": 39,
-      "missing_profile_count": 84195,
-      "missing_school_count": 39,
-      "new_events": 6,
-      "profiles": 45164,
+      "active_profile_coverage_pct": 37.29,
+      "events": 14215,
+      "freshness_pct": 37.29,
+      "fully_stale_school_count": 34,
+      "missing_profile_count": 80982,
+      "missing_school_count": 34,
+      "new_events": 2052,
+      "profiles": 48434,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
       "untrackable_active_count": 0
+    },
+    "sbu_faculty": {
+      "fetched": 662,
+      "new": 18,
+      "status": "ok",
+      "updated": 644
     },
     "school_audience": {
       "by_source": {
@@ -630,7 +1305,7 @@
         "asu_research_programs": 6,
         "barnard_faculty": 212,
         "barnard_research_programs": 9,
-        "bates_faculty": 176,
+        "bates_faculty": 216,
         "bates_research_programs": 11,
         "bc_faculty": 839,
         "bc_research_programs": 4,
@@ -641,19 +1316,19 @@
         "bowdoin_research_programs": 10,
         "brown_faculty": 1200,
         "brown_research_programs": 4,
-        "brynmawr_faculty": 152,
+        "brynmawr_faculty": 154,
         "brynmawr_research_programs": 8,
         "bu_faculty": 1830,
         "bu_research_programs": 6,
         "buffalo_faculty": 844,
         "buffalo_research_programs": 6,
         "caltech_external_research": 14,
-        "caltech_faculty": 434,
+        "caltech_faculty": 475,
         "caltech_labs": 8,
         "caltech_research_programs": 8,
         "carleton_faculty": 301,
         "carleton_research_programs": 10,
-        "casewestern_faculty": 736,
+        "casewestern_faculty": 770,
         "casewestern_research_programs": 4,
         "cincinnati_faculty": 1071,
         "cincinnati_research_programs": 4,
@@ -665,13 +1340,13 @@
         "cmu_research_programs": 6,
         "colby_faculty": 238,
         "colby_research_programs": 8,
-        "colgate_faculty": 319,
+        "colgate_faculty": 314,
         "colgate_research_programs": 9,
         "coloradocollege_faculty": 207,
         "coloradocollege_research_programs": 7,
-        "colostate_faculty": 932,
+        "colostate_faculty": 939,
         "colostate_research_programs": 5,
-        "columbia_faculty": 1083,
+        "columbia_faculty": 1088,
         "columbia_research_programs": 7,
         "cornell_faculty": 1637,
         "cornell_research_programs": 4,
@@ -682,7 +1357,7 @@
         "drexel_faculty": 578,
         "drexel_research_programs": 5,
         "duke_external_research": 4,
-        "duke_faculty": 1191,
+        "duke_faculty": 1192,
         "duke_labs": 9,
         "duke_research_programs": 62,
         "emory_faculty": 1447,
@@ -690,9 +1365,9 @@
         "fsu_faculty": 659,
         "fsu_research_programs": 5,
         "gatech_external_research": 2,
-        "gatech_faculty": 1289,
+        "gatech_faculty": 1425,
         "gatech_labs": 1,
-        "gatech_research_programs": 26,
+        "gatech_research_programs": 27,
         "georgetown_faculty": 861,
         "georgetown_research_programs": 8,
         "grinnell_faculty": 246,
@@ -718,7 +1393,7 @@
         "kenyon_research_programs": 11,
         "lehigh_faculty": 575,
         "lehigh_research_programs": 4,
-        "lsu_faculty": 1216,
+        "lsu_faculty": 1224,
         "lsu_research_programs": 6,
         "macalester_faculty": 199,
         "macalester_research_programs": 8,
@@ -735,7 +1410,7 @@
         "ncsu_research_programs": 11,
         "nd_faculty": 1276,
         "nd_research_programs": 8,
-        "neu_faculty": 1996,
+        "neu_faculty": 2095,
         "neu_research_programs": 8,
         "njit_faculty": 505,
         "njit_research_programs": 4,
@@ -747,11 +1422,11 @@
         "nyu_research_programs": 11,
         "oregonstate_faculty": 604,
         "oregonstate_research_programs": 4,
-        "osu_faculty": 2512,
+        "osu_faculty": 2545,
         "osu_research_programs": 8,
         "pitt_faculty": 1132,
         "pitt_research_programs": 4,
-        "pomona_faculty": 271,
+        "pomona_faculty": 275,
         "pomona_research_programs": 8,
         "princeton_faculty": 633,
         "princeton_labs": 4,
@@ -770,7 +1445,7 @@
         "rpi_research_programs": 4,
         "rutgers_faculty": 2031,
         "rutgers_research_programs": 8,
-        "sbu_faculty": 909,
+        "sbu_faculty": 927,
         "sbu_research_programs": 5,
         "simplify_internships": 4759,
         "smith_faculty": 308,
@@ -781,7 +1456,7 @@
         "stanford_research_programs": 38,
         "stevens_faculty": 337,
         "stevens_research_programs": 5,
-        "swarthmore_faculty": 231,
+        "swarthmore_faculty": 228,
         "swarthmore_research_programs": 10,
         "syracuse_faculty": 836,
         "syracuse_research_programs": 5,
@@ -790,71 +1465,71 @@
         "tufts_faculty": 2063,
         "tufts_research_programs": 8,
         "ucb_anthro_faculty": 26,
-        "ucb_arch_faculty": 60,
+        "ucb_arch_faculty": 50,
         "ucb_astro_faculty": 18,
         "ucb_bioe_faculty": 32,
-        "ucb_cbe_faculty": 19,
+        "ucb_cbe_faculty": 18,
         "ucb_cee_faculty": 63,
         "ucb_chem_faculty": 55,
-        "ucb_classics_faculty": 18,
-        "ucb_complit_faculty": 17,
+        "ucb_classics_faculty": 16,
+        "ucb_complit_faculty": 16,
         "ucb_datascience_faculty": 6,
-        "ucb_dcrp_faculty": 27,
-        "ucb_econ_faculty": 59,
+        "ucb_dcrp_faculty": 22,
+        "ucb_econ_faculty": 57,
         "ucb_education_faculty": 46,
         "ucb_eecs_faculty": 154,
         "ucb_english_faculty": 52,
         "ucb_eps_faculty": 29,
-        "ucb_espm_faculty": 68,
+        "ucb_espm_faculty": 66,
         "ucb_external_research": 7,
-        "ucb_extra_faculty": 161,
-        "ucb_filmmedia_faculty": 8,
+        "ucb_extra_faculty": 153,
+        "ucb_filmmedia_faculty": 6,
         "ucb_french_faculty": 11,
         "ucb_geog_faculty": 20,
         "ucb_german_faculty": 8,
         "ucb_haas_faculty": 104,
         "ucb_history_faculty": 59,
-        "ucb_ib_faculty": 44,
+        "ucb_ib_faculty": 43,
         "ucb_ieor_faculty": 19,
-        "ucb_journalism_faculty": 36,
-        "ucb_labs": 21,
-        "ucb_larch_faculty": 24,
-        "ucb_law_faculty": 81,
-        "ucb_ling_faculty": 18,
-        "ucb_math_faculty": 108,
+        "ucb_journalism_faculty": 28,
+        "ucb_labs": 17,
+        "ucb_larch_faculty": 22,
+        "ucb_law_faculty": 80,
+        "ucb_ling_faculty": 17,
+        "ucb_math_faculty": 106,
         "ucb_mcb_faculty": 80,
         "ucb_me_faculty": 65,
         "ucb_mse_faculty": 19,
-        "ucb_music_faculty": 18,
+        "ucb_music_faculty": 17,
         "ucb_ne_faculty": 16,
-        "ucb_neuro_faculty": 16,
+        "ucb_neuro_faculty": 14,
         "ucb_nst_faculty": 17,
         "ucb_philos_faculty": 38,
         "ucb_physics_faculty": 41,
         "ucb_pmb_faculty": 25,
         "ucb_polisci_faculty": 45,
-        "ucb_psych_faculty": 35,
-        "ucb_publicpolicy_faculty": 19,
+        "ucb_psych_faculty": 33,
+        "ucb_publicpolicy_faculty": 18,
         "ucb_research_programs": 59,
         "ucb_rhetoric_faculty": 23,
-        "ucb_scandinavian_faculty": 10,
-        "ucb_slavic_faculty": 15,
-        "ucb_soc_faculty": 38,
-        "ucb_socwel_faculty": 29,
-        "ucb_spanish_portuguese_faculty": 23,
-        "ucb_sph_faculty": 132,
+        "ucb_scandinavian_faculty": 9,
+        "ucb_slavic_faculty": 13,
+        "ucb_soc_faculty": 37,
+        "ucb_socwel_faculty": 26,
+        "ucb_spanish_portuguese_faculty": 22,
+        "ucb_sph_faculty": 126,
         "ucb_stat_faculty": 49,
-        "ucb_tdps_faculty": 34,
+        "ucb_tdps_faculty": 33,
         "ucb_urap": 1,
-        "ucb_urap_projects": 987,
+        "ucb_urap_projects": 861,
         "ucd_research_programs": 7,
         "ucf_faculty": 811,
         "ucf_research_programs": 5,
         "uchicago_external_research": 3,
-        "uchicago_faculty": 1168,
+        "uchicago_faculty": 1216,
         "uchicago_labs": 1,
         "uchicago_research_programs": 13,
-        "uci_faculty": 1192,
+        "uci_faculty": 1202,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -866,7 +1541,7 @@
         "ucr_faculty": 1154,
         "ucr_research_programs": 6,
         "ucsb_external_research": 1,
-        "ucsb_faculty": 867,
+        "ucsb_faculty": 880,
         "ucsb_labs": 2,
         "ucsb_research_programs": 13,
         "ucsb_urca_projects": 249,
@@ -893,12 +1568,12 @@
         "uiuc_ursa": 1,
         "uky_faculty": 767,
         "uky_research_programs": 6,
-        "umass_faculty": 1576,
+        "umass_faculty": 1594,
         "umass_research_programs": 9,
         "umd_faculty": 1299,
         "umd_research_programs": 7,
         "umich_external_research": 2,
-        "umich_faculty": 1476,
+        "umich_faculty": 1519,
         "umich_labs": 3,
         "umich_research_programs": 6,
         "umn_faculty": 1451,
@@ -907,21 +1582,21 @@
         "unl_faculty": 1211,
         "unl_research_programs": 5,
         "upenn_external_research": 9,
-        "upenn_faculty": 1912,
+        "upenn_faculty": 1919,
         "upenn_labs": 2,
         "upenn_research_programs": 26,
         "usc_faculty": 1575,
         "usc_research_programs": 8,
         "usf_faculty": 775,
         "usf_research_programs": 5,
-        "utah_faculty": 1112,
+        "utah_faculty": 1115,
         "utah_research_programs": 5,
-        "utdallas_faculty": 1086,
+        "utdallas_faculty": 1089,
         "utdallas_research_programs": 4,
         "utexas_external_research": 1,
         "utexas_faculty": 2264,
         "utexas_research_programs": 35,
-        "utk_faculty": 1066,
+        "utk_faculty": 1069,
         "utk_research_programs": 5,
         "uva_faculty": 1633,
         "uva_research_programs": 9,
@@ -949,510 +1624,90 @@
         "wlu_research_programs": 8,
         "wpi_faculty": 465,
         "wpi_research_programs": 4,
-        "yale_faculty": 1254,
+        "yale_faculty": 1278,
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 137988
+      "tagged": 138382
     },
-    "ucb_anthro_faculty": {
-      "fetched": 26,
-      "new": 0,
-      "status": "ok",
-      "updated": 26,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_arch_faculty": {
-      "fetched": 50,
-      "new": 10,
-      "status": "ok",
-      "updated": 39,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_astro_faculty": {
-      "fetched": 19,
-      "new": 0,
-      "status": "ok",
-      "updated": 18,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_bioe_faculty": {
-      "fetched": 35,
-      "new": 0,
-      "status": "ok",
-      "updated": 32,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_campus": {
-      "complete_recursive_sources": [
-        "ucb_research_news",
-        "ucb_research_centers"
-      ],
-      "crawl_errors": [
-        "ucb_ours_hub: seed fetch failed: https://research.berkeley.edu/undergraduate-research/",
-        "ucb_summer_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/",
-        "ucb_eecs_summer: seed fetch failed: https://eecs.berkeley.edu/resources/undergrads/research/sure",
-        "ucb_eecs_summer: seed fetch failed: https://www2.eecs.berkeley.edu/Research/Areas/",
-        "ucb_external_fellowships: seed fetch failed: https://research.berkeley.edu/our/scholarships-and-honors/",
-        "ucb_department_research: seed fetch failed: https://www2.eecs.berkeley.edu/Research/",
-        "ucb_department_research: seed fetch failed: https://statistics.berkeley.edu/undergraduate/research",
-        "ucb_department_research: seed fetch failed: https://physics.berkeley.edu/academics/undergraduate/research-opportunities",
-        "ucb_career_hubs: seed fetch failed: https://career.berkeley.edu/explore-careers/",
-        "ucb_engineering_internships: seed fetch failed: https://engineering.berkeley.edu/students/undergraduate-guide/academic-opportunities/research/",
-        "ucb_lab_recruiting: seed fetch failed: https://bair.berkeley.edu/",
-        "ucb_more_departments: seed fetch failed: https://chemistry.berkeley.edu/research",
-        "ucb_more_departments: seed fetch failed: https://me.berkeley.edu/research/",
-        "ucb_more_departments: seed fetch failed: https://psychology.berkeley.edu/students/undergraduate-program/research-opportunities",
-        "ucb_more_departments: seed fetch failed: https://www.econ.berkeley.edu/undergrad/research",
-        "ucb_more_departments: seed fetch failed: https://math.berkeley.edu/programs/undergraduate",
-        "ucb_signature_programs: seed fetch failed: https://research.berkeley.edu/our/undergraduate-research-programs/",
-        "ucb_external_reu: seed fetch failed: https://math.berkeley.edu/programs/undergraduate/reu",
-        "ucb_newsletters: seed fetch failed: https://research.berkeley.edu/our/newsletter/"
-      ],
-      "crawl_sources_expected": 14,
-      "crawl_sources_loaded": 9,
-      "deep": true,
-      "degraded_page_errors": [
-        "ucb_more_departments: discovered-page fetch failed: https://career.berkeley.edu/Internships/Internships.stm",
-        "ucb_more_departments: discovered-page fetch failed: http://research.berkeley.edu/opportunities.php?option=bab"
-      ],
-      "discovered_records": 32,
-      "fetched": 84,
-      "live_pages_attempted": 101,
-      "live_pages_loaded": 80,
-      "new": 4,
-      "seed_pages_expected": 40,
-      "seed_pages_failed": 19,
-      "seed_pages_loaded": 21,
-      "seed_records": 59,
-      "status": "ok",
-      "updated": 79,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_cbe_faculty": {
-      "fetched": 27,
-      "new": 1,
-      "status": "ok",
-      "updated": 18,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_cee_faculty": {
-      "fetched": 64,
-      "new": 1,
-      "status": "ok",
-      "updated": 63,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_chem_faculty": {
-      "fetched": 51,
-      "new": 0,
-      "status": "ok",
-      "updated": 51,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_classics_faculty": {
-      "fetched": 27,
-      "new": 2,
-      "status": "ok",
-      "updated": 15,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_complit_faculty": {
-      "fetched": 21,
-      "new": 1,
-      "status": "ok",
-      "updated": 16,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_datascience_faculty": {
-      "fetched": 4,
-      "new": 4,
-      "status": "ok",
-      "updated": 0,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_dcrp_faculty": {
-      "fetched": 26,
-      "new": 5,
-      "status": "ok",
-      "updated": 20,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_econ_faculty": {
-      "fetched": 55,
-      "new": 2,
-      "status": "ok",
-      "updated": 53,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_education_faculty": {
-      "fetched": 46,
-      "new": 0,
-      "status": "ok",
-      "updated": 46,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_eecs_faculty": {
+    "swarthmore_faculty": {
       "fetched": 0,
       "new": 0,
-      "status": "suspicious_zero",
-      "suspicious_zero_baseline": 144,
-      "updated": 0,
-      "zero_class": "suspicious_zero"
+      "status": "ok",
+      "updated": 0
     },
-    "ucb_english_faculty": {
-      "fetched": 51,
+    "uchicago_faculty": {
+      "fetched": 1104,
+      "new": 48,
+      "status": "ok",
+      "updated": 1056
+    },
+    "uci_faculty": {
+      "fetched": 1135,
+      "new": 10,
+      "status": "ok",
+      "updated": 1125
+    },
+    "ucsb_faculty": {
+      "fetched": 804,
+      "new": 13,
+      "status": "ok",
+      "updated": 791
+    },
+    "ucsb_urca_projects": {
+      "deactivated": 0,
+      "empty_confirmed": false,
+      "fetched": 249,
+      "locations_seen": 279,
       "new": 0,
+      "recognized_locations": 279,
+      "sitemap_complete": true,
+      "sitemap_structure_complete": true,
+      "sitemaps_expected": 1,
+      "sitemaps_loaded": 1,
       "status": "ok",
-      "updated": 51,
-      "zero_class": "success_nonzero"
+      "unexpected_location_count": 0,
+      "unexpected_location_samples": [],
+      "updated": 249
     },
-    "ucb_eps_faculty": {
-      "fetched": 35,
-      "new": 0,
+    "umass_faculty": {
+      "fetched": 1498,
+      "new": 18,
       "status": "ok",
-      "updated": 29,
-      "zero_class": "success_nonzero"
+      "updated": 1480
     },
-    "ucb_espm_faculty": {
-      "fetched": 67,
-      "new": 2,
+    "umich_faculty": {
+      "fetched": 1440,
+      "new": 43,
       "status": "ok",
-      "updated": 62,
-      "zero_class": "success_nonzero"
+      "updated": 1397
     },
-    "ucb_extra_faculty": {
-      "fetched": 187,
-      "new": 11,
+    "upenn_faculty": {
+      "fetched": 1787,
+      "new": 7,
       "status": "ok",
-      "updated": 146,
-      "zero_class": "success_nonzero"
+      "updated": 1780
     },
-    "ucb_filmmedia_faculty": {
-      "fetched": 13,
-      "new": 2,
-      "status": "ok",
-      "updated": 6,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_french_faculty": {
-      "fetched": 14,
-      "new": 0,
-      "status": "ok",
-      "updated": 11,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_geog_faculty": {
-      "fetched": 23,
-      "new": 0,
-      "status": "ok",
-      "updated": 19,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_german_faculty": {
-      "fetched": 9,
-      "new": 0,
-      "status": "ok",
-      "updated": 8,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_haas_faculty": {
-      "fetched": 120,
-      "new": 2,
-      "status": "ok",
-      "updated": 104,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_history_faculty": {
-      "fetched": 61,
-      "new": 1,
-      "status": "ok",
-      "updated": 58,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_ib_faculty": {
-      "fetched": 47,
-      "new": 1,
-      "status": "ok",
-      "updated": 43,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_ieor_faculty": {
-      "fetched": 21,
-      "new": 0,
-      "status": "ok",
-      "updated": 19,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_journalism_faculty": {
-      "fetched": 37,
-      "new": 8,
-      "status": "ok",
-      "updated": 27,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_larch_faculty": {
-      "fetched": 19,
-      "new": 2,
-      "status": "ok",
-      "updated": 16,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_law_faculty": {
-      "fetched": 82,
-      "new": 1,
-      "status": "ok",
-      "updated": 80,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_ling_faculty": {
-      "fetched": 16,
-      "new": 1,
-      "status": "ok",
-      "updated": 15,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_math_faculty": {
-      "fetched": 105,
-      "new": 2,
-      "status": "ok",
-      "updated": 95,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_mcb_faculty": {
-      "fetched": 92,
-      "new": 1,
-      "status": "ok",
-      "updated": 80,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_me_faculty": {
-      "fetched": 72,
-      "new": 0,
-      "status": "ok",
-      "updated": 64,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_mse_faculty": {
-      "fetched": 29,
-      "new": 1,
-      "status": "ok",
-      "updated": 19,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_music_faculty": {
-      "fetched": 19,
-      "new": 1,
-      "status": "ok",
-      "updated": 17,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_ne_faculty": {
-      "fetched": 17,
-      "new": 0,
-      "status": "ok",
-      "updated": 15,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_neuro_faculty": {
-      "fetched": 41,
-      "new": 2,
-      "status": "ok",
-      "updated": 14,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_nst_faculty": {
-      "fetched": 20,
-      "new": 0,
-      "status": "ok",
-      "updated": 17,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_philos_faculty": {
-      "fetched": 46,
-      "new": 0,
-      "status": "ok",
-      "updated": 37,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_physics_faculty": {
-      "fetched": 59,
-      "new": 0,
-      "status": "ok",
-      "updated": 41,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_pmb_faculty": {
-      "fetched": 31,
-      "new": 0,
-      "status": "ok",
-      "updated": 25,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_polisci_faculty": {
-      "fetched": 49,
-      "new": 0,
-      "status": "ok",
-      "updated": 44,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_psych_faculty": {
-      "fetched": 36,
-      "new": 2,
-      "status": "ok",
-      "updated": 33,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_publicpolicy_faculty": {
-      "fetched": 32,
-      "new": 4,
-      "status": "ok",
-      "updated": 17,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_rhetoric_faculty": {
-      "fetched": 32,
-      "new": 1,
-      "status": "ok",
-      "updated": 23,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_scandinavian_faculty": {
-      "fetched": 9,
-      "new": 1,
-      "status": "ok",
-      "updated": 8,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_slavic_faculty": {
-      "fetched": 16,
-      "new": 2,
-      "status": "ok",
-      "updated": 12,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_soc_faculty": {
-      "fetched": 36,
-      "new": 1,
-      "status": "ok",
-      "updated": 35,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_socwel_faculty": {
-      "fetched": 27,
+    "utdallas_faculty": {
+      "fetched": 1068,
       "new": 3,
       "status": "ok",
-      "updated": 22,
-      "zero_class": "success_nonzero"
+      "updated": 1065
     },
-    "ucb_spanish_portuguese_faculty": {
-      "fetched": 24,
+    "utk_faculty": {
+      "fetched": 1020,
       "new": 1,
       "status": "ok",
-      "updated": 21,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_sph_faculty": {
-      "fetched": 139,
-      "new": 6,
-      "status": "ok",
-      "updated": 121,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_stat_faculty": {
-      "fetched": 58,
-      "new": 0,
-      "status": "ok",
-      "updated": 47,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_tdps_faculty": {
-      "fetched": 34,
-      "new": 1,
-      "status": "ok",
-      "updated": 33,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_urap": {
-      "fetched": 1,
-      "new": 0,
-      "status": "ok",
-      "updated": 0,
-      "zero_class": "success_nonzero"
-    },
-    "ucb_urap_projects": {
-      "fetched": 771,
-      "new": 126,
-      "status": "ok",
-      "updated": 645,
-      "zero_class": "success_nonzero"
+      "updated": 1019
     }
   },
   "time_budget": {
-    "budget_minutes": 90.0,
+    "budget_minutes": 260.0,
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-05T03:59:29.733019",
-  "total_in_file": 137985,
-  "total_new": 216,
-  "total_updated": 2655,
-  "zero_classes": {
-    "ucb_anthro_faculty": "success_nonzero",
-    "ucb_arch_faculty": "success_nonzero",
-    "ucb_astro_faculty": "success_nonzero",
-    "ucb_bioe_faculty": "success_nonzero",
-    "ucb_campus": "success_nonzero",
-    "ucb_cbe_faculty": "success_nonzero",
-    "ucb_cee_faculty": "success_nonzero",
-    "ucb_chem_faculty": "success_nonzero",
-    "ucb_classics_faculty": "success_nonzero",
-    "ucb_complit_faculty": "success_nonzero",
-    "ucb_datascience_faculty": "success_nonzero",
-    "ucb_dcrp_faculty": "success_nonzero",
-    "ucb_econ_faculty": "success_nonzero",
-    "ucb_education_faculty": "success_nonzero",
-    "ucb_eecs_faculty": "suspicious_zero",
-    "ucb_english_faculty": "success_nonzero",
-    "ucb_eps_faculty": "success_nonzero",
-    "ucb_espm_faculty": "success_nonzero",
-    "ucb_extra_faculty": "success_nonzero",
-    "ucb_filmmedia_faculty": "success_nonzero",
-    "ucb_french_faculty": "success_nonzero",
-    "ucb_geog_faculty": "success_nonzero",
-    "ucb_german_faculty": "success_nonzero",
-    "ucb_haas_faculty": "success_nonzero",
-    "ucb_history_faculty": "success_nonzero",
-    "ucb_ib_faculty": "success_nonzero",
-    "ucb_ieor_faculty": "success_nonzero",
-    "ucb_journalism_faculty": "success_nonzero",
-    "ucb_larch_faculty": "success_nonzero",
-    "ucb_law_faculty": "success_nonzero",
-    "ucb_ling_faculty": "success_nonzero",
-    "ucb_math_faculty": "success_nonzero",
-    "ucb_mcb_faculty": "success_nonzero",
-    "ucb_me_faculty": "success_nonzero",
-    "ucb_mse_faculty": "success_nonzero",
-    "ucb_music_faculty": "success_nonzero",
-    "ucb_ne_faculty": "success_nonzero",
-    "ucb_neuro_faculty": "success_nonzero",
-    "ucb_nst_faculty": "success_nonzero",
-    "ucb_philos_faculty": "success_nonzero",
-    "ucb_physics_faculty": "success_nonzero",
-    "ucb_pmb_faculty": "success_nonzero",
-    "ucb_polisci_faculty": "success_nonzero",
-    "ucb_psych_faculty": "success_nonzero",
-    "ucb_publicpolicy_faculty": "success_nonzero",
-    "ucb_rhetoric_faculty": "success_nonzero",
-    "ucb_scandinavian_faculty": "success_nonzero",
-    "ucb_slavic_faculty": "success_nonzero",
-    "ucb_soc_faculty": "success_nonzero",
-    "ucb_socwel_faculty": "success_nonzero",
-    "ucb_spanish_portuguese_faculty": "success_nonzero",
-    "ucb_sph_faculty": "success_nonzero",
-    "ucb_stat_faculty": "success_nonzero",
-    "ucb_tdps_faculty": "success_nonzero",
-    "ucb_urap": "success_nonzero",
-    "ucb_urap_projects": "success_nonzero"
-  }
+  "timestamp": "2026-09-05T06:04:32.567786",
+  "total_in_file": 137850,
+  "total_new": 566,
+  "total_updated": 19650
 }
