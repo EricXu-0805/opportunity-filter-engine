@@ -80,6 +80,7 @@ from src.matcher.ranker import (
     _word_re,
     canonical_sort_key,
     corpus_generation_lock,
+    expand_search_aliases,
     hard_exclusion,
     rank_all,
     rank_opportunity,
@@ -241,29 +242,6 @@ _SCORING_PROFILE_FIELDS = frozenset({
     "preferences",
 })
 
-_SEARCH_ALIASES: dict[str, tuple[str, ...]] = {
-    "ml": ("machine learning",),
-    "ai": ("artificial intelligence",),
-    "nlp": ("natural language processing",),
-    "cv": ("computer vision",),
-    "dl": ("deep learning",),
-    "hci": ("human computer interaction", "human-computer interaction"),
-    "rl": ("reinforcement learning",),
-    "ds": ("data science",),
-    "se": ("software engineering",),
-    "pl": ("programming languages",),
-    "os": ("operating systems",),
-    "db": ("database",),
-    "ece": ("electrical", "computer engineering"),
-    "cs": ("computer science",),
-    "ee": ("electrical engineering",),
-    "me": ("mechanical engineering",),
-    "ce": ("civil engineering",),
-    "cheme": ("chemical engineering",),
-    "matsci": ("materials science",),
-    "neuro": ("neuroscience",),
-    "bioinfo": ("bioinformatics",),
-}
 
 # ── LLM rerank (default-on, OpenRouter-routed) ────────────────────────────
 # A bounded, batched LLM pass over the top rule-ranked results that does two
@@ -1164,17 +1142,6 @@ def _match_result_response(
     return MatchResultResponse(**payload)
 
 
-def _expand_search_aliases(query: str) -> list[str]:
-    query_lower = query.lower()
-    terms = [query_lower]
-    terms.extend(_SEARCH_ALIASES.get(query_lower, ()))
-    tokens = query_lower.split()
-    for abbreviation, expansions in _SEARCH_ALIASES.items():
-        if abbreviation == query_lower or abbreviation not in tokens:
-            continue
-        pattern = re.compile(rf"\b{re.escape(abbreviation)}\b")
-        terms.extend(pattern.sub(expansion, query_lower) for expansion in expansions)
-    return terms
 
 
 # Below this length a term is short enough to live inside ordinary English, so
@@ -1225,7 +1192,7 @@ def _apply_match_view(
     search_matchers = [
         _search_matcher(term)
         for term in (
-            _expand_search_aliases(view.search_query)
+            expand_search_aliases(view.search_query)
             if view.search_query.strip()
             else []
         )
@@ -1257,9 +1224,17 @@ def _apply_match_view(
         # pay value to the paid filter, and an on-campus flag — every one of
         # them a term of an application that may not exist.
         is_confirmed_listing = record_kind(opportunity) == "listing"
-        days_left = _calendar_days_until(
-            opportunity.get("deadline"), today,
-        ) if is_confirmed_listing else None
+        # An estimated date contributes to no deadline facet. It is derived
+        # from an NSF award start date, and the card that would be shown for it
+        # renders "· estimated" and deliberately refuses a passed/countdown
+        # verdict. Counting it made "Deadline passed" the only deadline chip on
+        # the page, selecting 151 records not one of which says passed.
+        if opportunity.get("deadline_is_estimate"):
+            days_left = None
+        else:
+            days_left = _calendar_days_until(
+                opportunity.get("deadline"), today,
+            ) if is_confirmed_listing else None
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1298,6 +1273,11 @@ def _apply_match_view(
                 continue
         elif view.deadline:
             if not is_confirmed_listing:
+                continue
+            # Same rule as the facet counts above: an estimate answers no
+            # deadline question, so it is in no deadline window and is not
+            # "passed" either.
+            if opportunity.get("deadline_is_estimate"):
                 continue
             days = _calendar_days_until(opportunity.get("deadline"), today)
             if view.deadline == "passed":

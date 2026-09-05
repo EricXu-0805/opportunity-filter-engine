@@ -202,7 +202,14 @@ def _render_digest_email(
         )
         org = described["organization"]
         deadline = described["deadline"] or ""
-        dl_str = f" · due {deadline}" if deadline else ""
+        # "due" is a claim. An NSF REU date is derived from the award start and
+        # stamped an estimate; the app renders it "· estimated" and refuses to
+        # call it passed, so the digest must not upgrade it to a due date.
+        dl_str = (
+            f" · estimated {deadline}"
+            if deadline and described.get("deadline_is_estimate")
+            else f" · due {deadline}" if deadline else ""
+        )
         kind_str = (
             "Faculty contact profile · current opening not confirmed"
             if faculty_contact

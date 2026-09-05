@@ -5,7 +5,7 @@ import {
   targetPosture,
   targetStatusReason,
 } from './target-truth';
-import type { MatchResult } from './types';
+import type { MatchResult, Opportunity } from './types';
 
 // One line per reason, none of them implying the others. A closed listing was
 // open once; a reference record never was; a professor not taking
@@ -132,6 +132,12 @@ export function expandSearchAliases(query: string): string[] {
   return terms;
 }
 
+function deadlineCell(opportunity: Opportunity): string {
+  const deadline = opportunity.deadline ?? '';
+  if (!deadline) return '';
+  return opportunity.deadline_is_estimate ? `${deadline} (estimated)` : deadline;
+}
+
 export function matchesToCSV(matches: MatchResult[]): string {
   const header = [
     'Title', 'Organization', 'Type', 'Paid', 'Location / faculty affiliation', 'Deadline',
@@ -162,7 +168,11 @@ export function matchesToCSV(matches: MatchResult[]): string {
       openListing ? m.opportunity.opportunity_type : recordKind,
       openListing ? m.opportunity.paid : '',
       m.opportunity.location ?? '',
-      openListing ? m.opportunity.deadline ?? '' : '',
+      // A spreadsheet column is read as fact months later, and this date can
+      // be a guess derived from an NSF award start. The card says
+      // "2025-02-15 · estimated" and refuses to call it passed; the CSV said
+      // Deadline=2025-02-15 with Status=Open listing on the same row.
+      openListing ? deadlineCell(m.opportunity) : '',
       facultySafeInternational(m.opportunity) ?? '',
       m.final_score.toFixed(1),
       m.bucket,

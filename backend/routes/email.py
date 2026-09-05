@@ -237,6 +237,9 @@ class MatchItem(BaseModel):
     deadline: str | None = None
     organization: str = ""
     record_kind: Literal["listing", "faculty_contact", "unknown"] = "unknown"
+    # A guess the app renders as "· estimated" and refuses to call passed.
+    # The email has to carry it or it makes the claim the app declines to.
+    deadline_is_estimate: bool = False
     # Server-written, never accepted from the wire: a warning a client could
     # omit is not a warning.
     advisory: str | None = None
@@ -312,6 +315,9 @@ class FavoriteItem(BaseModel):
     source: str = ""
     deadline: str | None = None
     record_kind: Literal["listing", "faculty_contact", "unknown"] = "unknown"
+    # A guess the app renders as "· estimated" and refuses to call passed.
+    # The email has to carry it or it makes the claim the app declines to.
+    deadline_is_estimate: bool = False
     advisory: str | None = None
     # A saved target can close between saving and mailing, and the digest must
     # say so rather than repeat what the browser remembered.
@@ -420,6 +426,22 @@ def build_idempotency_key(scope: str, *parts: str) -> str:
     return f"{scope}-{hashlib.sha256(material.encode('utf-8')).hexdigest()[:32]}"
 
 
+def _deadline_phrase(row: MatchItem | FavoriteItem) -> str:
+    """The deadline fragment for one email row.
+
+    "due" is a claim. For an NSF REU the date is derived from the award start
+    date and stamped `deadline_is_estimate`, and every in-app surface honours
+    that: the card renders a gray "2025-02-15 · estimated" badge and
+    getDeadlineUrgency refuses to return 'passed' for it. The email said "due
+    2025-02-15" — the one place the app's caveats cannot follow the student.
+    """
+    if not row.deadline or row.record_kind != "listing":
+        return ""
+    if row.deadline_is_estimate:
+        return f" · estimated {row.deadline}"
+    return f" · due {row.deadline}"
+
+
 def classify_send_failure(exc: BaseException) -> str:
     """``"ambiguous"`` when the send may already have been accepted.
 
@@ -514,7 +536,7 @@ def _render_match_email(items: list[MatchItem]) -> tuple[str, str, str]:
     for m in items:
         faculty_contact = m.record_kind == "faculty_contact"
         score_str = ""
-        dl_str = f" · due {m.deadline}" if m.deadline and m.record_kind == "listing" else ""
+        dl_str = _deadline_phrase(m)
         kind_str = (
             "Faculty contact profile · current opening not confirmed"
             if faculty_contact
@@ -598,7 +620,7 @@ def _render_favorites_email(items: list[FavoriteItem]) -> tuple[str, str, str]:
                 f'font-size:11px;font-weight:600;text-transform:uppercase;'
                 f'letter-spacing:0.5px;margin-right:8px">{_html_escape(f.status)}</span>'
             )
-        dl_str = f" · due {f.deadline}" if f.deadline and f.record_kind == "listing" else ""
+        dl_str = _deadline_phrase(f)
         # The historical label replaces the kind rather than sitting beside it:
         # "Opportunity listing · closed" invites a reader to skim the first
         # half. Each reason gets its own words — a closed listing, a reference
@@ -811,6 +833,7 @@ def _describe(record: dict) -> dict:
             else None
         ),
         "record_kind": kind,
+        "deadline_is_estimate": bool(record.get("deadline_is_estimate")),
         "advisory": _RESEARCH_INACTIVE_ADVISORY if research_inactive else None,
     }
 
