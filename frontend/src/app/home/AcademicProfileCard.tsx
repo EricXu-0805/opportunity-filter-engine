@@ -111,6 +111,23 @@ export function AcademicProfileCard({
   const showCatalog = hasCatalog && catalog !== null;
   const catalogLoading = showCatalog && catalog === undefined;
   const colleges = catalog ? Object.keys(catalog) : [];
+  // A college and major belong to one school's catalog. Switching campus left
+  // the previous school's pair on the profile, where the student could no
+  // longer see or edit it — both selects render empty, because the new
+  // catalog has no such option — while isValid still counted them filled and
+  // the matcher still scored them. A stale "Grainger College of Engineering"
+  // earned college affinity on 219 JHU records, 517 Berkeley, 321 Stanford.
+  //
+  // Cleared here rather than at the switch itself: only this component knows
+  // which colleges the new school actually offers, and the switch must keep
+  // carrying what is on screen (see the useProfileForm mid-edit contract).
+  // Waits for a real catalog — undefined is still loading, null is a school
+  // without one, and neither can say a value is wrong.
+  useEffect(() => {
+    if (!catalog || !profile.college) return;
+    if (Object.prototype.hasOwnProperty.call(catalog, profile.college)) return;
+    update('college', '');
+  }, [catalog, profile.college, update]);
   const majors = catalog && profile.college ? catalog[profile.college] ?? [] : [];
   const seeking = profile.seeking_types ?? [];
 
