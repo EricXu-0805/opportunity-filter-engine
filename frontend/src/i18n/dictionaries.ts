@@ -3079,6 +3079,7 @@ export const en = {
     facultyResearchInactive: 'Source reports no current research activity',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     facultyMember: 'Faculty member:',
+    matchLabel: 'Match',
     heardBack: 'Students recently heard back',
     feedback: {
       prompt: 'Accurate?',
@@ -7630,6 +7631,7 @@ export const zh = {
     facultyResearchInactive: '来源注明当前没有开展研究',
     facultyAffiliationLocation: '教师所在机构：{location}',
     facultyMember: '教师：',
+    matchLabel: '匹配度',
     heardBack: '近期有学生收到回复',
     feedback: {
       prompt: '推荐准吗？',
@@ -8120,7 +8122,7 @@ export const zh = {
     remind14: '2 周后',
     reminderSet: '已设置 {date} 的跟进提醒',
     reminderUnavailable: '已发送。当前状态下无法设置跟进提醒。',
-    confirmedKeptStatus: '已发送。这条仍然标记为「已被拒」，状态没有变化。',
+    confirmedKeptStatus: '已发送。这条仍然标记为「已拒绝」，状态没有变化。',
     confirmedKeptDismissed: '已发送。这条仍然标记为「不感兴趣」，所以不会出现在你的追踪板上 —— 给它设一个状态才能记录这次联系。',
     reminderFailed: '提醒没能保存。你的联系记录仍然有效。',
     aiVariantLabel: '✨ AI',

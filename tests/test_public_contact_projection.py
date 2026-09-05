@@ -1058,3 +1058,36 @@ class TestAGuessedEligibilityRestrictionIsLabelled:
         for key in ("international_attribution", "citizenship_attribution",
                     "preferred_year_attribution"):
             assert key not in out
+
+
+class TestADerivedPiNameIsNotServed:
+    """pi_name is derived by taking the word before "Laboratory" or "Group" in
+    the program title. On the served corpus all 36 distinct derived names are
+    institutions or plain nouns — Volkswagen, Cigna, Expedia, Jackson, Spring
+    Harbor, Analysis, Market — so the detail page was printing "Faculty member:
+    Spring Harbor" as fact."""
+
+    @staticmethod
+    def _program(inferred: bool) -> dict:
+        opp = {
+            "id": "sro-cshl", "title": "Cold Spring Harbor Laboratory Program",
+            "source_type": "program", "opportunity_type": "summer_program",
+            "organization": "Cold Spring Harbor Laboratory",
+            "lab_or_program": "Cold Spring Harbor Laboratory Undergraduate Program",
+            "pi_name": "Spring Harbor", "eligibility": {}, "metadata": {},
+        }
+        if inferred:
+            opp["metadata"] = {
+                "inferred_fields": {"pi_name": "rule:lab_title_surname"}
+            }
+        return opp
+
+    def test_a_derived_name_never_reaches_the_page(self):
+        record = self._program(inferred=True)
+        served = project_public_opportunity_payload(dict(record), record)
+        assert "pi_name" not in served
+
+    def test_a_real_name_is_untouched(self):
+        record = self._program(inferred=False)
+        served = project_public_opportunity_payload(dict(record), record)
+        assert served["pi_name"] == "Spring Harbor"
