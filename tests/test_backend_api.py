@@ -71,6 +71,37 @@ def sample_profile_req():
     }
 
 
+class TestCourseworkKeepsItsName:
+    """The cap was 20, sized for a course code. The resume parser deliberately
+    extracts course *names* up to 40 characters so "Data Structures" survives
+    alongside "CS 124", and the schema then halved them — "Introduction to
+    Machine Learning" reached the ranker and the tailor prompt as "Introduction
+    to Mach"."""
+
+    def test_a_named_course_survives_intact(self, sample_profile_req):
+        from backend.schemas import ProfileRequest
+
+        profile = ProfileRequest(**{
+            **sample_profile_req,
+            "coursework": ["Introduction to Machine Learning",
+                           "Organic Chemistry Laboratory", "MATH 241"],
+        })
+        assert profile.coursework == [
+            "Introduction to Machine Learning",
+            "Organic Chemistry Laboratory",
+            "MATH 241",
+        ]
+
+    def test_it_still_caps_the_absurd(self, sample_profile_req):
+        from backend.schemas import ProfileRequest
+
+        profile = ProfileRequest(**{
+            **sample_profile_req, "coursework": ["A" * 400] * 80,
+        })
+        assert len(profile.coursework) == 50
+        assert all(len(c) == 100 for c in profile.coursework)
+
+
 class TestProfileRequestUrls:
     def test_scholar_url_accepted_and_capped(self, sample_profile_req):
         # scholar_url mirrors linkedin_url/github_url: accepted by the schema and
@@ -7338,9 +7369,9 @@ class TestAShortSearchTermMustBeAWholeWord:
         assert _search_matcher("neuro")("computational neuroscience")
 
     def test_the_alias_expansion_can_finally_do_its_job(self):
-        from backend.routes.matches import _expand_search_aliases, _search_matcher
+        from backend.routes.matches import _search_matcher, expand_search_aliases
 
-        terms = _expand_search_aliases("ai")
+        terms = expand_search_aliases("ai")
         assert "artificial intelligence" in terms
         matchers = [_search_matcher(t) for t in terms]
         assert not any(m(self.FACULTY_BLURB) for m in matchers)

@@ -1489,6 +1489,15 @@ export async function getFavorites(): Promise<Set<string>> {
     if (token.uid !== null) {
       // A previously-KNOWN identity changed mid-flight — a genuine
       // abandonment. Never retried here; stays local-only.
+      //
+      // And it must SAY local-only. The cloud was never queried, so the empty
+      // set this returns means "could not check", not "you have none" — but
+      // use-favorites-data stamps a zero-id load as "a true empty state" and
+      // renders "Star any opportunity from the matches page to save it here"
+      // to someone with three saved labs. The status is the only channel that
+      // separates the two, and StorageStatusBanner shows nothing for
+      // 'unknown'.
+      setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
       return readFavFallback();
     }
     // token.uid === null: nothing had been resolved yet at capture time,
@@ -1502,11 +1511,17 @@ export async function getFavorites(): Promise<Set<string>> {
     // just resolved (no further race since) — no retry loop beyond this
     // one immediate re-check.
     const freshToken = captureOwnerToken();
-    if (!isOwnerTokenValid(freshToken, deviceId)) return readFavFallback();
+    if (!isOwnerTokenValid(freshToken, deviceId)) {
+      setStorageStatus('local-only', 'this browser could not confirm which account it belongs to');
+      return readFavFallback();
+    }
     token = freshToken;
     local = readFavFallback(); // re-read: identity-owner's sync may have run since the read above
   }
   if (!deviceId) {
+    // No session, so no cloud read happened. Same reason as above: the caller
+    // must not read this as a confirmed empty shortlist.
+    setStorageStatus('local-only', 'signed out of sync — showing what is saved on this device');
     return local;
   }
 
@@ -1533,13 +1548,25 @@ export async function getFavorites(): Promise<Set<string>> {
       toPush.forEach(id => remote.add(id));
       writeFavFallback(new Set(), token);
     } else {
+      // These are the student's saved labs and they still have not reached the
+      // cloud, so they stay in the queue and stay in what this returns. Falling
+      // through used to overwrite the queue with `remote` — which is exactly
+      // the set that does not contain them — and then report 'synced'.
       console.warn('[ofe] favorites backfill failed:', insErr.message);
+      toPush.forEach(id => remote.add(id));
+      writeFavFallback(new Set(toPush), token);
+      setStorageStatus('local-only', insErr.message);
+      return remote;
     }
   } else if (local.size > 0) {
     writeFavFallback(new Set(), token);
   }
 
-  writeFavFallback(remote, token);
+  // The mirror is the queue of favorites that have NOT reached the cloud, not a
+  // copy of the cloud — a synced favorite lives in its cloud row. Writing the
+  // whole remote set here made every id look like a pending local-only write,
+  // so the next load pushed deleted favorites back: un-star a lab, navigate,
+  // and it was re-INSERTed and starred again on every device.
   setStorageStatus('synced');
   return remote;
 }

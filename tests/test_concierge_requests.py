@@ -111,17 +111,44 @@ def test_the_queue_is_never_readable_without_the_admin_token(monkeypatch):
     assert client.get("/api/admin/concierge-requests").status_code == 503
 
 
-def test_it_asks_only_for_targeted_rows(admin_env, supabase_rows):
+def test_it_asks_for_targeted_rows_and_live_untargeted_ones(admin_env, supabase_rows):
     """The untargeted 015-era rows are a different, unactionable thing: they say
     somebody wanted help without saying with what. Mixing them into this queue
-    would put work in it that nobody can do."""
+    would put work in it that nobody can do — so they stay out.
+
+    But /account's Plan card now writes untargeted rows deliberately, under
+    copy promising "we will review your request manually and contact you", and
+    this route is the table's only reader anywhere. Excluding by
+    opportunity_id alone meant nobody was ever in touch. `intent` cannot
+    separate them (015 defaults it to 'apply_for_me'); props can, because a
+    live request carries the surface that made it."""
     calls = supabase_rows([TARGETED])
 
     response = client.get("/api/admin/concierge-requests", headers=HEADERS)
 
     assert response.status_code == 200
-    assert calls[0]["params"]["opportunity_id"] == "not.is.null"
+    assert "opportunity_id" not in calls[0]["params"]
+    assert calls[0]["params"]["or"] == (
+        "(opportunity_id.not.is.null,props->>source.not.is.null)"
+    )
     assert calls[0]["params"]["order"] == "created_at.desc"
+
+
+def test_an_untargeted_request_is_shown_as_one(admin_env, supabase_rows):
+    """It has no opportunity, so the row must still say what it is rather than
+    rendering a blank heading from a null id."""
+    supabase_rows([{
+        "id": "w-2", "device_id": "d-2", "email": "student@illinois.edu",
+        "opportunity_id": None, "props": {"source": "account"},
+        "created_at": "2026-09-04T12:00:00Z",
+    }])
+
+    body = client.get("/api/admin/concierge-requests", headers=HEADERS).json()
+
+    assert body["total"] == 1
+    assert body["requests"][0]["opportunity_id"] is None
+    assert body["requests"][0]["target"] is None
+    assert body["requests"][0]["email"] == "student@illinois.edu"
 
 
 def test_a_request_says_what_the_work_is(admin_env, supabase_rows):

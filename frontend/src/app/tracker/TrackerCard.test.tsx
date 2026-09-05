@@ -469,3 +469,26 @@ describe('TrackerCard — a reminder is only offered where one would be delivere
       .toBe('https://example.edu/scraped');
   });
 });
+
+describe('TrackerCard — notes cannot exceed what the column accepts', () => {
+  it('caps the textarea at the CHECK constraint', () => {
+    // interactions_notes_length is CHECK (length(notes) <= 2000). Pasting a
+    // professor's reply past that produced a save that could never succeed:
+    // Postgres rejected it, Retry replayed the same over-long draft forever,
+    // and the text stayed on screen looking saved until a reload took it. The
+    // same draft also blocked "Not interested", which hands the notes to the
+    // dismiss write in one statement.
+    render(
+      <ControlledCard
+        opp={opp}
+        status="applied"
+        onChangeStatus={() => {}}
+        onSaveNotes={() => {}}
+        onSetReminder={() => {}}
+        t={t}
+      />,
+    );
+    expect(screen.getByPlaceholderText('tracker.notesPlaceholder'))
+      .toHaveAttribute('maxlength', '2000');
+  });
+});

@@ -20,6 +20,7 @@ from datetime import date, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.saved_searches.filter import (
+    _matches_query,
     days_until,
     filter_opportunities,
     match_filter,
@@ -264,7 +265,10 @@ class TestQuerySearch:
         opps = [
             _opp(id="a", title="ML role", paid="yes"),
             _opp(id="b", title="ML role", paid="no"),
-            _opp(id="c", title="Bio role", paid="yes"),
+            # Its keywords must be cleared too: the fixture default tags every
+            # record "machine learning", which "ML" now legitimately matches.
+            _opp(id="c", title="Bio role", paid="yes", keywords=["ecology"],
+                 description_clean="Field sampling in salt marshes."),
         ]
         ids = matching_ids(opps, f, "ML")
         assert ids == ["a"]
@@ -316,3 +320,28 @@ class TestMatchingIds:
     def test_coerces_int_ids_to_string(self):
         opps = [_opp(id=42)]
         assert matching_ids(opps, EMPTY_FILTERS) == ["42"]
+
+
+class TestTheDigestMatchesWhatTheSiteShowed:
+    """The results page tells a student their search is "(also matching:
+    machine learning)". The emailed digest used the bare token, so a saved
+    "nlp" matched 37 records by mail against 324 on the site."""
+
+    def test_an_abbreviation_finds_what_it_stands_for(self):
+        opp = _opp(title="Robotics lab", keywords=["machine learning"],
+                   description_clean="")
+        assert _matches_query(opp, "ml") is True
+
+    def test_an_unrelated_abbreviation_still_does_not_match(self):
+        opp = _opp(title="Robotics lab", keywords=["machine learning"],
+                   description_clean="")
+        assert _matches_query(opp, "nlp") is False
+
+    def test_the_digest_and_the_route_expand_identically(self):
+        """One alias table. A second copy is how the two drifted apart."""
+        from backend.routes.matches import expand_search_aliases as route_expand
+        from src.matcher.ranker import expand_search_aliases as shared_expand
+
+        assert route_expand is shared_expand
+        for query in ("ml", "ai", "nlp", "hci", "cs", "ml robotics"):
+            assert shared_expand(query) == route_expand(query)

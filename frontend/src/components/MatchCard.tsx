@@ -428,7 +428,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
 
         <div className="flex items-center gap-3 mb-4">
           <span className="text-xs font-medium text-gray-400 uppercase tracking-wider w-14 shrink-0">
-            Match
+            {t('card.matchLabel')}
           </span>
           <div className="flex-1">
             <ScoreBar score={match.final_score} size="md" bucket={match.bucket} />

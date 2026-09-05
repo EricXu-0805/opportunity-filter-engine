@@ -36,7 +36,7 @@ from collections.abc import Iterable
 from datetime import date, datetime
 
 from src.evidence import faculty_contact_claims_unverified
-from src.matcher.ranker import _word_re
+from src.matcher.ranker import _word_re, expand_search_aliases
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -129,10 +129,19 @@ def _matches_query(opp: dict, query_lower: str) -> bool:
     # available", which contains av-AI-lable, re-SE-arch and depart-ME-nt, so
     # a saved search for "ai" was mailing the student 92% of the corpus. Same
     # rule and same threshold as the /matches/view predicate.
-    if len(query_lower) <= _WORD_BOUNDARY_TERM_MAX_LEN:
-        pattern = _word_re(query_lower)
-        return any(pattern.search(h) for h in haystacks)
-    return any(query_lower in h for h in haystacks)
+    #
+    # Aliases come from the same place the route gets them. The results page
+    # tells the student their search is "(also matching: machine learning)",
+    # and this digest was then mailing them the bare token: a saved "nlp"
+    # matched 37 records here against 324 on the site.
+    for term in expand_search_aliases(query_lower):
+        if len(term) <= _WORD_BOUNDARY_TERM_MAX_LEN:
+            pattern = _word_re(term)
+            if any(pattern.search(h) for h in haystacks):
+                return True
+        elif any(term in h for h in haystacks):
+            return True
+    return False
 
 
 def match_filter(opp: dict, filters: dict) -> bool:
