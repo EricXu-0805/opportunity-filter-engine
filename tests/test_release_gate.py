@@ -1204,3 +1204,66 @@ class TestCandidateProvenance:
     def test_a_stale_ledger_cannot_satisfy_a_candidate(self, monkeypatch, tmp_path):
         _write_ledger(tmp_path, monkeypatch, release_sha=SHA_B)
         assert gate.check_ledger_currency(SHA_A)["status"] == gate.FAIL
+
+
+# ---------------------------------------------------------------------------
+# Publishing a school whose departments partly failed must not launder those
+# departments' records into looking fresh. The contract now lets that school
+# publish; these pin what publishing is allowed to change.
+# ---------------------------------------------------------------------------
+
+class TestPartialPublishDoesNotFakeFreshness:
+    def test_a_retained_record_keeps_its_own_stale_stamp(
+            self, monkeypatch, tmp_path):
+        """55 departments re-observed, one not: only 55 move.
+
+        This is the UCB shape. Publishing the school is correct; publishing it
+        as though every department had been seen would not be.
+        """
+        _write_shard(tmp_path, monkeypatch, {
+            "ucb": [(True, 1)] * 55 + [(True, 45)] * 45,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["evidence"]["fresh_records"] == 55
+        assert got["evidence"]["stale_records"] == 45
+        assert got["evidence"]["fully_stale_school_count"] == 0
+        assert got["evidence"]["partially_stale_school_count"] == 1
+
+    def test_a_school_leaves_fully_stale_only_when_real_records_are_fresh(
+            self, monkeypatch, tmp_path):
+        _write_shard(tmp_path, monkeypatch, {"ucb": [(True, 45)] * 100})
+        before = gate.check_corpus_freshness()
+        assert before["evidence"]["fully_stale_schools"] == ["ucb"]
+
+        # One department genuinely re-observed — the school is no longer dead.
+        _write_shard(tmp_path, monkeypatch, {
+            "ucb": [(True, 1)] * 16 + [(True, 45)] * 84,
+        })
+        after = gate.check_corpus_freshness()
+        assert after["evidence"]["fully_stale_school_count"] == 0
+        # Still failing on the percentage — recovering one department is not
+        # recovering the corpus.
+        assert after["status"] == gate.FAIL
+        assert after["reason"] == "below_threshold"
+
+    def test_freshness_uses_the_active_corpus_denominator(
+            self, monkeypatch, tmp_path):
+        """Retired records leave both sides; they are not stale data served."""
+        _write_shard(tmp_path, monkeypatch, {
+            "ucb": [(True, 1)] * 96 + [(True, 45)] * 4 + [(False, 900)] * 500,
+        })
+        got = gate.check_corpus_freshness()
+        assert got["evidence"]["active_records"] == 100
+        assert got["evidence"]["inactive_records"] == 500
+        assert got["evidence"]["freshness_percent"] == 96.0
+        assert got["status"] == gate.PASS
+
+    def test_the_threshold_still_blocks_the_release(self, monkeypatch):
+        _stub_repo_gates(monkeypatch, SHA_A)
+        monkeypatch.setattr(
+            gate, "check_corpus_freshness",
+            lambda: gate._gate("corpus_freshness", gate.FAIL, "94.9% < 95.0%",
+                               reason="below_threshold"))
+        ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
+        assert ledger["final_decision"] == "NO-GO"
+        assert ledger["summary"]["failed"] >= 1
