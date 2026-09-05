@@ -79,7 +79,8 @@ test.describe('Opportunity detail page', () => {
   test('a status can be set, changed, and only removed on purpose', async ({ page }) => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     const applied = page.getByRole('button', { name: 'Applied' });
-    const replied = page.getByRole('button', { name: 'Replied' });
+    // detail.interactions.replied reads "Got reply", not "Replied".
+    const replied = page.getByRole('button', { name: 'Got reply' });
 
     await applied.click();
     await expect(applied).toHaveAttribute('aria-pressed', 'true');
@@ -96,7 +97,9 @@ test.describe('Opportunity detail page', () => {
     await expect(applied).toHaveAttribute('aria-pressed', 'false');
 
     await page.getByRole('button', { name: /Remove from Tracker/i }).click();
-    await page.getByRole('button', { name: /^Remove$/ }).click();
+    // Scoped to the confirm dialog: "Remove" is a label elsewhere too.
+    const confirm = page.getByRole('dialog', { name: /Remove from Tracker/i });
+    await confirm.getByRole('button', { name: /^Remove$/ }).click();
     await expect(replied).toHaveAttribute('aria-pressed', 'false');
   });
 
