@@ -48,6 +48,7 @@ from backend.routes.email import (
 )
 from backend.routes.push import _IncidentSink, _required_env, _verify_cron_secret
 from src.evidence import is_actionable_target
+from src.matcher.ranker import _filter_context, hard_exclusion
 from src.saved_searches.filter import matching_ids
 
 router = APIRouter()
@@ -283,6 +284,79 @@ def _render_digest_email(
     return subject, html, text
 
 
+# The digest and the site disagreed about what "in your results" means.
+# ranker.hard_exclusion calls itself "the single reason-coded implementation of
+# every rule that drops a record from a profile's result universe" and lists its
+# consumers; this cron was not one of them. It built the universe from release
+# scope and target truth alone — both profile-independent — so no profile-
+# dependent rule ever ran. Replaying the real path for a JHU profile, 2,085 of
+# 3,122 matched ids (66.8%) were records the site would never show that student:
+# Berkeley campus-only programs, each linking to a detail page that renders fine.
+#
+# filter.py's docstring said this was unavoidable — "Scoring requires the user's
+# profile, which the cron doesn't have access to (and we don't want to
+# denormalise the profile into saved_searches)". The first half is stale:
+# saved_searches.device_id IS profiles.id (both auth.uid()::text), so the cron
+# can read the profile it needs with one keyed lookup and no new column.
+async def _ineligible_ids_by_device(
+    client, supabase_url: str, headers: dict, corpus: list[dict], device_ids: list[str],
+) -> dict[str, set[str]]:
+    """For each device, the corpus ids its own profile excludes.
+
+    A POSITIVE set of known-ineligible ids, deliberately shaped like
+    hidden_opportunity_ids above and for the same reason: built over the whole
+    corpus, so "absent from tonight's load" can never be mistaken for "not for
+    you". A negative test against the eligible set would empty a student's
+    pending queue on any night a shard failed to load.
+
+    A profile that cannot be read yields an empty set — the digest then behaves
+    exactly as it does today rather than filtering on a guess.
+    """
+    wanted = sorted({d for d in device_ids if d})
+    if not wanted:
+        return {}
+    try:
+        resp = await client.get(
+            f"{supabase_url}/rest/v1/profiles",
+            params={
+                "select": "id,profile_data",
+                "id": f"in.({','.join(wanted)})",
+            },
+            headers=headers,
+        )
+        resp.raise_for_status()
+        rows = resp.json()
+    except Exception as exc:  # noqa: BLE001 - a read failure must not stop the run
+        logger.warning("saved-search profiles unreadable, sending unfiltered: %s", exc)
+        return {}
+
+    # Students share contexts — one school, cross-school off — so the corpus
+    # sweep runs once per distinct context rather than once per row.
+    by_context: dict[tuple, set[str]] = {}
+    out: dict[str, set[str]] = {}
+    for row in rows:
+        device_id = row.get("id")
+        profile = row.get("profile_data")
+        if not device_id or not isinstance(profile, dict):
+            continue
+        ctx = _filter_context(profile)
+        key = (
+            ctx.home_school, ctx.hide_cross_school, ctx.exclude_citizenship_restricted,
+            ctx.international_student, frozenset(ctx.seeking),
+            frozenset(ctx.student_majors_norm), frozenset(ctx.related_majors_norm),
+        )
+        cached = by_context.get(key)
+        if cached is None:
+            cached = {
+                opportunity["id"]
+                for opportunity in corpus
+                if opportunity.get("id") and hard_exclusion(opportunity, ctx)
+            }
+            by_context[key] = cached
+        out[device_id] = cached
+    return out
+
+
 @router.get("/cron/saved-searches/refresh")
 async def saved_searches_refresh(authorization: str | None = Header(default=None)):
     """Re-run every saved search against current opportunities.json.
@@ -344,7 +418,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,filters_json,query,last_result_ids,new_match_ids,last_run_at",
+                "select": "id,device_id,filters_json,query,last_result_ids,new_match_ids,last_run_at",
                 "limit": str(SUPABASE_BATCH_LIMIT),
                 "order": "last_run_at.asc.nullsfirst",
             },
@@ -355,10 +429,16 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         if not rows:
             return {"status": "ok", "processed": 0, "new_matches": 0}
 
+        ineligible_by_device = await _ineligible_ids_by_device(
+            client, supabase_url, headers, corpus,
+            [row.get("device_id") for row in rows],
+        )
+
         now_iso = datetime.now(UTC).isoformat()
 
         for row in rows:
             try:
+                ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
                 prior_ids = set(row.get("last_result_ids") or [])
@@ -366,9 +446,16 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     opportunity_id
                     for opportunity_id in (row.get("new_match_ids") or [])
                     if opportunity_id not in hidden_opportunity_ids
+                    # Positive set, same as hidden_opportunity_ids: an id this
+                    # student's profile excludes goes, an id tonight's corpus
+                    # simply could not see stays.
+                    and opportunity_id not in ineligible
                 ]
 
-                current_ids = matching_ids(opportunities, filters, query)
+                current_ids = [
+                    oid for oid in matching_ids(opportunities, filters, query)
+                    if oid not in ineligible
+                ]
                 # A search that has never run has no prior set to diff against
                 # — last_result_ids defaults to '{}' — so everything it matches
                 # looked new. The first digest went out hours after the search
@@ -504,7 +591,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,name,digest_email,new_match_ids,last_digest_sent_at",
+                "select": "id,device_id,name,digest_email,new_match_ids,last_digest_sent_at",
                 "digest_opt_in": "eq.true",
                 "digest_unsubscribed_at": "is.null",
                 "digest_email": "not.is.null",
@@ -514,10 +601,15 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         )
         list_resp.raise_for_status()
         rows = list_resp.json()
+        ineligible_by_device: dict[str, set[str]] = {}
         if rows:
             # One read of the live queue, and only when there is something to
             # send — a night with no opted-in rows costs nothing extra.
             await incidents.load_open_keys()
+            ineligible_by_device = await _ineligible_ids_by_device(
+                client, supabase_url, headers, corpus,
+                [row.get("device_id") for row in rows],
+            )
 
         for row in rows:
             sid = str(row.get("id", "?"))
@@ -525,10 +617,15 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
             stamp_key = f"notification_failure:digest:bookkeeping:{sid}"
             try:
                 stored_new_ids = row.get("new_match_ids") or []
+                ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
                 new_ids = [
                     opportunity_id
                     for opportunity_id in stored_new_ids
                     if opportunity_id not in hidden_opportunity_ids
+                    # A record this student's own profile excludes is not
+                    # theirs to be mailed. Positive set, like the line above:
+                    # an id tonight's corpus could not see is untouched.
+                    and opportunity_id not in ineligible
                 ]
                 if new_ids != stored_new_ids:
                     cleanup_resp = await client.patch(
