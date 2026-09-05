@@ -231,7 +231,17 @@ def chat_completion(
         return None
 
     effective_model = model or provider.model
-    client_kwargs: dict = {"api_key": provider.api_key, "timeout": _REQUEST_TIMEOUT_SECONDS}
+    client_kwargs: dict = {
+        "api_key": provider.api_key,
+        "timeout": _REQUEST_TIMEOUT_SECONDS,
+        # The SDK retries timeouts and 429/5xx twice by default, inside one
+        # call. The budget is spent once per outer attempt, so a single
+        # chat_completion could issue six billed round-trips while the counter
+        # recorded two — and a draft that times out is generated and billed by
+        # the provider each time, then discarded. This module has its own
+        # retry loop (_MAX_ATTEMPTS); one attempt is one request is one spend.
+        "max_retries": 0,
+    }
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
@@ -315,7 +325,17 @@ def chat_completion_stream(
         return
 
     effective_model = model or provider.model
-    client_kwargs: dict = {"api_key": provider.api_key, "timeout": _REQUEST_TIMEOUT_SECONDS}
+    client_kwargs: dict = {
+        "api_key": provider.api_key,
+        "timeout": _REQUEST_TIMEOUT_SECONDS,
+        # The SDK retries timeouts and 429/5xx twice by default, inside one
+        # call. The budget is spent once per outer attempt, so a single
+        # chat_completion could issue six billed round-trips while the counter
+        # recorded two — and a draft that times out is generated and billed by
+        # the provider each time, then discarded. This module has its own
+        # retry loop (_MAX_ATTEMPTS); one attempt is one request is one spend.
+        "max_retries": 0,
+    }
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 

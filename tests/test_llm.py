@@ -230,3 +230,29 @@ class TestModelFor:
     def test_unknown_task_without_openrouter_uses_strong_model(self, monkeypatch):
         self._clear(monkeypatch)
         assert llm.model_for("nonsense") == {"model": None}
+
+
+class TestOneAttemptIsOneBilledRequest:
+    """The SDK retries timeouts and 429/5xx twice by default, inside one call,
+    while llm_budget.spend() is called once per outer attempt. A single
+    chat_completion could therefore issue six billed round-trips while the
+    counter recorded two — and a draft that times out is generated and billed
+    each time, then discarded."""
+
+    def test_the_client_is_built_with_retries_off(self, monkeypatch):
+        import openai
+
+        seen: list[dict] = []
+
+        class _Recording(_FakeOpenAI):
+            def __init__(self, **kwargs):
+                seen.append(kwargs)
+                super().__init__(**kwargs)
+
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        monkeypatch.setattr(openai, "OpenAI", _Recording)
+
+        llm.chat_completion([{"role": "user", "content": "hi"}])
+
+        assert seen, "the client was never constructed"
+        assert seen[0]["max_retries"] == 0
