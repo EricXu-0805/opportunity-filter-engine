@@ -1,244 +1,72 @@
 {
-  "duration_seconds": 6920.1,
+  "duration_seconds": 1816.3,
   "release": {
     "by_unit": {
-      "gatech": {
-        "ready": true,
-        "reasons": []
-      },
-      "harvard": {
-        "ready": true,
-        "reasons": []
-      },
-      "oregonstate": {
-        "ready": true,
-        "reasons": []
-      },
-      "osu": {
-        "ready": true,
-        "reasons": []
-      },
-      "uci": {
-        "ready": true,
-        "reasons": []
-      },
-      "ucsd": {
-        "ready": true,
-        "reasons": []
-      },
-      "umn": {
-        "ready": true,
-        "reasons": []
-      },
-      "unl": {
+      "national": {
         "ready": true,
         "reasons": []
       }
     },
-    "degradations": [
-      {
-        "detail": "1/3, 2 failed",
-        "kind": "seed_pages_unreached",
-        "source": "campus_graph:harvard"
-      },
-      {
-        "detail": "harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/; harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/summer-research-programs",
-        "kind": "crawl_errors",
-        "source": "campus_graph:harvard"
-      }
-    ],
+    "degradations": [],
     "expected": [
-      "campus_graph:gatech",
-      "campus_graph:harvard",
-      "campus_graph:oregonstate",
-      "campus_graph:osu",
-      "campus_graph:uci",
-      "campus_graph:ucsd",
-      "campus_graph:umn",
-      "campus_graph:unl",
-      "gatech_faculty",
-      "harvard_faculty",
-      "oregonstate_faculty",
-      "osu_faculty",
-      "uci_faculty",
-      "ucsd_faculty",
-      "umn_faculty",
-      "unl_faculty"
+      "nsf_reu",
+      "simplify_internships",
+      "uiuc_sro"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
-      "campus_graph:gatech",
-      "campus_graph:harvard",
-      "campus_graph:oregonstate",
-      "campus_graph:osu",
-      "campus_graph:uci",
-      "campus_graph:ucsd",
-      "campus_graph:umn",
-      "campus_graph:unl",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
-      "gatech_faculty",
-      "harvard_faculty",
       "intl_reconciliation",
-      "oregonstate_faculty",
-      "osu_faculty",
+      "nsf_reu",
       "pi_enricher",
       "professor_tracking",
       "school_audience",
-      "uci_faculty",
-      "ucsd_faculty",
-      "umn_faculty",
-      "unl_faculty"
+      "simplify_internships",
+      "uiuc_sro"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "gatech",
-        "summary_key": "campus_graph:gatech"
+        "school": null,
+        "summary_key": "nsf_reu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "harvard",
-        "summary_key": "campus_graph:harvard"
+        "school": null,
+        "summary_key": "simplify_internships"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "oregonstate",
-        "summary_key": "campus_graph:oregonstate"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "osu",
-        "summary_key": "campus_graph:osu"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "uci",
-        "summary_key": "campus_graph:uci"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucsd",
-        "summary_key": "campus_graph:ucsd"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "umn",
-        "summary_key": "campus_graph:umn"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "unl",
-        "summary_key": "campus_graph:unl"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "gatech",
-        "summary_key": "gatech_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "harvard",
-        "summary_key": "harvard_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "oregonstate",
-        "summary_key": "oregonstate_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "osu",
-        "summary_key": "osu_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "uci",
-        "summary_key": "uci_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "ucsd",
-        "summary_key": "ucsd_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "umn",
-        "summary_key": "umn_faculty"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": "unl",
-        "summary_key": "unl_faculty"
+        "school": null,
+        "summary_key": "uiuc_sro"
       }
     ],
     "publishable": [
-      "gatech",
-      "harvard",
-      "oregonstate",
-      "osu",
-      "uci",
-      "ucsd",
-      "umn",
-      "unl"
+      "national"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "deep source campus_graph:gatech degraded on recursive discovered pages: ['gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0']",
-      "deep source campus_graph:harvard loaded 1/3 configured seed pages (2 failed); those sources kept their previous records",
-      "deep source campus_graph:harvard reported crawl errors: ['harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/', 'harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/summer-research-programs']",
-      "faculty stale retirement is held pending per-unit lineage: ['gatech_faculty', 'harvard_faculty', 'oregonstate_faculty', 'osu_faculty', 'uci_faculty', 'ucsd_faculty', 'umn_faculty', 'unl_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
   "request": {
     "deep": true,
-    "national": false,
-    "schools": [
-      "gatech",
-      "harvard",
-      "oregonstate",
-      "osu",
-      "uci",
-      "ucsd",
-      "umn",
-      "unl"
-    ]
+    "national": true,
+    "schools": null
   },
   "shard": {
-    "national": false,
-    "schools": [
-      "gatech",
-      "harvard",
-      "oregonstate",
-      "osu",
-      "uci",
-      "ucsd",
-      "umn",
-      "unl"
-    ]
+    "national": true,
+    "schools": []
   },
   "source_health": {
     "degraded_shard_count": 1,
@@ -248,7 +76,7 @@
     "fully_stale_schools": [
       "ucd"
     ],
-    "generated_at": "2026-09-06T04:25:44.349020+00:00",
+    "generated_at": "2026-09-06T06:33:36.916204+00:00",
     "partially_degraded_school_count": 1,
     "school_count": 117,
     "stale_days": 17.0,
@@ -258,226 +86,36 @@
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 26,
+      "rule_based_tagged": 2707,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:gatech": {
-      "complete_recursive_sources": [
-        "gatech_lab"
-      ],
-      "crawl_errors": [],
-      "crawl_sources_expected": 6,
-      "crawl_sources_loaded": 6,
-      "deep": true,
-      "degraded_page_errors": [
-        "gatech_department: discovered-page fetch failed: https://career.gatech.edu/undergraduate-research-0"
-      ],
-      "discovered_records": 17,
-      "fetched": 26,
-      "live_pages_attempted": 45,
-      "live_pages_loaded": 44,
-      "new": 1,
-      "seed_pages_expected": 10,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 10,
-      "seed_records": 10,
-      "status": "ok",
-      "updated": 24,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:harvard": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [
-        "harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/",
-        "harvard_ugr_hub: seed fetch failed: https://uraf.harvard.edu/summer-research-programs"
-      ],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 8,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 1,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 2,
-      "seed_pages_loaded": 1,
-      "seed_records": 8,
-      "status": "ok",
-      "updated": 8,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:oregonstate": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 4,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 4,
-      "status": "ok",
-      "updated": 4,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:osu": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 8,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 8,
-      "status": "ok",
-      "updated": 8,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:uci": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 15,
-      "live_pages_attempted": 9,
-      "live_pages_loaded": 9,
-      "new": 0,
-      "seed_pages_expected": 9,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 9,
-      "seed_records": 15,
-      "status": "ok",
-      "updated": 15,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:ucsd": {
-      "complete_recursive_sources": [
-        "ucsd_department_research",
-        "ucsd_institutes"
-      ],
-      "crawl_errors": [],
-      "crawl_sources_expected": 5,
-      "crawl_sources_loaded": 5,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 25,
-      "fetched": 32,
-      "live_pages_attempted": 36,
-      "live_pages_loaded": 36,
-      "new": 0,
-      "seed_pages_expected": 7,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 7,
-      "seed_records": 13,
-      "status": "ok",
-      "updated": 30,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:umn": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 7,
-      "live_pages_attempted": 3,
-      "live_pages_loaded": 3,
-      "new": 0,
-      "seed_pages_expected": 3,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 3,
-      "seed_records": 7,
-      "status": "ok",
-      "updated": 7,
-      "zero_class": "success_nonzero"
-    },
-    "campus_graph:unl": {
-      "complete_recursive_sources": [],
-      "crawl_errors": [],
-      "crawl_sources_expected": 1,
-      "crawl_sources_loaded": 1,
-      "deep": true,
-      "degraded_page_errors": [],
-      "discovered_records": 0,
-      "fetched": 5,
-      "live_pages_attempted": 2,
-      "live_pages_loaded": 2,
-      "new": 0,
-      "seed_pages_expected": 2,
-      "seed_pages_failed": 0,
-      "seed_pages_loaded": 2,
-      "seed_records": 5,
-      "status": "ok",
-      "updated": 5,
-      "zero_class": "success_nonzero"
-    },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 13810,
+      "skipped_rolling": 15146,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
       "deactivation_not_authorized": [],
       "kept_fresh": 0,
       "newly_deactivated": 0,
-      "skipped_missing_unit_ledger": [
-        "gatech_faculty",
-        "harvard_faculty",
-        "oregonstate_faculty",
-        "osu_faculty",
-        "uci_faculty",
-        "ucsd_faculty",
-        "umn_faculty",
-        "unl_faculty"
-      ],
+      "skipped_missing_unit_ledger": [],
       "skipped_partial_scrape": [],
       "status": "ok",
       "would_deactivate": [],
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 259,
-      "keywords_cleaned": 39,
-      "removed_by_school": {
-        "gatech": 106,
-        "harvard": 35,
-        "osu": 29,
-        "uci": 26,
-        "ucsd": 50,
-        "umn": 3,
-        "unl": 10
-      },
+      "duplicates_removed": 0,
+      "keywords_cleaned": 0,
+      "removed_by_school": {},
       "retitled": 0,
-      "shared_inbox_nulled": {
-        "harvard": 4,
-        "ucsd": 2
-      },
+      "shared_inbox_nulled": {},
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -486,45 +124,24 @@
       "shared_mailbox_nulled": 0,
       "status": "ok"
     },
-    "gatech_faculty": {
-      "fetched": 1221,
-      "new": 136,
-      "status": "ok",
-      "updated": 1085,
-      "zero_class": "success_nonzero"
-    },
-    "harvard_faculty": {
-      "fetched": 439,
-      "new": 44,
-      "status": "ok",
-      "updated": 395,
-      "zero_class": "success_nonzero"
-    },
     "intl_reconciliation": {
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "oregonstate_faculty": {
-      "fetched": 345,
-      "new": 0,
+    "nsf_reu": {
+      "fetched": 135,
+      "new": 1,
       "status": "ok",
-      "updated": 345,
-      "zero_class": "success_nonzero"
-    },
-    "osu_faculty": {
-      "fetched": 2368,
-      "new": 56,
-      "status": "ok",
-      "updated": 2312,
+      "updated": 134,
       "zero_class": "success_nonzero"
     },
     "pi_enricher": {
-      "already_had": 9469,
-      "enriched": 394,
-      "nulled_unit_inboxes": 6,
-      "renulled_shared_emails": 24,
-      "scraped": 1000,
-      "skipped_budget": 120,
+      "already_had": 758,
+      "enriched": 275,
+      "nulled_unit_inboxes": 0,
+      "renulled_shared_emails": 0,
+      "scraped": 281,
+      "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
@@ -611,7 +228,7 @@
         "fsu_faculty": 659,
         "fsu_research_programs": 5,
         "gatech_external_research": 2,
-        "gatech_faculty": 1425,
+        "gatech_faculty": 1319,
         "gatech_labs": 1,
         "gatech_research_programs": 27,
         "georgetown_faculty": 861,
@@ -621,7 +238,7 @@
         "hamilton_faculty": 245,
         "hamilton_research_programs": 7,
         "handshake": 71,
-        "harvard_faculty": 507,
+        "harvard_faculty": 472,
         "harvard_research_programs": 8,
         "haverford_faculty": 121,
         "haverford_research_programs": 5,
@@ -663,12 +280,12 @@
         "northwestern_faculty": 2777,
         "northwestern_labs": 11,
         "northwestern_research_programs": 18,
-        "nsf_reu": 756,
+        "nsf_reu": 757,
         "nyu_faculty": 2235,
         "nyu_research_programs": 11,
         "oregonstate_faculty": 604,
         "oregonstate_research_programs": 4,
-        "osu_faculty": 2568,
+        "osu_faculty": 2539,
         "osu_research_programs": 8,
         "pitt_faculty": 1132,
         "pitt_research_programs": 4,
@@ -693,7 +310,7 @@
         "rutgers_research_programs": 8,
         "sbu_faculty": 909,
         "sbu_research_programs": 5,
-        "simplify_internships": 4759,
+        "simplify_internships": 6096,
         "smith_faculty": 308,
         "smith_research_programs": 6,
         "stanford_external_research": 1,
@@ -775,7 +392,7 @@
         "uchicago_faculty": 1168,
         "uchicago_labs": 1,
         "uchicago_research_programs": 13,
-        "uci_faculty": 1209,
+        "uci_faculty": 1183,
         "uci_labs": 2,
         "uci_research_programs": 13,
         "ucla_external_research": 1,
@@ -793,7 +410,7 @@
         "ucsb_urca_projects": 249,
         "ucsc_faculty": 736,
         "ucsc_research_programs": 4,
-        "ucsd_faculty": 1491,
+        "ucsd_faculty": 1441,
         "ucsd_labs": 3,
         "ucsd_research_programs": 29,
         "udel_faculty": 1018,
@@ -822,10 +439,10 @@
         "umich_faculty": 1476,
         "umich_labs": 3,
         "umich_research_programs": 6,
-        "umn_faculty": 1460,
+        "umn_faculty": 1457,
         "umn_research_programs": 7,
         "unc_faculty": 367,
-        "unl_faculty": 1229,
+        "unl_faculty": 1219,
         "unl_research_programs": 5,
         "upenn_external_research": 9,
         "upenn_faculty": 1912,
@@ -874,62 +491,37 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 138368
+      "tagged": 139447
     },
-    "uci_faculty": {
-      "fetched": 1149,
-      "new": 17,
+    "simplify_internships": {
+      "deactivated_stale": 637,
+      "fetched": 3015,
+      "new": 1337,
       "status": "ok",
-      "updated": 1132,
+      "updated": 1678,
       "zero_class": "success_nonzero"
     },
-    "ucsd_faculty": {
-      "fetched": 1298,
-      "new": 19,
+    "uiuc_sro": {
+      "deep": true,
+      "fetched": 278,
+      "new": 0,
       "status": "ok",
-      "updated": 1279,
-      "zero_class": "success_nonzero"
-    },
-    "umn_faculty": {
-      "fetched": 1392,
-      "new": 9,
-      "status": "ok",
-      "updated": 1383,
-      "zero_class": "success_nonzero"
-    },
-    "unl_faculty": {
-      "fetched": 972,
-      "new": 18,
-      "status": "ok",
-      "updated": 954,
+      "updated": 278,
       "zero_class": "success_nonzero"
     }
   },
   "time_budget": {
-    "budget_minutes": 150.0,
+    "budget_minutes": 260.0,
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-06T02:31:10.567736",
-  "total_in_file": 138109,
-  "total_new": 300,
-  "total_updated": 8986,
+  "timestamp": "2026-09-06T06:03:59.102744",
+  "total_in_file": 139447,
+  "total_new": 1338,
+  "total_updated": 2090,
   "zero_classes": {
-    "campus_graph:gatech": "success_nonzero",
-    "campus_graph:harvard": "success_nonzero",
-    "campus_graph:oregonstate": "success_nonzero",
-    "campus_graph:osu": "success_nonzero",
-    "campus_graph:uci": "success_nonzero",
-    "campus_graph:ucsd": "success_nonzero",
-    "campus_graph:umn": "success_nonzero",
-    "campus_graph:unl": "success_nonzero",
-    "gatech_faculty": "success_nonzero",
-    "harvard_faculty": "success_nonzero",
-    "oregonstate_faculty": "success_nonzero",
-    "osu_faculty": "success_nonzero",
-    "uci_faculty": "success_nonzero",
-    "ucsd_faculty": "success_nonzero",
-    "umn_faculty": "success_nonzero",
-    "unl_faculty": "success_nonzero"
+    "nsf_reu": "success_nonzero",
+    "simplify_internships": "success_nonzero",
+    "uiuc_sro": "success_nonzero"
   }
 }
