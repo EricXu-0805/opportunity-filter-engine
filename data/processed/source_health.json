@@ -198,8 +198,8 @@
       "last_publish_record_count": 987
     },
     "national": {
-      "last_publish_at": "2026-09-06T04:28:33.197219+00:00",
-      "last_publish_record_count": 5864
+      "last_publish_at": "2026-09-06T06:35:34.073060+00:00",
+      "last_publish_record_count": 7202
     },
     "ncsu": {
       "last_publish_at": "2026-09-06T04:28:33.197219+00:00",
@@ -2605,14 +2605,14 @@
       "status": "success_nonzero"
     },
     "nsf_reu": {
-      "baseline_count": 153,
+      "baseline_count": 159,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 153,
+      "current_count": 135,
       "failure_reason": null,
-      "last_attempt_at": "2026-08-30T06:20:18.905303+00:00",
-      "last_good_count": 153,
-      "last_success_at": "2026-08-30T06:20:18.905303+00:00",
+      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
+      "last_good_count": 135,
+      "last_success_at": "2026-09-06T06:33:36.916204+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -2809,14 +2809,14 @@
       "status": "success_nonzero"
     },
     "simplify_internships": {
-      "baseline_count": 2250,
+      "baseline_count": 3015,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 2250,
+      "current_count": 3015,
       "failure_reason": null,
-      "last_attempt_at": "2026-08-30T06:20:34.016625+00:00",
-      "last_good_count": 2250,
-      "last_success_at": "2026-08-30T06:20:34.016625+00:00",
+      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
+      "last_good_count": 3015,
+      "last_success_at": "2026-09-06T06:33:36.916204+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -3858,11 +3858,11 @@
       "baseline_count": 279,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 279,
+      "current_count": 278,
       "failure_reason": null,
-      "last_attempt_at": "2026-08-30T06:20:01.504821+00:00",
-      "last_good_count": 279,
-      "last_success_at": "2026-08-30T06:20:01.504821+00:00",
+      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
+      "last_good_count": 278,
+      "last_success_at": "2026-09-06T06:33:36.916204+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
