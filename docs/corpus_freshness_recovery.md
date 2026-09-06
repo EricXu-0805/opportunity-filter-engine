@@ -421,3 +421,76 @@ recommended_action:  request a crawl allowlist from UC Davis for the URC host,
 affected:            7 records; the last school between fully_stale_school_count
                      and 0
 ```
+
+
+## 11. Recovery batches, measured
+
+Freshness decays as records age past the bound, so every figure carries the
+time it was taken. These are not comparable without it.
+
+| batch | measured_at | freshness | fully_stale | records recovered |
+|---|---|---|---|---|
+| baseline (round two close) | 2026-09-05T14:53Z | 91.45% | 2 | — |
+| UC Berkeley | 2026-09-05T22:18Z | **93.43%** | 1 | ~2,100 |
+| NYU + Wisconsin | 2026-09-06T02:28Z | **94.24%** | 1 | ~1,166 |
+| osu, oregonstate, unl, umn, ucsd, uci, harvard, gatech | 2026-09-06T04:28Z | **94.57%** | 1 | ~470 |
+
+```
+freshness_before   91.45%      (2026-09-05T14:53Z)
+freshness_after    94.57%      (2026-09-06T04:28Z)
+freshness_gain     +3.12pp
+threshold          95.00%
+deficit remaining  581 records
+
+fully_stale_before      2      ucb, ucd
+fully_stale_after       1      ucd
+shards_recovered       11      ucb, nyu, wisc(partial), osu, oregonstate,
+                               unl, umn, ucsd, uci, harvard, gatech
+shards_still_stale      2      ucd (fully), ucb_eecs_faculty (one source)
+failed_shards           0
+```
+
+Every one of those records became fresh through a real harvest that the
+release contract passed. No timestamp was written for a record that was not
+re-observed.
+
+### A correction worth recording
+
+The recoverable pool was estimated by fetching each dead department's page and
+counting elements matching its configured card selector. That over-estimated.
+Oregon State's five dead departments all matched cards, and re-running it still
+emitted 345 records against 608 active — because the collector does more than
+select cards: ladder filters, name/email dedup and per-unit rules all cut the
+list further. Cards on a page is an upper bound on what a collector emits, not
+a prediction of it.
+
+The practical consequence: **re-running does not recover scattered stale
+records.** They were absent from the last harvest and are absent from the next
+one for the same reason. Only two things move them — repairing the collector,
+or retiring them once a complete scrape proves they are gone.
+
+## 12. What closing the last 581 records requires
+
+Not another re-run. The schools still carrying the deficit have dead
+departments whose pages do not yield records to their configured collector at
+all:
+
+| school | stale | dead depts | parse to cards here | verdict |
+|---|---|---|---|---|
+| tamu | 718 | 7 | 0 of 7 | genuinely broken |
+| wisc | 671 | 20 remaining | 0 of 20 | 404s + selector drift |
+| jhu | 508 | 23 | 0 of 23 | genuinely broken |
+| umd | 251 | 3 | 0 of 3 | genuinely broken |
+| sbu | 248 | 7 | 0 of 7 | genuinely broken |
+| vanderbilt | 180 | 7 | 0 of 7 | genuinely broken |
+| ncsu | 174 | 3 | 0 of 3 | genuinely broken |
+| uf | 167 | 4 | 0 of 4 | genuinely broken |
+
+Any two of the top three closes the 581-record gap. Each is per-department
+recon — find the moved URL, re-derive the selector, verify against the live
+page — which is onboarding-grade work and belongs in its own change with its
+own review, not bolted onto a release-gate repair.
+
+`fully_stale_school_count = 0` remains unreachable regardless: UC Davis is
+walled by an edge bot-management policy that refuses the supported render path,
+and the only lawful unblock is an allowlist granted by UC Davis.
