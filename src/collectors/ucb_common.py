@@ -29,6 +29,7 @@ both by visiting each profile page. Records with no email found ship "lite"
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import logging
@@ -158,13 +159,32 @@ _NON_PERSON_IDENTITY_TOKENS = frozenset(
 )
 
 
+# Site chrome, dropped before the wall check for the same reason
+# ``_without_asides`` drops parentheticals: a page refusing to serve you does
+# not put the refusal in its nav bar. Texas A&M's education directory carries
+# "login" in its nav and "Logout" in its footer on every profile, and its
+# profiles are compact — 364 characters — so the "short page that mentions
+# login" rule fired on all 282 of them and the School of Education went stale
+# for weeks with a real name, title, department and email on every page it
+# was throwing away.
+_CHROME_SELECTOR = "nav, header, footer"
+
+
 def _profile_page_text(soup: object) -> str:
     if soup is None:
         return ""
     try:
-        body = soup.get_text(" ", strip=True)
+        stripped = copy.copy(soup)
+        for element in stripped.select(_CHROME_SELECTOR):
+            element.decompose()
+        body = stripped.get_text(" ", strip=True)
     except Exception:  # noqa: BLE001
-        return ""
+        # A soup that cannot be copied or queried still gets read whole: losing
+        # the chrome is an improvement, not a precondition.
+        try:
+            body = soup.get_text(" ", strip=True)
+        except Exception:  # noqa: BLE001
+            return ""
     return re.sub(r"\s+", " ", body).strip()
 
 

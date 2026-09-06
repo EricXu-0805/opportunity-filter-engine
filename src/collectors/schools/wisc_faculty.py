@@ -53,6 +53,32 @@ def _engr(short: str, name: str, majors: list[str], code: str) -> dict:
                                      "email": "a[href^='mailto:']"}}}
 
 
+# UW-Madison migrated its department sites onto the shared `uw-people`
+# WordPress plugin during 2026. The old `.faculty-member-content` grids this
+# file scraped are gone: the listing is now a Gutenberg block that fetches its
+# roster client-side, so those pages still answer 200 and parse to zero cards.
+# Twelve departments went stale exactly that way, and nothing noticed, because
+# a collector that finds no cards reports success with nothing to show.
+#
+# The replacement is the platform's own public REST API — the same one MATH has
+# read since it migrated first: `wp/v2/uw_staff`, filtered to the department's
+# faculty `uw_staff_type` terms. Term ids are per-site (each department runs its
+# own WordPress install) so they are recorded here rather than derived; a wrong
+# id fails loudly as an empty harvest instead of quietly widening the roster to
+# staff and emeriti.
+#
+# `name_flip` is universal on this platform: post titles are stored
+# "Last, First".
+def _uw_people(short: str, name: str, majors: list[str], base: str,
+               terms: list[int], directory_url: str, **extra) -> dict:
+    """One department on UW's `uw-people` platform, via its public REST API."""
+    api = {"type": "wp", "base": base, "post_type": "uw_staff",
+           "category_include": {"uw_staff_type": terms}, "name_flip": True}
+    api.update(extra)
+    return {"short": short, "name": name, "majors": majors,
+            "directory_url": directory_url, "api": api}
+
+
 SCHOOL: dict = {
     "school_slug": "wisc",
     "source": "wisc_faculty",
@@ -65,21 +91,12 @@ SCHOOL: dict = {
         "arrangement; ask the professor."
     ),
     "departments": [
-        {
-            "short": "CS",
-            "name": "Department of Computer Sciences",
-            "majors": ["Computer Science", "Data Science"],
-            "directory_url": "https://www.cs.wisc.edu/people/faculty-2/",
-            "scrape": {
-                "url": "https://www.cs.wisc.edu/people/faculty-2/",
-                "selectors": {
-                    "card": ".faculty-member-content",
-                    "name": ".faculty-name a",
-                    "link": ".faculty-name a",
-                    "email": "a[href^='mailto:']",
-                },
-            },
-        },
+        _uw_people(
+            'CS', 'Department of Computer Sciences',
+            ['Computer Science', 'Data Science'],
+            'https://www.cs.wisc.edu', [5, 14],
+            'https://www.cs.wisc.edu/people/faculty-2/',
+        ),
         _engr("ECE", "Department of Electrical & Computer Engineering",
               ["Electrical Engineering", "Computer Engineering"], "ece"),
         _engr("ME", "Department of Mechanical Engineering",
@@ -107,19 +124,12 @@ SCHOOL: dict = {
                               "name": "h3 a", "link": "h3 a"},
             },
         },
-        {
-            "short": "STAT",
-            "name": "Department of Statistics",
-            "majors": ["Statistics", "Data Science"],
-            "directory_url": "https://stat.wisc.edu/people/",
-            "scrape": {
-                "url": "https://stat.wisc.edu/people/",
-                "name_flip": True,
-                "section_filter": {"include": r"^faculty$"},
-                "selectors": {"card": ".faculty-member-content",
-                              "name": "h3 a", "link": "h3 a"},
-            },
-        },
+        _uw_people(
+            'STAT', 'Department of Statistics',
+            ['Statistics', 'Data Science'],
+            'https://stat.wisc.edu', [7],
+            'https://stat.wisc.edu/people/',
+        ),
         # --- Full-school coverage (Engineering, L&S, CALS, Business, Education, Professional, SoHE, Nelson, VetMed) ---
         {'short': 'AAE',
          'name': 'Department of Agricultural & Applied Economics',
@@ -261,18 +271,12 @@ SCHOOL: dict = {
                     'ladder_filter': {'require': 'professor',
                                       'drop': 'emerit|adjunct|affiliate|honorary|clinical|visiting|teaching|lecturer|of '
                                               'practice'}}},
-        {'short': 'COMMARTS',
-         'name': 'Department of Communication Arts',
-         'majors': ['Communication Arts', 'Communication Sciences & Disorders'],
-         'directory_url': 'https://commarts.wisc.edu/people/',
-         'scrape': {'url': 'https://commarts.wisc.edu/people/',
-                    'section_filter': {'include': '^(department leadership|faculty)$',
-                                       'exclude': 'affiliate|emeriti|staff|student|instructor',
-                                       'heading': 'h2'},
-                    'selectors': {'card': 'div.faculty-member-content',
-                                  'name': 'h3 a',
-                                  'link': 'h3 a',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'COMMARTS', 'Department of Communication Arts',
+            ['Communication Arts', 'Communication Sciences & Disorders'],
+            'https://commarts.wisc.edu', [163],
+            'https://commarts.wisc.edu/people/',
+        ),
         {'short': 'CONSCI',
          'name': 'Department of Consumer Science',
          'majors': ['Consumer Behavior and Marketplace Studies', 'Personal Finance'],
@@ -318,17 +322,12 @@ SCHOOL: dict = {
                                   'name': 'a.sohe-fs-search-content',
                                   'link': 'a.sohe-fs-search-content',
                                   'title': 'h3 span'}}},
-        {'short': 'ECON',
-         'name': 'Department of Economics',
-         'majors': ['Economics', 'Mathematical Economics'],
-         'directory_url': 'https://econ.wisc.edu/faculty/',
-         'scrape': {'url': 'https://econ.wisc.edu/faculty/',
-                    'ladder_filter': {'require': 'profess', 'drop': 'lecturer|faculty associate|emerit'},
-                    'selectors': {'card': 'div.faculty-member-content',
-                                  'name': 'h3.faculty-name a',
-                                  'link': 'h3.faculty-name a',
-                                  'title': 'p.position-title',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'ECON', 'Department of Economics',
+            ['Economics', 'Mathematical Economics'],
+            'https://econ.wisc.edu', [3],
+            'https://econ.wisc.edu/faculty/',
+        ),
         {'short': 'EDPSYCH',
          'name': 'Department of Educational Psychology',
          'majors': ['Educational Psychology'],
@@ -341,27 +340,18 @@ SCHOOL: dict = {
                     'ladder_filter': {'require': 'professor',
                                       'drop': 'emerit|adjunct|affiliate|honorary|clinical|visiting|teaching|lecturer|of '
                                               'practice'}}},
-        {'short': 'ELPA',
-         'name': 'Department of Educational Leadership & Policy Analysis',
-         'majors': ['Educational Leadership & Policy Analysis'],
-         'directory_url': 'https://elpa.education.wisc.edu/people/',
-         'scrape': {'url': 'https://elpa.education.wisc.edu/people/',
-                    'selectors': {'card': 'div.uw-person-wrapper',
-                                  'name': 'a.dm-faculty-name',
-                                  'link': 'a.dm-faculty-name',
-                                  'title': 'div.uw-person-txt-wrapper p'},
-                    'ladder_filter': {'require': 'professor',
-                                      'drop': 'emerit|adjunct|affiliate|honorary|clinical|visiting|teaching|lecturer|of '
-                                              'practice'}}},
-        {'short': 'ENGL',
-         'name': 'Department of English',
-         'majors': ['English', 'Creative Writing'],
-         'directory_url': 'https://english.wisc.edu/people/faculty/',
-         'scrape': {'url': 'https://english.wisc.edu/people/faculty/',
-                    'selectors': {'card': '.faculty-member-content',
-                                  'name': '.faculty-name a',
-                                  'link': '.faculty-name a',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'ELPA', 'Department of Educational Leadership & Policy Analysis',
+            ['Educational Leadership & Policy Analysis'],
+            'https://elpa.education.wisc.edu', [18, 19, 20, 21],
+            'https://elpa.education.wisc.edu/people/',
+        ),
+        _uw_people(
+            'ENGL', 'Department of English',
+            ['English', 'Creative Writing'],
+            'https://english.wisc.edu', [16, 95],
+            'https://english.wisc.edu/people/faculty/',
+        ),
         {'short': 'ENTOM',
          'name': 'Department of Entomology',
          'majors': ['Entomology'],
@@ -470,14 +460,12 @@ SCHOOL: dict = {
                                   'name': 'a.sohe-fs-search-content',
                                   'link': 'a.sohe-fs-search-content',
                                   'title': 'h3 span'}}},
-        {'short': 'HIST',
-         'name': 'Department of History',
-         'majors': ['History'],
-         'directory_url': 'https://history.wisc.edu/faculty/',
-         'scrape': {'url': 'https://history.wisc.edu/faculty/',
-                    'selectors': {'card': '.faculty-member-content',
-                                  'name': '.faculty-name a',
-                                  'link': '.faculty-name a'}}},
+        _uw_people(
+            'HIST', 'Department of History',
+            ['History'],
+            'https://history.wisc.edu', [2, 49],
+            'https://history.wisc.edu/faculty/',
+        ),
         {'short': 'IBIO',
          'name': 'Department of Integrative Biology',
          'majors': ['Biology', 'Zoology', 'Botany'],
@@ -500,18 +488,12 @@ SCHOOL: dict = {
                                   'link': '.name a',
                                   'title': '.title',
                                   'email': ".email a[href^='mailto:']"}}},
-        {'short': 'KINES',
-         'name': 'Department of Kinesiology',
-         'majors': ['Kinesiology', 'Athletic Training'],
-         'directory_url': 'https://kinesiology.education.wisc.edu/people/',
-         'scrape': {'url': 'https://kinesiology.education.wisc.edu/people/',
-                    'selectors': {'card': 'div.uw-person-wrapper',
-                                  'name': 'a.dm-faculty-name',
-                                  'link': 'a.dm-faculty-name',
-                                  'title': 'div.uw-person-txt-wrapper p'},
-                    'ladder_filter': {'require': 'professor',
-                                      'drop': 'emerit|adjunct|affiliate|honorary|clinical|visiting|teaching|lecturer|of '
-                                              'practice'}}},
+        _uw_people(
+            'KINES', 'Department of Kinesiology',
+            ['Kinesiology', 'Athletic Training'],
+            'https://kinesiology.education.wisc.edu', [36],
+            'https://kinesiology.education.wisc.edu/people/',
+        ),
         {'short': 'LAW',
          'name': 'Law School',
          'majors': ['Law'],
@@ -575,18 +557,13 @@ SCHOOL: dict = {
                     'selectors': {'card': '.faculty-member-content',
                                   'name': 'h3.faculty-name',
                                   'email': "a[href^='mailto:']"}}},
-        {'short': 'NURS',
-         'name': 'School of Nursing',
-         'majors': ['Nursing'],
-         'directory_url': 'https://nursing.wisc.edu/directory/faculty/',
-         'scrape': {'url': 'https://nursing.wisc.edu/directory/faculty/',
-                    'link_filter': '/staff/',
-                    'ladder_filter': {'require': 'profess', 'drop': 'emerit'},
-                    'selectors': {'card': '.faculty-member-content',
-                                  'name': '.faculty-name a',
-                                  'link': '.faculty-name a',
-                                  'title': 'p.position-title',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'NURS', 'School of Nursing',
+            ['Nursing'],
+            'https://nursing.wisc.edu', [40, 41, 42],
+            'https://nursing.wisc.edu/directory/faculty/',
+            name_strip=',\\s*(?:[A-Z][A-Za-z]*\\.?[A-Z][A-Za-z0-9.()\\-]*|[A-Z]{2,}[A-Za-z0-9.()\\-]*)(?=\\s*,|\\s*$)',
+        ),
         {'short': 'NUTRSCI',
          'name': 'Department of Nutritional Sciences',
          'majors': ['Nutritional Sciences', 'Dietetics'],
@@ -632,16 +609,12 @@ SCHOOL: dict = {
                                        'exclude': 'affiliate|emeritus',
                                        'heading': 'h2'},
                     'selectors': {'card': 'dt', 'name': 'a strong', 'link': 'a'}}},
-        {'short': 'PHIL',
-         'name': 'Department of Philosophy',
-         'majors': ['Philosophy'],
-         'directory_url': 'https://philosophy.wisc.edu/people/faculty/',
-         'scrape': {'url': 'https://philosophy.wisc.edu/people/faculty/',
-                    'section_filter': {'exclude': 'emerit|affiliate|postdoc'},
-                    'selectors': {'card': '.faculty-member-content',
-                                  'name': '.faculty-name a',
-                                  'link': '.faculty-name a',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'PHIL', 'Department of Philosophy',
+            ['Philosophy'],
+            'https://philosophy.wisc.edu', [8],
+            'https://philosophy.wisc.edu/people/faculty/',
+        ),
         {'short': 'PLPATH',
          'name': 'Department of Plant Pathology',
          'majors': ['Plant Pathology', 'Plant Sciences'],
@@ -671,18 +644,12 @@ SCHOOL: dict = {
                                   'link': 'h3.faculty-name a',
                                   'title': 'p.position-title',
                                   'email': "a[href^='mailto:']"}}},
-        {'short': 'PUBAFF',
-         'name': 'La Follette School of Public Affairs',
-         'majors': ['Public Affairs', 'Public Policy'],
-         'directory_url': 'https://lafollette.wisc.edu/about/faculty-and-staff/',
-         'scrape': {'url': 'https://lafollette.wisc.edu/about/faculty-and-staff/',
-                    'link_filter': '/people/',
-                    'ladder_filter': {'require': 'profess', 'drop': 'emerit|adjunct'},
-                    'selectors': {'card': '.faculty-member-content',
-                                  'name': '.faculty-name a',
-                                  'link': '.faculty-name a',
-                                  'title': 'p.faculty-credentials',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'PUBAFF', 'La Follette School of Public Affairs',
+            ['Public Affairs', 'Public Policy'],
+            'https://lafollette.wisc.edu', [15, 16],
+            'https://lafollette.wisc.edu/about/faculty-and-staff/',
+        ),
         {'short': 'RE',
          'name': 'Department of Real Estate & Urban Land Economics',
          'majors': ['Real Estate'],
@@ -725,18 +692,12 @@ SCHOOL: dict = {
                     'ladder_filter': {'require': 'professor',
                                       'drop': 'emerit|adjunct|affiliate|honorary|clinical|visiting|teaching|lecturer|of '
                                               'practice'}}},
-        {'short': 'SOC',
-         'name': 'Department of Sociology',
-         'majors': ['Sociology'],
-         'directory_url': 'https://sociology.wisc.edu/faculty/',
-         'scrape': {'url': 'https://sociology.wisc.edu/faculty/',
-                    'name_flip': True,
-                    'ladder_filter': {'require': 'profess', 'drop': 'lecturer|teaching faculty|emerit'},
-                    'selectors': {'card': 'div.faculty-member-content',
-                                  'name': 'h3.faculty-name a',
-                                  'link': 'h3.faculty-name a',
-                                  'title': 'p.position-title',
-                                  'email': "a[href^='mailto:']"}}},
+        _uw_people(
+            'SOC', 'Department of Sociology',
+            ['Sociology'],
+            'https://sociology.wisc.edu', [13, 105],
+            'https://sociology.wisc.edu/faculty/',
+        ),
         {'short': 'SOILS',
          'name': 'Department of Soil & Environmental Sciences',
          'majors': ['Soil Science', 'Environmental Sciences'],
