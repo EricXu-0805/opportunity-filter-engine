@@ -726,3 +726,78 @@ class TestContactProvenance:
         assert _null_unit_mailbox_emails(opps) == 1
         assert all(o["contact_email"] is None for o in opps)
         assert all("email_source" not in o["metadata"] for o in opps)
+
+
+# ---------------------------------------------------------------------------
+# Site chrome is not a wall. Same failure family as the Case Western
+# "(login required)" aside: a real page thrown away because a word appeared
+# somewhere that was never the page's answer.
+# ---------------------------------------------------------------------------
+
+class TestChromeIsNotAWall:
+    def _soup(self, html):
+        from bs4 import BeautifulSoup
+        return BeautifulSoup(html, "html.parser")
+
+    # Texas A&M's education directory, reduced to its shape: a compact profile
+    # whose nav says "login" and whose footer says "Logout".
+    _TAMU = """
+      <html><body>
+        <nav>home directory education.tamu mycehd help login</nav>
+        <div class="full_name">Sandra Acosta</div>
+        <div style="font-size: 120%">Associate Professor</div>
+        <div>Educational Psychology</div>
+        <a href="mailto:sacosta@tamu.edu">sacosta@tamu.edu</a>
+        <footer>&copy; 2026 College of Education. Logout | TAMU</footer>
+      </body></html>
+    """
+
+    def test_a_nav_bar_login_link_does_not_condemn_a_real_profile(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+        assert profile_page_is_denial(self._soup(self._TAMU)) is False
+
+    def test_that_profile_still_verifies_its_person(self):
+        from src.collectors.ucb_common import profile_page_matches_person
+        assert profile_page_matches_person(
+            self._soup(self._TAMU), "Sandra Acosta",
+            identity_selectors=".full_name") is True
+
+    def test_a_real_login_wall_in_the_content_still_blocks(self):
+        """The rule keeps the job it was written for."""
+        from src.collectors.ucb_common import profile_page_is_denial
+        wall = self._soup(
+            "<html><body><nav>home</nav>"
+            "<h1>Sign in</h1><p>Please sign in to continue.</p>"
+            "</body></html>")
+        assert profile_page_is_denial(wall) is True
+
+    def test_a_login_wall_whose_only_text_is_chrome_shaped_still_blocks(self):
+        """Stripping chrome must not empty a page into looking innocent.
+
+        An empty body is itself a denial, so a page that is nothing but a nav
+        is refused rather than waved through.
+        """
+        from src.collectors.ucb_common import profile_page_is_denial
+        assert profile_page_is_denial(
+            self._soup("<html><body><nav>Log in</nav></body></html>")) is True
+
+    def test_a_title_that_says_log_in_still_blocks(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+        assert profile_page_is_denial(self._soup(
+            "<html><head><title>Log in required</title></head>"
+            "<body><p>" + ("filler content. " * 120) + "</p></body></html>",
+        )) is True
+
+    def test_a_denial_message_inside_the_content_still_blocks(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+        assert profile_page_is_denial(self._soup(
+            "<html><body><nav>home</nav>"
+            "<p>Access denied. You do not have permission to view this page.</p>"
+            "</body></html>")) is True
+
+    def test_a_page_with_no_chrome_reads_exactly_as_before(self):
+        from src.collectors.ucb_common import profile_page_is_denial
+        plain = self._soup(
+            "<html><body><h1>Jane Roe</h1><p>Professor of Physics. "
+            + ("Research in condensed matter. " * 60) + "</p></body></html>")
+        assert profile_page_is_denial(plain) is False

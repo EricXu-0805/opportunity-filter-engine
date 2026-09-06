@@ -1,72 +1,69 @@
 {
-  "duration_seconds": 1816.3,
+  "duration_seconds": 1194.1,
   "release": {
     "by_unit": {
-      "national": {
+      "tamu": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [],
     "expected": [
-      "nsf_reu",
-      "simplify_internships",
-      "uiuc_sro"
+      "campus_graph:tamu",
+      "tamu_faculty"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
+      "campus_graph:tamu",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
       "faculty_joint_collapse",
       "intl_reconciliation",
-      "nsf_reu",
       "pi_enricher",
       "professor_tracking",
       "school_audience",
-      "simplify_internships",
-      "uiuc_sro"
+      "tamu_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": null,
-        "summary_key": "nsf_reu"
+        "school": "tamu",
+        "summary_key": "campus_graph:tamu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": null,
-        "summary_key": "simplify_internships"
-      },
-      {
-        "allow_confirmed_empty": false,
-        "mode": "deep",
-        "school": null,
-        "summary_key": "uiuc_sro"
+        "school": "tamu",
+        "summary_key": "tamu_faculty"
       }
     ],
     "publishable": [
-      "national"
+      "tamu"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
+      "faculty stale retirement is held pending per-unit lineage: ['tamu_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
   "request": {
     "deep": true,
-    "national": true,
-    "schools": null
+    "national": false,
+    "schools": [
+      "tamu"
+    ]
   },
   "shard": {
-    "national": true,
-    "schools": []
+    "national": false,
+    "schools": [
+      "tamu"
+    ]
   },
   "source_health": {
     "degraded_shard_count": 1,
@@ -76,7 +73,7 @@
     "fully_stale_schools": [
       "ucd"
     ],
-    "generated_at": "2026-09-06T06:33:36.916204+00:00",
+    "generated_at": "2026-09-06T18:59:44.243906+00:00",
     "partially_degraded_school_count": 1,
     "school_count": 117,
     "stale_days": 17.0,
@@ -86,36 +83,62 @@
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 2707,
+      "rule_based_tagged": 6,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
+    "campus_graph:tamu": {
+      "complete_recursive_sources": [],
+      "crawl_errors": [],
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
+      "deep": true,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
+      "new": 0,
+      "seed_pages_expected": 4,
+      "seed_pages_failed": 0,
+      "seed_pages_loaded": 4,
+      "seed_records": 8,
+      "status": "ok",
+      "updated": 8,
+      "zero_class": "success_nonzero"
+    },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 15146,
+      "skipped_rolling": 14501,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
       "deactivation_not_authorized": [],
       "kept_fresh": 0,
       "newly_deactivated": 0,
-      "skipped_missing_unit_ledger": [],
+      "skipped_missing_unit_ledger": [
+        "tamu_faculty"
+      ],
       "skipped_partial_scrape": [],
       "status": "ok",
       "would_deactivate": [],
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 0,
+      "duplicates_removed": 21,
       "keywords_cleaned": 0,
-      "removed_by_school": {},
+      "removed_by_school": {
+        "tamu": 21
+      },
       "retitled": 0,
-      "shared_inbox_nulled": {},
+      "shared_inbox_nulled": {
+        "tamu": 2
+      },
       "shared_keyword_demoted": 0,
       "status": "ok"
     },
@@ -128,31 +151,24 @@
       "citizenship_required_but_intl_unknown": 0,
       "status": "ok"
     },
-    "nsf_reu": {
-      "fetched": 135,
-      "new": 1,
-      "status": "ok",
-      "updated": 134,
-      "zero_class": "success_nonzero"
-    },
     "pi_enricher": {
-      "already_had": 758,
-      "enriched": 275,
-      "nulled_unit_inboxes": 0,
+      "already_had": 3116,
+      "enriched": 15,
+      "nulled_unit_inboxes": 1,
       "renulled_shared_emails": 0,
-      "scraped": 281,
+      "scraped": 187,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 34.77,
-      "events": 12169,
-      "freshness_pct": 34.77,
+      "active_profile_coverage_pct": 34.89,
+      "events": 12246,
+      "freshness_pct": 34.89,
       "fully_stale_school_count": 39,
-      "missing_profile_count": 84301,
+      "missing_profile_count": 84265,
       "missing_school_count": 39,
-      "new_events": 0,
-      "profiles": 45172,
+      "new_events": 77,
+      "profiles": 45398,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -323,7 +339,7 @@
         "swarthmore_research_programs": 10,
         "syracuse_faculty": 836,
         "syracuse_research_programs": 5,
-        "tamu_faculty": 3252,
+        "tamu_faculty": 3295,
         "tamu_research_programs": 8,
         "tufts_faculty": 2063,
         "tufts_research_programs": 8,
@@ -480,7 +496,7 @@
         "wesleyan_faculty": 358,
         "wesleyan_research_programs": 10,
         "wisc_external_research": 1,
-        "wisc_faculty": 1770,
+        "wisc_faculty": 1937,
         "wisc_labs": 1,
         "wisc_research_programs": 39,
         "wlu_faculty": 237,
@@ -491,37 +507,27 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 139447
+      "tagged": 139657
     },
-    "simplify_internships": {
-      "deactivated_stale": 637,
-      "fetched": 3015,
-      "new": 1337,
+    "tamu_faculty": {
+      "fetched": 2801,
+      "new": 43,
       "status": "ok",
-      "updated": 1678,
-      "zero_class": "success_nonzero"
-    },
-    "uiuc_sro": {
-      "deep": true,
-      "fetched": 278,
-      "new": 0,
-      "status": "ok",
-      "updated": 278,
+      "updated": 2758,
       "zero_class": "success_nonzero"
     }
   },
   "time_budget": {
-    "budget_minutes": 260.0,
+    "budget_minutes": 120.0,
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-06T06:03:59.102744",
-  "total_in_file": 139447,
-  "total_new": 1338,
-  "total_updated": 2090,
+  "timestamp": "2026-09-06T18:40:18.275521",
+  "total_in_file": 139636,
+  "total_new": 43,
+  "total_updated": 2766,
   "zero_classes": {
-    "nsf_reu": "success_nonzero",
-    "simplify_internships": "success_nonzero",
-    "uiuc_sro": "success_nonzero"
+    "campus_graph:tamu": "success_nonzero",
+    "tamu_faculty": "success_nonzero"
   }
 }
