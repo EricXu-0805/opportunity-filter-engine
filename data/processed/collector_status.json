@@ -1,21 +1,21 @@
 {
-  "duration_seconds": 1560.1,
+  "duration_seconds": 1194.1,
   "release": {
     "by_unit": {
-      "wisc": {
+      "tamu": {
         "ready": true,
         "reasons": []
       }
     },
     "degradations": [],
     "expected": [
-      "campus_graph:wisc",
-      "wisc_faculty"
+      "campus_graph:tamu",
+      "tamu_faculty"
     ],
     "observed": [
       "auto_tagger",
       "campus_discovery_quarantine",
-      "campus_graph:wisc",
+      "campus_graph:tamu",
       "deactivate_past",
       "deactivate_stale_faculty",
       "faculty_hygiene",
@@ -24,32 +24,31 @@
       "pi_enricher",
       "professor_tracking",
       "school_audience",
-      "wisc_faculty"
+      "tamu_faculty"
     ],
     "policies": [
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "wisc",
-        "summary_key": "campus_graph:wisc"
+        "school": "tamu",
+        "summary_key": "campus_graph:tamu"
       },
       {
         "allow_confirmed_empty": false,
         "mode": "deep",
-        "school": "wisc",
-        "summary_key": "wisc_faculty"
+        "school": "tamu",
+        "summary_key": "tamu_faculty"
       }
     ],
     "publishable": [
-      "wisc"
+      "tamu"
     ],
     "ready": true,
     "reasons": [],
     "status": "degraded",
     "structural_reasons": [],
     "warnings": [
-      "deep source campus_graph:wisc degraded on recursive discovered pages: ['wisc_announcement: discovered-page fetch failed: http://honors.ls.wisc.edu/SiteContent.aspx?prev=1&id=48', 'wisc_announcement: discovered-page fetch failed: http://morgridge.wisc.edu/students-wisconsin-idea-fellowships', 'wisc_announcement: discovered-page fetch failed: https://grad.wisc.edu/diversity/srop/']",
-      "faculty stale retirement is held pending per-unit lineage: ['wisc_faculty']",
+      "faculty stale retirement is held pending per-unit lineage: ['tamu_faculty']",
       "professor tracking is local-only and is not part of this opportunity-data publication"
     ]
   },
@@ -57,13 +56,13 @@
     "deep": true,
     "national": false,
     "schools": [
-      "wisc"
+      "tamu"
     ]
   },
   "shard": {
     "national": false,
     "schools": [
-      "wisc"
+      "tamu"
     ]
   },
   "source_health": {
@@ -74,7 +73,7 @@
     "fully_stale_schools": [
       "ucd"
     ],
-    "generated_at": "2026-09-06T18:21:32.640107+00:00",
+    "generated_at": "2026-09-06T18:59:44.243906+00:00",
     "partially_degraded_school_count": 1,
     "school_count": 117,
     "stale_days": 17.0,
@@ -84,45 +83,38 @@
   },
   "sources": {
     "auto_tagger": {
-      "rule_based_tagged": 8,
+      "rule_based_tagged": 6,
       "status": "ok"
     },
     "campus_discovery_quarantine": {
       "quarantined": 0,
       "status": "ok"
     },
-    "campus_graph:wisc": {
-      "complete_recursive_sources": [
-        "wisc_department",
-        "wisc_lab"
-      ],
+    "campus_graph:tamu": {
+      "complete_recursive_sources": [],
       "crawl_errors": [],
-      "crawl_sources_expected": 6,
-      "crawl_sources_loaded": 6,
+      "crawl_sources_expected": 1,
+      "crawl_sources_loaded": 1,
       "deep": true,
-      "degraded_page_errors": [
-        "wisc_announcement: discovered-page fetch failed: https://grad.wisc.edu/diversity/srop/",
-        "wisc_announcement: discovered-page fetch failed: http://morgridge.wisc.edu/students-wisconsin-idea-fellowships",
-        "wisc_announcement: discovered-page fetch failed: http://honors.ls.wisc.edu/SiteContent.aspx?prev=1&id=48"
-      ],
-      "discovered_records": 20,
-      "fetched": 26,
-      "live_pages_attempted": 42,
-      "live_pages_loaded": 39,
+      "degraded_page_errors": [],
+      "discovered_records": 0,
+      "fetched": 8,
+      "live_pages_attempted": 4,
+      "live_pages_loaded": 4,
       "new": 0,
-      "seed_pages_expected": 10,
+      "seed_pages_expected": 4,
       "seed_pages_failed": 0,
-      "seed_pages_loaded": 10,
-      "seed_records": 10,
+      "seed_pages_loaded": 4,
+      "seed_records": 8,
       "status": "ok",
-      "updated": 20,
+      "updated": 8,
       "zero_class": "success_nonzero"
     },
     "deactivate_past": {
       "already_inactive": 80,
       "kept_active": 0,
       "newly_deactivated": 0,
-      "skipped_rolling": 14793,
+      "skipped_rolling": 14501,
       "status": "ok"
     },
     "deactivate_stale_faculty": {
@@ -130,7 +122,7 @@
       "kept_fresh": 0,
       "newly_deactivated": 0,
       "skipped_missing_unit_ledger": [
-        "wisc_faculty"
+        "tamu_faculty"
       ],
       "skipped_partial_scrape": [],
       "status": "ok",
@@ -138,14 +130,14 @@
       "would_deactivate_total": 0
     },
     "faculty_hygiene": {
-      "duplicates_removed": 140,
-      "keywords_cleaned": 1,
+      "duplicates_removed": 21,
+      "keywords_cleaned": 0,
       "removed_by_school": {
-        "wisc": 140
+        "tamu": 21
       },
       "retitled": 0,
       "shared_inbox_nulled": {
-        "wisc": 8
+        "tamu": 2
       },
       "shared_keyword_demoted": 0,
       "status": "ok"
@@ -160,23 +152,23 @@
       "status": "ok"
     },
     "pi_enricher": {
-      "already_had": 1730,
-      "enriched": 365,
-      "nulled_unit_inboxes": 5,
-      "renulled_shared_emails": 39,
-      "scraped": 387,
+      "already_had": 3116,
+      "enriched": 15,
+      "nulled_unit_inboxes": 1,
+      "renulled_shared_emails": 0,
+      "scraped": 187,
       "skipped_budget": 0,
       "status": "ok"
     },
     "professor_tracking": {
-      "active_profile_coverage_pct": 34.72,
-      "events": 12169,
-      "freshness_pct": 34.72,
+      "active_profile_coverage_pct": 34.89,
+      "events": 12246,
+      "freshness_pct": 34.89,
       "fully_stale_school_count": 39,
-      "missing_profile_count": 84468,
+      "missing_profile_count": 84265,
       "missing_school_count": 39,
-      "new_events": 0,
-      "profiles": 45172,
+      "new_events": 77,
+      "profiles": 45398,
       "publication_status": "local_only_not_in_refresh_artifact",
       "release_ready": false,
       "status": "ok",
@@ -347,7 +339,7 @@
         "swarthmore_research_programs": 10,
         "syracuse_faculty": 836,
         "syracuse_research_programs": 5,
-        "tamu_faculty": 3252,
+        "tamu_faculty": 3295,
         "tamu_research_programs": 8,
         "tufts_faculty": 2063,
         "tufts_research_programs": 8,
@@ -504,7 +496,7 @@
         "wesleyan_faculty": 358,
         "wesleyan_research_programs": 10,
         "wisc_external_research": 1,
-        "wisc_faculty": 2077,
+        "wisc_faculty": 1937,
         "wisc_labs": 1,
         "wisc_research_programs": 39,
         "wlu_faculty": 237,
@@ -515,13 +507,13 @@
         "yale_research_programs": 5
       },
       "status": "ok",
-      "tagged": 139754
+      "tagged": 139657
     },
-    "wisc_faculty": {
-      "fetched": 1753,
-      "new": 307,
+    "tamu_faculty": {
+      "fetched": 2801,
+      "new": 43,
       "status": "ok",
-      "updated": 1446,
+      "updated": 2758,
       "zero_class": "success_nonzero"
     }
   },
@@ -530,12 +522,12 @@
     "deferred": 0,
     "partial": 0
   },
-  "timestamp": "2026-09-06T17:56:01.946827",
-  "total_in_file": 139614,
-  "total_new": 307,
-  "total_updated": 1466,
+  "timestamp": "2026-09-06T18:40:18.275521",
+  "total_in_file": 139636,
+  "total_new": 43,
+  "total_updated": 2766,
   "zero_classes": {
-    "campus_graph:wisc": "success_nonzero",
-    "wisc_faculty": "success_nonzero"
+    "campus_graph:tamu": "success_nonzero",
+    "tamu_faculty": "success_nonzero"
   }
 }
