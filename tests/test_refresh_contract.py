@@ -574,7 +574,15 @@ def test_urca_positive_rows_still_require_complete_sitemap_evidence():
     assert any("complete sitemap evidence" in reason for reason in verdict["reasons"])
 
 
-def test_partial_faculty_and_uiuc_empty_departments_block_release():
+def test_a_partial_faculty_scrape_degrades_without_withholding_its_school():
+    """It used to block, and blocking cost the school its other departments.
+
+    ``skipped_partial_scrape`` IS deactivate_stale_faculty's own record that it
+    declined to retire from that source, and merges are upsert-only, so the
+    records are already preserved twice over. Vetoing publication on top of
+    that re-spends a safety budget already spent and charges every sibling
+    department for it.
+    """
     uw = evaluate_refresh_summary(
         _summary(
             {"uw"},
@@ -591,9 +599,18 @@ def test_partial_faculty_and_uiuc_empty_departments_block_release():
         national=False,
         deep=True,
     )
-    assert uw["ready"] is False
-    assert any("partial" in reason for reason in uw["reasons"])
+    assert uw["ready"] is True
+    assert uw["status"] == "degraded"
+    assert uw["publishable"] == ["uw"]
+    # Degraded, not waived: keyed so ops opens one incident for the source.
+    assert any(
+        item["kind"] == "partial_scrape" and item["source"] == "uw_faculty"
+        for item in uw["degradations"]
+    )
+    assert any("cannot claim the source is complete" in w for w in uw["warnings"])
 
+
+def test_uiuc_empty_departments_still_block_release():
     uiuc_sources = {
         key: _ok(1)
         for key in expected_sources({"uiuc"}, national=False, deep=True)
@@ -1010,3 +1027,102 @@ def test_a_broken_national_source_withholds_only_national():
     assert verdict["ready"] is False
     assert verdict["publishable"] == []
     assert verdict["by_unit"]["national"]["ready"] is False
+
+
+# ---------------------------------------------------------------------------
+# The UC Berkeley shape, from the run recorded on 2026-09-05: 56 sources, 55
+# harvesting cleanly, one silent zero, and five departments scraping 94-100%
+# of their stored counts. That run published nothing for a fourth consecutive
+# week, and 3,062 records went on aging.
+# ---------------------------------------------------------------------------
+
+_UCB_PARTIAL = [
+    "ucb_datascience_faculty", "ucb_econ_faculty", "ucb_ling_faculty",
+    "ucb_scandinavian_faculty", "ucb_soc_faculty",
+]
+
+
+def _ucb_summary(**over):
+    """UCB as it actually ran: every source ok except the ones named here."""
+    sources = {
+        key: _ok(40)
+        for key in expected_sources({"ucb"}, national=False, deep=True)
+    }
+    sources["ucb_campus"] = _graph_ok()
+    sources["ucb_eecs_faculty"] = {
+        "status": "suspicious_zero", "fetched": 0,
+        "suspicious_zero_baseline": 144, "zero_class": "suspicious_zero",
+    }
+    sources["deactivate_stale_faculty"] = {
+        "status": "ok",
+        "skipped_partial_scrape": list(_UCB_PARTIAL),
+    }
+    sources.update(over)
+    return evaluate_refresh_summary(
+        _summary({"ucb"}, sources), schools={"ucb"}, national=False, deep=True,
+    )
+
+
+class TestUcbShardIsolation:
+    def test_healthy_departments_publish_while_one_is_dead_and_five_are_short(self):
+        verdict = _ucb_summary()
+        assert verdict["ready"] is True
+        assert verdict["publishable"] == ["ucb"]
+        assert verdict["reasons"] == []
+
+    def test_the_school_is_partially_degraded_not_blocked(self):
+        verdict = _ucb_summary()
+        assert verdict["status"] == "degraded"
+        assert verdict["by_unit"]["ucb"]["ready"] is True
+
+    def test_a_suspicious_zero_is_not_published_as_data(self):
+        """It degrades and keeps its baseline; nothing claims it was seen."""
+        verdict = _ucb_summary()
+        zero = [d for d in verdict["degradations"]
+                if d["kind"] == "suspicious_zero"]
+        assert [d["source"] for d in zero] == ["ucb_eecs_faculty"]
+        assert "144" in zero[0]["detail"]
+
+    def test_every_short_department_is_reported_individually(self):
+        """One incident per source, so a second one going short is visible."""
+        verdict = _ucb_summary()
+        short = sorted(d["source"] for d in verdict["degradations"]
+                       if d["kind"] == "partial_scrape")
+        assert short == sorted(_UCB_PARTIAL)
+
+    def test_one_dead_department_does_not_veto_unrelated_schools(self):
+        """The between-school half of the invariant, which already held."""
+        sources = {
+            key: _ok(40)
+            for key in expected_sources({"ucb", "uw"}, national=False, deep=True)
+        }
+        sources["ucb_campus"] = _graph_ok()
+        sources["campus_graph:uw"] = _graph_ok()
+        sources["ucb_eecs_faculty"] = {
+            "status": "suspicious_zero", "fetched": 0,
+            "suspicious_zero_baseline": 144,
+        }
+        sources["deactivate_stale_faculty"] = {
+            "status": "ok", "skipped_partial_scrape": list(_UCB_PARTIAL),
+        }
+        verdict = evaluate_refresh_summary(
+            _summary({"ucb", "uw"}, sources),
+            schools={"ucb", "uw"}, national=False, deep=True,
+        )
+        assert verdict["publishable"] == ["ucb", "uw"]
+
+    def test_a_structural_fault_still_withholds_everything(self):
+        """Degrading a department must not have loosened the real blocks.
+
+        A reason nobody can pin to a shard describes the run itself, and
+        publishing on that evidence would be a guess.
+        """
+        verdict = _ucb_summary(**{"ucb_stat_faculty": {"status": "error",
+                                                       "error": "boom"}})
+        assert verdict["ready"] is False
+        assert verdict["publishable"] == []
+
+    def test_an_error_status_still_blocks_its_own_school(self):
+        verdict = _ucb_summary(**{"ucb_chem_faculty": {"status": "error",
+                                                       "error": "boom"}})
+        assert verdict["by_unit"]["ucb"]["ready"] is False

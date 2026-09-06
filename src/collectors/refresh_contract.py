@@ -628,13 +628,48 @@ def evaluate_refresh_summary(
                 expected_faculty
                 & set(stale.get("skipped_partial_scrape") or ())
             )
-            if partial:
-                text = f"required faculty sources were partial: {partial}"
-                reasons.append(text)
-                for source_key in partial:
-                    unit = unit_of(source_key)
-                    if unit:
-                        unit_reasons.setdefault(unit, []).append(text)
+            for source_key in partial:
+                # A department that scraped short degrades ITSELF, for exactly
+                # the reasons the suspicious-zero branch above degrades: the
+                # two situations are the same situation. It used to block, and
+                # because unit_of() resolves a source to its shard file — one
+                # file per school — blocking withheld every sibling department
+                # with it. Measured 2026-09-05: five UC Berkeley departments
+                # scraping 94-100% of their stored counts withheld all 56,
+                # including the 55 that had just harvested successfully, for a
+                # fourth consecutive week.
+                #
+                # A short scrape costs coverage, never accuracy, and the layers
+                # below have ALREADY acted on it — twice over:
+                #
+                #   * merges are upsert-only (merge_into_processed matches by
+                #     id and appends; it never removes a record absent from the
+                #     harvest), so a short scrape cannot delete anyone; and
+                #   * this list IS deactivate_stale_faculty's record that it
+                #     declined to retire from these sources. The name says so:
+                #     skipped_partial_scrape. The records are preserved by the
+                #     pass that produced this very signal.
+                #
+                # So the veto re-spends a safety budget already spent, and
+                # charges the whole school for it. What publishes is not wrong;
+                # the departments that were re-observed get fresh stamps, and
+                # the records that were not keep the stamps they had — which is
+                # the honest partial-degradation outcome, not a masked one.
+                #
+                # Not waived: the verdict stays degraded every run until the
+                # source scrapes complete, the skipped records keep their old
+                # last_seen_at and go stale on schedule, and ops opens an
+                # incident keyed on the source.
+                degrade(
+                    "partial_scrape",
+                    source_key,
+                    "scrape short of the stored active count",
+                    f"required source {source_key} scraped short of its stored "
+                    "active count; deactivate_stale_faculty preserved its "
+                    "records rather than retiring them, and the school still "
+                    "publishes, but this run cannot claim the source is "
+                    "complete",
+                )
             missing_unit_ledger = sorted(
                 expected_faculty
                 & set(stale.get("skipped_missing_unit_ledger") or ())

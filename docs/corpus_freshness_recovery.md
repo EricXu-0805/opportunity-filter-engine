@@ -245,3 +245,252 @@ The remaining ~8,200 stale records after UCB are individual departments
 decaying inside healthy schools. Reaching 95% needs a systematic
 department-level freshness sweep, not another one-school repair — the tail is
 flat, and no single school after UCB contributes more than 0.75pp.
+
+
+---
+
+# Round two — 2026-09-05
+
+## 7. The UCB veto was in the contract, not the collectors
+
+Round one reported UCB as "55 of 56 sources harvest, publish withheld" and left
+it there. Traced properly, the veto is one branch in
+`src/collectors/refresh_contract.py`, and it contradicts a decision the same
+file makes two hundred lines above it.
+
+`suspicious_zero` **degrades**, with the reasoning written out: merges are
+upsert-only so an empty harvest cannot delete a record, and
+`deactivate_stale_faculty` declines to retire from a source that is not
+reporting `ok`, so what publishes is not wrong — there is just less of it.
+
+`skipped_partial_scrape` **blocked**. Every word of that reasoning applies to
+it, and one word more: `skipped_partial_scrape` *is*
+`deactivate_stale_faculty`'s own record that it already declined to retire from
+those sources. The veto re-spent a safety budget that had already been spent,
+and because `unit_of()` resolves a source to its shard file — one file per
+school — it charged the whole school for it.
+
+Re-evaluating the recorded 2026-09-05 UCB summary with the branch changed to
+degrade:
+
+```
+before   status blocked    ready False   publishable []
+after    status degraded   ready True    publishable ['ucb']
+         + 1 suspicious_zero and 5 partial_scrape degradations, one per source
+```
+
+Nothing about freshness is laundered by this. The merge writes `last_seen_at`
+only on records it actually re-observed; the rest keep the stamps they had and
+go stale on schedule. That is the partial-degradation outcome the policy asks
+for, and it is now the tested one.
+
+**Answering the audit directly:** #879 isolates publication *between* schools,
+which is as far as a shard file goes — one file per school. It did not isolate
+*within* a school, because it fixed the zero branch and not the partial branch.
+With both fixed, one dead department no longer freezes its university.
+
+## 8. The stale tail is one failure, repeated
+
+Every school in the top thirty shows the same signature. Their faculty
+collector scrapes well under its stored active count, which trips
+`MIN_SCRAPE_RATIO`, so the unseen records are neither re-observed nor retired.
+They accumulate as permanent stale weight.
+
+| school | last run | fetched | active | ratio |
+|---|---|---|---|---|
+| wisc | 2026-08-26 | 846 | 1,765 | 48% |
+| nyu | 2026-08-25 | 1,348 | 2,157 | 62% |
+| tamu | 2026-08-25 | 2,542 | 3,252 | 78% |
+| oregonstate | 2026-09-03 | 359 | 604 | 59% |
+| sbu | 2026-08-29 | 663 | 909 | 73% |
+| unl | 2026-08-28 | 1,000 | 1,211 | 83% |
+| umd | 2026-08-26 | 1,111 | 1,299 | 86% |
+| ucla | 2026-09-03 | 1,738 | 1,988 | 87% |
+| ncsu | 2026-08-31 | 1,996 | 2,302 | 87% |
+| jhu | 2026-08-28 | 4,058 | 4,554 | 89% |
+
+Note oregonstate, ucla and vanderbilt: they ran on **2026-09-03**, two days
+before this measurement, and are still stale. This is not a scheduling
+backlog. The collectors run and under-deliver.
+
+### Which is it — broken scraper, or faculty who left?
+
+Decided by shape, not assumption. A department where *every* record is stale
+did not lose all its professors; its page moved or its markup changed. A
+department with some fresh and some stale is where real departures live.
+
+```
+departments fully fresh                  2,798
+departments partly stale                 1,004
+departments ENTIRELY stale                 239
+
+stale records in entirely-stale depts    7,748   74.5%   <- URL rot / drift
+stale records scattered in live depts    2,650   25.5%   <- possible departures
+```
+
+Spot-checked against wisc, whose 35 dead departments hold 923 of its 1,002
+stale records:
+
+| department | configured URL | result |
+|---|---|---|
+| Statistics | `stat.wisc.edu/people/` | **404** — moved |
+| English | `english.wisc.edu/people/faculty/` | **404** — moved |
+| Computer Sciences | `www.cs.wisc.edu/people/faculty-2/` | 200, parses 0 — **selector drift** |
+| Economics | `econ.wisc.edu/faculty/` | 200, parses 0 — **selector drift** |
+
+Both signatures, in one collector.
+
+### What this rules out
+
+**Mass retirement would be wrong.** The obvious way to "improve" freshness here
+is to let `deactivate_stale_faculty` retire the 10,398 stale faculty, which
+would remove them from the denominator and lift the percentage immediately.
+The shape analysis says that would delete ~7,700 professors who never left —
+their department's page moved. `MIN_SCRAPE_RATIO` is correctly refusing, and
+per-unit ledgers (which only UIUC supplies today) would correctly refuse too: a
+department scraping 0 against N active is skipped by design.
+
+The freshness deficit is **4,756 records**. The 239 dead departments hold
+**7,748**. Repairing them covers the deficit with room to spare, and it is the
+only route that makes those records genuinely fresh rather than genuinely gone.
+
+## 9. Recovery priority
+
+Ranked by percentage points recoverable, not alphabetically. Every row is the
+same recovery path — re-recon the department URL, repair the selector, re-run
+the shard — which is why they are worth batching by collector rather than by
+school.
+
+| # | school | source | stale | of | last success | gain | cum |
+|---|---|---|---|---|---|---|---|
+| 1 | wisc | wisc_faculty | 1,002 | 1,787 | 2026-08-19 | 0.75pp | 0.75pp |
+| 2 | ucb | ucb_urap_projects | 861 | 3,062 | 2026-07-21 | 0.64pp | 1.39pp |
+| 3 | nyu | nyu_faculty | 809 | 2,168 | 2026-08-18 | 0.60pp | 1.99pp |
+| 4 | tamu | tamu_faculty | 718 | 3,260 | 2026-08-18 | 0.54pp | 2.53pp |
+| 5 | jhu | jhu_faculty | 508 | 4,584 | 2026-08-14 | 0.38pp | 2.91pp |
+| 6 | osu | osu_faculty | 292 | 2,520 | 2026-08-22 | 0.22pp | 3.12pp |
+| 7 | umd | umd_faculty | 251 | 1,306 | 2026-08-19 | 0.19pp | 3.31pp |
+| 8 | sbu | sbu_faculty | 248 | 914 | 2026-08-22 | 0.18pp | 3.50pp |
+| 9 | oregonstate | oregonstate_faculty | 246 | 608 | 2026-08-20 | 0.18pp | 3.68pp |
+| 10 | unl | unl_faculty | 220 | 1,216 | 2026-08-14 | 0.16pp | 3.84pp |
+
+The top thirty together are 5.83pp of the 8.55pp total deficit. No single
+school after wisc is worth more than 0.64pp — the tail is flat, which is why
+the unit of work is the shared failure signature, not the school.
+
+## 10. UC Davis, investigated rather than assumed
+
+Probed 2026-09-05. The conclusion is unchanged but it is now evidence rather
+than recollection.
+
+| Route | Result |
+|---|---|
+| `urc.ucdavis.edu/*` content pages | **403** Cloudflare |
+| `urc.ucdavis.edu/jsonapi` (Drupal JSON:API) | **403** |
+| `urc.ucdavis.edu/rss.xml`, `/feed` | **403** |
+| Supported render path (real headless Chromium) | **403** — "Attention Required! \| Cloudflare" |
+| `urc.ucdavis.edu/sitemap.xml` | **200**, 450 entries |
+| `urc.ucdavis.edu/robots.txt` | **200** — standard Drupal; content is **not** disallowed |
+| `www.ucdavis.edu`, `catalog.ucdavis.edu` | 200 |
+| `engineering.` / `lettersandscience.` / `financialaid.ucdavis.edu` | 403 |
+
+Two things worth separating. **robots.txt permits this content** — only
+`/core/`, `/profiles/` and admin paths are disallowed. The barrier is an edge
+bot-management decision, not a crawl policy. That is why the unblock is an
+allowlist request to UC Davis, not a technical workaround, and why no
+workaround was attempted: the supported browser path is refused the same way
+`requests` is, and going further would be evasion.
+
+**The source is still the correct source.** All seven records' URLs are still
+listed in the official sitemap, so the corpus definition is not wrong and UCD
+stays in the denominator. The sitemap also carries `lastmod` for 445 of its 450
+entries — and it is deliberately **not** used to refresh these records. A
+sitemap entry proves a URL exists and when the CMS last touched it; it does not
+re-observe a record's title, description, or deadline. Treating it as a
+re-observation would raise freshness on weaker evidence than the pipeline's own
+semantics, which is the failure mode this whole effort exists to prevent.
+
+```
+status:              BLOCKED
+owner:               project owner
+reason:              Cloudflare managed challenge on urc.ucdavis.edu; refused to
+                     requests, to structured endpoints, and to the supported
+                     render path alike
+recommended_action:  request a crawl allowlist from UC Davis for the URC host,
+                     or formally retire the school from the active corpus
+affected:            7 records; the last school between fully_stale_school_count
+                     and 0
+```
+
+
+## 11. Recovery batches, measured
+
+Freshness decays as records age past the bound, so every figure carries the
+time it was taken. These are not comparable without it.
+
+| batch | measured_at | freshness | fully_stale | records recovered |
+|---|---|---|---|---|
+| baseline (round two close) | 2026-09-05T14:53Z | 91.45% | 2 | — |
+| UC Berkeley | 2026-09-05T22:18Z | **93.43%** | 1 | ~2,100 |
+| NYU + Wisconsin | 2026-09-06T02:28Z | **94.24%** | 1 | ~1,166 |
+| osu, oregonstate, unl, umn, ucsd, uci, harvard, gatech | 2026-09-06T04:28Z | **94.57%** | 1 | ~470 |
+
+```
+freshness_before   91.45%      (2026-09-05T14:53Z)
+freshness_after    94.57%      (2026-09-06T04:28Z)
+freshness_gain     +3.12pp
+threshold          95.00%
+deficit remaining  581 records
+
+fully_stale_before      2      ucb, ucd
+fully_stale_after       1      ucd
+shards_recovered       11      ucb, nyu, wisc(partial), osu, oregonstate,
+                               unl, umn, ucsd, uci, harvard, gatech
+shards_still_stale      2      ucd (fully), ucb_eecs_faculty (one source)
+failed_shards           0
+```
+
+Every one of those records became fresh through a real harvest that the
+release contract passed. No timestamp was written for a record that was not
+re-observed.
+
+### A correction worth recording
+
+The recoverable pool was estimated by fetching each dead department's page and
+counting elements matching its configured card selector. That over-estimated.
+Oregon State's five dead departments all matched cards, and re-running it still
+emitted 345 records against 608 active — because the collector does more than
+select cards: ladder filters, name/email dedup and per-unit rules all cut the
+list further. Cards on a page is an upper bound on what a collector emits, not
+a prediction of it.
+
+The practical consequence: **re-running does not recover scattered stale
+records.** They were absent from the last harvest and are absent from the next
+one for the same reason. Only two things move them — repairing the collector,
+or retiring them once a complete scrape proves they are gone.
+
+## 12. What closing the last 581 records requires
+
+Not another re-run. The schools still carrying the deficit have dead
+departments whose pages do not yield records to their configured collector at
+all:
+
+| school | stale | dead depts | parse to cards here | verdict |
+|---|---|---|---|---|
+| tamu | 718 | 7 | 0 of 7 | genuinely broken |
+| wisc | 671 | 20 remaining | 0 of 20 | 404s + selector drift |
+| jhu | 508 | 23 | 0 of 23 | genuinely broken |
+| umd | 251 | 3 | 0 of 3 | genuinely broken |
+| sbu | 248 | 7 | 0 of 7 | genuinely broken |
+| vanderbilt | 180 | 7 | 0 of 7 | genuinely broken |
+| ncsu | 174 | 3 | 0 of 3 | genuinely broken |
+| uf | 167 | 4 | 0 of 4 | genuinely broken |
+
+Any two of the top three closes the 581-record gap. Each is per-department
+recon — find the moved URL, re-derive the selector, verify against the live
+page — which is onboarding-grade work and belongs in its own change with its
+own review, not bolted onto a release-gate repair.
+
+`fully_stale_school_count = 0` remains unreachable regardless: UC Davis is
+walled by an edge bot-management policy that refuses the supported render path,
+and the only lawful unblock is an allowlist granted by UC Davis.

@@ -189,9 +189,9 @@
     },
     "gatech": {
       "listing_count": 17,
-      "faculty_contact_count": 1277,
+      "faculty_contact_count": 1307,
       "unreviewed_count": 0,
-      "total_count": 1294
+      "total_count": 1324
     },
     "georgetown": {
       "listing_count": 6,
@@ -213,9 +213,9 @@
     },
     "harvard": {
       "listing_count": 8,
-      "faculty_contact_count": 463,
+      "faculty_contact_count": 472,
       "unreviewed_count": 0,
-      "total_count": 471
+      "total_count": 480
     },
     "haverford": {
       "listing_count": 4,
@@ -327,9 +327,9 @@
     },
     "nyu": {
       "listing_count": 9,
-      "faculty_contact_count": 2157,
+      "faculty_contact_count": 2235,
       "unreviewed_count": 0,
-      "total_count": 2166
+      "total_count": 2244
     },
     "oregonstate": {
       "listing_count": 4,
@@ -339,9 +339,9 @@
     },
     "osu": {
       "listing_count": 6,
-      "faculty_contact_count": 2512,
+      "faculty_contact_count": 2539,
       "unreviewed_count": 0,
-      "total_count": 2518
+      "total_count": 2545
     },
     "pitt": {
       "listing_count": 3,
@@ -471,9 +471,9 @@
     },
     "uci": {
       "listing_count": 15,
-      "faculty_contact_count": 1187,
+      "faculty_contact_count": 1178,
       "unreviewed_count": 0,
-      "total_count": 1202
+      "total_count": 1193
     },
     "ucla": {
       "listing_count": 19,
@@ -507,9 +507,9 @@
     },
     "ucsd": {
       "listing_count": 32,
-      "faculty_contact_count": 1467,
+      "faculty_contact_count": 1436,
       "unreviewed_count": 0,
-      "total_count": 1499
+      "total_count": 1468
     },
     "udel": {
       "listing_count": 4,
@@ -567,9 +567,9 @@
     },
     "umn": {
       "listing_count": 7,
-      "faculty_contact_count": 1451,
+      "faculty_contact_count": 1457,
       "unreviewed_count": 0,
-      "total_count": 1458
+      "total_count": 1464
     },
     "unc": {
       "listing_count": 0,
@@ -579,9 +579,9 @@
     },
     "unl": {
       "listing_count": 4,
-      "faculty_contact_count": 1211,
+      "faculty_contact_count": 1219,
       "unreviewed_count": 0,
-      "total_count": 1215
+      "total_count": 1223
     },
     "upenn": {
       "listing_count": 18,
@@ -675,9 +675,9 @@
     },
     "wisc": {
       "listing_count": 20,
-      "faculty_contact_count": 1765,
+      "faculty_contact_count": 1770,
       "unreviewed_count": 0,
-      "total_count": 1785
+      "total_count": 1790
     },
     "wlu": {
       "listing_count": 6,
