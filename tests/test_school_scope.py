@@ -168,32 +168,63 @@ class TestTheDenominatorFollowsTheDecision:
         assert report["unsupported_schools"] == ["ucd"]
         assert "ucd" in report["no_active_record_schools"]
 
+    # Synthetic reports, deliberately. Asserting against today's committed
+    # corpus would pin a data state -- the mistake that turned every
+    # data-refresh PR red once before (see test_release_gate.py's note on
+    # test_tracking_strict_contract_is_reported_not_the_raw_boolean). What is
+    # under test here is how the gate treats a zero-active school, which must
+    # hold whatever this week's freshness percentage happens to be.
+    @staticmethod
+    def _report(**over):
+        report = {
+            "generated_at": "2026-09-07T00:00:00+00:00",
+            "freshness_percent": 96.0, "freshness_threshold": 95.0,
+            "stale_days": 14.0,
+            "active_records": 1000, "fresh_records": 960, "stale_records": 40,
+            "inactive_records": 7, "school_count": 2,
+            "fully_fresh_school_count": 1, "partially_stale_school_count": 1,
+            "fully_stale_school_count": 0, "fully_stale_schools": [],
+            "no_active_record_school_count": 1,
+            "no_active_record_schools": ["ucd"],
+            "unsupported_schools": ["ucd"],
+            "unexplained_empty_schools": [],
+            "schools": {},
+        }
+        report.update(over)
+        return report
+
+    def test_a_declared_unsupported_school_does_not_block(self):
+        gate = _gate()
+        gate.corpus_freshness_report = lambda *a, **k: self._report()
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.PASS, got["detail"]
+        assert got["evidence"]["unsupported_schools"] == ["ucd"]
+
     def test_an_empty_school_that_is_not_declared_unsupported_blocks(self):
         """The failure mode this scope change could otherwise have created.
 
         A school that silently lost every active record reads exactly like a
-        deliberately retired one. Only the declared set is excused.
+        deliberately withdrawn one. Only the declared set is excused, and the
+        percentage being fine is precisely when this has to still fire.
         """
         gate = _gate()
-        real = gate.corpus_freshness_report
-
-        def fake(*a, **k):
-            report = real(*a, **k)
-            report["no_active_record_schools"] = ["ucd", "somewhere"]
-            report["unexplained_empty_schools"] = ["somewhere"]
-            return report
-
-        gate.corpus_freshness_report = fake
+        gate.corpus_freshness_report = lambda *a, **k: self._report(
+            no_active_record_school_count=2,
+            no_active_record_schools=["ucd", "somewhere"],
+            unexplained_empty_schools=["somewhere"],
+        )
         got = gate.check_corpus_freshness()
         assert got["status"] == gate.FAIL
         assert got["reason"] == "unexplained_empty_school"
         assert "somewhere" in got["detail"]
+        assert "ucd" not in got["detail"]
 
-    def test_with_ucd_declared_the_gate_passes_on_the_real_corpus(self):
-        gate = _gate()
-        got = gate.check_corpus_freshness()
-        assert got["status"] == gate.PASS, got["detail"]
-        assert got["evidence"]["unexplained_empty_schools"] == []
+    def test_the_real_corpus_reports_ucd_as_declared_and_unexplained_free(self):
+        """On the committed corpus: whatever freshness is, ucd is accounted for."""
+        report = _gate().corpus_freshness_report()
+        assert report["unsupported_schools"] == ["ucd"]
+        assert "ucd" in report["no_active_record_schools"]
+        assert report["unexplained_empty_schools"] == []
 
 
 class TestReEnablingIsOneDeliberateEdit:
