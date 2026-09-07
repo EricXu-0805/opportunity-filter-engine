@@ -246,4 +246,12 @@ class TestWorkflowWiring:
                 validate_shard_selection(None, national=True)
             else:
                 validate_shard_selection(set(shard.split(",")))
-        validate_shard_selection(set(shard_for("--day", "6", "--isolated").split(",")))
+        # No isolated batch is registered any more -- UC Davis was the only
+        # one and it left the supported set. The CLI must say so rather than
+        # emit an empty shard the engine would then have to interpret.
+        out = subprocess.run(
+            [sys.executable, str(script), "--day", "6", "--isolated"],
+            capture_output=True, text=True, cwd=_REPO,
+        )
+        assert out.returncode != 0
+        assert "no isolated refresh batch" in out.stderr

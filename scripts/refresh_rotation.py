@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.normalizers.school_audience import SOURCE_DEFAULTS  # noqa: E402
+from src.school_scope import is_supported  # noqa: E402
 
 NATIONAL_SHARD = "national"
 _SLUG_RE = re.compile(r"[a-z0-9-]{1,64}")
@@ -60,16 +61,29 @@ WEEKLY_ROTATION: dict[int, tuple[str, ...]] = {
     7: (NATIONAL_SHARD,),
 }
 
-# UCD is deliberately isolated because its render-heavy collector has a
-# materially different runtime and failure profile. Keep isolated batches
-# serialized with the primary rotation; collector_status is a global CAS input.
-ISOLATED_WEEKLY_SHARDS: dict[int, tuple[str, ...]] = {
-    6: ("ucd",),
-}
+# Isolated batches exist for collectors whose runtime and failure profile differ
+# materially from the rest of their day's shard; they stay serialized with the
+# primary rotation because collector_status is a global CAS input.
+#
+# Empty since 2026-09-06: UC Davis was the only entry, and it left the
+# supported set (src/school_scope.py). Scheduling it would now fail
+# validate_rotation() below, which is the intended coupling — a school the
+# product does not offer must not be scraped on a timer.
+ISOLATED_WEEKLY_SHARDS: dict[int, tuple[str, ...]] = {}
 
 
 def registered_school_slugs() -> frozenset[str]:
-    return frozenset(school for school, _ in SOURCE_DEFAULTS.values() if school)
+    """Schools the rotation is expected to schedule.
+
+    Excludes the unsupported set, and validate_rotation() below pins the two
+    together: dropping a school from the product without dropping it from the
+    rotation fails loudly here rather than leaving a shard that scrapes a
+    school nobody is served.
+    """
+    return frozenset(
+        school for school, _ in SOURCE_DEFAULTS.values()
+        if school and is_supported(school)
+    )
 
 
 def validate_rotation() -> None:
@@ -139,8 +153,12 @@ def normalize_requested_shard(raw: str, *, allow_full: bool = False) -> str:
         raise ValueError("national cannot be combined with school slugs")
     if len(slugs) != len(set(slugs)):
         raise ValueError("school shard contains duplicate slugs")
-    if "ucd" in slugs and len(slugs) != 1:
-        raise ValueError("ucd must run as an isolated single-school shard")
+    unsupported = sorted(slug for slug in slugs if not is_supported(slug))
+    if unsupported:
+        raise ValueError(
+            f"school(s) no longer supported by this product: {unsupported} "
+            "(see src/school_scope.py)"
+        )
     invalid = sorted(slug for slug in slugs if _SLUG_RE.fullmatch(slug) is None)
     unknown = sorted(set(slugs) - registered_school_slugs())
     if invalid or unknown:

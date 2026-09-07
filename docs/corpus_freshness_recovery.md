@@ -494,3 +494,80 @@ own review, not bolted onto a release-gate repair.
 `fully_stale_school_count = 0` remains unreachable regardless: UC Davis is
 walled by an edge bot-management policy that refuses the supported render path,
 and the only lawful unblock is an allowlist granted by UC Davis.
+
+
+---
+
+# UC Davis: product-scope decision, 2026-09-06
+
+## What was decided
+
+UC Davis is **temporarily unsupported**. Declared in
+`src/school_scope.py`, which is the single authoritative list and carries the
+date and the rationale for each entry.
+
+This is a product decision, not a data fix, and it is worth being precise about
+the difference — because dropping a school from a denominator raises freshness,
+and that is exactly what a dishonest version of this change would look like.
+
+**Freshness did not move.** 95.09% before, 95.09% after. UC Davis' seven
+records were noise in a 134,631-record denominator. What the decision changed
+is `fully_stale_school_count`, 1 → 0, because the school is no longer counted
+as one we serve. If the honest reading of this change were "it improved the
+number", it would not have been worth making.
+
+## Why
+
+Every lawful route was probed on 2026-09-06 (§10 above): content pages, the
+Drupal `jsonapi`, `rss.xml` and `feed` all return 403, and the **supported
+headless render path gets the same Cloudflare interstitial**. `robots.txt`
+permits the content, so the barrier is bot management rather than crawl policy,
+and the only lawful unblock is an allowlist granted by UC Davis.
+
+The records cannot be re-observed. The choice was therefore between serving
+data we can no longer verify and withdrawing the school. We withdrew it.
+
+## What the decision does, in every layer
+
+| Layer | Effect |
+|---|---|
+| Corpus records | All 7 marked `is_active: false`, `deactivation_reason: school_unsupported`. **Preserved, not deleted.** `last_seen_at` untouched. |
+| Refresh scheduling | Removed from `ISOLATED_WEEKLY_SHARDS` (it was the only entry, now empty). `validate_rotation()` pins the rotation to the registry, so this had to move together. |
+| Registered schools | `registered_school_slugs()` excludes the unsupported set — its absence is no longer a contract fault. |
+| Manual dispatch | `normalize_requested_shard("ucd")` raises. A school we do not offer cannot be scraped on request either. |
+| Every refresh run | `deactivate_unsupported_schools()` runs after the retirement passes, on every run. A merge is an upsert that writes `is_active` back to True, so this is held rather than applied once. |
+| Backend counts | `school_coverage()` keys off active records — follows automatically. |
+| Frontend selection | Catalog entry removed from `catalogs/index.ts`. Already absent from the switcher (`schools.ts`). |
+| Static fallback | `school-stats.json` regenerated: 116 → 115 schools. |
+| Matcher / results scope | Reads active corpus records — follows automatically. |
+| Release-gate denominator | `corpus_freshness` counts active records — follows automatically. |
+
+## The failure mode this could have introduced
+
+A school with no active records reads identically whether it was withdrawn on
+purpose or silently lost its corpus to a bug. Before this change nothing was
+zero-active, so the distinction had never had to exist.
+
+`corpus_freshness` now **FAILs** on any zero-active school that is not in the
+declared unsupported set, with reason `unexplained_empty_school`. The declared
+set is the only exemption, and the gate's evidence carries
+`unsupported_schools` alongside the number so the scope travels with the figure
+it changes.
+
+## Re-enabling
+
+One deliberate edit: remove the entry from `UNSUPPORTED_SCHOOLS`, restore the
+`catalogs/index.ts` line, put the school back in the rotation, and run its
+collector. Nothing was deleted to make that harder:
+
+- `src/collectors/schools/ucd_faculty.py` and `ucd.py` — kept
+- `frontend/src/lib/catalogs/ucd.ts` — kept
+- The two UC Davis-specific release-contract rules (deep-mode requirement, and
+  the degraded-`ucd_faculty` publication block) — kept and still tested, so
+  re-enabling restores its publication protections rather than shipping without
+  them.
+- The 7 records — kept, inactive.
+
+`tests/test_school_scope.py` pins all of it: 25 tests covering the declaration,
+the record state, every layer that must stop offering the school, the
+denominator, the unexplained-empty guard, and the re-enable path.

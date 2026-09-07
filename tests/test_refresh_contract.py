@@ -627,6 +627,13 @@ def test_uiuc_empty_departments_still_block_release():
 
 
 def test_ucd_zero_is_explicitly_degraded_without_withholding_ucd():
+    """Retained deliberately while UC Davis is unsupported.
+
+    The school left the supported set on 2026-09-06 (src/school_scope.py) and
+    is no longer a registered slug, so this passes `schools` explicitly to keep
+    exercising the rule. Keeping it green means re-enabling the school restores
+    its publication protections rather than shipping without them.
+    """
     verdict = evaluate_refresh_summary(
         _summary(
             {"ucd"},
@@ -653,6 +660,13 @@ def test_ucd_zero_is_explicitly_degraded_without_withholding_ucd():
 
 
 def test_ucd_quick_mode_cannot_skip_faculty_and_report_ready():
+    """Retained deliberately while UC Davis is unsupported.
+
+    The school left the supported set on 2026-09-06 (src/school_scope.py) and
+    is no longer a registered slug, so this passes `schools` explicitly to keep
+    exercising the rule. Keeping it green means re-enabling the school restores
+    its publication protections rather than shipping without them.
+    """
     verdict = evaluate_refresh_summary(
         _summary(
             {"ucd"},

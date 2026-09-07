@@ -74,7 +74,6 @@ const CATALOG_LOADERS: Record<string, () => Promise<CatalogModule>> = {
   indiana: () => import('./indiana'),
   miami: () => import('./miami'),
   rpi: () => import('./rpi'),
-  ucd: () => import('./ucd'),
   ucf: () => import('./ucf'),
   uconn: () => import('./uconn'),
   udel: () => import('./udel'),

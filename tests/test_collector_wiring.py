@@ -264,6 +264,10 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         "campus_discovery_quarantine",  # scoped post-processing migration, not a source
         "faculty_joint_collapse",  # post-enrichment ucb joint-appointment collapse pass, not a source
         "professor_tracking",  # post-write tracking-ledger derivation (W8), not a source
+        # Scope pass, not a source: it holds records of schools the product has
+        # withdrawn (src/school_scope.py) inactive on every run. It writes no
+        # records, so it has no record-level source to map.
+        "unsupported_schools",
         # Run key, not a record source: ucb_campus records ship as
         # ucb_research_programs / ucb_external_research / ucb_labs, whose
         # SOURCE_DEFAULTS coverage is asserted by test_ucb_campus.TestRegistry.

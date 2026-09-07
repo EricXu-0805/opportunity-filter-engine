@@ -794,6 +794,20 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
 
     states = {name: _state(row) for name, row in schools.items()}
     fully_stale = sorted(n for n, st in states.items() if st == "fully_stale")
+    # A school with no active records at all is either a product decision or a
+    # school that silently lost its corpus. Those must not read the same, so
+    # the declared-unsupported set is subtracted and whatever is left is a
+    # fault. Before UC Davis left the supported set nothing was zero-active, so
+    # this distinction had never had to exist.
+    try:
+        sys.path.insert(0, str(_REPO))
+        from src.school_scope import UNSUPPORTED_SCHOOLS  # noqa: PLC0415
+
+        unsupported = sorted(UNSUPPORTED_SCHOOLS)
+    except Exception:  # noqa: BLE001
+        unsupported = []
+    no_active = sorted(n for n, st in states.items() if st == "no_active_records")
+    unexplained_empty = [n for n in no_active if n not in set(unsupported)]
     return {
         "generated_at": now.isoformat(),
         "freshness_percent": round(100.0 * fresh / active, 2) if active else None,
@@ -809,8 +823,10 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             1 for v in states.values() if v == "partially_stale"),
         "fully_stale_school_count": len(fully_stale),
         "fully_stale_schools": fully_stale,
-        "no_active_record_school_count": sum(
-            1 for v in states.values() if v == "no_active_records"),
+        "no_active_record_school_count": len(no_active),
+        "no_active_record_schools": no_active,
+        "unsupported_schools": unsupported,
+        "unexplained_empty_schools": unexplained_empty,
         "schools": {
             name: {
                 "active": row["active"],
@@ -847,6 +863,9 @@ def check_corpus_freshness() -> dict:
                      reason="corpus_unreadable")
 
     evidence = {k: v for k, v in report.items() if k != "schools"}
+    # The scope decision travels with the number it changes, so a reader can
+    # see WHY the denominator is what it is without leaving the ledger.
+    evidence["unsupported_schools"] = report["unsupported_schools"]
     evidence["fully_stale_schools"] = report["fully_stale_schools"][:20]
     evidence["worst_schools"] = sorted(
         ({"school": name, **row} for name, row in report["schools"].items()
@@ -872,10 +891,17 @@ def check_corpus_freshness() -> dict:
         failures.append(
             f"{report['fully_stale_school_count']} school(s) have no fresh "
             f"record at all: {', '.join(report['fully_stale_schools'][:10])}")
+    if report["unexplained_empty_schools"]:
+        failures.append(
+            f"{len(report['unexplained_empty_schools'])} school(s) have no active "
+            f"record at all and are not declared unsupported: "
+            f"{', '.join(report['unexplained_empty_schools'][:10])}")
     if failures:
         return _gate("corpus_freshness", FAIL, "; ".join(failures), evidence,
                      reason="below_threshold" if pct < threshold
-                     else "fully_stale_schools")
+                     else "fully_stale_schools"
+                     if report["fully_stale_school_count"]
+                     else "unexplained_empty_school")
     return _gate("corpus_freshness", PASS,
                  f"{pct:.2f}% >= {threshold}% across "
                  f"{report['active_records']:,} active records, "
