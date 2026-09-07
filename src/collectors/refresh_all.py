@@ -18,6 +18,7 @@ from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
+from src.school_scope import deactivate_unsupported_schools
 
 
 def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
@@ -1562,6 +1563,18 @@ def refresh_all(
         stale_faculty = deactivate_stale_faculty(
             all_opps, faculty_fetched, held_sources={"uiuc_faculty"},
         )
+        # Schools the product no longer offers are held inactive on EVERY run,
+        # not deactivated once: a merge is an upsert that writes is_active back
+        # to True, so a one-time pass would be undone by the next harvest that
+        # touched the school. Runs after the retirement passes so an already
+        # retired record keeps the reason it was retired for.
+        unsupported = deactivate_unsupported_schools(all_opps)
+        summary["sources"]["unsupported_schools"] = {**unsupported, "status": "ok"}
+        if unsupported["deactivated"]:
+            logger.info(
+                "unsupported_schools: held %d record(s) inactive across %s",
+                unsupported["deactivated"], unsupported["by_school"],
+            )
         summary["sources"]["deactivate_stale_faculty"] = {
             "newly_deactivated": stale_faculty["newly_deactivated"],
             "kept_fresh": stale_faculty["kept_fresh"],

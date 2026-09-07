@@ -388,12 +388,19 @@ def test_non_ready_status_and_untrusted_base_are_rejected(tmp_path):
         )
 
 
-def test_ucd_quick_artifact_is_rejected_even_when_graph_is_green(tmp_path):
+def test_an_unsupported_school_cannot_reach_the_artifact_at_all(tmp_path):
+    """UC Davis is refused earlier than the release contract now.
+
+    It used to be rejected by the contract's deep-mode rule (a quick run skips
+    ucd_faculty, so the graph being green proves nothing). Since the school
+    left the supported set on 2026-09-06 it is refused at the shard boundary
+    instead -- an earlier and blunter no, which is the point of a scope
+    decision. The contract rule is still in place and still tested, so
+    re-enabling the school restores its protection without further work; see
+    tests/test_refresh_contract.py.
+    """
     context = _setup(tmp_path, shard="ucd", deep=False)
-    with pytest.raises(
-        ValueError,
-        match="release contract is blocked",
-    ):
+    with pytest.raises(ValueError, match="no longer supported"):
         _build(context)
     assert not context["artifact"].exists()
 

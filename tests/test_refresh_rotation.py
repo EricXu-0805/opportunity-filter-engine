@@ -44,11 +44,13 @@ def test_scheduled_shard_is_deterministic():
     assert scheduled_shard(2).startswith("ucb,mit,usc,umn")
     assert scheduled_shard(7) == NATIONAL_SHARD
     assert "ucd" not in scheduled_shard(6).split(",")
-    assert scheduled_shard(6, isolated=True) == "ucd"
     with pytest.raises(ValueError, match="weekday"):
         scheduled_shard(8)
-    with pytest.raises(ValueError, match="no isolated"):
-        scheduled_shard(5, isolated=True)
+    # No isolated batch is registered on any day since UC Davis left the
+    # supported set (src/school_scope.py) -- it was the only entry.
+    for day in range(1, 8):
+        with pytest.raises(ValueError, match="no isolated"):
+            scheduled_shard(day, isolated=True)
 
 
 @pytest.mark.parametrize(
@@ -78,7 +80,6 @@ def test_manual_shard_normalizes_only_valid_known_values():
 def test_publication_unit_accepts_only_bounded_canonical_units():
     monday = scheduled_shard(1)
     assert normalize_publication_unit(monday) == monday
-    assert normalize_publication_unit("ucd") == "ucd"
     assert normalize_publication_unit("uw") == "uw"
     assert normalize_publication_unit("national") == "national"
 

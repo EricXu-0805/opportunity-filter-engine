@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass
 
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
+from src.school_scope import is_supported
 
 from .schools import SCHOOL_CONFIGS
 
@@ -87,7 +88,16 @@ class SourcePolicy:
 
 
 def registered_school_slugs() -> frozenset[str]:
-    return frozenset(school for school, _ in SOURCE_DEFAULTS.values() if school)
+    """Schools a full run is expected to cover.
+
+    Excludes the unsupported set: a school the product has stopped offering
+    must not be an expected source, or every run would report its absence as a
+    fault and withhold on it forever.
+    """
+    return frozenset(
+        school for school, _ in SOURCE_DEFAULTS.values()
+        if school and is_supported(school)
+    )
 
 
 def _target_schools(
