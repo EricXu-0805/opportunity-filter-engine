@@ -1,0 +1,84 @@
+{
+  "_note": "Operator evidence for release candidate 9666a4fd, gathered 2026-09-07T08:34Z. Both environments were serving this SHA when evidence was taken. Gates absent here stay blocking.",
+  "_scope_change": {
+    "decided_on": "2026-09-06",
+    "unsupported_schools": {
+      "ucd": {
+        "decided_on": "2026-09-06",
+        "reason": "UC Davis serves its undergraduate-research pages behind a Cloudflare managed challenge that refuses the supported headless render path as well as plain requests, and its structured endpoints (jsonapi, rss, feed) return 403 alike. robots.txt permits the content, so the barrier is bot management rather than crawl policy and the only lawful unblock is an allowlist granted by UC Davis. Until then the seven records we hold cannot be re-observed, so the product stops offering the school rather than serving data it can no longer verify. See docs/corpus_freshness_recovery.md \u00a710."
+      }
+    },
+    "effect": "fully_stale_school_count 1 -> 0. corpus freshness UNCHANGED at 95.09%: UC Davis' 7 records were noise in a 134,631-record denominator, so this decision did not move the percentage. Records preserved inactive with deactivation_reason school_unsupported; no timestamp was rewritten.",
+    "declared_in": "src/school_scope.py",
+    "documented_in": "docs/corpus_freshness_recovery.md",
+    "reversal": "remove the UNSUPPORTED_SCHOOLS entry, restore the catalogs/index.ts line, return the school to the rotation, re-run its collector. Collector, catalog file, records and both UC Davis-specific contract rules are retained."
+  },
+  "ci": {
+    "head_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+    "_source": "GET /repos/EricXu-0805/opportunity-filter-engine/commits/9666a4fd6543b7e85ece14674e6c78be15ef197e/check-runs",
+    "checks": [
+      {
+        "name": "Backend (lint + pytest)",
+        "conclusion": "SUCCESS",
+        "id": 101661445519,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34096571464/job/101661445519"
+      },
+      {
+        "name": "E2E (Playwright)",
+        "conclusion": "SUCCESS",
+        "id": 101667636937,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34096571464/job/101667636937"
+      },
+      {
+        "name": "Frontend (typecheck + build)",
+        "conclusion": "SUCCESS",
+        "id": 101661445346,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34096571464/job/101661445346"
+      },
+      {
+        "name": "Migrations (Flow B merge + CLI replay)",
+        "conclusion": "SUCCESS",
+        "id": 101661445226,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34096571464/job/101661445226"
+      }
+    ]
+  },
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+    "observed_at": "2026-09-07T08:34:47+00:00",
+    "detail": "GET /api/health 200: release_sha 9666a4fd6543b7e85ece14674e6c78be15ef197e == the release sha, environment 'render', api_version 2.7.0, started_at 2026-09-07T08:12:01.663843+00:00, self-reported from RENDER_GIT_COMMIT.",
+    "evidence": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+      "environment": "render",
+      "started_at": "2026-09-07T08:12:01.663843+00:00"
+    }
+  },
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+    "observed_at": "2026-09-07T08:34:47+00:00",
+    "detail": "GET / 200; served document carries data-release-sha=\"9666a4fd6543b7e85ece14674e6c78be15ef197e\" and Vercel deployment id dpl_21ViZpbo2czaqC1Bw5dPuKSk9Fcj, equal to the backend's reported SHA at the same instant.",
+    "evidence": {
+      "deployment_id": "dpl_21ViZpbo2czaqC1Bw5dPuKSk9Fcj",
+      "data_release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+      "http_status": 200
+    }
+  },
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+    "observed_at": "2026-09-07T08:34:47+00:00",
+    "detail": "GET /api/ready 200 ready:true, reasons=[] warnings=[], release_sha 9666a4fd6543b7e85ece14674e6c78be15ef197e, api_version 2.7.0, checked_at 2026-09-07T08:34:46.385309+00:00.",
+    "evidence": {
+      "ready": true,
+      "checked_at": "2026-09-07T08:34:46.385309+00:00",
+      "api_version": "2.7.0",
+      "release_sha": "9666a4fd6543b7e85ece14674e6c78be15ef197e",
+      "reasons": [],
+      "warnings": []
+    }
+  }
+}
