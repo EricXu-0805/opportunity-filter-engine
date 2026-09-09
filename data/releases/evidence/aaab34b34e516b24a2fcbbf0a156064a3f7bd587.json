@@ -1,0 +1,92 @@
+{
+  "_note": "Operator evidence for release candidate aaab34b3, gathered 2026-09-09T23:33Z. Every observation here was taken fresh against this candidate; no evidence is carried over from 1ca89d78, 0fd4fe82, fc34f722, 739b430, e335e7d or 9666a4fd. Gates absent from this file stay blocking by design \u2014 an omitted key reads as UNVERIFIED/BLOCKED, which is the correct answer where nobody here can gather the evidence.",
+  "_not_gathered": {
+    "supabase_canary": "authenticated project read; api.supabase.com/v1/projects returned 401 and the project REST/auth endpoints returned 401 on 2026-09-09. No key present in the environment.",
+    "backup": "Supabase dashboard access; not available (401 as above).",
+    "restore": "depends on the restore drill, which has never been performed.",
+    "dead_man": "requires SQL against production; no database access and psql/pg_restore/docker are all absent from this machine.",
+    "open_incidents": "GET /api/admin/ops/incidents?unresolved_only=true returned 401 without ADMIN_TOKEN, re-checked 2026-09-09.",
+    "provider_readiness": "GET /api/ready reported.providers needs X-Admin-Token; not held.",
+    "promotion": "no operator has exercised the representative flows against this candidate.",
+    "rollback": "no rollback has been exercised against this candidate.",
+    "scheduler": "cron run history not gathered for this candidate."
+  },
+  "ci": {
+    "head_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+    "_source": "GET /repos/EricXu-0805/opportunity-filter-engine/commits/aaab34b34e516b24a2fcbbf0a156064a3f7bd587/check-runs",
+    "_observed_at": "2026-09-09T23:32Z",
+    "_workflow_run": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34330473000",
+    "_non_required_note": "The non-required 'scan' job is FAILURE on this commit (standing cryptography advisories). It is not one of the four required checks and does not feed a release_gate gate, but it is recorded here because render.yaml's autoDeployTrigger: checksPass waits on every check run. Both environments are nonetheless serving this SHA, verified above.",
+    "checks": [
+      {
+        "name": "Backend (lint + pytest)",
+        "conclusion": "SUCCESS",
+        "id": 102397617549,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34330473000/job/102397617549",
+        "completed_at": "2026-09-09T09:00:52Z"
+      },
+      {
+        "name": "Frontend (typecheck + build)",
+        "conclusion": "SUCCESS",
+        "id": 102397617380,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34330473000/job/102397617380",
+        "completed_at": "2026-09-09T08:47:51Z"
+      },
+      {
+        "name": "Migrations (Flow B merge + CLI replay)",
+        "conclusion": "SUCCESS",
+        "id": 102397617130,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34330473000/job/102397617130",
+        "completed_at": "2026-09-09T08:42:20Z"
+      },
+      {
+        "name": "E2E (Playwright)",
+        "conclusion": "SUCCESS",
+        "id": 102403481020,
+        "html_url": "https://github.com/EricXu-0805/opportunity-filter-engine/actions/runs/34330473000/job/102403481020",
+        "completed_at": "2026-09-09T09:06:42Z"
+      }
+    ]
+  },
+  "render_canary": {
+    "status": "PASS",
+    "release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+    "observed_at": "2026-09-09T23:33:09.579956+00:00",
+    "detail": "GET /api/health 200: release_sha aaab34b34e516b24a2fcbbf0a156064a3f7bd587 == the release sha, environment 'render', api_version 2.7.0, started_at 2026-09-09T09:08:30.259196+00:00, self-reported from RENDER_GIT_COMMIT.",
+    "evidence": {
+      "status": "ok",
+      "version": "2.7.0",
+      "release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+      "environment": "render",
+      "started_at": "2026-09-09T09:08:30.259196+00:00",
+      "http_status": 200
+    }
+  },
+  "vercel_canary": {
+    "status": "PASS",
+    "release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+    "observed_at": "2026-09-09T23:33:09.579956+00:00",
+    "detail": "GET / 200; served document carries data-release-sha=\"aaab34b34e516b24a2fcbbf0a156064a3f7bd587\" and Vercel deployment id dpl_EQrdD7LgmrWAGFAFBsFtXTtWkYkF, equal to the backend's reported SHA at the same instant.",
+    "evidence": {
+      "deployment_id": "dpl_EQrdD7LgmrWAGFAFBsFtXTtWkYkF",
+      "data_release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+      "http_status": 200,
+      "x_vercel_id": "sfo1::iad1::vf8wk-1788996790523-66891641e642"
+    }
+  },
+  "api_ready": {
+    "status": "PASS",
+    "release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+    "observed_at": "2026-09-09T23:33:09.579956+00:00",
+    "detail": "GET /api/ready 200 ready:true, reasons=[] warnings=[], release_sha aaab34b34e516b24a2fcbbf0a156064a3f7bd587, api_version 2.7.0, checked_at 2026-09-09T23:33:10.383820+00:00. RUNTIME readiness only: it gates on corpus staleness hours, not the record-level freshness floor, and is not evidence of release readiness.",
+    "evidence": {
+      "ready": true,
+      "checked_at": "2026-09-09T23:33:10.383820+00:00",
+      "api_version": "2.7.0",
+      "release_sha": "aaab34b34e516b24a2fcbbf0a156064a3f7bd587",
+      "reasons": [],
+      "warnings": [],
+      "http_status": 200
+    }
+  }
+}
