@@ -15,9 +15,9 @@
     },
     "asu": {
       "listing_count": 6,
-      "faculty_contact_count": 2475,
+      "faculty_contact_count": 2482,
       "unreviewed_count": 0,
-      "total_count": 2481
+      "total_count": 2488
     },
     "barnard": {
       "listing_count": 6,
@@ -243,9 +243,9 @@
     },
     "jhu": {
       "listing_count": 27,
-      "faculty_contact_count": 4554,
+      "faculty_contact_count": 4555,
       "unreviewed_count": 0,
-      "total_count": 4581
+      "total_count": 4582
     },
     "kenyon": {
       "listing_count": 10,
@@ -261,9 +261,9 @@
     },
     "lsu": {
       "listing_count": 6,
-      "faculty_contact_count": 1216,
+      "faculty_contact_count": 1228,
       "unreviewed_count": 0,
-      "total_count": 1222
+      "total_count": 1234
     },
     "macalester": {
       "listing_count": 5,
@@ -297,9 +297,9 @@
     },
     "ncsu": {
       "listing_count": 5,
-      "faculty_contact_count": 2302,
+      "faculty_contact_count": 2306,
       "unreviewed_count": 0,
-      "total_count": 2307
+      "total_count": 2311
     },
     "nd": {
       "listing_count": 7,
@@ -393,15 +393,15 @@
     },
     "rutgers": {
       "listing_count": 7,
-      "faculty_contact_count": 2031,
+      "faculty_contact_count": 2047,
       "unreviewed_count": 0,
-      "total_count": 2038
+      "total_count": 2054
     },
     "sbu": {
       "listing_count": 5,
-      "faculty_contact_count": 909,
+      "faculty_contact_count": 924,
       "unreviewed_count": 0,
-      "total_count": 914
+      "total_count": 929
     },
     "smith": {
       "listing_count": 5,
@@ -513,9 +513,9 @@
     },
     "uf": {
       "listing_count": 8,
-      "faculty_contact_count": 2042,
+      "faculty_contact_count": 2057,
       "unreviewed_count": 0,
-      "total_count": 2050
+      "total_count": 2065
     },
     "uga": {
       "listing_count": 5,
@@ -531,9 +531,9 @@
     },
     "uiuc": {
       "listing_count": 19,
-      "faculty_contact_count": 3262,
+      "faculty_contact_count": 3268,
       "unreviewed_count": 0,
-      "total_count": 3281
+      "total_count": 3287
     },
     "uky": {
       "listing_count": 3,
@@ -573,9 +573,9 @@
     },
     "unl": {
       "listing_count": 4,
-      "faculty_contact_count": 1219,
+      "faculty_contact_count": 1222,
       "unreviewed_count": 0,
-      "total_count": 1223
+      "total_count": 1226
     },
     "upenn": {
       "listing_count": 18,
