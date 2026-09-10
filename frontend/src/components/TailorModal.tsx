@@ -765,28 +765,52 @@ export default function TailorModal({
     setCopied(false);
   }
 
+  // The "Copied" flashes are the one delayed UI in this modal that was not
+  // owner/session-scoped: their timers ran to completion regardless of what
+  // happened to the modal in between. Same guard the Extract/Generate
+  // continuations use — the epoch covers close, an owner switch, an
+  // opportunity change and a profile change; mountedRef covers unmount.
+  const captureCopySession = () => {
+    const epoch = sessionEpochRef.current;
+    return () => mountedRef.current && sessionEpochRef.current === epoch;
+  };
+
   async function handleCopyAll() {
     const kept = keptTexts();
     if (kept.length === 0) return;
+    const current = captureCopySession();
     const text = kept.map((b) => `• ${b}`).join('\n');
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Rejects in insecure contexts and unfocused documents. Nothing was
+      // copied, so nothing may say it was; the per-bullet handler already
+      // swallowed this, Copy All let it surface as an unhandled rejection.
+      return;
+    }
+    if (!current()) return;
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { if (current()) setCopied(false); }, 2000);
   }
 
   // R71-F: per-bullet copy. Idx-keyed confirmation state so two
   // adjacent cards' "Copied" flashes can't collide when the user
   // clicks them in rapid succession.
   async function handleCopyBullet(idx: number, text: string) {
+    const current = captureCopySession();
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedBulletIdx(idx);
-      setTimeout(() => setCopiedBulletIdx((cur) => (cur === idx ? null : cur)), 1800);
     } catch {
       // navigator.clipboard.writeText can reject in insecure contexts
       // (HTTP, sandboxed iframes). Swallow — the global Copy All button
       // is the documented path, this is just a shortcut.
+      return;
     }
+    if (!current()) return;
+    setCopiedBulletIdx(idx);
+    setTimeout(() => {
+      if (current()) setCopiedBulletIdx((cur) => (cur === idx ? null : cur));
+    }, 1800);
   }
 
   if (!isOpen) return null;
