@@ -599,10 +599,10 @@ def policy_divergence(
 
 _COMPETENCE_RE = re.compile(
     r"\b(?:"
-    r"i\s+have\s+(?:[\w-]+\s+){0,2}?(?:experience|expertise|proficiency|background|skills?)"
-    r"|i(?:\s+am|'m|’m)\s+(?:(?:an?|highly|very)\s+)?(?:expert|proficient|skilled|experienced|adept|versed)"
+    r"i\s+have\s+(?:[\w-]+\s+){0,4}?(?:experience|expertise|proficiency|background|skills?)"
+    r"|i(?:\s+am|'m|’m)\s+(?:(?:an?|highly|very|quite|well|deeply)\s+)?(?:expert|proficient|skilled|experienced|adept|versed|comfortable|familiar|fluent)"
     r"|i(?:'ve|’ve|\s+have)\s+(?:worked|built|developed|implemented|used|studied|trained|published)"
-    r"|my\s+(?:\w+\s+)?(?:experience|expertise|proficiency|background|skills?|projects?|research|coursework)\s+(?:(?:is|lies)\s+)?(?:in|with|on|includes?|spans?)"
+    r"|my\s+(?:\w+\s+)?(?:experience|expertise|proficiency|background|skills?|projects?|research|coursework)\s+(?:(?:is|lies)\s+)?(?:in|with|on|includes?|spans?)\b"
     r"|i\s+(?:know|use|write|program)\b"
     r")",
 )
@@ -627,19 +627,21 @@ def competence_violations(
     # learning"). They still cannot support a claim of experience. Check the
     # explicitly supplied topics as phrases, without tightening the shared
     # filler vocabulary for all callers.
-    topics = [_norm_phrase(t) for t in re.split(r"[,;\n]|\band\b", interest_topics, flags=re.I)]
+    topics = [_norm_phrase(t) for t in re.split(r"[,;\n]", interest_topics)]
     source_phrases = f" {_norm_phrase(student_corpus)} "
     # A single sentence can contain separate assertions: "I have experience
     # with Python and I am interested in ML" must not turn the interest clause
     # into a competence claim. Keep coordinated skill lists together.
     for sentence in re.split(
-        r"[.!?\n;]+|\bbut\b|\band(?=\s+(?:i\b|we\b|my\b|our\b|am\b|would\b|hope\b|want\b|plan\b))",
+        r"[.!?\n;]+|\bbut\b|\b(?:and|which|that|where|so)(?=\s+(?:i\b|we\b|my\b|our\b|am\b|would\b|hope\b|want\b|plan\b))",
         text.lower(),
     ):
         claim = _COMPETENCE_RE.search(sentence)
         if not claim or re.search(r"\b(?:no|not|never)\b", claim.group()):
             continue
-        for token in hard_claims(sentence):
+        # Judge what the claim asserts, not the verb that asserts it:
+        # "proficient", "worked" and "includes" are not fabrications.
+        for token in hard_claims(sentence[claim.end():]):
             if token in _COMMON_FILLER or token in extra_allow:
                 continue
             if _in_corpus(token, corpus_lower, corpus_tokens):
@@ -662,8 +664,8 @@ _ACHIEVEMENT_RE = re.compile(
     r"latency|runtime|gpa|results?)\b", re.I,
 )
 _QUANTITY_RE = re.compile(
-    r"(?<![\w.])(?P<value>\d+(?:,\d{3})*(?:\.\d+)?)(?!\.\d)(?=\W|x\b|$)"
-    r"\s*(?:[-–]\s*)?(?P<unit>%|percent(?:age points)?\b|times\b|x\b|"
+    r"(?<![\w.])(?P<value>\d+(?:,\d{3})*(?:\.\d+)?)(?!\.\d)\+?(?=\W|x\b|(?:ms|k|gb|tb|mb|hz|khz|mhz|ghz|fps)\b|$)"
+    r"\s*(?:[-–]\s*)?(?P<unit>%|percent(?:age points)?\b|times\b|x\b|ms\b|k\b|gb\b|tb\b|mb\b|hz\b|khz\b|mhz\b|ghz\b|fps\b|"
     r"(?:year|month|week|day|hour|minute|second|sample|participant|user|"
     r"patient|paper|publication|project|experiment|model|record|student)s?\b)?", re.I,
 )
@@ -673,8 +675,23 @@ _MONTH_RE = re.compile(
 )
 
 
+_NUMBER_WORDS = {
+    "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6",
+    "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11", "twelve": "12",
+    "fifteen": "15", "twenty": "20", "thirty": "30", "forty": "40", "fifty": "50",
+    "hundred": "100", "thousand": "1000",
+}
+_NUMBER_WORD_RE = re.compile(r"\b(" + "|".join(_NUMBER_WORDS) + r")\b", re.I)
+
+
+def _digits(text: str) -> str:
+    """"Three years" and "3 years" are the same fact; compare them as one."""
+    return _NUMBER_WORD_RE.sub(lambda m: _NUMBER_WORDS[m.group(1).lower()], text)
+
+
 def _email_quantities(text: str) -> set[tuple[Decimal, str]]:
     quantities: set[tuple[Decimal, str]] = set()
+    text = _digits(text)
     for match in _QUANTITY_RE.finditer(text):
         value = Decimal(match["value"].replace(",", ""))
         unit = (match["unit"] or "").lower()
@@ -683,10 +700,10 @@ def _email_quantities(text: str) -> set[tuple[Decimal, str]]:
         # the caller's vocabulary/target checks still apply.
         if not unit and (
             1900 <= value <= 2100
-            or re.search(r"\b[A-Z]{2,5}\s*[- ]\s*$", before)
+            or ("." not in match["value"] and re.search(r"\b[A-Z]{2,5}\s*[- ]\s*$", before))
             or _MONTH_RE.search(before)
-            or re.search(r"\d[-/]$", before)
-            or re.match(r"[-/]\d", text[match.end():])
+            # Course numbers and dates are integers; 3.8/4.0 is a GPA.
+            or ("." not in match["value"] and (re.search(r"\d[-/]$", before) or re.match(r"[-/]\d", text[match.end():])))
         ):
             continue
         if unit in ("%", "percent"):
@@ -697,7 +714,7 @@ def _email_quantities(text: str) -> set[tuple[Decimal, str]]:
             unit = unit.removesuffix("s")
         # A meeting request can share a sentence with a real work example.
         if unit in ("minute", "hour") and re.search(
-            r"\b(?:meet|meeting|conversation|chat|call)\b",
+            r"\b(?:meet|meeting|conversation|chat|call|discuss|zoom|time|talk)\b",
             text[max(0, match.start() - 40):match.end() + 40], re.I,
         ):
             continue
@@ -716,7 +733,12 @@ def numeric_achievement_violations(text: str, student_evidence: str) -> list[str
     violations: set[str] = set()
     # Do not split decimal points, unlike the older prose sentence splitter.
     for clause in re.split(r"(?<!\d)\.(?!\d)|[!?\n;]+|\bbut\b", text):
-        if not re.search(r"\b(?:i|i've|my|we|we've|our)\b", clause, re.I) or not _ACHIEVEMENT_RE.search(clause):
+        if (
+            not re.search(r"\b(?:i|i've|my|we|we've|our)\b", clause, re.I)
+            or not _ACHIEVEMENT_RE.search(clause)
+            # A number attributed to the recipient is their achievement, not ours.
+            or re.search(r"\byour\b", clause, re.I)
+        ):
             continue
         for value, unit in _email_quantities(clause) - supported:
             violations.add(f"{value.normalize():f}{' ' + unit if unit else ''}")

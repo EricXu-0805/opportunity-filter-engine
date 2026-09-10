@@ -66,6 +66,10 @@ def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None
     "I improved throughput by 4.5x.",
     "My model achieved 98% accuracy.",
     "I analyzed 10,000 samples.",
+    # Competence phrasing the first regex could not see at all.
+    "I have three years of experience with Kubernetes.",
+    "I am quite experienced with Kubernetes.",
+    "I am comfortable with Rust.",
 ])
 def test_interest_target_and_unsupported_numbers_are_not_student_facts(email_client, monkeypatch, endpoint, claim):
     out = request_email(email_client, monkeypatch, endpoint, claim, current=draft(claim))
@@ -87,6 +91,19 @@ def test_interest_target_and_unsupported_numbers_are_not_student_facts(email_cli
     ("I have experience with Python and I am interested in machine learning.", []),
     ("I built a Python parser and would appreciate a 15-minute conversation.", ["Built a Python parser."]),
     ("I have no experience with hypersonics yet, and I am interested in learning.", []),
+    # The claim's own verb is not a fabrication ("proficient", "worked", "includes").
+    ("I am proficient in Python.", []),
+    ("I’ve worked on hypersonics.", ["Built hypersonics experiments using Python."]),
+    ("My coursework includes CS 225.", []),
+    # A GPA is a decimal over a decimal, not a course number or a date.
+    ("I have a 3.8 GPA.", ["GPA 3.8/4.0."]),
+    # The aspiration after "that I" is an interest, exactly like after "and I".
+    ("I have experience with Python that I hope to apply to machine learning.", []),
+    # Same fact, written two ways on the two sides.
+    ("I have 3 years of robotics experience.", ["Three years of competitive robotics experience."]),
+    ("I cut inference latency from 200 ms to 50 ms.", ["Cut inference latency from 200ms to 50ms."]),
+    # A meeting ask that shares a clause with the word "experience".
+    ("Could I have 15 minutes to discuss how my experience might fit your lab?", []),
 ])
 def test_real_evidence_interests_and_benign_numbers_stay_usable(email_client, monkeypatch, endpoint, claim, bullets):
     out = request_email(email_client, monkeypatch, endpoint, claim, bullets)
