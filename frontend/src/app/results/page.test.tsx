@@ -17,7 +17,7 @@
  * their own test file, not re-tested here.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({ t: (key: string) => key }),
@@ -146,11 +146,18 @@ const TEST_PROFILE = {
   skills: [],
 };
 
+// Mutable so a test can walk the real sequence of an identity switch: the
+// transition clears the accepted profile (no request can start while it is
+// null), then the next account's profile is accepted and the data hook
+// re-requests. Reset in beforeEach.
+const acceptedProfile = vi.hoisted(() => ({ current: null as unknown, cleared: false }));
 vi.mock('./use-results-profile-view', () => ({
   useAcceptedProfileView: () => ({
-    accepted: { profile: TEST_PROFILE, view: {} },
+    accepted: acceptedProfile.cleared
+      ? { profile: null, view: null }
+      : { profile: acceptedProfile.current ?? TEST_PROFILE, view: {} },
     accept: vi.fn(),
-    clear: vi.fn(),
+    clear: () => { acceptedProfile.cleared = true; },
   }),
   useCrossSchoolToggle: () => ({ crossSchool: false, setCrossSchool: vi.fn(), clear: vi.fn() }),
 }));
@@ -189,6 +196,7 @@ vi.mock('./MatchList', () => ({
 
 import ResultsPage from './page';
 import { getMatchFeedback, setMatchFeedback } from '@/lib/match-feedback';
+import { getAuthState } from '@/lib/supabase';
 import { OwnerMismatchError } from '@/lib/identity-owner';
 
 function baseInteractions(overrides: Record<string, unknown> = {}) {
@@ -217,6 +225,13 @@ function baseInteractions(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   lastMatchListProps = null;
+  acceptedProfile.current = null;
+  acceptedProfile.cleared = false;
+  // Calls from an earlier test must not satisfy this test's waitFor: a
+  // "was called" that is already true lets a deferred mock go unconsumed and
+  // the assertion that follows pass for nothing.
+  vi.mocked(getMatchFeedback).mockReset().mockResolvedValue(new Map());
+  vi.mocked(setMatchFeedback).mockReset().mockResolvedValue(true);
   mockUseResultsInteractions.mockReset();
   mockUseResultsInteractions.mockReturnValue(baseInteractions());
   mockGetMatchView.mockReset();
@@ -279,21 +294,52 @@ describe('ResultsPage — the match-accuracy thumbs belong to one account', () =
     // cards as "already asked about".
     vi.mocked(setMatchFeedback).mockResolvedValue(true);
     const { rerender } = render(<ResultsPage />);
-    await waitFor(() => expect(getMatchFeedback).toHaveBeenCalledWith(['opp-wiring-1']));
+    await waitFor(() => expect(getMatchFeedback).toHaveBeenCalled());
+    expect(getMatchFeedback).toHaveBeenCalledWith(['opp-wiring-1']);
     act(() => props().onFeedback('opp-wiring-1', 'up', ctx));
     await waitFor(() => expect(props().feedback.get('opp-wiring-1')).toBe('up'));
     const hydrations = vi.mocked(getMatchFeedback).mock.calls.length;
 
     // The hook reports a real switch by calling the page's transition
-    // handler synchronously, then re-rendering with a bumped generation.
+    // handler synchronously, then re-rendering with a bumped generation. The
+    // list comes back once U2's profile is accepted and the data hook
+    // re-requests (that the list leaves in the transition is pinned below).
     const onIdentityChange = mockUseResultsInteractions.mock.calls.at(-1)?.[0] as () => void;
     act(() => onIdentityChange());
-    expect(props().feedback.size).toBe(0);
 
+    acceptedProfile.current = { ...TEST_PROFILE, major: 'U2 major' };
+    acceptedProfile.cleared = false;
     mockUseResultsInteractions.mockReturnValue(baseInteractions({ identityGeneration: 1, ownerScopeKey: 'u2' }));
     rerender(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    expect(props().feedback.size).toBe(0);
     await waitFor(() => expect(vi.mocked(getMatchFeedback).mock.calls.length).toBe(hydrations + 1));
     expect(vi.mocked(getMatchFeedback).mock.calls.at(-1)?.[0]).toEqual(['opp-wiring-1']);
+  });
+
+  it('U1\'s hydration response arriving after the switch does not paint into U2\'s cleared map', async () => {
+    // The effect's `cancelled` flag flips in its cleanup, one task after the
+    // auth callback that cleared the map. A response in that gap used to land.
+    let resolveHydration: (d: Map<string, 'up' | 'down'>) => void = () => {};
+    vi.mocked(getMatchFeedback).mockImplementationOnce(() => new Promise((r) => { resolveHydration = r; }));
+    const { rerender } = render(<ResultsPage />);
+    await waitFor(() => expect(getMatchFeedback).toHaveBeenCalled());
+
+    const onIdentityChange = mockUseResultsInteractions.mock.calls.at(-1)?.[0] as () => void;
+    act(() => onIdentityChange());
+    // U1's late response lands in the gap: after the transition cleared the
+    // map, before U2's profile is accepted and U2's own request replaces the
+    // list (which is when the effect's cleanup would finally have run).
+    resolveHydration(new Map([['opp-wiring-1', 'up']]));
+    await new Promise((r) => setTimeout(r, 20));
+
+    acceptedProfile.current = { ...TEST_PROFILE, major: 'U2 major' };
+    acceptedProfile.cleared = false;
+    mockUseResultsInteractions.mockReturnValue(baseInteractions({ identityGeneration: 1, ownerScopeKey: 'u2' }));
+    rerender(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+
+    expect(props().feedback.has('opp-wiring-1')).toBe(false);
   });
 
   it('a verdict refused for the SAME account is taken back instead of standing as a saved thumb', async () => {
@@ -318,6 +364,40 @@ describe('ResultsPage — the match-accuracy thumbs belong to one account', () =
     rejectFirst(new OwnerMismatchError());
     await new Promise((r) => setTimeout(r, 20));
     expect(props().feedback.get('opp-wiring-1')).toBe('up');
+  });
+});
+
+describe('ResultsPage — what an identity switch must take off the screen in the transition itself', () => {
+  const onIdentityChange = () => mockUseResultsInteractions.mock.calls.at(-1)?.[0] as () => void;
+
+  it('the ranked list: U1\'s rows do not stay up as U2\'s fresh-looking list while U2\'s profile is re-accepted', async () => {
+    // Before: only the email modal, profile view, cross-school failure and
+    // page number were cleared. The data hook nulls `data` when a NEW request
+    // starts, and none starts while the profile is null — so the old list,
+    // with its scores and per-profile explanations, stayed rendered.
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+
+    act(() => onIdentityChange()());
+
+    expect(screen.queryByTestId('mock-match-list')).toBeNull();
+  });
+
+  it('the Save-search dialog: a name and digest e-mail U1 was typing cannot be submitted onto U2\'s new row', async () => {
+    vi.mocked(getAuthState).mockResolvedValue({ user: { id: 'u1' }, isAnonymous: false, email: 'u1@x.edu', session: {} } as never);
+    try {
+      render(<ResultsPage />);
+      // The save control appears once there is something to save.
+      fireEvent.change(await screen.findByPlaceholderText('results.search.placeholder'), { target: { value: 'imaging' } });
+      fireEvent.click(await screen.findByTitle('results.saveSearchTitle'));
+      expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+      act(() => onIdentityChange()());
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      vi.mocked(getAuthState).mockResolvedValue({ user: null, isAnonymous: true, email: null, session: null } as never);
+    }
   });
 });
 

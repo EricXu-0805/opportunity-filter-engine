@@ -240,7 +240,7 @@ export default function FeedbackWidget() {
     }
     // 'duplicate' means the ticket was already created by an earlier attempt —
     // counting it again would inflate the funnel with a retry.
-    if (result.reason === 'created') track('feedback_submitted');
+    if (result.reason === 'created') track('feedback_submitted', {}, owner);
     setTicket({ id: result.id, duplicate: result.reason === 'duplicate' });
     setStatus('done');
     // Confirmed insert — and only now — the local copy goes away and the next

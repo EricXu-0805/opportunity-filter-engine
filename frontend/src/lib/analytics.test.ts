@@ -10,7 +10,7 @@ vi.mock('./supabase', () => ({
 }));
 
 import { track, trackOnce } from './analytics';
-import { advanceOwnerEpoch, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
+import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
 
 describe('track', () => {
   beforeEach(() => {
@@ -64,6 +64,20 @@ describe('track — bound to the account on screen when the event fired', () => 
     await claimOwner('dev-2');
     resolveSession('dev-2');
     await pending;
+
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('a caller that awaited first passes the token it captured at the top of its handler, and that token decides', async () => {
+    // Entry capture is inert for such a caller: by the time track() runs the
+    // owner has already moved on, and the entry token would name the new
+    // account — the gate would compare the new owner against itself.
+    await claimOwner('dev-1');
+    const owner = captureOwnerToken();
+    await claimOwner('dev-2');
+    getDeviceId.mockResolvedValue('dev-2');
+
+    await track('ai_feature_used', { feature: 'cold_email' }, owner);
 
     expect(insert).not.toHaveBeenCalled();
   });

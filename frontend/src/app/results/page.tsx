@@ -230,14 +230,26 @@ function ResultsContent() {
   const clearCrossSchoolRef = useRef<() => void>(() => {});
   // Same shape for the match-accuracy thumbs, declared further down.
   const clearFeedbackRef = useRef<() => void>(() => {});
+  // And for the ranked list itself. The data hook nulls it only when a NEW
+  // request starts, and no request starts while the profile is being
+  // re-accepted for the next account — so U1's rows, scores and per-profile
+  // explanations stayed on U2's screen for that whole window, remounted to
+  // look like U2's fresh list.
+  const clearDataRef = useRef<() => void>(() => {});
+  // A dialog U1 was filling in must not survive into U2's session: the name
+  // and digest e-mail typed by one account would be filed onto a row the
+  // INSERT creates for the other. Same treatment as the e-mail modal.
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const handleIdentityChange = useCallback(() => {
     setEmailModal((m) => (m.open ? { ...m, open: false } : m));
+    setSaveDialogOpen(false);
     // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
     // on identityGeneration, which runs after paint and would leave U1's
     // document on screen and its view actionable for a full render.
     clearProfileView();
     clearCrossSchoolRef.current();
     clearFeedbackRef.current();
+    clearDataRef.current();
     setPage(1);
   }, [clearProfileView]);
   const {
@@ -480,6 +492,9 @@ function ResultsContent() {
   useEffect(() => {
     clearCrossSchoolRef.current = clearCrossSchoolFailure;
   }, [clearCrossSchoolFailure]);
+  useEffect(() => {
+    clearDataRef.current = () => setData(null);
+  }, [setData]);
 
   const paginated = useMemo(() => data?.results ?? [], [data?.results]);
   const filteredTotal = data?.filtered_total ?? 0;
@@ -494,6 +509,11 @@ function ResultsContent() {
   // PostgREST `in=(...)` URL bounded; feedbackFetchedRef dedupes so paging
   // back and forth doesn't refetch ids we've already asked about.
   const feedbackFetchedRef = useRef<Set<string>>(new Set());
+  // Bumped in the transition itself. The effect's own `cancelled` flag flips
+  // only in its cleanup, i.e. after React commits the re-render — one task
+  // later than the auth callback that cleared the map — so a U1 hydration
+  // response landing in that gap would paint U1's verdicts into U2's map.
+  const feedbackHydrationGenRef = useRef(0);
   useEffect(() => {
     clearFeedbackRef.current = () => {
       // U1's thumbs are U1's; the next account starts with none and asks the
@@ -502,6 +522,7 @@ function ResultsContent() {
       setFeedback(new Map());
       feedbackFetchedRef.current.clear();
       feedbackMutationVersions.current.clear();
+      feedbackHydrationGenRef.current += 1;
     };
   }, []);
   useEffect(() => {
@@ -513,10 +534,11 @@ function ResultsContent() {
       ids.map(id => [id, feedbackMutationVersions.current.get(id) ?? 0]),
     );
     ids.forEach(id => feedbackFetchedRef.current.add(id));
+    const generation = feedbackHydrationGenRef.current;
     let cancelled = false;
     getMatchFeedback(ids)
       .then((d) => {
-        if (cancelled || d.size === 0) return;
+        if (cancelled || generation !== feedbackHydrationGenRef.current || d.size === 0) return;
         setFeedback(prev => mergeHydratedFeedback(
           prev, d, requestedVersions, feedbackMutationVersions.current,
         ));
@@ -632,7 +654,6 @@ function ResultsContent() {
   }, [emailModal.open, emailModal.opportunityId, emailModal.openedAgainstResults, data]);
 
   const [helpOpen, setHelpOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [digestAvailable, setDigestAvailable] = useState(false);
   const openHelp = useCallback(() => setHelpOpen(true), []);
 

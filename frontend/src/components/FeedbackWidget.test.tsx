@@ -135,7 +135,7 @@ describe('FeedbackWidget', () => {
       subject: 'dark mode',
       clientToken: expect.any(String),
     }), captureOwnerToken());
-    expect(mockTrack).toHaveBeenCalledWith('feedback_submitted');
+    expect(mockTrack).toHaveBeenCalledWith('feedback_submitted', {}, expect.anything());
   });
 
   it('sends an unclassified report as category null rather than guessing "other"', async () => {

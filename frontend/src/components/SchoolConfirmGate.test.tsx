@@ -181,7 +181,7 @@ describe('confirming', () => {
     expect(trackMock).toHaveBeenCalledWith('school_confirmed', {
       school: 'uiuc',
       changed: false,
-    });
+    }, expect.anything());
   });
 
   it('changing the school in the gate confirms the NEW school', async () => {
@@ -196,7 +196,7 @@ describe('confirming', () => {
     expect(trackMock).toHaveBeenCalledWith('school_confirmed', {
       school: 'ucb',
       changed: true,
-    });
+    }, expect.anything());
   });
 
   it('a STALE owner (identity moved on while the modal sat open) fails closed: no receipt, no profile write, no cache clear, no event, no track — modal stays open', async () => {

@@ -1,5 +1,5 @@
 import { supabase, getDeviceId } from './supabase';
-import { captureOwnerToken } from './identity-owner';
+import { captureOwnerToken, type OwnerToken } from './identity-owner';
 
 export type FunnelEvent =
   | 'landing_view'
@@ -24,16 +24,19 @@ export type FunnelEvent =
 export async function track(
   event: FunnelEvent,
   props: Record<string, unknown> = {},
-): Promise<void> {
   // Bound to whoever was on screen when the event fired: resolved after an
   // account switch, the row would otherwise land under the next account.
-  // Captured here rather than threaded from 16 call sites that carry no
-  // other account data — every caller fires synchronously from its handler.
+  // The default — captured at entry — is right for the callers that fire
+  // before any await of their own. A caller that awaits first (the cold-
+  // email stream, persistHomeSchool, submitFeedback, the match request) must
+  // pass the token it captured at the top of its handler, or this compares
+  // the new owner against itself.
   // Deliberately looser than the private writers: a null-uid capture (fresh
   // browser, no identity resolved yet) binds to the first identity that
   // resolves, because for operator-only funnel counters losing every first
   // landing_view costs more than a late switch misattributing one event.
-  const token = captureOwnerToken();
+  token: OwnerToken = captureOwnerToken(),
+): Promise<void> {
   try {
     const deviceId = await getDeviceId();
     if (!deviceId) return;
@@ -50,6 +53,7 @@ export async function track(
 export async function trackOnce(
   event: FunnelEvent,
   props: Record<string, unknown> = {},
+  token: OwnerToken = captureOwnerToken(),
 ): Promise<void> {
   const key = `ofe_tracked_${event}`;
   try {
@@ -60,5 +64,5 @@ export async function trackOnce(
   } catch {
     /* sessionStorage unavailable (private mode/SSR) — fall through and track */
   }
-  await track(event, props);
+  await track(event, props, token);
 }
