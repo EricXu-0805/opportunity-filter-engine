@@ -186,7 +186,7 @@ describe('ProfessorUpdatesSection', () => {
 
     expect(mockMarkProfessorUpdatesRead).toHaveBeenCalledWith([
       { professorId: PROF_A, lastReadEventId: newest.event_id },
-    ]);
+    ], expect.anything());
     await waitFor(() => {
       expect(
         screen.queryByText('dashboard.professorUpdates.unread {"count":1}'),

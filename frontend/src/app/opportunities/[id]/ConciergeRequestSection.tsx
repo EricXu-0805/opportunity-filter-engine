@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { CheckCircle, Send } from 'lucide-react';
 import {
   getAuthState,
@@ -11,6 +11,7 @@ import {
 import { track } from '@/lib/analytics';
 import { Section } from './DetailSections';
 import type { TFunc } from './types';
+import { captureOwnerToken, getLocalOwnerState, isTokenOwnerStillCurrent, OwnerMismatchError, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 /**
  * "Have JoinALab do this one for me" — the concierge request, bound to the
@@ -37,6 +38,28 @@ export function ConciergeRequestSection({
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [ownerGeneration, setOwnerGeneration] = useState(0);
+  // The email and "already requested" state below are read for whoever is
+  // signed in at mount; an identity change must re-read them, or the next
+  // account submits with the previous account's address prefilled. The
+  // listener fires on every readiness transition — including the same uid
+  // going pending→ready during the load itself — so bump only when the owner
+  // actually changed, or the reload feeds its own trigger and `requested`
+  // never settles.
+  const lastOwnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Seeded from the live snapshot at subscribe time. Seeding from the first
+    // callback instead made the effect inert in the normal case — a component
+    // mounted after the owner was already established sees its first callback
+    // only at the real switch, and swallowed it as the seed.
+    lastOwnerRef.current = getLocalOwnerState().uid;
+    return onLocalOwnerStateChange(() => {
+      const uid = getLocalOwnerState().uid;
+      if (uid === null || uid === lastOwnerRef.current) return;
+      lastOwnerRef.current = uid;
+      setOwnerGeneration((g) => g + 1);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +75,7 @@ export function ConciergeRequestSection({
       setRequested(mine === null ? null : mine.has(opportunityId));
     })();
     return () => { cancelled = true; };
-  }, [opportunityId]);
+  }, [opportunityId, ownerGeneration]);
 
   if (requested === null) return null;
 
@@ -80,14 +103,28 @@ export function ConciergeRequestSection({
         onSubmit={async (e) => {
           e.preventDefault();
           if (submitting) return;
+          const token = captureOwnerToken();
           setSubmitting(true);
           setFailed(false);
           void track('concierge_request_submitted', { opportunity_id: opportunityId });
-          const ok = await requestConciergeApply(
-            opportunityId,
-            email.trim() || auth?.email || null,
-          );
+          let ok: boolean;
+          try {
+            ok = await requestConciergeApply(
+              opportunityId,
+              email.trim() || auth?.email || null,
+              {},
+              token,
+            );
+          } catch (err) {
+            // Silent only when the screen now belongs to someone else. A
+            // refusal for the SAME account is a failure this person must see.
+            if (!isTokenOwnerStillCurrent(token)) { setSubmitting(false); return; }
+            if (!(err instanceof OwnerMismatchError)) throw err;
+            ok = false;
+          }
+          // The busy flag carries no account data; it is reset either way.
           setSubmitting(false);
+          if (!isTokenOwnerStillCurrent(token)) return;
           // Only a confirmed write flips the state. An optimistic "requested"
           // over a failed insert is the one outcome worse than the button:
           // the student stops asking and nobody ever sees the request.

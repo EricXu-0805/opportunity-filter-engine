@@ -970,14 +970,20 @@ export default function ColdEmailModal({
   }, [followUpDate, pushOffer]);
 
   const enableNotifications = useCallback(async () => {
+    // Two bindings: the draft session (closed / retargeted / re-profiled
+    // ends it) and the account that clicked — the permission dialog is a long
+    // window, and the endpoint must not be written under whoever is signed in
+    // when it closes. The writer refuses on a switch; current() gates paints.
     const current = captureDraftSession();
+    const token = captureOwnerToken();
     setPushBusy(true);
     try {
       const key = await getVapidPublicKey();
       if (!current()) return;
-      if (key && await subscribeToPush(key) && current()) setPushOffer('subscribed');
-    } catch { /* the offer simply stays; nothing was promised */ } finally {
-      if (current()) setPushBusy(false);
+      if (key && await subscribeToPush(key, token) && current()) setPushOffer('subscribed');
+    } catch { /* a session change, an owner change or a refused write: the offer simply stays; nothing was promised */ } finally {
+      // A busy flag carries no account data; reset either way.
+      setPushBusy(false);
     }
   }, [captureDraftSession]);
 

@@ -1,4 +1,5 @@
 import { supabase, getDeviceId } from './supabase';
+import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
 
 export type PushStatus = 'unsupported' | 'denied' | 'default' | 'subscribed';
 
@@ -32,7 +33,7 @@ export async function getPushStatus(): Promise<PushStatus> {
   }
 }
 
-export async function subscribeToPush(vapidPublicKey: string): Promise<boolean> {
+export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken): Promise<boolean> {
   if (!isPushSupported()) return false;
   if (!vapidPublicKey) return false;
 
@@ -41,6 +42,9 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<boolean> 
 
   const deviceId = await getDeviceId();
   if (!deviceId) return false;
+  // The permission dialog above is a long, real window: the browser can be a
+  // different account by the time it closes. Bind the endpoint to whoever clicked.
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
 
   const reg = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
@@ -58,6 +62,7 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<boolean> 
   const p256dh = json.keys?.p256dh ?? '';
   const auth = json.keys?.auth ?? '';
   if (!endpoint || !p256dh || !auth) return false;
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
 
   const { error } = await supabase
     .from('push_subscriptions')
@@ -74,7 +79,7 @@ export async function subscribeToPush(vapidPublicKey: string): Promise<boolean> 
   return true;
 }
 
-export async function unsubscribeFromPush(): Promise<void> {
+export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
   if (!isPushSupported()) return;
   try {
     const reg = await navigator.serviceWorker.getRegistration('/sw.js');
@@ -82,8 +87,12 @@ export async function unsubscribeFromPush(): Promise<void> {
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return;
     const endpoint = sub.endpoint;
-    await sub.unsubscribe();
+    // Decide ownership BEFORE dropping the browser-level subscription: a
+    // refusal after it would leave a dead endpoint with its row still live
+    // for the reminders cron and the toggle still reading "on".
     const deviceId = await getDeviceId();
+    if (deviceId && !isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    await sub.unsubscribe();
     if (deviceId) {
       await supabase
         .from('push_subscriptions')
@@ -91,5 +100,10 @@ export async function unsubscribeFromPush(): Promise<void> {
         .eq('device_id', deviceId)
         .eq('endpoint', endpoint);
     }
-  } catch { /* swallow */ }
+  } catch (err) {
+    // A refused write is not "unsubscribed": the browser is another account
+    // now, and the caller must not paint the old one's result.
+    if (err instanceof OwnerMismatchError) throw err;
+    /* everything else stays best-effort */
+  }
 }

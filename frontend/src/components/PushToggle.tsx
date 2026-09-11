@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { captureOwnerToken, isLocalOwnerReadyNow, isTokenOwnerStillCurrent, onLocalOwnerStateChange, OwnerMismatchError } from '@/lib/identity-owner';
 import { Bell, BellOff } from 'lucide-react';
 import { getPushStatus, subscribeToPush, unsubscribeFromPush, isPushSupported, type PushStatus } from '@/lib/push';
 import { getVapidPublicKey } from '@/lib/api';
@@ -10,6 +11,11 @@ export default function PushToggle() {
   const { t } = useT();
   const [status, setStatus] = useState<PushStatus | 'loading'>('loading');
   const [busy, setBusy] = useState(false);
+  // Clickable before any identity has resolved on a fresh /dashboard load —
+  // a token captured then is the null sentinel and every write is refused.
+  // The dashboard's own data load establishes the identity; this only watches.
+  const [ownerReady, setOwnerReady] = useState(isLocalOwnerReadyNow);
+  useEffect(() => onLocalOwnerStateChange(() => setOwnerReady(isLocalOwnerReadyNow())), []);
   // The server's own key, not a build-time copy of it. The private half that
   // signs every push lives on the backend, so a subscription minted against
   // any other key is accepted by the browser and then never delivered to —
@@ -37,16 +43,27 @@ export default function PushToggle() {
   if (!vapidKey && !subscribed) return null;
 
   async function handleClick() {
+    // The permission dialog is a long window; the browser can be a different
+    // account when it closes. The endpoint is bound to whoever clicked.
+    const token = captureOwnerToken();
     setBusy(true);
     try {
       if (subscribed) {
-        await unsubscribeFromPush();
+        await unsubscribeFromPush(token);
+        if (!isTokenOwnerStillCurrent(token)) return;
         setStatus('default');
       } else {
-        const ok = await subscribeToPush(vapidKey!);
+        const ok = await subscribeToPush(vapidKey!, token);
+        if (!isTokenOwnerStillCurrent(token)) return;
         setStatus(ok ? 'subscribed' : 'default');
       }
+    } catch (err) {
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      // A refusal for the same account reads as "not subscribed" rather than
+      // a silent no-op; a refusal after a switch paints nothing.
+      if (isTokenOwnerStillCurrent(token)) setStatus('default');
     } finally {
+      // A busy flag carries no account data; it is reset either way.
       setBusy(false);
     }
   }
@@ -55,7 +72,7 @@ export default function PushToggle() {
     <button
       type="button"
       onClick={handleClick}
-      disabled={busy}
+      disabled={busy || !ownerReady}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 ${
         subscribed
           ? 'bg-indigo-50 text-indigo-700 border-indigo-200'

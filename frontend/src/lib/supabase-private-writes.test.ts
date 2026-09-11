@@ -33,6 +33,7 @@ const {
   mockGetSession,
   mockSignInAnonymously,
   mockOnAuthStateChange,
+  mockStorageFrom,
 } = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
@@ -42,6 +43,7 @@ const {
     mockGetSession: vi.fn(),
     mockSignInAnonymously: vi.fn(),
     mockOnAuthStateChange: vi.fn(),
+    mockStorageFrom: vi.fn(),
   };
 });
 
@@ -54,12 +56,13 @@ vi.mock('@supabase/supabase-js', () => ({
     },
     from: mockFrom,
     rpc: mockRpc,
-    storage: { from: vi.fn() },
+    storage: { from: mockStorageFrom },
   }),
 }));
 
 import { captureOwnerToken, type OwnerToken } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
+import { subscribeToPush, unsubscribeFromPush } from './push';
 import {
   confirmInteractionContact,
   dismissInteraction,
@@ -74,11 +77,19 @@ import {
   trackInteraction,
   updateInteractionDetails,
   type InteractionType,
+  followProfessor,
+  unfollowProfessor,
+  joinWaitlist,
+  requestConciergeApply,
+  uploadAttachment,
+  deleteAttachment,
+  markProfessorUpdatesRead,
 } from './supabase';
 
 const U1 = '11111111-1111-4111-8111-111111111111';
 const U2 = '22222222-2222-4222-8222-222222222222';
 const OPP = 'faculty-abc-12345678';
+const PROF = 'prof:v1:uiuc:11111111111111111111';
 
 function session(uid: string) {
   return { data: { session: { user: { id: uid, is_anonymous: true }, access_token: 't' } } };
@@ -832,5 +843,109 @@ describe('interaction reads: throw on query failure, null/empty only on a CONFIR
     const eq = vi.fn().mockResolvedValue({ data: [], error: null });
     mockFrom.mockImplementation(() => ({ select: vi.fn().mockReturnValue({ eq }) }));
     await expect(getInteractionsFull()).resolves.toEqual(new Map());
+  });
+});
+
+
+describe('every tokenless writer now refuses an account that changed under it', () => {
+  // Before: these eight functions took no token and used ensureAnonSession()
+  // as their only uid source. When a live auth event moved the browser to U2
+  // while U1's getSession() was still pending, the stale resolution handed
+  // back U2's uid and the row was written under U2 — U1's résumé stored at
+  // U2/<opp>/resume.pdf, U1's unfollow deleting U2's follow of the same
+  // professor, U1's concierge request and email filed under U2.
+  // Same shape as the toggleFavorite race above: start as U1 with getSession
+  // held open, switch to U2, let the stale U1 resolution land.
+  async function raceAsU1(action: (token: OwnerToken) => Promise<unknown>) {
+    const tokenU1 = establishIdentity(U1);
+    let resolveStale: (v: unknown) => void = () => {};
+    mockGetSession.mockImplementationOnce(() => new Promise((r) => { resolveStale = r; }));
+    const pending = action(tokenU1);
+    await until(() => mockGetSession.mock.calls.length >= 1);
+    liveAuthCallback?.('SIGNED_IN', session(U2).data.session);
+    resolveStale(session(U1));
+    return pending;
+  }
+
+  function tableSpies() {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const eq2 = vi.fn().mockResolvedValue({ error: null });
+    const eq1 = vi.fn(() => ({ eq: eq2 }));
+    const del = vi.fn(() => ({ eq: eq1 }));
+    mockFrom.mockImplementation(() => ({ insert, upsert, delete: del }));
+    return { insert, upsert, del };
+  }
+
+  it('followProfessor: zero insert, and the insert would have been U2\'s', async () => {
+    const { insert } = tableSpies();
+    await expect(raceAsU1((t) => followProfessor(PROF, t, 'Prof One', 'uiuc'))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('unfollowProfessor: zero delete — the DELETE would have been scoped to U2\'s row', async () => {
+    const { del } = tableSpies();
+    await expect(raceAsU1((t) => unfollowProfessor(PROF, t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('joinWaitlist: zero insert — U1\'s typed email would have been filed under U2', async () => {
+    const { insert } = tableSpies();
+    await expect(raceAsU1((t) => joinWaitlist('u1@example.edu', { source: 'account' }, t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('requestConciergeApply: zero insert — U1\'s request and email would have been U2\'s', async () => {
+    const { insert } = tableSpies();
+    await expect(raceAsU1((t) => requestConciergeApply(OPP, 'u1@example.edu', {}, t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('markProfessorUpdatesRead: zero upsert — U2\'s unread cursor would have been advanced', async () => {
+    const { upsert } = tableSpies();
+    await expect(raceAsU1((t) => markProfessorUpdatesRead([{ professorId: PROF, lastReadEventId: 'prof-event:v1:aaaaaaaaaaaaaaaaaaaaaaaa' }], t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('uploadAttachment: zero upload — U1\'s file would have been stored at U2/<opp>/', async () => {
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    mockStorageFrom.mockImplementation(() => ({ upload }));
+    const file = new File(['%PDF-1.4'], 'resume.pdf', { type: 'application/pdf' });
+    await expect(raceAsU1((t) => uploadAttachment(OPP, file, t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('deleteAttachment: zero remove — the object removed would have been U2\'s', async () => {
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    mockStorageFrom.mockImplementation(() => ({ remove }));
+    await expect(raceAsU1((t) => deleteAttachment(OPP, 'resume.pdf', t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('subscribeToPush: zero upsert — the endpoint would have been bound to U2', async () => {
+    const { upsert } = tableSpies();
+    Object.defineProperty(globalThis, 'Notification', { configurable: true, value: { permission: 'default', requestPermission: async () => 'granted' } });
+    const sub = { endpoint: 'https://push.example/ep', toJSON: () => ({ keys: { p256dh: 'p', auth: 'a' } }) };
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: {
+      register: async () => ({ pushManager: { getSubscription: async () => sub, subscribe: async () => sub } }),
+      ready: Promise.resolve(),
+      getRegistration: async () => ({ pushManager: { getSubscription: async () => sub } }),
+    } });
+    Object.defineProperty(globalThis, 'PushManager', { configurable: true, value: function PushManager() {} });
+    await expect(raceAsU1((t) => subscribeToPush('QUJD', t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('unsubscribeFromPush: the row delete is refused and surfaces, never swallowed into "unsubscribed"', async () => {
+    const { del } = tableSpies();
+    const sub = { endpoint: 'https://push.example/ep', unsubscribe: async () => true };
+    Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: {
+      getRegistration: async () => ({ pushManager: { getSubscription: async () => sub } }),
+    } });
+    Object.defineProperty(globalThis, 'PushManager', { configurable: true, value: function PushManager() {} });
+    // unsubscribeFromPush wraps everything in try/catch — an OwnerMismatchError
+    // inside it must not be swallowed as success.
+    await expect(raceAsU1((t) => unsubscribeFromPush(t))).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(del).not.toHaveBeenCalled();
   });
 });

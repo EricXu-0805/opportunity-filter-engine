@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { Paperclip, Trash2, Upload, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import {
   ATTACHMENTS_ALLOWED_MIME,
@@ -46,10 +47,21 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
 
   const handleSelect = useCallback(async (file: File | undefined) => {
     if (!file) return;
+    const token = captureOwnerToken();
     setError(null);
     setUploading(file.name);
-    const result = await uploadAttachment(opportunityId, file);
+    let result: Awaited<ReturnType<typeof uploadAttachment>>;
+    try {
+      result = await uploadAttachment(opportunityId, file, token);
+    } catch (err) {
+      // Silent only when a different account now owns this browser. A refusal
+      // for the same account is an upload failure this person must see.
+      if (!isTokenOwnerStillCurrent(token)) { setUploading(null); return; }
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      result = { ok: false, reason: 'unauthenticated' };
+    }
     setUploading(null);
+    if (!isTokenOwnerStillCurrent(token)) return;
     if (!result.ok) {
       if (result.reason === 'too_large') setError(t('detail.attachments.errTooLarge'));
       else if (result.reason === 'wrong_type') setError(t('detail.attachments.errWrongType'));
@@ -62,8 +74,17 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
   }, [opportunityId, t, refresh]);
 
   const handleDelete = useCallback(async (name: string) => {
+    const token = captureOwnerToken();
     setError(null);
-    const ok = await deleteAttachment(opportunityId, name);
+    let ok: boolean;
+    try {
+      ok = await deleteAttachment(opportunityId, name, token);
+    } catch (err) {
+      if (!isTokenOwnerStillCurrent(token)) return;
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      ok = false;
+    }
+    if (!isTokenOwnerStillCurrent(token)) return;
     if (!ok) {
       setError(t('detail.attachments.errDelete', { name }));
       return;

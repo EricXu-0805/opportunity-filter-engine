@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { fireEvent } from '@testing-library/dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConciergeRequestSection } from './ConciergeRequestSection';
+import { advanceOwnerEpoch, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const mocks = vi.hoisted(() => ({
   getAuthState: vi.fn(),
@@ -21,11 +22,25 @@ function signedIn(email: string | null) {
   });
 }
 
-beforeEach(() => {
+// The component now binds each write to the account that clicked and paints
+// only if that account is still current. identity-owner is real here (only
+// @/lib/supabase is mocked), so claim an owner the way the app does.
+const OWNER_UID = '11111111-1111-4111-8111-111111111111';
+async function claimOwner(): Promise<void> {
+  advanceOwnerEpoch(OWNER_UID);
+  await syncLocalIdentityOwner(OWNER_UID);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(OWNER_UID); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(OWNER_UID)).toBe(true);
+}
+
+beforeEach(async () => {
   vi.clearAllMocks();
   signedIn('student@illinois.edu');
   mocks.loadConciergeRequests.mockResolvedValue(new Set<string>());
   mocks.requestConciergeApply.mockResolvedValue(true);
+  await claimOwner();
 });
 
 describe('ConciergeRequestSection', () => {
@@ -35,9 +50,7 @@ describe('ConciergeRequestSection', () => {
     fireEvent.click(await screen.findByTestId('concierge-request-submit'));
 
     await waitFor(() => {
-      expect(mocks.requestConciergeApply).toHaveBeenCalledWith(
-        OPP, 'student@illinois.edu',
-      );
+      expect(mocks.requestConciergeApply).toHaveBeenCalledWith(OPP, 'student@illinois.edu', {}, expect.anything());
     });
   });
 
@@ -96,9 +109,59 @@ describe('ConciergeRequestSection', () => {
     fireEvent.click(screen.getByTestId('concierge-request-submit'));
 
     await waitFor(() => {
-      expect(mocks.requestConciergeApply).toHaveBeenCalledWith(
-        OPP, 'anon@illinois.edu',
-      );
+      expect(mocks.requestConciergeApply).toHaveBeenCalledWith(OPP, 'anon@illinois.edu', {}, expect.anything());
     });
+  });
+});
+
+
+describe('ConciergeRequestSection — a result that arrives after an owner switch', () => {
+  it('does not show U1\'s "requested" state on U2\'s screen', async () => {
+    // Before: the submit awaited requestConciergeApply with no owner check and
+    // then set requested=true — so a request U1 made landed as "already asked"
+    // on whoever was signed in when the write resolved.
+    let resolveWrite: (v: boolean) => void = () => {};
+    mocks.requestConciergeApply.mockImplementationOnce(() => new Promise<boolean>((r) => { resolveWrite = r; }));
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    fireEvent.click(await screen.findByTestId('concierge-request-submit'));
+    await waitFor(() => expect(mocks.requestConciergeApply).toHaveBeenCalled());
+
+    // The browser becomes U2 while U1's write is still in flight.
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    advanceOwnerEpoch(U2);
+    await syncLocalIdentityOwner(U2);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(U2); i += 1) await new Promise((r) => setTimeout(r, 0));
+
+    resolveWrite(true);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId('concierge-requested')).toBeNull();
+    // The busy flag is not U1's data: U2 must be able to ask.
+    expect(screen.getByTestId('concierge-request-submit')).not.toBeDisabled();
+  });
+
+  it('a refusal for the SAME account is shown as a failed request', async () => {
+    mocks.requestConciergeApply.mockRejectedValueOnce(new OwnerMismatchError());
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    fireEvent.click(await screen.findByTestId('concierge-request-submit'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('detail.concierge.failed');
+    expect(screen.queryByTestId('concierge-requested')).not.toBeInTheDocument();
+    expect(screen.getByTestId('concierge-request-submit')).not.toBeDisabled();
+  });
+
+  it('mounted after the owner was established, a live switch reloads whether they already asked', async () => {
+    mocks.loadConciergeRequests.mockResolvedValue(new Set([OPP]));
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    expect(await screen.findByTestId('concierge-requested')).toBeInTheDocument();
+    expect(mocks.loadConciergeRequests).toHaveBeenCalledTimes(1);
+
+    mocks.loadConciergeRequests.mockResolvedValue(new Set<string>());
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    advanceOwnerEpoch(U2);
+    await syncLocalIdentityOwner(U2);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(U2); i += 1) await new Promise((r) => setTimeout(r, 0));
+
+    await waitFor(() => expect(mocks.loadConciergeRequests).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByTestId('concierge-requested')).toBeNull());
   });
 });

@@ -34,9 +34,10 @@ vi.mock('@supabase/supabase-js', () => ({
     auth: {
       getSession: mockGetSession,
       signInAnonymously: mockSignInAnonymously,
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
+      onAuthStateChange: (cb: (event: string, session: unknown) => void) => {
+        liveAuthCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
     },
     from: mockFrom,
     rpc: vi.fn(),
@@ -44,14 +45,30 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { loadConciergeRequests, requestConciergeApply } from './supabase';
+import { loadConciergeRequests, requestConciergeApply, onAuthChange } from './supabase';
+import { captureOwnerToken, isLocalOwnerReady } from './identity-owner';
 
 const UID = '11111111-1111-4111-8111-111111111111';
 const OPP = 'faculty-ece-47919b71';
 
 let listResult: { data: unknown; error: unknown };
 
-beforeEach(() => {
+// Writers now refuse to act for an account other than the one that clicked.
+// Claim the test identity exactly the way the app does — through the real
+// auth wrapper and identity-owner — so captureOwnerToken() is a live owner.
+let liveAuthCallback: ((event: string, session: unknown) => void) | null = null;
+let unsubscribeAuth: (() => void) | null = null;
+async function claimOwner(uid: string): Promise<void> {
+  unsubscribeAuth?.();
+  unsubscribeAuth = onAuthChange(() => {});
+  liveAuthCallback?.('SIGNED_IN', { user: { id: uid, is_anonymous: true }, access_token: 't' });
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+
+beforeEach(async () => {
   localStorage.clear();
   listResult = { data: [], error: null };
 
@@ -72,11 +89,12 @@ beforeEach(() => {
     return chain;
   });
   mockFrom.mockReset().mockReturnValue({ insert: mockInsert, select: mockSelect });
+  await claimOwner(UID);
 });
 
 describe('requestConciergeApply', () => {
   it('records which opportunity was asked about', async () => {
-    const ok = await requestConciergeApply(OPP, 'me@illinois.edu');
+    const ok = await requestConciergeApply(OPP, 'me@illinois.edu', {}, captureOwnerToken());
 
     expect(ok).toBe(true);
     expect(mockFrom).toHaveBeenCalledWith('waitlist');
@@ -94,7 +112,7 @@ describe('requestConciergeApply', () => {
       error: { code: '23505', message: 'duplicate key value' },
     });
 
-    expect(await requestConciergeApply(OPP, 'me@illinois.edu')).toBe(true);
+    expect(await requestConciergeApply(OPP, 'me@illinois.edu', {}, captureOwnerToken())).toBe(true);
   });
 
   it('reports a real write failure as a failure', async () => {
@@ -102,11 +120,11 @@ describe('requestConciergeApply', () => {
       error: { code: '42501', message: 'new row violates row-level security' },
     });
 
-    expect(await requestConciergeApply(OPP, 'me@illinois.edu')).toBe(false);
+    expect(await requestConciergeApply(OPP, 'me@illinois.edu', {}, captureOwnerToken())).toBe(false);
   });
 
   it('sends no email rather than an empty one', async () => {
-    await requestConciergeApply(OPP, '');
+    await requestConciergeApply(OPP, '', {}, captureOwnerToken());
 
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ email: null }),
