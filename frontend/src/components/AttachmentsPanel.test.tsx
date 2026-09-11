@@ -32,6 +32,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import AttachmentsPanel from './AttachmentsPanel';
+import { advanceOwnerEpoch, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const OPP_ID = 'opp-42';
 
@@ -228,6 +229,48 @@ describe('AttachmentsPanel — upload error paths', () => {
 
     await waitFor(() => expect(screen.getByText(/errTooLarge/)).toBeInTheDocument());
     expect(mockList).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AttachmentsPanel — the upload is bound to the account that picked the file', () => {
+  async function claimOwner(uid: string): Promise<void> {
+    advanceOwnerEpoch(uid);
+    await syncLocalIdentityOwner(uid);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) await new Promise((r) => setTimeout(r, 0));
+    expect(isLocalOwnerReady(uid)).toBe(true);
+  }
+
+  it('a refusal for the SAME account is an upload failure the student sees, and the button comes back', async () => {
+    await claimOwner('11111111-1111-4111-8111-111111111111');
+    mockUpload.mockRejectedValue(new OwnerMismatchError());
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(mockList).toHaveBeenCalled());
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [fileFromMime('mine.pdf', 'application/pdf')] } });
+
+    await waitFor(() => expect(screen.getByText(/detail.attachments.errUnauth/)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).not.toBeDisabled();
+    expect(mockList).toHaveBeenCalledTimes(1);
+  });
+
+  it('a raced owner switch neither refreshes U1\'s list for U2 nor leaves U2 a disabled upload button', async () => {
+    await claimOwner('11111111-1111-4111-8111-111111111111');
+    let resolveUpload!: (v: AttachmentUploadResult) => void;
+    mockUpload.mockReturnValue(new Promise<AttachmentUploadResult>((res) => { resolveUpload = res; }));
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1));
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [fileFromMime('u1.pdf', 'application/pdf')] } });
+    await waitFor(() => expect(screen.getByRole('button', { name: /detail.attachments.uploading/ })).toBeDisabled());
+
+    await claimOwner('22222222-2222-4222-8222-222222222222');
+    resolveUpload({ ok: true, name: 'u1.pdf' });
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(mockList).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).not.toBeDisabled();
   });
 });
 

@@ -189,7 +189,7 @@ export function ProfessorUpdatesSection() {
     }));
     try {
       if (!isTokenOwnerStillCurrent(owner)) return;
-      await markProfessorUpdatesRead(entries);
+      await markProfessorUpdatesRead(entries, owner);
       // Re-check AFTER the await: an account switch mid-write must not paint
       // the previous account's read state onto the new one.
       if (!isTokenOwnerStillCurrent(owner) || generation !== generationRef.current) return;

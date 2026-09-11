@@ -62,6 +62,7 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 import AccountPage from './page';
+import { OwnerMismatchError } from '@/lib/identity-owner';
 
 beforeEach(() => {
   authCallback = null;
@@ -222,9 +223,22 @@ describe('AccountPage — paid-intent CTA', () => {
 
     fireEvent.submit(input.closest('form')!);
     await waitFor(() =>
-      expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }),
+      expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }, expect.anything()),
     );
     await waitFor(() => expect(screen.getByText('account.intentDone')).toBeInTheDocument());
+  });
+
+  it('a waitlist write refused for the SAME account is shown as a failure, and the form stays usable', async () => {
+    mockJoinWaitlist.mockRejectedValueOnce(new OwnerMismatchError());
+    render(<AccountPage />);
+    await waitFor(() => expect(screen.getByText('account.intentCta')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('account.intentCta'));
+    const input = screen.getByLabelText('account.intentEmailPlaceholder') as HTMLInputElement;
+    fireEvent.submit(input.closest('form')!);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('account.intentFailed');
+    expect(screen.queryByText('account.intentDone')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'account.intentSubmit' })).not.toBeDisabled();
   });
 });
 
