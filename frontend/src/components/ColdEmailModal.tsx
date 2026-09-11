@@ -907,7 +907,7 @@ export default function ColdEmailModal({
       const key = await getVapidPublicKey();
       if (key && await subscribeToPush(key, token) && isTokenOwnerStillCurrent(token)) setPushOffer('subscribed');
     } catch { /* an owner change or a refused write: the offer simply stays; nothing was promised */ } finally {
-      if (isTokenOwnerStillCurrent(token)) setPushBusy(false);
+      setPushBusy(false);
     }
   }, []);
 

@@ -20,15 +20,29 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import PushToggle from './PushToggle';
+import { advanceOwnerEpoch, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const SERVER_KEY = 'BServerKeyThatMatchesThePrivateOneSigningPushes';
 
-beforeEach(() => {
+// The control is bound to the account that clicks it and is offered only once
+// there is one. identity-owner is real here, so claim an owner the way the
+// dashboard's own data load does.
+async function claimOwner(uid: string): Promise<void> {
+  advanceOwnerEpoch(uid);
+  await syncLocalIdentityOwner(uid);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) await new Promise((r) => setTimeout(r, 0));
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+const U1 = '11111111-1111-4111-8111-111111111111';
+const U2 = '22222222-2222-4222-8222-222222222222';
+
+beforeEach(async () => {
   vi.clearAllMocks();
   isPushSupported.mockReturnValue(true);
   getPushStatus.mockResolvedValue('default');
   getVapidPublicKey.mockResolvedValue(SERVER_KEY);
   subscribeToPush.mockResolvedValue(true);
+  await claimOwner(U1);
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -82,5 +96,37 @@ describe('the subscription key comes from the server that signs the pushes', () 
     fireEvent.click(await screen.findByRole('button'));
     await waitFor(() => expect(unsubscribeFromPush).toHaveBeenCalled());
     expect(subscribeToPush).not.toHaveBeenCalled();
+  });
+});
+
+describe('the control is bound to an account', () => {
+  it('is disabled until an owner is established, then offered', async () => {
+    // A fresh /dashboard load renders this before any identity has resolved.
+    // A token captured then is the null sentinel; every write is refused; the
+    // student saw a button that did nothing.
+    advanceOwnerEpoch(null);
+    render(<PushToggle />);
+    expect(await screen.findByRole('button')).toBeDisabled();
+
+    await claimOwner(U1);
+    await waitFor(() => expect(screen.getByRole('button')).not.toBeDisabled());
+  });
+
+  it('a raced owner switch neither paints U1\'s result for U2 nor leaves U2 a dead control', async () => {
+    let resolveSub: (v: boolean) => void = () => {};
+    subscribeToPush.mockImplementationOnce(() => new Promise<boolean>((r) => { resolveSub = r; }));
+    render(<PushToggle />);
+    const button = await screen.findByRole('button');
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(subscribeToPush).toHaveBeenCalled());
+    expect(button).toBeDisabled();
+
+    await claimOwner(U2);
+    resolveSub(true);
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button')).not.toBeDisabled();
   });
 });

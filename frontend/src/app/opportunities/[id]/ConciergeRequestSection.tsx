@@ -46,16 +46,20 @@ export function ConciergeRequestSection({
   // going pending→ready during the load itself — so bump only when the owner
   // actually changed, or the reload feeds its own trigger and `requested`
   // never settles.
-  const lastOwnerRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => onLocalOwnerStateChange(() => {
-    // A pure snapshot: captureOwnerToken() is not free of side effects, and a
-    // listener that provokes the very transition it listens for never settles.
-    const uid = getLocalOwnerState().uid;
-    if (uid === null || uid === lastOwnerRef.current) return;
-    const first = lastOwnerRef.current === undefined;
-    lastOwnerRef.current = uid;
-    if (!first) setOwnerGeneration((g) => g + 1);
-  }), []);
+  const lastOwnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Seeded from the live snapshot at subscribe time. Seeding from the first
+    // callback instead made the effect inert in the normal case — a component
+    // mounted after the owner was already established sees its first callback
+    // only at the real switch, and swallowed it as the seed.
+    lastOwnerRef.current = getLocalOwnerState().uid;
+    return onLocalOwnerStateChange(() => {
+      const uid = getLocalOwnerState().uid;
+      if (uid === null || uid === lastOwnerRef.current) return;
+      lastOwnerRef.current = uid;
+      setOwnerGeneration((g) => g + 1);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,13 +116,15 @@ export function ConciergeRequestSection({
               token,
             );
           } catch (err) {
-            // The account changed under us: the request was refused, and this
-            // screen now belongs to someone else. Paint nothing.
-            if (err instanceof OwnerMismatchError) return;
-            throw err;
+            // Silent only when the screen now belongs to someone else. A
+            // refusal for the SAME account is a failure this person must see.
+            if (!isTokenOwnerStillCurrent(token)) { setSubmitting(false); return; }
+            if (!(err instanceof OwnerMismatchError)) throw err;
+            ok = false;
           }
-          if (!isTokenOwnerStillCurrent(token)) return;
+          // The busy flag carries no account data; it is reset either way.
           setSubmitting(false);
+          if (!isTokenOwnerStillCurrent(token)) return;
           // Only a confirmed write flips the state. An optimistic "requested"
           // over a failed insert is the one outcome worse than the button:
           // the student stops asking and nobody ever sees the request.

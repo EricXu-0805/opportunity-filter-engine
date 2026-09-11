@@ -399,11 +399,14 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
         try {
           ok = await joinWaitlist(email.trim() || null, { source: 'account' }, token);
         } catch (err) {
-          if (err instanceof OwnerMismatchError) return;
-          throw err;
+          // Silent only when the screen now belongs to someone else; a refusal
+          // for the same account is shown like any other failure.
+          if (!isTokenOwnerStillCurrent(token)) { setSubmitting(false); return; }
+          if (!(err instanceof OwnerMismatchError)) throw err;
+          ok = false;
         }
-        if (!isTokenOwnerStillCurrent(token)) return;
         setSubmitting(false);
+        if (!isTokenOwnerStillCurrent(token)) return;
         // joinWaitlist returns false without touching the network when there
         // is no session — local-only mode, or anonymous sign-ins disabled.
         // With no else branch the form simply re-rendered identically, so the

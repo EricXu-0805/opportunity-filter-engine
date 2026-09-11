@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockGetDeviceId = vi.fn<() => Promise<string | null>>();
+const mockIsOwnerTokenValid = vi.fn<(...args: unknown[]) => boolean>();
 const mockUpsert = vi.fn<(...args: unknown[]) => Promise<{ error: { message: string } | null }>>();
 const mockDelete = vi.fn(() => ({
   eq: vi.fn(() => ({
@@ -11,10 +12,11 @@ const mockDelete = vi.fn(() => ({
 vi.mock('./identity-owner', () => ({
   // These tests exercise push mechanics, not identity. The owner check is
   // proven in supabase-private-writes.test.ts against the real module.
-  isOwnerTokenValid: () => true,
+  isOwnerTokenValid: (...args: unknown[]) => mockIsOwnerTokenValid(...args),
   OwnerMismatchError: class OwnerMismatchError extends Error {},
 }));
 const TOKEN = { uid: 'device-123', epoch: 0 } as never;
+import { OwnerMismatchError } from './identity-owner';
 vi.mock('./supabase', () => ({
   getDeviceId: () => mockGetDeviceId(),
   supabase: {
@@ -106,6 +108,7 @@ function installServiceWorker(opts: { hasRegistration: boolean; registerThrows?:
 beforeEach(() => {
   removeGlobals();
   mockGetDeviceId.mockReset();
+  mockIsOwnerTokenValid.mockReset().mockReturnValue(true);
   mockUpsert.mockReset();
   mockDelete.mockClear();
   mockSubscription = null;
@@ -325,6 +328,26 @@ describe('unsubscribeFromPush', () => {
     await unsubscribeFromPush(TOKEN);
 
     expect(browserUnsub).toHaveBeenCalledTimes(1);
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it('refuses BEFORE touching the browser subscription when the account changed', async () => {
+    // Dropping the browser subscription and then refusing the row delete left
+    // a dead endpoint whose row stayed live for the reminders cron, with the
+    // toggle still reading "on" for whoever was on screen.
+    installNotification('granted');
+    installPushManager();
+    const browserUnsub = vi.fn(async () => true);
+    mockSubscription = {
+      endpoint: 'https://push.example/someone-elses',
+      toJSON: () => ({ keys: { p256dh: 'p', auth: 'a' } }),
+      unsubscribe: browserUnsub,
+    };
+    installServiceWorker({ hasRegistration: true });
+    mockIsOwnerTokenValid.mockReturnValue(false);
+
+    await expect(unsubscribeFromPush(TOKEN)).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(browserUnsub).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
   });
 

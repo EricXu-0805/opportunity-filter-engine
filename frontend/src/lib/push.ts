@@ -87,12 +87,13 @@ export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return;
     const endpoint = sub.endpoint;
-    await sub.unsubscribe();
+    // Decide ownership BEFORE dropping the browser-level subscription: a
+    // refusal after it would leave a dead endpoint with its row still live
+    // for the reminders cron and the toggle still reading "on".
     const deviceId = await getDeviceId();
+    if (deviceId && !isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    await sub.unsubscribe();
     if (deviceId) {
-      // Never delete another account's row: the browser may have switched
-      // while sub.unsubscribe() was in flight.
-      if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
       await supabase
         .from('push_subscriptions')
         .delete()

@@ -72,16 +72,20 @@ function ProfessorFollowControl({
   // navigation. The listener fires on every readiness transition — including
   // the same uid going pending→ready during the load itself — so bump only
   // when the owner actually changed, or the reload feeds its own trigger.
-  const lastOwnerRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => onLocalOwnerStateChange(() => {
-    // A pure snapshot: captureOwnerToken() is not free of side effects, and a
-    // listener that provokes the very transition it listens for never settles.
-    const uid = getLocalOwnerState().uid;
-    if (uid === null || uid === lastOwnerRef.current) return;
-    const first = lastOwnerRef.current === undefined;
-    lastOwnerRef.current = uid;
-    if (!first) setReloadToken((token) => token + 1);
-  }), []);
+  const lastOwnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Seeded from the live snapshot at subscribe time. Seeding from the first
+    // callback instead made the effect inert in the normal case — a component
+    // mounted after the owner was already established sees its first callback
+    // only at the real switch, and swallowed it as the seed.
+    lastOwnerRef.current = getLocalOwnerState().uid;
+    return onLocalOwnerStateChange(() => {
+      const uid = getLocalOwnerState().uid;
+      if (uid === null || uid === lastOwnerRef.current) return;
+      lastOwnerRef.current = uid;
+      setReloadToken((token) => token + 1);
+    });
+  }, []);
 
   function retryLoad() {
     setLoadStatus('loading');
@@ -107,12 +111,17 @@ function ProfessorFollowControl({
       if (!isTokenOwnerStillCurrent(token)) return;
       setFollowing(nextFollowing);
       setRetryTarget(null);
-    } catch (err) {
-      if (err instanceof OwnerMismatchError || !isTokenOwnerStillCurrent(token)) return;
+    } catch {
+      // Silent only when the screen now belongs to someone else. A refusal
+      // for the SAME account — local storage blocked, identity still syncing
+      // — is a failure this person must see, like any other.
+      if (!isTokenOwnerStillCurrent(token)) return;
       setSaveFailed(true);
       setRetryTarget(nextFollowing);
     } finally {
-      if (isTokenOwnerStillCurrent(token)) setSaving(false);
+      // A busy flag carries no account data. Gating it on the token left the
+      // next account with a permanently disabled control after a raced click.
+      setSaving(false);
     }
   }
 

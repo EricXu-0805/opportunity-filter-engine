@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { Paperclip, Trash2, Upload, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import {
   ATTACHMENTS_ALLOWED_MIME,
@@ -54,13 +54,14 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
     try {
       result = await uploadAttachment(opportunityId, file, token);
     } catch (err) {
-      // A different account now owns this browser; the file was not stored
-      // under it, and this panel is about to be replaced.
-      if (err instanceof OwnerMismatchError) return;
-      throw err;
+      // Silent only when a different account now owns this browser. A refusal
+      // for the same account is an upload failure this person must see.
+      if (!isTokenOwnerStillCurrent(token)) { setUploading(null); return; }
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      result = { ok: false, reason: 'unauthenticated' };
     }
-    if (!isTokenOwnerStillCurrent(token)) return;
     setUploading(null);
+    if (!isTokenOwnerStillCurrent(token)) return;
     if (!result.ok) {
       if (result.reason === 'too_large') setError(t('detail.attachments.errTooLarge'));
       else if (result.reason === 'wrong_type') setError(t('detail.attachments.errWrongType'));
@@ -79,8 +80,9 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
     try {
       ok = await deleteAttachment(opportunityId, name, token);
     } catch (err) {
-      if (err instanceof OwnerMismatchError) return;
-      throw err;
+      if (!isTokenOwnerStillCurrent(token)) return;
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      ok = false;
     }
     if (!isTokenOwnerStillCurrent(token)) return;
     if (!ok) {
