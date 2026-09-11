@@ -666,6 +666,15 @@ class TestSnapshotPagination:
                 paid="no",
                 on_campus=False,
                 contact_email="",
+                # A stated, long-past deadline: the record is dead, not merely
+                # weak. Before the small-universe thresholds were fixed this
+                # fixture scored 42.9 and fell into low_fit only because a
+                # 15-record universe collapsed good/reach up to the 70 high
+                # cutoff — the same cliff that hid a 69 there. With the flat
+                # floors restored, 42.9 is a reach by the product's own
+                # constants; the passed-deadline penalty (x0.7) makes this the
+                # unambiguous low_fit the test needs.
+                deadline="2024-01-15",
                 keywords=["medieval history"],
                 description_raw="Archive cataloging.",
                 description_clean="Archive cataloging.",

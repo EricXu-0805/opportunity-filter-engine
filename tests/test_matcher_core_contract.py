@@ -207,3 +207,53 @@ class TestHighPriorityIsAStrictStableShortlist:
         assert len(high) == 20
         assert all(r.final_score == 100.0 for r in high)
         assert sum(r.final_score == 100.0 and r.bucket == "good_match" for r in outcome.results) == 3
+
+
+class TestWhatTheAuditOfTheCandidateFound:
+    """Three effects of the candidate's ranker changes, reproduced on the
+    corpus or synthetically by an independent read-only audit."""
+
+    def test_a_program_that_has_already_started_is_penalised_even_with_only_an_estimated_deadline(self):
+        # 73 active NSF REU sites carried a past ESTIMATED deadline and a
+        # start_date already behind us. _stated_deadline_date rightly refuses
+        # to read urgency off the estimate — but that also lifted the 0.7
+        # passed-penalty, and they took top-20 slots (#1 for a JHU biochem
+        # profile). The start date is a stated field: a cycle that has begun is
+        # over, whatever the estimate said.
+        today = ranker.date.today()
+        past_estimate = (today - timedelta(days=120)).isoformat()
+        dateless = _opp(opportunity_type="summer_program")
+        started = _opp(opportunity_type="summer_program", deadline=past_estimate,
+                       deadline_is_estimate=True, start_date=(today - timedelta(days=60)).isoformat())
+        upcoming = _opp(opportunity_type="summer_program", deadline=past_estimate,
+                        deadline_is_estimate=True, start_date=(today + timedelta(days=200)).isoformat())
+
+        base = ranker.rank_opportunity(_profile(), dateless, today=today)
+        over = ranker.rank_opportunity(_profile(), started, today=today)
+        ahead = ranker.rank_opportunity(_profile(), upcoming, today=today)
+
+        assert over.final_score == pytest.approx(base.final_score * 0.7, abs=0.1)
+        assert any("start date has passed" in gap for gap in over.reasons_gap)
+        # The estimate itself still claims nothing: no urgency, no "apply before".
+        assert ahead.final_score == base.final_score
+        assert not any(step.startswith("Apply before deadline:") for step in ahead.next_steps)
+        assert not any("Deadline has passed" in gap for gap in over.reasons_gap)
+
+    def test_rank_twenty_one_is_not_hidden_in_a_small_universe(self):
+        # In a universe of 21–33 results the 70th percentile sits above the
+        # 20th score; clamping good_match onto high_priority left rank 21 with
+        # no band and hid it as low_fit.
+        scores = [90.0 - 0.5 * i for i in range(21)]  # 90.0 … 80.0
+        rows = [_result(f"row-{i:03}", s) for i, s in enumerate(scores)]
+        ranker._assign_buckets(rows)
+        assert Counter(r.bucket for r in rows)["high_priority"] == 20
+        assert rows[20].bucket != "low_fit"
+        assert rows[20].bucket in {"good_match", "reach"}
+
+    def test_selected_types_are_normalised_the_same_way_in_the_hard_filter(self):
+        # The candidate normalised selected types for affinity ("Research" ->
+        # 100) but the hard filter still compared raw strings, so the same
+        # profile could be excluded from the very listings it scored highest.
+        ctx = ranker._filter_context(_profile(seeking_type=["Research", "", "  "]))
+        assert ctx.seeking == {"research"}
+        assert ranker.hard_exclusion(_opp(opportunity_type="research"), ctx) is None

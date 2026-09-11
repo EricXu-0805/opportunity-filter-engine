@@ -1955,6 +1955,21 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     return TOPIC_MISMATCH_PENALTY
 
 
+def _program_already_started(opportunity: dict) -> bool:
+    """True when the record carries a parseable ISO start_date strictly before today.
+
+    Only consulted when there is no stated deadline to judge by; the start date
+    is a collected fact (nsf_reu writes it from the award), never an estimate.
+    """
+    start = opportunity.get("start_date")
+    if not isinstance(start, str) or len(start) < 10:
+        return False
+    try:
+        return date.fromisoformat(start[:10]) < date.today()
+    except ValueError:
+        return False
+
+
 def _stated_deadline_date(opportunity: dict) -> date | None:
     """Only an unestimated, non-inferred listing date can drive urgency.
 
@@ -2550,6 +2565,14 @@ def _rank_opportunity_unlocked(
             elig_gap.append("Deadline has passed — verify if still accepting applications")
         elif days_left <= 7:
             elig_fit.append(f"Deadline in {days_left} days — apply soon")
+    elif _program_already_started(opportunity):
+        # An estimated deadline cannot claim urgency, and _stated_deadline_date
+        # rightly returns None for it. But 73 active NSF REU sites whose summer
+        # had already begun then lost the only thing holding them down and took
+        # top-20 slots — #1 for a JHU biochem profile. The program's start date
+        # is a stated field, not the estimate: a cycle that has started is over.
+        final *= DEADLINE_PASSED_PENALTY
+        elig_gap.append("This program's start date has passed — check whether a new cycle is open")
 
     if _is_undergrad(profile) and st.requires_grad:
         final *= GRAD_LEVEL_PENALTY
@@ -2789,8 +2812,12 @@ def _bucket_thresholds(
         # A small universe can put its p70/p40 scores above the Nth score.
         # Lower bands may meet, but must never require a higher score than
         # the band above them. Ties outside the strict shortlist fall through.
-        good = min(high, max(floor_good, p70))
-        reach = min(good, max(floor_reach, p40))
+        # When a percentile would meet or exceed the band above it, the
+        # percentile is not informative in this universe; fall back to that
+        # band's flat floor rather than collapsing the band to nothing. In a
+        # universe of 21 the 21st result then lands in good_match, not low_fit.
+        good = min(high, max(floor_good, p70)) if p70 < high else min(high, floor_good)
+        reach = min(good, max(floor_reach, p40)) if p40 < good else min(good, floor_reach)
         return high, good, reach
     return floor_high, floor_good, floor_reach
 
@@ -3008,7 +3035,9 @@ def _filter_context(profile: dict) -> _FilterCtx:
             "exclude_citizenship_restricted", True
         ),
         international_student=bool(profile.get("international_student")),
-        seeking=set(profile.get("seeking_type") or []),
+        seeking={
+            _normalize_type_key(s) for s in (profile.get("seeking_type") or []) if s and s.strip()
+        },
         student_majors_norm=student_majors_norm,
         related_majors_norm=related_majors_norm,
     )
@@ -3053,7 +3082,7 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
             if ctx.exclude_citizenship_restricted:
                 return "citizenship_restricted"
 
-    opp_type = opp.get("opportunity_type", "")
+    opp_type = _normalize_type_key(opp.get("opportunity_type") or "")
     if ctx.seeking and opp_type and opp_type not in ctx.seeking:
         opp_majors = faculty_safe_eligibility(opp).get("majors") or []
         if opp_majors:
