@@ -1008,9 +1008,20 @@ describe('useTrackerData — unavailable interaction rows (opportunity no longer
   });
 });
 
+// The student's calendar day, the same way the helpers read it. Not
+// toISOString(): that is the UTC day, which is tomorrow after 7pm in Chicago.
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 describe('reminder helpers', () => {
   it('isReminderDue: past/today due, future not, empty not', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    // "Today" on the student's calendar, the same way the helper reads it.
+    // toISOString() is the UTC day: after 7pm in Chicago that is tomorrow,
+    // and these two tests failed for every US-timezone run in the evening
+    // while asserting the exact bug the helpers were fixed to avoid.
+    const today = localToday();
     expect(isReminderDue(today)).toBe(true);
     expect(isReminderDue('2000-01-01')).toBe(true);
     expect(isReminderDue(dateInDays(7))).toBe(false);
@@ -1018,7 +1029,7 @@ describe('reminder helpers', () => {
   });
 
   it('dateInDays returns an ISO date N days ahead', () => {
-    expect(dateInDays(0)).toBe(new Date().toISOString().slice(0, 10));
+    expect(dateInDays(0)).toBe(localToday());
     expect(dateInDays(3)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
