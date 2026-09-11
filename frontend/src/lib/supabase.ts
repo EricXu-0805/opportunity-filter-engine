@@ -1643,8 +1643,10 @@ export async function toggleFavorite(
 export async function joinWaitlist(
   email: string | null,
   props: Record<string, unknown> = {},
+  token: OwnerToken,
 ): Promise<boolean> {
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return false;
 
   const { error } = await supabase.from('waitlist').insert({
@@ -1674,8 +1676,10 @@ export async function requestConciergeApply(
   opportunityId: string,
   email: string | null,
   props: Record<string, unknown> = {},
+  token: OwnerToken,
 ): Promise<boolean> {
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return false;
 
   const { error } = await supabase.from('waitlist').insert({
@@ -2226,11 +2230,13 @@ export type AttachmentUploadResult =
 export async function uploadAttachment(
   opportunityId: string,
   file: File,
+  token: OwnerToken,
 ): Promise<AttachmentUploadResult> {
   if (file.size > ATTACHMENTS_MAX_BYTES) return { ok: false, reason: 'too_large' };
   if (!ATTACHMENTS_ALLOWED_MIME.has(file.type)) return { ok: false, reason: 'wrong_type' };
 
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return { ok: false, reason: 'unauthenticated' };
 
   const safeName = sanitizeFilename(file.name);
@@ -2275,8 +2281,9 @@ export async function listAttachments(opportunityId: string): Promise<Attachment
     });
 }
 
-export async function deleteAttachment(opportunityId: string, filename: string): Promise<boolean> {
+export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken): Promise<boolean> {
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return false;
 
   const { error } = await supabase.storage
@@ -2488,11 +2495,13 @@ export async function listProfessorFollows(): Promise<ProfessorFollow[]> {
 
 export async function followProfessor(
   professorId: string,
+  token: OwnerToken,
   professorName?: string | null,
   school?: string | null,
 ): Promise<void> {
   assertProfessorId(professorId);
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) throw new Error('Cloud storage is unavailable');
 
   const { error } = await supabase.from('professor_follows').insert({
@@ -2506,9 +2515,10 @@ export async function followProfessor(
   if (error && error.code !== '23505') throw new Error(error.message);
 }
 
-export async function unfollowProfessor(professorId: string): Promise<void> {
+export async function unfollowProfessor(professorId: string, token: OwnerToken): Promise<void> {
   assertProfessorId(professorId);
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) throw new Error('Cloud storage is unavailable');
 
   const { error } = await supabase
@@ -2551,6 +2561,7 @@ export async function getProfessorUpdateReads(): Promise<Map<string, string>> {
  */
 export async function markProfessorUpdatesRead(
   entries: { professorId: string; lastReadEventId: string }[],
+  token: OwnerToken,
 ): Promise<void> {
   const rows = entries.filter(
     (e) => isCanonicalProfessorId(e.professorId)
@@ -2558,6 +2569,7 @@ export async function markProfessorUpdatesRead(
   );
   if (rows.length === 0) return;
   const deviceId = await ensureAnonSession();
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return;
 
   const now = new Date().toISOString();

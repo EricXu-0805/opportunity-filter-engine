@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Card from '@/components/Card';
 import { useT } from '@/i18n/client';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { bySlug } from '@/lib/schools';
 import { track } from '@/lib/analytics';
 import { useAuthModal } from '@/lib/auth-modal-context';
@@ -391,9 +392,17 @@ function PremiumIntent({ defaultEmail }: { defaultEmail: string }) {
       onSubmit={async (e) => {
         e.preventDefault();
         if (submitting) return;
+        const token = captureOwnerToken();
         setSubmitting(true);
         setFailed(false);
-        const ok = await joinWaitlist(email.trim() || null, { source: 'account' });
+        let ok: boolean;
+        try {
+          ok = await joinWaitlist(email.trim() || null, { source: 'account' }, token);
+        } catch (err) {
+          if (err instanceof OwnerMismatchError) return;
+          throw err;
+        }
+        if (!isTokenOwnerStillCurrent(token)) return;
         setSubmitting(false);
         // joinWaitlist returns false without touching the network when there
         // is no session — local-only mode, or anonymous sign-ins disabled.

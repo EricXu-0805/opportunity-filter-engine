@@ -36,9 +36,10 @@ vi.mock('@supabase/supabase-js', () => ({
     auth: {
       getSession: mockGetSession,
       signInAnonymously: vi.fn(),
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
+      onAuthStateChange: (cb: (event: string, session: unknown) => void) => {
+        liveAuthCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
     },
     from: mockFrom,
     rpc: vi.fn(),
@@ -50,13 +51,28 @@ import {
   followProfessor,
   isCanonicalProfessorId,
   listProfessorFollows,
-  unfollowProfessor,
-} from './supabase';
+  unfollowProfessor, onAuthChange } from './supabase';
+import { captureOwnerToken, isLocalOwnerReady } from './identity-owner';
 
 const UID = '11111111-1111-4111-8111-111111111111';
 const PROFESSOR_ID = 'prof:v1:uiuc:11111111111111111111';
 
-beforeEach(() => {
+// Writers now refuse to act for an account other than the one that clicked.
+// Claim the test identity exactly the way the app does — through the real
+// auth wrapper and identity-owner — so captureOwnerToken() is a live owner.
+let liveAuthCallback: ((event: string, session: unknown) => void) | null = null;
+let unsubscribeAuth: (() => void) | null = null;
+async function claimOwner(uid: string): Promise<void> {
+  unsubscribeAuth?.();
+  unsubscribeAuth = onAuthChange(() => {});
+  liveAuthCallback?.('SIGNED_IN', { user: { id: uid, is_anonymous: true }, access_token: 't' });
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+
+beforeEach(async () => {
   localStorage.clear();
   mockFrom.mockReset();
   mockGetSession.mockReset().mockResolvedValue({
@@ -81,6 +97,7 @@ beforeEach(() => {
     insert: mockInsert,
     delete: vi.fn().mockReturnValue({ eq: mockDeleteFirstEq }),
   }));
+  await claimOwner(UID);
 });
 
 describe('isCanonicalProfessorId', () => {
@@ -157,7 +174,7 @@ describe('listProfessorFollows', () => {
 describe('followProfessor / unfollowProfessor', () => {
   it('inserts an owner-derived follow with display denormalizations', async () => {
     await expect(
-      followProfessor(PROFESSOR_ID, 'Jane Doe', 'uiuc'),
+      followProfessor(PROFESSOR_ID, captureOwnerToken(), 'Jane Doe', 'uiuc'),
     ).resolves.toBeUndefined();
 
     expect(mockInsert).toHaveBeenCalledWith({
@@ -173,11 +190,11 @@ describe('followProfessor / unfollowProfessor', () => {
       error: { code: '23505', message: 'duplicate key value' },
     });
 
-    await expect(followProfessor(PROFESSOR_ID)).resolves.toBeUndefined();
+    await expect(followProfessor(PROFESSOR_ID, captureOwnerToken())).resolves.toBeUndefined();
   });
 
   it('deletes only the current identity\'s selected professor', async () => {
-    await expect(unfollowProfessor(PROFESSOR_ID)).resolves.toBeUndefined();
+    await expect(unfollowProfessor(PROFESSOR_ID, captureOwnerToken())).resolves.toBeUndefined();
 
     expect(mockDeleteFirstEq).toHaveBeenCalledWith('device_id', UID);
     expect(mockDeleteSecondEq).toHaveBeenCalledWith('professor_id', PROFESSOR_ID);
@@ -189,16 +206,16 @@ describe('followProfessor / unfollowProfessor', () => {
     `prof:v1:${'a'.repeat(49)}:11111111111111111111`,
     'faculty-uiuc-ada',
   ])('rejects malformed professor id %s before a database call', async (professorId) => {
-    await expect(followProfessor(professorId)).rejects.toThrow(/faculty profile tracking id/i);
-    await expect(unfollowProfessor(professorId)).rejects.toThrow(/faculty profile tracking id/i);
+    await expect(followProfessor(professorId, captureOwnerToken())).rejects.toThrow(/faculty profile tracking id/i);
+    await expect(unfollowProfessor(professorId, captureOwnerToken())).rejects.toThrow(/faculty profile tracking id/i);
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
   it('surfaces insert and delete failures so the toggle cannot lie', async () => {
     mockInsert.mockResolvedValueOnce({ error: { message: 'insert failed' } });
-    await expect(followProfessor(PROFESSOR_ID)).rejects.toThrow('insert failed');
+    await expect(followProfessor(PROFESSOR_ID, captureOwnerToken())).rejects.toThrow('insert failed');
 
     mockDeleteSecondEq.mockResolvedValueOnce({ error: { message: 'delete failed' } });
-    await expect(unfollowProfessor(PROFESSOR_ID)).rejects.toThrow('delete failed');
+    await expect(unfollowProfessor(PROFESSOR_ID, captureOwnerToken())).rejects.toThrow('delete failed');
   });
 });

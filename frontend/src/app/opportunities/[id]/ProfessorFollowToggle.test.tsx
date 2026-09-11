@@ -28,6 +28,7 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 import { ProfessorFollowToggle } from './ProfessorFollowToggle';
+import { advanceOwnerEpoch, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const PROFESSOR_ID = 'prof:v1:uiuc:11111111111111111111';
 
@@ -35,10 +36,24 @@ function follow(professorId: string) {
   return { professorId, professorName: 'Jane Doe', school: 'uiuc', createdAt: '' };
 }
 
-beforeEach(() => {
+// The component now binds each write to the account that clicked and paints
+// only if that account is still current. identity-owner is real here (only
+// @/lib/supabase is mocked), so claim an owner the way the app does.
+const OWNER_UID = '11111111-1111-4111-8111-111111111111';
+async function claimOwner(): Promise<void> {
+  advanceOwnerEpoch(OWNER_UID);
+  await syncLocalIdentityOwner(OWNER_UID);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(OWNER_UID); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(OWNER_UID)).toBe(true);
+}
+
+beforeEach(async () => {
   mockListProfessorFollows.mockReset().mockResolvedValue([]);
   mockFollowProfessor.mockReset().mockResolvedValue(undefined);
   mockUnfollowProfessor.mockReset().mockResolvedValue(undefined);
+  await claimOwner();
 });
 
 afterEach(() => cleanup());
@@ -71,7 +86,7 @@ describe('ProfessorFollowToggle', () => {
 
     fireEvent.click(toggle);
 
-    expect(mockFollowProfessor).toHaveBeenCalledWith(PROFESSOR_ID, 'Jane Doe', 'uiuc');
+    expect(mockFollowProfessor).toHaveBeenCalledWith(PROFESSOR_ID, expect.anything(), 'Jane Doe', 'uiuc');
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
   });
 
@@ -91,7 +106,7 @@ describe('ProfessorFollowToggle', () => {
 
     fireEvent.click(toggle);
 
-    expect(mockUnfollowProfessor).toHaveBeenCalledWith(PROFESSOR_ID);
+    expect(mockUnfollowProfessor).toHaveBeenCalledWith(PROFESSOR_ID, expect.anything());
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
   });
 
@@ -137,5 +152,29 @@ describe('ProfessorFollowToggle', () => {
 
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
     expect(mockFollowProfessor).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+describe('ProfessorFollowToggle — a result that arrives after an owner switch', () => {
+  it('does not flip the switch on for U2 when U1\'s follow resolves', async () => {
+    // Before: persist() awaited followProfessor with no owner check and then
+    // setFollowing(true) — U2 saw aria-checked="true" for a follow U1 made.
+    mockListProfessorFollows.mockResolvedValue([]);
+    let resolveWrite: () => void = () => {};
+    mockFollowProfessor.mockImplementationOnce(() => new Promise<void>((r) => { resolveWrite = r; }));
+    render(<ProfessorFollowToggle professorId={PROFESSOR_ID} professorName="Jane Doe" school="uiuc" />);
+    const toggle = await screen.findByRole('switch');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(mockFollowProfessor).toHaveBeenCalled());
+
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    advanceOwnerEpoch(U2);
+    await syncLocalIdentityOwner(U2);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(U2); i += 1) await new Promise((r) => setTimeout(r, 0));
+
+    resolveWrite();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
   });
 });

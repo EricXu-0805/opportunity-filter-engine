@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { CheckCircle, Send } from 'lucide-react';
 import {
   getAuthState,
@@ -11,6 +11,7 @@ import {
 import { track } from '@/lib/analytics';
 import { Section } from './DetailSections';
 import type { TFunc } from './types';
+import { captureOwnerToken, getLocalOwnerState, isTokenOwnerStillCurrent, OwnerMismatchError, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 /**
  * "Have JoinALab do this one for me" — the concierge request, bound to the
@@ -37,6 +38,24 @@ export function ConciergeRequestSection({
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [ownerGeneration, setOwnerGeneration] = useState(0);
+  // The email and "already requested" state below are read for whoever is
+  // signed in at mount; an identity change must re-read them, or the next
+  // account submits with the previous account's address prefilled. The
+  // listener fires on every readiness transition — including the same uid
+  // going pending→ready during the load itself — so bump only when the owner
+  // actually changed, or the reload feeds its own trigger and `requested`
+  // never settles.
+  const lastOwnerRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => onLocalOwnerStateChange(() => {
+    // A pure snapshot: captureOwnerToken() is not free of side effects, and a
+    // listener that provokes the very transition it listens for never settles.
+    const uid = getLocalOwnerState().uid;
+    if (uid === null || uid === lastOwnerRef.current) return;
+    const first = lastOwnerRef.current === undefined;
+    lastOwnerRef.current = uid;
+    if (!first) setOwnerGeneration((g) => g + 1);
+  }), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +71,7 @@ export function ConciergeRequestSection({
       setRequested(mine === null ? null : mine.has(opportunityId));
     })();
     return () => { cancelled = true; };
-  }, [opportunityId]);
+  }, [opportunityId, ownerGeneration]);
 
   if (requested === null) return null;
 
@@ -80,13 +99,25 @@ export function ConciergeRequestSection({
         onSubmit={async (e) => {
           e.preventDefault();
           if (submitting) return;
+          const token = captureOwnerToken();
           setSubmitting(true);
           setFailed(false);
           void track('concierge_request_submitted', { opportunity_id: opportunityId });
-          const ok = await requestConciergeApply(
-            opportunityId,
-            email.trim() || auth?.email || null,
-          );
+          let ok: boolean;
+          try {
+            ok = await requestConciergeApply(
+              opportunityId,
+              email.trim() || auth?.email || null,
+              {},
+              token,
+            );
+          } catch (err) {
+            // The account changed under us: the request was refused, and this
+            // screen now belongs to someone else. Paint nothing.
+            if (err instanceof OwnerMismatchError) return;
+            throw err;
+          }
+          if (!isTokenOwnerStillCurrent(token)) return;
           setSubmitting(false);
           // Only a confirmed write flips the state. An optimistic "requested"
           // over a failed insert is the one outcome worse than the button:

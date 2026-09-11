@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 import { Bell, BellOff } from 'lucide-react';
 import { getPushStatus, subscribeToPush, unsubscribeFromPush, isPushSupported, type PushStatus } from '@/lib/push';
 import { getVapidPublicKey } from '@/lib/api';
@@ -37,17 +38,24 @@ export default function PushToggle() {
   if (!vapidKey && !subscribed) return null;
 
   async function handleClick() {
+    // The permission dialog is a long window; the browser can be a different
+    // account when it closes. The endpoint is bound to whoever clicked.
+    const token = captureOwnerToken();
     setBusy(true);
     try {
       if (subscribed) {
-        await unsubscribeFromPush();
+        await unsubscribeFromPush(token);
+        if (!isTokenOwnerStillCurrent(token)) return;
         setStatus('default');
       } else {
-        const ok = await subscribeToPush(vapidKey!);
+        const ok = await subscribeToPush(vapidKey!, token);
+        if (!isTokenOwnerStillCurrent(token)) return;
         setStatus(ok ? 'subscribed' : 'default');
       }
+    } catch (err) {
+      if (!(err instanceof OwnerMismatchError)) throw err;
     } finally {
-      setBusy(false);
+      if (isTokenOwnerStillCurrent(token)) setBusy(false);
     }
   }
 

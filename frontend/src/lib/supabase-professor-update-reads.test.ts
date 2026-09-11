@@ -23,9 +23,10 @@ vi.mock('@supabase/supabase-js', () => ({
     auth: {
       getSession: mockGetSession,
       signInAnonymously: vi.fn(),
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
+      onAuthStateChange: (cb: (event: string, session: unknown) => void) => {
+        liveAuthCallback = cb;
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
     },
     from: mockFrom,
     rpc: vi.fn(),
@@ -35,14 +36,29 @@ vi.mock('@supabase/supabase-js', () => ({
 
 import {
   getProfessorUpdateReads,
-  markProfessorUpdatesRead,
-} from './supabase';
+  markProfessorUpdatesRead, onAuthChange } from './supabase';
+import { captureOwnerToken, isLocalOwnerReady } from './identity-owner';
 
 const UID = '11111111-1111-4111-8111-111111111111';
 const PROFESSOR_ID = 'prof:v1:uiuc:11111111111111111111';
 const EVENT_ID = 'prof-event:v1:aaaaaaaaaaaaaaaaaaaaaaaa';
 
-beforeEach(() => {
+// Writers now refuse to act for an account other than the one that clicked.
+// Claim the test identity exactly the way the app does — through the real
+// auth wrapper and identity-owner — so captureOwnerToken() is a live owner.
+let liveAuthCallback: ((event: string, session: unknown) => void) | null = null;
+let unsubscribeAuth: (() => void) | null = null;
+async function claimOwner(uid: string): Promise<void> {
+  unsubscribeAuth?.();
+  unsubscribeAuth = onAuthChange(() => {});
+  liveAuthCallback?.('SIGNED_IN', { user: { id: uid, is_anonymous: true }, access_token: 't' });
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+
+beforeEach(async () => {
   mockFrom.mockReset();
   mockGetSession.mockReset().mockResolvedValue({
     data: { session: { user: { id: UID, is_anonymous: true } } },
@@ -56,6 +72,7 @@ beforeEach(() => {
     select: vi.fn().mockReturnValue({ eq: mockSelectEq }),
     upsert: mockUpsert,
   }));
+  await claimOwner(UID);
 });
 
 describe('getProfessorUpdateReads', () => {
@@ -79,7 +96,7 @@ describe('markProfessorUpdatesRead', () => {
   it('upserts owner-derived cursors keyed on (device, professor)', async () => {
     await markProfessorUpdatesRead([
       { professorId: PROFESSOR_ID, lastReadEventId: EVENT_ID },
-    ]);
+    ], captureOwnerToken());
 
     expect(mockUpsert).toHaveBeenCalledTimes(1);
     const [rows, options] = mockUpsert.mock.calls[0];
@@ -96,7 +113,7 @@ describe('markProfessorUpdatesRead', () => {
     await markProfessorUpdatesRead([
       { professorId: 'not-a-professor', lastReadEventId: EVENT_ID },
       { professorId: PROFESSOR_ID, lastReadEventId: 'not-an-event' },
-    ]);
+    ], captureOwnerToken());
 
     expect(mockFrom).not.toHaveBeenCalled();
   });
@@ -108,7 +125,7 @@ describe('markProfessorUpdatesRead', () => {
     await expect(
       markProfessorUpdatesRead([
         { professorId: PROFESSOR_ID, lastReadEventId: EVENT_ID },
-      ]),
+      ], captureOwnerToken()),
     ).resolves.toBeUndefined();
 
     expect(warn).toHaveBeenCalled();

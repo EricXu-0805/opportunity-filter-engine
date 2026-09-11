@@ -8,6 +8,13 @@ const mockDelete = vi.fn(() => ({
   })),
 }));
 
+vi.mock('./identity-owner', () => ({
+  // These tests exercise push mechanics, not identity. The owner check is
+  // proven in supabase-private-writes.test.ts against the real module.
+  isOwnerTokenValid: () => true,
+  OwnerMismatchError: class OwnerMismatchError extends Error {},
+}));
+const TOKEN = { uid: 'device-123', epoch: 0 } as never;
 vi.mock('./supabase', () => ({
   getDeviceId: () => mockGetDeviceId(),
   supabase: {
@@ -176,21 +183,21 @@ describe('getPushStatus', () => {
 
 describe('subscribeToPush', () => {
   it('returns false when push is not supported', async () => {
-    expect(await subscribeToPush('vapid-key')).toBe(false);
+    expect(await subscribeToPush('vapid-key', TOKEN)).toBe(false);
   });
 
   it('returns false when vapidPublicKey is the empty string', async () => {
     installNotification('granted');
     installPushManager();
     installServiceWorker({ hasRegistration: true });
-    expect(await subscribeToPush('')).toBe(false);
+    expect(await subscribeToPush('', TOKEN)).toBe(false);
   });
 
   it('returns false when the user denies the notification permission prompt', async () => {
     installNotification('default', 'denied');
     installPushManager();
     installServiceWorker({ hasRegistration: true });
-    expect(await subscribeToPush('AAAA')).toBe(false);
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
   });
 
   it('returns false when getDeviceId resolves to null (no anonymous session)', async () => {
@@ -198,7 +205,7 @@ describe('subscribeToPush', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
     mockGetDeviceId.mockResolvedValue(null);
-    expect(await subscribeToPush('AAAA')).toBe(false);
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
   });
 
   it('upserts the subscription to push_subscriptions with the correct shape on success', async () => {
@@ -206,7 +213,7 @@ describe('subscribeToPush', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
 
-    const ok = await subscribeToPush('AAAA');
+    const ok = await subscribeToPush('AAAA', TOKEN);
 
     expect(ok).toBe(true);
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -230,7 +237,7 @@ describe('subscribeToPush', () => {
     };
     installServiceWorker({ hasRegistration: true });
 
-    const ok = await subscribeToPush('AAAA');
+    const ok = await subscribeToPush('AAAA', TOKEN);
 
     expect(ok).toBe(true);
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -249,7 +256,7 @@ describe('subscribeToPush', () => {
     };
     installServiceWorker({ hasRegistration: true });
 
-    expect(await subscribeToPush('AAAA')).toBe(false);
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
     expect(mockUpsert).not.toHaveBeenCalled();
   });
 
@@ -259,13 +266,13 @@ describe('subscribeToPush', () => {
     installServiceWorker({ hasRegistration: true });
     mockUpsert.mockResolvedValue({ error: { message: 'relation does not exist' } });
 
-    expect(await subscribeToPush('AAAA')).toBe(false);
+    expect(await subscribeToPush('AAAA', TOKEN)).toBe(false);
   });
 });
 
 describe('unsubscribeFromPush', () => {
   it('is a no-op when push is not supported', async () => {
-    await expect(unsubscribeFromPush()).resolves.toBeUndefined();
+    await expect(unsubscribeFromPush(TOKEN)).resolves.toBeUndefined();
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
@@ -273,7 +280,7 @@ describe('unsubscribeFromPush', () => {
     installNotification('granted');
     installPushManager();
     installServiceWorker({ hasRegistration: false });
-    await unsubscribeFromPush();
+    await unsubscribeFromPush(TOKEN);
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
@@ -282,7 +289,7 @@ describe('unsubscribeFromPush', () => {
     installPushManager();
     installServiceWorker({ hasRegistration: true });
     mockSubscription = null;
-    await unsubscribeFromPush();
+    await unsubscribeFromPush(TOKEN);
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
@@ -297,7 +304,7 @@ describe('unsubscribeFromPush', () => {
     };
     installServiceWorker({ hasRegistration: true });
 
-    await unsubscribeFromPush();
+    await unsubscribeFromPush(TOKEN);
 
     expect(browserUnsub).toHaveBeenCalledTimes(1);
     expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -315,7 +322,7 @@ describe('unsubscribeFromPush', () => {
     installServiceWorker({ hasRegistration: true });
     mockGetDeviceId.mockResolvedValue(null);
 
-    await unsubscribeFromPush();
+    await unsubscribeFromPush(TOKEN);
 
     expect(browserUnsub).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
@@ -330,6 +337,6 @@ describe('unsubscribeFromPush', () => {
         getRegistration: vi.fn(async () => { throw new Error('boom'); }),
       },
     });
-    await expect(unsubscribeFromPush()).resolves.toBeUndefined();
+    await expect(unsubscribeFromPush(TOKEN)).resolves.toBeUndefined();
   });
 });

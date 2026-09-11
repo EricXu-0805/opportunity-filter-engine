@@ -898,12 +898,16 @@ export default function ColdEmailModal({
   }, [followUpDate, pushOffer]);
 
   const enableNotifications = useCallback(async () => {
+    // Bound to the account that clicked: the permission dialog is a long
+    // window, and the endpoint must not be written under whoever is signed in
+    // when it closes. The same token gates every paint after the await.
+    const token = captureOwnerToken();
     setPushBusy(true);
     try {
       const key = await getVapidPublicKey();
-      if (key && await subscribeToPush(key)) setPushOffer('subscribed');
-    } catch { /* the offer simply stays; nothing was promised */ } finally {
-      setPushBusy(false);
+      if (key && await subscribeToPush(key, token) && isTokenOwnerStillCurrent(token)) setPushOffer('subscribed');
+    } catch { /* an owner change or a refused write: the offer simply stays; nothing was promised */ } finally {
+      if (isTokenOwnerStillCurrent(token)) setPushBusy(false);
     }
   }, []);
 
