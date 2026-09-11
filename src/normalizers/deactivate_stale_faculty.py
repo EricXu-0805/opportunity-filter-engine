@@ -291,35 +291,242 @@ def _retire(opp: dict, today: date) -> None:
     meta["deactivation_reason"] = "absent_from_directory_rescrape"
 
 
+# ---------------------------------------------------------------------------
+# Per-unit collection ledger
+#
+# The school-level ``fetched`` count cannot prove absence inside any one
+# department, which is why every aggregate source has always been skipped.
+# The ledger below is the missing proof, produced by the collector that did
+# the scraping and consumed here at the retirement boundary.
+#
+# It is an EXTENSION of the existing ``stale_unit_ledger`` (UIUC's
+# ``{unit: count}``), not a second provenance system: the same key, the same
+# consumer, the same gates. A plain ``{unit: int}`` entry still means exactly
+# what it meant before.
+# ---------------------------------------------------------------------------
+
+UNIT_LEDGER_VERSION = 1
+
+# Only these statuses may contribute to retirement authority. Everything else
+# — including anything unrecognised — fails closed.
+_OK = "ok"
+COMPLETE = "complete"
+
+# Recorded so a reader can tell WHY a unit was not authorised, and so a new
+# failure mode cannot quietly become authority by being unrecognised.
+FETCH_FAILURE_STATUSES = frozenset({
+    "http_404", "http_403", "http_5xx", "timeout", "connection_error",
+    "render_unavailable", "error",
+})
+PARSE_FAILURE_STATUSES = frozenset({"zero_rows", "suspicious_zero", "error"})
+COMPLETENESS_BLOCKING = frozenset({"partial", "unknown", "truncated", "deferred"})
+
+
+def _unit_id_of(record: dict) -> str | None:
+    """The scrape unit that owns this record, from its own id.
+
+    faculty_graph mints ``faculty-{id_prefix}-{short}-{namehash}`` where
+    ``short`` is the config department — the thing that has one URL and one
+    selector set, and therefore the only boundary at which absence can be
+    observed. Reading it back off the id is deterministic lineage: no text
+    similarity, no current-school guessing.
+
+    Returns None when the id does not carry a unit, which is preserved as
+    ``lineage_missing`` rather than assigned to a unit by resemblance.
+    """
+    rid = record.get("id")
+    if not isinstance(rid, str) or not rid.startswith("faculty-"):
+        return None
+    parts = rid.split("-")
+    # faculty, prefix, <short may contain dashes>, namehash
+    if len(parts) < 4:
+        return None
+    if len(parts[-1]) != 8 or not all(c in "0123456789abcdef" for c in parts[-1]):
+        return None
+    short = "-".join(parts[2:-1])
+    return short.lower() or None
+
+
+def unit_retirement_authority(entry: object, baseline_active: int) -> tuple[bool, str]:
+    """``(authorised, reason)`` for one unit ledger entry. Fails closed.
+
+    Authority requires every condition to be positively satisfied:
+    fetch ok AND parse ok AND validation ok AND unit identity present AND
+    completeness proven AND the unit-level ratio gate passed AND a baseline to
+    measure against. Anything missing, unrecognised, or merely "not failed"
+    is not authority.
+    """
+    if isinstance(entry, int):
+        # Legacy shape: a bare per-unit count. It proves how many rows the
+        # unit yielded and nothing about why, so it may pass only the ratio
+        # gate — which is what it has always meant.
+        if entry < MIN_SCRAPE_RATIO * baseline_active:
+            return False, "partial_scrape"
+        return True, "count_ratio_only"
+    if not isinstance(entry, dict):
+        return False, "unrecognised_ledger_entry"
+
+    if not entry.get("unit_id"):
+        return False, "unit_identity_unverified"
+    if entry.get("fetch_status") != _OK:
+        return False, f"fetch_{entry.get('fetch_status') or 'unknown'}"
+    if entry.get("parse_status") != _OK:
+        return False, f"parse_{entry.get('parse_status') or 'unknown'}"
+    if entry.get("validation_status") != _OK:
+        return False, f"validation_{entry.get('validation_status') or 'unknown'}"
+    if entry.get("completeness_status") != COMPLETE:
+        return False, f"completeness_{entry.get('completeness_status') or 'unknown'}"
+    # The producer's own verdict must agree. Either side may veto; neither
+    # alone may authorise.
+    if entry.get("retirement_authorized") is not True:
+        return False, "producer_withheld_authority"
+
+    observed = entry.get("matched_baseline_count")
+    if not isinstance(observed, int):
+        observed = entry.get("observed_count")
+    if not isinstance(observed, int):
+        return False, "observed_count_missing"
+    declared_baseline = entry.get("baseline_active_count")
+    baseline = declared_baseline if isinstance(declared_baseline, int) else baseline_active
+    if baseline <= 0:
+        return False, "baseline_unavailable"
+    if observed < MIN_SCRAPE_RATIO * baseline:
+        return False, "partial_scrape"
+    return True, "complete_unit_observation"
+
+
+def _observed_ids(entry: object) -> frozenset[str] | None:
+    """The entity ids this unit observation actually saw, when it recorded them."""
+    if not isinstance(entry, dict):
+        return None
+    ids = entry.get("observed_entity_ids")
+    if not isinstance(ids, list | tuple | set | frozenset):
+        return None
+    return frozenset(str(i) for i in ids)
+
+
+def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
+                         source: str) -> dict[str, dict]:
+    """Fill in the consumer-owned half of each unit observation, in place.
+
+    The collector attests what it SAW. Completeness is a claim about what it
+    saw versus what we already hold, so it needs the corpus — and it is
+    decided here, at the retirement boundary, rather than by the scraper that
+    would benefit from claiming it.
+
+    A unit present in the corpus but absent from the ledger is never
+    synthesised: the pass preserves those records as unproven.
+    """
+    baseline_ids: dict[str, set[str]] = {}
+    for opp in opps:
+        if opp.get("source") != source:
+            continue
+        if opp.get("source_type") != "faculty_research":
+            continue
+        if (opp.get("metadata") or {}).get("is_active") is False:
+            continue
+        unit = _unit_id_of(opp)
+        if unit:
+            baseline_ids.setdefault(unit, set()).add(str(opp.get("id")))
+    baseline = {u: len(ids) for u, ids in baseline_ids.items()}
+
+    for unit_id, entry in ledger.items():
+        if not isinstance(entry, dict):
+            continue
+        base = baseline.get(unit_id, 0)
+        entry["baseline_active_count"] = base
+        observed = entry.get("observed_count")
+        if entry.get("fetch_status") != _OK or entry.get("parse_status") != _OK:
+            entry["completeness_status"] = "unknown"
+            entry["retirement_authorized"] = False
+            continue
+        if base <= 0:
+            # Nothing held for this unit, so there is nothing to retire and
+            # no ratio to measure against.
+            entry["completeness_status"] = "unknown"
+            entry["retirement_authorized"] = False
+            continue
+        # Coverage is measured against the baseline SET, not its size.
+        #
+        # A raw count is fooled by substitution: a unit that drops one
+        # professor and gains one new arrival still reports "6 observed of 6
+        # active" and reads as a complete scrape, so the departure looks
+        # proven when the scrape may simply have failed to parse that person's
+        # card. Caught on 2026-09-11 by the mandated manual sample: the
+        # Bowdoin EOS unit scored 6/6 and proposed retiring a professor who
+        # was still listed on the very page it had just scraped.
+        #
+        # Intersecting with the baseline makes an unparsed row cost coverage,
+        # which is the only way absence can mean departure.
+        seen = _observed_ids(entry)
+        known = baseline_ids.get(unit_id, set())
+        if seen is not None:
+            matched = len(seen & known)
+            entry["matched_baseline_count"] = matched
+            entry["new_entity_count"] = len(seen - known)
+            covered = matched
+        else:
+            covered = observed if isinstance(observed, int) else 0
+        if isinstance(covered, int) and covered >= MIN_SCRAPE_RATIO * base:
+            entry["completeness_status"] = COMPLETE
+            entry["retirement_authorized"] = True
+        else:
+            entry["completeness_status"] = "partial"
+            entry["retirement_authorized"] = False
+            entry.setdefault(
+                "failure_reason",
+                f"covered {covered} of {base} active "
+                f"(< {MIN_SCRAPE_RATIO:.0%})",
+            )
+    return ledger
+
+
+def _bucket_for(reason: str) -> str:
+    """Which preservation bucket a withheld-authority reason belongs to."""
+    if reason.startswith("parse_suspicious_zero") or reason == "parse_zero_rows":
+        return "records_preserved_suspicious_zero"
+    if reason in ("partial_scrape",) or reason.startswith("completeness_"):
+        return "records_preserved_partial"
+    if reason == "unit_identity_unverified":
+        return "records_preserved_missing_lineage"
+    return "records_preserved_failed_source"
+
+
 def deactivate_stale_faculty(
     opps: list[dict],
-    fetched_counts: dict[str, int | dict[str, int]],
+    fetched_counts: dict[str, int | dict[str, int] | dict[str, dict]],
     today: date | None = None,
     held_sources: set[str] | frozenset[str] | None = None,
+    *,
+    dry_run: bool = False,
 ) -> dict:
     """Mark faculty absent from their directory re-scrape as inactive (in place).
 
     ``fetched_counts`` maps each faculty source that completed successfully in
-    the current refresh run to either
+    the current refresh run to one of
 
       * an int — the whole scrape's record count, which authorizes retirement
         only for a source proven to be one named academic unit; or
-      * ``{unit: count}`` — a per-unit ledger, which authorizes retirement
-        unit by unit under the SAME gates. The department a record carries is
-        finer-grained lineage than the collector component that produced it
-        (UIUC's four producers own disjoint department sets), so a
-        per-department count proves per-department completeness without any
-        component-level provenance on the stored row. A department whose URL
-        rotted scrapes 0 against N active records and is skipped; a collapsed
-        component takes all of its departments to 0 and skips them all.
+      * ``{unit: count}`` — a per-unit count ledger, which authorizes
+        retirement unit by unit under the ratio gate; or
+      * ``{unit_id: observation}`` — the full per-unit collection ledger, where
+        each observation carries its own fetch/parse/validation/completeness
+        status and the ids it actually saw. This is the only shape that can
+        distinguish "this professor is gone" from "this collector did not see
+        this professor", because only it records WHY a unit yielded what it did.
+
+    With the full ledger the unit is identified from the record's own id
+    (``faculty-{prefix}-{short}-{hash}``), which is the scrape boundary — one
+    URL, one selector set. A record whose id carries no unit is preserved as
+    ``lineage_missing`` rather than attached to a unit by resemblance.
 
     Sources that did not run (or errored) must be omitted and are never
-    touched. ``held_sources`` are computed and reported but never written —
-    the UIUC release-contract hold, whose evidence for being lifted is exactly
-    the ``would_deactivate`` list this produces.
+    touched. ``held_sources`` are computed and reported but never written.
+    ``dry_run`` computes and reports everything and mutates nothing.
 
-    Returns counts for newly deactivated/kept/inactive records plus lists of
-    sources (or ``source/unit``) held for partial scrapes or missing lineage.
+    Returns counts for newly deactivated/kept/inactive records, the
+    preservation buckets, and — for every proposed retirement — the evidence
+    that authorised it.
     """
     held_sources = held_sources or frozenset()
     today = today or date.today()
@@ -332,6 +539,17 @@ def deactivate_stale_faculty(
         "skipped_missing_unit_ledger": [],
         # Ids a held source would have retired. Evidence, not an action.
         "would_deactivate": [],
+        # Dry-run / audit surface.
+        "dry_run": bool(dry_run),
+        "records_considered": 0,
+        "records_retirement_authorized": 0,
+        "records_preserved_partial": 0,
+        "records_preserved_suspicious_zero": 0,
+        "records_preserved_missing_lineage": 0,
+        "records_preserved_failed_source": 0,
+        "proposals": [],
+        "units_authorized": [],
+        "units_withheld": [],
     }
 
     by_source: dict[str, list[dict]] = {}
@@ -349,40 +567,104 @@ def deactivate_stale_faculty(
         ]
         counts["already_inactive"] += len(records) - len(active)
         held = source in held_sources
-
         ledger = fetched_counts[source]
+
         if isinstance(ledger, dict):
+            rich = any(isinstance(v, dict) for v in ledger.values())
             by_unit: dict[str | None, list[dict]] = {}
             for record in active:
-                by_unit.setdefault(_unit_of(record), []).append(record)
+                key = _unit_id_of(record) if rich else _unit_of(record)
+                by_unit.setdefault(key, []).append(record)
+
             for unit, unit_records in sorted(
                 by_unit.items(), key=lambda kv: (kv[0] is None, kv[0] or "")
             ):
+                counts["records_considered"] += len(unit_records)
                 label = f"{source}/{unit}" if unit else f"{source}/(unnamed)"
-                if unit is None or unit not in ledger:
-                    # Not mentioned by the ledger: never proven scraped at all.
+                if unit is None:
+                    # No unit identity on the record: never proven scraped by
+                    # anything, so nothing may retire it.
                     logger.warning(
-                        "deactivate_stale_faculty: %s has no per-unit scrape "
-                        "count — preserving records", label,
+                        "deactivate_stale_faculty: %s has no unit lineage — "
+                        "preserving records", label,
                     )
                     counts["skipped_missing_unit_ledger"].append(label)
+                    counts["records_preserved_missing_lineage"] += len(unit_records)
+                    counts["kept_fresh"] += len(unit_records)
                     continue
-                if ledger[unit] < MIN_SCRAPE_RATIO * len(unit_records):
+                if unit not in ledger:
                     logger.warning(
-                        "deactivate_stale_faculty: %s scrape yielded %d records "
-                        "vs %d currently active (< %.0f%%) — likely partial "
-                        "scrape, skipping",
-                        label, ledger[unit], len(unit_records),
-                        MIN_SCRAPE_RATIO * 100,
+                        "deactivate_stale_faculty: %s has no per-unit scrape "
+                        "record — preserving records", label,
                     )
-                    counts["skipped_partial_scrape"].append(label)
+                    counts["skipped_missing_unit_ledger"].append(label)
+                    counts["records_preserved_failed_source"] += len(unit_records)
+                    counts["kept_fresh"] += len(unit_records)
                     continue
+
+                entry = ledger[unit]
+                authorized, reason = unit_retirement_authority(
+                    entry, len(unit_records),
+                )
+                if not authorized:
+                    logger.warning(
+                        "deactivate_stale_faculty: %s not authorised (%s) — "
+                        "preserving %d record(s)", label, reason, len(unit_records),
+                    )
+                    bucket = _bucket_for(reason)
+                    counts[bucket] += len(unit_records)
+                    counts["kept_fresh"] += len(unit_records)
+                    counts["units_withheld"].append(
+                        {"unit": label, "reason": reason,
+                         "records_preserved": len(unit_records)})
+                    if reason == "partial_scrape":
+                        counts["skipped_partial_scrape"].append(label)
+                    continue
+
+                counts["units_authorized"].append(
+                    {"unit": label, "reason": reason,
+                     "records": len(unit_records)})
+                seen_ids = _observed_ids(entry)
                 for opp in unit_records:
                     seen = _seen_date(opp)
-                    if seen is None or seen >= cutoff:
+                    # Prefer the observation set when the collector recorded
+                    # one: "absent from a complete scrape" is a stronger claim
+                    # than "its timestamp is old".
+                    if seen_ids is not None:
+                        observed_now = str(opp.get("id")) in seen_ids
+                    else:
+                        observed_now = not (seen is not None and seen < cutoff)
+                    if observed_now or seen is None:
                         counts["kept_fresh"] += 1
                         continue
-                    if held:
+                    if seen >= cutoff:
+                        counts["kept_fresh"] += 1
+                        continue
+                    counts["records_retirement_authorized"] += 1
+                    counts["proposals"].append({
+                        "entity_id": opp.get("id"),
+                        "school": opp.get("school"),
+                        "source": source,
+                        "unit_id": unit,
+                        "unit_name": (entry.get("unit_name")
+                                      if isinstance(entry, dict) else None),
+                        "department": opp.get("department"),
+                        "last_seen_at": (opp.get("metadata") or {}).get(
+                            "last_seen_at"),
+                        "baseline_active_count": (
+                            entry.get("baseline_active_count")
+                            if isinstance(entry, dict) else None),
+                        "observed_count": (entry.get("observed_count")
+                                           if isinstance(entry, dict) else entry),
+                        "observed_entity_ids_recorded": seen_ids is not None,
+                        "run_id": (entry.get("run_id")
+                                   if isinstance(entry, dict) else None),
+                        "collector_version": (entry.get("collector_version")
+                                              if isinstance(entry, dict) else None),
+                        "reason": "absent_from_complete_unit_observation",
+                        "authority": reason,
+                    })
+                    if held or dry_run:
                         counts["would_deactivate"].append(opp.get("id"))
                         continue
                     _retire(opp, today)
@@ -394,6 +676,7 @@ def deactivate_stale_faculty(
         # all 5 people in department B missing). Until collectors publish a
         # trusted per-unit ledger, source-level fetched_counts cannot prove
         # absence for any individual department. Preserve the old records.
+        counts["records_considered"] += len(active)
         units = {
             unit.strip()
             for record in active
@@ -414,6 +697,7 @@ def deactivate_stale_faculty(
                 " plus unnamed records" if has_unnamed_unit else "",
             )
             counts["skipped_missing_unit_ledger"].append(source)
+            counts["records_preserved_missing_lineage"] += len(active)
             continue
 
         if fetched_counts[source] < MIN_SCRAPE_RATIO * len(active):
@@ -424,6 +708,7 @@ def deactivate_stale_faculty(
                 MIN_SCRAPE_RATIO * 100,
             )
             counts["skipped_partial_scrape"].append(source)
+            counts["records_preserved_partial"] += len(active)
             continue
 
         for opp in active:
@@ -431,7 +716,24 @@ def deactivate_stale_faculty(
             # Missing/unparseable last_seen_at: staleness can't be established,
             # so keep the record rather than guess.
             if seen is not None and seen < cutoff:
-                if held:
+                counts["records_retirement_authorized"] += 1
+                counts["proposals"].append({
+                    "entity_id": opp.get("id"),
+                    "school": opp.get("school"),
+                    "source": source,
+                    "unit_id": next(iter(units)),
+                    "unit_name": next(iter(units)),
+                    "department": opp.get("department"),
+                    "last_seen_at": (opp.get("metadata") or {}).get("last_seen_at"),
+                    "baseline_active_count": len(active),
+                    "observed_count": fetched_counts[source],
+                    "observed_entity_ids_recorded": False,
+                    "run_id": None,
+                    "collector_version": None,
+                    "reason": "absent_from_complete_unit_observation",
+                    "authority": "single_named_unit_count_ratio",
+                })
+                if held or dry_run:
                     counts["would_deactivate"].append(opp.get("id"))
                     continue
                 _retire(opp, today)

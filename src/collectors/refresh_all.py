@@ -9,6 +9,7 @@ Usage:
     python -m src.collectors.refresh_all --national         # only school-less sources
 """
 
+import inspect
 import json
 import logging
 import re
@@ -17,7 +18,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.normalizers.deactivate_past import deactivate_past
-from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES, deactivate_stale_faculty
+from src.normalizers.deactivate_stale_faculty import (
+    FACULTY_SOURCES,
+    deactivate_stale_faculty,
+    finalize_unit_ledger,
+)
 from src.school_scope import deactivate_unsupported_schools
 
 
@@ -1234,10 +1239,20 @@ def refresh_all(
                 # enrichment) but reports partial_deadline — never "ok" — so
                 # deactivate_stale_faculty cannot read the unvisited
                 # departments' absence as staleness.
+                # The per-unit collection ledger: one observation per
+                # department, produced by the collector that did the scraping.
+                # It is what lets deactivate_stale_faculty tell "this
+                # professor is gone" from "this collector did not see this
+                # professor" — the school-wide `fetched` count below can only
+                # ever prove the second.
+                unit_ledger: dict = {}
+                accepts_ledger = "unit_ledger" in inspect.signature(
+                    fetch_fn).parameters
                 with faculty_graph.source_budget(
                     budget_seconds_remaining()
                 ) as source_clock:
-                    new_opps = fetch_fn()
+                    new_opps = (fetch_fn(unit_ledger=unit_ledger)
+                                if accepts_ledger else fetch_fn())
                 added, updated = merge_fn(new_opps)
                 info = {
                     "fetched": len(new_opps),
@@ -1245,7 +1260,18 @@ def refresh_all(
                     "updated": updated,
                     "status": "ok",
                 }
+                if accepts_ledger and unit_ledger:
+                    # Raw observations only. Completeness is decided against
+                    # the corpus at the retirement boundary below — never here,
+                    # and never by the scraper itself.
+                    info["stale_unit_ledger"] = unit_ledger
+                    info["unit_ledger_units"] = len(unit_ledger)
                 if source_clock.exhausted:
+                    # A truncated run never visited some departments; their
+                    # ledger entries would read as "observed nothing", which
+                    # is exactly the false retirement the ledger exists to
+                    # prevent. Drop it rather than publish a partial proof.
+                    info.pop("stale_unit_ledger", None)
                     info["status"] = "partial_deadline"
                     info["skipped_departments"] = (
                         source_clock.skipped_departments
@@ -1543,11 +1569,26 @@ def refresh_all(
         # them; this source-specific pass deactivates professors who have been
         # absent from their directory re-scrape past the grace window. Only
         # sources that reported success in THIS run are eligible.
-        faculty_fetched = {
-            name: info.get("fetched", 0)
-            for name, info in summary["sources"].items()
-            if name in FACULTY_SOURCES and info.get("status") == "ok"
-        }
+        # Prefer the per-unit ledger wherever the collector produced one: a
+        # school-wide int can only ever prove how many rows the whole scrape
+        # yielded, which is why every aggregate source has been skipped for
+        # missing lineage on every run. The int remains the fallback, and
+        # still authorises nothing but a single-named-unit source.
+        faculty_fetched: dict[str, object] = {}
+        for name, info in summary["sources"].items():
+            if name not in FACULTY_SOURCES or info.get("status") != "ok":
+                continue
+            ledger = info.get("stale_unit_ledger")
+            if isinstance(ledger, dict) and ledger:
+                faculty_fetched[name] = finalize_unit_ledger(
+                    ledger, all_opps, name,
+                )
+                info["unit_ledger_authorized_units"] = sum(
+                    1 for e in ledger.values()
+                    if isinstance(e, dict) and e.get("retirement_authorized")
+                )
+            else:
+                faculty_fetched[name] = info.get("fetched", 0)
         deactivation_not_authorized: list[str] = []
         if "uiuc_faculty" in faculty_fetched:
             # The hold stands: uiuc_faculty is reported as not authorized, and

@@ -726,8 +726,10 @@ for _dept in SCHOOL["departments"]:
         _dept["scrape"].setdefault("profile_enrich", {"throttle": _THROTTLE, **_enr})
 
 
-def fetch_and_normalize(deep: bool = True) -> list[dict]:
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
+def fetch_and_normalize(deep: bool = True,
+                        unit_ledger: dict | None = None) -> list[dict]:
+    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
+                                            unit_ledger=unit_ledger)
 
 
 def merge_into_processed(opps: list[dict]):

@@ -411,9 +411,11 @@ SCHOOL: dict = {
 }
 
 
-def fetch_and_normalize(deep: bool = True) -> list[dict]:
+def fetch_and_normalize(deep: bool = True,
+                        unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector."""
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
+    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
+                                            unit_ledger=unit_ledger)
 
 
 def merge_into_processed(opps: list[dict]):
