@@ -120,7 +120,11 @@ export default function RoadmapPage() {
     let lastIdentity: string | null | undefined;
     return onAuthChange((authState) => {
       const identity = authState.user?.id ?? null;
-      if (lastIdentity === undefined) { lastIdentity = identity; return; }
+      // The first report seeds; so does null → uid, which is the anonymous
+      // session being created for a visit that had none (or just signed out):
+      // the load already running resolves under that identity, and restarting
+      // it would only cancel and duplicate it.
+      if (lastIdentity === undefined || lastIdentity === null) { lastIdentity = identity; return; }
       if (identity === lastIdentity) return;
       lastIdentity = identity;
       generationRef.current += 1;

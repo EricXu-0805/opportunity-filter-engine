@@ -304,6 +304,16 @@ describe('DashboardPage — an identity switch clears the lists in the transitio
   });
 });
 
+describe('DashboardPage — the anonymous session being created is not a switch', () => {
+  it('a session-less first visit loads once: the anon SIGNED_IN after INITIAL_SESSION(null) is absorbed', async () => {
+    render(<DashboardPage />);
+    await waitFor(() => expect(mockGetInteractionsFull).toHaveBeenCalledTimes(1));
+    act(() => authCallback?.({ user: null }));
+    act(() => authCallback?.({ user: { id: 'anon-1' } }));
+    expect(mockGetInteractionsFull).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('DashboardPage — honest empty and error states', () => {
   it('shows honest empty states when the student has no activity yet', async () => {
     render(<DashboardPage />);

@@ -59,9 +59,9 @@ export function AcademicProfileCard({
   // the form on screen, so nothing is set locally here either.
   const confirmSwitch = useCallback(async (slug: string) => {
     if (switchInFlightRef.current) return;
-    // The snapshot's own token, not a fresh capture: this card is not keyed by
-    // identity (only the DocumentsCard is), so it stays on screen straight
-    // through an account switch. Capturing at click time would give a view
+    // The snapshot's own token, not a fresh capture: the card is keyed by
+    // identity like DocumentsCard, but between the switch and the commit that
+    // remounts it this instance is still on screen. Capturing at click time would give a view
     // that belongs to U1 a currently-valid U2 token, and every preflight below
     // would wave the resulting patch into U2's row. Acting as the identity the
     // displayed row was hydrated for means a superseded owner simply fails.

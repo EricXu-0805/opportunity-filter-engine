@@ -101,6 +101,10 @@ export function ConciergeRequestSection({
   }
 
   const needsEmail = !auth?.email;
+  // A keystroke that lands after the transition cleared the field, but before
+  // React commits the empty input, carries the controlled input's full old
+  // value and would write the previous account's address straight back.
+  const renderedOwner = lastOwnerRef.current;
 
   return (
     <Section title={t('detail.concierge.title')}>
@@ -144,7 +148,7 @@ export function ConciergeRequestSection({
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { if (lastOwnerRef.current !== renderedOwner) return; setEmail(e.target.value); }}
             placeholder={t('detail.concierge.emailPlaceholder')}
             aria-label={t('detail.concierge.emailPlaceholder')}
             className="w-56 px-3 py-2 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-200"

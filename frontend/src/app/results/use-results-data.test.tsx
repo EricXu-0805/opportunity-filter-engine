@@ -571,9 +571,10 @@ describe('useResultsData', () => {
     expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(u1Token);
   });
 
-  it('a response that resolves after the owner switched is written to the ORIGIN account\'s cache but never painted', async () => {
+  it('a response that resolves after the owner switched is never painted (the cache write is still attempted, and refused by the cache layer)', async () => {
     // `active` flips only in the effect cleanup, one commit after the switch;
-    // painting is gated on the request's own token instead.
+    // painting is gated on the request's own token instead. The mock below
+    // records the attempt; the real writeUserScopedRaw refuses a moved-on epoch.
     advanceOwnerEpoch('results-data-paint-u1');
     await syncLocalIdentityOwner('results-data-paint-u1');
     let resolveFetch: ((value: MatchesResponse) => void) | undefined;

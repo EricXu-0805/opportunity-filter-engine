@@ -168,8 +168,10 @@ export function useResultsData(
     // Painting is gated on the same token: `active` flips only in this
     // effect's cleanup, one commit after the account changed, so a response
     // landing in that gap would put the previous account's ranked list on
-    // the next account's screen. The cache write below is NOT gated — it is
-    // keyed by this token and lands in the origin account's own slot.
+    // the next account's screen. The cache write below is NOT gated here:
+    // the cache layer itself refuses a write whose token's epoch has moved
+    // on, so a late response never reaches another account's slot, and a
+    // second gate would only hide that contract.
     const painting = () => active && isTokenOwnerStillCurrent(cacheToken);
 
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */

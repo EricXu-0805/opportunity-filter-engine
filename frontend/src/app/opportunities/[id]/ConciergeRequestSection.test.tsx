@@ -167,6 +167,21 @@ describe('ConciergeRequestSection — a result that arrives after an owner switc
     expect((field as HTMLInputElement).value).toBe('');
   });
 
+  it('a keystroke that lands in the clear-to-commit gap does not write the previous address back', async () => {
+    signedIn(null);
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    const field = await screen.findByLabelText('detail.concierge.emailPlaceholder');
+    fireEvent.change(field, { target: { value: 'u1@illinois.edu' } });
+    expect((field as HTMLInputElement).value).toBe('u1@illinois.edu');
+
+    // The transition fires synchronously; the keystroke arrives before React
+    // has committed the cleared input, so its event carries the full old value.
+    advanceOwnerEpoch('33333333-3333-4333-8333-333333333333');
+    fireEvent.change(field, { target: { value: 'u1@illinois.edu2' } });
+
+    await waitFor(() => expect((screen.getByLabelText('detail.concierge.emailPlaceholder') as HTMLInputElement).value).toBe(''));
+  });
+
   it('mounted after the owner was established, a live switch reloads whether they already asked', async () => {
     mocks.loadConciergeRequests.mockResolvedValue(new Set([OPP]));
     render(<ConciergeRequestSection opportunityId={OPP} t={t} />);

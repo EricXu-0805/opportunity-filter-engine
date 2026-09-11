@@ -36,14 +36,20 @@ vi.mock('@/lib/supabase', () => ({
 // (a failed commit is staged locally; the receipt write does not throw), so
 // the one test that needs a refused confirm flips this passthrough.
 let persistFails = false;
+// A deferred refusal: set to a promise to hold U1's result until the test
+// decides who is on screen when it lands.
+let persistPending: Promise<unknown> | null = null;
 vi.mock('@/lib/school-confirmation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/school-confirmation')>();
+  type Result = Awaited<ReturnType<typeof actual.persistHomeSchool>>;
   return {
     ...actual,
     persistHomeSchool: (...args: Parameters<typeof actual.persistHomeSchool>) =>
-      persistFails
-        ? Promise.resolve({ ok: false, reason: 'device-failed' } as unknown as Awaited<ReturnType<typeof actual.persistHomeSchool>>)
-        : actual.persistHomeSchool(...args),
+      persistPending
+        ? (persistPending as Promise<Result>)
+        : persistFails
+          ? Promise.resolve({ ok: false, reason: 'device-failed' } as unknown as Result)
+          : actual.persistHomeSchool(...args),
   };
 });
 
@@ -106,6 +112,7 @@ beforeEach(async () => {
   serverRevision = 1;
   commitFails = false;
   persistFails = false;
+  persistPending = null;
   resetProfileDirtyLedger();
   trackMock.mockReset();
   advanceOwnerEpoch('school-confirm-gate-test-uid');
@@ -200,19 +207,54 @@ describe('confirming', () => {
     }, expect.anything());
   });
 
-  it('a failed confirm\'s error does not greet the next decision: re-evaluating the gate starts clean', async () => {
+  it('a failed confirm\'s error does not greet the next account: it is cleared when the decision changes hands', async () => {
     seedExistingUser('uiuc');
     render(<SchoolConfirmGate />);
     persistFails = true;
     fireEvent.click(await screen.findByText('schoolConfirm.confirm'));
     expect(await screen.findByText('schoolConfirm.failed')).toBeInTheDocument();
 
-    // The decision is re-run through the same event an account switch fires;
-    // the failure belonged to whoever was asked before.
-    persistFails = false;
+    // U2 takes over with an unconfirmed campus of their own; the switch
+    // re-runs the decision through the 'storage' path.
+    advanceOwnerEpoch('school-confirm-gate-error-u2');
+    await syncLocalIdentityOwner('school-confirm-gate-error-u2');
+    seedPrivate(STORAGE_KEYS.PROFILE, JSON.stringify({ home_school: 'ucb' }));
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.SCHOOL_CONFIRMED })); });
+
+    expect(screen.getByText('schoolConfirm.title')).toBeInTheDocument();
+    expect(screen.queryByText('schoolConfirm.failed')).toBeNull();
+  });
+
+  it('the same account keeps seeing its failure across unrelated storage events (this tab\'s own writes dispatch them too)', async () => {
+    seedExistingUser('uiuc');
+    render(<SchoolConfirmGate />);
+    persistFails = true;
+    fireEvent.click(await screen.findByText('schoolConfirm.confirm'));
+    expect(await screen.findByText('schoolConfirm.failed')).toBeInTheDocument();
+
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'ofe:something-else' })); });
     act(() => { window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: 'uiuc' })); });
 
     expect(screen.getByText('schoolConfirm.title')).toBeInTheDocument();
+    expect(screen.getByText('schoolConfirm.failed')).toBeInTheDocument();
+  });
+
+  it('U1\'s refusal landing after U2\'s gate re-opened is not painted on U2\'s modal', async () => {
+    seedExistingUser('uiuc');
+    render(<SchoolConfirmGate />);
+    let refuse: (v: unknown) => void = () => {};
+    persistPending = new Promise((r) => { refuse = r; });
+    fireEvent.click(await screen.findByText('schoolConfirm.confirm'));
+
+    advanceOwnerEpoch('school-confirm-gate-late-u2');
+    await syncLocalIdentityOwner('school-confirm-gate-late-u2');
+    seedPrivate(STORAGE_KEYS.PROFILE, JSON.stringify({ home_school: 'ucb' }));
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEYS.SCHOOL_CONFIRMED })); });
+    expect(screen.getByText('schoolConfirm.title')).toBeInTheDocument();
+
+    refuse({ ok: false, reason: 'device-failed' });
+    await new Promise((r) => setTimeout(r, 20));
+
     expect(screen.queryByText('schoolConfirm.failed')).toBeNull();
   });
 
