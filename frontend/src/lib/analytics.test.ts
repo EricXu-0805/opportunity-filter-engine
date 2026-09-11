@@ -10,6 +10,7 @@ vi.mock('./supabase', () => ({
 }));
 
 import { track, trackOnce } from './analytics';
+import { advanceOwnerEpoch, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
 
 describe('track', () => {
   beforeEach(() => {
@@ -36,6 +37,52 @@ describe('track', () => {
   it('never throws when the insert rejects — analytics is best-effort', async () => {
     insert.mockRejectedValue(new Error('offline'));
     await expect(track('ai_feature_used', { feature: 'chat' })).resolves.toBeUndefined();
+  });
+});
+
+describe('track — bound to the account on screen when the event fired', () => {
+  async function claimOwner(uid: string): Promise<void> {
+    advanceOwnerEpoch(uid);
+    await syncLocalIdentityOwner(uid);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) await new Promise((r) => setTimeout(r, 0));
+    expect(isLocalOwnerReady(uid)).toBe(true);
+  }
+
+  beforeEach(() => {
+    insert.mockReset().mockResolvedValue({ error: null });
+    getDeviceId.mockReset();
+  });
+
+  it('drops the event when the account switched while the session was resolving', async () => {
+    // Before: the row took device_id from whatever getDeviceId() resolved to,
+    // so U1's click was counted as U2's step in the funnel.
+    await claimOwner('dev-1');
+    let resolveSession: (uid: string) => void = () => {};
+    getDeviceId.mockImplementation(() => new Promise<string>((r) => { resolveSession = r; }));
+
+    const pending = track('intent_clicked', { source: 'account' });
+    await claimOwner('dev-2');
+    resolveSession('dev-2');
+    await pending;
+
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('still records the event when the same account resolves', async () => {
+    await claimOwner('dev-1');
+    getDeviceId.mockResolvedValue('dev-1');
+    await track('intent_clicked', { source: 'account' });
+    expect(insert).toHaveBeenCalledWith({ device_id: 'dev-1', event: 'intent_clicked', props: { source: 'account' } });
+  });
+
+  it('a fresh browser with no identity yet binds its first event to the identity that resolves', async () => {
+    // Deliberately looser than the private writers: dropping this would
+    // lose every first landing_view, which costs the funnel more than the
+    // rare late switch misattributing one event.
+    advanceOwnerEpoch(null);
+    getDeviceId.mockResolvedValue('dev-1');
+    await track('landing_view');
+    expect(insert).toHaveBeenCalledWith({ device_id: 'dev-1', event: 'landing_view', props: {} });
   });
 });
 

@@ -1,4 +1,5 @@
 import { getDeviceId, supabase } from './supabase';
+import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
 import type { DeadlineFilterValue } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
@@ -142,8 +143,11 @@ export async function getTotalNewMatchCount(): Promise<number> {
   return searches.reduce((sum, s) => sum + (s.new_match_ids?.length ?? 0), 0);
 }
 
-export async function saveSearch(input: SavedSearchInput): Promise<SavedSearch | null> {
+export async function saveSearch(input: SavedSearchInput, token: OwnerToken): Promise<SavedSearch | null> {
   const deviceId = await getDeviceId();
+  // An INSERT keyed by whatever device_id resolves: the one writer in this
+  // module that RLS cannot protect, because the row does not exist yet.
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return null;
 
   const trimmedName = input.name.trim();

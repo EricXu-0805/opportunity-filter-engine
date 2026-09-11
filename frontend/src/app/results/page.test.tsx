@@ -17,7 +17,7 @@
  * their own test file, not re-tested here.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({ t: (key: string) => key }),
@@ -188,6 +188,8 @@ vi.mock('./MatchList', () => ({
 }));
 
 import ResultsPage from './page';
+import { getMatchFeedback, setMatchFeedback } from '@/lib/match-feedback';
+import { OwnerMismatchError } from '@/lib/identity-owner';
 
 function baseInteractions(overrides: Record<string, unknown> = {}) {
   return {
@@ -263,6 +265,59 @@ describe('ResultsPage -> MatchList: ownerReady/identityGeneration/ownerScopeKey 
     await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
 
     expect(lastMatchListProps?.ownerReady).toBe(false);
+  });
+});
+
+describe('ResultsPage — the match-accuracy thumbs belong to one account', () => {
+  const ctx = { bucket: 'reach', finalScore: 42 };
+  type FeedbackProps = { feedback: Map<string, string>; onFeedback: (id: string, v: 'up' | 'down' | null, c: typeof ctx) => void };
+  const props = () => lastMatchListProps as unknown as FeedbackProps;
+
+  it('an identity switch clears U1\'s verdicts in the transition itself and re-asks the server for U2\'s', async () => {
+    // Before: the Map, the fetched-id memory and the mutation counters all
+    // outlived the account. U2 saw U1's thumbs, and hydration skipped U2's
+    // cards as "already asked about".
+    vi.mocked(setMatchFeedback).mockResolvedValue(true);
+    const { rerender } = render(<ResultsPage />);
+    await waitFor(() => expect(getMatchFeedback).toHaveBeenCalledWith(['opp-wiring-1']));
+    act(() => props().onFeedback('opp-wiring-1', 'up', ctx));
+    await waitFor(() => expect(props().feedback.get('opp-wiring-1')).toBe('up'));
+    const hydrations = vi.mocked(getMatchFeedback).mock.calls.length;
+
+    // The hook reports a real switch by calling the page's transition
+    // handler synchronously, then re-rendering with a bumped generation.
+    const onIdentityChange = mockUseResultsInteractions.mock.calls.at(-1)?.[0] as () => void;
+    act(() => onIdentityChange());
+    expect(props().feedback.size).toBe(0);
+
+    mockUseResultsInteractions.mockReturnValue(baseInteractions({ identityGeneration: 1, ownerScopeKey: 'u2' }));
+    rerender(<ResultsPage />);
+    await waitFor(() => expect(vi.mocked(getMatchFeedback).mock.calls.length).toBe(hydrations + 1));
+    expect(vi.mocked(getMatchFeedback).mock.calls.at(-1)?.[0]).toEqual(['opp-wiring-1']);
+  });
+
+  it('a verdict refused for the SAME account is taken back instead of standing as a saved thumb', async () => {
+    vi.mocked(setMatchFeedback).mockRejectedValue(new OwnerMismatchError());
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    act(() => props().onFeedback('opp-wiring-1', 'down', ctx));
+    await waitFor(() => expect(props().feedback.has('opp-wiring-1')).toBe(false));
+    expect(setMatchFeedback).toHaveBeenCalledWith('opp-wiring-1', 'down', ctx, expect.anything());
+  });
+
+  it('a refusal that arrives after a newer click on the same card leaves the newer verdict alone', async () => {
+    let rejectFirst: (e: unknown) => void = () => {};
+    vi.mocked(setMatchFeedback)
+      .mockImplementationOnce(() => new Promise((_r, rej) => { rejectFirst = rej; }))
+      .mockResolvedValue(true);
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    act(() => props().onFeedback('opp-wiring-1', 'down', ctx));
+    act(() => props().onFeedback('opp-wiring-1', 'up', ctx));
+    await waitFor(() => expect(props().feedback.get('opp-wiring-1')).toBe('up'));
+    rejectFirst(new OwnerMismatchError());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(props().feedback.get('opp-wiring-1')).toBe('up');
   });
 });
 

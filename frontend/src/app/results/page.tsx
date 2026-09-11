@@ -14,7 +14,7 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
 
 import type { ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
@@ -228,6 +228,8 @@ function ResultsContent() {
   // rather than reordered: the transition can only fire after mount, so the
   // effect that fills this has always run by then.
   const clearCrossSchoolRef = useRef<() => void>(() => {});
+  // Same shape for the match-accuracy thumbs, declared further down.
+  const clearFeedbackRef = useRef<() => void>(() => {});
   const handleIdentityChange = useCallback(() => {
     setEmailModal((m) => (m.open ? { ...m, open: false } : m));
     // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
@@ -235,6 +237,7 @@ function ResultsContent() {
     // document on screen and its view actionable for a full render.
     clearProfileView();
     clearCrossSchoolRef.current();
+    clearFeedbackRef.current();
     setPage(1);
   }, [clearProfileView]);
   const {
@@ -415,16 +418,29 @@ function ResultsContent() {
     verdict: MatchVerdict | null,
     context: MatchFeedbackContext,
   ) => {
-    feedbackMutationVersions.current.set(
-      oppId, (feedbackMutationVersions.current.get(oppId) ?? 0) + 1,
-    );
+    const token = captureOwnerToken();
+    const version = (feedbackMutationVersions.current.get(oppId) ?? 0) + 1;
+    feedbackMutationVersions.current.set(oppId, version);
     setFeedback(prev => {
       const next = new Map(prev);
       if (verdict) next.set(oppId, verdict);
       else next.delete(oppId);
       return next;
     });
-    setMatchFeedback(oppId, verdict, context).catch(() => {});
+    setMatchFeedback(oppId, verdict, context, token).catch((err: unknown) => {
+      // Refused for the SAME account (this browser's storage is not confirmed
+      // for it): the optimistic thumb describes a row that was never written.
+      // Take it back unless a newer click on this card has since landed.
+      // After a switch there is nothing to take back — the whole map was
+      // cleared for the next account in the transition itself.
+      if (!(err instanceof OwnerMismatchError) || !isTokenOwnerStillCurrent(token)) return;
+      if (feedbackMutationVersions.current.get(oppId) !== version) return;
+      setFeedback(prev => {
+        const next = new Map(prev);
+        next.delete(oppId);
+        return next;
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -479,6 +495,16 @@ function ResultsContent() {
   // back and forth doesn't refetch ids we've already asked about.
   const feedbackFetchedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
+    clearFeedbackRef.current = () => {
+      // U1's thumbs are U1's; the next account starts with none and asks the
+      // server for its own. Fetched-id memory goes too, or the hydration
+      // below would consider U2's cards already answered.
+      setFeedback(new Map());
+      feedbackFetchedRef.current.clear();
+      feedbackMutationVersions.current.clear();
+    };
+  }, []);
+  useEffect(() => {
     const ids = paginated
       .map(m => m.opportunity.id)
       .filter(id => !feedbackFetchedRef.current.has(id));
@@ -497,7 +523,9 @@ function ResultsContent() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [paginated]);
+    // identityGeneration: re-hydrate for the next account after the
+    // transition cleared the fetched-id memory; the page's ids are unchanged.
+  }, [paginated, identityGeneration]);
 
   const dismissedCount = useMemo(
     () => Array.from(interactions.values()).filter(v => v === 'dismissed').length,
@@ -661,14 +689,27 @@ function ResultsContent() {
   const handleSaveSearchSubmit = useCallback(async (
     input: { name: string; digest: SavedSearchDigest | null },
   ) => {
+    // Bound to the account that submitted the dialog: the INSERT resolves
+    // the session afterwards and would otherwise file U1's search under U2.
+    const token = captureOwnerToken();
     setSaveDialogOpen(false);
-    const saved = await saveSearch({
-      name: input.name,
-      query: debouncedQuery,
-      filters: { ...filters },
-      sort_by: sortBy,
-      tab: activeTab,
-    });
+    let saved: Awaited<ReturnType<typeof saveSearch>>;
+    try {
+      saved = await saveSearch({
+        name: input.name,
+        query: debouncedQuery,
+        filters: { ...filters },
+        sort_by: sortBy,
+        tab: activeTab,
+      }, token);
+    } catch (err) {
+      if (!(err instanceof OwnerMismatchError)) throw err;
+      // Silent only when the screen now belongs to someone else; a refusal
+      // for the same account is a failed save like any other.
+      if (!isTokenOwnerStillCurrent(token)) return;
+      saved = null;
+    }
+    if (!isTokenOwnerStillCurrent(token)) return;
     if (!saved) {
       window.alert(t('results.saveSearchError'));
       return;

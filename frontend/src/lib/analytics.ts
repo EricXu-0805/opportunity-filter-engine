@@ -1,4 +1,5 @@
 import { supabase, getDeviceId } from './supabase';
+import { captureOwnerToken } from './identity-owner';
 
 export type FunnelEvent =
   | 'landing_view'
@@ -24,9 +25,19 @@ export async function track(
   event: FunnelEvent,
   props: Record<string, unknown> = {},
 ): Promise<void> {
+  // Bound to whoever was on screen when the event fired: resolved after an
+  // account switch, the row would otherwise land under the next account.
+  // Captured here rather than threaded from 16 call sites that carry no
+  // other account data — every caller fires synchronously from its handler.
+  // Deliberately looser than the private writers: a null-uid capture (fresh
+  // browser, no identity resolved yet) binds to the first identity that
+  // resolves, because for operator-only funnel counters losing every first
+  // landing_view costs more than a late switch misattributing one event.
+  const token = captureOwnerToken();
   try {
     const deviceId = await getDeviceId();
     if (!deviceId) return;
+    if (token.uid !== null && token.uid !== deviceId) return;
     await supabase.from('analytics_events').insert({ device_id: deviceId, event, props });
   } catch {
     /* best-effort: analytics must never surface an error to the user */

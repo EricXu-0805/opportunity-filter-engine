@@ -1,3 +1,4 @@
+/* @vitest-environment jsdom */
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 const mockFrom = vi.fn();
@@ -22,6 +23,19 @@ import {
   savedSearchToUrl,
   type SavedSearchFilters,
 } from './saved-searches';
+import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
+// identity-owner is real here (only ./supabase is mocked): claim an owner the
+// way the app does, and hand each write the token that owner would capture.
+async function claimOwner(uid: string): Promise<void> {
+  advanceOwnerEpoch(uid);
+  await syncLocalIdentityOwner(uid);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) await new Promise((r) => setTimeout(r, 0));
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+const DEVICE = 'test-device-id';
+const OTHER = 'someone-elses-device-id';
+let TOKEN: OwnerToken;
+
 
 // The supabase-js query builder is chainable + thenable: each method
 // returns the same builder, and awaiting it (or calling .single()) yields
@@ -67,10 +81,12 @@ const SAMPLE_ROW = {
   new_match_ids: ['opp-b'],
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   mockFrom.mockReset();
   mockGetDeviceId.mockReset();
-  mockGetDeviceId.mockResolvedValue('test-device-id');
+  mockGetDeviceId.mockResolvedValue(DEVICE);
+  await claimOwner(DEVICE);
+  TOKEN = captureOwnerToken();
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
     const body = JSON.parse(String(init.body)) as { ids: string[] };
@@ -215,7 +231,7 @@ describe('saveSearch', () => {
       filters: SAMPLE_FILTERS,
       sort_by: 'deadline',
       tab: 'all',
-    });
+    }, TOKEN);
 
     expect(q.insert).toHaveBeenCalledWith(expect.objectContaining({
       device_id: 'test-device-id',
@@ -232,7 +248,7 @@ describe('saveSearch', () => {
     const q = makeQuery({ data: SAMPLE_ROW, error: null });
     mockFrom.mockReturnValue(q);
 
-    await saveSearch({ name: 'Bare', filters: SAMPLE_FILTERS });
+    await saveSearch({ name: 'Bare', filters: SAMPLE_FILTERS }, TOKEN);
 
     expect(q.insert).toHaveBeenCalledWith(expect.objectContaining({
       query: '',
@@ -242,7 +258,7 @@ describe('saveSearch', () => {
   });
 
   it('trims name and rejects empty / whitespace-only names', async () => {
-    const result = await saveSearch({ name: '   ', filters: SAMPLE_FILTERS });
+    const result = await saveSearch({ name: '   ', filters: SAMPLE_FILTERS }, TOKEN);
     expect(result).toBeNull();
     expect(mockFrom).not.toHaveBeenCalled();
   });
@@ -251,23 +267,40 @@ describe('saveSearch', () => {
     const q = makeQuery({ data: SAMPLE_ROW, error: null });
     mockFrom.mockReturnValue(q);
 
-    await saveSearch({ name: 'x'.repeat(120), filters: SAMPLE_FILTERS });
+    await saveSearch({ name: 'x'.repeat(120), filters: SAMPLE_FILTERS }, TOKEN);
 
     const inserted = q.insert.mock.calls[0]?.[0] as { name: string };
     expect(inserted.name.length).toBe(80);
   });
 
-  it('returns null when getDeviceId is null', async () => {
+  it('refuses when the session resolves to nobody — signed out between submit and insert', async () => {
     mockGetDeviceId.mockResolvedValue(null);
-    const result = await saveSearch({ name: 'X', filters: SAMPLE_FILTERS });
-    expect(result).toBeNull();
+    await expect(saveSearch({ name: 'X', filters: SAMPLE_FILTERS }, TOKEN)).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('refuses, and inserts nothing, when the account switched while the session was resolving', async () => {
+    // Before: the INSERT took device_id from whatever getDeviceId() resolved
+    // to. RLS cannot help — the row does not exist yet — so U1's search was
+    // filed under U2, who then received U1's digests.
+    let resolveSession: (uid: string) => void = () => {};
+    mockGetDeviceId.mockImplementation(() => new Promise<string>((r) => { resolveSession = r; }));
+    const q = makeQuery({ data: SAMPLE_ROW, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const pending = saveSearch({ name: 'Paid + Urgent', filters: SAMPLE_FILTERS }, TOKEN);
+    await claimOwner(OTHER);
+    resolveSession(OTHER);
+
+    await expect(pending).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(q.insert).not.toHaveBeenCalled();
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
   it('returns null and warns on insert error', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'constraint violation' } }));
-    const result = await saveSearch({ name: 'X', filters: SAMPLE_FILTERS });
+    const result = await saveSearch({ name: 'X', filters: SAMPLE_FILTERS }, TOKEN);
     expect(result).toBeNull();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
