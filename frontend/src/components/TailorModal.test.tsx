@@ -306,6 +306,79 @@ describe('TailorModal', () => {
     });
   });
 
+  it('a "Copied" flash does not survive an owner switch', async () => {
+    // The flashes were the one delayed UI in this modal not scoped to the
+    // session. Click copy as owner-1, switch accounts before the write
+    // resolves, and owner-1's late setCopiedBulletIdx(0) landed on owner-2's
+    // freshly reset modal: the first card owner-2 generated read "Copied"
+    // for a copy owner-2 never made.
+    let resolveWrite: () => void = () => {};
+    const writeText = vi.fn(() => new Promise<void>((r) => { resolveWrite = r; }));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const oneBullet = () => ({
+      method: 'ai' as const,
+      warnings: [],
+      tailored_bullets: [{ text: 'tailored bullet', source_evidence: 'Python', source_index: 0 }],
+    } satisfies TailorResponse);
+    const copyButtons = () => screen.queryAllByRole('button', { name: /tailor\.copyBulletAria/ });
+
+    mockTailorResume.mockResolvedValueOnce(oneBullet());
+    const view = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'orig A' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+    await waitFor(() => expect(copyButtons().length).toBe(1));
+    fireEvent.click(copyButtons()[0]);
+    expect(writeText).toHaveBeenCalledTimes(1);
+
+    // Owner switch while the clipboard write is still pending. The reset
+    // effect clears owner-1's result; type only after it has.
+    view.rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+    await waitFor(() => expect(copyButtons().length).toBe(0));
+    mockTailorResume.mockResolvedValueOnce(oneBullet());
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'orig B' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+    await waitFor(() => expect(copyButtons().length).toBe(1));
+    expect(screen.queryByText('tailor.copyBulletCopied')).toBeNull();
+
+    // Now owner-1's write completes. Its confirmation must not land here.
+    await act(async () => { resolveWrite(); await Promise.resolve(); });
+    expect(screen.queryByText('tailor.copyBulletCopied')).toBeNull();
+  });
+
+  it('Copy All that the clipboard refuses reports nothing and does not throw', async () => {
+    // writeText rejects on denied permission, an unfocused document or an
+    // insecure context. The per-bullet handler already swallowed that; Copy
+    // All let it surface as an unhandled rejection and could never say
+    // "Copied" for a copy that did not happen.
+    const writeText = vi.fn().mockRejectedValue(new Error('NotAllowedError'));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    mockTailorResume.mockResolvedValueOnce({
+      method: 'ai',
+      warnings: [],
+      tailored_bullets: [
+        { text: 'tailored bullet A', source_evidence: 'Python', source_index: 0 },
+      ],
+    } satisfies TailorResponse);
+
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
+      target: { value: 'orig A' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /tailor\.copyAll/ })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /tailor\.copyAll/ }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+
+    expect(screen.queryByText('tailor.copied')).toBeNull();
+  });
+
   it('R71-E: hides the original row when fallback echoes the same text', async () => {
     /* method === "fallback" → backend returns the user's own bullets
        verbatim with source_evidence === 'original'. Showing the same

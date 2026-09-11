@@ -1036,7 +1036,7 @@ def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
     """
     if not seeking_types:
         return 60.0  # No preference stated
-    normalised_seeking = [_normalize_type_key(s) for s in seeking_types if s]
+    normalised_seeking = {_normalize_type_key(s) for s in seeking_types if s and s.strip()}
     normalised_opp = _normalize_type_key(opp_type)
     if not normalised_seeking:
         return 60.0
@@ -1050,11 +1050,9 @@ def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
         ("research", "internship"): 50.0,
         ("internship", "research"): 50.0,
     }
-    for st in normalised_seeking:
-        score = type_affinity.get((st, normalised_opp))
-        if score:
-            return score
-    return 30.0  # Completely different type
+    # These are equally selected preferences, not an ordered priority list.
+    # The strongest applicable affinity must survive chip reordering/duplicates.
+    return max(type_affinity.get((st, normalised_opp), 30.0) for st in normalised_seeking)
 
 
 # --- Scoring layers ---
@@ -1957,6 +1955,43 @@ def _topic_alignment_penalty(profile: dict, opportunity: dict) -> float:
     return TOPIC_MISMATCH_PENALTY
 
 
+def _program_already_started(opportunity: dict) -> bool:
+    """True when the record carries a parseable ISO start_date strictly before today.
+
+    Only consulted when there is no stated deadline to judge by; the start date
+    is a collected fact (nsf_reu writes it from the award), never an estimate.
+    """
+    start = opportunity.get("start_date")
+    if not isinstance(start, str) or len(start) < 10:
+        return False
+    try:
+        return date.fromisoformat(start[:10]) < date.today()
+    except ValueError:
+        return False
+
+
+def _stated_deadline_date(opportunity: dict) -> date | None:
+    """Only an unestimated, non-inferred listing date can drive urgency.
+
+    A derived date may remain useful source context, but cannot establish that
+    an application window is open or has passed. Share this guard across score,
+    reasons, next steps and seasonal lift so they do not contradict one another.
+    """
+    if (
+        faculty_contact_claims_unverified(opportunity)
+        or opportunity.get("deadline_is_estimate")
+        or is_inferred(opportunity, "deadline")
+    ):
+        return None
+    deadline = opportunity.get("deadline")
+    if not isinstance(deadline, str):
+        return None
+    try:
+        return date.fromisoformat(deadline[:10])
+    except ValueError:
+        return None
+
+
 def _seasonal_multiplier(opportunity: dict, today=None) -> float:
     """Return a >=1.0 lift for summer-research postings during the apply-for-
     summer window (Feb-Jul by default). Gated to opportunity_type
@@ -1975,11 +2010,8 @@ def _seasonal_multiplier(opportunity: dict, today=None) -> float:
     # summer records (closed 2026 cycles that can never expire) monopolized
     # July top-15s through this multiplier — a record with no future deadline
     # gets a neutral 1.0, not a boost (2026-07 audit).
-    try:
-        dl = date.fromisoformat((opportunity.get("deadline") or "")[:10])
-    except ValueError:
-        return 1.0
-    if dl < today:
+    dl = _stated_deadline_date(opportunity)
+    if dl is None or dl < today:
         return 1.0
     if today.month in SEASONAL_BOOST_MONTHS:
         return SEASONAL_BOOST_FACTOR
@@ -2121,16 +2153,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         ]
     signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
 
-    deadline = "" if is_faculty_contact else opp.get("deadline", "")
-    deadline_date = None
-    if deadline and len(deadline) >= 8 and deadline[4] == "-":
-        try:
-            # [:10] matches _seasonal_multiplier's parse: a timestamped deadline
-            # ("2026-05-01T00:00:00") must hit the passed-deadline penalty and
-            # the seasonal boost identically, not one but not the other.
-            deadline_date = date.fromisoformat(deadline[:10])
-        except ValueError:
-            pass
+    deadline_date = _stated_deadline_date(opp)
 
     return _OppStatic(
         kw_lower=kw_lower,
@@ -2542,6 +2565,14 @@ def _rank_opportunity_unlocked(
             elig_gap.append("Deadline has passed — verify if still accepting applications")
         elif days_left <= 7:
             elig_fit.append(f"Deadline in {days_left} days — apply soon")
+    elif _program_already_started(opportunity):
+        # An estimated deadline cannot claim urgency, and _stated_deadline_date
+        # rightly returns None for it. But 73 active NSF REU sites whose summer
+        # had already begun then lost the only thing holding them down and took
+        # top-20 slots — #1 for a JHU biochem profile. The program's start date
+        # is a stated field, not the estimate: a cycle that has started is over.
+        final *= DEADLINE_PASSED_PENALTY
+        elig_gap.append("This program's start date has passed — check whether a new cycle is open")
 
     if _is_undergrad(profile) and st.requires_grad:
         final *= GRAD_LEVEL_PENALTY
@@ -2679,7 +2710,7 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     on_campus = None if is_faculty_contact else opportunity.get("on_campus")
     if on_campus is not True and on_campus is not False:
         unknowns.append("opportunity.on_campus")
-    if is_faculty_contact or not opportunity.get("deadline"):
+    if _opp_static(opportunity).deadline_date is None:
         unknowns.append("opportunity.deadline")  # no penalty, no seasonal boost
     if elig.get("min_gpa") is not None and str(elig.get("min_gpa")).strip():
         # The corpus records GPA floors but the product never collects the
@@ -2697,9 +2728,10 @@ def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> l
     app = {} if is_faculty_contact else raw_app
 
     # Deadline urgency
-    deadline = None if is_faculty_contact else opportunity.get("deadline")
-    if deadline:
-        steps.append(f"Apply before deadline: {deadline}")
+    if _opp_static(opportunity).deadline_date is not None:
+        steps.append(f"Apply before deadline: {opportunity['deadline']}")
+    elif not is_faculty_contact and opportunity.get("deadline"):
+        steps.append("Verify the application deadline on the source page")
 
     # Resume
     if not profile.get("resume_ready") and app.get("requires_resume") == "yes":
@@ -2775,21 +2807,29 @@ def _bucket_thresholds(
     if result_count >= 10:
         p70 = score_at_descending_index(max(0, (result_count * 3) // 10))
         p40 = score_at_descending_index(max(0, (result_count * 6) // 10))
-        k = min(HIGH_PRIORITY_TARGET_COUNT, result_count - 1)
-        return (
-            max(floor_high, score_at_descending_index(k)),
-            max(floor_good, p70),
-            max(floor_reach, p40),
-        )
+        k = min(max(0, HIGH_PRIORITY_TARGET_COUNT - 1), result_count - 1)
+        high = max(floor_high, score_at_descending_index(k))
+        # A small universe can put its p70/p40 scores above the Nth score.
+        # Lower bands may meet, but must never require a higher score than
+        # the band above them. Ties outside the strict shortlist fall through.
+        # When a percentile would meet or exceed the band above it, the
+        # percentile is not informative in this universe; fall back to that
+        # band's flat floor rather than collapsing the band to nothing. In a
+        # universe of 21 the 21st result then lands in good_match, not low_fit.
+        good = min(high, max(floor_good, p70)) if p70 < high else min(high, floor_good)
+        reach = min(good, max(floor_reach, p40)) if p40 < good else min(good, floor_reach)
+        return high, good, reach
     return floor_high, floor_good, floor_reach
 
 
 def _assign_bucket(
     result: MatchResult,
     thresholds: tuple[float, float, float],
+    *,
+    canonical_rank: int,
 ) -> None:
     hp_threshold, gm_threshold, reach_threshold = thresholds
-    if result.final_score >= hp_threshold:
+    if canonical_rank < HIGH_PRIORITY_TARGET_COUNT and result.final_score >= hp_threshold:
         result.bucket = "high_priority"
     elif result.final_score >= gm_threshold:
         result.bucket = "good_match"
@@ -2801,7 +2841,7 @@ def _assign_bucket(
 
 def _assign_buckets(results: list[MatchResult]) -> None:
     """Assign each result's bucket from its current final_score. Expects results
-    sorted by final_score desc. For >=10 results uses the RANK-6 top-N count cap
+    sorted by canonical_sort_key. For >=10 results uses the strict top-N cap
     + percentile banding; smaller sets fall back to the flat BUCKET_THRESHOLDS
     floors. Mutates in place. Shared by rank_all and semantic_rerank so a
     re-blended score never keeps a stale bucket label."""
@@ -2809,8 +2849,8 @@ def _assign_buckets(results: list[MatchResult]) -> None:
         len(results),
         lambda index: results[index].final_score,
     )
-    for r in results:
-        _assign_bucket(r, thresholds)
+    for index, r in enumerate(results):
+        _assign_bucket(r, thresholds, canonical_rank=index)
 
 
 def semantic_rerank(
@@ -2995,7 +3035,9 @@ def _filter_context(profile: dict) -> _FilterCtx:
             "exclude_citizenship_restricted", True
         ),
         international_student=bool(profile.get("international_student")),
-        seeking=set(profile.get("seeking_type") or []),
+        seeking={
+            _normalize_type_key(s) for s in (profile.get("seeking_type") or []) if s and s.strip()
+        },
         student_majors_norm=student_majors_norm,
         related_majors_norm=related_majors_norm,
     )
@@ -3040,7 +3082,7 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
             if ctx.exclude_citizenship_restricted:
                 return "citizenship_restricted"
 
-    opp_type = opp.get("opportunity_type", "")
+    opp_type = _normalize_type_key(opp.get("opportunity_type") or "")
     if ctx.seeking and opp_type and opp_type not in ctx.seeking:
         opp_majors = faculty_safe_eligibility(opp).get("majors") or []
         if opp_majors:
@@ -3236,8 +3278,11 @@ def rank_visible_universe(
     thresholds = _bucket_thresholds(result_count, score_at)
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible: list[MatchResult] = []
-    for result in retained:
-        _assign_bucket(result, thresholds)
+    # The histogram gives score thresholds, but cannot choose among a tied
+    # boundary. Assign the strict shortlist in the same total order as rank_all.
+    retained.sort(key=canonical_sort_key)
+    for index, result in enumerate(retained):
+        _assign_bucket(result, thresholds, canonical_rank=index)
         buckets[result.bucket] += 1
         if result.bucket != "low_fit":
             visible.append(result)
@@ -3245,7 +3290,6 @@ def rank_visible_universe(
     # Everything not retained was strictly below the absolute Reach floor and
     # therefore low_fit under every percentile distribution.
     buckets["low_fit"] += result_count - len(retained)
-    visible.sort(key=canonical_sort_key)
 
     if profile.get("exploring"):
         opportunity_lookup = _opportunity_lookup_for_results(opportunities, visible)

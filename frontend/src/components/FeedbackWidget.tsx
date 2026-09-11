@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Check, Copy, MessageSquarePlus, X } from 'lucide-react';
 import { useT } from '@/i18n/client';
 import { submitFeedback } from '@/lib/supabase';
@@ -8,7 +8,7 @@ import type { FeedbackCategory, FeedbackResult } from '@/lib/supabase';
 import { track } from '@/lib/analytics';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { readLocalStorageJSON, writeLocalStorageJSON } from '@/lib/use-local-storage-json';
-import { captureOwnerToken, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 type ErrorKind = 'generic' | 'no-session' | 'timeout';
@@ -103,7 +103,14 @@ type SendOutcome = FeedbackResult | { ok: false; reason: 'timeout' };
 export default function FeedbackWidget() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<FeedbackDraft>(readDraft);
+  const [draftState, setDraftState] = useState(() => ({ draft: readDraft(), owner: captureOwnerToken() }));
+  const { draft, owner } = draftState;
+  const setDraft = useCallback((next: FeedbackDraft | ((draft: FeedbackDraft) => FeedbackDraft)) => {
+    setDraftState((current) => {
+      if (!isTokenOwnerStillCurrent(owner) || current.owner.epoch !== owner.epoch) return current;
+      return { ...current, draft: typeof next === 'function' ? next(current.draft) : next };
+    });
+  }, [owner]);
   const [status, setStatus] = useState<Status>('idle');
   const [errorKind, setErrorKind] = useState<ErrorKind>('generic');
   const [ticket, setTicket] = useState<{ id: string | null; duplicate: boolean } | null>(null);
@@ -112,22 +119,48 @@ export default function FeedbackWidget() {
 
   const persistedRef = useRef(false);
 
-  // The widget is in the root layout, so it mounts during the first client
-  // render — before ensureAnonSession has resolved any identity. The scoped
-  // read therefore returns null, and useState froze that "nothing there" for
-  // the life of the page: the widget opened empty on every reload, and the
-  // first keystroke overwrote the stored draft and minted a new clientToken.
-  // Re-read once ownership resolves, and only into an untouched draft, so a
-  // late resolution can never overwrite what someone is typing.
-  useEffect(() => onLocalOwnerStateChange(() => {
-    setDraft((current) => (hasContent(current) ? current : readDraft()));
-  }), []);
+  const ownerRef = useRef(owner);
+  const sendRevisionRef = useRef(0);
+  const mountedRef = useRef(false);
+
+  // The root-layout widget survives sign-in/out. Its in-memory draft must
+  // follow the same owner boundary as storage, including ticket and timers.
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    const unsubscribe = onLocalOwnerStateChange(() => {
+      const nextOwner = captureOwnerToken();
+      const changed = !isTokenOwnerStillCurrent(ownerRef.current);
+      ownerRef.current = nextOwner;
+      if (changed) {
+        sendRevisionRef.current += 1;
+        persistedRef.current = false;
+        setOpen(false);
+        setStatus('idle');
+        setErrorKind('generic');
+        setTicket(null);
+        setEmailError(false);
+        setCopied(false);
+      }
+      const restoredDraft = readDraft();
+      setDraftState((current) => ({
+        owner: nextOwner,
+        // A readiness notification for the SAME owner may restore a saved
+        // draft, but may never erase that owner's keystrokes.
+        draft: changed || !hasContent(current.draft) ? restoredDraft : current.draft,
+      }));
+    });
+    return () => {
+      mountedRef.current = false;
+      sendRevisionRef.current += 1;
+      unsubscribe();
+    };
+  }, []);
 
   const close = useCallback(() => setOpen(false), []);
 
   const patch = useCallback((next: Partial<FeedbackDraft>) => {
     setDraft((cur) => ({ ...cur, ...next }));
-  }, []);
+  }, [setDraft]);
 
   useEffect(() => {
     if (!open) return;
@@ -142,21 +175,22 @@ export default function FeedbackWidget() {
   // copy exists only until the send is confirmed — the success path below
   // resets the draft, which removes the key here.
   useEffect(() => {
+    if (!isTokenOwnerStillCurrent(owner)) return;
     const populated = hasContent(draft);
     // Nothing typed and nothing stored: don't touch storage at all (a user
     // who never opens the widget should leave no trace).
     if (!populated && !persistedRef.current) return;
     persistedRef.current = populated;
-    // FEEDBACK_DRAFT is user-scoped (W15), so the write carries the owner
-    // capability. Captured at the write itself: this mirror fires on the
-    // typist's own keystroke, so action time IS write time — there is no
-    // earlier moment the intent could have been captured at.
-    writeLocalStorageJSON(STORAGE_KEYS.FEEDBACK_DRAFT, populated ? draft : null, captureOwnerToken());
-  }, [draft]);
+    // The draft carries the capability of its typist; a later effect must
+    // never capture a different account and copy old text into its storage.
+    writeLocalStorageJSON(STORAGE_KEYS.FEEDBACK_DRAFT, populated ? draft : null, owner);
+  }, [draft, owner]);
 
   const send = useCallback(async () => {
     const message = draft.message.trim();
-    if (!message || status === 'sending') return;
+    if (!message || status === 'sending' || !isTokenOwnerStillCurrent(owner)) return;
+    const revision = ++sendRevisionRef.current;
+    const isCurrentSend = () => mountedRef.current && revision === sendRevisionRef.current && isTokenOwnerStillCurrent(owner);
 
     const email = draft.email.trim();
     if (email && !EMAIL_RE.test(email)) {
@@ -185,12 +219,13 @@ export default function FeedbackWidget() {
         subject: draft.subject.trim() || null,
         clientToken,
         props: { path: typeof window !== 'undefined' ? window.location.pathname : '' },
-      }),
+      }, owner).catch((): SendOutcome => ({ ok: false, reason: 'error' })),
       new Promise<SendOutcome>((resolve) => {
         timer = setTimeout(() => resolve({ ok: false, reason: 'timeout' }), SEND_TIMEOUT_MS);
       }),
     ]);
     if (timer !== undefined) clearTimeout(timer);
+    if (!isCurrentSend()) return;
 
     if (!result.ok) {
       setErrorKind(
@@ -211,25 +246,29 @@ export default function FeedbackWidget() {
     // Confirmed insert — and only now — the local copy goes away and the next
     // message gets a fresh token.
     setDraft(EMPTY_DRAFT);
-  }, [draft, patch, status]);
+  }, [draft, patch, status, owner, setDraft]);
 
   const copyReference = useCallback(async () => {
-    if (!ticket?.id) return;
+    if (!ticket?.id || !isTokenOwnerStillCurrent(owner)) return;
+    const revision = sendRevisionRef.current;
+    const isCurrentCopy = () => mountedRef.current && revision === sendRevisionRef.current && isTokenOwnerStillCurrent(owner);
     try {
       await navigator.clipboard.writeText(ticket.id);
+      if (!isCurrentCopy()) return;
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => { if (isCurrentCopy()) setCopied(false); }, 2000);
     } catch {
       // clipboard.writeText rejects in insecure contexts — the reference is
       // on screen and selectable, so this is a shortcut, not the only path.
     }
-  }, [ticket]);
+  }, [ticket, owner]);
 
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => {
+          sendRevisionRef.current += 1;
           setStatus('idle');
           setTicket(null);
           setCopied(false);

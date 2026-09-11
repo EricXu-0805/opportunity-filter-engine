@@ -8,7 +8,7 @@
  * variant only when the backend accepted it.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
@@ -39,6 +39,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import ResumeRenovationModal from './ResumeRenovationModal';
+import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, RenovationDoc } from '@/lib/types';
 
 // The word-diff splits changed bullet text into per-word nodes; match on
@@ -98,7 +99,11 @@ function makeDoc(overrides: Partial<RenovationDoc> = {}): RenovationDoc {
   };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  localStorage.clear();
+  advanceOwnerEpoch('renovation-owner-a');
+  await syncLocalIdentityOwner('renovation-owner-a');
+  await waitFor(() => expect(isLocalOwnerReady('renovation-owner-a')).toBe(true));
   mockStructureResume.mockReset();
   mockRenovateResume.mockReset();
   mockOptimizeBullet.mockReset();
@@ -137,7 +142,7 @@ describe('ResumeRenovationModal', () => {
   it('shows the start CTA when no saved doc exists and a resume is on file', async () => {
     renderModal();
     expect(await screen.findByText('renovate.start')).toBeInTheDocument();
-    expect(mockLoadRenovation).toHaveBeenCalledWith('opp-1');
+    expect(mockLoadRenovation).toHaveBeenCalledWith('opp-1', captureOwnerToken());
   });
 
   it('asks for a resume when the profile has none', async () => {
@@ -452,4 +457,182 @@ describe('W13 save truthfulness + staleness', () => {
     );
   });
 
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+const structuredResume = { sections: [{ id: 's1', heading: 'Projects', kind: 'projects',
+  bullets: [{ id: 's1b1', text: 'Built a data pipeline' }] }], method: 'ai', warnings: [] };
+
+async function switchRenovationOwner() {
+  await act(async () => {
+    advanceOwnerEpoch('renovation-owner-b');
+    await syncLocalIdentityOwner('renovation-owner-b');
+  });
+}
+
+function savedDoc(doc = makeDoc()) {
+  return { doc, base_snapshot: { sections: [] }, method: 'ai', warnings: [], updated_at: '' };
+}
+
+describe('renovation owner and request lifecycle', () => {
+  it('does not start renovation when structure finishes after unmount', async () => {
+    const pending = deferred<typeof structuredResume>();
+    mockStructureResume.mockReturnValue(pending.promise);
+    const view = renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    view.unmount();
+    await act(async () => { pending.resolve(structuredResume); });
+    expect(mockRenovateResume).not.toHaveBeenCalled();
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+
+  it.each(['unmount', 'owner switch'] as const)('drops a generated doc after %s without saving it', async (change) => {
+    const pending = deferred<RenovationDoc>();
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockReturnValue(pending.promise);
+    const view = renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalledTimes(1));
+    if (change === 'unmount') view.unmount();
+    else await switchRenovationOwner();
+    await act(async () => { pending.resolve(makeDoc()); });
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+    expect(screen.queryByText('renovate.copyAll')).toBeNull();
+  });
+
+  it('drops an old saved-doc restore after an owner switch', async () => {
+    const pending = deferred<ReturnType<typeof savedDoc>>();
+    mockLoadRenovation.mockReturnValue(pending.promise);
+    renderModal();
+    await switchRenovationOwner();
+    await act(async () => { pending.resolve(savedDoc()); });
+    expect(screen.queryByText('renovate.restored')).toBeNull();
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+
+  it('keeps a completed anonymous-owner generation bound to its original token', async () => {
+    const originalOwner = captureOwnerToken();
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockResolvedValue(makeDoc());
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    // Same-owner re-observation is not a sign-out and must not discard work.
+    await act(async () => { advanceOwnerEpoch(originalOwner.uid); await syncLocalIdentityOwner(originalOwner.uid); });
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
+    expect(mockSaveRenovation.mock.calls[0][5]).toEqual(originalOwner);
+  });
+
+  it('keeps an old source signature and stale warning when the source is removed and the doc edited', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ resume_sig: 'original-source' })));
+    renderModal(makeProfile({ resume_text: '' }));
+    expect(await screen.findByTestId('renovation-stale-resume')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
+    expect(mockSaveRenovation.mock.calls[0][1].resume_sig).toBe('original-source');
+    expect(screen.getByTestId('renovation-stale-resume')).toBeInTheDocument();
+  });
+
+  it('cannot apply a late bullet optimization over a newer manual edit', async () => {
+    const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockOptimizeBullet.mockReturnValue(pending.promise);
+    renderModal();
+    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    fireEvent.click(screen.getAllByText('renovate.edit')[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'A newer manual edit' } });
+    fireEvent.click(screen.getByText('renovate.save'));
+    await act(async () => { pending.resolve({ text: 'Late AI text', changed: true, source_evidence: '' }); });
+    expect(screen.getByText(fullText('A newer manual edit'))).toBeInTheDocument();
+    expect(screen.queryByText('Late AI text')).toBeNull();
+    expect(mockSaveRenovation).toHaveBeenCalledTimes(1);
+  });
+
+  it('cannot save a late bullet optimization under a new owner', async () => {
+    const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockOptimizeBullet.mockReturnValue(pending.promise);
+    renderModal();
+    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await switchRenovationOwner();
+    await act(async () => { pending.resolve({ text: 'Late AI text', changed: true, source_evidence: '' }); });
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+describe('renovation close and recovery boundaries', () => {
+  it('invalidates immediately on Close even when the parent delays updating isOpen', async () => {
+    const pending = deferred<RenovationDoc>();
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockReturnValue(pending.promise);
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'renovate.closeAria' }));
+    await act(async () => { pending.resolve(makeDoc()); });
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+
+  it('drops an old-target result after the same modal is repurposed', async () => {
+    const pending = deferred<RenovationDoc>();
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockReturnValue(pending.promise);
+    const view = renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalled());
+    view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()}
+      opportunityId="opp-2" opportunityTitle="Another lab" />);
+    await act(async () => { pending.resolve(makeDoc()); });
+    expect(mockSaveRenovation).not.toHaveBeenCalled();
+    expect(screen.queryByText('renovate.copyAll')).toBeNull();
+  });
+
+  it('does not display a late saved receipt after an account switch', async () => {
+    const pending = deferred<boolean>();
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockSaveRenovation.mockReturnValue(pending.promise);
+    renderModal();
+    fireEvent.click((await screen.findAllByText('renovate.rollback'))[0]);
+    await switchRenovationOwner();
+    await act(async () => { pending.resolve(true); });
+    expect(screen.queryByText('renovate.saved')).toBeNull();
+    expect(screen.queryByText('renovate.retrySave')).toBeNull();
+  });
+
+  it('recovers from an unavailable owner/load and can reopen under a ready anonymous owner', async () => {
+    mockLoadRenovation.mockRejectedValueOnce(new Error('local data ownership is not confirmed for this read'));
+    const view = renderModal();
+    expect(await screen.findByText('renovate.start')).toBeInTheDocument();
+    await switchRenovationOwner();
+    view.rerender(<ResumeRenovationModal isOpen={false} onClose={vi.fn()} profile={makeProfile()}
+      opportunityId="opp-1" opportunityTitle="Lab" />);
+    mockLoadRenovation.mockResolvedValueOnce(savedDoc());
+    view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()}
+      opportunityId="opp-1" opportunityTitle="Lab" />);
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(mockLoadRenovation.mock.lastCall?.[1].uid).toBe('renovation-owner-b');
+  });
+});
+
+it('restarts restore with a fresh capability when the same anonymous owner becomes ready', async () => {
+  advanceOwnerEpoch('renovation-ready-later');
+  const pending = deferred<ReturnType<typeof savedDoc>>();
+  mockLoadRenovation.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(savedDoc());
+  renderModal();
+  const originalToken = mockLoadRenovation.mock.calls[0][1];
+  await act(async () => { await syncLocalIdentityOwner('renovation-ready-later'); });
+  expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+  expect(mockLoadRenovation).toHaveBeenCalledTimes(2);
+  const readyToken = mockLoadRenovation.mock.calls[1][1];
+  expect(readyToken.uid).toBe(originalToken.uid);
+  expect(readyToken.generation).not.toBe(originalToken.generation);
+  await act(async () => { pending.resolve(savedDoc(makeDoc({ resume_sig: 'stale-late-restore' }))); });
+  expect(screen.queryByTestId('renovation-stale-resume')).toBeNull();
+  fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+  await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
+  expect(mockSaveRenovation.mock.calls[0][5]).toEqual(readyToken);
 });

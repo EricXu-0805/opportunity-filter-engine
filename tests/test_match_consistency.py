@@ -666,6 +666,15 @@ class TestSnapshotPagination:
                 paid="no",
                 on_campus=False,
                 contact_email="",
+                # A stated, long-past deadline: the record is dead, not merely
+                # weak. Before the small-universe thresholds were fixed this
+                # fixture scored 42.9 and fell into low_fit only because a
+                # 15-record universe collapsed good/reach up to the 70 high
+                # cutoff — the same cliff that hid a 69 there. With the flat
+                # floors restored, 42.9 is a reach by the product's own
+                # constants; the passed-deadline penalty (x0.7) makes this the
+                # unambiguous low_fit the test needs.
+                deadline="2024-01-15",
                 keywords=["medieval history"],
                 description_raw="Archive cataloging.",
                 description_clean="Archive cataloging.",
@@ -1767,13 +1776,16 @@ class TestAnEstimatedDeadlineAnswersNoDeadlineQuestion:
 
         return MatchViewState(tab="all", today="2026-09-04", **kw)
 
-    def _run(self, view):
+    def _run(self, view, marker="flag", deadline="2025-02-15"):
         from backend.routes import matches as m_module
         from src.matcher.ranker import MatchResult
 
         opportunities = {
             "estimated": {**_opp("estimated"), "source_type": "campus_program",
-                          "deadline": "2025-02-15", "deadline_is_estimate": True},
+                          "deadline": deadline,
+                          "deadline_is_estimate": marker == "flag",
+                          "metadata": {"inferred_fields": {"deadline": "estimate:award_start_date"}}
+                          if marker == "stamp" else {}},
             "real": {**_opp("real"), "source_type": "campus_program",
                      "deadline": "2025-03-01"},
         }
@@ -1785,10 +1797,23 @@ class TestAnEstimatedDeadlineAnswersNoDeadlineQuestion:
         ]
         return m_module._apply_match_view(results, opportunities, view, "uiuc")
 
-    def test_it_is_not_counted_as_passed(self):
-        *_rest, facets = self._run(self._view())
+    @pytest.mark.parametrize("marker", ["flag", "stamp"])
+    def test_it_is_not_counted_as_passed(self, marker):
+        *_rest, facets = self._run(self._view(), marker)
         assert facets["passed"] == 1
 
-    def test_it_is_not_selected_by_the_passed_filter(self):
-        filtered, *_ = self._run(self._view(deadline="passed"))
+    @pytest.mark.parametrize("marker", ["flag", "stamp"])
+    def test_it_is_not_selected_by_the_passed_filter(self, marker):
+        filtered, *_ = self._run(self._view(deadline="passed"), marker)
         assert [r.opportunity_id for r in filtered] == ["real"]
+
+    @pytest.mark.parametrize("marker", ["flag", "stamp"])
+    def test_a_future_estimate_is_not_due_soon(self, marker):
+        filtered, *_rest, facets = self._run(self._view(deadline="7"), marker, "2026-09-07")
+        assert filtered == []
+        assert facets == {"7": 0, "14": 0, "30": 0, "passed": 1}
+
+    @pytest.mark.parametrize("marker", ["flag", "stamp"])
+    def test_an_estimate_sorts_as_unknown_not_as_a_passed_deadline(self, marker):
+        filtered, *_ = self._run(self._view(sort_by="deadline"), marker)
+        assert [r.opportunity_id for r in filtered] == ["estimated", "real"]

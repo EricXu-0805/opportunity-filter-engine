@@ -1635,7 +1635,10 @@ class TestStudentCompetenceProvenanceEG2:
     def test_grounded_competence_claim_passes(self):
         import backend.routes.cold_email as ce
         from backend.lib.grounding import competence_violations
-        p = ce._common_parts(self._profile(), self._opp())
+        p = ce._common_parts(
+            self._profile(), self._opp(),
+            resume_bullets=["Built machine learning models using Python."],
+        )
         student_corpus = ce._student_email_corpus(p)
         violations = competence_violations(
             "I have experience with Python and machine learning.",

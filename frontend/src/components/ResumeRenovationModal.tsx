@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
   X,
   Copy,
@@ -29,6 +29,20 @@ import type {
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
 import { hashString } from '@/lib/match-utils';
+import {
+  captureOwnerToken,
+  isTokenOwnerStillCurrent,
+  isOwnerTokenValid,
+  onLocalOwnerStateChange,
+  type OwnerToken,
+} from '@/lib/identity-owner';
+
+interface RenovationScope {
+  active: boolean;
+  owner: OwnerToken;
+  saveRevision: number;
+}
+
 
 /**
  * Whole-résumé renovation toward ONE opportunity (per-professor by
@@ -139,12 +153,14 @@ export default function ResumeRenovationModal({
   // (structure+renovate in flight) → 'doc' (variant-chain review surface).
   // 'restoring' covers the initial saved-doc lookup so the CTA doesn't
   // flash before we know whether a doc exists.
+  const [ownerRevision, setOwnerRevision] = useState(0);
   const [phase, setPhase] = useState<'restoring' | 'idle' | 'working' | 'doc'>('restoring');
   const [workingStep, setWorkingStep] = useState<'structuring' | 'renovating'>('structuring');
   const [doc, setDoc] = useState<RenovationDoc | null>(null);
   const [baseSections, setBaseSections] = useState<ResumeSectionInput[]>([]);
   const [restoredFromSave, setRestoredFromSave] = useState(false);
-  const [staleResume, setStaleResume] = useState(false);
+  const staleResume = !!doc && typeof doc.resume_sig === 'string' &&
+    doc.resume_sig !== hashString(profile.resume_text ?? '');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -152,7 +168,7 @@ export default function ResumeRenovationModal({
   const [saveFailed, setSaveFailed] = useState(false);
   // The last persist payload, so the save-failed state can offer a real
   // retry of exactly what failed (W13).
-  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[] } | null>(null);
+  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[]; scope: RenovationScope } | null>(null);
   // Per-bullet UI state, keyed by bullet id (ids are unique doc-wide — the
   // backend 422s duplicate ids).
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -163,15 +179,40 @@ export default function ResumeRenovationModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  const scopeRef = useRef<RenovationScope | null>(null);
+  // Invalidate before paint/microtasks when the parent closes or replaces
+  // the target/source, even if the passive restore effect has not run yet.
+  useLayoutEffect(() => () => {
+    if (scopeRef.current) scopeRef.current.active = false;
+  }, [isOpen, opportunityId, profile.resume_text]);
+  const invalidateAndClose = useCallback(() => {
+    if (scopeRef.current) scopeRef.current.active = false;
+    lastPersistRef.current = null;
+    closeRef.current();
+  }, []);
+  const docRef = useRef<RenovationDoc | null>(null);
+  const setCurrentDoc = useCallback((next: RenovationDoc | null) => {
+    docRef.current = next;
+    setDoc(next);
+  }, []);
+  const isCurrentScope = useCallback((scope: RenovationScope | null): scope is RenovationScope => (
+    !!scope && scope.active && scopeRef.current === scope && isTokenOwnerStillCurrent(scope.owner)
+  ), []);
+
   // Reset + restore on every open: a saved doc for this opportunity wins
   // over the empty CTA. setState runs in the async callback.
   useEffect(() => {
     if (!isOpen) return;
+    const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0 };
+    scopeRef.current = scope;
+    lastPersistRef.current = null;
     /* eslint-disable react-hooks/set-state-in-effect --
        Modal-lifecycle reset mirroring TailorModal: every slice returns to a
        known state on open before the async restore resolves. */
     setPhase('restoring');
-    setDoc(null);
+    setCurrentDoc(null);
     setBaseSections([]);
     setRestoredFromSave(false);
     setError(null);
@@ -179,27 +220,47 @@ export default function ResumeRenovationModal({
     setSaving(false);
     setSavedFlash(false);
     setSaveFailed(false);
-    setStaleResume(false);
     setEditingId(null);
     setEditDraft('');
     setOptimizingId(null);
     setBulletNotices({});
     /* eslint-enable react-hooks/set-state-in-effect */
-    let ignore = false;
-    loadRenovation(opportunityId)
+    const unsubscribe = onLocalOwnerStateChange(() => {
+      if (!scope.active) return;
+      if (isTokenOwnerStillCurrent(scope.owner)) {
+        const readyOwner = captureOwnerToken();
+        if (readyOwner.generation !== scope.owner.generation && isOwnerTokenValid(readyOwner, readyOwner.uid)) {
+          // Initial readiness is a new capability, not permission to upgrade
+          // an already-running action. Restart restore with a fresh scope.
+          scope.active = false;
+          setOwnerRevision((revision) => revision + 1);
+        }
+        return;
+      }
+      // Invalidate synchronously, before React has rendered the next account.
+      scope.active = false;
+      lastPersistRef.current = null;
+      setCurrentDoc(null);
+      setBaseSections([]);
+      setPhase('restoring');
+      setEditingId(null);
+      setEditDraft('');
+      setOptimizingId(null);
+      setBulletNotices({});
+      setError(null);
+      setSaving(false);
+      setSavedFlash(false);
+      setSaveFailed(false);
+      setCopied(false);
+      closeRef.current();
+    });
+    loadRenovation(opportunityId, scope.owner)
       .then((stored) => {
-        if (ignore) return;
+        if (!isCurrentScope(scope)) return;
         const storedDoc = stored?.doc as unknown as RenovationDoc | undefined;
         if (storedDoc && Array.isArray(storedDoc.sections) && storedDoc.sections.length > 0) {
-          // W13 staleness: a doc built from a since-edited résumé must not
-          // render as silently current. Legacy docs carry no sig — unknown,
-          // so no claim either way.
-          setStaleResume(
-            typeof storedDoc.resume_sig === 'string' &&
-            !!profile.resume_text &&
-            storedDoc.resume_sig !== hashString(profile.resume_text),
-          );
-          setDoc(storedDoc);
+          // Keep the original source signature, including after source removal.
+          setCurrentDoc(storedDoc);
           setBaseSections(
             Array.isArray((stored?.base_snapshot as { sections?: ResumeSectionInput[] })?.sections)
               ? (stored!.base_snapshot as { sections: ResumeSectionInput[] }).sections
@@ -212,14 +273,15 @@ export default function ResumeRenovationModal({
         }
       })
       .catch(() => {
-        if (!ignore) setPhase('idle');
+        if (isCurrentScope(scope)) setPhase('idle');
       });
     return () => {
-      ignore = true;
+      scope.active = false;
+      unsubscribe();
     };
     // profile.resume_text feeds the staleness comparison — a resume edit
     // while the modal is closed must re-evaluate on the next open.
-  }, [isOpen, opportunityId, profile.resume_text]);
+  }, [isOpen, opportunityId, profile.resume_text, ownerRevision, isCurrentScope, setCurrentDoc]);
 
   // Focus trap + escape + body-overflow lock, lifted from TailorModal so the
   // renovation modal feels identical to keyboard users.
@@ -239,7 +301,7 @@ export default function ResumeRenovationModal({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        invalidateAndClose();
         return;
       }
       if (e.key !== 'Tab' || !modalRef.current) return;
@@ -263,49 +325,54 @@ export default function ResumeRenovationModal({
       document.body.style.overflow = prevOverflow;
       previouslyFocusedRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, invalidateAndClose]);
 
   const persist = useCallback(
-    async (nextDoc: RenovationDoc, sections: ResumeSectionInput[]) => {
+    async (nextDoc: RenovationDoc, sections: ResumeSectionInput[], scope: RenovationScope) => {
+      if (!isCurrentScope(scope)) return;
+      const revision = ++scope.saveRevision;
+      const isLatestSave = () => isCurrentScope(scope) && revision === scope.saveRevision;
       setSaving(true);
+      setSavedFlash(false);
       setSaveFailed(false);
-      if (profile.resume_text) nextDoc.resume_sig = hashString(profile.resume_text);
-      lastPersistRef.current = { doc: nextDoc, sections };
+      // An edit/retry must not relabel a document as derived from a new source.
+      lastPersistRef.current = { doc: nextDoc, sections, scope };
       try {
-        // W13 save truthfulness: "Saved" is a persistence CLAIM — it renders
-        // only when the upsert confirmed. A failure (offline, signed-out
-        // session, RLS denial) shows an explicit retry state instead; the
-        // in-memory doc is untouched either way.
         const ok = await saveRenovation(
           opportunityId,
           nextDoc as unknown as Record<string, unknown>,
           { sections } as unknown as Record<string, unknown>,
           nextDoc.method,
           nextDoc.warnings,
+          scope.owner,
         );
+        if (!isLatestSave()) return;
         if (ok) {
           setSavedFlash(true);
-          setTimeout(() => setSavedFlash(false), 2000);
+          setTimeout(() => { if (isLatestSave()) setSavedFlash(false); }, 2000);
         } else {
           setSaveFailed(true);
         }
       } catch {
-        setSaveFailed(true);
+        if (isLatestSave()) setSaveFailed(true);
       } finally {
-        setSaving(false);
+        if (isLatestSave()) setSaving(false);
       }
     },
-    [opportunityId, profile.resume_text],
+    [opportunityId, isCurrentScope],
   );
 
   async function handleRenovate() {
-    if (!profile.resume_text) return;
+    const scope = scopeRef.current;
+    if (!profile.resume_text || phase === 'working' || !isCurrentScope(scope)) return;
+    const resumeSignature = hashString(profile.resume_text);
     setPhase('working');
     setWorkingStep('structuring');
     setError(null);
     setRestoredFromSave(false);
     try {
       const structured = await structureResume(profile.resume_text, { locale });
+      if (!isCurrentScope(scope)) return;
       if (structured.sections.length === 0) {
         setError(t('renovate.noSections'));
         setPhase('idle');
@@ -315,16 +382,19 @@ export default function ResumeRenovationModal({
       const renovated = await renovateResume(profile, opportunityId, structured.sections, {
         locale,
       });
+      if (!isCurrentScope(scope)) return;
       const nextDoc: RenovationDoc = {
+        resume_sig: resumeSignature,
         sections: renovated.sections,
         method: renovated.method,
         warnings: renovated.warnings,
       };
-      setDoc(nextDoc);
+      setCurrentDoc(nextDoc);
       setBaseSections(structured.sections);
       setPhase('doc');
-      void persist(nextDoc, structured.sections);
+      void persist(nextDoc, structured.sections, scope);
     } catch (err) {
+      if (!isCurrentScope(scope)) return;
       setError(err instanceof Error ? err.message : t('renovate.failed'));
       setPhase('idle');
     }
@@ -334,20 +404,21 @@ export default function ResumeRenovationModal({
   // (the doc IS the rollback history, so every mutation is worth saving).
   const updateBullet = useCallback(
     (bulletId: string, updater: (b: RenovatedBullet) => RenovatedBullet) => {
-      setDoc((prev) => {
-        if (!prev) return prev;
-        const next: RenovationDoc = {
-          ...prev,
-          sections: prev.sections.map((s) => ({
-            ...s,
-            bullets: s.bullets.map((b) => (b.id === bulletId ? updater(b) : b)),
-          })),
-        };
-        void persist(next, baseSections);
-        return next;
-      });
+      const scope = scopeRef.current;
+      const prev = docRef.current;
+      if (!prev || !isCurrentScope(scope)) return;
+      const next: RenovationDoc = {
+        ...prev,
+        sections: prev.sections.map((s) => ({
+          ...s,
+          bullets: s.bullets.map((b) => (b.id === bulletId ? updater(b) : b)),
+        })),
+      };
+      // Keep persistence outside React state updaters (which may be replayed).
+      setCurrentDoc(next);
+      void persist(next, baseSections, scope);
     },
-    [persist, baseSections],
+    [persist, baseSections, isCurrentScope, setCurrentDoc],
   );
 
   function handleRollback(b: RenovatedBullet) {
@@ -378,7 +449,9 @@ export default function ResumeRenovationModal({
   }
 
   async function handleReoptimize(b: RenovatedBullet) {
-    if (optimizingId) return;
+    const scope = scopeRef.current;
+    if (optimizingId || !isCurrentScope(scope)) return;
+    const isSameBullet = () => docRef.current?.sections.some((s) => s.bullets.some((cur) => cur === b));
     setOptimizingId(b.id);
     setBulletNotices((prev) => ({ ...prev, [b.id]: '' }));
     try {
@@ -389,6 +462,7 @@ export default function ResumeRenovationModal({
         b.base_text,
         { locale },
       );
+      if (!isCurrentScope(scope) || !isSameBullet()) return;
       if (resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
@@ -403,14 +477,16 @@ export default function ResumeRenovationModal({
         setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
       }
     } catch {
+      if (!isCurrentScope(scope) || !isSameBullet()) return;
       setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
     } finally {
-      setOptimizingId(null);
+      if (isCurrentScope(scope)) setOptimizingId(null);
     }
   }
 
   async function handleCopyAll() {
-    if (!doc) return;
+    const scope = scopeRef.current;
+    if (!doc || !isCurrentScope(scope)) return;
     const lines: string[] = [];
     for (const s of doc.sections) {
       if (s.heading) lines.push(s.heading.toUpperCase());
@@ -427,8 +503,9 @@ export default function ResumeRenovationModal({
       lines.push('');
     }
     await navigator.clipboard.writeText(lines.join('\n').trim());
+    if (!isCurrentScope(scope)) return;
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { if (isCurrentScope(scope)) setCopied(false); }, 2000);
   }
 
   if (!isOpen) return null;
@@ -445,7 +522,7 @@ export default function ResumeRenovationModal({
     >
       <div
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={invalidateAndClose}
         aria-hidden="true"
       />
 
@@ -484,7 +561,7 @@ export default function ResumeRenovationModal({
                   className="underline hover:text-amber-700"
                   onClick={() => {
                     const last = lastPersistRef.current;
-                    if (last) void persist(last.doc, last.sections);
+                    if (last) void persist(last.doc, last.sections, last.scope);
                   }}
                 >
                   {t('renovate.retrySave')}
@@ -496,7 +573,7 @@ export default function ResumeRenovationModal({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={invalidateAndClose}
               className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
               aria-label={t('renovate.closeAria')}
             >

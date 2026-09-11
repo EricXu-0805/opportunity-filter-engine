@@ -1451,8 +1451,11 @@ class TestColdEmailEngine:
         assert "kubernetes" not in joined
 
     def test_engine_ai_accepts_grounded_skill(self, cold_email_body, monkeypatch):
-        """A draft that only reuses listed skills (Python, machine learning,
-        CS 124) passes the grounding check and stays method=ai."""
+        """A draft that claims only listed skills (Python, CS 124) and names
+        machine learning as the interest it is passes grounding and stays
+        method=ai. "Experience with Python and machine learning" would not:
+        the profile lists machine learning as an interest, and an interest
+        cannot support an experience claim."""
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
@@ -1461,8 +1464,8 @@ class TestColdEmailEngine:
             lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
-                "I have experience with Python and machine learning from CS 124 "
-                "and would be grateful to contribute.\n"
+                "I have experience with Python from CS 124 and I am interested "
+                "in machine learning. I would be grateful to contribute.\n"
                 "Best,\nTest"
             ),
         )
@@ -1622,8 +1625,8 @@ class TestColdEmailStyle:
             ce_module, "_pipeline_generate",
             lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
                 "Subject: Python research fit\n\n"
-                "Dear Professor,\nI have experience with Python and machine "
-                "learning from CS 124 and would be grateful to contribute.\n"
+                "Dear Professor,\nI have experience with Python from CS 124 and I "
+                "am interested in machine learning. I would be grateful to contribute.\n"
                 "Best,\nTest"
             ),
         )
@@ -7242,8 +7245,8 @@ class TestColdEmailStream:
             if n == 2:
                 return '{"verdict":"revise","generic_sentences":["I am interested in your lab."]}'
             return ("Subject: Research fit\n\nDear Professor,\nI have experience "
-                    "with Python and machine learning from CS 124 and would be "
-                    "glad to contribute.\nBest,\nStudent")
+                    "with Python from CS 124 and I am interested in machine "
+                    "learning. I would be glad to contribute.\nBest,\nStudent")
 
         monkeypatch.setattr(ce_module, "chat_completion", fake)
         with client.stream(

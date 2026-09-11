@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.matcher.config import (
     EXPLORE_MAJOR_MISMATCH_FLOOR,
+    HIGH_PRIORITY_TARGET_COUNT,
     HOME_SCHOOL_AFFINITY_MAX,
     TOPIC_MISMATCH_PENALTY,
     TOPIC_UNKNOWN_PENALTY,
@@ -856,7 +857,7 @@ class TestHighPriorityBucketing:
         assert all(r.final_score >= floor_high for r in hp)
         # It's a focused shortlist (not the bulk of results) and not empty for a
         # strong-interest profile.
-        assert 0 < len(hp) <= 100
+        assert 0 < len(hp) <= HIGH_PRIORITY_TARGET_COUNT
         assert len(hp) < len(good)
 
     def test_sparse_profile_high_priority_still_quality_gated(self):

@@ -1200,6 +1200,18 @@ def _build_skills_focus(p: dict) -> str:
     return f"{subject}\n\n{body}"
 
 
+def _skill_claims(names: list[str], levels: dict, applications: dict | None = None) -> str:
+    """A stronger skill never upgrades its beginner neighbours in a list."""
+    sentences = []
+    for seasoned, verb in ((True, "experience with"), (False, "foundational exposure to")):
+        group = [s for s in names if (levels.get(s) in ("experienced", "expert")) == seasoned]
+        labels = [f"{s} for {applications[s]}" if applications and s in applications else s for s in group]
+        if labels:
+            joined = ", ".join(labels[:-1]) + f" and {labels[-1]}" if len(labels) > 1 else labels[0]
+            sentences.append(f"I have {verb} {joined}.")
+    return " ".join(sentences)
+
+
 def _build_concise(p: dict) -> str:
     subject = _subject(p, style="concise")
     greeting = _greeting(p)
@@ -1217,19 +1229,14 @@ def _build_concise(p: dict) -> str:
     matching = p["matching_skills"]
     levels = p["skill_levels"]
 
-    def _claim(names: list[str]) -> str:
-        # Same beginner rule as every other builder: exposure, not experience.
-        if all(levels.get(s, "beginner") == "beginner" for s in names):
-            return f" I have foundational exposure to {', '.join(names)}."
-        return f" I have experience with {', '.join(names)}."
-
     if matching:
         chosen = matching[:3]
-        verb = "is" if len(chosen) == 1 else "are"
         target = "your research" if p.get("is_faculty") else "your work"
-        core += _claim(chosen)[:-1] + f", which {verb} relevant to {target}."
+        final_group = [s for s in chosen if levels.get(s) not in ("experienced", "expert")] or chosen
+        verb = "is" if len(final_group) == 1 else "are"
+        core += f" {_skill_claims(chosen, levels)[:-1]}, which {verb} relevant to {target}."
     elif skills:
-        core += _claim(skills[:3])
+        core += f" {_skill_claims(skills[:3], levels)}"
 
     if p.get("is_faculty"):
         ask = (
@@ -1395,33 +1402,11 @@ def _p2_skills_applied(p: dict) -> str:
     }
 
     top = (matching or skills)[:3]
-    applications = []
-    for s in top:
-        app = task_keywords.get(s)
-        if app:
-            applications.append(f"{s} for {app}")
-        else:
-            applications.append(s)
-
-    if len(applications) == 1:
-        skill_str = applications[0]
-    elif len(applications) == 2:
-        skill_str = f"{applications[0]} and {applications[1]}"
-    else:
-        skill_str = f"{', '.join(applications[:-1])}, and {applications[-1]}"
-
     # The same standard the AI prompt's hard rules impose: a skill the student
     # marked BEGINNER is never presented as experience — at most foundational
     # exposure. This template is the fallback the fabrication gate degrades
     # to, so it cannot itself overstate.
-    levels = p["skill_levels"]
-    all_beginner = all(levels.get(s, "beginner") == "beginner" for s in top)
-    verb = (
-        "I have foundational exposure to"
-        if all_beginner
-        else "I have experience with"
-    )
-    para = f"\n\n{verb} {skill_str}."
+    para = f"\n\n{_skill_claims(top, p['skill_levels'], task_keywords)}"
 
     # When `top` is already the matching skills (matching is non-empty), naming
     # them again here just repeats the same list. Keep the relevance emphasis

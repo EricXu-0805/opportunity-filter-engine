@@ -1,16 +1,17 @@
 # Matching Logic
 
-> **Contract note (2026-07):** the authoritative implementation is
+> **Contract note (2026-09-05):** the authoritative implementation is
 > `src/matcher/ranker.py` + the canonical pipeline in
-> `backend/routes/matches.py` (`_get_or_compute_snapshot`). The factor tables
-> below are the original design sketch and describe intent, not the exact
-> shipped weights — those live in `src/matcher/config.py`. The sections
-> **Recommendation Buckets**, **Canonical result contract**, **Unknown
-> semantics**, and **Ordering & pagination** below ARE the shipped contract.
+> `backend/routes/matches.py` (`_get_or_compute_snapshot`). This document records
+> the default configuration; tunable values live in `src/matcher/config.py`.
+> A match score is a review-priority signal, not an admission/reply probability
+> or a certification that every eligibility requirement has been checked.
 
 ## Overview
 
-The matching engine evaluates every opportunity against a student profile using three independent scores, then combines them into a final ranking.
+The matching engine combines eligibility/field signals, preparation, and
+opportunity attributes. These layers overlap in meaning; they are not three
+independently verified qualifications.
 
 ```
 raw   = 0.45 × eligibility + 0.35 × readiness + 0.20 × upside   (+ small additive bonuses)
@@ -19,10 +20,17 @@ final = stretch(raw)  × post-stretch multipliers (topic mismatch, passed deadli
 ```
 
 Weights blend with the user's `search_weight` slider and `exploring` flag
-(`_compute_weights`), pass through a sigmoid "stretch" that widens the
-distribution, and — on the list path — blend with the LLM rerank at weight
-`LLM_RERANK_WEIGHT` (default 0.35) for the top `LLM_RERANK_TOPK` results.
-Each score ranges from 0 to 100.
+(`_compute_weights`). The E/R/U weights at slider 0, 50, and 100 are respectively
+(.40, .25, .35), (.45, .35, .20), and (.40, .45, .15): neither endpoint is pure
+interest or pure experience. After additive bonuses, raw is capped at 100 and
+stretched as `0.55*x + 45/(1+exp(-0.07*(x-55)))`. Multipliers follow; final scores
+are rounded to one decimal, and buckets use that rounded score.
+
+Public Match defaults to deterministic ranking. AI refine is release-gated off;
+opening it requires acceptance, an explicit `llm=true` request, and budget.
+Its dormant implementation maps the model's scores onto the evaluated rule-score
+band before blending (default weight .70, top 20), then re-sorts and re-buckets.
+It does not blend uncalibrated model scores directly into the rule score.
 
 ## Score 1: Eligibility (weight: 0.45)
 
@@ -30,15 +38,24 @@ Each score ranges from 0 to 100.
 
 | Factor | Weight | Logic |
 |--------|--------|-------|
-| Year match | 30% | 100 if meets requirement, 50 if one year off, 0 if two+ |
-| Major/field match | 25% | Exact match = 100, related = 70, unrelated = 20 |
-| International eligibility | 25% | 100 if friendly, 0 if requires citizenship, 50 if unknown |
-| Skill overlap | 20% | (matched_skills / required_skills) × 100 |
+| Year match | 28.5% | Known fit 100, adjacent undergraduate year 50, mismatch 0, unknown 40; inferred year lists are unknown |
+| Major/field match | 24% | Exact 100, related 70, absent 30; faculty department labels only earn positive fit, not a mismatch penalty |
+| International eligibility | 19% | Known friendly 100, restricted 0, unknown 60 (72 for internships); non-international profile defaults to 100 |
+| Skill overlap | 14.25% | Required-skill weighted coverage: expert 1, experienced .75, beginner .5; no overlap 10, usually no requirements 35 |
+| Opportunity type | 14.25% | Exact 100; research/summer 70, summer/internship 60, research/internship 50; unrelated 30, no preference 60 |
 
-**Hard filters (instant disqualify):**
-- `international_friendly = "no"` AND `student.international = true` → skip
-- `preferred_year` doesn't include student's year AND is explicit → skip
-- Deadline has passed → skip
+Selected opportunity types are an unordered set. Aliases and duplicates do not
+change the score: when no exact type matches, use the strongest applicable
+affinity, regardless of the order the student selected the types.
+
+**Hard filters:** target truth excludes closed/reference/inactive/unreviewed
+records and faculty explicitly not accepting undergraduates. School scope
+excludes other-school campus-only listings and non-summer cross-school records
+when cross-school matching is off. Explicit citizenship restrictions exclude an
+international student when their exclusion preference is on. A nonpreferred
+opportunity type is excluded only when its major list also has no direct
+or related match. Year mismatch and a past date alone are soft penalties, not
+hard exclusions. GPA is not evaluated; it is surfaced as unknown.
 
 ## Score 2: Readiness (weight: 0.35)
 
@@ -46,11 +63,16 @@ Each score ranges from 0 to 100.
 
 | Factor | Weight | Logic |
 |--------|--------|-------|
-| Resume available | 25% | 100 if ready, 30 if not (can still cold email) |
-| Relevant coursework | 20% | Count matching courses / expected courses |
+| Resume available | 25% | Ready 100; absent and required 30, otherwise 60 |
+| Relevant coursework | 20% | No courses 30; otherwise count score max(30,12×unique courses), capped at 70, plus up to 30 for relevant course signals |
 | Prior experience | 20% | strong=100, some=70, beginner=40, none=20 |
 | Cold email capability | 15% | 100 if yes, 40 if no (limits outreach options) |
-| Application effort vs. readiness | 20% | Low effort + low readiness = still feasible |
+| Application effort | 20% | Low 90, medium/unknown 60, high 30; faculty application requirements are neutralized |
+
+Current browser inputs set resume readiness from the presence of resume text and
+set cold-email capability to true. These are not a full-resume quality assessment
+or evidence of a student's willingness to contact someone. Skill provenance and
+confirmation reach the API but do not yet change numerical skill coverage.
 
 **Key insight:** Readiness is NOT a disqualifier — a low readiness score means "this student would benefit from preparation tips alongside the recommendation."
 
@@ -58,35 +80,56 @@ Each score ranges from 0 to 100.
 
 **Question:** Is this opportunity worth prioritizing?
 
-| Factor | Weight | Logic |
-|--------|--------|-------|
-| Paid compensation | 20% | paid=100, stipend=70, unpaid=30 |
-| First-experience friendly | 25% | Explicitly accepts beginners = 100 |
-| Mentorship signal | 15% | Mentions mentoring, training, learning = higher |
-| Brand/prestige value | 15% | Top-tier lab, known program, federal agency = higher |
-| Future pathway potential | 15% | Return offers, publication potential, reference letters |
-| On-campus convenience | 10% | On-campus = 80 for freshmen, remote = 60 |
+| Record | Pay | First experience | Campus | Institution | Mentoring | Pathway | Interest keywords |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Faculty contact | 10% | 10% | 10% | 10% | 0% | 0% | 60% |
+| Other, with required skills | 15% | 15% | 10% | 10% | 15% | 15% | 20% |
+| Other, without required skills | 10% | 10% | 10% | 10% | 15% | 10% | 35% |
+
+Pay yes/stipend/unknown/no scores 100/80/40/25. Explicit first-experience welcome
+scores 100, otherwise 40. Campus is 80, at the student's own school 90, otherwise
+50. Institution is normally 60, registered school 90, recognized organization
+95. Mentoring/pathway use bounded source-text signals. Faculty safety projection
+holds pay/first-experience/campus at 40/40/50; directory metadata is not an offer.
+
+Interest keywords start at 25, rise to 75/100 for one/two matched desired fields,
+and may be raised by corpus-fitted TF-IDF to `min(100,15+400*cosine)`. Implicit
+major keywords provide a capped steer when no explicit interest is given.
+Interest text does not establish research experience.
 
 ## Recommendation Buckets
 
 Buckets are assigned by **one** algorithm — `_assign_buckets` in
 `src/matcher/ranker.py`, applied to the full ranked result set:
 
-- **≥ 10 results (the normal case):** percentile banding with a top-N cap.
-  `high_priority` = the top `HIGH_PRIORITY_TARGET_COUNT` (20) results that also
-  clear the 70.0 floor; `good_match` down to max(62.0, p70 score);
-  `reach` down to max(42.0, p40 score); everything else `low_fit`.
+- **≥ 10 results (the normal case):** percentile banding with a strict top-N cap.
+  `high_priority` = at most the first `HIGH_PRIORITY_TARGET_COUNT` (20) results
+  in canonical order that also clear the 70.0 floor. Boundary ties do not expand
+  the shortlist: evidence strength, then opportunity id, decide which tied rows
+  occupy the remaining places. Other tied rows fall through to `good_match`.
+  With zero-based descending score array `s` and positive N, high cutoff is
+  `max(70,s[min(N-1,n-1)])`; p70 is `s[floor(.3*n)]` and p40 is `s[floor(.6*n)]`.
+  Good cutoff is `min(high,max(62,p70))`, reach is
+  `min(good,max(42,p40))`; everything below is `low_fit`.
+  This keeps cutoffs ordered even when a small universe puts its percentiles
+  above the Nth score. Bands may have equal cutoffs or no members.
   A score of 75 can therefore legitimately land in `good_match` when the
   profile's distribution is strong — the flat table alone is NOT the contract.
-- **< 10 results:** flat floors from `BUCKET_THRESHOLDS` — 70.0 / 62.0 / 42.0
+- **< 10 results:** flat floors from `BUCKET_THRESHOLDS` — 70.0 / 62.0 / 42.0;
+  the same count cap still applies if configured below the result count
   (env-overridable `OFE_BUCKET_HIGH/GOOD/REACH`; an override changes
   `MATCHER_VERSION`, see below).
 
 `low_fit` results are counted but never returned by `/matches`.
 
-Every surface (results list, pagination pages, the per-card explain modal, the
-compare page) reads the bucket from the same canonical snapshot — no surface
-recomputes it with the flat floors independently.
+For 100 equal scores of 75, exactly 20 are high and 80 are good. Reordering the
+source corpus cannot change those 20 ids. Semantic and LLM reranking reapply
+the same cap after updating scores; the histogram-based public path sorts its
+retained rows canonically before choosing the tied boundary.
+
+Lists and view pagination share a canonical snapshot. The internal explain and
+compare implementations read its buckets too; their release gates still control
+whether those user-facing features are available.
 
 ## Canonical result contract
 
@@ -94,9 +137,11 @@ One canonical conclusion per (profile, opportunity, corpus generation,
 matcher version, llm flag). Enforced by the snapshot pipeline in
 `backend/routes/matches.py`:
 
-- `POST /matches` computes a snapshot: `rank_all` → LLM rerank blend →
-  canonical re-sort → `_assign_buckets` → bucket counts. Pages are slices of
-  that snapshot.
+- `POST /matches` and `/matches/view` normally use `rank_visible_universe`, whose
+  histogram represents all hard/minimum-filter survivors, including low-fit
+  scores. Its retained rows use the same bucket policy as `rank_all`.
+  An accepted, requested AI pass uses `rank_all` → bounded rerank → canonical
+  re-sort → `_assign_buckets`. Pages and view counts describe that snapshot.
 - `POST /matches/{id}/explain` reads the SAME snapshot entry — identical
   `final_score`, `bucket`, `reasons_*`, `unknowns`. An opportunity the list
   excluded returns `in_results: false` + a reason-coded `excluded_reason`
@@ -126,18 +171,29 @@ silently converted to eligible or ineligible — and traced in `unknowns`:
 | opportunity `majors` empty (open posting) | 30, and NO "Prefers …" gap |
 | `international_friendly` unknown (F-1 student) | verify-don't-rule-out: 60 (72 for internships) + verify reason; never a hard exclusion unless `citizenship_required` is explicit |
 | `paid` null / missing / unrecognized | all collapse to `unknown` → 40; UI renders "Not disclosed", never "Unpaid" |
-| research topic unknown | multiplier 1.0 (a data gap is not evidence of poor fit); only a confirmed mismatch is penalized |
-| `deadline` missing | no penalty, no seasonal boost |
+| research topic unknown | multiplier 1.0; heuristic absence of meaningful keyword overlap can apply .8 when sufficient explicit interests exist |
+| `deadline` missing, invalid, estimated, or inference-stamped | no expiry/urgency conclusion, no deadline penalty, no seasonal boost; traced as `opportunity.deadline` unknown |
 | `min_gpa` present on the record | NOT evaluated (the product doesn't collect student GPA) — surfaced as `profile.gpa` in `unknowns` |
 
 `eligibility: null`, `metadata: null`, `application: null`, and null list
 fields are treated as absent, never as crashes.
 
+An estimated/inferred date can remain source context, but its next step says to
+verify the deadline rather than to apply by that date. A valid, non-inferred past
+listing deadline still receives the existing .7 penalty and verification gap;
+an explicit closed status still excludes the record. Future stated dates retain
+the existing near-deadline reason and seasonal lift. Metadata `expires_at` is not
+currently an automatic expiry gate; this patch does not introduce a new TTL policy.
+
 ## Ordering & pagination
 
-- Canonical order (every sorted surface): `(-final_score, not actionable,
+- Canonical order (every sorted surface): `(-final_score, -evidence_rank,
   opportunity_id)` — `canonical_sort_key` in the ranker. The unique id
-  tie-break makes it a total order; the LLM rerank re-sorts with the same key.
+  tie-break makes it a total order; both rerank paths re-sort with the same key.
+  Evidence rank is 2 for bound email, 1 for a legacy email/nonempty application
+  URL, and 0 for no actionable channel. This is not a live URL or mailbox check.
+  Explore mode subsequently interleaves within buckets, preserving membership
+  while deliberately relaxing global descending score order.
 - `/matches` pages slice one snapshot → repeated/overlapping page requests
   within the snapshot TTL are duplicate-free and omission-free by
   construction.
@@ -161,7 +217,7 @@ Every recommendation must include:
 ### Why it fits
 - Accepts undergraduate students including freshmen
 - Python and data analysis align with your skills
-- On-campus position — no work authorization concerns
+- At your university; verify the actual employment and funding requirements
 
 ### Potential gaps
 - No prior research experience on your profile
