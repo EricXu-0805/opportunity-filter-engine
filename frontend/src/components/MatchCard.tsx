@@ -441,6 +441,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               <button
                 type="button"
                 onClick={() => onFeedback(opp.id, feedbackVerdict === 'up' ? null : 'up', { bucket: match.bucket, finalScore: match.final_score, position })}
+                disabled={!ownerReady}
                 aria-label={t('card.feedback.up')}
                 aria-pressed={feedbackVerdict === 'up'}
                 className={`p-1 rounded-lg transition-colors duration-200 ${feedbackVerdict === 'up' ? 'text-emerald-500 bg-emerald-50' : 'text-gray-300 hover:text-emerald-400 hover:bg-emerald-50'}`}
@@ -450,6 +451,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               <button
                 type="button"
                 onClick={() => onFeedback(opp.id, feedbackVerdict === 'down' ? null : 'down', { bucket: match.bucket, finalScore: match.final_score, position })}
+                disabled={!ownerReady}
                 aria-label={t('card.feedback.down')}
                 aria-pressed={feedbackVerdict === 'down'}
                 className={`p-1 rounded-lg transition-colors duration-200 ${feedbackVerdict === 'down' ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:text-red-400 hover:bg-red-50'}`}

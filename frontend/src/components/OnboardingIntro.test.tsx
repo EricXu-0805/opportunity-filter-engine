@@ -129,7 +129,7 @@ describe('OnboardingIntro', () => {
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
     expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1');
-    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'uiuc' });
+    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'uiuc' }, expect.anything());
     expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('uiuc');
   });
 
@@ -265,7 +265,7 @@ describe('OnboardingIntro', () => {
       expect(container.querySelector('[data-testid="onboarding-intro"]')).toBeNull(),
     );
     expect(localStorage.getItem('ofe_onboarding_seen')).toBe('1');
-    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'ucb' });
+    expect(mockTrack).toHaveBeenCalledWith('onboarding_completed', { school: 'ucb' }, expect.anything());
     expect(JSON.parse(localStorage.getItem('ofe_profile') ?? '{}').home_school).toBe('ucb');
   });
   it('scrolls the pre-selected campus into view so the default is a visible choice', async () => {

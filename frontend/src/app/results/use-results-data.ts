@@ -192,6 +192,9 @@ export function useResultsData(
     let interimPainted = false;
 
     (async () => {
+      // The funnel event below fires after the request settles; it belongs to
+      // the account this request was issued for.
+      const owner = captureOwnerToken();
       const request = getMatchView(reqProfile, reqView, {
         cursor: cursor ?? null,
         pageSize: MATCH_VIEW_PAGE_SIZE,
@@ -293,7 +296,7 @@ export function useResultsData(
           llm: semanticRerank,
           page,
           validated: true,
-        });
+        }, owner);
       } catch (caught) {
         if (!active || isAbort(caught)) return;
         // A dead cursor is recoverable exactly once, and only from a later

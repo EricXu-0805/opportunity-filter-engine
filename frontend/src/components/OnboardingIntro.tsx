@@ -469,7 +469,7 @@ export default function OnboardingIntro() {
         setFinishError(true);
         return;
       }
-      track('onboarding_completed', { school: schoolSlug });
+      track('onboarding_completed', { school: schoolSlug }, accepted.token);
       try { localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, '1'); } catch { /* ignore */ }
       setShow(false);
     } finally {

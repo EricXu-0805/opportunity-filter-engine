@@ -1,3 +1,4 @@
+/* @vitest-environment jsdom */
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 const mockFrom = vi.fn();
@@ -9,6 +10,19 @@ vi.mock('./supabase', () => ({
 }));
 
 import { getMatchFeedback, setMatchFeedback } from './match-feedback';
+import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
+// identity-owner is real here (only ./supabase is mocked): claim an owner the
+// way the app does, and hand each write the token that owner would capture.
+async function claimOwner(uid: string): Promise<void> {
+  advanceOwnerEpoch(uid);
+  await syncLocalIdentityOwner(uid);
+  for (let i = 0; i < 200 && !isLocalOwnerReady(uid); i += 1) await new Promise((r) => setTimeout(r, 0));
+  expect(isLocalOwnerReady(uid)).toBe(true);
+}
+const DEVICE = 'test-device-id';
+const OTHER = 'someone-elses-device-id';
+let TOKEN: OwnerToken;
+
 
 // Same chainable + thenable query-builder mock as saved-searches.test.ts:
 // every method returns the builder, awaiting it yields { data, error }.
@@ -25,10 +39,12 @@ function makeQuery(result: { data?: unknown; error?: { message: string } | null 
   return builder;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   mockFrom.mockReset();
   mockGetDeviceId.mockReset();
-  mockGetDeviceId.mockResolvedValue('test-device-id');
+  mockGetDeviceId.mockResolvedValue(DEVICE);
+  await claimOwner(DEVICE);
+  TOKEN = captureOwnerToken();
 });
 
 describe('getMatchFeedback', () => {
@@ -92,7 +108,7 @@ describe('setMatchFeedback', () => {
     const q = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValue(q);
 
-    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85 });
+    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85 }, TOKEN);
 
     expect(ok).toBe(true);
     expect(mockFrom).toHaveBeenCalledWith('match_feedback');
@@ -112,7 +128,7 @@ describe('setMatchFeedback', () => {
     const q = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValue(q);
 
-    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85, position: 7 });
+    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85, position: 7 }, TOKEN);
 
     expect(ok).toBe(true);
     expect(q.upsert).toHaveBeenCalledWith(
@@ -125,7 +141,7 @@ describe('setMatchFeedback', () => {
     const q = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValue(q);
 
-    await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85 });
+    await setMatchFeedback('opp-1', 'up', { bucket: 'high_priority', finalScore: 85 }, TOKEN);
 
     expect(q.upsert).toHaveBeenCalledWith(
       expect.not.objectContaining({ context: expect.anything() }),
@@ -141,7 +157,7 @@ describe('setMatchFeedback', () => {
     const succeeding = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValueOnce(failing).mockReturnValueOnce(succeeding);
 
-    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42, position: 3 });
+    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42, position: 3 }, TOKEN);
 
     expect(ok).toBe(true);
     expect(failing.upsert).toHaveBeenCalledWith(
@@ -158,7 +174,7 @@ describe('setMatchFeedback', () => {
     const q = makeQuery({ data: null, error: null });
     mockFrom.mockReturnValue(q);
 
-    const ok = await setMatchFeedback('opp-1', null, { bucket: 'reach', finalScore: 42 });
+    const ok = await setMatchFeedback('opp-1', null, { bucket: 'reach', finalScore: 42 }, TOKEN);
 
     expect(ok).toBe(true);
     expect(q.delete).toHaveBeenCalled();
@@ -167,10 +183,28 @@ describe('setMatchFeedback', () => {
     expect(q.eq).toHaveBeenCalledWith('opportunity_id', 'opp-1');
   });
 
-  it('returns false when getDeviceId yields null', async () => {
+  it('refuses when the session resolves to nobody — signed out between click and write', async () => {
     mockGetDeviceId.mockResolvedValue(null);
-    const ok = await setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42 });
-    expect(ok).toBe(false);
+    await expect(
+      setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42 }, TOKEN),
+    ).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('refuses, and writes nothing, when the account switched while the session was resolving', async () => {
+    // Before: the upsert keyed device_id by whatever getDeviceId() resolved
+    // to — U1's thumb landed as U2's verdict on U2's own results page.
+    let resolveSession: (uid: string) => void = () => {};
+    mockGetDeviceId.mockImplementation(() => new Promise<string>((r) => { resolveSession = r; }));
+    const q = makeQuery({ data: null, error: null });
+    mockFrom.mockReturnValue(q);
+
+    const pending = setMatchFeedback('opp-1', 'up', { bucket: 'reach', finalScore: 42 }, TOKEN);
+    await claimOwner(OTHER);
+    resolveSession(OTHER);
+
+    await expect(pending).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(q.upsert).not.toHaveBeenCalled();
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
@@ -180,7 +214,7 @@ describe('setMatchFeedback', () => {
       data: null,
       error: { message: 'relation "match_feedback" does not exist' },
     }));
-    const ok = await setMatchFeedback('opp-1', 'down', { bucket: 'reach', finalScore: 42 });
+    const ok = await setMatchFeedback('opp-1', 'down', { bucket: 'reach', finalScore: 42 }, TOKEN);
     expect(ok).toBe(false);
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
@@ -189,7 +223,7 @@ describe('setMatchFeedback', () => {
   it('returns false and warns on other upsert errors', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'permission denied' } }));
-    const ok = await setMatchFeedback('opp-1', 'down', { bucket: 'reach', finalScore: 42 });
+    const ok = await setMatchFeedback('opp-1', 'down', { bucket: 'reach', finalScore: 42 }, TOKEN);
     expect(ok).toBe(false);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();

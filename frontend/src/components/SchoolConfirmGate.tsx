@@ -139,7 +139,7 @@ export default function SchoolConfirmGate() {
         setError(result.reason);
         return;
       }
-      track('school_confirmed', { school: slug, changed: slug !== pending.slug });
+      track('school_confirmed', { school: slug, changed: slug !== pending.slug }, pending.view.token);
       setPending(null);
     } finally {
       confirmInFlightRef.current = false;

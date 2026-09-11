@@ -1,4 +1,5 @@
 import { getDeviceId, supabase } from './supabase';
+import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
 
 // Phase 9.6 minimal feedback loop: one thumbs up/down verdict per user per
 // opportunity, stored server-side via the same device_id = auth.uid()::text
@@ -58,8 +59,13 @@ export async function setMatchFeedback(
   opportunityId: string,
   verdict: MatchVerdict | null,
   context: MatchFeedbackContext,
+  token: OwnerToken,
 ): Promise<boolean> {
   const deviceId = await getDeviceId();
+  // The verdict belongs to the account that clicked the thumb. Resolving the
+  // session AFTER the click means the row could otherwise land under whoever
+  // is signed in by the time it resolves.
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) return false;
 
   if (verdict === null) {

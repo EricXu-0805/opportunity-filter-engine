@@ -17,6 +17,7 @@ import type {
   DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
+import { captureOwnerToken } from './identity-owner';
 import { bySlug } from './schools';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
@@ -798,6 +799,9 @@ export async function generateColdEmailStream(
   options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
+  // The stream runs for seconds; the funnel event at the end belongs to the
+  // account that asked for the draft, not whoever is signed in when it ends.
+  const token = captureOwnerToken();
   // NOTE: the funnel event fires only after a successful done event (bottom of
   // this function) — a failed stream falls back to generateColdEmail, which
   // tracks itself, so one user click never double-counts ai_feature_used.
@@ -877,7 +881,7 @@ export async function generateColdEmailStream(
   if (typeof f.subject !== 'string' || typeof f.body !== 'string') {
     throw new Error('API stream: malformed done payload');
   }
-  void track('ai_feature_used', { feature: 'cold_email' });
+  void track('ai_feature_used', { feature: 'cold_email' }, token);
   return f;
 }
 

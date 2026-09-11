@@ -463,6 +463,19 @@ describe('MatchCard', () => {
       expect(screen.queryByLabelText('card.feedback.down')).toBeNull();
     });
 
+    it('the thumbs are the same fail-closed write control as favorite / track / Tailor: disabled until ownerReady', () => {
+      // Before: a click in the window between cards painting and the identity
+      // resolving captured the null-uid sentinel. The writer then refused it,
+      // and the page could not tell that refusal from an account switch — so
+      // the thumb stayed lit over a row that was never written.
+      const handler = vi.fn();
+      render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} onFeedback={handler} ownerReady={false} />);
+      expect(screen.getByLabelText('card.feedback.up')).toBeDisabled();
+      expect(screen.getByLabelText('card.feedback.down')).toBeDisabled();
+      fireEvent.click(screen.getByLabelText('card.feedback.up'));
+      expect(handler).not.toHaveBeenCalled();
+    });
+
     it('renders both thumbs with the prompt when onFeedback is provided', () => {
       render(<MatchCard match={makeMatch()} onDraftEmail={() => {}} onFeedback={() => {}} />);
       expect(screen.getByText('card.feedback.prompt')).toBeInTheDocument();
@@ -476,7 +489,7 @@ describe('MatchCard', () => {
         <MatchCard
           match={makeMatch({ id: 'opp-fb' }, { bucket: 'good_match', final_score: 72 })}
           onDraftEmail={() => {}}
-          onFeedback={handler}
+          onFeedback={handler} ownerReady
         />,
       );
       fireEvent.click(screen.getByLabelText('card.feedback.up'));
@@ -486,7 +499,7 @@ describe('MatchCard', () => {
     it('calls onFeedback with (id, "down", ...) on thumbs-down', () => {
       const handler = vi.fn();
       render(
-        <MatchCard match={makeMatch({ id: 'opp-fb' })} onDraftEmail={() => {}} onFeedback={handler} />,
+        <MatchCard match={makeMatch({ id: 'opp-fb' })} onDraftEmail={() => {}} onFeedback={handler} ownerReady />,
       );
       fireEvent.click(screen.getByLabelText('card.feedback.down'));
       expect(handler).toHaveBeenCalledWith('opp-fb', 'down', { bucket: 'high_priority', finalScore: 85 });
@@ -498,7 +511,7 @@ describe('MatchCard', () => {
         <MatchCard
           match={makeMatch({ id: 'opp-fb' })}
           onDraftEmail={() => {}}
-          onFeedback={handler}
+          onFeedback={handler} ownerReady
           feedbackVerdict="up"
         />,
       );
@@ -512,7 +525,7 @@ describe('MatchCard', () => {
         <MatchCard
           match={makeMatch({ id: 'opp-fb' })}
           onDraftEmail={() => {}}
-          onFeedback={handler}
+          onFeedback={handler} ownerReady
           feedbackVerdict="up"
         />,
       );
