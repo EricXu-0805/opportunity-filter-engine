@@ -56,6 +56,9 @@ def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None
 @pytest.mark.parametrize("claim", [
     "I have experience with hypersonics.",
     "I have experience with machine learning.",
+    # A coordinated list is one claim. The first splitter cut this at "and",
+    # so the interest rode into the draft on the back of a real skill.
+    "I have experience with Python and machine learning.",
     "I have hands-on experience with hypersonics.",
     "I am an expert in hypersonics.",
     "My expertise is in hypersonics.",
