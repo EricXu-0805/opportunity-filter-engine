@@ -42,7 +42,7 @@ describe('the subscription key comes from the server that signs the pushes', () 
     render(<PushToggle />);
     await waitFor(() => expect(getVapidPublicKey).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button'));
-    await waitFor(() => expect(subscribeToPush).toHaveBeenCalledWith(SERVER_KEY));
+    await waitFor(() => expect(subscribeToPush).toHaveBeenCalledWith(SERVER_KEY, expect.anything()));
   });
 
   it('offers the control even with no NEXT_PUBLIC_VAPID_PUBLIC_KEY in the build', async () => {

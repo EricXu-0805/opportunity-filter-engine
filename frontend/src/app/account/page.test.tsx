@@ -222,7 +222,7 @@ describe('AccountPage — paid-intent CTA', () => {
 
     fireEvent.submit(input.closest('form')!);
     await waitFor(() =>
-      expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }),
+      expect(mockJoinWaitlist).toHaveBeenCalledWith('eric@example.com', { source: 'account' }, expect.anything()),
     );
     await waitFor(() => expect(screen.getByText('account.intentDone')).toBeInTheDocument());
   });
