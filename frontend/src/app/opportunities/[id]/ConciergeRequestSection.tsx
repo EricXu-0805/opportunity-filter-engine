@@ -57,6 +57,13 @@ export function ConciergeRequestSection({
       const uid = getLocalOwnerState().uid;
       if (uid === null || uid === lastOwnerRef.current) return;
       lastOwnerRef.current = uid;
+      // Cleared in the transition itself, not after the reload: the address
+      // was prefilled from the previous account, and an anonymous next
+      // account would otherwise see it in the input and submit it — a valid
+      // token, the wrong e-mail, filed under the new device.
+      setEmail('');
+      setRequested(null);
+      setFailed(false);
       setOwnerGeneration((g) => g + 1);
     });
   }, []);

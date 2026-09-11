@@ -835,12 +835,16 @@ function ResultsContent() {
   }, [profile, matchView]);
 
   const handleExport = useCallback(async () => {
+    // Several pages of network round-trips: the file must not be built and
+    // offered to whoever is signed in when they finish.
+    const token = captureOwnerToken();
     try {
       // Ask the server for the filtered favorites directly. Broad profiles can
       // span 50+ pages, while the canonical bucket carried by each favorite
       // lets us reconstruct starred ∩ active-tab exactly without scanning the
       // complete bucket (and colliding with the view rate limit).
       const rows = await fetchCompleteView(favoriteExportView(matchView));
+      if (!isTokenOwnerStillCurrent(token)) return;
       const exportRows = favoriteRowsForTab(rows, activeTab);
       if (exportRows.length === 0) {
         // The button is rendered and labelled from favs.size, which ignores

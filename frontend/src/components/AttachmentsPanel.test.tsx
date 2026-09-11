@@ -254,6 +254,24 @@ describe('AttachmentsPanel — the upload is bound to the account that picked th
     expect(mockList).toHaveBeenCalledTimes(1);
   });
 
+  it('a signed URL that resolves after the account switched is not opened in the next account\'s tab', async () => {
+    await claimOwner('11111111-1111-4111-8111-111111111111');
+    mockList.mockResolvedValue([makeAttachment({ name: 'u1.pdf' })]);
+    let resolveUrl: (v: string | null) => void = () => {};
+    mockSigned.mockImplementation(() => new Promise<string | null>((r) => { resolveUrl = r; }));
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText('u1.pdf')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria\{name=u1.pdf\}/ }));
+    await waitFor(() => expect(mockSigned).toHaveBeenCalled());
+
+    await claimOwner('22222222-2222-4222-8222-222222222222');
+    resolveUrl('https://signed.example/u1');
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
   it('a raced owner switch neither refreshes U1\'s list for U2 nor leaves U2 a disabled upload button', async () => {
     await claimOwner('11111111-1111-4111-8111-111111111111');
     let resolveUpload!: (v: AttachmentUploadResult) => void;

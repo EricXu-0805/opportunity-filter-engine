@@ -175,6 +175,9 @@ export default function OpportunityDetail({
               </div>
             )}
             <InteractionPills
+              // The remove-confirmation dialog is this component's own state;
+              // keyed like TrackerPanel so it cannot outlive the account.
+              key={identityGeneration}
               interaction={interaction}
               suggestion={suggestion}
               statusSaving={statusSaving}
@@ -262,7 +265,9 @@ export default function OpportunityDetail({
         {RELEASE_SCOPE.askAi && actionable && (
           <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">
             <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden h-[calc(100vh-6rem)] max-h-[760px]">
-              <OpportunityChatbot opportunity={opp} profile={profile} />
+              {/* The transcript is answers computed from ONE account's profile;
+                  a fresh instance per identity, like TrackerPanel and TailorModal. */}
+              <OpportunityChatbot key={`${identityGeneration}:${opp.id}`} opportunity={opp} profile={profile} />
             </div>
           </aside>
         )}

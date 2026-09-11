@@ -87,7 +87,9 @@ export default function SchoolConfirmGate() {
        gate decision reads localStorage (window-only), so it must run after
        mount to avoid an SSR/hydration mismatch (same as OnboardingIntro) */
     setPending(evaluate());
-    const reevaluate = () => setPending(evaluate());
+    // A new decision starts clean: the last confirm's failure belonged to
+    // whoever was asked before, possibly a different account.
+    const reevaluate = () => { setError(null); setPending(evaluate()); };
     // HOME_SCHOOL_EVENT: the tour just confirmed, or the school changed live.
     // 'storage': an account switch cleared SCHOOL_CONFIRMED (identity-owner
     // dispatches a synthetic StorageEvent per cleared key) or another tab

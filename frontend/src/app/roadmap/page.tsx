@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, GraduationCap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { getRoadmap, type RoadmapResult } from '@/lib/api';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import { getFavorites } from '@/lib/supabase';
+import { getFavorites, onAuthChange } from '@/lib/supabase';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -110,28 +110,51 @@ export default function RoadmapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
+  // The roadmap is computed from one account's favorites. On a real uid
+  // change it is cleared HERE, inside the auth callback, and any load still
+  // in flight for the previous account is orphaned by the generation bump —
+  // the profile hook re-reads for the new owner and the load below re-runs.
+  const generationRef = useRef(0);
+  const [identityGeneration, setIdentityGeneration] = useState(0);
+  useEffect(() => {
+    let lastIdentity: string | null | undefined;
+    return onAuthChange((authState) => {
+      const identity = authState.user?.id ?? null;
+      if (lastIdentity === undefined) { lastIdentity = identity; return; }
+      if (identity === lastIdentity) return;
+      lastIdentity = identity;
+      generationRef.current += 1;
+      setData(null);
+      setFavCount(null);
+      setError(false);
+      setLoading(true);
+      setIdentityGeneration((g) => g + 1);
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+    const generation = generationRef.current;
+    const fresh = () => !cancelled && generation === generationRef.current;
     async function load() {
       if (!profile) { setLoading(false); return; }
       try {
         const ids = Array.from(await getFavorites());
-        if (cancelled) return;
+        if (!fresh()) return;
         setFavCount(ids.length);
         if (ids.length > 0) {
           const r = await getRoadmap(profile, ids);
-          if (!cancelled) setData(r);
+          if (fresh()) setData(r);
         }
       } catch {
-        if (!cancelled) setError(true);
+        if (fresh()) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (fresh()) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
-  }, [profile, retryToken]);
+  }, [profile, retryToken, identityGeneration]);
 
   const retry = () => {
     setError(false);

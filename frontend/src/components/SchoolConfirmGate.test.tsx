@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
@@ -31,6 +31,21 @@ vi.mock('@/lib/supabase', () => ({
     return { status: 'saved' as const, revision: serverRevision, profile: serverRow };
   },
 }));
+
+// Every failure the real persistHomeSchool can produce here is absorbed
+// (a failed commit is staged locally; the receipt write does not throw), so
+// the one test that needs a refused confirm flips this passthrough.
+let persistFails = false;
+vi.mock('@/lib/school-confirmation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/school-confirmation')>();
+  return {
+    ...actual,
+    persistHomeSchool: (...args: Parameters<typeof actual.persistHomeSchool>) =>
+      persistFails
+        ? Promise.resolve({ ok: false, reason: 'device-failed' } as unknown as Awaited<ReturnType<typeof actual.persistHomeSchool>>)
+        : actual.persistHomeSchool(...args),
+  };
+});
 
 const trackMock = vi.fn();
 vi.mock('@/lib/analytics', () => ({
@@ -90,6 +105,7 @@ beforeEach(async () => {
   serverRow = { major: 'CS', home_school: 'uiuc' };
   serverRevision = 1;
   commitFails = false;
+  persistFails = false;
   resetProfileDirtyLedger();
   trackMock.mockReset();
   advanceOwnerEpoch('school-confirm-gate-test-uid');
@@ -182,6 +198,22 @@ describe('confirming', () => {
       school: 'uiuc',
       changed: false,
     }, expect.anything());
+  });
+
+  it('a failed confirm\'s error does not greet the next decision: re-evaluating the gate starts clean', async () => {
+    seedExistingUser('uiuc');
+    render(<SchoolConfirmGate />);
+    persistFails = true;
+    fireEvent.click(await screen.findByText('schoolConfirm.confirm'));
+    expect(await screen.findByText('schoolConfirm.failed')).toBeInTheDocument();
+
+    // The decision is re-run through the same event an account switch fires;
+    // the failure belonged to whoever was asked before.
+    persistFails = false;
+    act(() => { window.dispatchEvent(new CustomEvent(HOME_SCHOOL_EVENT, { detail: 'uiuc' })); });
+
+    expect(screen.getByText('schoolConfirm.title')).toBeInTheDocument();
+    expect(screen.queryByText('schoolConfirm.failed')).toBeNull();
   });
 
   it('changing the school in the gate confirms the NEW school', async () => {

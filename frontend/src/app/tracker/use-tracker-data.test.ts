@@ -121,6 +121,22 @@ beforeEach(() => {
   mocks.dismissInteraction.mockResolvedValue(undefined);
 });
 
+describe('useTrackerData — a keystroke that lands in the identity-reset gap', () => {
+  it('setNoteDraft for a row the reset already dropped does not re-populate the next account\'s empty draft map', async () => {
+    // The reset empties itemsRef synchronously in the auth callback; React
+    // unmounts the textarea one commit later. A keystroke in between used to
+    // put U1's text into the map just cleared for U2.
+    const { result } = renderHook(() => useTrackerData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => authChangeCallback?.(authState('u1')));
+    act(() => authChangeCallback?.(authState('u2')));
+
+    act(() => { result.current.setNoteDraft('o1', 'typed a beat too late'); });
+
+    expect(result.current.noteDrafts.has('o1')).toBe(false);
+  });
+});
+
 describe('useTrackerData — hydration', () => {
   it('joins interactions with opportunity details', async () => {
     const { result } = renderHook(() => useTrackerData());

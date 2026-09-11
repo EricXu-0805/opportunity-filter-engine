@@ -5,13 +5,20 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockGetFavorites = vi.fn();
 const mockGetRoadmap = vi.fn();
 
+// The page resets and re-requests synchronously inside the auth callback on a
+// real uid change; tests drive that through this captured callback.
+let authCallback: ((state: { user: { id: string } | null }) => void) | null = null;
 vi.mock('@/lib/supabase', () => ({
   getFavorites: () => mockGetFavorites(),
+  onAuthChange: (cb: (state: { user: { id: string } | null }) => void) => {
+    authCallback = cb;
+    return () => { authCallback = null; };
+  },
 }));
 
 vi.mock('@/lib/api', () => ({
@@ -59,6 +66,24 @@ const ROADMAP = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe('RoadmapPage — an identity switch clears the roadmap in the transition itself', () => {
+  it('U1\'s roadmap leaves the screen inside the auth callback and U2\'s is requested afresh', async () => {
+    // Before: `data` was never cleared on a switch. The effect re-ran for the
+    // new owner's profile but left U1's skills on screen for U2 until the
+    // round-trip finished — a passive refetch, not a clear.
+    mockGetFavorites.mockResolvedValue(new Set(['opp-1']));
+    mockGetRoadmap.mockResolvedValue(ROADMAP);
+    render(<RoadmapPage />);
+    await waitFor(() => expect(screen.getByText('PyTorch')).toBeInTheDocument());
+    act(() => authCallback?.({ user: { id: 'u1' } }));
+
+    act(() => authCallback?.({ user: { id: 'u2' } }));
+
+    expect(screen.queryByText('PyTorch')).toBeNull();
+    await waitFor(() => expect(mockGetRoadmap).toHaveBeenCalledTimes(2));
+  });
 });
 
 describe('RoadmapPage — error state', () => {

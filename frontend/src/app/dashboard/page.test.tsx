@@ -5,7 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 const mockGetFavorites = vi.fn();
 const mockGetInteractionsFull = vi.fn();
@@ -15,10 +15,14 @@ const mockGetStats = vi.fn();
 vi.mock('@/lib/supabase', () => ({
   getFavorites: () => mockGetFavorites(),
   getInteractionsFull: () => mockGetInteractionsFull(),
-  // useAuthUid subscribes through this wrapper; never emitting keeps the
-  // identity epoch at 0 so the page loads exactly once per test.
-  onAuthChange: () => () => {},
+  // The page resets its four lists synchronously inside this callback on a
+  // real uid change. Tests that never emit load exactly once.
+  onAuthChange: (cb: (state: { user: { id: string } | null }) => void) => {
+    authCallback = cb;
+    return () => { authCallback = null; };
+  },
 }));
+let authCallback: ((state: { user: { id: string } | null }) => void) | null = null;
 
 vi.mock('@/lib/api', () => ({
   getShortlistOpportunities: (...args: unknown[]) => mockGetShortlistOpportunities(...args),
@@ -267,6 +271,36 @@ describe('DashboardPage — personal metrics', () => {
     expect(screen.getAllByText('tracker.status.applied').length).toBeGreaterThan(1);
     expect(screen.getByText('dashboard.reminders.inDays {"days":2}')).toBeInTheDocument();
     expect(screen.getByTestId('push-toggle')).toBeInTheDocument();
+  });
+});
+
+describe('DashboardPage — an identity switch clears the lists in the transition itself', () => {
+  it('the reset and the next account\'s load are issued inside the auth callback, synchronously — not in an effect after React has painted', async () => {
+    // Before: the clear lived in a passive effect keyed on an epoch. It ran
+    // only after React had committed the epoch bump with U1's rows, notes
+    // and reminders still in state — one full paint of U1's tracker for U2.
+    // `act` would flush that effect and hide the difference, so the callback
+    // is invoked bare and the reload is observed before any flush.
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-a', { type: 'applied', notes: 'emailed PI', remind_at: isoDateIn(2) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      liveListing({ id: 'opp-a', title: 'Tracked Lab', organization: 'Org', opportunity_type: 'research' }),
+    ]));
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getAllByText('Tracked Lab').length).toBeGreaterThan(0));
+    act(() => authCallback?.({ user: { id: 'u1' } }));
+
+    mockGetInteractionsFull.mockClear();
+    mockGetInteractionsFull.mockImplementation(() => new Promise(() => {}));
+    authCallback?.({ user: { id: 'u2' } });
+    expect(mockGetInteractionsFull).toHaveBeenCalledTimes(1);
+
+    // And once React does commit, nothing of U1's is on screen while U2's
+    // own load is still pending.
+    await act(async () => {});
+    expect(screen.queryByText('Tracked Lab')).toBeNull();
+    expect(screen.queryByText('dashboard.reminders.inDays {"days":2}')).toBeNull();
   });
 });
 

@@ -327,6 +327,10 @@ export function useTrackerData(): UseTrackerDataResult {
     // a caller that bypasses the DOM (as RTL's fireEvent does) must not be
     // able to start a new edit that has nowhere safe to land.
     if (leavingPendingRef.current.has(id)) return;
+    // In the gap between the identity reset (itemsRef is already []) and the
+    // commit that unmounts the textarea, a keystroke still reaches here and
+    // would re-populate the map just emptied for the next account.
+    if (!itemsRef.current.some((it) => it.opp.id === id)) return;
     const next = new Map(noteDraftsRef.current);
     next.set(id, value);
     noteDraftsRef.current = next;
@@ -684,11 +688,13 @@ export function useTrackerData(): UseTrackerDataResult {
     // why. A commit that raced in during this window would either be lost
     // to the post-confirmation cleanup or fail once the row is gone.
     if (leavingPendingRef.current.has(id)) return;
+    // Before touching the intent counter: a stale blur for a row the reset
+    // has already dropped must not leave a mark on the next account's map.
+    const cur = itemsRef.current.find((it) => it.opp.id === id);
+    if (!cur) return;
     const generation = identityGenerationRef.current;
     const intent = (noteIntentRef.current.get(id) ?? 0) + 1;
     noteIntentRef.current.set(id, intent);
-    const cur = itemsRef.current.find((it) => it.opp.id === id);
-    if (!cur) return;
     itemsRef.current = itemsRef.current.map((it) =>
       it.opp.id === id ? { ...it, record: { ...it.record, notes } } : it,
     );

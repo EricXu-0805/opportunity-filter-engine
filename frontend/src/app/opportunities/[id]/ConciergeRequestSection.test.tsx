@@ -149,6 +149,24 @@ describe('ConciergeRequestSection — a result that arrives after an owner switc
     expect(screen.getByTestId('concierge-request-submit')).not.toBeDisabled();
   });
 
+  it('the previous account\'s prefilled address is cleared in the transition, before the next account can submit it', async () => {
+    // Before: the address stayed in state across the switch; an anonymous next
+    // account saw it in the input and Submit filed it — with a token that was
+    // fully valid for them — under their device.
+    signedIn('u1@illinois.edu');
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    await screen.findByTestId('concierge-request-submit');
+
+    signedIn(null);
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    advanceOwnerEpoch(U2);
+    await syncLocalIdentityOwner(U2);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(U2); i += 1) await new Promise((r) => setTimeout(r, 0));
+
+    const field = await screen.findByLabelText('detail.concierge.emailPlaceholder');
+    expect((field as HTMLInputElement).value).toBe('');
+  });
+
   it('mounted after the owner was established, a live switch reloads whether they already asked', async () => {
     mocks.loadConciergeRequests.mockResolvedValue(new Set([OPP]));
     render(<ConciergeRequestSection opportunityId={OPP} t={t} />);

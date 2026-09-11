@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -27,9 +27,8 @@ import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
 import { canDeliverReminder, collectReminders, type ReminderInfo } from '@/lib/reminders';
-import { getFavorites, getInteractionsFull } from '@/lib/supabase';
+import { getFavorites, getInteractionsFull, onAuthChange } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
-import { useAuthUid } from '@/lib/use-auth-uid';
 
 import { ProfessorUpdatesSection } from './ProfessorUpdatesSection';
 
@@ -144,37 +143,31 @@ export default function DashboardPage() {
   // states are dead ends without it: nothing else on this page re-triggers
   // the effect for the SAME identity.
   const [reloadNonce, setReloadNonce] = useState(0);
-  // W14 cross-tab uid isolation: epoch bumps only on a real identity switch,
-  // re-running the load below under the new auth context.
-  const { epoch: authEpoch } = useAuthUid();
+  // Identity generation: bumped synchronously inside the auth callback on a
+  // real uid change, so every set* below can tell "this response belongs to
+  // the account that started it" from "the account has since changed". A
+  // passive effect keyed on an epoch (the previous shape) cleared these four
+  // states only after React had already painted U1's rows, notes and
+  // reminders for U2 — and its `cancelled` flag flipped only in that
+  // cleanup, so a response landing in between committed under U2 as well.
+  const generationRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
 
-    /* eslint-disable react-hooks/set-state-in-effect --
-       Reset before fetching — a no-op on mount, the isolation clear on an
-       identity switch (stale Account-A metrics must never render for B).
-       Must run synchronously before the async loads below kick off. */
-    setSaved({ status: 'loading', count: 0 });
-    setDeadlines({ status: 'loading', items: [], unavailableCount: 0 });
-    setTracker({ status: 'loading', items: [], unavailableCount: 0 });
-    setReminders({
-      status: 'loading', items: [], total: 0, detailsUnavailable: false, unavailableCount: 0,
-    });
-    /* eslint-enable react-hooks/set-state-in-effect */
-
-    async function loadFavorites() {
+    async function loadFavorites(generation: number) {
+      const fresh = () => !cancelled && generation === generationRef.current;
       let favoriteIds: Set<string>;
       try {
         favoriteIds = await getFavorites();
       } catch {
-        if (!cancelled) {
+        if (fresh()) {
           setSaved({ status: 'error', count: 0 });
           setDeadlines({ status: 'error', items: [], unavailableCount: 0 });
         }
         return;
       }
-      if (cancelled) return;
+      if (!fresh()) return;
       setSaved({ status: 'ready', count: favoriteIds.size });
       if (favoriteIds.size === 0) {
         setDeadlines({ status: 'ready', items: [], unavailableCount: 0 });
@@ -187,7 +180,7 @@ export default function DashboardPage() {
         // the way getOpportunitiesByIds does.
         const { opportunities, unavailableIds } =
           await getShortlistOpportunities(Array.from(favoriteIds));
-        if (cancelled) return;
+        if (!fresh()) return;
         // The batch endpoint should already honor the IDs, but this client-side
         // allow-list is deliberate: a global or stale record can never leak
         // into the student's saved-deadline inbox.
@@ -224,16 +217,17 @@ export default function DashboardPage() {
           .slice(0, 8);
         setDeadlines({ status: 'ready', items, unavailableCount: unavailableIds.length });
       } catch {
-        if (!cancelled) setDeadlines({ status: 'error', items: [], unavailableCount: 0 });
+        if (fresh()) setDeadlines({ status: 'error', items: [], unavailableCount: 0 });
       }
     }
 
-    async function loadTracker() {
+    async function loadTracker(generation: number) {
+      const fresh = () => !cancelled && generation === generationRef.current;
       let interactions: Map<string, InteractionRecord>;
       try {
         interactions = await getInteractionsFull();
       } catch {
-        if (!cancelled) {
+        if (fresh()) {
           setTracker({ status: 'error', items: [], unavailableCount: 0 });
           setReminders({
             status: 'error', items: [], total: 0, detailsUnavailable: false, unavailableCount: 0,
@@ -241,7 +235,7 @@ export default function DashboardPage() {
         }
         return;
       }
-      if (cancelled) return;
+      if (!fresh()) return;
 
       const allReminders = collectReminders(interactions);
       // 'dismissed' is the hide-everywhere status: Tracker excludes it from
@@ -264,7 +258,7 @@ export default function DashboardPage() {
 
       try {
         const { opportunities, unavailableIds } = await getShortlistOpportunities(visibleIds);
-        if (cancelled) return;
+        if (!fresh()) return;
         const byId = new Map(
           opportunities
             .filter((o) => typeof o.id === 'string' && visibleIdSet.has(o.id as string))
@@ -339,7 +333,7 @@ export default function DashboardPage() {
           }),
         });
       } catch {
-        if (cancelled) return;
+        if (!fresh()) return;
         // Statuses and reminder dates still came from the student's persisted
         // tracker. Preserve those real actions and label only the missing
         // title lookup.
@@ -371,10 +365,38 @@ export default function DashboardPage() {
       }
     }
 
-    void loadFavorites();
-    void loadTracker();
-    return () => { cancelled = true; };
-  }, [authEpoch, reloadNonce]);
+    function start() {
+      const generation = ++generationRef.current;
+      // Reset before fetching — a no-op on mount, the isolation clear on an
+      // identity switch (stale Account-A metrics must never render for B).
+      setSaved({ status: 'loading', count: 0 });
+      setDeadlines({ status: 'loading', items: [], unavailableCount: 0 });
+      setTracker({ status: 'loading', items: [], unavailableCount: 0 });
+      setReminders({
+        status: 'loading', items: [], total: 0, detailsUnavailable: false, unavailableCount: 0,
+      });
+      void loadFavorites(generation);
+      void loadTracker(generation);
+    }
+    start();
+
+    // The first report is the identity the mount load ran under; every later
+    // real change restarts, synchronously, inside the auth callback itself.
+    let lastIdentity: string | null | undefined;
+    const unsubscribe = onAuthChange((authState) => {
+      if (cancelled) return;
+      const identity = authState.user?.id ?? null;
+      if (lastIdentity === undefined) { lastIdentity = identity; return; }
+      if (identity === lastIdentity) return;
+      lastIdentity = identity;
+      start();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      generationRef.current += 1; // orphan any work still in flight
+    };
+  }, [reloadNonce]);
 
   const retry = () => setReloadNonce((n) => n + 1);
 
