@@ -7,7 +7,7 @@ import {
   type MatchViewRequestState,
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
 import { hashProfile } from '@/lib/match-utils';
 import {
   clearMatchCache,
@@ -165,6 +165,14 @@ export function useResultsData(
     // the network round-trip) must not write this response into a
     // different account's cache slot.
     const cacheToken = captureOwnerToken();
+    // Painting is gated on the same token: `active` flips only in this
+    // effect's cleanup, one commit after the account changed, so a response
+    // landing in that gap would put the previous account's ranked list on
+    // the next account's screen. The cache write below is NOT gated here:
+    // the cache layer itself refuses a write whose token's epoch has moved
+    // on, so a late response never reaches another account's slot, and a
+    // second gate would only hide that contract.
+    const painting = () => active && isTokenOwnerStillCurrent(cacheToken);
 
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
@@ -249,7 +257,7 @@ export function useResultsData(
               });
               // Re-check: the refine can land while the interim is in flight,
               // and the refined list must never be overwritten by the rule one.
-              if (active && !requestSettled && isCompleteView(ruleOnly)) {
+              if (painting() && !requestSettled && isCompleteView(ruleOnly)) {
                 setData(ruleOnly);
                 setLoading(false);
                 setRefining(true);
@@ -276,7 +284,7 @@ export function useResultsData(
             true,
           );
         }
-        setData(result);
+        if (painting()) setData(result);
         // What the server says happened, not what this request asked for. The
         // two differ whenever the provider was unconfigured, the day budget
         // degraded the call, or a batch came back unusable — and each of those
@@ -298,7 +306,7 @@ export function useResultsData(
           validated: true,
         }, owner);
       } catch (caught) {
-        if (!active || isAbort(caught)) return;
+        if (!painting() || isAbort(caught)) return;
         // A dead cursor is recoverable exactly once, and only from a later
         // page: the snapshot it points at is gone, so the fix is to drop it
         // and start over rather than surface an error the user cannot act on.
@@ -325,7 +333,7 @@ export function useResultsData(
           );
         }
       } finally {
-        if (active) {
+        if (painting()) {
           setLoading(false);
           setRefining(false);
         }

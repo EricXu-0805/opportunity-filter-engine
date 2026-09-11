@@ -7,7 +7,7 @@
 // with the REAL TrackerPanel doing the actual mount/unmount work.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Echoing only the key made every interpolated value invisible: "Source:
 // jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
@@ -71,8 +71,14 @@ vi.mock('./SimilarOpportunities', () => ({ SimilarOpportunities: () => null }));
 // A sentinel, not null: the student's own status pills must survive every
 // posture, and "they are present" is only an assertion if a missing one
 // would have been visible.
+// Mount-id sentinels (see the TailorModal mock below for why): a fresh id can
+// ONLY come from a real unmount+remount, which is what the parent's key must
+// cause on an identity change and must NOT cause on an unrelated re-render.
 vi.mock('./InteractionPills', () => ({
-  InteractionPills: () => <div data-testid="interaction-pills" />,
+  InteractionPills: function MockInteractionPills() {
+    const mountIdRef = useRef(Math.random().toString(36).slice(2));
+    return <div data-testid="interaction-pills" data-mount-id={mountIdRef.current} />;
+  },
 }));
 // The Cold Email modal was never stubbed here, so nothing checked that a
 // dead target stops mounting it — the real one is dynamically imported and
@@ -88,7 +94,10 @@ vi.mock('@/components/ResumeRenovationModal', () => ({
   default: () => <div data-testid="renovation-modal" />,
 }));
 vi.mock('@/components/OpportunityChatbot', () => ({
-  default: () => <div data-testid="opportunity-chatbot" />,
+  default: function MockOpportunityChatbot() {
+    const mountIdRef = useRef(Math.random().toString(36).slice(2));
+    return <div data-testid="opportunity-chatbot" data-mount-id={mountIdRef.current} />;
+  },
 }));
 // A sentinel mock, NOT the real TailorModal: the real component has its OWN
 // ownerScopeKey-driven reset effect, which would clear its draft on a prop
@@ -434,6 +443,30 @@ describe('OpportunityDetail target-truth postures', () => {
     }
     for (const id of ALWAYS) {
       expect(screen.getByTestId(id), id).toBeInTheDocument();
+    }
+  });
+
+  it('an identityGeneration bump also remounts InteractionPills (its remove-confirmation dialog) and the desktop chatbot (one account\'s transcript)', async () => {
+    releaseFlags.askAi = true;
+    try {
+      const target = targetWith(ACTIONABLE_TRUTH);
+      mockHookState.current = baseHookResult({ identityGeneration: 1 });
+      const { rerender } = render(<OpportunityDetail opp={target} />);
+      const pillsBefore = screen.getByTestId('interaction-pills').getAttribute('data-mount-id');
+      // The chatbot arrives through next/dynamic.
+      const chatBefore = (await screen.findByTestId('opportunity-chatbot')).getAttribute('data-mount-id');
+
+      mockHookState.current = baseHookResult({ identityGeneration: 1 });
+      rerender(<OpportunityDetail opp={target} />);
+      expect(screen.getByTestId('interaction-pills').getAttribute('data-mount-id')).toBe(pillsBefore);
+      expect(screen.getByTestId('opportunity-chatbot').getAttribute('data-mount-id')).toBe(chatBefore);
+
+      mockHookState.current = baseHookResult({ identityGeneration: 2 });
+      rerender(<OpportunityDetail opp={target} />);
+      expect(screen.getByTestId('interaction-pills').getAttribute('data-mount-id')).not.toBe(pillsBefore);
+      await waitFor(() => expect(screen.getByTestId('opportunity-chatbot').getAttribute('data-mount-id')).not.toBe(chatBefore));
+    } finally {
+      releaseFlags.askAi = false;
     }
   });
 

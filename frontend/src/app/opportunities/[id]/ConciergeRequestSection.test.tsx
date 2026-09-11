@@ -149,6 +149,39 @@ describe('ConciergeRequestSection — a result that arrives after an owner switc
     expect(screen.getByTestId('concierge-request-submit')).not.toBeDisabled();
   });
 
+  it('the previous account\'s prefilled address is cleared in the transition, before the next account can submit it', async () => {
+    // Before: the address stayed in state across the switch; an anonymous next
+    // account saw it in the input and Submit filed it — with a token that was
+    // fully valid for them — under their device.
+    signedIn('u1@illinois.edu');
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    await screen.findByTestId('concierge-request-submit');
+
+    signedIn(null);
+    const U2 = '22222222-2222-4222-8222-222222222222';
+    advanceOwnerEpoch(U2);
+    await syncLocalIdentityOwner(U2);
+    for (let i = 0; i < 200 && !isLocalOwnerReady(U2); i += 1) await new Promise((r) => setTimeout(r, 0));
+
+    const field = await screen.findByLabelText('detail.concierge.emailPlaceholder');
+    expect((field as HTMLInputElement).value).toBe('');
+  });
+
+  it('a keystroke that lands in the clear-to-commit gap does not write the previous address back', async () => {
+    signedIn(null);
+    render(<ConciergeRequestSection opportunityId={OPP} t={t} />);
+    const field = await screen.findByLabelText('detail.concierge.emailPlaceholder');
+    fireEvent.change(field, { target: { value: 'u1@illinois.edu' } });
+    expect((field as HTMLInputElement).value).toBe('u1@illinois.edu');
+
+    // The transition fires synchronously; the keystroke arrives before React
+    // has committed the cleared input, so its event carries the full old value.
+    advanceOwnerEpoch('33333333-3333-4333-8333-333333333333');
+    fireEvent.change(field, { target: { value: 'u1@illinois.edu2' } });
+
+    await waitFor(() => expect((screen.getByLabelText('detail.concierge.emailPlaceholder') as HTMLInputElement).value).toBe(''));
+  });
+
   it('mounted after the owner was established, a live switch reloads whether they already asked', async () => {
     mocks.loadConciergeRequests.mockResolvedValue(new Set([OPP]));
     render(<ConciergeRequestSection opportunityId={OPP} t={t} />);

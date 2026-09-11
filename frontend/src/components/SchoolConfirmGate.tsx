@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useT } from '@/i18n/client';
 import { track } from '@/lib/analytics';
-import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
 import { readProfileView, type ProfileViewSnapshot } from '@/lib/profile-sync';
 import { isSchoolConfirmed, persistHomeSchool } from '@/lib/school-confirmation';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from '@/lib/storage-keys';
@@ -47,6 +47,8 @@ export default function SchoolConfirmGate() {
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
   const [confirming, setConfirming] = useState(false);
   const confirmInFlightRef = useRef(false);
+  // Who the open decision was asked of; the failure text is theirs.
+  const askedUidRef = useRef<string | null>(null);
   // The reason the last confirm did not land. Rendered rather than swallowed:
   // a gate that closes on failure is how a user ends up matched against a
   // campus they never confirmed.
@@ -83,11 +85,25 @@ export default function SchoolConfirmGate() {
   }, []);
 
   useEffect(() => {
-    /* eslint-disable-next-line react-hooks/set-state-in-effect --
-       gate decision reads localStorage (window-only), so it must run after
-       mount to avoid an SSR/hydration mismatch (same as OnboardingIntro) */
-    setPending(evaluate());
-    const reevaluate = () => setPending(evaluate());
+    const decide = () => {
+      const next = evaluate();
+      askedUidRef.current = next?.view.token.uid ?? null;
+      return next;
+    };
+    // The gate decision reads localStorage (window-only), so it must run
+    // after mount to avoid an SSR/hydration mismatch (same as OnboardingIntro).
+    setPending(decide());
+    // The failure text is cleared only when the decision changes hands (the
+    // gate re-opens for a different account, or closes). Every other
+    // re-evaluation — this tab's own user-scoped writes dispatch synthetic
+    // 'storage' events too — keeps it: the same person still needs to see
+    // that their click did nothing.
+    const reevaluate = () => {
+      const before = askedUidRef.current;
+      const next = decide();
+      if (next === null || next.view.token.uid !== before) setError(null);
+      setPending(next);
+    };
     // HOME_SCHOOL_EVENT: the tour just confirmed, or the school changed live.
     // 'storage': an account switch cleared SCHOOL_CONFIRMED (identity-owner
     // dispatches a synthetic StorageEvent per cleared key) or another tab
@@ -134,6 +150,9 @@ export default function SchoolConfirmGate() {
     // closed the gate on a campus that was never saved.
     try {
       const result = await persistHomeSchool(slug, pending.view, { confirm: true });
+      // A result that arrives after the account changed is nobody's to show:
+      // the gate on screen now belongs to the next account.
+      if (!isTokenOwnerStillCurrent(pending.view.token)) return;
       if (!result.ok) {
         // Keep the modal open — its Confirm button is the retry.
         setError(result.reason);

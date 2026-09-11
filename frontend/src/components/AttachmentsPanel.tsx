@@ -93,10 +93,14 @@ export default function AttachmentsPanel({ opportunityId }: Props) {
   }, [opportunityId, t]);
 
   const handleOpen = useCallback(async (name: string) => {
+    // A signed URL to the previous account's file must not open in a tab
+    // the next account now owns.
+    const token = captureOwnerToken();
     setError(null);
     setOpeningName(name);
     const url = await getAttachmentSignedUrl(opportunityId, name);
     setOpeningName(null);
+    if (!isTokenOwnerStillCurrent(token)) return;
     if (!url) {
       setError(t('detail.attachments.errOpen', { name }));
       return;

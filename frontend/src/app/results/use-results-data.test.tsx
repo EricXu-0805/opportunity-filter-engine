@@ -571,6 +571,28 @@ describe('useResultsData', () => {
     expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(u1Token);
   });
 
+  it('a response that resolves after the owner switched is never painted (the cache write is still attempted, and refused by the cache layer)', async () => {
+    // `active` flips only in the effect cleanup, one commit after the switch;
+    // painting is gated on the request's own token instead. The mock below
+    // records the attempt; the real writeUserScopedRaw refuses a moved-on epoch.
+    advanceOwnerEpoch('results-data-paint-u1');
+    await syncLocalIdentityOwner('results-data-paint-u1');
+    let resolveFetch: ((value: MatchesResponse) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      () => new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }),
+    );
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
+    await waitFor(() => expect(mocks.getMatchView).toHaveBeenCalledTimes(1));
+
+    advanceOwnerEpoch('results-data-paint-u2');
+    await syncLocalIdentityOwner('results-data-paint-u2');
+    await act(async () => { resolveFetch?.(response('late')); });
+
+    await waitFor(() => expect(mocks.writeMatchCache).toHaveBeenCalledTimes(1));
+    expect(result.current.data).toBeNull();
+    expect(result.current.loading).toBe(true);
+  });
+
   it('paints the rule ranking first and swaps in the refined one when it lands', async () => {
     // A first refined page is about twenty seconds and four of them are the
     // rule ranking the refine has to run before it can call the model. The

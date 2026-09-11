@@ -75,7 +75,11 @@ function HomePageInner() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7">
+          {/* Keyed by identity like DocumentsCard: the school-switcher modal and
+              its error are this card's own state, and a modal opened under one
+              account must not stay open, pre-selected, for the next. */}
           <AcademicProfileCard
+            key={identityGeneration}
             profile={profile}
             update={update}
             viewSnapshot={viewSnapshot}
