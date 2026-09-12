@@ -208,7 +208,8 @@ SCHOOL: dict = {
 }
 
 
-def fetch_and_normalize(deep: bool = True) -> list[dict]:
+def fetch_and_normalize(deep: bool = True,
+                        unit_ledger: dict | None = None) -> list[dict]:
     """Wrapper bound to SCHOOL so refresh_all can call it like a collector.
 
     CU Experts displays mailto locals in inconsistent case ("Tin.Su@Colorado.EDU",
@@ -216,7 +217,8 @@ def fetch_and_normalize(deep: bool = True) -> list[dict]:
     First.lowersurname local trips the corpus DQ caps-mash email heuristic —
     canonicalize to lowercase so every refresh emits the same passing form.
     """
-    records = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
+    records = faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
+                                               unit_ledger=unit_ledger)
     for rec in records:
         if rec.get("contact_email"):
             rec["contact_email"] = rec["contact_email"].lower()

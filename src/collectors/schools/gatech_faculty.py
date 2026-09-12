@@ -491,8 +491,10 @@ for _dept in SCHOOL["departments"]:
             "profile_enrich", {"research_items_selector": _enrich_sel})
 
 
-def fetch_and_normalize(deep: bool = True) -> list[dict]:
-    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep)
+def fetch_and_normalize(deep: bool = True,
+                        unit_ledger: dict | None = None) -> list[dict]:
+    return faculty_graph.fetch_and_normalize(SCHOOL, deep=deep,
+                                            unit_ledger=unit_ledger)
 
 
 def merge_into_processed(opps: list[dict]):

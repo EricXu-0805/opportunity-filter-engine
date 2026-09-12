@@ -67,6 +67,7 @@ from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
 from backend.lib.contact_visibility import carries_contact_evidence
+from src.normalizers.deactivate_stale_faculty import UNIT_LEDGER_VERSION
 
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
@@ -3970,7 +3971,64 @@ def _fetch_sitemap_directory(dept: dict) -> list[dict]:
     return specs
 
 
-def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
+# The scrape unit's collector version: config shape is what decides how a unit
+# is fetched and parsed, so a change to it is a change to the observation.
+COLLECTOR_NAME = "faculty_graph"
+
+
+def _unit_collector_version(dept: dict) -> str:
+    """Stable fingerprint of the fetch/parse configuration for one unit."""
+    shape = sorted(k for k in dept
+                   if k not in ("faculty", "name", "short", "majors"))
+    digest = hashlib.md5(
+        f"{UNIT_LEDGER_VERSION}|{'|'.join(shape)}".encode()).hexdigest()[:8]
+    return f"{COLLECTOR_NAME}.{UNIT_LEDGER_VERSION}.{digest}"
+
+
+def _unit_observation(school: dict, dept: dict, produced: list[dict],
+                      started_at: str, *, fetch_status: str = "ok",
+                      parse_status: str | None = None,
+                      failure_reason: str | None = None) -> dict:
+    """One unit's observation record for the per-unit collection ledger.
+
+    Reports only what this collector can actually attest: which ids it
+    produced for this unit, how many, when, and under which config. It does
+    NOT decide completeness — that needs the corpus baseline, which the
+    caller owns — and it never claims retirement authority here.
+    ``retirement_authorized`` is left for the consumer to compute, so the
+    scraper cannot authorise its own retirements.
+    """
+    ids = [r["id"] for r in produced if r.get("id")]
+    if parse_status is None:
+        # A unit configured to produce rows that produced none is a failure,
+        # not an empty department: fail closed and let the consumer preserve.
+        parse_status = "ok" if ids else "zero_rows"
+    return {
+        "school": school.get("school_slug"),
+        "source": school.get("source"),
+        "unit_id": str(dept.get("short") or "").lower() or None,
+        "unit_name": dept.get("name"),
+        "unit_url": dept.get("directory_url") or dept.get("url"),
+        "collector": COLLECTOR_NAME,
+        "collector_version": _unit_collector_version(dept),
+        "ledger_version": UNIT_LEDGER_VERSION,
+        "observed_count": len(ids),
+        "observed_entity_ids": ids,
+        "started_at": started_at,
+        "completed_at": datetime.now(UTC).isoformat(),
+        "fetch_status": fetch_status,
+        "parse_status": parse_status,
+        "validation_status": "ok" if ids or parse_status != "ok" else "ok",
+        # Consumer-owned: needs the corpus baseline.
+        "baseline_active_count": None,
+        "completeness_status": "unknown",
+        "retirement_authorized": False,
+        "failure_reason": failure_reason,
+    }
+
+
+def fetch_and_normalize(school: dict, deep: bool = False,
+                        unit_ledger: dict | None = None) -> list[dict]:
     """Normalize a school's curated faculty (+ best-effort scrape in deep mode).
 
     Joint-appointment de-dup keys on contact_email and profile URL — the things
@@ -3978,6 +4036,14 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     Two genuinely different professors can share a name (e.g. Michigan has two
     "Wei Lu", one in ECE doing memristors and one in ME doing batteries, with
     different emails); a name-based key would wrongly merge them.
+
+    ``unit_ledger``, when supplied, is filled in place with one
+    observation per department: the scrape unit is the config ``short``,
+    which is also what every minted id carries, so the retirement
+    boundary and the lineage on the row are the same thing by
+    construction. Statuses here are deliberately coarse — any fetch or
+    parse failure surfaces as zero rows, and a coarse status can only
+    ever WITHHOLD retirement authority, never grant it.
     """
     errors = validate(school)
     if errors:
@@ -3989,10 +4055,19 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
     for dept in school.get("departments", []):
+        _unit_short = str(dept.get("short") or "").lower()
+        _unit_started = datetime.now(UTC).isoformat()
+        _mark = len(records)
         if _source_budget_spent():
             # Skip-and-count (not break) so the caller's evidence shows how
             # much of the school the truncation cost.
             _ACTIVE_BUDGET.skipped_departments += 1
+            if unit_ledger is not None and _unit_short:
+                unit_ledger[_unit_short] = _unit_observation(
+                    school, dept, [], _unit_started,
+                    fetch_status="deferred", parse_status="deferred",
+                    failure_reason="source_budget_spent",
+                )
             continue
         # Copies, not the config dicts themselves: the provenance tag (and the
         # profile-enrich pass) mutate specs, and curated seeds are shared
@@ -4043,6 +4118,10 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
             if uk:
                 seen_urls.add(uk)
             records.append(rec)
+        if unit_ledger is not None and _unit_short:
+            unit_ledger[_unit_short] = _unit_observation(
+                school, dept, records[_mark:], _unit_started,
+            )
     return records
 
 

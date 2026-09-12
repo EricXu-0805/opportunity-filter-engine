@@ -51,8 +51,23 @@ env:
 # A deep shard can outlast a manual dispatch fired later the same day; two
 # refreshes racing the same corpus file produce garbage merges. Queue, never
 # cancel (a long scrape is too expensive to kill).
+#
+# The group is keyed on the EVENT, which is the fix for a defect that cost
+# five scheduled runs. `cancel-in-progress: false` protects the RUNNING run,
+# but GitHub still allows only one PENDING run per group — so a newly queued
+# run cancels the one already waiting. With scheduled runs and manual
+# dispatches sharing one group, every manual recovery dispatch silently
+# cancelled the queued daily refresh. Observed 2026-09-01..09-07 (five
+# `cancelled` scheduled runs, leaving rotation days 1, 5 and 6 unrefreshed and
+# the corpus 14 days from a freshness cliff), and reproduced on 2026-09-10
+# when one manual dispatch cancelled another.
+#
+# Separate groups mean a manual run can never occupy — and so never displace —
+# the scheduled run's pending slot. Mutual exclusion over the corpus is kept
+# by the guard step below, which makes manual work defer to production rather
+# than race it.
 concurrency:
-  group: refresh-data
+  group: refresh-data-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -66,6 +81,30 @@ jobs:
       contents: write
 
     steps:
+      # Corpus mutual exclusion, now that scheduled and manual runs no longer
+      # share a concurrency group. Two refreshes must never mutate the corpus
+      # at once — the merge step closes any other open auto/refresh-data-* PR
+      # as superseded, so an overlap does not merely race, it destroys the
+      # other run's scrape (2026-09-10: ~3h of day-6 scraping lost this way).
+      #
+      # Production wins. A manual recovery dispatch defers; the scheduled
+      # refresh never yields to one. Deliberately checked BEFORE checkout so a
+      # deferral costs seconds, not a runner.
+      - name: Defer manual runs while a refresh is already running
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BUSY=$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/refresh-data.yml/runs?status=in_progress&per_page=100" \
+            --jq "[.workflow_runs[] | select(.id != ${{ github.run_id }})] | length")
+          if [ "${BUSY:-0}" -gt 0 ]; then
+            echo "::error::A refresh run is already in progress ($BUSY). This manual dispatch is deferring rather than racing the corpus — re-dispatch once it finishes."
+            exit 1
+          fi
+          echo "no other refresh in progress; proceeding"
+
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
