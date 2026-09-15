@@ -28,31 +28,66 @@ LONG_AGO = (TODAY - timedelta(days=GRACE_DAYS + 10)).isoformat()
 RECENT = (TODAY - timedelta(days=1)).isoformat()
 
 
+def profile_url(rid):
+    """A stable per-person profile URL — the identity a rename cannot move."""
+    return f"https://testu.edu/people/{rid}/index.html"
+
+
+def ident(rid):
+    return ("url", f"testu.edu/people/{rid}")
+
+
 def rec(rid, *, seen=LONG_AGO, dept="Department of Biology",
-        source="testu_faculty", active=True, school="testu"):
+        source="testu_faculty", active=True, school="testu", url=None):
     return {
         "id": rid,
         "source": source,
         "source_type": "faculty_research",
         "school": school,
         "department": dept,
+        "url": url if url is not None else profile_url(rid),
         "metadata": {"is_active": active, "last_seen_at": seen},
+    }
+
+
+def coverage(parsed, *, nonfaculty=0, unparsed=0, ambiguous=0,
+             identity_failures=0, duplicates=0, parser_errors=0,
+             partial_render=0):
+    """Roster coverage that accounts for every row the page showed."""
+    return {
+        "raw_roster_rows": parsed + nonfaculty + unparsed,
+        "parsed_faculty_rows": parsed,
+        "classified_nonfaculty_rows": nonfaculty,
+        "unparsed_rows": unparsed,
+        "ambiguous_rows": ambiguous,
+        "duplicate_rows": duplicates,
+        "identity_match_failures": identity_failures,
+        "parser_errors": parser_errors,
+        "partial_render_rows": partial_render,
     }
 
 
 def observation(unit_id="bio", *, observed_ids=(), baseline=None,
                 fetch="ok", parse="ok", validation="ok",
-                completeness=None, authorized=None, name="Department of Biology"):
+                completeness=None, authorized=None,
+                name="Department of Biology", cov=None,
+                roster_confirmed=True, identities=None):
+    observed_ids = list(observed_ids)
     obs = {
         "school": "testu",
         "source": "testu_faculty",
         "unit_id": unit_id,
         "unit_name": name,
+        "unit_url": "https://testu.edu/bio/people",
         "collector": "faculty_graph",
         "collector_version": "faculty_graph.1.deadbeef",
         "ledger_version": 1,
         "observed_count": len(observed_ids),
-        "observed_entity_ids": list(observed_ids),
+        "observed_entity_ids": observed_ids,
+        "observed_identities": (list(identities) if identities is not None
+                                else [list(ident(r)) for r in observed_ids]),
+        "roster_source_confirmed": roster_confirmed,
+        "coverage": cov if cov is not None else coverage(len(observed_ids)),
         "started_at": "2026-09-11T00:00:00+00:00",
         "completed_at": "2026-09-11T00:05:00+00:00",
         "fetch_status": fetch,
@@ -64,7 +99,6 @@ def observation(unit_id="bio", *, observed_ids=(), baseline=None,
         "failure_reason": None,
     }
     if completeness is None and authorized is None:
-        # Default to a finalized, complete observation.
         obs["baseline_active_count"] = (baseline if baseline is not None
                                         else len(observed_ids))
         obs["completeness_status"] = "complete"
@@ -74,36 +108,36 @@ def observation(unit_id="bio", *, observed_ids=(), baseline=None,
 
 # 1. complete department scrape may authorize retirement
 def test_complete_unit_scrape_authorizes_retirement():
-    opps = [rec("faculty-tu-bio-aaaaaaa1", seen=LONG_AGO),
-            rec("faculty-tu-bio-aaaaaaa2", seen=RECENT)]
-    ledger = {"bio": observation(observed_ids=["faculty-tu-bio-aaaaaaa2"],
-                                 baseline=2)}
-    # 1 observed of 2 active is below the ratio, so widen the unit: 20 active,
-    # 19 seen, one genuinely gone.
-    opps = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]
-    opps.append(rec("faculty-tu-bio-ffffffff", seen=LONG_AGO))
-    ledger = {"bio": observation(
-        observed_ids=[o["id"] for o in opps[:19]], baseline=20)}
+    kept = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]
+    gone = rec("faculty-tu-bio-ffffffff", seen=LONG_AGO)
+    opps = [*kept, gone]
+    ledger = {"bio": observation(observed_ids=[o["id"] for o in kept],
+                                 baseline=20)}
     out = deactivate_stale_faculty(opps, {"testu_faculty": ledger}, today=TODAY)
     assert out["newly_deactivated"] == 1
     assert out["records_retirement_authorized"] == 1
-    assert opps[-1]["metadata"]["is_active"] is False
-    assert out["units_authorized"][0]["reason"] == "complete_unit_observation"
+    assert gone["metadata"]["is_active"] is False
+    assert out["units_authorized"][0]["reason"] == (
+        "identity_complete_unit_observation")
 
 
 # 2. partial department scrape cannot authorize retirement
 def test_partial_unit_scrape_cannot_authorize():
     opps = [rec(f"faculty-tu-bio-{i:08x}", seen=LONG_AGO) for i in range(20)]
-    ledger = {"bio": observation(observed_ids=[o["id"] for o in opps[:10]],
-                                 baseline=20, completeness="partial",
-                                 authorized=False)}
+    # Ten rows read, ten rows the parser could not turn into a person.
+    ledger = {"bio": observation(
+        observed_ids=[o["id"] for o in opps[:10]],
+        cov=coverage(10, unparsed=10))}
+    ledger["bio"]["completeness_status"] = None
+    ledger["bio"]["retirement_authorized"] = None
+    finalize_unit_ledger(ledger, opps, "testu_faculty")
+    assert ledger["bio"]["retirement_authorized"] is False
     out = deactivate_stale_faculty(opps, {"testu_faculty": ledger}, today=TODAY)
     assert out["newly_deactivated"] == 0
     assert out["records_preserved_partial"] == 20
     assert all(o["metadata"]["is_active"] for o in opps)
 
 
-# 3. suspicious-zero department cannot authorize retirement
 def test_suspicious_zero_cannot_authorize():
     opps = [rec(f"faculty-tu-bio-{i:08x}", seen=LONG_AGO) for i in range(5)]
     ledger = {"bio": observation(observed_ids=[], baseline=5,
@@ -164,20 +198,19 @@ def test_school_wide_count_cannot_authorize_department_retirement():
 
 # 8. a departed professor absent from a complete unit scrape may be retired
 def test_departed_professor_absent_from_complete_scrape_is_retired():
-    opps = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]
+    kept = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(19)]
     departed = rec("faculty-tu-bio-deadbee1", seen=LONG_AGO)
-    opps.append(departed)
-    ledger = {"bio": observation(observed_ids=[o["id"] for o in opps[:19]],
+    opps = [*kept, departed]
+    ledger = {"bio": observation(observed_ids=[o["id"] for o in kept],
                                  baseline=20)}
     out = deactivate_stale_faculty(opps, {"testu_faculty": ledger}, today=TODAY)
     assert departed["metadata"]["is_active"] is False
     assert departed["metadata"]["deactivation_reason"] == (
         "absent_from_directory_rescrape")
     assert out["proposals"][0]["entity_id"] == "faculty-tu-bio-deadbee1"
-    assert out["proposals"][0]["observed_entity_ids_recorded"] is True
+    assert out["proposals"][0]["identity"] == list(ident("faculty-tu-bio-deadbee1"))
 
 
-# 9. a professor absent because the collector failed is preserved
 def test_professor_absent_because_collector_failed_is_preserved():
     opps = [rec(f"faculty-tu-bio-{i:08x}", seen=LONG_AGO) for i in range(20)]
     # Same population as test 8, but the unit's fetch failed. Identical
@@ -300,12 +333,13 @@ def test_unknown_status_is_not_authority():
 
 
 def test_producer_cannot_authorise_itself_without_completeness():
-    entry = observation(observed_ids=["a"], baseline=100,
-                        completeness="complete", authorized=True)
-    # observed 1 of a declared baseline of 100 — the ratio gate still refuses.
-    ok, reason = unit_retirement_authority(entry, 100)
+    # The producer says "authorised", but a row was lost. The consumer refuses.
+    entry = observation(observed_ids=["faculty-tu-bio-00000001"],
+                        completeness="complete", authorized=True,
+                        cov=coverage(1, unparsed=1))
+    ok, reason = unit_retirement_authority(entry, 2)
     assert ok is False
-    assert reason == "partial_scrape"
+    assert reason == "blocked_unparsed_rows"
 
 
 def test_finalize_marks_complete_and_partial_units():
@@ -314,7 +348,8 @@ def test_finalize_marks_complete_and_partial_units():
              for i in range(10)]
     ledger = {
         "bio": observation(observed_ids=[o["id"] for o in opps[:10]]),
-        "phy": observation(unit_id="phy", observed_ids=[opps[10]["id"]]),
+        "phy": observation(unit_id="phy", observed_ids=[opps[10]["id"]],
+                           cov=coverage(1, unparsed=9)),
     }
     for e in ledger.values():
         e["completeness_status"] = None
@@ -323,47 +358,101 @@ def test_finalize_marks_complete_and_partial_units():
     finalize_unit_ledger(ledger, opps, "testu_faculty")
     assert ledger["bio"]["completeness_status"] == "complete"
     assert ledger["bio"]["retirement_authorized"] is True
+    assert ledger["bio"]["matched_identity_count"] == 10
     assert ledger["phy"]["completeness_status"] == "partial"
     assert ledger["phy"]["retirement_authorized"] is False
 
 
 def test_finalize_never_authorises_a_unit_with_no_baseline():
-    ledger = {"bio": observation(observed_ids=["faculty-tu-bio-1"])}
+    ledger = {"bio": observation(observed_ids=["faculty-tu-bio-00000001"])}
     ledger["bio"]["completeness_status"] = None
     ledger["bio"]["retirement_authorized"] = None
     finalize_unit_ledger(ledger, [], "testu_faculty")
-    assert ledger["bio"]["retirement_authorized"] is False
+    # Nothing held for the unit: complete roster, but nothing to retire and no
+    # lineage to measure against.
+    assert ledger["bio"]["baseline_active_count"] == 0
+    out = deactivate_stale_faculty([], {"testu_faculty": ledger}, today=TODAY)
+    assert out["newly_deactivated"] == 0
 
 
 def test_substitution_does_not_mask_a_departure():
-    """A new arrival must not buy authority to retire someone unparsed.
+    """A rename must not read as one departure plus one arrival.
 
-    Regression for a false positive the manual sample caught on 2026-09-11:
-    Bowdoin EOS scraped 6 people against 6 active records and scored a perfect
-    count ratio, so the pass proposed retiring a professor who was still
-    listed on the page it had just scraped — the scrape had simply failed to
-    parse her card and had picked up a new colleague instead. Counting only
-    how MANY rows came back cannot see that; intersecting with the baseline
-    can.
+    The Bowdoin EOS false positive in miniature: the directory changes how it
+    writes a name, the minted id moves, and a count sees 6-of-6 while the
+    person it lost is standing on the page. Identity is keyed on the profile
+    URL, which a rename does not move.
     """
     kept = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(5)]
-    unparsed = rec("faculty-tu-bio-0000beef", seen=LONG_AGO)
-    opps = [*kept, unparsed]
-    # Six observed against six active — but one of them is a brand-new person,
-    # and the sixth incumbent was never seen.
+    renamed = rec("faculty-tu-bio-0000beef", seen=LONG_AGO)
+    opps = [*kept, renamed]
+    # The scrape re-minted her id, but her profile URL is unchanged.
     ledger = {"bio": observation(
-        observed_ids=[*[r["id"] for r in kept], "faculty-tu-bio-newc0mer"])}
+        observed_ids=[*[r["id"] for r in kept], "faculty-tu-bio-newc0mer"],
+        identities=[*[list(ident(r["id"])) for r in kept],
+                    list(ident("faculty-tu-bio-0000beef"))])}
     ledger["bio"]["completeness_status"] = None
     ledger["bio"]["retirement_authorized"] = None
-    ledger["bio"]["baseline_active_count"] = None
     finalize_unit_ledger(ledger, opps, "testu_faculty")
 
-    assert ledger["bio"]["observed_count"] == 6
-    assert ledger["bio"]["matched_baseline_count"] == 5
-    assert ledger["bio"]["new_entity_count"] == 1
-    assert ledger["bio"]["completeness_status"] == "partial"
-    assert ledger["bio"]["retirement_authorized"] is False
-
+    assert ledger["bio"]["completeness_status"] == "complete"
+    assert ledger["bio"]["matched_identity_count"] == 6
     out = deactivate_stale_faculty(opps, {"testu_faculty": ledger}, today=TODAY)
     assert out["newly_deactivated"] == 0
-    assert unparsed["metadata"]["is_active"] is True
+    assert renamed["metadata"]["is_active"] is True
+
+
+
+
+def test_a_person_the_selector_never_matched_blocks_the_unit():
+    """Coverage counted from matched rows is blind to a row never matched.
+
+    Wellesley Chemistry, 2026-09-12: the card selector matched 68 rows and
+    parsed 32 faculty, reporting unparsed_rows=0 — true, and misleading, since
+    the page carried 48 people links. Two professors were proposed for
+    retirement while their profile links sat in the document the collector had
+    just fetched.
+
+    The document identities are collected independently of the card selector,
+    so a baseline identity still present on the page is parser loss and blocks
+    the unit rather than retiring the person.
+    """
+    present = rec("faculty-tu-bio-11111111", seen=LONG_AGO)
+    others = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(9)]
+    opps = [present, *others]
+    entry = observation(observed_ids=[o["id"] for o in others])
+    # The selector matched only the nine it parsed — but the page links all ten.
+    entry["document_identities"] = [list(ident(o["id"])) for o in opps]
+    entry["completeness_status"] = None
+    entry["retirement_authorized"] = None
+    finalize_unit_ledger({"bio": entry}, opps, "testu_faculty")
+
+    assert entry["coverage"]["identity_match_failures"] == 1
+    assert entry["missed_present_identities"] == [
+        "url/" + ident("faculty-tu-bio-11111111")[1]]
+    assert entry["retirement_authorized"] is False
+
+    out = deactivate_stale_faculty(opps, {"testu_faculty": {"bio": entry}},
+                                   today=TODAY)
+    assert out["newly_deactivated"] == 0
+    assert present["metadata"]["is_active"] is True
+    assert out["units_blocked_ambiguous_identity"] == 1
+
+
+def test_a_departure_the_page_really_dropped_still_retires():
+    """The cross-check must not become a blanket refusal."""
+    gone = rec("faculty-tu-bio-22222222", seen=LONG_AGO)
+    others = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(9)]
+    opps = [gone, *others]
+    entry = observation(observed_ids=[o["id"] for o in others])
+    # The page no longer links her at all.
+    entry["document_identities"] = [list(ident(o["id"])) for o in others]
+    entry["completeness_status"] = None
+    entry["retirement_authorized"] = None
+    finalize_unit_ledger({"bio": entry}, opps, "testu_faculty")
+    assert entry["coverage"]["identity_match_failures"] == 0
+    assert entry["retirement_authorized"] is True
+    out = deactivate_stale_faculty(opps, {"testu_faculty": {"bio": entry}},
+                                   today=TODAY)
+    assert out["newly_deactivated"] == 1
+    assert gone["metadata"]["is_active"] is False
