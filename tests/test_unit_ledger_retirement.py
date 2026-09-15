@@ -456,3 +456,25 @@ def test_a_departure_the_page_really_dropped_still_retires():
                                    today=TODAY)
     assert out["newly_deactivated"] == 1
     assert gone["metadata"]["is_active"] is False
+
+
+def test_source_health_fixture_carries_no_calendar_dates():
+    """A freshness fixture must age with the clock it is judged against.
+
+    On 2026-09-12 three TestSourceHealthSurfaces assertions began failing
+    without a line of code changing: their fixture hardcoded 2026-09-02, the
+    warn bound is 10 days, and the "fresh" source quietly aged into "warn".
+    Backend is a required check, so every nightly data-refresh PR was blocked
+    from merging for the three days that followed — the corpus stopped
+    updating because of a date literal in a test.
+    """
+    import re
+    from pathlib import Path
+
+    src = Path(__file__).with_name("test_backend_api.py").read_text()
+    start = src.index("class TestSourceHealthSurfaces")
+    block = src[start:src.index("\nclass ", start + 10)]
+    literals = sorted(set(re.findall(r"\d{4}-\d{2}-\d{2}T[\d:.+\-]*", block)))
+    assert literals == [], (
+        "absolute timestamps in a freshness fixture become a time bomb; "
+        f"use a relative age instead: {literals}")
