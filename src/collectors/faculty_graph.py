@@ -67,7 +67,10 @@ from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
 from backend.lib.contact_visibility import carries_contact_evidence
-from src.normalizers.deactivate_stale_faculty import UNIT_LEDGER_VERSION
+from src.normalizers.deactivate_stale_faculty import (
+    UNIT_LEDGER_VERSION,
+    identity_key,
+)
 
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
@@ -934,6 +937,43 @@ def _email_from_el(e_el) -> str | None:
     return href_addr
 
 
+# Roster coverage for the unit currently being parsed, or None when nobody is
+# collecting it. A module global for the same reason _ACTIVE_BUDGET is one:
+# _scrape_directory has a dozen return paths and threading an out-parameter
+# through every one of them would be a bigger change than the thing it records.
+#
+# Coverage is what makes absence mean departure. If a roster row could not be
+# turned into an identity, the people this unit holds must not be retired on
+# the strength of "we did not see them" — we did see a row, and lost it.
+_ACTIVE_COVERAGE: dict | None = None
+
+
+def _new_coverage() -> dict:
+    return {
+        # Every profile-ish link in the fetched document, independent of the
+        # card selector. Coverage counted from the selector can only say "every
+        # row I matched, I parsed" — it is blind to a person the selector never
+        # matched at all. Wellesley Chemistry showed why: 48 people links on the
+        # page, a selector that matched 68 rows yielding 32 faculty, and two
+        # professors proposed for retirement while listed on it.
+        "_document_hrefs": set(),
+        "raw_roster_rows": 0,
+        "parsed_faculty_rows": 0,
+        "classified_nonfaculty_rows": 0,
+        "unparsed_rows": 0,
+        "ambiguous_rows": 0,
+        "duplicate_rows": 0,
+        "identity_match_failures": 0,
+        "parser_errors": 0,
+        "partial_render_rows": 0,
+    }
+
+
+def _cover(bucket: str, n: int = 1) -> None:
+    if _ACTIVE_COVERAGE is not None:
+        _ACTIVE_COVERAGE[bucket] = _ACTIVE_COVERAGE.get(bucket, 0) + n
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
@@ -953,10 +993,21 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
     Arts) instead of one umbrella label.
     """
     people: list[dict] = []
+    if _ACTIVE_COVERAGE is not None:
+        try:
+            _ACTIVE_COVERAGE["_document_hrefs"].update(
+                urljoin(base_url, a["href"]) for a in soup.select("a[href]")
+            )
+        except Exception:  # noqa: BLE001 — diagnostics must never break a scrape
+            _cover("parser_errors")
     for card in soup.select(sel.get("card", "")):
         if not _passes_section(card, section_filter):
+            # Out of this unit's scope entirely (another role heading) — not a
+            # roster row we failed to read.
             continue
+        _cover("raw_roster_rows")
         if not _passes_field(card, field_filter):
+            _cover("classified_nonfaculty_rows")
             continue
         # ":self" = the card element itself is the name link (link-list
         # directories where each faculty is a bare <a>, no inner name node).
@@ -965,6 +1016,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
         else:
             name_el = card.select_one(sel["name"]) if sel.get("name") else None
         if not name_el:
+            # A roster row whose name node the selector could not find. This
+            # is parser loss, and it must block retirement for this unit.
+            _cover("unparsed_rows")
             continue
         # Collapse internal whitespace runs — a name split across text nodes
         # by ``<br>``/nbsp (e.g. Purdue Chemistry's "Ryan&#160;\n Altman") comes
@@ -996,6 +1050,7 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             link_el = name_el
         href = link_el.get("href") if link_el and link_el.has_attr("href") else ""
         if link_filter and not re.search(link_filter, href):
+            _cover("classified_nonfaculty_rows")
             continue
         # A card whose only anchor is a tel:/mailto:/javascript: link has no real
         # profile page — fall back to the directory URL rather than ship a phone
@@ -1041,6 +1096,9 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                            _html.unescape(_HTML_TAG_RE.sub(" ", m.group(1)))).strip()
                 title = t or title
         if not _passes_ladder(title, ladder_filter):
+            # An explicit non-faculty classification (emeritus, visiting,
+            # staff): the row WAS read, it just is not ladder faculty.
+            _cover("classified_nonfaculty_rows")
             continue
         research = ""
         keywords: list[str] = []
@@ -1085,9 +1143,15 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             if d_el is not None:
                 dept_override = re.sub(r"\s+", " ", d_el.get_text(" ", strip=True)).strip()
         if _is_person_name(name):
+            _cover("parsed_faculty_rows")
             people.append(faculty(name, title=title, url=href, email=email,
                                   research_areas=research, keywords=keywords,
                                   department=dept_override))
+        else:
+            # A row that reached the name stage but does not read as a person
+            # ("Faculty Directory", "TBD", a stray heading). Not classifiable
+            # as non-faculty with confidence, so it counts as loss.
+            _cover("unparsed_rows")
     return people
 
 
@@ -3988,21 +4052,57 @@ def _unit_collector_version(dept: dict) -> str:
 def _unit_observation(school: dict, dept: dict, produced: list[dict],
                       started_at: str, *, fetch_status: str = "ok",
                       parse_status: str | None = None,
-                      failure_reason: str | None = None) -> dict:
+                      failure_reason: str | None = None,
+                      coverage: dict | None = None,
+                      listing_urls=None) -> dict:
     """One unit's observation record for the per-unit collection ledger.
 
-    Reports only what this collector can actually attest: which ids it
-    produced for this unit, how many, when, and under which config. It does
-    NOT decide completeness — that needs the corpus baseline, which the
-    caller owns — and it never claims retirement authority here.
-    ``retirement_authorized`` is left for the consumer to compute, so the
-    scraper cannot authorise its own retirements.
+    Reports only what this collector can attest: the stable identities it
+    resolved, how its roster rows were accounted for, when, and under which
+    config. It does NOT decide completeness and never claims authority —
+    ``retirement_authorized`` is left False for the consumer to compute, so a
+    scraper can never authorise its own retirements.
+
+    ``coverage`` is reported only by the families that can count their roster
+    rows. Leaving it absent is deliberate and safe: the consumer treats
+    unreported coverage as unknown, which authorises nothing.
     """
     ids = [r["id"] for r in produced if r.get("id")]
+    identities, unresolved = [], 0
+    seen_identity = set()
+    duplicates = 0
+    for r in produced:
+        key = identity_key(r, listing_urls)
+        if key is None:
+            unresolved += 1
+            continue
+        if key in seen_identity:
+            duplicates += 1
+            continue
+        seen_identity.add(key)
+        identities.append(list(key))
     if parse_status is None:
         # A unit configured to produce rows that produced none is a failure,
         # not an empty department: fail closed and let the consumer preserve.
         parse_status = "ok" if ids else "zero_rows"
+    cov = dict(coverage) if isinstance(coverage, dict) else None
+    document_identities: list = []
+    if cov is not None:
+        from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
+            canonical_profile_url,
+        )
+        seen_doc = set()
+        for href in cov.pop("_document_hrefs", ()) or ():
+            canon = canonical_profile_url(href)
+            if canon and canon not in seen_doc:
+                seen_doc.add(canon)
+                document_identities.append(["url", canon])
+    if cov is not None:
+        # Identity loss is roster loss: a row we parsed but could not identify
+        # cannot be told apart from a rename next run.
+        cov["identity_match_failures"] = (
+            cov.get("identity_match_failures", 0) + unresolved)
+        cov["duplicate_rows"] = cov.get("duplicate_rows", 0) + duplicates
     return {
         "school": school.get("school_slug"),
         "source": school.get("source"),
@@ -4014,11 +4114,19 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "ledger_version": UNIT_LEDGER_VERSION,
         "observed_count": len(ids),
         "observed_entity_ids": ids,
+        "observed_identities": identities,
+        # What the PAGE contained, not what the selector matched. A baseline
+        # identity present here but absent from observed_identities is parser
+        # loss, and must block the unit rather than retire the person.
+        "document_identities": document_identities,
+        "roster_source_confirmed": bool(dept.get("directory_url")
+                                        or dept.get("url")),
+        "coverage": cov,
         "started_at": started_at,
         "completed_at": datetime.now(UTC).isoformat(),
         "fetch_status": fetch_status,
         "parse_status": parse_status,
-        "validation_status": "ok" if ids or parse_status != "ok" else "ok",
+        "validation_status": "ok",
         # Consumer-owned: needs the corpus baseline.
         "baseline_active_count": None,
         "completeness_status": "unknown",
@@ -4058,6 +4166,8 @@ def fetch_and_normalize(school: dict, deep: bool = False,
         _unit_short = str(dept.get("short") or "").lower()
         _unit_started = datetime.now(UTC).isoformat()
         _mark = len(records)
+        global _ACTIVE_COVERAGE
+        _ACTIVE_COVERAGE = _new_coverage() if unit_ledger is not None else None
         if _source_budget_spent():
             # Skip-and-count (not break) so the caller's evidence shows how
             # much of the school the truncation cost.
@@ -4121,7 +4231,9 @@ def fetch_and_normalize(school: dict, deep: bool = False,
         if unit_ledger is not None and _unit_short:
             unit_ledger[_unit_short] = _unit_observation(
                 school, dept, records[_mark:], _unit_started,
+                coverage=_ACTIVE_COVERAGE, listing_urls=listing_urls,
             )
+        _ACTIVE_COVERAGE = None
     return records
 
 

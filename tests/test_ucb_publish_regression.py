@@ -258,13 +258,17 @@ class TestTheZeroCannotTakeTheRecordsWithIt:
         ]
         assert len(still_active) == len(ling)
 
-    def test_a_zero_would_retire_them_if_it_were_reported_ok(
+    def test_a_zero_reported_ok_still_retires_nothing(
         self, ucb_records, ucb_by_source,
     ):
-        """The counterfactual that shows the guard is load-bearing, not
-        incidental: had the zero kept its "ok" status AND supplied a per-unit
-        ledger claiming the department was fully scraped, the records would be
-        retired for absence. That is the outcome the classification prevents.
+        """The guard is load-bearing, and since 2026-09-12 it is doubled.
+
+        This used to assert that a zero reported "ok" WOULD retire the
+        records, with the partial-scrape ratio as the only thing standing in
+        the way. A count can no longer authorise retiring anyone at all — the
+        Bowdoin EOS false positive showed a perfect count ratio hiding a
+        professor who was on the page — so the zero is now refused one step
+        earlier, for being a count rather than for being a small one.
         """
         ling = ucb_by_source.get(BROKEN_DEPARTMENT, [])
         assert ling
@@ -279,10 +283,16 @@ class TestTheZeroCannotTakeTheRecordsWithIt:
             {BROKEN_DEPARTMENT: {next(iter(departments)): 0}},
             today=datetime(2026, 9, 3, tzinfo=UTC).date(),
         )
-        # 0 against N active is below MIN_SCRAPE_RATIO, so the partial-scrape
-        # guard catches it even here - defence in depth, and worth pinning.
+        # Refused for being a count at all, before the ratio is even reached.
         assert counts["newly_deactivated"] == 0
         assert any(
-            label.startswith(BROKEN_DEPARTMENT)
-            for label in counts["skipped_partial_scrape"]
+            w["reason"] == "count_is_not_authority"
+            and w["unit"].startswith(BROKEN_DEPARTMENT)
+            for w in counts["units_withheld"]
         )
+        still_active = [
+            r for r in records
+            if r.get("source") == BROKEN_DEPARTMENT
+            and (r.get("metadata") or {}).get("is_active") is not False
+        ]
+        assert len(still_active) == len(ling)

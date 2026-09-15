@@ -14,6 +14,7 @@ import os
 import sys
 import time
 import types
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -7444,38 +7445,64 @@ class TestSourceHealthSurfaces:
     durable per-source ledger instead.
     """
 
-    _LEDGER = {
-        "schema_version": 1,
-        "sources": {
-            "ucb_eecs_faculty": {
-                "school": "ucb",
-                "last_attempt_at": "2026-09-02T06:00:00+00:00",
-                "last_success_at": "2026-09-02T06:00:00+00:00",
-                "status": "success_nonzero",
-                "current_count": 145,
-                "last_good_count": 145,
-                "consecutive_failures": 0,
-                "failure_reason": None,
+    # Ages are relative to now, never calendar dates.
+    #
+    # These were absolute ("2026-09-02"), which made the suite a time bomb:
+    # the freshness bands are measured in days from now (warn 10, stale 17),
+    # so on 2026-09-12 the "fresh" source silently aged into "warn" and three
+    # tests began failing. They were still failing three days later, and
+    # because Backend is a required check, every nightly data-refresh PR was
+    # blocked from merging that whole time — the corpus stopped updating over
+    # a date literal. A fixture that describes "recent" must age with the
+    # clock it is judged against.
+    @staticmethod
+    def _ago(**kwargs):
+        return (datetime.now(UTC) - timedelta(**kwargs)).isoformat()
+
+    @property
+    def _LEDGER(self):
+        return {
+            "schema_version": 1,
+            "sources": {
+                "ucb_eecs_faculty": {
+                    "school": "ucb",
+                    "last_attempt_at": self._ago(days=1),
+                    "last_success_at": self._ago(days=1),
+                    "status": "success_nonzero",
+                    "current_count": 145,
+                    "last_good_count": 145,
+                    "consecutive_failures": 0,
+                    "failure_reason": None,
+                },
+                "ucb_ling_faculty": {
+                    "school": "ucb",
+                    "last_attempt_at": self._ago(days=1),
+                    # Well past the stale bound: the 44-day silence this
+                    # surface was built to make visible.
+                    "last_success_at": self._ago(days=44),
+                    "status": "suspicious_zero",
+                    "current_count": 0,
+                    "last_good_count": 17,
+                    "consecutive_failures": 3,
+                    "failure_reason": "emitted 0 against a baseline of 17",
+                },
             },
-            "ucb_ling_faculty": {
-                "school": "ucb",
-                "last_attempt_at": "2026-09-02T06:00:00+00:00",
-                "last_success_at": "2026-07-21T07:08:46+00:00",
-                "status": "suspicious_zero",
-                "current_count": 0,
-                "last_good_count": 17,
-                "consecutive_failures": 3,
-                "failure_reason": "emitted 0 against a baseline of 17",
-            },
-        },
-        "shards": {"ucb": {"last_publish_at": "2026-09-02T06:30:00+00:00"}},
-    }
+            "shards": {"ucb": {"last_publish_at": self._ago(days=1, minutes=-30)}},
+        }
 
     def _install(self, monkeypatch, tmp_path, ledger=None):
+        """Write the ledger and hand back exactly what was written.
+
+        The relative-age fixture mints new stamps on every access, so a test
+        that re-read the property would compare against different values than
+        the ones on disk.
+        """
         from backend.routes import admin as admin_mod
+        ledger = ledger or self._LEDGER
         path = tmp_path / "source_health.json"
-        path.write_text(json.dumps(ledger or self._LEDGER), encoding="utf-8")
+        path.write_text(json.dumps(ledger), encoding="utf-8")
         monkeypatch.setattr(admin_mod, "_SOURCE_HEALTH_PATH", path)
+        return ledger
 
     def test_503_when_token_unset(self, monkeypatch):
         monkeypatch.delenv("ADMIN_TOKEN", raising=False)
@@ -7508,17 +7535,22 @@ class TestSourceHealthSurfaces:
         self, monkeypatch, tmp_path,
     ):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        self._install(monkeypatch, tmp_path)
+        ledger = self._install(monkeypatch, tmp_path)
         body = client.get(
             "/api/admin/source-health/shards", headers={"X-Admin-Token": "ok"},
         ).json()
         rows = {r["source"]: r for r in body["rows"]}
 
+        source = ledger["sources"]["ucb_ling_faculty"]
         broken = rows["ucb_ling_faculty"]
-        assert broken["last_attempt_at"] == "2026-09-02T06:00:00+00:00"
-        assert broken["last_success_at"] == "2026-07-21T07:08:46+00:00"
+        # The three stamps must stay distinct fields, each carrying its own
+        # value through — compared against the fixture, never a date literal.
+        assert broken["last_attempt_at"] == source["last_attempt_at"]
+        assert broken["last_success_at"] == source["last_success_at"]
+        assert broken["last_attempt_at"] != broken["last_success_at"]
         # Its school published; that does NOT make the department successful.
-        assert broken["last_publish_at"] == "2026-09-02T06:30:00+00:00"
+        assert broken["last_publish_at"] == (
+            ledger["shards"]["ucb"]["last_publish_at"])
         assert broken["current_record_count"] == 0
         assert broken["last_good_record_count"] == 17
         assert broken["freshness"] == "stale"

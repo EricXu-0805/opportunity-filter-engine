@@ -272,29 +272,41 @@ def test_uiuc_merge_reactivates_reappearing_faculty(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_a_ledger_retires_only_within_a_department_that_scraped_completely():
-    # The exact scenario test_aggregate_source_cannot_hide_a_missing_department
-    # refuses to act on: 95 fresh CS, 5 stale Statistics. With a ledger the
-    # answer is no longer "preserve everything" — it is "CS is provably
-    # complete, Statistics provably is not".
+def test_a_count_ledger_retires_in_no_department_at_all():
+    """Contract change (2026-09-12): see the note above — counts prove nothing.
+
+    Previously the complete department retired and the partial one did not.
+    Now neither does, because neither can distinguish a departure from a row
+    the parser lost.
+    """
     opps = [
         _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
-        for i in range(95)
+        for i in range(19)
     ] + [
-        _fac(f"stat-{i}", last_seen=STALE, department="Statistics")
-        for i in range(5)
+        _fac("cs-gone", last_seen=STALE, department="Computer Science"),
+        _fac("ece-gone", last_seen=STALE, department="Electrical Engineering"),
     ]
     counts = deactivate_stale_faculty(
         opps,
-        {"uiuc_faculty": {"Computer Science": 95, "Statistics": 0}},
+        {"uiuc_faculty": {"Computer Science": 19, "Electrical Engineering": 0}},
         today=TODAY,
     )
     assert counts["newly_deactivated"] == 0
-    assert counts["skipped_partial_scrape"] == ["uiuc_faculty/Statistics"]
-    assert all(o["metadata"]["is_active"] is True for o in opps)
+    assert all(o["metadata"]["is_active"] for o in opps)
 
 
-def test_a_department_that_scraped_completely_retires_its_stale_records():
+def test_a_bare_per_unit_count_no_longer_retires_anything():
+    """Contract change (2026-09-12): a COUNT is not retirement authority.
+
+    This used to assert the opposite, and it was wrong. Bowdoin EOS scraped
+    6 people against 6 active records — a perfect per-unit count — while
+    missing a professor who was on the page, because the directory had
+    stopped writing her middle initial and the name-derived id no longer
+    matched. One departure masked by one arrival is invisible to any count,
+    so a count may no longer authorise retiring an individual. Authority now
+    needs the identity-complete roster ledger (see
+    tests/test_unit_ledger_retirement.py and tests/test_bowdoin_eos_regression.py).
+    """
     opps = [
         _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
         for i in range(19)
@@ -302,9 +314,10 @@ def test_a_department_that_scraped_completely_retires_its_stale_records():
     counts = deactivate_stale_faculty(
         opps, {"uiuc_faculty": {"Computer Science": 19}}, today=TODAY,
     )
-    assert counts["newly_deactivated"] == 1
-    assert opps[-1]["metadata"]["is_active"] is False
-    assert opps[-1]["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+    assert counts["newly_deactivated"] == 0
+    assert opps[-1]["metadata"]["is_active"] is True
+    assert any(w["reason"] == "count_is_not_authority"
+               for w in counts["units_withheld"])
 
 
 def test_a_department_missing_from_the_ledger_is_never_retired():
@@ -322,39 +335,40 @@ def test_a_department_missing_from_the_ledger_is_never_retired():
     assert opps[1]["metadata"]["is_active"] is True
 
 
-def test_a_collapsed_component_takes_all_its_departments_down_with_it():
-    # Chromium unavailable -> the JS producer returns nothing -> every
-    # department it owns reports 0. None of them may retire anyone.
+def test_a_collapsed_component_still_retires_nothing():
+    """A collapsed component was always preserved; it still is, and now so is
+    every department a mere count 'covered'."""
     opps = [
-        _fac(f"js-{i}", last_seen=STALE, department=d)
-        for d in ("Gies", "Social Work") for i in range(10)
+        _fac("cs-gone", last_seen=STALE, department="Computer Science"),
+        _fac("ece-gone", last_seen=STALE, department="Electrical Engineering"),
     ]
     counts = deactivate_stale_faculty(
-        opps, {"uiuc_faculty": {"Gies": 0, "Social Work": 0}}, today=TODAY,
+        opps,
+        {"uiuc_faculty": {"Computer Science": 0, "Electrical Engineering": 0}},
+        today=TODAY,
     )
     assert counts["newly_deactivated"] == 0
-    assert sorted(counts["skipped_partial_scrape"]) == [
-        "uiuc_faculty/Gies", "uiuc_faculty/Social Work",
-    ]
+    assert all(o["metadata"]["is_active"] for o in opps)
 
 
-def test_a_held_source_reports_what_it_would_retire_and_retires_nothing():
-    # UIUC carries a release-contract safety hold (refresh_contract blocks a
-    # release that does not preserve it). Stage one produces the evidence for
-    # lifting it without touching a single record.
+def test_a_held_source_retires_nothing_and_a_count_proposes_nothing():
+    """The UIUC hold stands, and a count ledger now proposes nothing to lift it.
+
+    `would_deactivate` was the evidence for lifting the hold. Under the new
+    contract that evidence must come from an identity-complete roster ledger,
+    not from a per-department count, so a count-only run offers none.
+    """
     opps = [
         _fac(f"cs-{i}", last_seen=FRESH, department="Computer Science")
         for i in range(19)
     ] + [_fac("cs-gone", last_seen=STALE, department="Computer Science")]
     counts = deactivate_stale_faculty(
-        opps,
-        {"uiuc_faculty": {"Computer Science": 19}},
-        today=TODAY,
+        opps, {"uiuc_faculty": {"Computer Science": 19}}, today=TODAY,
         held_sources={"uiuc_faculty"},
     )
     assert counts["newly_deactivated"] == 0
-    assert counts["would_deactivate"] == ["cs-gone"]
-    assert all(o["metadata"]["is_active"] is True for o in opps)
+    assert counts["would_deactivate"] == []
+    assert opps[-1]["metadata"]["is_active"] is True
 
 
 def test_a_bare_count_still_means_exactly_what_it_meant_before():

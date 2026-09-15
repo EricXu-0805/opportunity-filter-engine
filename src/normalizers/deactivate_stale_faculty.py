@@ -322,6 +322,126 @@ PARSE_FAILURE_STATUSES = frozenset({"zero_rows", "suspicious_zero", "error"})
 COMPLETENESS_BLOCKING = frozenset({"partial", "unknown", "truncated", "deferred"})
 
 
+# ---------------------------------------------------------------------------
+# Stable identity
+#
+# The minted id is md5(dept_short + display_name), so ANY change to how a
+# directory writes a name — a dropped middle initial, an added accent, a
+# credential suffix — mints a different id and reads as one departure plus one
+# arrival. That is not a hypothetical: Bowdoin EOS listed "Rachel J. Beane"
+# and later "Rachel Beane", the count matched 6-of-6, and the old count-ratio
+# gate proposed retiring a professor who was on the page it had just scraped.
+#
+# Identity therefore keys on what the SOURCE controls and a rename does not
+# move: the canonical profile URL, then a verified email. Never the name.
+# ---------------------------------------------------------------------------
+
+_INDEX_SUFFIXES = ("/index.html", "/index.htm", "/index.php", "/index.aspx")
+
+
+def canonical_profile_url(url: object) -> str | None:
+    """A profile URL reduced to a comparable key, or None if it is not one."""
+    if not isinstance(url, str) or not url.strip():
+        return None
+    raw = url.strip()
+    if not raw.lower().startswith(("http://", "https://")):
+        return None
+    raw = raw.split("#", 1)[0].split("?", 1)[0]
+    lowered = raw.lower()
+    scheme, _, rest = lowered.partition("://")
+    if not rest:
+        return None
+    host, _, path = rest.partition("/")
+    host = host.removeprefix("www.")
+    path = "/" + path
+    for suffix in _INDEX_SUFFIXES:
+        if path.endswith(suffix):
+            path = path[: -len(suffix)]
+            break
+    path = path.rstrip("/")
+    if not path:
+        # A bare host is the directory itself, not a person.
+        return None
+    return f"{host}{path}"
+
+
+def identity_key(record: dict, listing_urls: frozenset[str] | set[str] | None = None
+                 ) -> tuple[str, str] | None:
+    """``(kind, value)`` identifying the person, or None when unresolvable.
+
+    Precedence is by how strongly the SOURCE owns the value. A listing URL is
+    explicitly rejected: several collectors fall back to the directory URL when
+    a card has no profile link, and treating that as identity would collapse
+    every such person in a unit into one.
+    """
+    url = canonical_profile_url(record.get("url") or record.get("source_url"))
+    if url and (not listing_urls or url not in listing_urls):
+        return ("url", url)
+    email = record.get("contact_email")
+    if isinstance(email, str) and "@" in email:
+        return ("email", email.strip().lower())
+    return None
+
+
+def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
+    """``({identity: [records]}, [records with no identity])``."""
+    index: dict[tuple[str, str], list] = {}
+    unresolved: list = []
+    for r in records:
+        key = identity_key(r, listing_urls)
+        if key is None:
+            unresolved.append(r)
+        else:
+            index.setdefault(key, []).append(r)
+    return index, unresolved
+
+
+# Coverage buckets a unit must clear before absence may mean departure. These
+# are about the ROSTER, not the corpus: every row the page showed must have
+# been resolved to something. Parser loss must never hide inside an aggregate.
+_COVERAGE_BLOCKING_FIELDS = (
+    "unparsed_rows",
+    "ambiguous_rows",
+    "identity_match_failures",
+    "parser_errors",
+    "partial_render_rows",
+)
+
+
+def unit_identity_completeness(entry: dict) -> tuple[bool, str]:
+    """``(complete, reason)`` for one unit's roster coverage. Fails closed.
+
+    Requires the collector to have POSITIVELY reported its coverage. A unit
+    that reports no coverage at all is unknown, not complete — which is what
+    keeps every collector family that cannot yet report it from quietly
+    becoming retirement authority.
+    """
+    coverage = entry.get("coverage")
+    if not isinstance(coverage, dict):
+        return False, "coverage_unreported"
+    raw = coverage.get("raw_roster_rows")
+    if not isinstance(raw, int):
+        return False, "coverage_unreported"
+    for field in _COVERAGE_BLOCKING_FIELDS:
+        value = coverage.get(field)
+        if not isinstance(value, int):
+            return False, f"coverage_{field}_unreported"
+        if value > 0:
+            return False, f"blocked_{field}"
+    parsed = coverage.get("parsed_faculty_rows")
+    nonfac = coverage.get("classified_nonfaculty_rows")
+    if not isinstance(parsed, int) or not isinstance(nonfac, int):
+        return False, "coverage_unreported"
+    # Every row the roster showed must be accounted for exactly.
+    if parsed + nonfac != raw:
+        return False, "coverage_rows_unaccounted"
+    if raw == 0:
+        # An empty roster proves nothing; a unit that yielded no rows cannot
+        # retire the people it used to hold.
+        return False, "empty_roster"
+    return True, "identity_complete"
+
+
 def _unit_id_of(record: dict) -> str | None:
     """The scrape unit that owns this record, from its own id.
 
@@ -350,19 +470,25 @@ def _unit_id_of(record: dict) -> str | None:
 def unit_retirement_authority(entry: object, baseline_active: int) -> tuple[bool, str]:
     """``(authorised, reason)`` for one unit ledger entry. Fails closed.
 
-    Authority requires every condition to be positively satisfied:
-    fetch ok AND parse ok AND validation ok AND unit identity present AND
-    completeness proven AND the unit-level ratio gate passed AND a baseline to
-    measure against. Anything missing, unrecognised, or merely "not failed"
-    is not authority.
+    A COUNT IS NOT AUTHORITY. ``observed_count >= ratio * baseline_count`` was
+    the old rule and it is provably insufficient: Bowdoin EOS scored 6-of-6
+    while missing a professor who was on the page, because the directory had
+    stopped writing her middle initial and the name-derived id no longer
+    matched. One departure masked by one arrival is invisible to any count.
+    ``MIN_SCRAPE_RATIO`` survives only as a coarse health signal.
+
+    Authority now requires the unit to prove it resolved its whole roster —
+    every row mapped to a known entity, a new entity, or an explicit
+    non-faculty classification, with no unparsed, ambiguous, errored or
+    partially-rendered rows left over — and to have recorded the stable
+    identities it saw. Only then can absence from that identity set mean
+    departure.
     """
     if isinstance(entry, int):
-        # Legacy shape: a bare per-unit count. It proves how many rows the
-        # unit yielded and nothing about why, so it may pass only the ratio
-        # gate — which is what it has always meant.
-        if entry < MIN_SCRAPE_RATIO * baseline_active:
-            return False, "partial_scrape"
-        return True, "count_ratio_only"
+        # The legacy per-unit count, and the single-named-unit source count.
+        # Both still describe a scrape; neither can prove an individual is
+        # absent rather than unparsed.
+        return False, "count_is_not_authority"
     if not isinstance(entry, dict):
         return False, "unrecognised_ledger_entry"
 
@@ -374,25 +500,37 @@ def unit_retirement_authority(entry: object, baseline_active: int) -> tuple[bool
         return False, f"parse_{entry.get('parse_status') or 'unknown'}"
     if entry.get("validation_status") != _OK:
         return False, f"validation_{entry.get('validation_status') or 'unknown'}"
-    if entry.get("completeness_status") != COMPLETE:
-        return False, f"completeness_{entry.get('completeness_status') or 'unknown'}"
+    if entry.get("roster_source_confirmed") is not True:
+        return False, "roster_source_unconfirmed"
+
+    complete, reason = unit_identity_completeness(entry)
+    if not complete:
+        return False, reason
+
+    if not isinstance(entry.get("observed_identities"),
+                      list | tuple | set | frozenset):
+        return False, "observed_identities_missing"
     # The producer's own verdict must agree. Either side may veto; neither
     # alone may authorise.
     if entry.get("retirement_authorized") is not True:
         return False, "producer_withheld_authority"
+    return True, "identity_complete_unit_observation"
 
-    observed = entry.get("matched_baseline_count")
-    if not isinstance(observed, int):
-        observed = entry.get("observed_count")
-    if not isinstance(observed, int):
-        return False, "observed_count_missing"
-    declared_baseline = entry.get("baseline_active_count")
-    baseline = declared_baseline if isinstance(declared_baseline, int) else baseline_active
-    if baseline <= 0:
-        return False, "baseline_unavailable"
-    if observed < MIN_SCRAPE_RATIO * baseline:
-        return False, "partial_scrape"
-    return True, "complete_unit_observation"
+
+def _observed_identities(entry: object) -> set | None:
+    """The stable identities this unit observation resolved."""
+    if not isinstance(entry, dict):
+        return None
+    ids = entry.get("observed_identities")
+    if not isinstance(ids, list | tuple | set | frozenset):
+        return None
+    out = set()
+    for i in ids:
+        if isinstance(i, list | tuple) and len(i) == 2:
+            out.add((str(i[0]), str(i[1])))
+        elif isinstance(i, str):
+            out.add(("url", i))
+    return out
 
 
 def _observed_ids(entry: object) -> frozenset[str] | None:
@@ -409,15 +547,16 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
                          source: str) -> dict[str, dict]:
     """Fill in the consumer-owned half of each unit observation, in place.
 
-    The collector attests what it SAW. Completeness is a claim about what it
-    saw versus what we already hold, so it needs the corpus — and it is
-    decided here, at the retirement boundary, rather than by the scraper that
-    would benefit from claiming it.
+    The collector attests what it SAW and what it could not resolve.
+    Completeness is decided here, at the retirement boundary, from the
+    collector's own roster coverage — never from a count, and never by the
+    scraper that would benefit from claiming it.
 
     A unit present in the corpus but absent from the ledger is never
     synthesised: the pass preserves those records as unproven.
     """
     baseline_ids: dict[str, set[str]] = {}
+    baseline_identities: dict[str, set] = {}
     for opp in opps:
         if opp.get("source") != source:
             continue
@@ -426,70 +565,102 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
         if (opp.get("metadata") or {}).get("is_active") is False:
             continue
         unit = _unit_id_of(opp)
-        if unit:
-            baseline_ids.setdefault(unit, set()).add(str(opp.get("id")))
-    baseline = {u: len(ids) for u, ids in baseline_ids.items()}
+        if not unit:
+            continue
+        baseline_ids.setdefault(unit, set()).add(str(opp.get("id")))
+        ident = identity_key(opp)
+        if ident:
+            baseline_identities.setdefault(unit, set()).add(ident)
 
     for unit_id, entry in ledger.items():
         if not isinstance(entry, dict):
             continue
-        base = baseline.get(unit_id, 0)
-        entry["baseline_active_count"] = base
+        base_ids = baseline_ids.get(unit_id, set())
+        entry["baseline_active_count"] = len(base_ids)
+        entry["baseline_identity_count"] = len(
+            baseline_identities.get(unit_id, set()))
+
+        # Recorded for observability only. MIN_SCRAPE_RATIO is a coarse health
+        # signal now; it authorises nothing.
         observed = entry.get("observed_count")
+        if isinstance(observed, int) and base_ids:
+            entry["count_ratio"] = round(observed / len(base_ids), 4)
+            entry["count_ratio_healthy"] = (
+                observed >= MIN_SCRAPE_RATIO * len(base_ids))
+
+        seen = _observed_identities(entry)
+        known = baseline_identities.get(unit_id, set())
+        if seen is not None:
+            entry["matched_identity_count"] = len(seen & known)
+            entry["new_identity_count"] = len(seen - known)
+
+            # The check that catches a person the SELECTOR never matched.
+            # Coverage counted from matched rows can only say "every row I
+            # matched, I parsed"; it is blind to someone the selector skipped.
+            # If the page itself still links a baseline identity we did not
+            # observe, that is parser loss, and the unit must not retire
+            # anyone. Wellesley Chemistry proposed retiring two professors
+            # whose profile links were on the page it had just scraped.
+            document = _observed_identities(
+                {"observed_identities": entry.get("document_identities")})
+            if document:
+                missed = (known & document) - seen
+                entry["missed_present_identities"] = sorted(
+                    "/".join(m) for m in missed)[:20]
+                if missed and isinstance(entry.get("coverage"), dict):
+                    entry["coverage"]["identity_match_failures"] = (
+                        entry["coverage"].get("identity_match_failures", 0)
+                        + len(missed))
+
+        complete, reason = unit_identity_completeness(entry)
         if entry.get("fetch_status") != _OK or entry.get("parse_status") != _OK:
             entry["completeness_status"] = "unknown"
             entry["retirement_authorized"] = False
+            entry.setdefault("failure_reason", "fetch_or_parse_failed")
             continue
-        if base <= 0:
-            # Nothing held for this unit, so there is nothing to retire and
-            # no ratio to measure against.
+        if seen is None:
             entry["completeness_status"] = "unknown"
             entry["retirement_authorized"] = False
+            entry.setdefault("failure_reason", "observed_identities_missing")
             continue
-        # Coverage is measured against the baseline SET, not its size.
-        #
-        # A raw count is fooled by substitution: a unit that drops one
-        # professor and gains one new arrival still reports "6 observed of 6
-        # active" and reads as a complete scrape, so the departure looks
-        # proven when the scrape may simply have failed to parse that person's
-        # card. Caught on 2026-09-11 by the mandated manual sample: the
-        # Bowdoin EOS unit scored 6/6 and proposed retiring a professor who
-        # was still listed on the very page it had just scraped.
-        #
-        # Intersecting with the baseline makes an unparsed row cost coverage,
-        # which is the only way absence can mean departure.
-        seen = _observed_ids(entry)
-        known = baseline_ids.get(unit_id, set())
-        if seen is not None:
-            matched = len(seen & known)
-            entry["matched_baseline_count"] = matched
-            entry["new_entity_count"] = len(seen - known)
-            covered = matched
-        else:
-            covered = observed if isinstance(observed, int) else 0
-        if isinstance(covered, int) and covered >= MIN_SCRAPE_RATIO * base:
-            entry["completeness_status"] = COMPLETE
-            entry["retirement_authorized"] = True
-        else:
+        if not complete:
             entry["completeness_status"] = "partial"
             entry["retirement_authorized"] = False
-            entry.setdefault(
-                "failure_reason",
-                f"covered {covered} of {base} active "
-                f"(< {MIN_SCRAPE_RATIO:.0%})",
-            )
+            entry.setdefault("failure_reason", reason)
+            continue
+        entry["completeness_status"] = COMPLETE
+        entry["retirement_authorized"] = True
     return ledger
 
 
-def _bucket_for(reason: str) -> str:
-    """Which preservation bucket a withheld-authority reason belongs to."""
-    if reason.startswith("parse_suspicious_zero") or reason == "parse_zero_rows":
-        return "records_preserved_suspicious_zero"
+def _bucket_for(reason: str) -> tuple[str, str]:
+    """``(record_bucket, unit_bucket)`` for a withheld-authority reason.
+
+    Parser loss, ambiguous identity and a failed fetch need different people on
+    different days, so they are never pooled into one "preserved" number.
+    """
+    if reason in ("blocked_unparsed_rows", "coverage_rows_unaccounted"):
+        return "records_preserved_partial", "units_blocked_unparsed_rows"
+    if reason in ("blocked_ambiguous_rows", "blocked_identity_match_failures",
+                  "observed_identities_missing"):
+        return ("records_preserved_ambiguous_identity",
+                "units_blocked_ambiguous_identity")
+    if reason in ("blocked_parser_errors", "blocked_partial_render_rows",
+                  "empty_roster") or reason.startswith(("fetch_", "parse_")):
+        if reason.startswith("parse_suspicious_zero"):
+            return ("records_preserved_suspicious_zero",
+                    "units_blocked_partial_fetch")
+        return "records_preserved_failed_source", "units_blocked_partial_fetch"
+    if reason in ("unit_identity_unverified", "count_is_not_authority"):
+        return ("records_preserved_missing_lineage",
+                "units_blocked_missing_lineage")
+    if reason.startswith("coverage_") or reason in (
+            "roster_source_unconfirmed", "producer_withheld_authority",
+            "unrecognised_ledger_entry"):
+        return "records_preserved_failed_source", "units_blocked_missing_lineage"
     if reason in ("partial_scrape",) or reason.startswith("completeness_"):
-        return "records_preserved_partial"
-    if reason == "unit_identity_unverified":
-        return "records_preserved_missing_lineage"
-    return "records_preserved_failed_source"
+        return "records_preserved_partial", "units_blocked_unparsed_rows"
+    return "records_preserved_failed_source", "units_blocked_partial_fetch"
 
 
 def deactivate_stale_faculty(
@@ -547,10 +718,32 @@ def deactivate_stale_faculty(
         "records_preserved_suspicious_zero": 0,
         "records_preserved_missing_lineage": 0,
         "records_preserved_failed_source": 0,
+        "records_preserved_ambiguous_identity": 0,
+        "records_preserved_moved_unit": 0,
+        "moved": [],
+        "units_examined": 0,
+        "units_complete_by_identity": 0,
+        "units_blocked_unparsed_rows": 0,
+        "units_blocked_ambiguous_identity": 0,
+        "units_blocked_partial_fetch": 0,
+        "units_blocked_missing_lineage": 0,
         "proposals": [],
         "units_authorized": [],
         "units_withheld": [],
     }
+
+    # Every identity seen ANYWHERE in this run. A professor who moved
+    # departments is absent from their old unit and present in a new one;
+    # retiring them on the old unit's evidence alone would deactivate someone
+    # the very same run just observed.
+    observed_run_wide: set = set()
+    for entry_map in fetched_counts.values():
+        if not isinstance(entry_map, dict):
+            continue
+        for entry in entry_map.values():
+            seen = _observed_identities(entry)
+            if seen:
+                observed_run_wide |= seen
 
     by_source: dict[str, list[dict]] = {}
     for opp in opps:
@@ -580,6 +773,7 @@ def deactivate_stale_faculty(
                 by_unit.items(), key=lambda kv: (kv[0] is None, kv[0] or "")
             ):
                 counts["records_considered"] += len(unit_records)
+                counts["units_examined"] += 1
                 label = f"{source}/{unit}" if unit else f"{source}/(unnamed)"
                 if unit is None:
                     # No unit identity on the record: never proven scraped by
@@ -590,6 +784,7 @@ def deactivate_stale_faculty(
                     )
                     counts["skipped_missing_unit_ledger"].append(label)
                     counts["records_preserved_missing_lineage"] += len(unit_records)
+                    counts["units_blocked_missing_lineage"] += 1
                     counts["kept_fresh"] += len(unit_records)
                     continue
                 if unit not in ledger:
@@ -599,6 +794,7 @@ def deactivate_stale_faculty(
                     )
                     counts["skipped_missing_unit_ledger"].append(label)
                     counts["records_preserved_failed_source"] += len(unit_records)
+                    counts["units_blocked_partial_fetch"] += 1
                     counts["kept_fresh"] += len(unit_records)
                     continue
 
@@ -611,8 +807,9 @@ def deactivate_stale_faculty(
                         "deactivate_stale_faculty: %s not authorised (%s) — "
                         "preserving %d record(s)", label, reason, len(unit_records),
                     )
-                    bucket = _bucket_for(reason)
+                    bucket, unit_bucket = _bucket_for(reason)
                     counts[bucket] += len(unit_records)
+                    counts[unit_bucket] += 1
                     counts["kept_fresh"] += len(unit_records)
                     counts["units_withheld"].append(
                         {"unit": label, "reason": reason,
@@ -621,23 +818,37 @@ def deactivate_stale_faculty(
                         counts["skipped_partial_scrape"].append(label)
                     continue
 
+                counts["units_complete_by_identity"] += 1
                 counts["units_authorized"].append(
                     {"unit": label, "reason": reason,
                      "records": len(unit_records)})
-                seen_ids = _observed_ids(entry)
+                seen_identities = _observed_identities(entry) or set()
                 for opp in unit_records:
                     seen = _seen_date(opp)
-                    # Prefer the observation set when the collector recorded
-                    # one: "absent from a complete scrape" is a stronger claim
-                    # than "its timestamp is old".
-                    if seen_ids is not None:
-                        observed_now = str(opp.get("id")) in seen_ids
-                    else:
-                        observed_now = not (seen is not None and seen < cutoff)
-                    if observed_now or seen is None:
+                    identity = identity_key(opp)
+                    if identity is None:
+                        # No stable identity: a rename or a relocated profile
+                        # would be indistinguishable from a departure.
+                        counts["records_preserved_ambiguous_identity"] += 1
                         counts["kept_fresh"] += 1
                         continue
-                    if seen >= cutoff:
+                    if identity in seen_identities:
+                        # Observed this run — under whatever name the directory
+                        # is writing today.
+                        counts["kept_fresh"] += 1
+                        continue
+                    if identity in observed_run_wide:
+                        # Same person, different unit: a move, not a departure.
+                        counts["records_preserved_moved_unit"] += 1
+                        counts["moved"].append({
+                            "entity_id": opp.get("id"),
+                            "identity": list(identity),
+                            "from_unit": unit,
+                            "school": opp.get("school"),
+                        })
+                        counts["kept_fresh"] += 1
+                        continue
+                    if seen is None or seen >= cutoff:
                         counts["kept_fresh"] += 1
                         continue
                     counts["records_retirement_authorized"] += 1
@@ -656,7 +867,10 @@ def deactivate_stale_faculty(
                             if isinstance(entry, dict) else None),
                         "observed_count": (entry.get("observed_count")
                                            if isinstance(entry, dict) else entry),
-                        "observed_entity_ids_recorded": seen_ids is not None,
+                        "identity": list(identity),
+                        "observed_identities_recorded": True,
+                        "coverage": (entry.get("coverage")
+                                     if isinstance(entry, dict) else None),
                         "run_id": (entry.get("run_id")
                                    if isinstance(entry, dict) else None),
                         "collector_version": (entry.get("collector_version")
