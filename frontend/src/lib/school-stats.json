@@ -93,15 +93,15 @@
     },
     "cincinnati": {
       "listing_count": 4,
-      "faculty_contact_count": 1079,
+      "faculty_contact_count": 1048,
       "unreviewed_count": 0,
-      "total_count": 1083
+      "total_count": 1052
     },
     "clemson": {
       "listing_count": 3,
-      "faculty_contact_count": 920,
+      "faculty_contact_count": 907,
       "unreviewed_count": 0,
-      "total_count": 923
+      "total_count": 910
     },
     "cmc": {
       "listing_count": 9,
@@ -111,9 +111,9 @@
     },
     "cmu": {
       "listing_count": 6,
-      "faculty_contact_count": 905,
+      "faculty_contact_count": 904,
       "unreviewed_count": 0,
-      "total_count": 911
+      "total_count": 910
     },
     "colby": {
       "listing_count": 4,
@@ -141,9 +141,9 @@
     },
     "columbia": {
       "listing_count": 6,
-      "faculty_contact_count": 1084,
+      "faculty_contact_count": 1066,
       "unreviewed_count": 0,
-      "total_count": 1090
+      "total_count": 1072
     },
     "cornell": {
       "listing_count": 4,
@@ -243,9 +243,9 @@
     },
     "jhu": {
       "listing_count": 27,
-      "faculty_contact_count": 4556,
+      "faculty_contact_count": 4554,
       "unreviewed_count": 0,
-      "total_count": 4583
+      "total_count": 4581
     },
     "kenyon": {
       "listing_count": 10,
@@ -273,9 +273,9 @@
     },
     "miami": {
       "listing_count": 5,
-      "faculty_contact_count": 474,
+      "faculty_contact_count": 469,
       "unreviewed_count": 0,
-      "total_count": 479
+      "total_count": 474
     },
     "middlebury": {
       "listing_count": 6,
@@ -321,9 +321,9 @@
     },
     "northwestern": {
       "listing_count": 23,
-      "faculty_contact_count": 2815,
+      "faculty_contact_count": 2806,
       "unreviewed_count": 0,
-      "total_count": 2838
+      "total_count": 2829
     },
     "nyu": {
       "listing_count": 9,
@@ -357,9 +357,9 @@
     },
     "princeton": {
       "listing_count": 12,
-      "faculty_contact_count": 629,
+      "faculty_contact_count": 619,
       "unreviewed_count": 0,
-      "total_count": 641
+      "total_count": 631
     },
     "psu": {
       "listing_count": 9,
@@ -411,9 +411,9 @@
     },
     "stanford": {
       "listing_count": 22,
-      "faculty_contact_count": 1377,
+      "faculty_contact_count": 1363,
       "unreviewed_count": 0,
-      "total_count": 1399
+      "total_count": 1385
     },
     "stevens": {
       "listing_count": 3,
@@ -453,9 +453,9 @@
     },
     "ucf": {
       "listing_count": 4,
-      "faculty_contact_count": 815,
+      "faculty_contact_count": 803,
       "unreviewed_count": 0,
-      "total_count": 819
+      "total_count": 807
     },
     "uchicago": {
       "listing_count": 11,
@@ -495,15 +495,15 @@
     },
     "ucsc": {
       "listing_count": 3,
-      "faculty_contact_count": 736,
+      "faculty_contact_count": 738,
       "unreviewed_count": 0,
-      "total_count": 739
+      "total_count": 741
     },
     "ucsd": {
       "listing_count": 32,
-      "faculty_contact_count": 1465,
+      "faculty_contact_count": 1461,
       "unreviewed_count": 0,
-      "total_count": 1497
+      "total_count": 1493
     },
     "udel": {
       "listing_count": 4,
@@ -513,9 +513,9 @@
     },
     "uf": {
       "listing_count": 8,
-      "faculty_contact_count": 2057,
+      "faculty_contact_count": 2039,
       "unreviewed_count": 0,
-      "total_count": 2065
+      "total_count": 2047
     },
     "uga": {
       "listing_count": 5,
@@ -573,9 +573,9 @@
     },
     "unl": {
       "listing_count": 4,
-      "faculty_contact_count": 1223,
+      "faculty_contact_count": 1211,
       "unreviewed_count": 0,
-      "total_count": 1227
+      "total_count": 1215
     },
     "upenn": {
       "listing_count": 18,
@@ -651,9 +651,9 @@
     },
     "washu": {
       "listing_count": 7,
-      "faculty_contact_count": 1112,
+      "faculty_contact_count": 1090,
       "unreviewed_count": 0,
-      "total_count": 1119
+      "total_count": 1097
     },
     "wellesley": {
       "listing_count": 2,
