@@ -63,9 +63,9 @@
     },
     "bu": {
       "listing_count": 6,
-      "faculty_contact_count": 1830,
+      "faculty_contact_count": 1943,
       "unreviewed_count": 0,
-      "total_count": 1836
+      "total_count": 1949
     },
     "buffalo": {
       "listing_count": 5,
@@ -129,9 +129,9 @@
     },
     "coloradocollege": {
       "listing_count": 4,
-      "faculty_contact_count": 209,
+      "faculty_contact_count": 210,
       "unreviewed_count": 0,
-      "total_count": 213
+      "total_count": 214
     },
     "colostate": {
       "listing_count": 5,
@@ -153,9 +153,9 @@
     },
     "dartmouth": {
       "listing_count": 7,
-      "faculty_contact_count": 923,
+      "faculty_contact_count": 944,
       "unreviewed_count": 0,
-      "total_count": 930
+      "total_count": 951
     },
     "davidson": {
       "listing_count": 5,
@@ -165,15 +165,15 @@
     },
     "drexel": {
       "listing_count": 3,
-      "faculty_contact_count": 574,
+      "faculty_contact_count": 575,
       "unreviewed_count": 0,
-      "total_count": 577
+      "total_count": 578
     },
     "duke": {
-      "listing_count": 59,
-      "faculty_contact_count": 1177,
+      "listing_count": 58,
+      "faculty_contact_count": 1188,
       "unreviewed_count": 0,
-      "total_count": 1236
+      "total_count": 1246
     },
     "emory": {
       "listing_count": 5,
@@ -213,9 +213,9 @@
     },
     "harvard": {
       "listing_count": 8,
-      "faculty_contact_count": 462,
+      "faculty_contact_count": 456,
       "unreviewed_count": 0,
-      "total_count": 470
+      "total_count": 464
     },
     "haverford": {
       "listing_count": 4,
@@ -369,9 +369,9 @@
     },
     "purdue": {
       "listing_count": 59,
-      "faculty_contact_count": 2178,
+      "faculty_contact_count": 2181,
       "unreviewed_count": 0,
-      "total_count": 2237
+      "total_count": 2240
     },
     "rice": {
       "listing_count": 5,
@@ -381,15 +381,15 @@
     },
     "rochester": {
       "listing_count": 6,
-      "faculty_contact_count": 846,
+      "faculty_contact_count": 851,
       "unreviewed_count": 0,
-      "total_count": 852
+      "total_count": 857
     },
     "rpi": {
       "listing_count": 3,
-      "faculty_contact_count": 462,
+      "faculty_contact_count": 463,
       "unreviewed_count": 0,
-      "total_count": 465
+      "total_count": 466
     },
     "rutgers": {
       "listing_count": 7,
@@ -537,9 +537,9 @@
     },
     "uky": {
       "listing_count": 3,
-      "faculty_contact_count": 770,
+      "faculty_contact_count": 771,
       "unreviewed_count": 0,
-      "total_count": 773
+      "total_count": 774
     },
     "umass": {
       "listing_count": 9,
@@ -549,9 +549,9 @@
     },
     "umd": {
       "listing_count": 7,
-      "faculty_contact_count": 1300,
+      "faculty_contact_count": 1301,
       "unreviewed_count": 0,
-      "total_count": 1307
+      "total_count": 1308
     },
     "umich": {
       "listing_count": 7,
@@ -567,9 +567,9 @@
     },
     "unc": {
       "listing_count": 0,
-      "faculty_contact_count": 596,
+      "faculty_contact_count": 599,
       "unreviewed_count": 0,
-      "total_count": 596
+      "total_count": 599
     },
     "unl": {
       "listing_count": 4,
@@ -627,9 +627,9 @@
     },
     "uw": {
       "listing_count": 28,
-      "faculty_contact_count": 2223,
+      "faculty_contact_count": 2238,
       "unreviewed_count": 0,
-      "total_count": 2251
+      "total_count": 2266
     },
     "vanderbilt": {
       "listing_count": 3,
@@ -669,9 +669,9 @@
     },
     "wisc": {
       "listing_count": 20,
-      "faculty_contact_count": 1952,
+      "faculty_contact_count": 1953,
       "unreviewed_count": 0,
-      "total_count": 1972
+      "total_count": 1973
     },
     "wlu": {
       "listing_count": 6,
@@ -687,9 +687,9 @@
     },
     "yale": {
       "listing_count": 5,
-      "faculty_contact_count": 1245,
+      "faculty_contact_count": 1261,
       "unreviewed_count": 0,
-      "total_count": 1250
+      "total_count": 1266
     }
   },
   "national_count": 3516
