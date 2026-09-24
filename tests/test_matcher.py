@@ -2079,18 +2079,27 @@ class TestMajorDriveRealCorpus:
                 "desired_fields": [], "search_weight": 50,
                 "preferences": {"min_match_threshold": 25}}
 
-    def test_empty_interest_major_changes_results(self):
+    @pytest.fixture(scope="class")
+    def major_rank_summaries(self):
+        # Both assertions use these exact profiles and the complete corpus.
+        # Rank each once; share only immutable summaries, so neither test can
+        # mutate results or require a second pair of expensive full traversals.
         opps = self._opps()
-        cs = [r.opportunity_id for r in rank_all(self._profile("Computer Science"), opps)[:10]]
-        vet = [r.opportunity_id for r in rank_all(self._profile("Veterinary Medicine"), opps)[:10]]
+        summaries = []
+        for major in ("Computer Science", "Veterinary Medicine"):
+            results = rank_all(self._profile(major), opps)
+            summaries.append((
+                tuple(r.opportunity_id for r in results[:10]),
+                sum(1 for r in results if r.bucket != "low_fit" and r.field_relevant),
+            ))
+        return tuple(summaries)
+
+    def test_empty_interest_major_changes_results(self, major_rank_summaries):
+        (cs, _), (vet, _) = major_rank_summaries
         assert cs != vet  # major now reorders an otherwise-identical (empty-interest) query
 
-    def test_field_relevant_count_is_honest(self):
-        opps = self._opps()
-        cs = rank_all(self._profile("Computer Science"), opps)
-        vet = rank_all(self._profile("Veterinary Medicine"), opps)
-        cs_rel = sum(1 for r in cs if r.bucket != "low_fit" and r.field_relevant)
-        vet_rel = sum(1 for r in vet if r.bucket != "low_fit" and r.field_relevant)
+    def test_field_relevant_count_is_honest(self, major_rank_summaries):
+        (_, cs_rel), (_, vet_rel) = major_rank_summaries
         # The CS-dominated corpus has far more CS-relevant inventory than vet.
         assert cs_rel > vet_rel
 
