@@ -49,6 +49,7 @@ function HomePageInner() {
     saveStatus,
     isSubmitting,
     retryCloudSave,
+    retryProfileLoad,
     canRetrySync,
     conflicts,
     keepMyChanges,
@@ -151,6 +152,7 @@ function HomePageInner() {
         hasConflict={conflicts.length > 0}
         canRetrySync={canRetrySync}
         onRetrySync={retryCloudSave}
+        onRetryProfileLoad={retryProfileLoad}
         onKeepMyChanges={keepMyChanges}
         onUseCloudVersion={useCloudVersion}
         onSubmit={handleSubmit}

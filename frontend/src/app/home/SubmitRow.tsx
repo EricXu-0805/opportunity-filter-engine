@@ -13,6 +13,7 @@ export function SubmitRow({
   hasConflict,
   canRetrySync,
   onRetrySync,
+  onRetryProfileLoad,
   onKeepMyChanges,
   onUseCloudVersion,
   onSubmit,
@@ -32,6 +33,7 @@ export function SubmitRow({
   /** Whether `onRetrySync` has a write to replay. False draws no button. */
   canRetrySync: boolean;
   onRetrySync: () => void;
+  onRetryProfileLoad?: () => void;
   onKeepMyChanges: () => void;
   onUseCloudVersion: () => void;
   onSubmit: () => void;
@@ -86,12 +88,17 @@ export function SubmitRow({
       </div>
 
       {hydrationState !== 'ready' && (
-        <p
-          data-testid="hydration-note"
-          className={`text-center text-[13px] mt-4 ${hydrationState === 'failed' ? 'text-amber-600' : 'text-gray-400'}`}
-        >
-          {t(hydrationState === 'failed' ? 'home.actions.profileLoadFailed' : 'home.actions.profileLoading')}
-        </p>
+        <div className="mt-4 text-center text-[13px]" role={hydrationState === 'failed' ? 'alert' : 'status'}>
+          <p data-testid="hydration-note" className={hydrationState === 'failed' ? 'text-amber-700' : 'text-gray-500'}>
+            {t(hydrationState === 'failed' ? 'home.actions.profileLoadFailed' : 'home.actions.profileLoading')}
+          </p>
+          {hydrationState === 'failed' && onRetryProfileLoad && (
+            <button type="button" data-testid="retry-profile-load" onClick={() => onRetryProfileLoad()}
+              className="mt-2 min-h-11 rounded-lg px-4 py-2 font-medium text-indigo-700 underline underline-offset-2 hover:bg-indigo-50">
+              {t('home.actions.retryProfileLoad')}
+            </button>
+          )}
+        </div>
       )}
       {!isValid && (
         <p id="match-validation" className="text-center text-[13px] text-gray-500 mt-4">

@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
+import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { ProfileData, ResumeFact } from '../src/lib/types';
 
@@ -86,6 +87,11 @@ function mutationLog(context: BrowserContext) {
 }
 
 test.describe('Profile readiness and same-account writing preservation', () => {
+  test.afterEach(async ({ context }, info) => {
+    if (info.status !== info.expectedStatus) {
+      for (const [index, page] of context.pages().entries()) await attachProfileReadDiagnostics(page, info, `failed-page-${index}`);
+    }
+  });
   test('a second Home tab completes its real profile read without losing the first tab target edits', async ({ page, context, request }) => {
     const value = await establishCloudProfile(page, request);
     const writes = mutationLog(context);
@@ -131,7 +137,10 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       expect(writes.profileWrites).toEqual([]); expect(writes.targetWrites).toEqual([]); expect(writes.contactWrites).toEqual([]);
       await test.info().attach('profile-read-count', { body: JSON.stringify({ reads }), contentType: 'application/json' });
       await page.screenshot({ path: test.info().outputPath('target-edits-preserved.png') });
-    } finally { release(); await other.close(); }
+    } finally {
+      await attachProfileReadDiagnostics(other, test.info(), 'second-home');
+      release(); await other.close();
+    }
   });
 
   test('a real same-account profile save preserves the email subject, body, recipient and unsent instruction and retires an old refinement', async ({ page, context, request }) => {
@@ -203,6 +212,9 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       expect(inputRect!.y + inputRect!.height).toBeLessThanOrEqual(footerRect!.y);
       await expect(page.getByText('Your profile or target details changed, so this edit was discarded. Your draft is kept.', { exact: true })).toBeVisible();
       await page.screenshot({ path: test.info().outputPath('email-edits-preserved.png') });
-    } finally { release(); await other?.close(); }
+    } finally {
+      if (other) await attachProfileReadDiagnostics(other, test.info(), 'email-second-home');
+      release(); await other?.close();
+    }
   });
 });

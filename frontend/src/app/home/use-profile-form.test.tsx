@@ -8021,7 +8021,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
         // Proof the window is genuinely open: React has not flushed its
         // passive work, so nothing that runs in an effect has run yet.
         expect(screen.getByTestId('hydration').textContent,
-          'React has not flushed the hydration yet').toBe('failed');
+          'React has not flushed the hydration yet').toBe('loading');
         cleanup();
         order.push('unmounted');
       });
@@ -8455,14 +8455,14 @@ describe('useProfileForm — every action is bound to the capability the screen 
       name: 'OwnerScopedLoadError',
       ownerToken: captureOwnerToken(),
     });
-    const hydrationBefore = screen.getByTestId('hydration').textContent;
+    expect(screen.getByTestId('hydration').textContent).toBe('loading');
 
     await act(async () => { held.reads[0].reject(forged); });
     await settle();
 
     expect(screen.getByTestId('hydration').textContent,
-      'a shape is not a capability, so this screen learns nothing')
-      .toBe(hydrationBefore);
+      'the abandoned read fails visibly without granting a capability')
+      .toBe('failed');
     expect(screen.getByTestId('view-uid').textContent,
       'and adopts nobody').toBe('none');
 
@@ -8495,9 +8495,9 @@ describe('useProfileForm — every action is bound to the capability the screen 
     expect(pushSpy, 'and nothing navigated').not.toHaveBeenCalled();
   });
 
-  it('D-null-reject-stale: a load failing after an identity arrives labels nothing', async () => {
+  it('D-null-reject-stale: a load failing after an identity arrives grants no new owner', async () => {
     const held = await heldNullLoad();
-    const hydrationBefore = screen.getByTestId('hydration').textContent;
+    expect(screen.getByTestId('hydration').textContent).toBe('loading');
     // A real identity now owns the browser, and this hook has not heard.
     await act(async () => {
       advanceOwnerEpoch(FIRST_UID);
@@ -8510,8 +8510,9 @@ describe('useProfileForm — every action is bound to the capability the screen 
     await settle();
 
     expect(screen.getByTestId('hydration').textContent,
-      "the unresolved screen's failure is not the new identity's news")
-      .toBe(hydrationBefore);
+      "the read is no longer pending, without accepting the new identity")
+      .toBe('failed');
+    expect(screen.getByTestId('view-uid').textContent).toBe('none');
   });
 
   /**

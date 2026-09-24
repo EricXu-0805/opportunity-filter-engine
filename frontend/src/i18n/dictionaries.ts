@@ -2684,7 +2684,8 @@ export const en = {
       profileStale: "This profile no longer exists in your account, so nothing is being saved. Reload to start from what's there now.",
       profileConflictStale: 'That question was already answered somewhere else, so nothing was sent. What you see now is the version that was kept.',
       profileLoading: 'Loading your saved profile…',
-      profileLoadFailed: "Couldn't load your saved profile, so nothing is being saved yet. Reload to try again.",
+      profileLoadFailed: "Couldn't load your saved profile. Your edits are kept; retry to continue.",
+      retryProfileLoad: 'Retry loading profile',
     },
     validation: {
       requiredFields: 'Please select your college, major, and grade to continue',
@@ -2693,7 +2694,7 @@ export const en = {
     sharedBanner: 'Loaded a shared profile. Review & tweak before generating matches — your saved profile is untouched until you click generate.',
     saveCta: {
       title: 'Save my work',
-      body: 'Your profile is saved on this device. Sign in to access it from your phone, laptop, or any other browser.',
+      body: 'Sign in to access your saved work from your phone, laptop, or another browser.',
       cta: 'Sign in to save across devices',
       dismiss: 'Not now',
     },
@@ -7333,7 +7334,8 @@ export const zh = {
       profileStale: '你的账号里已经没有这份资料了，所以现在什么都没在保存。刷新一下，从现有的内容重新开始。',
       profileConflictStale: '这个问题已经在别处回答过了，所以什么都没发出去。你现在看到的就是被保留下来的那一版。',
       profileLoading: '正在读取你已保存的档案…',
-      profileLoadFailed: '没能读到你已保存的档案，所以现在的改动都不会被保存。刷新页面重试。',
+      profileLoadFailed: '资料读取失败。已输入的内容保留，请重试。',
+      retryProfileLoad: '重新读取资料',
     },
     validation: {
       requiredFields: '请选择学院、专业和年级以继续',
@@ -7342,7 +7344,7 @@ export const zh = {
     sharedBanner: '已加载分享的档案。请在生成匹配前查看并调整 —— 在你点击生成之前，你自己保存的档案不会被修改。',
     saveCta: {
       title: '保存我的资料',
-      body: '你的资料已经保存在这台设备。登录之后可以在手机、笔记本或其他浏览器都看到。',
+      body: '登录后，可以在手机、笔记本或其他浏览器查看已保存的资料。',
       cta: '登录以跨设备同步',
       dismiss: '暂不',
     },

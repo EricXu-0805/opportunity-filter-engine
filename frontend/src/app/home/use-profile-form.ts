@@ -11,9 +11,11 @@ import {
   isOwnerScopedLoadError,
   isOwnerTokenValid,
   isTokenOwnerStillCurrent,
+  onLocalOwnerStateChange,
   type OwnerToken,
 } from '@/lib/identity-owner';
 import { clearMatchCache } from '@/lib/match-cache';
+import { createProfileReadTrace, type ProfileReadObserver } from '@/lib/profile-read-diagnostics';
 import { normalizeProfileForRelease } from '@/lib/release-scope';
 import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
@@ -68,6 +70,7 @@ const STALE: ProfileDisposition = 'stale';
 const VALID_GRADES = new Set(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Masters', 'PhD']);
 const VALID_SEEKING = new Set<string>(SEEKING_TYPES);
 const DEFAULT_SEARCH_WEIGHT = 50;
+const PROFILE_LOAD_DEADLINE_MS = 15_000;
 
 /** Pure: returns `base` itself when the query carries no applicable prefill,
  *  so callers can tell "nothing changed" by reference and keep treating the
@@ -137,6 +140,8 @@ export interface UseProfileFormResult {
    *  form is persisted — not by the autosave, not by submit — until it is
    *  'ready', so the UI must not offer to generate matches before then. */
   hydrationState: HydrationState;
+  /** Read retry only; keeps same-owner inputs and never creates a default row. */
+  retryProfileLoad: () => void;
   isValid: boolean;
   missingSeekingTypes: boolean;
   /** Increments on every identity transition this form observes. Mount it as
@@ -1573,18 +1578,34 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
 
   const lastUidRef = useRef<string | null | undefined>(undefined);
   const lastOwnerEpochRef = useRef<number | undefined>(undefined);
-  // Which generation currently has a read in flight — NOT a bare boolean:
-  // a new identity must be able to start its own read while the previous
-  // one's is still hanging, or a slow U1 read would leave U2 with a form
-  // that never loads and never unlocks.
-  const inFlightGenerationRef = useRef<number | null>(null);
+  // A read is an attempt, not only a generation: explicit retry may replace
+  // a hung read for the same identity without letting its finally release
+  // the newer request. Writes recovered AFTER hydration have their own scope.
+  const activeLoadRef = useRef<{
+    generation: number; origin: ScreenOrigin; controller: AbortController;
+    timer: ReturnType<typeof setTimeout>; trace: ProfileReadObserver;
+  } | null>(null);
+  const loadMountedRef = useRef(true);
+  const identityObservationRef = useRef<((uid: string | null) => void) | null>(null);
+  const retireProfileLoad = useCallback(() => {
+    const previous = activeLoadRef.current;
+    if (!previous) return;
+    activeLoadRef.current = null;
+    clearTimeout(previous.timer);
+    if (!previous.controller.signal.aborted) previous.trace('cancelled');
+    previous.controller.abort();
+  }, []);
   // Generations whose recovered outbox has already been retried once. A
   // same-uid re-observation re-runs startLoad; without this it would fire a
   // second attempt behind the first.
   const flushedGenerationsRef = useRef<Set<number>>(new Set());
-  const startLoad = useCallback((generation: number) => {
-    if (inFlightGenerationRef.current === generation) return;
-    inFlightGenerationRef.current = generation;
+  const startLoad = useCallback((generation: number, replace = false) => {
+    if (!loadMountedRef.current || generation !== identityGenerationRef.current) return;
+    const previous = activeLoadRef.current;
+    if (!replace && previous?.generation === generation && !previous.controller.signal.aborted) return;
+    retireProfileLoad();
+    const trace = createProfileReadTrace('home');
+    trace('started');
     // The origin of the screen this load is for. An edit made before the row
     // lands is that screen's edit, and belongs to this owner or to nobody.
     //
@@ -1602,11 +1623,37 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // own load under its own generation, and merging this screen's buffered
     // edits into that row is exactly what must not happen.
     if (!ownsScreen(origin)) {
-      inFlightGenerationRef.current = null;
+      trace('owner-rejected');
+      // Refusal grants no new capability. Still report that this screen has
+      // no active read, rather than leave a spinner waiting for no promise.
+      hydrationReadyRef.current = false;
+      hydrationStateRef.current = 'failed';
+      setHydrationState('failed');
       return;
     }
-    hydrateProfile().then((hydration) => {
-      if (generation !== identityGenerationRef.current) return;
+    hydrationReadyRef.current = false;
+    hydrationStateRef.current = 'loading';
+    setHydrationState('loading');
+    const controller = new AbortController();
+    const attempt = { generation, origin, controller, trace, timer: setTimeout(() => {
+      if (activeLoadRef.current !== attempt || generation !== identityGenerationRef.current) return;
+      trace('timed-out');
+      controller.abort();
+      // A null-origin read may have resolved the first UID before timing out.
+      // Failure is visible, but this AbortError does not authorize that UID or
+      // turn this unaccepted screen into a writable/empty profile.
+      hydrationReadyRef.current = false;
+      hydrationStateRef.current = 'failed';
+      setHydrationState('failed');
+    }, PROFILE_LOAD_DEADLINE_MS) };
+    activeLoadRef.current = attempt;
+    const currentRead = () => loadMountedRef.current && activeLoadRef.current === attempt
+      && generation === identityGenerationRef.current;
+    hydrateProfile(controller.signal, trace).then((hydration) => {
+      if (!currentRead() || controller.signal.aborted) return;
+      // Deadline covers only the read. A legitimate recovered-outbox write
+      // below remains governed by its existing save/owner/receipt rules.
+      clearTimeout(attempt.timer);
       // The owner can move while a load is in flight without this hook
       // hearing about it, which leaves the generation intact. Checked BEFORE
       // hydrate(), which moves refs and paints the row: publishing the view
@@ -1622,16 +1669,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // is painted — after which the ordinary rule applies to everything.
       let accepted = origin;
       if (origin.token.uid === null) {
-        if (!isOwnerTokenValid(hydration.token, hydration.token.uid)) return;
+        if (!isOwnerTokenValid(hydration.token, hydration.token.uid)) { trace('owner-rejected'); return; }
         accepted = { token: hydration.token, generation };
         loadingOriginRef.current = accepted;
-      } else if (!ownsScreen(accepted)) return;
+      } else if (!ownsScreen(accepted)) { trace('owner-rejected'); return; }
       // Only a RESOLVED result — a row, or a confirmed-absent row —
       // settles the form. `hydration.profile` already carries this
       // browser's own unsent edits back on top of the cloud row.
       hydrate(hydration);
       setConflictKeys(hydration.conflictKeys);
       publishConflicts(hydration.conflicts, viewSnapshotRef.current);
+      trace('ready');
+      activeLoadRef.current = null;
       if (hydration.conflictKeys.length > 0) {
         setSaveStatus('conflict');
         return;
@@ -1670,7 +1719,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         setSaveStatus('cloud-failed');
       });
     }).catch((err: unknown) => {
-      if (generation !== identityGenerationRef.current) return;
+      if (!currentRead()) return;
+      if (!controller.signal.aborted) trace('failed');
       if (!ownsScreen(origin)) {
         // A load issued before this browser had ANY identity is the one case
         // where the read itself resolved who it was for. Only a genuine
@@ -1695,13 +1745,47 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     }).finally(() => {
       // Only clear our OWN claim: a newer generation's read may already
       // have replaced it.
-      if (inFlightGenerationRef.current === generation) inFlightGenerationRef.current = null;
+      clearTimeout(attempt.timer);
+      if (!currentRead()) return;
+      activeLoadRef.current = null;
+      // A safely rejected origin is not a successful or still-pending read.
+      // Keep the screen locked without adopting any identity from the error.
+      if (!hydrationReadyRef.current && hydrationStateRef.current === 'loading') {
+        hydrationStateRef.current = 'failed';
+        setHydrationState('failed');
+      }
     });
-  }, [hydrate, applySaveResult, epochsNow, ownsScreen, armRetryable, setSaveStatus]);
+  }, [hydrate, applySaveResult, epochsNow, ownsScreen, retireProfileLoad, armRetryable, setSaveStatus]);
 
   useEffect(() => {
-    const unsub = onAuthChange((s) => {
-      const uid = s.user?.id ?? null;
+    loadMountedRef.current = true;
+    const unsubscribe = onLocalOwnerStateChange(() => {
+      const attempt = activeLoadRef.current;
+      // First resolution from null is the existing virgin-screen exception.
+      // A known owner changing never lends its pending read to the next one.
+      if (!attempt || attempt.origin.token.uid === null || isTokenOwnerStillCurrent(attempt.origin.token)) return;
+      retireProfileLoad();
+      if (attempt.generation === identityGenerationRef.current && !hydrationReadyRef.current) {
+        hydrationStateRef.current = 'failed'; setHydrationState('failed');
+      }
+    });
+    return () => { loadMountedRef.current = false; retireProfileLoad(); unsubscribe(); };
+  }, [retireProfileLoad]);
+
+  const retryProfileLoad = useCallback(() => {
+    if (!loadMountedRef.current || hydrationReadyRef.current || shareDraftActiveRef.current) return;
+    const origin = loadingOriginRef.current;
+    if (origin && !ownsScreen(origin)) {
+      // Use the complete existing transition, including its virgin-input/share
+      // exception and old-account reset. Never rebind old edits to a fresh token.
+      identityObservationRef.current?.(captureOwnerToken().uid);
+      return;
+    }
+    startLoad(identityGenerationRef.current, true);
+  }, [ownsScreen, startLoad]);
+
+  useEffect(() => {
+    const observeIdentity = (uid: string | null) => {
       const firstObservation = lastUidRef.current === undefined;
       const ownerEpoch = captureOwnerToken().epoch;
       if (!firstObservation && uid === lastUidRef.current && ownerEpoch === lastOwnerEpochRef.current) {
@@ -1847,8 +1931,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       resetForPendingLoad();
       setSharedBannerVisible(false);
       startLoad(generation);
-    });
-    return () => unsub();
+    };
+    identityObservationRef.current = observeIdentity;
+    const unsub = onAuthChange((s) => observeIdentity(s.user?.id ?? null));
+    return () => {
+      if (identityObservationRef.current === observeIdentity) identityObservationRef.current = null;
+      unsub();
+    };
   }, [startLoad, resetForPendingLoad, armRetryable, setSaveStatus]);
 
   useEffect(() => {
@@ -1862,6 +1951,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const decoded = decodeProfileWithKeys(shareParam);
       if (decoded) {
         const shared = decoded.profile;
+        // A newly accepted share owns the screen. Neither the old row nor its
+        // deadline may replace this draft or fail it after its read was retired.
+        retireProfileLoad();
         shareImportedRef.current = true;
         shareImportedParamRef.current = shareParam;
         // Whatever the visitor's OWN profile had pending stops here: the
@@ -1957,7 +2049,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         fallbackLoadTimerRef.current = null;
       }
     };
-  }, [searchParams, startLoad, armRetryable, setSaveStatus]);
+  }, [searchParams, startLoad, retireProfileLoad, armRetryable, setSaveStatus]);
 
   // The onboarding school gate (a layout-level overlay) finishes *after* this
   // form has already mounted and loaded its profile, so its localStorage write
@@ -3216,6 +3308,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     keepMyChanges,
     useCloudVersion,
     hydrationState,
+    retryProfileLoad,
     isValid,
     missingSeekingTypes,
     identityGeneration,
