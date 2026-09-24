@@ -32,6 +32,27 @@ export interface SkillWithLevel {
   evidence?: string;
 }
 
+// ── Student-confirmed experience evidence ──────────────────────────
+export type ExperienceSource =
+  | { kind: 'manual' }
+  | {
+    kind: 'resume';
+    /** SHA-256 of the full exact UTF-8 resume text, lowercase hexadecimal. */
+    signature: string;
+    quote: string;
+    /** Unicode codepoint offsets, with end exclusive (not UTF-16 offsets). */
+    start: number;
+    end: number;
+  };
+
+export interface ExperienceEntry {
+  id: string;
+  revision: number;
+  status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
+  text: string;
+  source: ExperienceSource;
+}
+
 // ── Frontend Profile (form state) ────────────────────────────────────
 export interface ProfileData {
   institution: string;
@@ -55,6 +76,8 @@ export interface ProfileData {
   research_interests: string;
   skills: SkillWithLevel[];
   resume_text?: string;
+  /** Missing in older profiles: no student-confirmed experience evidence. */
+  experience_entries?: ExperienceEntry[];
   coursework?: string[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
@@ -407,7 +430,26 @@ export type ColdEmailFallbackReason =
   | 'fabrication'
   | 'insufficient_evidence';
 
+export interface ExperienceUsage {
+  version: 1;
+  eligible_count: number;
+  selected: Array<{
+    id: string;
+    revision: number;
+    excerpt: string;
+    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number };
+  }>;
+  excluded: Array<{
+    id: string;
+    revision: number;
+    reason: 'candidate' | 'rejected' | 'withdrawn' | 'source_signature_mismatch' | 'source_quote_mismatch';
+  }>;
+  needs_review: boolean;
+  notices: string[];
+}
+
 export interface ColdEmailResponse {
+  experience_usage?: ExperienceUsage;
   subject: string;
   body: string;
   recipient_email: string;
@@ -440,6 +482,7 @@ export interface ColdEmailResponse {
 export type ColdEmailEngine = 'template' | 'ai';
 
 export interface EmailVariant {
+  experience_usage?: ExperienceUsage;
   id: string;
   label: string;
   subject: string;
@@ -455,6 +498,7 @@ export interface EmailVariant {
 }
 
 export interface EmailVariantsResponse {
+  experience_usage?: ExperienceUsage;
   variants: EmailVariant[];
   lab_type?: LabType | null;
   /** W10b: one status for the whole response — it is a property of the

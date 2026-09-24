@@ -952,22 +952,17 @@ describe('useProfileForm — the very first visit is not stranded', () => {
 
 describe('useProfileForm — resume seeds the interests box (PR5 ①)', () => {
   it('prefills research_interests from the resume when the box is empty', async () => {
-    render(<Suspense fallback={null}><FullHarness /></Suspense>);
-    fireEvent.click(screen.getByTestId('parseA'));
-    await waitFor(() =>
-      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
-    );
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleResumeParsed(RESUME('computer vision, machine learning'))).toBe(true); });
+    expect(result.current.profile.research_interests).toBe('computer vision, machine learning');
   });
-
   it('does NOT overwrite interests the user already has', async () => {
-    render(<Suspense fallback={null}><FullHarness /></Suspense>);
-    fireEvent.click(screen.getByTestId('parseA')); // seeds it
-    await waitFor(() =>
-      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
-    );
-    fireEvent.click(screen.getByTestId('parseB')); // must not clobber
-    await new Promise((r) => setTimeout(r, 10));
-    expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning');
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('computer vision, machine learning')));
+    act(() => result.current.handleResumeParsed(RESUME('robotics')));
+    expect(result.current.profile.research_interests).toBe('computer vision, machine learning');
   });
 });
 
@@ -3011,7 +3006,7 @@ describe('useProfileForm — removing the résumé removes it from the profile t
     unmount();
   });
 
-  it('a removal made while the row was loading is not undone by the row landing', async () => {
+  it('refuses removal while loading; a new removal after loading clears the accepted source', async () => {
     let resolveLoad: ((v: LoadedProfile) => void) | undefined;
     mockLoadProfile = () => deferredLoad((settle) => { resolveLoad = settle; });
     render(<Suspense fallback={null}><ResumeRemovalHarness /></Suspense>);
@@ -3022,6 +3017,9 @@ describe('useProfileForm — removing the résumé removes it from the profile t
       resolveLoad?.(await cloudRow({ resume_text: 'cloud resume text', coursework: ['CS 233'], skills: [] }));
     });
 
+    expect(screen.getByTestId('resume').textContent).toBe('cloud resume text');
+    expect(screen.getByTestId('coursework').textContent).toBe('CS 233');
+    fireEvent.click(screen.getByTestId('remove-resume'));
     expect(screen.getByTestId('resume').textContent).toBe('');
     expect(screen.getByTestId('coursework').textContent).toBe('');
   });
@@ -7332,7 +7330,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
     expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle')
-      .toEqual(['coursework', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_text']);
     expect(patch.resume_text).toBe('');
   });
 
@@ -10354,5 +10352,67 @@ describe('useProfileForm — M21 opportunity-type selection', () => {
     expect(result.current.profile.seeking_types).toEqual([]);
     expect(cacheMocks.clearMatchCache).not.toHaveBeenCalled();
     expect(pushSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('useProfileForm — confirmed experience lifecycle', () => {
+  const manual = { id: 'own-fact', revision: 1, status: 'confirmed', text: 'Built a robot.', source: { kind: 'manual' } } as const;
+  const sourced = { id: 'resume-fact', revision: 1, status: 'confirmed', text: 'Old source', source: { kind: 'resume', signature: 'a'.repeat(64), quote: 'Old source', start: 0, end: 10 } } as const;
+  const baseOf = (form: ReturnType<typeof useProfileForm>) => ({ resumeText: form.profile.resume_text ?? '', entriesJson: JSON.stringify(form.profile.experience_entries ?? []) });
+  it('accepts a reviewed entry against the displayed base and persists the complete resume bundle', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleExperienceChange([manual], baseOf(result.current))).toBe(true); });
+    await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]), { timeout: 2500 });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [manual] });
+  });
+  it('refuses a late review after another edit or source replacement', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready')); const before = baseOf(result.current);
+    act(() => { expect(result.current.handleExperienceChange([manual], before)).toBe(true); });
+    act(() => { expect(result.current.handleExperienceChange([], before)).toBe(false); });
+    const nextBase = baseOf(result.current);
+    act(() => result.current.handleResumeParsed(RESUME('replacement')));
+    act(() => { expect(result.current.handleExperienceChange([], nextBase)).toBe(false); });
+    expect(result.current.profile.experience_entries).toEqual([manual]);
+  });
+  it('withdraws old source on replacement; deletion preserves independent experience and skills', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [sourced, manual], skills: [{ name: 'Python', level: 'expert', confirmed: true }] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    expect(result.current.profile.experience_entries).toEqual([{ ...sourced, status: 'withdrawn', revision: 2 }, manual]);
+    await act(async () => result.current.handleResumeRemoved());
+    await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]));
+    expect(serverRow?.resume_text).toBe('');
+    expect(serverRow?.skills).toEqual([{ name: 'Python', level: 'expert', confirmed: true }]);
+  });
+  it('preserves confirmed entries when the same exact resume is parsed again', async () => {
+    const parsed = RESUME('same');
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: parsed.raw_text, experience_entries: [sourced] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(parsed)); expect(result.current.profile.experience_entries).toEqual([sourced]);
+  });
+  it('rejects an old account callback even if the new account has identical fields', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const oldCallback = result.current.handleExperienceChange; const oldBase = baseOf(result.current);
+    await emitAuth('experience-other'); await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(oldCallback([manual], oldBase)).toBe(false); });
+    expect(result.current.profile.experience_entries).toEqual([]);
+  });
+  it('refuses source mutations while hydration is pending and preserves the arriving manual entries', async () => {
+    let settle!: (row: LoadedProfile) => void;
+    mockLoadProfile = () => deferredLoad((resolve) => { settle = resolve; });
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(authChangeCb).not.toBeNull());
+    act(() => { expect(result.current.handleResumeParsed(RESUME('too early'))).toBe(false); expect(result.current.handleResumeRemoved()).toBe(false); });
+    await act(async () => settle(cloudRow({ resume_text: 'Old source', experience_entries: [sourced, manual] })));
+    expect(result.current.profile.experience_entries).toEqual([sourced, manual]); expect(result.current.profile.resume_text).toBe('Old source');
+    expect(commitProfilePatch).not.toHaveBeenCalled();
   });
 });

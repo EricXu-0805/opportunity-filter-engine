@@ -11,8 +11,10 @@ from contextlib import suppress
 from datetime import UTC, datetime
 from urllib.parse import quote
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, field_validator
 
 from backend.data_loader import corpus_version, load_opportunities_by_id
@@ -26,6 +28,7 @@ from backend.lib.blocking import (
 from backend.lib.contact_visibility import contact_email_status
 from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
+from backend.lib.experience_evidence import PROMPT_CHARACTER_BUDGET, ExperienceSelection, select_experience
 from backend.lib.grounding import (
     LENIENT_PROSE,
     competence_violations,
@@ -43,7 +46,7 @@ from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.supabase_auth import authenticated_uid
 from backend.lib.target_actionability import assert_target_actionable
-from backend.schemas import ColdEmailRequest, ColdEmailResponse, ProfileRequest
+from backend.schemas import ColdEmailRequest, ColdEmailResponse, ExperienceEvidence, ProfileRequest
 from src.evidence import faculty_availability_status
 from src.matcher.ranker import _is_grad_year
 from src.recommender.cold_email import (
@@ -59,7 +62,32 @@ from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
 logger = logging.getLogger("ofe.cold_email")
 
-router = APIRouter()
+class _EmailValidationRoute(APIRoute):
+    """Return useful schema locations without echoing private resume inputs.
+
+    FastAPI's default validation payload includes the rejected input and error
+    context. Besides leaking resume text, a JSON-escaped unpaired surrogate in
+    that input cannot be encoded by the response serializer. Keep only stable
+    diagnostic fields at these four email boundaries.
+    """
+
+    def get_route_handler(self):
+        original = super().get_route_handler()
+
+        async def handler(request: Request):
+            try:
+                return await original(request)
+            except RequestValidationError as exc:
+                details = [
+                    {key: error[key] for key in ("loc", "msg", "type") if key in error}
+                    for error in exc.errors()
+                ]
+                raise HTTPException(status_code=422, detail=details) from None
+
+        return handler
+
+
+router = APIRouter(route_class=_EmailValidationRoute)
 
 _INTERNAL_CONTACT_FIELDS = frozenset({"contact_email", "pi_email"})
 
@@ -924,8 +952,8 @@ def _render_student_brief(p: dict) -> str:
     # Rank the complete accepted input before the prompt's eight-bullet cap.
     # Keep the original parts/evidence corpus intact for final fact checks.
     bullets = [b for b in (
-        _sanitize_field(x, max_len=500)
-        for x in select_resume_bullets(p, limit=8)
+        _sanitize_field(x, max_len=PROMPT_CHARACTER_BUDGET if "experience_excerpts" in p else 500)
+        for x in (p["experience_excerpts"] if "experience_excerpts" in p else select_resume_bullets(p, limit=8))
     ) if b]
     exp_block = "\n".join(f"  - {b}" for b in bullets) if bullets else "  (none provided)"
     matching_label = (
@@ -1406,6 +1434,7 @@ def _pipeline_generate(
     style: str | None,
     resume_bullets: list[str] | None = None,
     on_stage: Callable[[str], None] | None = None,
+    *, parts_cache: dict | None = None,
 ) -> str | None:
     """Run the multi-stage pipeline. Returns the raw final email
     (``Subject: ...\\n\\n<body>``) or ``None`` if the draft call failed (caller
@@ -1415,7 +1444,7 @@ def _pipeline_generate(
     ``on_stage`` (optional) is called with "drafting" / "judging" /
     "critiquing" / "revising" immediately before each LLM stage so the
     streaming route can surface progress; it must be cheap and non-raising."""
-    p = _common_parts(profile_dict, opp, resume_bullets=resume_bullets)
+    p = parts_cache if parts_cache is not None else _common_parts(profile_dict, opp, resume_bullets=resume_bullets)
     is_faculty = bool(p.get("is_faculty"))
     faculty_is_professor = bool(p.get("faculty_is_professor"))
     stu_brief = _render_student_brief(p)
@@ -1615,7 +1644,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.4"
+COLD_EMAIL_PIPELINE_VERSION = "w12.5"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -1738,6 +1767,18 @@ def _source_freshness(opp: dict) -> str:
     return "stale" if age.days > FRESHNESS_TTL_DAYS else "fresh"
 
 
+def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict, ExperienceSelection]:
+    """One source gate for every public email route; legacy strings are ignored."""
+    parts = _common_parts(profile_dict, safe_opp)
+    selection = select_experience(request.experience_evidence, parts, legacy_bullets=request.resume_bullets)
+    # Full eligible originals remain available to deterministic fact checks.
+    # Only the smaller, source-bound projection may enter a provider prompt.
+    parts["resume_bullets"] = [entry.text for entry in selection.eligible]
+    parts["experience_excerpts"] = [item["excerpt"] for item in selection.selected]
+    parts["experience_template_excerpt"] = selection.template["excerpt"] if selection.template else ""
+    return parts, selection
+
+
 def _run_engine(
     request: ColdEmailRequest,
     opp: dict,
@@ -1754,7 +1795,7 @@ def _run_engine(
     body = ""
     fallback_reason: str | None = None
     safe_opp = _contact_safe_opportunity(opp)
-    parts = _common_parts(profile_dict, safe_opp, resume_bullets=request.resume_bullets)
+    parts, experience = _experience_parts(request, profile_dict, safe_opp)
 
     if request.engine == "ai":
         # A faculty contact with no source-backed target signal cannot support
@@ -1779,8 +1820,9 @@ def _run_engine(
                     profile_dict,
                     safe_opp,
                     request.style,
-                    request.resume_bullets,
+                    parts["resume_bullets"],
                     on_stage=on_stage,
+                    **({"parts_cache": parts} if request.experience_evidence is not None else {}),
                 )
             except Exception:
                 logger.exception("cold-email: pipeline crashed; using template")
@@ -1817,7 +1859,8 @@ def _run_engine(
         # the fabrication gate degrades to — send an email with none of the
         # student's actual work in it.
         email_text = generate_cold_email(
-            profile_dict, safe_opp, resume_bullets=request.resume_bullets,
+            profile_dict, safe_opp, resume_bullets=parts["resume_bullets"],
+            parts_cache=parts,
         )
         subject, body = _extract_subject_and_body(email_text)
 
@@ -1842,6 +1885,7 @@ def _run_engine(
     response_parts = parts
 
     return ColdEmailResponse(
+        experience_usage=experience.usage() if method == "ai" else experience.quoted_usage(body),
         subject=subject,
         body=body,
         recipient_email=recipient_email,
@@ -1981,6 +2025,7 @@ async def generate_email_variants(
     authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
     safe_opp = _contact_safe_opportunity(opp)
+    parts, experience = _experience_parts(request, profile_dict, safe_opp)
     try:
         raw_variants = await run_blocking(
             generate_variants,
@@ -1989,7 +2034,8 @@ async def generate_email_variants(
             # Same bullets the single-draft route forwards. Every variant is a
             # deterministic template, so leaving them out here would keep three
             # of the four generated emails empty of the student's own work.
-            request.resume_bullets,
+            parts["resume_bullets"],
+            parts_cache=parts,
             timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS,
         )
     except BlockingWorkTimeout as exc:
@@ -2003,7 +2049,6 @@ async def generate_email_variants(
         opp, authenticated=authed,
     )
 
-    parts = _common_parts(profile_dict, safe_opp, resume_bullets=request.resume_bullets)
     results = []
     for v in raw_variants:
         subject, body = _extract_subject_and_body(v["text"])
@@ -2016,9 +2061,12 @@ async def generate_email_variants(
             "recipient_email": recipient_email,
             "mailto_link": _build_mailto_link(recipient_email, subject, body),
             "lab_type": v.get("lab_type") or lab_type,
+            "experience_usage": experience.quoted_usage(body),
         })
 
     return {
+        # The union across variants; each variant also has its exact receipt.
+        "experience_usage": experience.quoted_usage("\n".join(item["body"] for item in results)),
         "variants": results,
         "lab_type": lab_type,
         "recipient_status": recipient_status,
@@ -2052,9 +2100,10 @@ class EmailRefineRequest(BaseModel):
     # has always sent it; the optional signature was a bypass, not a feature.
     # A general-purpose text editor, if ever wanted, is a different endpoint.
     opportunity_id: str = Field(min_length=1)
-    # Optional resume bullets so a refine keeps claims the student's real
-    # experience supports (mirrors ColdEmailRequest.resume_bullets).
+    # Deprecated legacy input: parsed but never treated as confirmed facts.
+    # Every public email path uses the structured envelope instead.
     resume_bullets: list[str] = Field(default_factory=list)
+    experience_evidence: ExperienceEvidence | None = None
 
     @field_validator("opportunity_id")
     @classmethod
@@ -2098,11 +2147,7 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     # input to ``_common_parts`` and still let the route enforce no-target and
     # trusted-recipient invariants before provider I/O.
     profile_dict = request.profile.model_dump() if request.profile is not None else {}
-    parts = _common_parts(
-        profile_dict,
-        safe_opp,
-        resume_bullets=request.resume_bullets,
-    )
+    parts, experience = _experience_parts(request, profile_dict, safe_opp)
     if request.profile is None:
         # Do not advertise _common_parts' legacy UIUC/Student defaults as
         # evidence in a provider prompt for an anonymous legacy caller.
@@ -2115,7 +2160,8 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
         # Carried explicitly rather than dug out of `parts`: the deterministic
         # template below takes them as an argument, and a caller reaching into
         # another function's parts dict is how they drift apart.
-        "resume_bullets": request.resume_bullets,
+        "resume_bullets": parts["resume_bullets"],
+        "experience_selection": experience,
         "corpus": _build_email_corpus(parts, safe_opp),
         "prof_brief": _render_professor_brief(parts, safe_opp),
         "stu_brief": _render_student_brief(parts),
@@ -2136,6 +2182,7 @@ def _safe_refine_template_body(context: dict) -> str:
         template = generate_cold_email(
             profile_dict, context["safe_opp"],
             resume_bullets=context.get("resume_bullets"),
+            parts_cache=context["parts"],
         )
         subject, body = _extract_subject_and_body(template)
         return _guard_email_output(subject, body, context["parts"], context["safe_opp"])[1]
@@ -2170,6 +2217,8 @@ def _local_refine_fallback(
         if invalid:
             fallback_reason = fallback_reason or "fabrication"
             template_body = _safe_refine_template_body(context)
+            source_body = template_body
+            use_template = True
             retry = _local_refine(template_body, request.instruction)
             retry_candidate = redact_embedded_emails(retry["body"])
             normalized = _enforce_brief_greeting(
@@ -2191,6 +2240,12 @@ def _local_refine_fallback(
         else:
             candidate = normalized
     result["body"] = redact_embedded_emails(candidate)
+    result["experience_usage"] = (
+        (context["experience_selection"].quoted_usage(result["body"]) if use_template
+         else context["experience_selection"].local_usage(source_body)) if context is not None
+        else select_experience(request.experience_evidence, {}, legacy_bullets=request.resume_bullets).usage([], mode="local")
+    )
+    result["pipeline_version"] = COLD_EMAIL_PIPELINE_VERSION
     if fallback_reason is not None:
         result["fallback_reason"] = fallback_reason
     return result
@@ -2301,7 +2356,9 @@ async def refine_email(request: EmailRefineRequest):
             fallback_reason="fabrication",
         )
     _log_grounding_shadow(edited, corpus)
-    return {"body": redact_embedded_emails(edited), "method": "llm"}
+    return {"body": redact_embedded_emails(edited), "method": "llm",
+            "experience_usage": context["experience_selection"].usage() if context is not None else {},
+            "pipeline_version": COLD_EMAIL_PIPELINE_VERSION}
 
 
 def _local_refine(body: str, instruction: str) -> dict:

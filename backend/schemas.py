@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Literal, Union
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
@@ -313,17 +313,90 @@ class MatchesResponse(BaseModel):
     view_id: str = ""
 
 
+class ExperienceManualSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    kind: Literal["manual"]
+
+
+class ExperienceResumeSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    kind: Literal["resume"]
+    signature: str = Field(pattern=r"^[0-9a-f]{64}$")
+    quote: str = Field(min_length=1, max_length=6000)
+    start: int = Field(ge=0, le=60000)
+    end: int = Field(gt=0, le=60000)
+
+    @field_validator("quote")
+    @classmethod
+    def valid_unicode(cls, value: str) -> str:
+        value.encode("utf-8")
+        return value
+
+    @model_validator(mode="after")
+    def valid_range(self):
+        if not self.quote.strip() or self.end <= self.start or self.end - self.start != len(self.quote):
+            raise ValueError("source range must match the quote's Unicode codepoint length")
+        return self
+
+
+class ExperienceEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str = Field(min_length=1, max_length=80)
+    revision: int = Field(gt=0, le=9007199254740991)
+    status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
+    text: str = Field(min_length=1, max_length=6000)
+    source: Union[ExperienceManualSource, ExperienceResumeSource] = Field(discriminator="kind")
+
+    @field_validator("id", "text")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        value.encode("utf-8")
+        if not value.strip():
+            raise ValueError("experience fields must not be blank")
+        return value
+
+
+class ExperienceEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    version: Literal[1]
+    resume_text: str = Field(max_length=MAX_RESUME_TEXT_CHARACTERS)
+    entries: list[ExperienceEntry] = Field(max_length=100)
+
+    @field_validator("resume_text")
+    @classmethod
+    def valid_unicode(cls, value: str) -> str:
+        value.encode("utf-8")
+        return value
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def integer_version(cls, value):
+        if type(value) is not int:
+            raise ValueError("experience version must be integer 1")
+        return value
+
+    @model_validator(mode="after")
+    def valid_collection(self):
+        if len({entry.id for entry in self.entries}) != len(self.entries):
+            raise ValueError("duplicate experience entry id")
+        if sum(len(entry.text) for entry in self.entries) > 60000:
+            raise ValueError("experience text exceeds 60000 characters")
+        if sum(len(entry.source.quote) for entry in self.entries
+               if isinstance(entry.source, ExperienceResumeSource)) > 60000:
+            raise ValueError("experience quotes exceed 60000 characters")
+        return self
+
+
 class ColdEmailRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
     engine: str = "template"
     # Voice overlay for the AI engine. None = no overlay (lab-type default).
     style: str | None = None
-    # The student's real resume experience bullets (from /tailor/extract-
-    # bullets). Optional + defaulted so existing clients that omit it are
-    # unaffected. Only the AI engine uses them; they are added to the
-    # anti-fabrication corpus so a draft may cite the student's own experience.
+    # Legacy strings remain parseable but cannot authenticate experience.
+    # Only explicitly confirmed, current structured evidence is consumed.
     resume_bullets: list[str] = Field(default_factory=list)
+    experience_evidence: ExperienceEvidence | None = None
 
     @field_validator("profile")
     @classmethod
@@ -347,7 +420,7 @@ class ColdEmailRequest(BaseModel):
     @field_validator("resume_bullets")
     @classmethod
     def cap_bullets(cls, v: list) -> list:
-        # Mirror TailorRequest.cap_bullets: 12 × 500 chars caps the LLM budget.
+        # Deprecated wire compatibility only; these strings never enter the fact corpus.
         return [str(b)[:500] for b in v[:12] if str(b).strip()]
 
     @field_validator("engine")
@@ -367,7 +440,43 @@ class ColdEmailRequest(BaseModel):
         return v
 
 
+class ExperienceResumeReference(BaseModel):
+    kind: Literal["resume"]
+    signature: str
+    start: int
+    end: int
+
+
+class SelectedExperience(BaseModel):
+    id: str
+    revision: int
+    excerpt: str = Field(min_length=1, max_length=4000)
+    source: Union[ExperienceManualSource, ExperienceResumeReference] = Field(discriminator="kind")
+
+
+class ExcludedExperience(BaseModel):
+    id: str
+    revision: int
+    reason: Literal["candidate", "rejected", "withdrawn", "source_signature_mismatch", "source_quote_mismatch"]
+
+
+class ExperienceUsage(BaseModel):
+    version: Literal[1] = 1
+    eligible_count: int = 0
+    selected: list[SelectedExperience] = Field(default_factory=list, max_length=8)
+    excluded: list[ExcludedExperience] = Field(default_factory=list, max_length=100)
+    needs_review: bool = False
+    notices: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def bounded_receipt(self):
+        if sum(len(entry.excerpt) for entry in self.selected) > 4000:
+            raise ValueError("experience receipt exceeds 4000 characters")
+        return self
+
+
 class ColdEmailResponse(BaseModel):
+    experience_usage: ExperienceUsage = Field(default_factory=ExperienceUsage)
     subject: str
     body: str
     recipient_email: str

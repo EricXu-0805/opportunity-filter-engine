@@ -35,6 +35,7 @@
 // the revision + outbox live BESIDE it under STORAGE_KEYS.PROFILE_SYNC.
 
 import type { ProfileData, SkillWithLevel } from './types';
+import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -79,11 +80,10 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
 ];
 
 /** Fields that are one unit as far as conflict detection goes. The résumé
- *  text and the coursework extracted FROM it are meaningless apart: keeping
- *  one and taking the other from a different device produces coursework that
- *  no résumé on file supports (the exact state "remove my résumé" exists to
- *  prevent). Staging either always stages both. */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'];
+ *  text, extracted coursework and experience sources must stay together.
+ *  Taking them from different revisions can attach claims to the wrong résumé.
+ *  Staging any member stages the whole bundle. */
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries'];
 
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
@@ -93,7 +93,7 @@ export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'
 const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
-  research_interests: true, skills: true, resume_text: true, coursework: true,
+  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -138,37 +138,37 @@ function isProfileKey(key: string): key is ProfileKey {
  *  about — that is its downgrade guard — so the shape's owner declares them
  *  here, at module load, before any read can happen. */
 export const RESUME_BUNDLE_ID = 'resume';
-registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID]);
+registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
+  key !== 'experience_entries' || !value.present || validateExperienceEntries(value.value).ok
+));
 
-/** The résumé text and the coursework extracted from it are one unit (see
- *  RESUME_BUNDLE). A persisted outbox entry naming only half of it would send
- *  a patch that clears one and leaves the other — the exact torn state the
- *  bundle exists to prevent — so the missing half is materialised here, from
- *  the base if it has one and from the empty value if not. */
+function emptyResumeValue(key: ProfileKey): string | [] {
+  return key === 'resume_text' ? '' : [];
+}
+
+/** Complete a persisted partial bundle from its frozen base, or the empty
+ *  value for a field introduced after that base was saved. Locks and mutation
+ *  versions must cover every member even when the desired values already do. */
 function completeResumeBundle(pending: ProfilePendingWrite): ProfilePendingWrite {
   const present = RESUME_BUNDLE.filter((k) => pending.dirtyKeys.includes(k));
-  // Nothing to do only when the bundle is not involved at all. With BOTH
-  // halves present the keys are already there, but the LOCKS and versions
-  // still have to be normalized: one half locked and the other sendable is
-  // exactly the torn write the bundle exists to prevent.
+  // Partial locks must not allow the remaining bundle members to send alone.
   if (present.length === 0) return pending;
   const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
   const base = pending.baseProfile as unknown as Record<string, unknown>;
   const dirtyKeys = [...pending.dirtyKeys];
   const lockedKeys = [...pending.lockedKeys];
   const keyVersions = { ...pending.keyVersions };
-  // If either half is locked, BOTH are: sending the unlocked half alone is
-  // exactly the torn state the bundle exists to prevent.
+  // A lock on any member protects the whole document.
   const anyLocked = RESUME_BUNDLE.some((k) => lockedKeys.includes(k));
+  const inheritedVersion = Math.max(0, ...present.map((key) => keyVersions[key] ?? 0));
   for (const key of RESUME_BUNDLE) {
     if (!dirtyKeys.includes(key)) dirtyKeys.push(key);
-    if (!(key in desired)) desired[key] = key in base ? base[key] : (key === 'coursework' ? [] : '');
+    if (!(key in desired)) desired[key] = key in base ? base[key] : emptyResumeValue(key);
     if (anyLocked && !lockedKeys.includes(key)) lockedKeys.push(key);
     if (!(key in keyVersions)) {
-      // The half being materialised was never staged on its own; give it the
-      // partner's version so a confirmation acknowledges them together.
-      const partner = RESUME_BUNDLE.find((k) => k !== key);
-      keyVersions[key] = (partner && keyVersions[partner]) ?? 0;
+      // A newly materialized member follows the latest staged member. Do not
+      // arbitrarily inherit the first partner when the bundle has 3+ keys.
+      keyVersions[key] = inheritedVersion;
     }
   }
   return {
@@ -551,6 +551,7 @@ export function recordProfileIntent(
   // envelope read below would hand the live owner's document to a caller the
   // authority has already retired. Neither is repairable after the fact.
   if (!isOwnerTokenValid(token, token.uid)) return false;
+  if (!validateExperienceEntries(desired.experience_entries).ok) return false;
   ensureScope(token);
   const writer = opts.writer ?? DEFAULT_WRITER;
   const envelope = readProfileSyncEnvelopeStrict();
@@ -1424,7 +1425,8 @@ function consumeSkillOps(confirmed?: ProfilePendingWrite): void {
 // ---------------------------------------------------------------------------
 
 function isProfileObject(value: unknown): value is ProfileData {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+    && validateExperienceEntries((value as ProfileData).experience_entries).ok;
 }
 
 function stringList(value: unknown): string[] {
@@ -1478,7 +1480,21 @@ export function readProfileSyncEnvelopeStrict(): JournalResult<ProfileSyncEnvelo
   if (entry.status === 'unavailable') {
     return { ok: false, reason: `profile envelope unavailable: ${entry.reason}` };
   }
-  if (entry.status === 'absent') return { ok: true, value: null };
+  if (entry.status === 'absent') {
+    // Before an envelope exists, the legacy mirror may be the only copy.
+    // Reject malformed new evidence instead of migrating it as an empty row.
+    const mirror = readUserScopedRaw(STORAGE_KEYS.PROFILE);
+    if (mirror) {
+      try {
+        const profile = JSON.parse(mirror) as unknown;
+        if (profile && typeof profile === 'object' && !Array.isArray(profile)
+          && !validateExperienceEntries((profile as ProfileData).experience_entries).ok) {
+          return { ok: false, reason: 'profile experience evidence is malformed' };
+        }
+      } catch { /* Legacy JSON handling remains with the existing migration. */ }
+    }
+    return { ok: true, value: null };
+  }
   const parsedEnvelope = parseProfileSyncEnvelope(entry.value);
   return parsedEnvelope === null
     ? { ok: false, reason: 'profile envelope is not a shape this build understands' }
@@ -1497,6 +1513,11 @@ function parseProfileSyncEnvelope(raw: string): ProfileSyncEnvelope | null {
     if (!parsed || typeof parsed !== 'object') return null;
     const env = parsed as Partial<ProfileSyncEnvelope>;
     if (env.v !== 1) return null; // a future/rewritten shape is not guessed at
+    // Never turn malformed experience evidence into an absent row or outbox.
+    for (const profile of [env.confirmed?.profile, env.pending?.baseProfile,
+      env.pending?.desiredProfile, env.pending?.conflictRemote]) {
+      if (profile && !validateExperienceEntries(profile.experience_entries).ok) return null;
+    }
     const c = env.confirmed;
     const confirmed = c && typeof c.revision === 'number' && Number.isInteger(c.revision)
       && c.revision >= 1 && isProfileObject(c.profile)
@@ -1553,7 +1574,13 @@ function parseProfileSyncEnvelope(raw: string): ProfileSyncEnvelope | null {
  * about what one revision contains — so it is refused rather than resolved.
  */
 function writeEnvelope(envelope: ProfileSyncEnvelope, token: OwnerToken): boolean {
-  const current = readProfileSyncEnvelope()?.confirmed ?? null;
+  for (const profile of [envelope.confirmed?.profile, envelope.pending?.baseProfile,
+    envelope.pending?.desiredProfile, envelope.pending?.conflictRemote]) {
+    if (profile && !isProfileObject(profile)) return false;
+  }
+  const stored = readProfileSyncEnvelopeStrict();
+  if (!stored.ok) return false;
+  const current = stored.value?.confirmed ?? null;
   const next = envelope.confirmed;
   if (current && next) {
     if (next.revision < current.revision) return true; // stale, ignored — not a failure
@@ -1569,6 +1596,7 @@ function writeEnvelope(envelope: ProfileSyncEnvelope, token: OwnerToken): boolea
  *  purpose — changing it would break /results, /favorites, /compare, the
  *  roadmap and the school gate all at once for zero benefit. */
 function writeRawMirror(profile: ProfileData, token: OwnerToken): boolean {
+  if (!isProfileObject(profile)) return false;
   return writeLocalStorageJSON(STORAGE_KEYS.PROFILE, profile, token);
 }
 
@@ -2011,6 +2039,7 @@ async function hydrateLoadedProfile(
   // in-flight bookkeeping, and the lock branch below discovering the problem
   // afterwards does not put any of it back.
   if (!isTokenOwnerStillCurrent(token)) throw new OwnerNotReadyError();
+  if (loaded.profile && !isProfileObject(loaded.profile)) throw new ExperienceEvidenceError('invalid_entries');
   ensureScope(token);
   const reconciled = await withProfileLock(
     token,
@@ -2072,6 +2101,7 @@ function reconcileLoadedProfile(
   token: OwnerToken,
   observedBefore: LoadFence = { revision: 0, tombstone: null },
 ): ProfileHydration {
+  if (!readProfileSyncEnvelopeStrict().ok) throw new ExperienceEvidenceError('invalid_entries');
   const journal = readOutstandingOps();
   if (!journal.ok) {
     // The authority is unreadable. Writing the cloud row into the mirror now
@@ -2538,6 +2568,7 @@ export async function stageProfilePatch(
   if (gate) return gate;
   ensureScope(token);
 
+  if (!validateExperienceEntries(desired.experience_entries).ok) return { status: 'device-failed', phase: 'stage' };
   const effectiveKeys = expandBundles(keys);
   if (effectiveKeys.length === 0) return { status: 'blocked' };
 

@@ -19,6 +19,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.experience_fixtures import confirmed_experience
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
@@ -1237,7 +1239,7 @@ class TestColdEmailEngine:
             (k for k in (opp.get("keywords") or []) if len(str(k)) > 3), "research",
         )
         bullet = f"Built a {term} pipeline end to end"
-        resp = client.post(path, json={**cold_email_body, "resume_bullets": [bullet]})
+        resp = client.post(path, json={**cold_email_body, "experience_evidence": confirmed_experience([bullet])})
         assert resp.status_code == 200, resp.text
         payload = resp.json()
         text = payload.get("body") or " ".join(
@@ -1457,6 +1459,9 @@ class TestColdEmailEngine:
         method=ai. "Experience with Python and machine learning" would not:
         the profile lists machine learning as an interest, and an interest
         cannot support an experience claim."""
+        # This positive claim is backed by the student's explicit level choice.
+        # An ambiguous legacy imported level must remain beginner (M32).
+        cold_email_body["profile"]["hard_skills"][0]["confirmed"] = True
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
@@ -1620,6 +1625,9 @@ class TestColdEmailStyle:
         )
 
     def test_ai_path_echoes_applied_style(self, base_body, monkeypatch):
+        # This positive claim is backed by the student's explicit level choice.
+        # An ambiguous legacy imported level must remain beginner (M32).
+        base_body["profile"]["hard_skills"][0]["confirmed"] = True
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
@@ -7230,6 +7238,9 @@ class TestColdEmailStream:
         return events
 
     def test_stream_emits_stages_then_done(self, stream_body, monkeypatch):
+        # This positive claim is backed by the student's explicit level choice.
+        # An ambiguous legacy imported level must remain beginner (M32).
+        stream_body["profile"]["hard_skills"][0]["confirmed"] = True
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         # Single-draft pipeline: this test pins the stage RELAY order, and the
         # count-based mock below can't serve parallel angled drafts.

@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from backend.lib.grounding import numeric_achievement_violations
 from backend.routes import cold_email as ce
 from src.recommender.cold_email import generate_variants
+from tests.experience_fixtures import confirmed_experience
 
 PROFILE = {
     "name": "Eric", "school": "UIUC", "year": "sophomore",
@@ -42,7 +43,7 @@ def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None
     body = draft(claim)
     monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body)
-    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "resume_bullets": list(bullets)}
+    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(list(bullets))}
     if endpoint == "/cold-email":
         payload["engine"] = "ai"
     else:
@@ -149,7 +150,7 @@ def test_refine_receives_both_evidence_briefs_and_can_add_a_real_omitted_fact(em
     monkeypatch.setattr(ce, "chat_completion", provider)
     response = email_client.post("/api/cold-email/refine", json={
         "profile": PROFILE, "opportunity_id": OPP["id"],
-        "resume_bullets": ["Improved throughput by 45% using Python."],
+        "experience_evidence": confirmed_experience(["Improved throughput by 45% using Python."]),
         "current_body": draft("I am interested in hypersonics."),
         "instruction": "Emphasize the achievement in my resume",
     })

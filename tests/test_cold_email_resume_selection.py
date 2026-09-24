@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
 from src.recommender.cold_email import _common_parts, _pick_resume_bullet, generate_variants
+from tests.experience_fixtures import confirmed_experience
 
 PROFILE = {
     "name": "Audit Student", "school": "UIUC", "year": "sophomore",
@@ -84,7 +85,7 @@ def test_initial_and_refine_provider_receive_the_same_ranked_sources(email_clien
         return body if endpoint.endswith("/refine") else f"Subject: Research inquiry\n\n{body}"
 
     monkeypatch.setattr(ce, "chat_completion", provider)
-    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "resume_bullets": BULLETS}
+    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(BULLETS)}
     if endpoint.endswith("/refine"):
         payload.update(current_body="Dear Pat Lee,\n\nThank you for your time.", instruction="Use my relevant experience")
     else:
@@ -108,7 +109,7 @@ def test_template_endpoints_use_the_same_selected_source(email_client, monkeypat
 
     monkeypatch.setattr(ce, "chat_completion", unexpected_provider)
     response = email_client.post(f"/api{endpoint}", json={
-        "profile": PROFILE, "opportunity_id": OPP["id"], "resume_bullets": BULLETS,
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(BULLETS),
     })
     assert response.status_code == 200, response.text
     result = response.json()
@@ -121,7 +122,7 @@ def test_template_endpoints_use_the_same_selected_source(email_client, monkeypat
 @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
 def test_provider_failure_keeps_the_target_selected_template_example(email_client, monkeypatch, endpoint):
     monkeypatch.setattr(ce, "chat_completion", lambda *_args, **_kwargs: None)
-    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "resume_bullets": BULLETS}
+    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(BULLETS)}
     if endpoint.endswith("/refine"):
         payload.update(
             current_body="Dear Pat Lee,\n\nI have experience with Kubernetes.",
