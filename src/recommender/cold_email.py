@@ -822,24 +822,25 @@ def _common_parts(
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
         faculty_is_professor=faculty_is_professor,
-        # The student's real resume experience bullets (from /tailor/extract-
-        # bullets, already grounded). Only the AI pipeline supplies these; the
-        # deterministic template path leaves it empty.
+        # Internal callers supply already-admitted evidence. Public routes
+        # populate this only after the structured confirmation/source gate.
         resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
     )
 
 
 def generate_cold_email(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+    *, parts_cache: dict | None = None,
 ) -> str:
-    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
+    p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     return _build_balanced(p)
 
 
 def generate_variants(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+    *, parts_cache: dict | None = None,
 ) -> list[dict]:
-    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
+    p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     lab_type = p["lab_type"]
     return [
         {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p),     "lab_type": lab_type},
@@ -1027,6 +1028,12 @@ def _target_match_terms(p: dict) -> set[str]:
     return {_stem(t) for t in _significant_terms(target_text) if len(t) > 3}
 
 
+def resume_bullet_relevance(p: dict, text: str) -> int:
+    """Target-only lexical overlap, shared by raw and source-bound selectors."""
+    words = {_stem(word) for word in _significant_terms(text) if len(word) > 3}
+    return len(_target_match_terms(p) & words)
+
+
 def select_resume_bullets(
     p: dict, *, limit: int, min_overlap: int = 0,
 ) -> list[str]:
@@ -1037,15 +1044,13 @@ def select_resume_bullets(
     template uses a stricter threshold before volunteering one example. This
     lexical score prioritizes evidence; it does not prove a research connection.
     """
-    terms = _target_match_terms(p)
     scored: list[tuple[str, int]] = []
     for bullet in p.get("resume_bullets") or []:
         if not isinstance(bullet, str) or not bullet.strip():
             continue
         # Equality, not substring containment: "learning center" must not
         # match a whole topic merely because it contains the stem "learn".
-        words = {_stem(w) for w in _significant_terms(bullet) if len(w) > 3}
-        score = len(terms & words)
+        score = resume_bullet_relevance(p, bullet)
         if score >= min_overlap:
             scored.append((bullet, score))
     scored.sort(key=lambda item: item[1], reverse=True)
@@ -1054,6 +1059,8 @@ def select_resume_bullets(
 
 def _pick_resume_bullet(p: dict) -> str:
     """The strongest lexical match, quoted from the student's own source."""
+    if "experience_template_excerpt" in p:
+        return p["experience_template_excerpt"] or ""
     selected = select_resume_bullets(p, limit=1, min_overlap=_MIN_BULLET_OVERLAP)
     if not selected:
         return ""

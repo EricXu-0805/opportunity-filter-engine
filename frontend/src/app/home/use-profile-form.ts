@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import type { ExperienceEntry, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { parseGitHubProfile } from '@/lib/api';
+import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import {
   captureOwnerToken,
   isOwnerScopedLoadError,
@@ -160,13 +161,14 @@ export interface UseProfileFormResult {
   update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
   handleSubmit: () => void;
   handleShare: () => Promise<void>;
-  handleResumeParsed: (data: ResumeParseResponse) => void;
+  handleResumeParsed: (data: ResumeParseResponse) => boolean;
   /** The user removed the résumé on file: its text and the coursework
    *  extracted from it stop being part of the profile (and therefore of
    *  every match request). Skills and interests it contributed STAY —
    *  they are indistinguishable from ones typed or imported from GitHub,
    *  and silently deleting those would destroy the user's own work. */
-  handleResumeRemoved: () => void;
+  handleResumeRemoved: () => boolean;
+  handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
   handleGitHubImport: () => Promise<void>;
 }
 
@@ -2243,18 +2245,45 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     );
   }, [editProfile, editingOrigin, screenOrigin]);
 
+  const handleExperienceChange = useCallback((entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }): boolean => {
+    if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
+    const origin = editingOrigin();
+    if (!origin) return false;
+    const current = profileRef.current;
+    // A delayed extraction or a superseded editor cannot replace newer work.
+    if ((current.resume_text ?? '') !== expected.resumeText
+      || JSON.stringify(current.experience_entries ?? []) !== expected.entriesJson
+      || !validateExperienceEntries(current.experience_entries).ok
+      || !validateExperienceEntries(entries).ok) return false;
+    editProfile((prev) => ({ ...prev, experience_entries: entries }), ['experience_entries'], origin);
+    return true;
+  }, [identityGeneration, editingOrigin, editProfile]);
+
   // Rebuilt on every identity transition (identityGeneration is a dep), so
   // a resume parse that started under the previous identity calls the
   // handler it captured THEN — which refuses — instead of the current one.
   // The uploader subtree is separately remounted by the same generation
   // (see page.tsx), which is what clears its own filename/"on file" badge.
   const handleResumeParsed = useCallback((data: ResumeParseResponse) => {
-    if (identityGeneration !== identityGenerationRef.current) return;
+    if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     // A parse that started on this screen finishes on this screen or nowhere.
     // Taken BEFORE the ledger below: a fresh token here would file an old
     // screen's extracted skills as the current owner's own additions.
     const origin = editingOrigin();
-    if (!origin) return;
+    if (!origin || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
+    if (!validateExperienceEntries(profileRef.current.experience_entries).ok) {
+      setSaveStatus('error');
+      return false;
+    }
+    let resumeEntries: ExperienceEntry[];
+    try {
+      resumeEntries = profileRef.current.resume_text === data.raw_text
+        ? (profileRef.current.experience_entries ?? [])
+        : withdrawResumeEntries(profileRef.current.experience_entries);
+    } catch {
+      setSaveStatus('error');
+      return false;
+    }
     // `beginner`, not `experienced`. The extractor is a bare presence test over
     // a fixed list (pdf-parser.ts extractSkills), so "Relevant coursework:
     // Introduction to Python" and "hoping to learn PyTorch" both matched — and
@@ -2284,6 +2313,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         ...prev,
         skills: mergeSkills(prev.skills, newSkills),
         resume_text: data.raw_text,
+        experience_entries: resumeEntries,
         coursework: data.extracted_coursework,
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.
@@ -2292,24 +2322,30 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           : (data.suggested_interests ?? ''),
       };
     }, undefined, origin);
-  }, [identityGeneration, editProfile, editingOrigin]);
+    return true;
+  }, [identityGeneration, editProfile, editingOrigin, setSaveStatus]);
 
   const handleResumeRemoved = useCallback(() => {
+    if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     // PREFLIGHT. This action edits the form, takes the status line and sends
     // immediately, so a check further down would already have painted a dead
     // screen and built a document from it.
     const origin = editingOrigin();
-    if (!origin) return;
+    if (!origin || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
+    if (!validateExperienceEntries(profileRef.current.experience_entries).ok) {
+      setSaveStatus('error');
+      return false;
+    }
     editProfile(
       (prev) => (
         (prev.resume_text ?? '') === '' && (prev.coursework?.length ?? 0) === 0
+          && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           ? prev
-          : { ...prev, resume_text: '', coursework: [] }
+          : { ...prev, resume_text: '', coursework: [], experience_entries: removeResumeEntries(prev.experience_entries) }
       ),
-      // Explicit intent, not a diff: on a form whose row has not landed yet
-      // both fields are already empty, so there is nothing for a diff to
-      // see — and the row landing afterwards would put the résumé back.
-      ['resume_text', 'coursework'],
+      // Record the whole source bundle, including an already-empty member.
+      // Deletion must not revive old quoted evidence during reconciliation.
+      ['resume_text', 'coursework', 'experience_entries'],
       origin,
     );
     // Removal does not wait for the 1.5s debounce: until it is persisted,
@@ -2317,7 +2353,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // résumé the user just deleted. It supersedes any pending save (this
     // snapshot is strictly newer) and goes through the same token and the
     // same profile-row queue as every other write.
-    if (!hydrationReadyRef.current || shareDraftActiveRef.current) return;
+    if (shareDraftActiveRef.current) return true;
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -2328,6 +2364,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       ...profileRef.current,
       resume_text: '',
       coursework: [],
+      experience_entries: removeResumeEntries(profileRef.current.experience_entries),
       search_weight: weightRef.current,
     }) as ProfileData & { search_weight: number };
     // This exact form state is now being persisted by an explicit action,
@@ -2350,8 +2387,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // action with a specific meaning, and folding an unrelated half-typed
     // field into it would make the removal fail for a reason the user cannot
     // connect to what they clicked.
-    commitSave(cleansed, ['resume_text', 'coursework'], origin, saveIntentRef.current);
-  }, [editProfile, commitSave, editingOrigin, setSaveStatus]);
+    commitSave(cleansed, ['resume_text', 'coursework', 'experience_entries'], origin, saveIntentRef.current);
+    return true;
+  }, [identityGeneration, editProfile, commitSave, editingOrigin, setSaveStatus]);
 
   // Imports GitHub-derived skills and returns them (without mutating profile),
   // so both the manual button and submit-time auto-import can reuse it without a
@@ -3144,6 +3182,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     handleShare,
     handleResumeParsed,
     handleResumeRemoved,
+    handleExperienceChange,
     handleGitHubImport,
   };
 }

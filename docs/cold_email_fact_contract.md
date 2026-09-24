@@ -1,6 +1,6 @@
 # Cold Email fact and draft contract
 
-Updated 2026-09-24. Pipeline version: `w12.4`. See also `docs/matching_logic.md`;
+Updated 2026-09-24. Pipeline version: `w12.5`. See also `docs/matching_logic.md`;
 Cold Email retains its existing AI pipeline and deterministic fallback, while
 Match remains deterministic by default.
 
@@ -28,33 +28,41 @@ project is not fully detected. Full per-claim source identity, versioned
 dependencies, and human review of authorized sample emails remain necessary.
 The checks do not prove reply rates or the quality of every provider output.
 
-## Experience selection (M31 partial)
+## Confirmed experience selection (M12/M17 partial)
 
-- Initial AI generation and interactive refinement use the same student brief:
-  rank all accepted resume bullets against the target's stated research and
-  requirements, keep input order for ties, then take at most eight. A relevant
-  ninth-to-twelfth bullet can therefore displace an earlier weak match.
-- Deterministic templates and their variants use the same ranking with a
-  two-shared-word minimum before quoting one example. The introduction says
-  it is an example of the student's experience, not proof it is "most relevant".
-- Student interests remain available as aspirations but never contribute to
-  target relevance. Original bullet strings and the full accepted evidence
-  list remain intact for factual validation; selection does not blend projects.
-- This is English stem/word overlap, not semantic relevance or verification of
-  a problem/method/project connection. The existing request limit is still
-  twelve bullets of at most 500 characters; this change does not search every
-  experience in a full resume. M31 still requires per-email research-connection
-  review and evidence coverage beyond this bounded input.
-- Generation (including streaming) and variants report the current pipeline version (`w12.4`). Refinement has
-  no draft-cache/version field. The modal reuses a cached AI draft only when a
-  fresh, session-guarded variants response and the cached generation response
-  both have the same nonempty pipeline version, as well as satisfying the
-  existing TTL and corpus checks. The comparison version is not hardcoded;
-  an old generation response cannot establish its own current version.
-- Automatic and manual generation wait for variants from the current target
-  session. Late work from an earlier target cannot open that gate. Controlled
-  frontend regressions cover these cache/session boundaries; no real provider
-  output or overall email quality was validated by those tests.
+See `docs/experience_evidence_contract.md` for the versioned input and receipt.
+Public email routes no longer treat legacy `resume_bullets` strings as evidence.
+They remain parseable and produce an explicit review notice; generation can
+still use the existing skills/coursework rules. An explicit empty structured
+collection never falls back to those strings or to automatic raw extraction.
+
+- Initial generation, streaming, variants and refinement admit only confirmed
+  manual entries or confirmed resume entries whose exact SHA-256 and Unicode
+  source range match the supplied current resume. Other entries are excluded
+  with a reason. They cannot supply facts to either prompts or final checks.
+- All eligible full entries participate in deterministic target relevance
+  ranking before the eight-entry / 4,000-total-codepoint prompt cap. Complete
+  entries are packed without splitting sentences or clipping qualifiers.
+  Nonfitting entries remain in the library and produce a budget notice; a
+  valid entry longer than 4,000 codepoints is not yet sent to the model.
+- Templates use the same full-entry ranking with the existing two-word minimum
+  and at most one complete entry no longer than 220 codepoints. Longer entries
+  produce a template-budget notice. A neutral final recovery uses none.
+  Local refinement reports complete confirmed facts present in its actual
+  input, capped at eight / 4,000 with an explicit partial-receipt notice.
+  Every result reports context supplied for its final engine, not sentence-
+  by-sentence citations. No provider-call count or total prompt budget grows.
+- Complete eligible entry text remains in the deterministic student fact
+  corpus. It is not all copied into the LLM prompt. Skills retain their
+  separate level-confirmation rules; confirming an experience never upgrades
+  a skill level. Target interests do not authenticate student experience.
+- Selection is English stem/word overlap, not semantic relevance or proof of
+  a project/research connection. Full Match/Tailor/Renovate library consumers
+  and arbitrary per-claim source binding remain separate work.
+- Generation, variants and refinement report pipeline version `w12.5`.
+  The modal's existing current-session variants/version/TTL/corpus guards
+  prevent old cached drafts from establishing their own current version.
+  These controlled tests do not validate real provider quality or reply rates.
 
 ## Unsupported action claims and skill levels (M32 partial)
 

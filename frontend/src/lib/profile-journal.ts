@@ -369,15 +369,19 @@ let isKnownKey: ((key: string) => boolean) | null = null;
  *  together. An unknown one DOES change semantics — it would be ungrouped —
  *  so it fails closed like an unknown key. */
 let knownBundles: ReadonlySet<string> = new Set();
+let isValidFieldValue: ((key: string, value: JournalValue) => boolean) | null = null;
 export function registerJournalKeyGuard(
   guard: (key: string) => boolean,
   bundles: readonly string[] = [],
+  valueGuard?: (key: string, value: JournalValue) => boolean,
 ): void {
   isKnownKey = guard;
+  isValidFieldValue = valueGuard ?? null;
   knownBundles = new Set(bundles);
 }
 export function clearJournalKeyGuardForTests(): void {
   isKnownKey = null;
+  isValidFieldValue = null;
   knownBundles = new Set();
 }
 
@@ -438,6 +442,9 @@ function parseOp(raw: string | null, storageKey: string): JournalResult<JournalO
       return { ok: false, reason: `${storageKey} has a malformed field` };
     }
     if (!isKnownKey(f.key)) return { ok: false, reason: `unknown profile key ${f.key}` };
+    if (isValidFieldValue && (!isValidFieldValue(f.key, base) || !isValidFieldValue(f.key, desired))) {
+      return { ok: false, reason: `${storageKey} has an invalid value for ${f.key}` };
+    }
     fields.push({ key: f.key, base, desired });
   }
   // The KEY must name the operation inside it. Without this binding, a
@@ -555,6 +562,9 @@ export function appendJournalOp(
   // closed on — the whole journal becomes unreadable because of one bad
   // write, and the writer that made it is long gone.
   if (!resolutionIsWellFormed(op)) return null;
+  if (isValidFieldValue && op.fields.some((field) => (
+    !isValidFieldValue!(field.key, field.base) || !isValidFieldValue!(field.key, field.desired)
+  ))) return null;
   const keys = opKeys();
   if (!keys.ok || keys.value.length >= MAX_OUTSTANDING_OPS) return null;
   // Before any key is written: an operation that cannot be given a safe,
@@ -638,6 +648,7 @@ const MAX_REBASE_RECEIPTS = MAX_OUTSTANDING_OPS;
  */
 export function appendRebaseReceipt(receipt: RebaseReceipt, token: OwnerToken): boolean {
   if (!isOwnerTokenValid(token, token.uid)) return false;
+  if (!isRebaseReceipt(receipt)) return false;
   const key = `${REBASE_PREFIX}${receipt.ancestorOpId}`;
   const serialized = JSON.stringify(receipt);
   // "Nothing is filed here" is what permits this write. A failed read is not
@@ -665,6 +676,9 @@ function isRebaseReceipt(value: unknown): value is RebaseReceipt {
   const profile = r.profile as Record<string, unknown>;
   if (Object.keys(profile).some((k) => !k)) return false;
   if (!Object.values(profile).every(isJournalValue)) return false;
+  if (isValidFieldValue && Object.entries(profile).some(([key, value]) => (
+    !isValidFieldValue!(key, value as JournalValue)
+  ))) return false;
   // Every key it claims to have confirmed must be one it describes.
   return (r.confirmedKeys as string[]).every((k) => k in profile);
 }

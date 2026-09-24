@@ -5,6 +5,7 @@ import type {
   OpportunitiesResponse,
   ColdEmailEngine,
   ColdEmailResponse,
+  ExperienceUsage,
   EmailStyle,
   EmailVariantsResponse,
   StatsResponse,
@@ -760,6 +761,16 @@ export async function getShortlistOpportunities(ids: string[]): Promise<Shortlis
   return { opportunities, unavailableIds };
 }
 
+/** Cold Email always sends an explicit evidence envelope. An empty confirmed
+ * library must never resurrect legacy raw strings as experience facts. */
+function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
+  return {
+    version: 1,
+    resume_text: profile?.resume_text ?? '',
+    entries: profile?.experience_entries ?? [],
+  };
+}
+
 /** POST /api/cold-email — generate a cold email draft */
 export async function generateColdEmail(
   profile: ProfileData,
@@ -770,14 +781,10 @@ export async function generateColdEmail(
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
+    experience_evidence: coldEmailExperienceEvidence(profile),
   };
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
-  // The student's real resume experience bullets, so the AI draft can cite
-  // their actual work. Additive + optional; the backend grounds them.
-  if (options.resumeBullets && options.resumeBullets.length > 0) {
-    body.resume_bullets = options.resumeBullets;
-  }
   return requestWithRevealRetry<ColdEmailResponse>(
     '/cold-email',
     { method: 'POST', body: JSON.stringify(body) },
@@ -808,12 +815,10 @@ export async function generateColdEmailStream(
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
+    experience_evidence: coldEmailExperienceEvidence(profile),
   };
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
-  if (options.resumeBullets && options.resumeBullets.length > 0) {
-    body.resume_bullets = options.resumeBullets;
-  }
 
   // Reveal token only (no refresh-retry here: the variants call that always
   // precedes a stream already refreshed a stale session, and a locked stream
@@ -888,11 +893,8 @@ export async function generateColdEmailStream(
 export async function getEmailVariants(
   profile: ProfileData,
   opportunityId: string,
-  /** The student's own résumé bullets. #803 wired these through the endpoint —
-   *  "leaving them out here would keep three of the four generated emails empty
-   *  of the student's own work" — and no caller ever sent any, so every
-   *  template variant was built without them. */
-  resumeBullets: string[] = [],
+  /** Deprecated compatibility argument: unconfirmed raw strings are ignored. */
+  _legacyResumeBullets: string[] = [],
 ): Promise<EmailVariantsResponse> {
   return requestWithRevealRetry<EmailVariantsResponse>(
     '/cold-email/variants',
@@ -901,7 +903,7 @@ export async function getEmailVariants(
       body: JSON.stringify({
         profile: toProfileRequest(profile),
         opportunity_id: opportunityId,
-        resume_bullets: resumeBullets,
+        experience_evidence: coldEmailExperienceEvidence(profile),
       }),
     },
     (resp) => resp.recipient_status === 'sign_in_required',
@@ -916,20 +918,17 @@ export async function refineEmail(
   // server resolves that target before it will spend anything. Optional here
   // only ever meant "send null and hope"; the modal has always had the id.
   opportunityId: string,
-  options: { resumeBullets?: string[] } = {},
-): Promise<{ body: string; method: string; fallback_reason?: string }> {
-  return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
+  /** Deprecated compatibility argument: only profile experience entries count. */
+  _legacyOptions: { resumeBullets?: string[] } = {},
+): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage }> {
+  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage }>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,
-      // The student's real resume bullets keep experience claims grounded when
-      // a refine instruction asks to emphasize them (additive + optional).
-      ...(options.resumeBullets && options.resumeBullets.length > 0
-        ? { resume_bullets: options.resumeBullets }
-        : {}),
+      experience_evidence: coldEmailExperienceEvidence(profile),
     }),
   });
 }

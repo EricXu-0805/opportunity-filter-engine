@@ -7,6 +7,7 @@ import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useT } from '@/i18n/client';
 
 import { AcademicProfileCard } from './home/AcademicProfileCard';
+import { ExperienceLibraryCard } from './home/ExperienceLibraryCard';
 import { DocumentsCard } from './home/DocumentsCard';
 import { HeroSection } from './home/HeroSection';
 import { LiveDatabaseCard } from './home/LiveDatabaseCard';
@@ -61,6 +62,7 @@ function HomePageInner() {
     handleShare,
     handleResumeParsed,
     handleResumeRemoved,
+    handleExperienceChange,
     handleGitHubImport,
   } = useProfileForm(t);
 
@@ -96,8 +98,16 @@ function HomePageInner() {
           <DocumentsCard
             key={identityGeneration}
             profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
             onResumeParsed={handleResumeParsed}
             onResumeRemoved={handleResumeRemoved}
+            t={t}
+          />
+          <ExperienceLibraryCard
+            key={`experience-${identityGeneration}`}
+            profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
+            onChange={handleExperienceChange}
             t={t}
           />
           <OnlineProfilesCard

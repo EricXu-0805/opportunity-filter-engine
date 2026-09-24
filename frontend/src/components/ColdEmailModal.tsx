@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
@@ -24,7 +24,6 @@ import {
   generateColdEmailStream,
   getEmailVariants,
   refineEmail,
-  extractResumeBullets,
   type ColdEmailStage,
 } from '@/lib/api';
 import {
@@ -34,7 +33,8 @@ import {
 } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
-import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus } from '@/lib/types';
+import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
+import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -257,6 +257,10 @@ export default function ColdEmailModal({
 }: ColdEmailModalProps) {
   const { t } = useT();
   const { openModal } = useAuthModal();
+  // Bind requests and cache lifetime to all factual inputs, including entry
+  // status/revision/source changes and an in-place profile update by a caller.
+  const profileFingerprint = JSON.stringify(profile);
+  const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Missing sender identity is its own state (not a generic error): the fix is
@@ -297,6 +301,12 @@ export default function ColdEmailModal({
   // currently-listed professor. Default 'unknown' shows nothing: an older
   // cached response without the field must not manufacture a warning OR a
   // false all-clear.
+  const [experienceUsage, setExperienceUsage] = useState<ExperienceUsage | null>(null);
+  const [experienceNeedsReview, setExperienceNeedsReview] = useState(false);
+  const experienceBudgetOmission = experienceUsage?.notices.some((notice) =>
+    notice === 'experience_prompt_budget_omission' || notice === 'experience_template_budget_omission',
+  ) ?? false;
+  const experienceReceiptLimited = experienceUsage?.notices.includes('experience_usage_receipt_limit') ?? false;
   const [freshness, setFreshness] =
     useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
   const [copied, setCopied] = useState(false);
@@ -356,14 +366,6 @@ export default function ColdEmailModal({
   const [retired, setRetired] = useState(false);
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  // Cache the resume experience bullets extracted from the profile's resume
-  // text so every AI (re)generation reuses one extraction. Keyed by the text
-  // it was extracted from — the modal stays mounted across open/close cycles,
-  // so an unkeyed cache would keep serving bullets from a résumé the user has
-  // since replaced. null = not yet attempted.
-  const resumeBulletsRef = useRef<{ forText: string; bullets: string[] } | null>(null);
-  // How many résumé bullets the currently-shown variants were generated from.
-  const variantsBuiltWithRef = useRef(0);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   // AI is the default engine: one automatic pipeline run per open, kicked off
   // once the template variants land. Reset on close.
@@ -424,14 +426,13 @@ export default function ColdEmailModal({
       if (isTokenOwnerStillCurrent(owner)) return;
       sendSessionRef.current += 1;
       aiCacheRef.current.clear();
-      resumeBulletsRef.current = null;
       if (isOpen) {
         closeDraft();
       }
     });
   }, [isOpen, closeDraft]);
 
-  useEffect(() => { aiCacheRef.current.clear(); }, [profile]);
+  useLayoutEffect(() => { aiCacheRef.current.clear(); }, [profileFingerprint]);
 
   const fetchVariants = useCallback(async (preserveDraft = false) => {
     const sessionCurrent = captureDraftSession();
@@ -448,12 +449,7 @@ export default function ColdEmailModal({
     setError(null);
     setNameRequired(false);
     try {
-      // The bullets this fetch was built with, so the re-fetch below happens
-      // exactly once — when extraction turns [] into real work.
-      const bullets = resumeBulletsRef.current?.forText === (profile.resume_text ?? '')
-        ? resumeBulletsRef.current.bullets : [];
-      variantsBuiltWithRef.current = bullets.length;
-      const data = await getEmailVariants(profile, opportunityId, bullets);
+      const data = await getEmailVariants(requestProfile, opportunityId);
       if (!current()) return;
       variantsReadyRef.current = true;
       setVariants(data.variants);
@@ -479,6 +475,7 @@ export default function ColdEmailModal({
         setBody(first.body);
         setRecipient(first.recipient_email);
         setActiveVariant(0);
+        setExperienceUsage(first.experience_usage ?? null);
       }
       if (!preserveDraft) setChatMessages([
         { role: 'assistant', content: t('coldEmail.generated', { count: data.variants.length }) },
@@ -493,7 +490,7 @@ export default function ColdEmailModal({
     } finally {
       if (current() && !preserveDraft) setLoading(false);
     }
-  }, [profile, opportunityId, t, missingStudentName, captureDraftSession]);
+  }, [requestProfile, opportunityId, t, missingStudentName, captureDraftSession]);
 
   useLayoutEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect --
@@ -545,6 +542,8 @@ export default function ColdEmailModal({
       setRecipientStatus('unavailable');
       setGrounding('specific');
       setFreshness('unknown');
+      setExperienceUsage(null);
+      setExperienceNeedsReview(false);
       setCopied(false);
       setCopyFailed(false);
       setError(null);
@@ -554,6 +553,34 @@ export default function ColdEmailModal({
     };
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [isOpen, fetchVariants]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const current = captureDraftSession();
+    // This only supplies a review hint. Send the complete envelope unchanged;
+    // the backend independently validates confirmation and current provenance.
+    void Promise.resolve().then(async () => {
+      const parsed = validateExperienceEntries(requestProfile.experience_entries);
+      if (!parsed.ok) {
+        if (current()) setExperienceNeedsReview(true);
+        return;
+      }
+      const entries = parsed.value;
+      const rawText = requestProfile.resume_text ?? '';
+      let needsReview = entries.some((entry) => entry.status === 'candidate')
+        || (rawText.trim().length > 0 && entries.length === 0);
+      const sourced = entries.filter((entry) => entry.status === 'confirmed' && entry.source.kind === 'resume');
+      if (sourced.length > 0) {
+        try {
+          const expectedDigest = await sourceDigest(rawText);
+          needsReview ||= sourced.some((entry) => !isActiveExperience(entry, { rawText, expectedDigest }));
+        } catch {
+          needsReview = true;
+        }
+      }
+      if (current()) setExperienceNeedsReview(needsReview);
+    });
+  }, [isOpen, requestProfile, captureDraftSession]);
 
   useEffect(() => {
     if (!isOpen || retired) return;
@@ -642,6 +669,7 @@ export default function ColdEmailModal({
     setActiveVariant(idx);
     setSubject(v.subject);
     setBody(v.body);
+    setExperienceUsage(v.experience_usage ?? null);
     // Variants share one server-resolved recipient; when the reveal is locked
     // they carry "" — never wipe an address the user typed themselves.
     setRecipient((prev) => v.recipient_email || prev);
@@ -682,6 +710,7 @@ export default function ColdEmailModal({
         lab_type: resp.lab_type ?? labType ?? null,
         method: resp.method,
         fallback_reason: resp.fallback_reason,
+        experience_usage: resp.experience_usage,
       };
       setAiVariant(v);
       if (contactIsCurrent) {
@@ -692,6 +721,7 @@ export default function ColdEmailModal({
         setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
+        setExperienceUsage(v.experience_usage ?? null);
         if (contactIsCurrent) {
           setRecipient((prev) => v.recipient_email || prev);
         }
@@ -724,58 +754,21 @@ export default function ColdEmailModal({
       ]);
     }
     try {
-      // Extract the student's real resume bullets once per résumé text, so the
-      // AI draft can cite their actual experience (the backend grounds them).
-      // Best-effort: a failure just falls back to skills/coursework-only
-      // grounding. Re-extracts when the résumé text changes (stale-cache fix).
-      const resumeText = profile.resume_text ?? '';
-      if (
-        grounding !== 'no_target_data'
-        && (resumeBulletsRef.current === null || resumeBulletsRef.current.forText !== resumeText)
-      ) {
-        try {
-          const bullets = resumeText ? (await extractResumeBullets(resumeText)).bullets ?? [] : [];
-          if (!current()) return;
-          resumeBulletsRef.current = {
-            forText: resumeText,
-            bullets,
-          };
-        } catch {
-          if (!current()) return;
-          resumeBulletsRef.current = { forText: resumeText, bullets: [] };
-        }
-      }
-      // No target-side research facts means the backend will deliberately
-      // serve its honest insufficient-evidence template.  Resume extraction
-      // cannot improve that target grounding, so skip this separate provider
-      // path for both automatic and user-triggered AI attempts.
-      const bullets = grounding === 'no_target_data'
-        ? []
-        : (resumeBulletsRef.current?.bullets ?? []);
-      // The templates are fetched before extraction has run, so the first set
-      // is always built without the student's own work — and those are what a
-      // variant tab shows, and what the student sends whenever the AI pass
-      // degrades. Refetch once, when extraction turns [] into real bullets.
-      if (bullets.length > 0 && variantsBuiltWithRef.current === 0) {
-        void fetchVariants(true);
-      }
-      const opts = {
-        engine: 'ai' as const,
-        style,
-        ...(bullets.length > 0 ? { resumeBullets: bullets } : {}),
-      };
+      // Confirmed entries travel in the API's evidence envelope. The modal
+      // never extracts raw strings or confirms an imported experience itself.
+      const opts = { engine: 'ai' as const, style };
       let resp;
       try {
         // Stream-first: shows which pipeline stage is running. Any transport
         // failure (old backend, proxy buffering, network hiccup mid-stream)
         // falls back to the blocking route.
-        resp = await generateColdEmailStream(profile, opportunityId, opts, (stage) => {
+        resp = await generateColdEmailStream(requestProfile, opportunityId, opts, (stage) => {
           if (current()) setAiStage(stage);
         });
       } catch {
         if (!current()) return;
         setAiStage(null);
-        resp = await generateColdEmail(profile, opportunityId, opts);
+        resp = await generateColdEmail(requestProfile, opportunityId, opts);
       }
       if (!current()) return;
       if (resp.method === 'ai') {
@@ -815,7 +808,7 @@ export default function ColdEmailModal({
         setAiStage(null);
       }
     }
-  }, [missingStudentName, variants.length, profile, opportunityId, labType, grounding, t, fetchVariants, captureDraftSession]);
+  }, [missingStudentName, variants.length, requestProfile, opportunityId, labType, t, captureDraftSession]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -856,16 +849,14 @@ export default function ColdEmailModal({
       msg.requestId === requestId ? { ...msg, content } : msg));
     setChatMessages((prev) => [...prev, { requestId, role: 'assistant', content: t('coldEmail.editing') }]);
     try {
-      const result = await refineEmail(body, instruction, profile, opportunityId, {
-        resumeBullets: resumeBulletsRef.current?.forText === (profile.resume_text ?? '')
-          ? resumeBulletsRef.current.bullets : undefined,
-      });
+      const result = await refineEmail(body, instruction, requestProfile, opportunityId);
       if (!current()) return;
       if (draftRevisionRef.current !== revision) {
         reply(t('coldEmail.editSuperseded'));
         return;
       }
       setBody(result.body);
+      setExperienceUsage(result.experience_usage ?? null);
       reply(
             result.method === 'llm'
               ? t('coldEmail.doneLlm')
@@ -1142,6 +1133,11 @@ export default function ColdEmailModal({
             <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 sm:py-20 gap-4 text-center">
               <AlertCircle className="w-8 h-8 shrink-0 text-red-500" />
               <p className="text-sm text-red-600 break-words max-w-full">{error}</p>
+              {experienceNeedsReview && (
+                <Link href="/#experience-library" onClick={closeDraft} className="text-sm font-medium text-indigo-600 underline">
+                  {t('coldEmail.experienceReviewCta')}
+                </Link>
+              )}
               <button type="button" onClick={() => void fetchVariants()} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
             </div>
           </div>
@@ -1225,6 +1221,36 @@ export default function ColdEmailModal({
                 </div>
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
+                  <section className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600" data-testid="cold-email-experience">
+                    <details>
+                      <summary className="cursor-pointer font-semibold text-gray-800">{t('coldEmail.experienceTitle')}</summary>
+                      <p className="mt-2">{t('coldEmail.experienceExplanation')}</p>
+                      {!experienceUsage ? (
+                        <p className="mt-2">{t('coldEmail.experienceUnavailable')}</p>
+                      ) : experienceUsage.selected.length === 0 ? (
+                        !experienceBudgetOmission && !experienceReceiptLimited && <p className="mt-2">{t('coldEmail.experienceNone')}</p>
+                      ) : (
+                        <ul className="mt-2 space-y-2">
+                          {experienceUsage.selected.map((entry) => (
+                            <li key={`${entry.id}:${entry.revision}`} className="break-words">
+                              <p>{entry.excerpt}</p>
+                              <span className="text-gray-500">{t(entry.source.kind === 'resume' ? 'coldEmail.experienceSourceResume' : 'coldEmail.experienceSourceManual')}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </details>
+                    {experienceReceiptLimited && <p className="mt-2">{t('coldEmail.experienceReceiptLimit')}</p>}
+                    {(experienceBudgetOmission || experienceNeedsReview || experienceUsage?.needs_review) && (
+                      <div className="mt-2 border-t border-gray-200 pt-2" data-testid="cold-email-experience-review">
+                        {experienceBudgetOmission && <p>{t('coldEmail.experienceBudgetNote')}</p>}
+                        {(experienceNeedsReview || experienceUsage?.needs_review) && <p>{t('coldEmail.experienceReviewNeeded')}</p>}
+                        <Link href="/#experience-library" onClick={closeDraft} className="mt-1 inline-block font-medium text-indigo-600 underline">
+                          {t('coldEmail.experienceReviewCta')}
+                        </Link>
+                      </div>
+                    )}
+                  </section>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       {t('coldEmail.to')}

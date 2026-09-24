@@ -107,26 +107,42 @@ describe('HomePage — identity-private child state', () => {
 
   it('discards the previous identity\'s resume upload state on an account switch', async () => {
     render(<HomePage />);
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     // next/dynamic({ssr:false}) resolves the (mocked) module asynchronously.
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('pick-resume'));
     expect(screen.getByTestId('resume-filename').textContent).toBe('u1-resume.pdf');
 
+    resolveProfileLoad = null;
     emitAuth('home-page-u2');
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    expect(screen.queryByTestId('resume-filename')).toBeNull();
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
 
     await waitFor(() => expect(screen.getByTestId('resume-filename').textContent).toBe(''));
   });
 
   it('keeps the uploader mounted across a same-identity re-observation', async () => {
     render(<HomePage />);
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
+    resolveProfileLoad = null;
     emitAuth('home-page-u2');
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('pick-resume'));
+    const uploader = screen.getByTestId('resume-filename');
     emitAuth('home-page-u2'); // token refresh, not a switch
 
+    expect(screen.getByTestId('resume-filename')).toBe(uploader);
     expect(screen.getByTestId('resume-filename').textContent).toBe('u1-resume.pdf');
   });
 });

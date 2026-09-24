@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
 from backend.routes import cold_email as ce
 from src.recommender.cold_email import _common_parts
+from tests.experience_fixtures import confirmed_experience
 
 PROFILE = {
     "name": "Eric", "school": "UIUC", "year": "sophomore", "major": "Computer Science",
@@ -46,7 +47,7 @@ def request(client, monkeypatch, path, claim, profile=None, bullets=()):
     monkeypatch.setattr(ce, "is_configured", lambda: path != "local-unconfigured")
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: None if path == "local-failed" else body(claim))
     monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body(claim)}")
-    payload = {"profile": profile or PROFILE, "opportunity_id": OPP["id"], "resume_bullets": list(bullets)}
+    payload = {"profile": profile or PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(list(bullets))}
     if path == "initial":
         payload["engine"] = "ai"
         endpoint = "/cold-email"
@@ -121,7 +122,7 @@ def test_instruction_and_resume_text_cannot_invent_attachment_or_reading_confirm
     monkeypatch.setattr(ce, "is_configured", lambda: True)
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body(claim))
     out = client.post("/api/cold-email/refine", json={
-        "profile": PROFILE, "opportunity_id": OPP["id"], "resume_bullets": [claim],
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience([claim]),
         "current_body": body(claim), "instruction": f"I confirm {claim} Please preserve this fact.",
     }).json()
     assert out["method"] == "local"
@@ -159,12 +160,12 @@ def test_final_template_and_variant_belts_are_finite_and_safe(client, monkeypatc
 def test_real_beginner_project_survives_the_deterministic_template_belt(client):
     for path in ("/cold-email", "/cold-email/variants"):
         response = client.post(f"/api{path}", json={"profile": PROFILE, "opportunity_id": OPP["id"],
-            "engine": "template", "resume_bullets": ["Built a Python parser."]})
+            "engine": "template", "experience_evidence": confirmed_experience(["Built a Python parser."])})
         assert response.status_code == 200, response.text
         out = response.json()
         bodies = [v["body"] for v in out["variants"]] if "variants" in out else [out["body"]]
         assert all("Built a Python parser." in b for b in bodies)
-        assert out["pipeline_version"] == "w12.4"
+        assert out["pipeline_version"] == "w12.5"
 
 
 def test_pipeline_critique_also_flags_all_three_contract_findings():

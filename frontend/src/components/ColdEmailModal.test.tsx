@@ -194,7 +194,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGetVariants).toHaveBeenCalledTimes(1));
-      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', []);
+      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42');
     });
 
     it('shows a loading spinner before variants resolve', () => {
@@ -879,7 +879,6 @@ describe('ColdEmailModal', () => {
         'Make it more formal and professional',
         makeProfile(),
         'opp',
-        expect.any(Object),
       );
       await waitFor(() =>
         expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
@@ -1012,7 +1011,6 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
-        expect.any(Object), // options (resumeBullets when extracted)
       );
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });

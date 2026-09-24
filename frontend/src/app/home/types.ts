@@ -15,6 +15,7 @@ export const DEFAULT_PROFILE: ProfileData = {
   is_international: false,
   research_interests: '',
   skills: [],
+  experience_entries: [],
   search_weight: 50,
 };
 
