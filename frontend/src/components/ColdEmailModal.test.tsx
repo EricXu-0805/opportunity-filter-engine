@@ -439,6 +439,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
       // Stream-first: the (default-rejecting) stream mock was tried before the
@@ -507,8 +508,10 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await screen.findByDisplayValue('AI Body');
+      await waitFor(() => expect(screen.getByText('coldEmail.tone.lively')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.tone.lively'));
-      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
       expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively' });
     });
 
@@ -532,6 +535,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() =>
         expect(screen.getByText('coldEmail.aiFallbackFabrication')).toBeInTheDocument(),
@@ -558,6 +562,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() =>
         expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument(),
@@ -585,9 +590,11 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       const pill = screen.getByText('coldEmail.aiVariantLabel');
+      await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       await waitFor(() => expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Template A'));
+      await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1);
       expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument();
@@ -603,6 +610,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() =>
         expect(screen.getByText('coldEmail.templateFallbackBadge')).toBeInTheDocument(),
@@ -619,6 +627,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
       expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
@@ -697,6 +706,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(2));
       expect(mockExtractResumeBullets).toHaveBeenCalledTimes(0);
@@ -737,6 +747,7 @@ describe('ColdEmailModal', () => {
       await act(async () => { release(AI_RESP); });
       // Draft is available on the AI pill but the user's edit stays put.
       expect(screen.getByDisplayValue('my hand-tuned draft')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
     });
