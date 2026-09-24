@@ -261,6 +261,20 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
     expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
   });
 
+  it('UNC keeps college and major editable until its reviewed catalog is available', () => {
+    const { update } = renderCard({
+      home_school: 'unc', college: 'College of Arts and Sciences', major: 'Biology',
+    });
+    expect(screen.getByText('University of North Carolina at Chapel Hill')).toBeInTheDocument();
+    const college = screen.getByLabelText('home.form.collegeLabel');
+    const major = screen.getByLabelText('home.form.majorLabel');
+    expect(college).toHaveValue('College of Arts and Sciences');
+    expect(major).toHaveValue('Biology');
+    fireEvent.change(major, { target: { value: 'Chemistry' } });
+    expect(update).toHaveBeenCalledWith('major', 'Chemistry');
+    expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
+  });
+
   it('free-text inputs carry the stored college/major values (no data loss)', () => {
     renderCard({ home_school: 'future-school', college: 'College of Engineering', major: 'EECS' });
     expect((document.querySelector('input#college') as HTMLInputElement).value)

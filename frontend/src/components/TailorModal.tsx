@@ -14,7 +14,8 @@ import {
   Trash2,
   RotateCcw,
 } from 'lucide-react';
-import { tailorResume, getTailorStatus, extractResumeBullets } from '@/lib/api';
+import { tailorResume, getTailorStatus, extractResumeBullets, type ExtractBulletsResponse } from '@/lib/api';
+import ResumeProcessingNotice from './ResumeProcessingNotice';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { hashString } from '@/lib/match-utils';
 import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
@@ -336,6 +337,8 @@ export default function TailorModal({
   const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
   // R71-G: smart-extract (LLM resume → bullets) loading state.
   const [extracting, setExtracting] = useState(false);
+  const [extractionResult, setExtractionResult] = useState<ExtractBulletsResponse | null>(null);
+  const [extractionError, setExtractionError] = useState(false);
   // R73: per-bullet review — `rejected` indices are excluded from copy /
   // use-as-originals; `edits` override a bullet's text in place; `editingIdx`
   // is the card currently in inline-edit mode. Reset on every new result so
@@ -461,6 +464,8 @@ export default function TailorModal({
       setCopiedBulletIdx(null);
       setLoading(false);
       setExtracting(false);
+      setExtractionResult(null);
+      setExtractionError(false);
       setSubmittedBullets([]);
       setRejected(new Set());
       setEdits({});
@@ -624,9 +629,12 @@ export default function TailorModal({
       extractAttemptRef.current === attempt;
 
     setExtracting(true);
+    setExtractionResult(null);
+    setExtractionError(false);
     try {
       const data = await extractResumeBullets(profile.resume_text);
       if (!stillCurrent()) return; // closed/unmounted/switched/superseded — drop silently, no write
+      setExtractionResult(data);
       if (data.bullets.length > 0) {
         const next = data.bullets.join('\n');
         setDraft(next);
@@ -635,8 +643,8 @@ export default function TailorModal({
         setDraftRestored(false);
       }
     } catch {
-      // Extraction is a convenience; on failure the user still has the
-      // heuristic prefill / their own typing. Don't surface an error.
+      // Keep the user's draft on API rejection, failure, or timeout.
+      if (stillCurrent()) setExtractionError(true);
     } finally {
       // An old, superseded attempt's finally must never clear a NEWER
       // attempt's `extracting` spinner.
@@ -920,6 +928,10 @@ export default function TailorModal({
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
+              {profile.resume_text && (
+                <ResumeProcessingNotice text={profile.resume_text} processing={extractionResult?.processing} warnings={extractionResult?.warnings} />
+              )}
+              {extractionError && <p role="alert" className="text-xs text-amber-700">{t('resume.extractionFailed')}</p>}
               {profile.resume_text && (
                 <button
                   type="button"

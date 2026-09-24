@@ -42,9 +42,9 @@ interface UniversitySwitcherModalProps {
 }
 
 /*
- * The school-size chip. One number, from one contract: coverage is unique
- * listings PLUS unique faculty contacts, resolved by resolveCoverage and never
- * assembled here.
+ * The school-size chip and its labelled populations share one resolution:
+ * coverage is listings PLUS faculty contacts. The total and breakdown always
+ * come from the same live response or saved snapshot.
  *
  * It used to read `counts` out of the coverage response — the listings half of
  * a two-map payload whose other half held ~97% of the corpus — so it showed
@@ -64,7 +64,7 @@ function CoverageChip(
     // made; the pending note says what is actually true.
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50/80 text-amber-600">
-        {t(school.coverage.note)}
+        {t('universitySwitcher.coveragePending')}
       </span>
     );
   }
@@ -73,10 +73,21 @@ function CoverageChip(
     ? 'bg-emerald-50/80 text-emerald-600'
     : 'bg-indigo-50/80 text-indigo-600';
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium ${cls}`}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" aria-hidden="true" />
-      {t('universitySwitcher.coverageCampus', { count: count.toLocaleString() })}
-    </span>
+    <div>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium ${cls}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" aria-hidden="true" />
+        {t('universitySwitcher.coverageCampus', { count: count.toLocaleString() })}
+      </span>
+      <p className="mt-1 text-[11px] text-gray-600 leading-relaxed">
+        {t('universitySwitcher.coverageBreakdown', {
+          listings: coverage.listingCount.toLocaleString(),
+          faculty: coverage.facultyCount.toLocaleString(),
+        })}
+      </p>
+      {coverage.source === 'static' && (
+        <p className="mt-0.5 text-[10px] text-gray-500">{t('universitySwitcher.savedSnapshot')}</p>
+      )}
+    </div>
   );
 }
 

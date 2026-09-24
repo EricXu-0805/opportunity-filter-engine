@@ -10,6 +10,7 @@ import type {
   StatsResponse,
   TailorResponse,
   StructureResumeResponse,
+  ResumeProcessingCoverage,
   ResumeSectionInput,
   RenovateResponse,
   BulletOptimizeResponse,
@@ -1065,7 +1066,9 @@ export async function optimizeBullet(
 
 export interface ExtractBulletsResponse {
   bullets: string[];
-  method: 'ai' | 'heuristic';
+  method: 'ai' | 'heuristic' | 'mixed';
+  warnings?: string[];
+  processing?: ResumeProcessingCoverage;
 }
 
 /**

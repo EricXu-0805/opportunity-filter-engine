@@ -192,7 +192,7 @@ class TestExtractBullets:
         resp = client.post("/api/tailor/extract-bullets", json={"resume_text": "   "})
         assert resp.status_code == 200
         body = resp.json()
-        assert body == {"bullets": [], "method": "heuristic"}
+        assert body == {"bullets": [], "method": "heuristic", "warnings": [], "processing": None}
 
     def test_no_provider_uses_glyph_heuristic(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):

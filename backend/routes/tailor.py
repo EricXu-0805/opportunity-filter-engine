@@ -40,6 +40,7 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 
 from backend.data_loader import load_opportunities_by_id
+from backend.lib import llm_budget
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
@@ -47,6 +48,12 @@ from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.resume_input import (
+    RESUME_AI_CHUNK_CHARACTERS,
+    RESUME_AI_CONCURRENCY,
+    RESUME_AI_TIME_BUDGET_SECONDS,
+    resume_chunks,
+)
 from backend.lib.target_actionability import assert_target_actionable
 from backend.schemas import (
     BulletOptimizeRequest,
@@ -59,6 +66,7 @@ from backend.schemas import (
     RenovateRequest,
     RenovateResponse,
     ResumeBullet,
+    ResumeProcessingCoverage,
     ResumeSection,
     StructureResumeRequest,
     StructureResumeResponse,
@@ -546,11 +554,12 @@ def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | Non
     """LLM-extract bullet lines; return None on any failure (caller falls
     back to the heuristic). Each returned bullet must be grounded in the
     resume so the model can't smuggle in fabricated experience."""
-    capped = resume_text[:8000]
+    if len(resume_text) > RESUME_AI_CHUNK_CHARACTERS:
+        raise ValueError("model extraction requires a bounded resume chunk")
     raw = chat_completion(
         [
             {"role": "system", "content": _EXTRACT_SYSTEM_PROMPT},
-            {"role": "user", "content": f"RESUME:\n{capped}\n\nExtract the bullets now."},
+            {"role": "user", "content": f"RESUME:\n{resume_text}\n\nExtract the bullets now."},
         ],
         max_tokens=900,
         temperature=0.0,
@@ -593,34 +602,122 @@ def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | Non
     return out or None
 
 
+async def _process_resume_chunks(text: str, extractor, **kwargs) -> tuple[list, ResumeProcessingCoverage]:
+    """Use one deadline and two workers for the entire extraction request.
+
+    Every chunk uses the existing chat_completion provider boundary, so each
+    attempt (including its bounded retries) still spends the daily LLM budget.
+    Blocking executor capacity remains shared across routes. A timed-out
+    provider thread may finish later, but no replacement chunk is submitted
+    after the shared deadline; queued futures are cancelled by run_blocking.
+    """
+    chunks = resume_chunks(text)
+    results: list = [None] * len(chunks)
+    reasons: list[str | None] = ["llm_not_configured"] * len(chunks)
+    if chunks and is_configured():
+        reasons = ["not_attempted_within_budget"] * len(chunks)
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + min(SINGLE_LLM_TIMEOUT_SECONDS, RESUME_AI_TIME_BUDGET_SECONDS)
+        next_index = 0
+
+        async def worker() -> None:
+            nonlocal next_index
+            while next_index < len(chunks):
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    return
+                # Middleware checked admission once; a multi-chunk request
+                # must also stop dispatching after earlier calls use up the
+                # daily budget. Already-dispatched calls/retries still count
+                # at the provider boundary; this is not an atomic reservation.
+                if llm_budget.exhausted():
+                    for pending in range(next_index, len(chunks)):
+                        reasons[pending] = "daily_budget_exhausted"
+                    next_index = len(chunks)
+                    return
+                index = next_index
+                next_index += 1
+                try:
+                    result = await run_blocking(
+                        extractor, chunks[index][2], timeout_seconds=remaining, **kwargs,
+                    )
+                except BlockingWorkTimeout:
+                    reasons[index] = "timeout_or_busy"
+                    # A timed-out thread still occupies executor capacity.
+                    # Do not start another call from this worker.
+                    return
+                except Exception:  # noqa: BLE001 — each failed chunk has a local fallback
+                    logger.warning("resume extraction chunk failed; using local extraction")
+                    reasons[index] = "invalid_output"
+                else:
+                    results[index] = result
+                    reasons[index] = None if result else "invalid_output"
+
+        await asyncio.gather(*(worker() for _ in range(min(RESUME_AI_CONCURRENCY, len(chunks)))))
+
+    ai_count = sum(bool(result) for result in results)
+    coverage = ResumeProcessingCoverage(
+        input_characters=len(text), ai_chunks=ai_count,
+        heuristic_chunks=len(chunks) - ai_count,
+        chunks=[
+            {"start": start, "end": end, "method": "ai" if results[i] else "heuristic", "reason": reasons[i]}
+            for i, (start, end, _) in enumerate(chunks)
+        ],
+    )
+    return results, coverage
+
+
+def _processing_method(coverage: ResumeProcessingCoverage) -> str:
+    if not coverage.ai_chunks:
+        return "heuristic"
+    return "mixed" if coverage.heuristic_chunks else "ai"
+
+
+def _processing_warnings(coverage: ResumeProcessingCoverage) -> list[str]:
+    # These endpoints select experience bullets; they are not full-document
+    # conversion. Keep this boundary explicit even when every chunk uses AI.
+    warnings = ["selected_bullets_only"]
+    if coverage.heuristic_chunks:
+        warnings.append("partial_ai_processing" if coverage.ai_chunks else "local_extraction_only")
+    return warnings
+
+
+def _select_bullets_across_chunks(groups: list[list[str]], limit: int = 12) -> tuple[list[str], bool]:
+    """Allocate selection across the document, then restore source order.
+
+    Taking groups[0][:12] first would still hide the tail of a long resume.
+    Selection remains bounded by the tailor editor's existing 12-bullet cap.
+    """
+    selected: list[tuple[int, int, str]] = []
+    seen: set[str] = set()
+    candidates = [(ci, bi, bullet) for bi in range(max(map(len, groups), default=0))
+                  for ci, group in enumerate(groups) if bi < len(group) for bullet in [group[bi]]]
+    for ci, bi, bullet in candidates:
+        key = _normalized_extraction_text(bullet)
+        if key in seen:
+            continue
+        seen.add(key)
+        if len(selected) < limit:
+            selected.append((ci, bi, bullet))
+    return [bullet for _, _, bullet in sorted(selected)], len(seen) > len(selected)
+
+
 @router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
 async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsResponse:
-    """Extract resume bullet lines from raw text for the tailor modal prefill.
-
-    LLM-first (catches 'dark bullets' — accomplishment lines with no glyph
-    that the regex heuristic misses), with the same graceful-degradation
-    contract as ``/tailor``: never 5xx for LLM issues. No provider / model
-    failure / malformed JSON / nothing grounded → fall back to the
-    glyph-based heuristic so the user always gets *some* prefill.
-    """
+    """Select reviewable bullets from every accepted part of the resume."""
     text = request.resume_text or ""
     if not text.strip():
         return ExtractBulletsResponse(bullets=[], method="heuristic")
-
-    if is_configured():
-        try:
-            ai = await run_blocking(
-                _ai_extract_bullets,
-                text,
-                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
-            )
-        except BlockingWorkTimeout:
-            logger.warning("tailor extract: model call timed out; using heuristic")
-            ai = None
-        if ai:
-            return ExtractBulletsResponse(bullets=ai, method="ai")
-
-    return ExtractBulletsResponse(bullets=_heuristic_bullets(text), method="heuristic")
+    results, coverage = await _process_resume_chunks(text, _ai_extract_bullets)
+    groups = [result or _heuristic_bullets(chunk, limit=1000)
+              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
+    bullets, limited = _select_bullets_across_chunks(groups)
+    warnings = _processing_warnings(coverage)
+    if limited:
+        warnings.append("bullet_selection_limited")
+    return ExtractBulletsResponse(
+        bullets=bullets, method=_processing_method(coverage), warnings=warnings, processing=coverage,
+    )
 
 
 @router.get("/tailor/status")
@@ -890,11 +987,12 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
     Every bullet must be grounded (verbatim) in the résumé so the model cannot
     smuggle in invented experience — same guard as ``_ai_extract_bullets``.
     """
-    capped = resume_text[:8000]
+    if len(resume_text) > RESUME_AI_CHUNK_CHARACTERS:
+        raise ValueError("model structure requires a bounded resume chunk")
     raw = chat_completion(
         [
             {"role": "system", "content": _STRUCTURE_SYSTEM_PROMPT},
-            {"role": "user", "content": f"RESUME:\n{capped}\n\nStructure it now."},
+            {"role": "user", "content": f"RESUME:\n{resume_text}\n\nStructure it now."},
         ],
         max_tokens=1800,
         temperature=0.0,
@@ -934,37 +1032,72 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
     return sections or None
 
 
+def _merge_structure_chunks(groups: list[list[ResumeSection]]) -> tuple[list[ResumeSection], bool]:
+    """Select across chunks within the existing renovation tree limits.
+
+    IDs are rebuilt once after merging, so local s1/b1 IDs cannot collide.
+    Matching section labels can merge; text is deduplicated, never rewritten.
+    """
+    candidates = [[(section, bullet) for section in group for bullet in section.bullets]
+                  for group in groups]
+    selected: list[tuple[int, int, ResumeSection, ResumeBullet]] = []
+    seen: set[str] = set()
+    section_counts: dict[tuple[str, str], int] = {}
+    limited = False
+    for depth in range(max(map(len, candidates), default=0)):
+        for ci, group in enumerate(candidates):
+            if depth >= len(group):
+                continue
+            section, bullet = group[depth]
+            key = _normalized_extraction_text(bullet.text)
+            if key in seen:
+                continue
+            seen.add(key)
+            section_key = (_normalized_extraction_text(section.heading), section.kind)
+            if (len(selected) >= 100 or section_counts.get(section_key, 0) >= 40
+                    or (section_key not in section_counts and len(section_counts) >= 15)):
+                limited = True
+                continue
+            section_counts[section_key] = section_counts.get(section_key, 0) + 1
+            selected.append((ci, depth, section, bullet))
+
+    merged: dict[tuple[str, str], ResumeSection] = {}
+    for _, _, section, bullet in sorted(selected, key=lambda item: (item[0], item[1])):
+        key = (_normalized_extraction_text(section.heading), section.kind)
+        if key not in merged:
+            sid = f"s{len(merged) + 1}"
+            merged[key] = ResumeSection(id=sid, heading=section.heading, kind=section.kind)
+        target = merged[key]
+        target.bullets.append(ResumeBullet(id=f"{target.id}b{len(target.bullets) + 1}", text=bullet.text))
+    # Preserve labelled, empty skills sections when capacity remains.
+    for group in groups:
+        for section in group:
+            key = (_normalized_extraction_text(section.heading), section.kind)
+            if not section.bullets and section.kind == "skills" and key not in merged:
+                if len(merged) >= 15:
+                    limited = True
+                    continue
+                merged[key] = ResumeSection(id=f"s{len(merged) + 1}", heading=section.heading, kind=section.kind)
+    return list(merged.values()), limited
+
+
 @router.post("/tailor/structure", response_model=StructureResumeResponse)
 async def structure_resume(request: StructureResumeRequest) -> StructureResumeResponse:
-    """Structure raw résumé text into sections+bullets (the renovation base).
-
-    Same graceful-degradation contract as /tailor: never 5xx for LLM issues.
-    No provider / bad output → glyph-based heuristic so the user always gets a
-    usable structure to renovate from.
-    """
+    """Build a bounded experience projection while retaining the full source."""
     text = request.resume_text or ""
     if not text.strip():
         return StructureResumeResponse(sections=[], method="heuristic", warnings=["empty_resume"])
-
-    if is_configured():
-        try:
-            ai = await run_blocking(
-                _ai_structure_resume,
-                text,
-                locale=request.locale,
-                timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
-            )
-        except BlockingWorkTimeout:
-            logger.warning("tailor structure: model call timed out; using heuristic")
-            ai = None
-        if ai:
-            return StructureResumeResponse(sections=ai, method="ai")
-
-    heuristic = _heuristic_structure(text)
+    results, coverage = await _process_resume_chunks(text, _ai_structure_resume, locale=request.locale)
+    groups = [result or _heuristic_structure(chunk)
+              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
+    sections, limited = _merge_structure_chunks(groups)
+    warnings = _processing_warnings(coverage)
+    if limited:
+        warnings.append("bullet_selection_limited")
+    if not sections:
+        warnings.append("no_bullets_found")
     return StructureResumeResponse(
-        sections=heuristic,
-        method="heuristic",
-        warnings=[] if heuristic else ["no_bullets_found"],
+        sections=sections, method=_processing_method(coverage), warnings=warnings, processing=coverage,
     )
 
 

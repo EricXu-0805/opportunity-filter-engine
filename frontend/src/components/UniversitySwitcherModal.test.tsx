@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
@@ -71,10 +71,12 @@ describe('UniversitySwitcherModal — rendering', () => {
     expect(screen.queryAllByText('universitySwitcher.coveragePending').length).toBe(pendingCount);
   });
 
-  it('shows a real catalog counts line on every card, no pending-catalog note left', () => {
+  it('shows reviewed catalog counts, and explicitly pending for UNC', () => {
     renderModal();
-    expect(screen.getAllByText(/universitySwitcher\.catalogSummary:/).length).toBe(SCHOOLS.length);
-    expect(screen.queryByText('universitySwitcher.catalogPending')).toBeNull();
+    expect(screen.getAllByText(/universitySwitcher\.catalogSummary:/).length)
+      .toBe(SCHOOLS.filter((school) => school.catalog).length);
+    const unc = within(screen.getByTestId('university-card-unc'));
+    expect(unc.getByText('universitySwitcher.catalogPending')).toBeInTheDocument();
     // Counts come straight from the registry (mock t renders "key:colleges,majors").
     expect(screen.getByText('universitySwitcher.catalogSummary:12,142')).toBeInTheDocument(); // uiuc
     expect(screen.getByText('universitySwitcher.catalogSummary:7,136')).toBeInTheDocument(); // ucb
@@ -114,6 +116,19 @@ describe('UniversitySwitcherModal — select + confirm/cancel', () => {
     expect(screen.getByTestId('university-card-ucb')).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByText('universitySwitcher.confirm'));
     expect(onConfirm).toHaveBeenCalledWith('ucb');
+  });
+
+  it('finds UNC, shows its two populations, and confirms the canonical slug', () => {
+    const { onConfirm } = renderModal();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'UNC Chapel Hill' } });
+    const card = screen.getByTestId('university-card-unc');
+    const counts = SCHOOL_STATS.unc!;
+    expect(within(card).getByText(
+      `universitySwitcher.coverageBreakdown:${counts.listing_count.toLocaleString()},${counts.faculty_contact_count.toLocaleString()}`,
+    )).toBeInTheDocument();
+    fireEvent.click(card);
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    expect(onConfirm).toHaveBeenCalledWith('unc');
   });
 
   it('confirm without changing selection reports the initial slug', () => {
@@ -167,8 +182,12 @@ describe('UniversitySwitcherModal — live coverage counts', () => {
     renderModal();
 
     expect((await screen.findAllByText(chip(4581))).length).toBeGreaterThanOrEqual(1);
-    // 27 is what the chip showed before the fix — a 165x understatement.
+    // 27 is what the combined chip showed before the fix. It is only the
+    // listing population, which now has its own explicit label.
     expect(screen.queryByText(chip(27))).not.toBeInTheDocument();
+    const jhu = within(screen.getByTestId('university-card-jhu'));
+    expect(jhu.getByText('universitySwitcher.coverageBreakdown:27,4,554')).toBeInTheDocument();
+    expect(jhu.queryByText('universitySwitcher.savedSnapshot')).not.toBeInTheDocument();
   });
 
   it('does not add faculty contacts on top of an already-combined total', async () => {
@@ -192,24 +211,32 @@ describe('UniversitySwitcherModal — live coverage counts', () => {
   it('ignores a legacy listings-only body and keeps the static number', async () => {
     // The pre-fix response shape, which an HTTP cache or a not-yet-rolled
     // backend instance can still serve. Reading `counts` from it is the bug.
-    mockCoverage({ counts: { jhu: 27 }, faculty_contacts: { jhu: 4554 } });
+    const request = mockCoverage({ counts: { jhu: 27 }, faculty_contacts: { jhu: 4554 } });
     renderModal();
+    await act(async () => { await request.mock.results[0].value; });
 
     const jhu = SCHOOLS.find((s) => s.slug === 'jhu')!;
     expect(
       (await screen.findAllByText(chip(jhu.coverage.campusOpportunities as number))).length,
     ).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(chip(27))).not.toBeInTheDocument();
+    const card = within(screen.getByTestId('university-card-jhu'));
+    expect(card.getByText('universitySwitcher.savedSnapshot')).toBeInTheDocument();
+    expect(card.getByText(`universitySwitcher.coverageBreakdown:${SCHOOL_STATS.jhu!.listing_count.toLocaleString()},${SCHOOL_STATS.jhu!.faculty_contact_count.toLocaleString()}`)).toBeInTheDocument();
   });
 
   it('keeps the static number when the request fails', async () => {
-    mockCoverage(null, false);
+    const request = mockCoverage(null, false);
     renderModal();
+    await act(async () => { await request.mock.results[0].value; });
 
     const jhu = SCHOOLS.find((s) => s.slug === 'jhu')!;
     expect(
       (await screen.findAllByText(chip(jhu.coverage.campusOpportunities as number))).length,
     ).toBeGreaterThanOrEqual(1);
+    const card = within(screen.getByTestId('university-card-jhu'));
+    expect(card.getByText('universitySwitcher.savedSnapshot')).toBeInTheDocument();
+    expect(card.getByText(`universitySwitcher.coverageBreakdown:${SCHOOL_STATS.jhu!.listing_count.toLocaleString()},${SCHOOL_STATS.jhu!.faculty_contact_count.toLocaleString()}`)).toBeInTheDocument();
   });
 
   it('does not jump between the static and live numbers for the same dataset', async () => {
@@ -233,8 +260,10 @@ describe('UniversitySwitcherModal — live coverage counts', () => {
 
     // Before the fetch resolves: the static number.
     expect(screen.getAllByText(chip(staticTotal)).length).toBeGreaterThanOrEqual(1);
-    // After it resolves: the same number, because both mean the same thing.
-    expect((await screen.findAllByText(chip(staticTotal))).length).toBeGreaterThanOrEqual(1);
+    // Wait for the actual live response, not text already present from fallback.
+    const card = within(screen.getByTestId('university-card-jhu'));
+    await waitFor(() => expect(card.queryByText('universitySwitcher.savedSnapshot')).not.toBeInTheDocument());
+    expect(card.getByText(chip(staticTotal))).toBeInTheDocument();
   });
 
   it('shows the pending note rather than a zero for an unmeasured school', async () => {
