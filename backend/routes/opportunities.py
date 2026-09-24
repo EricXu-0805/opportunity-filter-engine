@@ -398,8 +398,10 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     })
 
 
+# FastAPI runs synchronous handlers in its worker pool, keeping the full
+# corpus scan and public projection off the event loop used by health/detail.
 @router.get("/opportunities/{opportunity_id}/similar")
-async def get_similar_opportunities(
+def get_similar_opportunities(
     opportunity_id: str,
     limit: int = Query(default=5, ge=1, le=20),
 ):

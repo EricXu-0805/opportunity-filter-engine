@@ -106,12 +106,28 @@ export function useResultsData(
       : '',
     [profile, preferenceSettled, semanticRerank, view],
   );
+  // Network validation can finish before React commits the cards. Keep its
+  // receipt attached to the exact response, then publish after the loading
+  // layout has been replaced; animation frames alone are not a commit fence.
+  const pendingCommitRef = useRef<{
+    response: MatchesResponse;
+    state: ResultCursorState;
+    owner: ReturnType<typeof captureOwnerToken>;
+  } | null>(null);
   const navigationRef = useRef(navigation);
   useLayoutEffect(() => { navigationRef.current = navigation; }, [navigation]);
   const cursorsRef = useRef<CursorState>({
     requestKey: '',
     byPage: new Map([[1, null]]),
   });
+  useLayoutEffect(() => {
+    const pending = pendingCommitRef.current;
+    if (!pending || loading || error || !paginationReady || pending.response !== data
+      || pending.state.requestKey !== requestKey || pending.state.page !== page
+      || !isTokenOwnerStillCurrent(pending.owner)) return;
+    pendingCommitRef.current = null;
+    navigationRef.current?.onValidated(pending.state);
+  }, [data, error, loading, page, paginationReady, requestKey]);
   // What the request is BUILT from, held at latest and never reacted to.
   // requestKey above is the content identity of these two, so listing them as
   // deps of the fetch below adds only their object identity — and that churns
@@ -315,9 +331,11 @@ export function useResultsData(
           writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
         }
         setPaginationReady(true);
-        if (painting()) navigationRef.current?.onValidated({
-          requestKey, page, cursors: [...cursorsRef.current.byPage.entries()],
-        });
+        if (painting()) pendingCommitRef.current = {
+          response: result,
+          state: { requestKey, page, cursors: [...cursorsRef.current.byPage.entries()] },
+          owner: cacheToken,
+        };
         trackOnce('matches_generated', {
           llm: semanticRerank,
           page,
@@ -364,6 +382,7 @@ export function useResultsData(
 
     return () => {
       active = false;
+      if (pendingCommitRef.current?.owner === cacheToken) pendingCommitRef.current = null;
       controller.abort();
     };
     // onCursorReset is in the deps because the effect calls it: leaving it out

@@ -165,8 +165,21 @@ export function useResultsSession(props: Props) {
       const anchor = saved.anchorId ? document.getElementById(`match-card-${saved.anchorId}`) : null;
       // Navigation may already have removed the old list before cleanup runs.
       if (saved.anchorId && !anchor) return;
+      // Refresh need not follow an opportunity click. Capture the visible
+      // list position as an anchor too, without marking any row as viewed.
+      // Prefer a card whose top is on screen so its heading remains useful
+      // even if rows above it have a different height after hydration.
+      const cards = Array.from(document.querySelectorAll<HTMLElement>('[id^="match-card-"]'));
+      const visible = cards.find((card) => {
+        const rect = card.getBoundingClientRect();
+        return rect.height > 0 && rect.top >= 0 && rect.top < window.innerHeight;
+      }) ?? cards.find((card) => {
+        const rect = card.getBoundingClientRect();
+        return rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+      }) ?? anchor;
       const next = writeResultSession({ ...saved, scrollY: window.scrollY,
-        anchorOffset: anchor?.getBoundingClientRect().top ?? null }, token);
+        anchorId: visible ? visible.id.slice('match-card-'.length) : null,
+        anchorOffset: visible?.getBoundingClientRect().top ?? null }, token);
       sessionRef.current = next;
     };
     const saveScroll = () => {

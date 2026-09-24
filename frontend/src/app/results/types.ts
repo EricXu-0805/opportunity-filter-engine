@@ -231,7 +231,7 @@ export function noMatchCarriesADeadline(
 }
 
 export function typeLabel(type: string, t: TFunc): string {
-  const key = TYPE_LABEL_KEY[type];
+  const key = Object.prototype.hasOwnProperty.call(TYPE_LABEL_KEY, type) ? TYPE_LABEL_KEY[type] : undefined;
   if (key) return t(key);
   return humanizeSlug(type);
 }

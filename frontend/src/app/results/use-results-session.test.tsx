@@ -140,6 +140,41 @@ describe('results session hydration and accepted request lifetime', () => {
     anchor.remove();
   });
 
+  it('captures a visible card before refresh even when no opportunity was opened', () => {
+    const { result } = renderHook(useHarness, { initialProps: {} });
+    act(() => result.current.onValidated(first));
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1800 });
+    const anchor = document.createElement('div'); anchor.id = 'match-card-robot'; document.body.append(anchor);
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top: 120, bottom: 620, height: 500 } as DOMRect);
+    window.dispatchEvent(new Event('pagehide'));
+    const saved = readResultSession(result.current.sessionId);
+    anchor.remove();
+    expect(saved).toMatchObject({ anchorId: 'robot', anchorOffset: 120, scrollY: 1800, viewedIds: [] });
+    expect(result.current.viewedIds.size).toBe(0);
+  });
+
+  it('refreshes around the visible anchor when the validated rows have different heights', () => {
+    const { result, unmount } = renderHook(useHarness, { initialProps: {} });
+    act(() => result.current.onValidated(first));
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1800 });
+    const anchor = document.createElement('div'); anchor.id = 'match-card-robot'; document.body.append(anchor);
+    const rect = vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top: 120, bottom: 620, height: 500 } as DOMRect);
+    window.dispatchEvent(new Event('pagehide'));
+    const arrivalId = result.current.sessionId!;
+    unmount();
+    // A new document starts at the top; taller validated rows put this card
+    // lower than before. Replaying 1800 pixels would no longer locate it.
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+    rect.mockReturnValue({ top: 3120, bottom: 3620, height: 500 } as DOMRect);
+    const restored = renderHook(useHarness, { initialProps: { arrivalId } });
+    act(() => restored.result.current.onValidated(first));
+    act(paintFrames);
+    const calls = vi.mocked(window.scrollTo).mock.calls;
+    anchor.remove();
+    expect(calls).toEqual([[{ top: 3000, behavior: 'instant' }]]);
+    expect(restored.result.current.viewedIds.size).toBe(0);
+  });
+
   it('keeps the in-memory viewed mark if sessionStorage refuses persistence', () => {
     vi.spyOn(sessionStorage, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
     const { result } = renderHook(useHarness, { initialProps: {} });
