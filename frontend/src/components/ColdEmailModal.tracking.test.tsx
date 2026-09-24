@@ -175,23 +175,23 @@ describe('ColdEmailModal — verified send tracking', () => {
 describe('W12 draft freshness — in-tab AI cache', () => {
   it('expires a cached draft after the TTL', async () => {
     const { aiCacheEntryIsStale, AI_CACHE_TTL_MS } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1' }, at: 1_000 };
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1')).toBe(false);
+    const entry = { response: { corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: 1_000 };
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1', 'pipeline-current')).toBe(true);
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1', 'pipeline-current')).toBe(false);
   });
 
   it('expires a cached draft when the corpus generation moves', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1' }, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1')).toBe(false);
+    const entry = { response: { corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current')).toBe(true);
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1', 'pipeline-current')).toBe(false);
   });
 
-  it('keeps pre-W12 cached drafts on the TTL rule alone', async () => {
+  it('allows missing corpus metadata only when pipeline compatibility is established', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
-    // No corpus_version on the cached response (old backend) — only the TTL
-    // can expire it; a null comparison must not spuriously invalidate.
-    const entry = { response: {}, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(false);
+    // Corpus metadata keeps its legacy behavior; pipeline metadata is now
+    // independently required, so an unversioned AI draft is never reused.
+    const entry = { response: { pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current')).toBe(false);
   });
 });

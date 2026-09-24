@@ -52,6 +52,7 @@ from src.recommender.cold_email import (
     generate_cold_email,
     generate_variants,
     has_source_backed_target_evidence,
+    select_resume_bullets,
 )
 from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
@@ -913,7 +914,12 @@ def _render_student_brief(p: dict) -> str:
     name = _sanitize_field(p["name"], max_len=100) or "(unnamed)"
     research_interests = _sanitize_field(p["research_interests"]) or "(none stated)"
     year_major = _sanitize_field(f"{p['year']} {p['major']} at {p['school']}", max_len=150)
-    bullets = [b for b in (_sanitize_field(str(x), max_len=500) for x in p.get("resume_bullets", [])[:8]) if b]
+    # Rank the complete accepted input before the prompt's eight-bullet cap.
+    # Keep the original parts/evidence corpus intact for final fact checks.
+    bullets = [b for b in (
+        _sanitize_field(x, max_len=500)
+        for x in select_resume_bullets(p, limit=8)
+    ) if b]
     exp_block = "\n".join(f"  - {b}" for b in bullets) if bullets else "  (none provided)"
     matching_label = (
         "Skills relevant to this professor's research/current projects"
@@ -1602,7 +1608,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.2"
+COLD_EMAIL_PIPELINE_VERSION = "w12.3"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a

@@ -241,3 +241,114 @@ describe('cold email draft lifetime', () => {
     expect(screen.queryByText('coldEmail.sentQuestion')).toBeNull();
   });
 });
+
+// M31: variants is the fresh authority for cache compatibility; neither a
+// cached draft nor an older worker response can declare itself current.
+describe('cold email pipeline cache compatibility', () => {
+  it.each([
+    { cached: 'pipeline-one', current: 'pipeline-one', reuse: true, label: 'same version' },
+    { cached: 'pipeline-one', current: 'pipeline-two', reuse: false, label: 'changed version' },
+    { cached: undefined, current: 'pipeline-two', reuse: false, label: 'missing cached version' },
+    { cached: 'pipeline-one', current: undefined, reuse: false, label: 'missing current version' },
+    { cached: undefined, current: undefined, reuse: false, label: 'both versions missing' },
+    { cached: ' ', current: ' ', reuse: false, label: 'blank versions' },
+  ])('$label: reuses only a compatible draft after reopening', async ({ cached, current, reuse }) => {
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: cached, corpus_version: 'same-corpus' })
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: current, corpus_version: 'same-corpus' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('First AI draft'), pipeline_version: cached, corpus_version: 'same-corpus' })
+      .mockResolvedValueOnce({ ...aiDraft('Regenerated AI draft'), pipeline_version: current, corpus_version: 'same-corpus' });
+    const view = openModal();
+    await screen.findByDisplayValue('First AI draft');
+    view.show({ isOpen: false });
+    view.show({ isOpen: true });
+    await screen.findByDisplayValue(reuse ? 'First AI draft' : 'Regenerated AI draft');
+    expect(api.variants).toHaveBeenCalledTimes(2);
+    expect(api.stream).toHaveBeenCalledTimes(reuse ? 1 : 2);
+    expect(api.generate).not.toHaveBeenCalled();
+  });
+
+  it('keeps manual edits when regeneration for a newer pipeline finishes late', async () => {
+    const replacement = deferred<ColdEmailResponse>();
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-one' })
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-two' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('Old pipeline draft'), pipeline_version: 'pipeline-one' })
+      .mockReturnValueOnce(replacement.promise);
+    const view = openModal();
+    await screen.findByDisplayValue('Old pipeline draft');
+    view.show({ isOpen: false });
+    view.show({ isOpen: true });
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My own rewritten draft' } });
+    await act(async () => {
+      replacement.resolve({ ...aiDraft('New pipeline response'), pipeline_version: 'pipeline-two' });
+    });
+    expect(screen.getByDisplayValue('My own rewritten draft')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('New pipeline response')).toBeNull();
+  });
+
+  it('does not let an older AI worker response replace the version learned from variants', async () => {
+    api.variants.mockResolvedValue({ variants: [variant('A')], pipeline_version: 'pipeline-current' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('Old professional draft'), pipeline_version: 'pipeline-old' })
+      .mockResolvedValueOnce({ ...aiDraft('Old warm draft'), pipeline_version: 'pipeline-old' })
+      .mockResolvedValueOnce({ ...aiDraft('Current professional draft'), pipeline_version: 'pipeline-current' });
+    openModal();
+    await screen.findByDisplayValue('Old professional draft');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.warm' }));
+    await screen.findByDisplayValue('Old warm draft');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.professional' }));
+    await screen.findByDisplayValue('Current professional draft');
+    expect(api.stream).toHaveBeenCalledTimes(3);
+  });
+
+  it('waits for target B variants even if the old target A response arrives first', async () => {
+    const a = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    const b = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    api.variants.mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise);
+    api.stream.mockResolvedValue({ ...aiDraft('Current target B draft'), pipeline_version: 'pipeline-B' });
+    const view = openModal();
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(1));
+    view.show({ opportunityId: 'B' });
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      a.resolve({ variants: [variant('A')], pipeline_version: 'pipeline-A' });
+    });
+    expect(api.stream).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue('Draft A')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
+    await act(async () => {
+      b.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
+    });
+    await screen.findByDisplayValue('Current target B draft');
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['B']);
+  });
+
+  it('ignores a late version from another target before reusing the current target cache', async () => {
+    const otherTarget = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-A' })
+      .mockReturnValueOnce(otherTarget.promise)
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-A' });
+    api.stream.mockResolvedValue({ ...aiDraft('Cached target A draft'), pipeline_version: 'pipeline-A' });
+    const view = openModal();
+    await screen.findByDisplayValue('Cached target A draft');
+    view.show({ opportunityId: 'B' });
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+    expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
+    view.show({ opportunityId: 'A' });
+    await screen.findByDisplayValue('Cached target A draft');
+    await act(async () => {
+      otherTarget.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.professional' }));
+    await act(async () => {});
+    expect(screen.getByDisplayValue('Cached target A draft')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Draft B')).toBeNull();
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+  });
+});

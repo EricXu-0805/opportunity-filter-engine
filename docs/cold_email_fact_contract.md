@@ -1,6 +1,6 @@
 # Cold Email fact and draft contract
 
-Updated 2026-09-05. Pipeline version: `w12.2`. See also `docs/matching_logic.md`;
+Updated 2026-09-24. Pipeline version: `w12.3`. See also `docs/matching_logic.md`;
 Cold Email retains its existing AI pipeline and deterministic fallback, while
 Match remains deterministic by default.
 
@@ -28,6 +28,34 @@ project is not fully detected. Full per-claim source identity, versioned
 dependencies, and human review of authorized sample emails remain necessary.
 The checks do not prove reply rates or the quality of every provider output.
 
+## Experience selection (M31 partial)
+
+- Initial AI generation and interactive refinement use the same student brief:
+  rank all accepted resume bullets against the target's stated research and
+  requirements, keep input order for ties, then take at most eight. A relevant
+  ninth-to-twelfth bullet can therefore displace an earlier weak match.
+- Deterministic templates and their variants use the same ranking with a
+  two-shared-word minimum before quoting one example. The introduction says
+  it is an example of the student's experience, not proof it is "most relevant".
+- Student interests remain available as aspirations but never contribute to
+  target relevance. Original bullet strings and the full accepted evidence
+  list remain intact for factual validation; selection does not blend projects.
+- This is English stem/word overlap, not semantic relevance or verification of
+  a problem/method/project connection. The existing request limit is still
+  twelve bullets of at most 500 characters; this change does not search every
+  experience in a full resume. M31 still requires per-email research-connection
+  review and evidence coverage beyond this bounded input.
+- Generation (including streaming) and variants report `w12.3`. Refinement has
+  no draft-cache/version field. The modal reuses a cached AI draft only when a
+  fresh, session-guarded variants response and the cached generation response
+  both have the same nonempty pipeline version, as well as satisfying the
+  existing TTL and corpus checks. The comparison version is not hardcoded;
+  an old generation response cannot establish its own current version.
+- Automatic and manual generation wait for variants from the current target
+  session. Late work from an earlier target cannot open that gate. Controlled
+  frontend regressions cover these cache/session boundaries; no real provider
+  output or overall email quality was validated by those tests.
+
 ## Draft lifetime
 
 The modal binds pending work to the original owner epoch, profile, target and
@@ -49,6 +77,8 @@ is still required before recording contact in Tracker.
 
 ## Regression evidence
 
+- `tests/test_cold_email_resume_selection.py`: late relevant evidence, unrelated
+  interests, stable source selection, and initial/refine/template route coverage.
 - `tests/test_cold_email_fact_contract.py`: initial generation and refinement
   evidence, common competence phrasing, unsupported quantities, safe positive
   examples, provider fallback, and template skill levels.
