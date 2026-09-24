@@ -1572,6 +1572,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   applyConflictRefreshRef.current = applyConflictRefresh;
 
   const lastUidRef = useRef<string | null | undefined>(undefined);
+  const lastOwnerEpochRef = useRef<number | undefined>(undefined);
   // Which generation currently has a read in flight — NOT a bare boolean:
   // a new identity must be able to start its own read while the previous
   // one's is still hanging, or a slow U1 read would leave U2 with a form
@@ -1702,14 +1703,19 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const unsub = onAuthChange((s) => {
       const uid = s.user?.id ?? null;
       const firstObservation = lastUidRef.current === undefined;
-      if (!firstObservation && uid === lastUidRef.current) {
-        // Same identity re-observed (TOKEN_REFRESHED, INITIAL_SESSION).
+      const ownerEpoch = captureOwnerToken().epoch;
+      if (!firstObservation && uid === lastUidRef.current && ownerEpoch === lastOwnerEpochRef.current) {
+        // Same owner capability re-observed (TOKEN_REFRESHED, INITIAL_SESSION).
         // Not a transition — but if this identity's row never loaded, it is
         // a free retry: same identity, same buffered edits, no reset.
         if (!hydrationReadyRef.current) startLoad(identityGenerationRef.current);
         return;
       }
       lastUidRef.current = uid;
+      // Another subscriber can observe sign-out and sign-in before this hook
+      // receives the final callback. The same UID then has a new epoch: retire
+      // its old load and edits through the normal transition path below.
+      lastOwnerEpochRef.current = ownerEpoch;
       // Read BEFORE this observation is folded in: the question is what the
       // screen was up to the instant before, not after.
       //
