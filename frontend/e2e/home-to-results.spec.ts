@@ -4,7 +4,12 @@ test.describe('Home → Results core flow', () => {
   test('loads home, shows opportunity count', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /Find Your Perfect/i })).toBeVisible();
-    await expect(page.getByText(/Active research.*opportunities/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Database coverage', exact: true })).toBeVisible();
+    for (const label of ['Projects & postings', 'Professor profiles']) {
+      const count = page.locator('dl > div').filter({ has: page.getByText(label, { exact: true }) });
+      await expect(count.locator('dt')).toHaveText(label);
+      await expect(count.locator('dd')).toHaveText(/^\d[\d,]*$/);
+    }
   });
 
   test('disables Generate Matches until required fields filled', async ({ page }) => {
