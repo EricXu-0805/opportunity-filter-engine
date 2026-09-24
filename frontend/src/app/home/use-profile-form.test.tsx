@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { Suspense, useState } from 'react';
 
 vi.mock('@/i18n/client', () => ({
@@ -10277,5 +10277,82 @@ describe('typing into the research-interests box is one burst, not one operation
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+
+describe('useProfileForm — M21 opportunity-type selection', () => {
+  const completeProfile = { ...DEFAULT_PROFILE, college: 'Grainger', major: 'CS', grade: 'Junior' };
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  it.each(combinations.map((types) => ({ types })))('allows submitting $types without replacing the selection', async ({ types }) => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ ...completeProfile, seeking_types: types }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    expect(result.current.isValid).toBe(true);
+    expect(result.current.missingSeekingTypes).toBe(false);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).toHaveBeenCalledWith('/results');
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).seeking_types).toEqual(types);
+  });
+
+  it('blocks a direct empty-selection submit before imports, writes, cache clearing or navigation', async () => {
+    vi.mocked(parseGitHubProfile).mockReset();
+    mockLoadProfile = () => Promise.resolve(cloudRow({
+      ...completeProfile, seeking_types: [], github_url: 'https://github.com/octocat',
+    }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.missingSeekingTypes).toBe(true);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(parseGitHubProfile).not.toHaveBeenCalled();
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    expect(cacheMocks.clearMatchCache).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBe(saved);
+  });
+
+  it('accepts a legacy missing field, but cancelling all then restoring a type preserves the new choice', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow(completeProfile));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    expect(result.current.isValid).toBe(true);
+    act(() => result.current.update('seeking_types', []));
+    expect(result.current.isValid).toBe(false);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).not.toHaveBeenCalled();
+    act(() => result.current.update('seeking_types', ['internship']));
+    expect(result.current.isValid).toBe(true);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).toHaveBeenCalledWith('/results');
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).seeking_types).toEqual(['internship']);
+  });
+
+  it('rechecks the live selection after an in-flight import before generating matches', async () => {
+    let resolveImport!: (value: Awaited<ReturnType<typeof parseGitHubProfile>>) => void;
+    vi.mocked(parseGitHubProfile).mockReset();
+    vi.mocked(parseGitHubProfile).mockImplementation(() => new Promise((resolve) => { resolveImport = resolve; }));
+    mockLoadProfile = () => Promise.resolve(cloudRow({
+      ...completeProfile, seeking_types: ['research'], github_url: 'https://github.com/octocat',
+    }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { void result.current.handleSubmit(); });
+    await waitFor(() => expect(parseGitHubProfile).toHaveBeenCalledTimes(1));
+    act(() => result.current.update('seeking_types', []));
+    await act(async () => {
+      resolveImport({ username: 'octocat', extracted_skills: [], topics: [], repo_count: 0, top_repos: [] });
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.profile.seeking_types).toEqual([]);
+    expect(cacheMocks.clearMatchCache).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
   });
 });

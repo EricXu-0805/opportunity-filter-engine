@@ -5189,3 +5189,41 @@ describe('O6: one answer, one authority — the prompt and the value cannot be m
     expect(writes, 'before any private write').toEqual([]);
   });
 });
+
+
+describe('full supported resume persistence', () => {
+  it('preserves the final page through journal, reload, CAS payload and confirmed mirror', async () => {
+    const resume = '早期经历🧪 '.repeat(8000) + 'FINAL PAGE EVIDENCE';
+    const next = { ...FULL, resume_text: resume, coursework: ['CS 225'] };
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent(next, ['resume_text'], token)).toBe(true);
+    startDocumentForTests('reload');
+    resetProfileDirtyLedger();
+    const restored = await hydrateProfile();
+    expect(restored.profile?.resume_text).toBe(resume);
+    commitMock.mockResolvedValue(saved(next, 8));
+    const result = await stageProfilePatch(next, ['resume_text'], captureOwnerToken());
+    expect(result.status).toBe('saved');
+    expect(commitMock.mock.calls[0][0].patch.resume_text).toBe(resume);
+    expect(rawMirror()?.resume_text).toBe(resume);
+  });
+
+  it('rejects an over-quota long-text journal write without replacing the prior resume', async () => {
+    const previous = { ...FULL, resume_text: 'Old confirmed resume', coursework: ['CS 125'] };
+    loadProfileMock.mockResolvedValue(cloud(previous, 7));
+    await hydrateProfile();
+    const realSet = window.localStorage.setItem.bind(window.localStorage);
+    const spy = vi.spyOn(window.localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key.startsWith(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_`)) throw new DOMException('Full', 'QuotaExceededError');
+      realSet(key, value);
+    });
+    try {
+      expect(recordProfileIntent({ ...previous, resume_text: 'x'.repeat(60_000) }, ['resume_text'], captureOwnerToken())).toBe(false);
+    } finally { spy.mockRestore(); }
+    expect(rawMirror()).toEqual(previous);
+    expect(commitMock).not.toHaveBeenCalled();
+    expect(dirtyKeys(captureOwnerToken())).toEqual([]);
+  });
+});

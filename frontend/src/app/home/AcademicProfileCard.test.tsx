@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
@@ -261,6 +262,20 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
     expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
   });
 
+  it('UNC keeps college and major editable until its reviewed catalog is available', () => {
+    const { update } = renderCard({
+      home_school: 'unc', college: 'College of Arts and Sciences', major: 'Biology',
+    });
+    expect(screen.getByText('University of North Carolina at Chapel Hill')).toBeInTheDocument();
+    const college = screen.getByLabelText('home.form.collegeLabel');
+    const major = screen.getByLabelText('home.form.majorLabel');
+    expect(college).toHaveValue('College of Arts and Sciences');
+    expect(major).toHaveValue('Biology');
+    fireEvent.change(major, { target: { value: 'Chemistry' } });
+    expect(update).toHaveBeenCalledWith('major', 'Chemistry');
+    expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
+  });
+
   it('free-text inputs carry the stored college/major values (no data loss)', () => {
     renderCard({ home_school: 'future-school', college: 'College of Engineering', major: 'EECS' });
     expect((document.querySelector('input#college') as HTMLInputElement).value)
@@ -274,5 +289,48 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
       target: { value: 'College of Chemistry' },
     });
     expect(update).toHaveBeenCalledWith('college', 'College of Chemistry');
+  });
+});
+
+
+describe('AcademicProfileCard — opportunity-type multi-select', () => {
+  const labels = {
+    research: 'home.form.seekingResearch',
+    summer_program: 'home.form.seekingSummer',
+    internship: 'home.form.seekingInternship',
+  };
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  function EditableCard() {
+    const [profile, setProfile] = useState<ProfileData>({ ...DEFAULT_PROFILE, seeking_types: [] });
+    return <AcademicProfileCard profile={profile} viewSnapshot={null} t={t}
+      update={(key, value) => setProfile((current) => ({ ...current, [key]: value }))} />;
+  }
+
+  it('visibly selects the same Research + Summer defaults as legacy requests', () => {
+    renderCard({ seeking_types: undefined });
+    expect(screen.getByRole('button', { name: labels.research })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: labels.summer_program })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: labels.internship })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it.each(combinations.map((types) => ({ types })))('supports $types, all-off, and selecting again', ({ types }) => {
+    render(<EditableCard />);
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+    for (const type of types) fireEvent.click(screen.getByRole('button', { name: labels[type as keyof typeof labels] }));
+    for (const [type, label] of Object.entries(labels)) {
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', String(types.includes(type)));
+    }
+    expect(screen.queryByText('home.validation.seekingRequired')).not.toBeInTheDocument();
+    expect(screen.getByText('home.form.seekingHint')).toBeInTheDocument();
+    for (const type of types) fireEvent.click(screen.getByRole('button', { name: labels[type as keyof typeof labels] }));
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: labels.internship }));
+    expect(screen.getByRole('button', { name: labels.internship })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('home.validation.seekingRequired')).not.toBeInTheDocument();
   });
 });

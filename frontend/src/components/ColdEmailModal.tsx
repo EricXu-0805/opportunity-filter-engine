@@ -38,6 +38,7 @@ import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackR
 import { useT } from '@/i18n/client';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
+import styles from './ColdEmailModal.module.css';
 
 const AI_VARIANT_ID = 'ai';
 // W12: a cached AI draft is re-served for at most this long — beyond it the
@@ -350,7 +351,7 @@ export default function ColdEmailModal({
   const [chatInput, setChatInput] = useState('');
   const [refining, setRefining] = useState(false);
   const [retired, setRetired] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatHistoryRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   // Cache the resume experience bullets extracted from the profile's resume
   // text so every AI (re)generation reuses one extraction. Keyed by the text
@@ -591,7 +592,10 @@ export default function ColdEmailModal({
   }, [isOpen, retired]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only the history follows new messages; never scroll the workspace,
+    // editor, or page away from the field the user is editing.
+    const history = chatHistoryRef.current;
+    if (history) history.scrollTop = history.scrollHeight;
   }, [chatMessages]);
 
   // W10b: once the user signs in from the reveal affordance, fetch the
@@ -1065,16 +1069,16 @@ export default function ColdEmailModal({
 
       <div
         ref={modalRef}
-        className="relative w-full sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl shadow-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden animate-in"
+        className="relative w-full sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl shadow-2xl h-[100dvh] max-h-[100dvh] sm:h-[90dvh] sm:max-h-[90dvh] min-w-0 flex flex-col overflow-hidden animate-in"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center" aria-hidden="true">
+        <div className="flex items-start justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 shrink-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-indigo-50 flex items-center justify-center" aria-hidden="true">
               <Mail className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 id="email-modal-title" className="text-lg font-bold text-gray-900">{t('coldEmail.title')}</h2>
                 <LabTypeBadge labType={labType} />
               </div>
@@ -1084,51 +1088,58 @@ export default function ColdEmailModal({
           <button
             type="button"
             onClick={closeDraft}
-            className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
+            className="shrink-0 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             aria-label={t('coldEmail.closeAria')}
           >
             <X className="w-5 h-5 text-gray-400" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Loading / Error */}
+        {/* Loading / Error: each state has the same reachable short-screen
+            scroll boundary as the editor. The inner panel grows with text. */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-            <p className="text-sm text-gray-500">{t('coldEmail.generating')}</p>
+          <div className={styles.statePanel}>
+            <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 sm:py-20 gap-4 text-center">
+              <Loader2 className="w-8 h-8 shrink-0 text-indigo-500 animate-spin" />
+              <p className="text-sm text-gray-500">{t('coldEmail.generating')}</p>
+            </div>
           </div>
         )}
         {nameRequired && !loading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 px-6 text-center" data-testid="cold-email-name-required">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
-              <UserRound className="w-6 h-6 text-amber-600" aria-hidden="true" />
+          <div className={styles.statePanel} data-testid="cold-email-name-required">
+            <div className="min-h-full flex flex-col items-center justify-center py-10 sm:py-20 gap-4 px-6 text-center">
+              <div className="w-12 h-12 shrink-0 rounded-2xl bg-amber-50 flex items-center justify-center">
+                <UserRound className="w-6 h-6 text-amber-600" aria-hidden="true" />
+              </div>
+              <p className="text-base font-semibold text-gray-900">{t('coldEmail.nameRequiredTitle')}</p>
+              <p className="text-sm text-gray-500 max-w-md">{t('coldEmail.nameRequiredBody')}</p>
+              <Link
+                href="/"
+                onClick={closeDraft}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+              >
+                {t('coldEmail.nameRequiredCta')}
+              </Link>
             </div>
-            <p className="text-base font-semibold text-gray-900">{t('coldEmail.nameRequiredTitle')}</p>
-            <p className="text-sm text-gray-500 max-w-md">{t('coldEmail.nameRequiredBody')}</p>
-            <Link
-              href="/"
-              onClick={closeDraft}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
-            >
-              {t('coldEmail.nameRequiredCta')}
-            </Link>
           </div>
         )}
         {error && !nameRequired && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <AlertCircle className="w-8 h-8 text-red-500" />
-            <p className="text-sm text-red-600">{error}</p>
-            <button type="button" onClick={() => void fetchVariants()} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
+          <div className={styles.statePanel}>
+            <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 sm:py-20 gap-4 text-center">
+              <AlertCircle className="w-8 h-8 shrink-0 text-red-500" />
+              <p className="text-sm text-red-600 break-words max-w-full">{error}</p>
+              <button type="button" onClick={() => void fetchVariants()} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
+            </div>
           </div>
         )}
 
         {/* Two-panel layout */}
         {!loading && !error && !nameRequired && (
-          <>
-            <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-              <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0">
+          <div className={styles.workspace} data-testid="cold-email-workspace">
+            <div className={styles.panels}>
+              <div className={`${styles.editorPane} lg:border-r border-gray-100`} data-testid="cold-email-editor">
                 {/* Variant tabs */}
-                <div className="flex items-center gap-1 px-5 pt-4 pb-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-1 px-5 pt-4 pb-2 shrink-0">
                   {variants.map((v, i) => (
                     <button
                       key={v.id}
@@ -1199,7 +1210,7 @@ export default function ColdEmailModal({
                   })}
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-4">
+                <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       {t('coldEmail.to')}
@@ -1209,7 +1220,7 @@ export default function ColdEmailModal({
                       value={recipient}
                       onChange={(e) => { draftRevisionRef.current += 1; setRecipient(e.target.value); }}
                       placeholder={t('coldEmail.toPlaceholder')}
-                      className={`w-full px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
+                      className={`w-full min-w-0 px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
                     {!recipient && recipientStatus === 'sign_in_required' ? (
                       /* W10b: a verified address exists behind the sign-in
@@ -1306,7 +1317,7 @@ export default function ColdEmailModal({
                       type="text"
                       value={subject}
                       onChange={(e) => { draftRevisionRef.current += 1; setSubject(e.target.value); }}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all"
+                      className="w-full min-w-0 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all"
                     />
                   </div>
                   <div className="flex-1 flex flex-col">
@@ -1325,30 +1336,49 @@ export default function ColdEmailModal({
                       value={body}
                       onChange={(e) => { draftRevisionRef.current += 1; setBody(e.target.value); }}
                       rows={12}
-                      className="w-full flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
+                      className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="w-full lg:w-80 flex flex-col bg-gray-50/60 min-w-0 border-t lg:border-t-0 border-gray-100">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span className="text-sm font-semibold text-gray-700">{t('coldEmail.refine')}</span>
-                </div>
-
+              <div className={`${styles.refinePane} bg-gray-50/60 border-t lg:border-t-0 border-gray-100`} data-has-guidelines={!!labType}>
                 {labType && (
-                  <div className="px-4 pt-3 shrink-0">
-                    <EmailTipsPanel labType={labType} />
+                  <div className={`${styles.guidelines} border-b border-gray-100`}>
+                    <h3 id="cold-email-guidelines-heading" className="px-4 py-3 text-sm font-semibold text-gray-700 shrink-0">
+                      {t('coldEmail.guidelinesTitle')}
+                    </h3>
+                    <div
+                      className={`${styles.guidelinesScroll} px-4 pb-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500`}
+                      role="region"
+                      aria-labelledby="cold-email-guidelines-heading"
+                      tabIndex={0}
+                      data-testid="cold-email-guidelines"
+                    >
+                      <EmailTipsPanel labType={labType} />
+                    </div>
                   </div>
                 )}
 
+                <section className={styles.conversation} aria-labelledby="cold-email-requests-heading">
+                  <h3 id="cold-email-requests-heading" className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 shrink-0 text-sm font-semibold text-gray-700">
+                    <Sparkles className="w-4 h-4 shrink-0 text-indigo-500" aria-hidden="true" />
+                    {t('coldEmail.aiRequestsTitle')}
+                  </h3>
+
                 {/* Chat messages */}
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <div
+                  ref={chatHistoryRef}
+                  className={`${styles.history} px-4 py-3 space-y-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500`}
+                  role="log"
+                  aria-label={t('coldEmail.aiRequestsTitle')}
+                  tabIndex={0}
+                  data-testid="cold-email-chat-history"
+                >
                   {chatMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div
-                        className={`max-w-[90%] px-3 py-2 rounded-xl text-[13px] leading-relaxed ${
+                        className={`min-w-0 max-w-[90%] whitespace-pre-wrap break-words px-3 py-2 rounded-xl text-[13px] leading-relaxed ${
                           msg.role === 'user'
                             ? 'bg-indigo-600 text-white rounded-br-sm'
                             : 'bg-white text-gray-700 border border-gray-200 rounded-bl-sm shadow-sm'
@@ -1358,7 +1388,6 @@ export default function ColdEmailModal({
                       </div>
                     </div>
                   ))}
-                  <div ref={chatEndRef} />
                 </div>
 
                 {/* Quick actions */}
@@ -1389,10 +1418,12 @@ export default function ColdEmailModal({
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder={t('coldEmail.refinePlaceholder')}
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                      aria-label={t('coldEmail.requestLabel')}
+                      className="min-w-0 flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
                     />
                     <button
                       type="submit"
+                      aria-label={t('coldEmail.submitRequest')}
                       disabled={!chatInput.trim() || refining}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
@@ -1400,6 +1431,7 @@ export default function ColdEmailModal({
                     </button>
                   </form>
                 </div>
+                </section>
               </div>
             </div>
 
@@ -1514,7 +1546,7 @@ export default function ColdEmailModal({
             )}
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0" data-testid="cold-email-footer">
               {copyFailed && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600" role="status">
                   <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -1538,19 +1570,19 @@ export default function ColdEmailModal({
                   amber "To" hint above guides them to add an address; the Copy
                   button stays enabled since pasting elsewhere is still useful. */}
               <div
-                className="flex items-stretch rounded-xl overflow-hidden shadow-sm"
+                className="grid w-full min-w-0 grid-cols-2 rounded-xl overflow-hidden shadow-sm sm:flex sm:w-auto"
                 title={!recipient.trim() ? t('coldEmail.toHint') : undefined}
               >
                 <button
                   type="button"
                   disabled={!recipient.trim()}
                   onClick={() => { window.open(getMailtoLink('default'), '_blank'); markContacted(); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ExternalLink className="w-4 h-4" />
                   {t('coldEmail.openInEmail')}
                 </button>
-                <div className="w-px bg-indigo-400" />
+                <div className="hidden w-px bg-indigo-400 sm:block" />
                 <button
                   type="button"
                   disabled={!recipient.trim()}
@@ -1571,7 +1603,7 @@ export default function ColdEmailModal({
                 </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

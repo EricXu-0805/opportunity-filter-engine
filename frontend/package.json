@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/gen-school-stats.mjs",
+    "prebuild": "node scripts/gen-school-stats.mjs && node scripts/prepare-pdfjs-assets.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "predev": "node scripts/prepare-pdfjs-assets.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",

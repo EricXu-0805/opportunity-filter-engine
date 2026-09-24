@@ -1,0 +1,95 @@
+.statePanel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+/* Narrow or short viewports use one reachable workspace. The header stays
+   outside it, so closing never depends on scrolling through the draft. */
+.workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.panels {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.editorPane,
+.refinePane,
+.guidelines,
+.conversation {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.conversation {
+  overflow-y: auto;
+}
+
+.editorFields {
+  min-height: 0;
+  min-width: 0;
+}
+
+.guidelinesScroll {
+  min-height: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.history {
+  min-height: 6rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Give every nested scroll area a bounded grid/flex track. Height is part
+   of the breakpoint: a wide but short/zoomed window uses the fallback above. */
+@media (min-width: 1024px) and (min-height: 720px) {
+  .workspace {
+    overflow: hidden;
+  }
+
+  .panels {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+  }
+
+  .editorFields {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .refinePane {
+    display: grid;
+    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .refinePane[data-has-guidelines='false'] {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .guidelinesScroll,
+  .history {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overscroll-behavior-y: contain;
+  }
+}

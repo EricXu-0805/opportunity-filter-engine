@@ -40,6 +40,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
     }
   }, [alreadyUploaded, state, t]);
   const [error, setError] = useState<string | null>(null);
+  const [hasUnreadablePages, setHasUnreadablePages] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +66,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         progressIntervalRef.current = null;
       }
       setProgress(0);
+      setHasUnreadablePages(false);
 
       if (file.type !== 'application/pdf') {
         setError(t('resume.errOnlyPdf'));
@@ -99,9 +101,16 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         setProgress(100);
         if (data.success) {
           setState('success');
+          setHasUnreadablePages((data.pages_without_text?.length ?? 0) > 0);
           onParsed(data);
         } else {
-          setError(data.message || t('resume.errParse'));
+          setError(data.error_code === 'text_too_long'
+            ? t('resume.errTextTooLong')
+            : data.error_code === 'no_readable_text'
+              ? t('resume.errNoText')
+              : data.error_code === 'pdf_resources_unavailable'
+                ? t('resume.errResourcesUnavailable')
+                : data.message || t('resume.errParse'));
           setState('error');
         }
       } catch (err) {
@@ -154,6 +163,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
     setState('idle');
     setFileName(null);
     setError(null);
+    setHasUnreadablePages(false);
     setProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -246,6 +256,11 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
             <p className="text-xs text-emerald-600">
               {t('resume.success')}
             </p>
+            {hasUnreadablePages && (
+              <p role="status" className="text-xs text-amber-700 text-center max-w-sm">
+                {t('resume.incompletePages')}
+              </p>
+            )}
             <p className="text-[11px] text-gray-500 text-center max-w-[260px]">
               {t('resume.removeNote')}{' '}
               <Link

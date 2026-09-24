@@ -1,5 +1,6 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { useCallback, useState } from 'react';
+import { translate } from '@/i18n/translate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
@@ -510,6 +511,36 @@ describe('useResultsData', () => {
       expect(onCursorReset).not.toHaveBeenCalled();
     },
   );
+
+  it.each(['en', 'zh'] as const)('localizes an empty-selection failure on direct results entry (%s) without changing the profile', async (locale) => {
+    const emptyProfile = { ...profile, seeking_types: [] };
+    const before = JSON.stringify(emptyProfile);
+    const localT = (key: string) => translate(locale, key);
+    mocks.getMatchView.mockRejectedValue(new ApiError(422, 'MATCH_TYPE_REQUIRED', 'Select at least one opportunity type.', false));
+    const { result, rerender } = renderHook(
+      ({ current }) => useResultsData(current, false, baseView, 1, localT, true),
+      { initialProps: { current: emptyProfile as ProfileData } },
+    );
+    await waitFor(() => expect(result.current.errorCode).toBe('MATCH_TYPE_REQUIRED'));
+    expect(result.current.error).toBe(translate(locale, 'home.validation.seekingRequired'));
+    expect(mocks.getMatchView.mock.calls[0][0].seeking_types).toEqual([]);
+    expect(JSON.stringify(emptyProfile)).toBe(before);
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+    expect(result.current.error).not.toContain('MATCH_TYPE_REQUIRED');
+
+    mocks.getMatchView.mockResolvedValue(response('restored'));
+    rerender({ current: { ...emptyProfile, seeking_types: ['research'] } });
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-restored'));
+    expect(result.current.error).toBeNull();
+    expect(result.current.errorCode).toBeNull();
+  });
+
+  it('does not classify another 422 or similar wording as an empty-type failure', async () => {
+    mocks.getMatchView.mockRejectedValue(new ApiError(422, 'OTHER_VALIDATION', 'Select at least one opportunity type.', false));
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
+    await waitFor(() => expect(result.current.error).toBe('Select at least one opportunity type.'));
+    expect(result.current.errorCode).toBe('OTHER_VALIDATION');
+  });
 
   it('leaves an ordinary error alone rather than resetting the page', async () => {
     const onCursorReset = vi.fn();

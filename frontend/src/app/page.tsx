@@ -17,6 +17,7 @@ import { SearchFocusCard } from './home/SearchFocusCard';
 import { SharedBanner } from './home/SharedBanner';
 import { SubmitRow } from './home/SubmitRow';
 import { useProfileForm } from './home/use-profile-form';
+import { useDatabaseStats } from './home/use-database-stats';
 
 export default function HomePage() {
   // The fallback reserves a viewport of height on purpose. With a null
@@ -33,12 +34,11 @@ export default function HomePage() {
 
 function HomePageInner() {
   const { t } = useT();
+  const databaseStats = useDatabaseStats();
   const {
     profile,
     searchWeight,
     setSearchWeight,
-    oppCount,
-    lastUpdated,
     ghLoading,
     ghStatus,
     sharedBanner,
@@ -53,6 +53,7 @@ function HomePageInner() {
     useCloudVersion,
     hydrationState,
     isValid,
+    missingSeekingTypes,
     identityGeneration,
     viewSnapshot,
     update,
@@ -114,7 +115,7 @@ function HomePageInner() {
             setExploring={(v) => update('exploring', v)}
             t={t}
           />
-          <LiveDatabaseCard oppCount={oppCount} lastUpdated={lastUpdated} t={t} />
+          <LiveDatabaseCard {...databaseStats} t={t} />
         </div>
       </div>
 
@@ -124,6 +125,7 @@ function HomePageInner() {
 
       <SubmitRow
         isValid={isValid}
+        missingSeekingTypes={missingSeekingTypes}
         shareCopied={shareCopied}
         saveStatus={saveStatus}
         hydrationState={hydrationState}

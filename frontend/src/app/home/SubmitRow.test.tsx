@@ -154,3 +154,17 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(screen.getByTestId('generate-matches').textContent).toContain('home.actions.generating');
   });
 });
+
+
+describe('SubmitRow — an empty opportunity selection', () => {
+  it('explains the missing types, disables Generate, and does not submit', () => {
+    const onSubmit = vi.fn();
+    renderRow({ isValid: false, missingSeekingTypes: true, onSubmit });
+    const button = screen.getByTestId('generate-matches');
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription('home.validation.seekingRequired');
+    expect(screen.queryByText('home.validation.requiredFields')).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});

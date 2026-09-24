@@ -6,6 +6,8 @@ from typing import Literal, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
+from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
+
 # Where an imported skill came from. Absence is the student's own choice; an
 # unrecognised value is normalised to "unknown" and treated as an import.
 _SKILL_SOURCES = frozenset({"resume", "github", "shared"})
@@ -514,17 +516,32 @@ class TailorResponse(BaseModel):
     pipeline_version: str | None = None
 
 
+class ResumeProcessingChunk(BaseModel):
+    # Offsets are Unicode code points into the accepted, unchanged raw text.
+    start: int
+    end: int
+    method: str
+    reason: str | None = None
+
+
+class ResumeProcessingCoverage(BaseModel):
+    input_characters: int
+    chunks: list[ResumeProcessingChunk] = Field(default_factory=list)
+    ai_chunks: int = 0
+    heuristic_chunks: int = 0
+
+
 class ExtractBulletsRequest(BaseModel):
-    # R71-G: raw resume text the modal extracts bullet-shaped lines from.
-    # Capped at 20k chars (well above a one-page resume) so an oversized
-    # paste can't blow the LLM context budget; the route caps again before
-    # the prompt.
-    resume_text: str = Field(default="", max_length=20000)
+    # Store/accept the complete supported document. Model inputs have their
+    # own smaller bound and total time/concurrency budget in the route.
+    resume_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
 
 
 class ExtractBulletsResponse(BaseModel):
     bullets: list[str]
-    method: str = "heuristic"  # "ai" | "heuristic"
+    method: str = "heuristic"  # "ai" | "heuristic" | "mixed"
+    warnings: list[str] = Field(default_factory=list)
+    processing: ResumeProcessingCoverage | None = None
 
 
 # --- Résumé renovation (staged: structure → macro renovate → per-bullet) -----
@@ -586,7 +603,7 @@ class ResumeSection(BaseModel):
 
 
 class StructureResumeRequest(BaseModel):
-    resume_text: str = Field(default="", max_length=20000)
+    resume_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
     locale: str = "en"
 
     @field_validator("locale")
@@ -598,8 +615,9 @@ class StructureResumeRequest(BaseModel):
 
 class StructureResumeResponse(BaseModel):
     sections: list[ResumeSection]
-    method: str = "heuristic"  # "ai" | "heuristic"
+    method: str = "heuristic"  # "ai" | "heuristic" | "mixed"
     warnings: list[str] = Field(default_factory=list)
+    processing: ResumeProcessingCoverage | None = None
 
 
 class RenovateRequest(BaseModel):

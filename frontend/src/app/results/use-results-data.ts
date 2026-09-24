@@ -28,6 +28,8 @@ interface UseResultsDataResult {
   setData: React.Dispatch<React.SetStateAction<MatchesResponse | null>>;
   loading: boolean;
   error: string | null;
+  /** Retain the structured failure for recovery actions; never render the code. */
+  errorCode: string | null;
   showSlowHint: boolean;
   paginationReady: boolean;
   /** A rule-ranked list is on screen and the paid refine is still running. */
@@ -86,6 +88,7 @@ export function useResultsData(
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [paginationReady, setPaginationReady] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -153,6 +156,7 @@ export function useResultsData(
       setData(null);
       setLoading(false);
       setError(t('results.loadFailed'));
+      setErrorCode(null);
       setPaginationReady(false);
       return;
     }
@@ -177,6 +181,7 @@ export function useResultsData(
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
     setError(null);
+    setErrorCode(null);
     setPaginationReady(false);
     setRefining(false);
     setRefined(false);
@@ -326,10 +331,14 @@ export function useResultsData(
         if (interimPainted) {
           setRefineFailed(true);
         } else {
+          const code = caught instanceof ApiError ? caught.code : null;
+          setErrorCode(code);
           setError(
-            caught instanceof ApiError
-              ? caught.message
-              : t('results.loadFailed'),
+            code === 'MATCH_TYPE_REQUIRED'
+              ? t('home.validation.seekingRequired')
+              : caught instanceof ApiError
+                ? caught.message
+                : t('results.loadFailed'),
           );
         }
       } finally {
@@ -351,6 +360,6 @@ export function useResultsData(
   }, [semanticRerank, page, requestKey, t, onCursorReset]);
 
   return {
-    data, setData, loading, error, showSlowHint, paginationReady, refining, refined, refineFailed,
+    data, setData, loading, error, errorCode, showSlowHint, paginationReady, refining, refined, refineFailed,
   };
 }

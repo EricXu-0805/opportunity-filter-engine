@@ -3012,8 +3012,6 @@ class _FilterCtx:
     exclude_citizenship_restricted: bool
     international_student: bool
     seeking: set[str]
-    student_majors_norm: set[str]
-    related_majors_norm: set[str]
 
 
 def _filter_context(profile: dict) -> _FilterCtx:
@@ -3021,13 +3019,6 @@ def _filter_context(profile: dict) -> _FilterCtx:
     # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
     # Without a home_school there is no "cross-school" to hide, so such
     # profiles keep the pre-toggle behavior.
-    student_majors_norm = {
-        _normalize_major(m)
-        for m in [profile.get("major", "")] + (profile.get("secondary_interests") or [])
-    }
-    related_majors_norm: set[str] = set()
-    for sm in student_majors_norm:
-        related_majors_norm.update(RELATED_MAJORS.get(sm, []))
     return _FilterCtx(
         home_school=home_school_raw or "uiuc",
         hide_cross_school=not profile.get("include_cross_school") and bool(home_school_raw),
@@ -3038,8 +3029,6 @@ def _filter_context(profile: dict) -> _FilterCtx:
         seeking={
             _normalize_type_key(s) for s in (profile.get("seeking_type") or []) if s and s.strip()
         },
-        student_majors_norm=student_majors_norm,
-        related_majors_norm=related_majors_norm,
     )
 
 
@@ -3083,13 +3072,10 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
                 return "citizenship_restricted"
 
     opp_type = _normalize_type_key(opp.get("opportunity_type") or "")
-    if ctx.seeking and opp_type and opp_type not in ctx.seeking:
-        opp_majors = faculty_safe_eligibility(opp).get("majors") or []
-        if opp_majors:
-            opp_majors_norm = {_normalize_major(m) for m in opp_majors}
-            if not (ctx.student_majors_norm & opp_majors_norm):
-                if not (ctx.related_majors_norm & opp_majors_norm):
-                    return "seeking_type_mismatch"
+    # Type selection defines the result universe, independently of major fit.
+    # Missing/unknown record types cannot establish membership in that set.
+    if ctx.seeking and opp_type not in ctx.seeking:
+        return "seeking_type_mismatch"
 
     return None
 

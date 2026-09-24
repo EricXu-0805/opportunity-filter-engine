@@ -10,6 +10,7 @@ import type {
   StatsResponse,
   TailorResponse,
   StructureResumeResponse,
+  ResumeProcessingCoverage,
   ResumeSectionInput,
   RenovateResponse,
   BulletOptimizeResponse,
@@ -273,10 +274,9 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     // Additional majors/minors feed the matcher's secondary-major + keyword signal.
     secondary_interests: profile.additional_majors ?? [],
     international_student: profile.is_international,
-    seeking_type:
-      acceptedSeekingTypes.length > 0
-        ? acceptedSeekingTypes
-        : ['research', 'summer_program'],
+    // Only a missing legacy field receives defaults above. An explicit empty
+    // selection stays empty; Match rejects it, while material tools allow it.
+    seeking_type: acceptedSeekingTypes,
     desired_fields: deriveDesiredFields(profile.research_interests),
     // Provenance travels with the level or the level is a lie on arrival: the
     // server decides whether a skill may back "I have experience with X", and
@@ -1065,7 +1065,9 @@ export async function optimizeBullet(
 
 export interface ExtractBulletsResponse {
   bullets: string[];
-  method: 'ai' | 'heuristic';
+  method: 'ai' | 'heuristic' | 'mixed';
+  warnings?: string[];
+  processing?: ResumeProcessingCoverage;
 }
 
 /**

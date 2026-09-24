@@ -264,7 +264,7 @@ function SlideVisual({ slide, t }: { slide: SlideKey; t: T }) {
 }
 
 // Final-step school gate: a selectable list of every supported campus, default
-// UIUC, with a live-data / coming-soon badge. Scrolls; the choice is held in the
+// UIUC, with a records-available / coming-soon badge. Scrolls; the choice is held in the
 // parent so paging back and forth preserves it.
 function SchoolPicker({ t, locale, selected, onSelect }: {
   t: T; locale: string; selected: string; onSelect: (slug: string) => void;
@@ -286,7 +286,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
     <div className="max-h-[220px] overflow-y-auto -mx-0.5 px-0.5 space-y-1.5" data-testid="onboarding-school-list">
       {SCHOOLS.map((s) => {
         const isSel = s.slug === selected;
-        const live = s.coverage.campusOpportunities !== 'pending';
+        const hasRecords = s.coverage.campusOpportunities !== 'pending';
         return (
           <button
             key={s.slug}
@@ -307,9 +307,9 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
               <span className="block text-[11px] text-gray-400 truncate">{s.location}</span>
             </span>
             <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-              live ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+              hasRecords ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
             }`}>
-              {t(live ? 'onboarding.schoolLiveBadge' : 'onboarding.schoolSoonBadge')}
+              {t(hasRecords ? 'onboarding.schoolLiveBadge' : 'onboarding.schoolSoonBadge')}
             </span>
             {isSel
               ? <Check className="shrink-0 w-4 h-4 text-indigo-600" aria-hidden="true" />

@@ -487,3 +487,39 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(zhPrivacy).toContain('随档案一起保存');
   });
 });
+
+
+describe('resume input bounds and partial text disclosure', () => {
+  it.each([
+    ['text_too_long', 'resume.errTextTooLong'],
+    ['no_readable_text', 'resume.errNoText'],
+    ['pdf_resources_unavailable', 'resume.errResourcesUnavailable'],
+  ] as const)('does not replace the saved resume after %s', async (errorCode, message) => {
+    mockParse.mockResolvedValue({
+      success: false, error_code: errorCode, message: 'fallback', raw_text: '',
+      extracted_skills: [], skill_evidence: [], extracted_coursework: [],
+    });
+    const onParsed = vi.fn();
+    const onRemove = vi.fn();
+    render(<ResumeUpload alreadyUploaded onParsed={onParsed} onRemove={onRemove} />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [pdfFile()] } });
+    await waitFor(() => expect(screen.getByText(message)).toBeInTheDocument());
+    expect(onParsed).not.toHaveBeenCalled();
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it('passes all supported text through and discloses unreadable pages', async () => {
+    const text = 'Earlier experience. '.repeat(1200) + 'Final page marker';
+    const parsed = {
+      success: true, message: 'ok', raw_text: text, pages_without_text: [2],
+      extracted_skills: [], skill_evidence: [], extracted_coursework: [],
+    };
+    mockParse.mockResolvedValue(parsed);
+    const onParsed = vi.fn();
+    render(<ResumeUpload onParsed={onParsed} onRemove={vi.fn()} />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [pdfFile()] } });
+    await waitFor(() => expect(onParsed).toHaveBeenCalledWith(parsed));
+    expect(screen.getByText('resume.incompletePages')).toBeInTheDocument();
+    expect(onParsed.mock.calls[0][0].raw_text).toBe(text);
+  });
+});

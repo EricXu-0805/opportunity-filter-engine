@@ -13,6 +13,8 @@ import {
   generateColdEmail,
   getEmailVariants,
   refineEmail,
+  tailorResume,
+  renovateResume,
   parseGitHubProfile,
   getStats,
   wakeBackend,
@@ -1015,5 +1017,49 @@ describe('retryable server errors are retried, not shown', () => {
     fetchMock.mockResolvedValue(badResponse(503, ''));
     await expect(sendMatchesEmail('a@b.edu', [])).rejects.toThrow(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('opportunity-type request intent', () => {
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  it.each(combinations.map((types) => ({ types })))('sends exactly $types for Match', async ({ types }) => {
+    fetchMock.mockResolvedValue(okJson({ results: [] }));
+    await getMatches(makeProfile({ seeking_types: types }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.seeking_type).toEqual(types);
+  });
+
+  it('defaults only a missing legacy field; an explicit empty array stays empty', async () => {
+    fetchMock.mockImplementation(async () => okJson({ results: [] }));
+    await getMatches(makeProfile());
+    await getMatches(makeProfile({ seeking_types: [] }));
+    const bodies = fetchMock.mock.calls.map((call) => JSON.parse((call[1] as RequestInit).body as string));
+    expect(bodies[0].seeking_type).toEqual(['research', 'summer_program']);
+    expect(bodies[1].seeking_type).toEqual([]);
+  });
+
+  it('does not invent a selection after removing release-disabled preferences', async () => {
+    fetchMock.mockResolvedValue(okJson({ results: [] }));
+    await getMatches(makeProfile({ seeking_types: ['fellowship', ' Fellowship '] }));
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).seeking_type).toEqual([]);
+  });
+
+  it('still permits material requests without a selected Match type', async () => {
+    fetchMock.mockImplementation(async () => okJson({}));
+    const profile = makeProfile({ seeking_types: [] });
+    await getEmailVariants(profile, 'opp-1');
+    await tailorResume(profile, 'opp-1', ['Built a parser']);
+    await renovateResume(profile, 'opp-1', []);
+    for (const path of ['/api/cold-email/variants', '/api/tailor', '/api/tailor/renovate']) {
+      const call = fetchMock.mock.calls.find(([url]) => url === path);
+      expect(call, path).toBeDefined();
+      expect(JSON.parse((call![1] as RequestInit).body as string).profile.seeking_type).toEqual([]);
+    }
   });
 });
