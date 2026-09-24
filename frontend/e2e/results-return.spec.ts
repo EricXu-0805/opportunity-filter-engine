@@ -272,12 +272,12 @@ test.describe('Results return context', () => {
     await answer.fill('Keep this unconfirmed answer when Back is cancelled.');
     await page.goBack();
     await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true })).toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits or answers');
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits, suggestions or answers');
     await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
     await expect(answer).toHaveValue('Keep this unconfirmed answer when Back is cancelled.');
     expect(page.url()).toBe(url);
     await page.goBack();
-    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits or answers');
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits, suggestions or answers');
     await page.getByRole('button', { name: 'Discard unsaved edits and continue', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();

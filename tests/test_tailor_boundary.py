@@ -151,19 +151,18 @@ class TestResponseProvenance:
 # ---------------------------------------------------------------------------
 
 class TestDocumentRoundTripTripwire:
-    def test_no_document_generation_dependencies(self):
-        # DOCX/PDF generation, template conversion, and formatting round-trips
-        # belong to the separate MTP Renovate product area. None of it exists
-        # today; if a dependency appears, the W13 gating requirements apply
-        # BEFORE it ships (hidden until that product meets its own bar).
-        forbidden = ("python-docx", "reportlab", "weasyprint", "mammoth",
-                     "pypdf", "fpdf", "docxtpl")
-        reqs = (_REPO / "requirements.txt").read_text().lower()
-        for dep in forbidden:
-            assert dep not in reqs, f"document round-trip dependency shipped: {dep}"
-        pkg = (_REPO / "frontend/package.json").read_text().lower()
-        for dep in ("jspdf", "pdfkit", "docx", "html2pdf"):
-            assert f'"{dep}"' not in pkg, f"document round-trip dependency shipped: {dep}"
+    def test_full_document_export_has_its_own_product_gate(self):
+        # M41 explicitly introduces render-only standard PDF/DOCX export.
+        # It must not silently turn the old bullet Tailor into a document path.
+        from backend.main import _release_feature_for_path
+        assert _release_feature_for_path('/api/resume/full-target/export') == 'resume_renovate'
+        assert _release_feature_for_path('/api/resume/full-target/export/') == 'resume_renovate'
+        reqs = (_REPO / 'requirements.txt').read_text().lower()
+        assert 'fpdf2==2.8.8' in reqs
+        assert 'python-docx==1.2.0' in reqs
+        src = (_REPO / 'backend/routes/target_resume_export.py').read_text()
+        assert 'chat_completion' not in src
+        assert 'load_opportunities' not in src
 
     def test_no_export_or_download_route_in_tailor(self):
         src = (_REPO / "backend/routes/tailor.py").read_text()
