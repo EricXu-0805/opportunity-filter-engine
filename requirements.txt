@@ -34,6 +34,15 @@ lxml==6.1.0
 # season-name, and "Rolling/TBD" mix that scrapers produce.
 python-dateutil==2.9.0
 
+# Complete target resume PDF/DOCX export (M41).
+# Fonts are bundled locally; rendering never fetches external content.
+fpdf2==2.8.8
+python-docx==1.2.0
+fonttools==4.66.0
+Pillow==12.3.0
+defusedxml==0.7.1
+uharfbuzz==0.56.2
+
 # LLM + embedding integration
 openai==2.29.0
 scikit-learn==1.8.0
@@ -48,3 +57,5 @@ sentry-sdk[fastapi]==2.60.0
 # Testing (kept in production set so Render-built images can run /api/health
 # style smoke tests; very small footprint)
 pytest==9.0.3
+# Real PDF extraction checks for the export contract.
+pypdf==6.19.0

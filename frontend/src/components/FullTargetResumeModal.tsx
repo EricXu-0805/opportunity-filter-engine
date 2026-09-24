@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
+import TargetResumeExportPanel from './TargetResumeExportPanel';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import { buildResumeMasterPreview, validateResumeMaster } from '@/lib/resume-master';
@@ -378,7 +379,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </aside>}
         <div className="min-w-0 lg:order-1">
         <p className="mb-2 text-sm font-medium">{copy('Uses only confirmed items linked to your master résumé.', '只使用母版中已确认并关联的内容。')}</p>
-        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them. PDF and DOCX export is not available yet.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，暂不支持 PDF 或 DOCX 导出。')}</p>
+        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them, then export the current draft.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，再导出当前稿。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
@@ -416,6 +417,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <p>{copy('A newer server version exists. Your local edits are preserved and have not overwritten it. Loading the server version will discard your local edits.', '服务器已有更新版本。本地编辑仍保留，未覆盖服务器；载入服务器版本会放弃本地编辑。')}</p>
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
+          <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit}
+            unsaved={dirty} outdated={outdated} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}

@@ -54,6 +54,7 @@ from backend.routes import (
     saved_searches,
     tailor,
     target_resume_ai,
+    target_resume_export,
 )
 from backend.routes import email as email_routes
 
@@ -86,6 +87,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
     "/api/resume/github": (10, 60),
+    # Local font parsing/layout is bounded work, although it is not an AI call.
+    "/api/resume/full-target/export": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),
     "/api/import-url": (5, 60),
@@ -501,7 +504,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # authenticated tier is also token-varied, which no shared cache
             # keys on.
             or path == "/api/ready"
-            or path.rstrip("/") == "/api/tailor/full-target/suggestions"
+            or path.rstrip("/") in {"/api/tailor/full-target/suggestions", "/api/resume/full-target/export"}
         ):
             # Admin responses can contain student email addresses, feedback
             # text, order rows, and internal notes. The X-Admin-Token custom
@@ -526,6 +529,7 @@ def _release_feature_for_path(path: str) -> ReleaseFeature | None:
         "/api/tailor/renovate",
         "/api/tailor/bullet",
         "/api/tailor/full-target/suggestions",
+        "/api/resume/full-target/export",
     }:
         return "resume_renovate"
     if path == "/api/chat/models":
@@ -585,8 +589,14 @@ def _request_body_limit_from_env() -> int:
 
 
 def _full_target_body_limit_from_env() -> int:
-    """Only the new full-document route gets room for its bounded envelope."""
+    """The full-document suggestion route gets its own bounded envelope room."""
     from backend.lib.target_resume_ai_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
+def _export_body_limit_from_env() -> int:
+    """Use the export contract independently of the AI request envelope."""
+    from backend.lib.target_resume_export_schema import MAX_BODY_BYTES
     return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
 
 
@@ -616,12 +626,13 @@ class RequestBodyLimitMiddleware:
     trips 413 the moment the cumulative chunk size crosses the limit.
     """
 
-    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None):
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None):
         if max_bytes < 1:
             raise ValueError("max_bytes must be positive")
         self.app = app
         self.max_bytes = max_bytes
         self.full_target_max_bytes = full_target_max_bytes or max_bytes
+        self.export_max_bytes = export_max_bytes or max_bytes
 
     @staticmethod
     async def _send_error(send, status: int) -> None:
@@ -655,7 +666,13 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
-        max_bytes = self.full_target_max_bytes if scope.get("path", "").rstrip("/") == "/api/tailor/full-target/suggestions" else self.max_bytes
+        path = scope.get("path", "").rstrip("/")
+        if path == "/api/tailor/full-target/suggestions":
+            max_bytes = self.full_target_max_bytes
+        elif path == "/api/resume/full-target/export":
+            max_bytes = self.export_max_bytes
+        else:
+            max_bytes = self.max_bytes
         content_lengths = [
             value.strip() for name, value in scope.get("headers", []) if name.lower() == b"content-length"
         ]
@@ -740,6 +757,7 @@ app.add_middleware(
     RequestBodyLimitMiddleware,
     max_bytes=_request_body_limit_from_env(),
     full_target_max_bytes=_full_target_body_limit_from_env(),
+    export_max_bytes=_export_body_limit_from_env(),
 )
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
@@ -769,6 +787,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     # X-Admin-Actor is the self-declared operator label (see admin.require_admin).
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Admin-Actor"],
+    expose_headers=["x-ofe-export-request", "x-ofe-document-signature", "x-ofe-export-signature", "x-ofe-export-template", "Content-Disposition"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
@@ -780,6 +799,7 @@ app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
+app.include_router(target_resume_export.router, prefix="/api", tags=["resume"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])
