@@ -36,6 +36,7 @@
 
 import type { ProfileData, SkillWithLevel } from './types';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
+import { validateResumeMaster } from './resume-master';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -83,7 +84,7 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
  *  text, extracted coursework and experience sources must stay together.
  *  Taking them from different revisions can attach claims to the wrong résumé.
  *  Staging any member stages the whole bundle. */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries'];
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
@@ -93,7 +94,7 @@ export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'
 const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
-  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true,
+  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true, resume_master: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -139,11 +140,17 @@ function isProfileKey(key: string): key is ProfileKey {
  *  here, at module load, before any read can happen. */
 export const RESUME_BUNDLE_ID = 'resume';
 registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
-  key !== 'experience_entries' || !value.present || validateExperienceEntries(value.value).ok
+  !value.present || (key === 'experience_entries' ? validateExperienceEntries(value.value).ok
+    : key === 'resume_master' ? validateResumeMaster(value.value).ok : true)
 ));
 
-function emptyResumeValue(key: ProfileKey): string | [] {
-  return key === 'resume_text' ? '' : [];
+function emptyResumeValue(key: ProfileKey): string | [] | null {
+  return key === 'resume_text' ? '' : key === 'resume_master' ? null : [];
+}
+
+function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'resume_master'>): boolean {
+  return validateExperienceEntries(profile.experience_entries).ok
+    && validateResumeMaster(profile.resume_master).ok;
 }
 
 /** Complete a persisted partial bundle from its frozen base, or the empty
@@ -551,7 +558,7 @@ export function recordProfileIntent(
   // envelope read below would hand the live owner's document to a caller the
   // authority has already retired. Neither is repairable after the fact.
   if (!isOwnerTokenValid(token, token.uid)) return false;
-  if (!validateExperienceEntries(desired.experience_entries).ok) return false;
+  if (!validResumeContent(desired)) return false;
   ensureScope(token);
   const writer = opts.writer ?? DEFAULT_WRITER;
   const envelope = readProfileSyncEnvelopeStrict();
@@ -1426,7 +1433,7 @@ function consumeSkillOps(confirmed?: ProfilePendingWrite): void {
 
 function isProfileObject(value: unknown): value is ProfileData {
   return !!value && typeof value === 'object' && !Array.isArray(value)
-    && validateExperienceEntries((value as ProfileData).experience_entries).ok;
+    && validResumeContent(value as ProfileData);
 }
 
 function stringList(value: unknown): string[] {
@@ -1488,8 +1495,8 @@ export function readProfileSyncEnvelopeStrict(): JournalResult<ProfileSyncEnvelo
       try {
         const profile = JSON.parse(mirror) as unknown;
         if (profile && typeof profile === 'object' && !Array.isArray(profile)
-          && !validateExperienceEntries((profile as ProfileData).experience_entries).ok) {
-          return { ok: false, reason: 'profile experience evidence is malformed' };
+          && !validResumeContent(profile as ProfileData)) {
+          return { ok: false, reason: 'profile resume data is malformed' };
         }
       } catch { /* Legacy JSON handling remains with the existing migration. */ }
     }
@@ -1516,7 +1523,7 @@ function parseProfileSyncEnvelope(raw: string): ProfileSyncEnvelope | null {
     // Never turn malformed experience evidence into an absent row or outbox.
     for (const profile of [env.confirmed?.profile, env.pending?.baseProfile,
       env.pending?.desiredProfile, env.pending?.conflictRemote]) {
-      if (profile && !validateExperienceEntries(profile.experience_entries).ok) return null;
+      if (profile && !validResumeContent(profile)) return null;
     }
     const c = env.confirmed;
     const confirmed = c && typeof c.revision === 'number' && Number.isInteger(c.revision)
@@ -2568,7 +2575,7 @@ export async function stageProfilePatch(
   if (gate) return gate;
   ensureScope(token);
 
-  if (!validateExperienceEntries(desired.experience_entries).ok) return { status: 'device-failed', phase: 'stage' };
+  if (!validResumeContent(desired)) return { status: 'device-failed', phase: 'stage' };
   const effectiveKeys = expandBundles(keys);
   if (effectiveKeys.length === 0) return { status: 'blocked' };
 

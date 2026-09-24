@@ -487,7 +487,7 @@ describe('the résumé bundle', () => {
     await stageProfilePatch(
       { ...FULL, resume_text: '', coursework: [] }, ['resume_text'], captureOwnerToken(),
     );
-    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['coursework', 'experience_entries', 'resume_text']);
+    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 
   it('a collision on either half conflicts BOTH — coursework never outlives its résumé', async () => {
@@ -502,7 +502,7 @@ describe('the résumé bundle', () => {
     );
     expect(result.status).toBe('conflict');
     expect((result as { conflictKeys: string[] }).conflictKeys.sort())
-      .toEqual(['coursework', 'experience_entries', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 });
 

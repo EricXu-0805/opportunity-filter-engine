@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ExperienceEntry, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
+import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
 import {
   captureOwnerToken,
   isOwnerScopedLoadError,
@@ -169,6 +170,7 @@ export interface UseProfileFormResult {
    *  and silently deleting those would destroy the user's own work. */
   handleResumeRemoved: () => boolean;
   handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
+  handleResumeMasterChange: (master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }) => boolean;
   handleGitHubImport: () => Promise<void>;
 }
 
@@ -2259,6 +2261,23 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     return true;
   }, [identityGeneration, editingOrigin, editProfile]);
 
+  const handleResumeMasterChange = useCallback((master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }): boolean => {
+    if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
+    const origin = editingOrigin();
+    if (!origin) return false;
+    const current = profileRef.current;
+    // Confirm only the complete source bundle the editor actually displayed.
+    const currentBase = resumeMasterEditBase(current);
+    if (currentBase.resumeText !== expected.resumeText
+      || currentBase.entriesJson !== expected.entriesJson
+      || currentBase.masterJson !== expected.masterJson
+      || !validateExperienceEntries(current.experience_entries).ok
+      || !validateResumeMaster(current.resume_master).ok
+      || !validateResumeMaster(master).ok) return false;
+    editProfile((prev) => ({ ...prev, resume_master: master }), ['resume_master'], origin);
+    return true;
+  }, [identityGeneration, editingOrigin, editProfile]);
+
   // Rebuilt on every identity transition (identityGeneration is a dep), so
   // a resume parse that started under the previous identity calls the
   // handler it captured THEN — which refuses — instead of the current one.
@@ -2271,15 +2290,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // screen's extracted skills as the current owner's own additions.
     const origin = editingOrigin();
     if (!origin || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
-    if (!validateExperienceEntries(profileRef.current.experience_entries).ok) {
+    if (!validateExperienceEntries(profileRef.current.experience_entries).ok
+      || !validateResumeMaster(profileRef.current.resume_master).ok) {
       setSaveStatus('error');
       return false;
     }
     let resumeEntries: ExperienceEntry[];
+    let resumeMaster: ResumeMasterV1 | null;
     try {
       resumeEntries = profileRef.current.resume_text === data.raw_text
         ? (profileRef.current.experience_entries ?? [])
         : withdrawResumeEntries(profileRef.current.experience_entries);
+      resumeMaster = profileRef.current.resume_text === data.raw_text
+        ? (profileRef.current.resume_master ?? null)
+        : withdrawResumeMaster(profileRef.current.resume_master);
     } catch {
       setSaveStatus('error');
       return false;
@@ -2314,6 +2338,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         skills: mergeSkills(prev.skills, newSkills),
         resume_text: data.raw_text,
         experience_entries: resumeEntries,
+        resume_master: resumeMaster,
         coursework: data.extracted_coursework,
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.
@@ -2332,7 +2357,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // screen and built a document from it.
     const origin = editingOrigin();
     if (!origin || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
-    if (!validateExperienceEntries(profileRef.current.experience_entries).ok) {
+    if (!validateExperienceEntries(profileRef.current.experience_entries).ok
+      || !validateResumeMaster(profileRef.current.resume_master).ok) {
+      setSaveStatus('error');
+      return false;
+    }
+    let retainedEntries: ExperienceEntry[];
+    let retainedMaster: ResumeMasterV1 | null;
+    try {
+      retainedEntries = removeResumeEntries(profileRef.current.experience_entries);
+      retainedMaster = removeResumeMasterSources(profileRef.current.resume_master, retainedEntries);
+    } catch {
       setSaveStatus('error');
       return false;
     }
@@ -2340,12 +2375,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       (prev) => (
         (prev.resume_text ?? '') === '' && (prev.coursework?.length ?? 0) === 0
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
+          && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev
-          : { ...prev, resume_text: '', coursework: [], experience_entries: removeResumeEntries(prev.experience_entries) }
+          : { ...prev, resume_text: '', coursework: [], experience_entries: retainedEntries, resume_master: retainedMaster }
       ),
       // Record the whole source bundle, including an already-empty member.
       // Deletion must not revive old quoted evidence during reconciliation.
-      ['resume_text', 'coursework', 'experience_entries'],
+      ['resume_text', 'coursework', 'experience_entries', 'resume_master'],
       origin,
     );
     // Removal does not wait for the 1.5s debounce: until it is persisted,
@@ -2364,7 +2400,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       ...profileRef.current,
       resume_text: '',
       coursework: [],
-      experience_entries: removeResumeEntries(profileRef.current.experience_entries),
+      experience_entries: retainedEntries,
+      resume_master: retainedMaster,
       search_weight: weightRef.current,
     }) as ProfileData & { search_weight: number };
     // This exact form state is now being persisted by an explicit action,
@@ -2387,7 +2424,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // action with a specific meaning, and folding an unrelated half-typed
     // field into it would make the removal fail for a reason the user cannot
     // connect to what they clicked.
-    commitSave(cleansed, ['resume_text', 'coursework', 'experience_entries'], origin, saveIntentRef.current);
+    commitSave(cleansed, ['resume_text', 'coursework', 'experience_entries', 'resume_master'], origin, saveIntentRef.current);
     return true;
   }, [identityGeneration, editProfile, commitSave, editingOrigin, setSaveStatus]);
 
@@ -3183,6 +3220,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     handleResumeParsed,
     handleResumeRemoved,
     handleExperienceChange,
+    handleResumeMasterChange,
     handleGitHubImport,
   };
 }

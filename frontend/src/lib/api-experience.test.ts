@@ -1,3 +1,4 @@
+import { createEmptyResumeMaster } from './resume-master';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExperienceEntry, ExperienceUsage, ProfileData } from './types';
@@ -72,6 +73,17 @@ describe('Cold Email confirmed experience envelope', () => {
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
     expect(sent).not.toHaveProperty('resume_bullets');
+  });
+
+  it.each(paths)('%s does not send the full master through existing email requests', async (path) => {
+    const input = { ...profile, resume_master: { ...createEmptyResumeMaster('private-master'),
+      basics: { links: [], name: { id: 'private-name', revision: 1, status: 'confirmed' as const,
+        value: 'MASTER-ONLY-PRIVATE-NAME', source: { kind: 'manual' as const } } } } };
+    fetchMock.mockResolvedValueOnce(response(path));
+    await call(path, input);
+    const body = fetchMock.mock.calls[0][1].body;
+    expect(body).not.toContain('resume_master');
+    expect(body).not.toContain('MASTER-ONLY-PRIVATE-NAME');
   });
 
   it('legacy refine with no profile still explicitly declares no experience evidence', async () => {

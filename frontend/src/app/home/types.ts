@@ -16,6 +16,7 @@ export const DEFAULT_PROFILE: ProfileData = {
   research_interests: '',
   skills: [],
   experience_entries: [],
+  resume_master: null,
   search_weight: 50,
 };
 

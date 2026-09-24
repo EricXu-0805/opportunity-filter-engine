@@ -1,3 +1,4 @@
+import { createEmptyResumeMaster, resumeMasterEditBase } from '@/lib/resume-master';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { cleanup, render, renderHook, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { Suspense, useState } from 'react';
@@ -7330,7 +7331,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
     expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle')
-      .toEqual(['coursework', 'experience_entries', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
     expect(patch.resume_text).toBe('');
   });
 
@@ -10413,6 +10414,79 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
     act(() => { expect(result.current.handleResumeParsed(RESUME('too early'))).toBe(false); expect(result.current.handleResumeRemoved()).toBe(false); });
     await act(async () => settle(cloudRow({ resume_text: 'Old source', experience_entries: [sourced, manual] })));
     expect(result.current.profile.experience_entries).toEqual([sourced, manual]); expect(result.current.profile.resume_text).toBe('Old source');
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('useProfileForm — full resume master lifecycle', () => {
+  const manual = { id: 'name', revision: 1, status: 'confirmed' as const, value: 'Alex 王', source: { kind: 'manual' as const } };
+  const sourced = { id: 'school', revision: 1, status: 'confirmed' as const, value: 'Old source',
+    source: { kind: 'resume' as const, signature: 'a'.repeat(64), quote: 'Old source', start: 0, end: 10 } };
+  const master = () => ({ ...createEmptyResumeMaster('master-a'), basics: { links: [], name: manual },
+    education: [{ id: 'education-a', school: sourced, details: [] }] });
+  const baseOf = (form: ReturnType<typeof useProfileForm>) => resumeMasterEditBase(form.profile);
+
+  it('applies the displayed master and saves it with the unchanged source and experience library', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(true); });
+    await waitFor(() => expect(serverRow?.resume_master).toEqual(master()), { timeout: 2500 });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [], resume_master: master() });
+  });
+
+  it('refuses a stale editor after an experience edit, source replacement or another master edit', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const before = baseOf(result.current);
+    act(() => { expect(result.current.handleResumeMasterChange(master(), before)).toBe(true); });
+    act(() => { expect(result.current.handleResumeMasterChange(master(), before)).toBe(false); });
+    const afterMaster = baseOf(result.current);
+    act(() => result.current.handleExperienceChange([{ id: 'extra', revision: 1, status: 'candidate', text: 'New detail', source: { kind: 'manual' } }], { resumeText: result.current.profile.resume_text ?? '', entriesJson: JSON.stringify(result.current.profile.experience_entries ?? []) }));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), afterMaster)).toBe(false); });
+    const afterExperience = baseOf(result.current);
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), afterExperience)).toBe(false); });
+    expect(result.current.profile.resume_master?.basics.name).toEqual(manual);
+  });
+
+  it('withdraws sourced metadata on replacement and removes its quote on deletion while preserving manual fields', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', resume_master: master(), skills: [{ name: 'Python', level: 'expert', confirmed: true }] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    expect(result.current.profile.resume_master?.education[0].school).toEqual({ ...sourced, status: 'withdrawn', revision: 2 });
+    expect(result.current.profile.resume_master?.basics.name).toEqual(manual);
+    await act(async () => result.current.handleResumeRemoved());
+    await waitFor(() => expect(serverRow?.resume_text).toBe(''));
+    expect(JSON.stringify(serverRow?.resume_master)).not.toContain('Old source');
+    expect((serverRow?.resume_master as ReturnType<typeof master>)?.basics.name).toEqual(manual);
+    expect(serverRow?.skills).toEqual([{ name: 'Python', level: 'expert', confirmed: true }]);
+  });
+
+  it('keeps the exact master when the same resume is parsed again', async () => {
+    const parsed = RESUME('same');
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: parsed.raw_text, resume_master: master() }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(parsed));
+    expect(result.current.profile.resume_master).toEqual(master());
+  });
+
+  it('blocks a pre-hydration action and old-account callback without writing either master', async () => {
+    let settle!: (row: LoadedProfile) => void;
+    mockLoadProfile = () => deferredLoad(resolve => { settle = resolve; });
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(authChangeCb).not.toBeNull());
+    act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(false); });
+    await act(async () => settle(cloudRow({ resume_text: 'Old source', resume_master: master() })));
+    const callback = result.current.handleResumeMasterChange; const before = baseOf(result.current);
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', resume_master: master() }));
+    await emitAuth('master-other'); await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(callback({ ...master(), revision: 2 }, before)).toBe(false); });
+    expect(result.current.profile.resume_master).toEqual(master());
     expect(commitProfilePatch).not.toHaveBeenCalled();
   });
 });
