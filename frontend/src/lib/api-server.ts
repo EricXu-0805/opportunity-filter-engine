@@ -106,16 +106,31 @@ export async function fetchSimilarServer(id: string, limit = 5): Promise<Similar
   const url = releaseScopedUrl(
     `${base.replace(/\/$/, '')}/api/opportunities/${encodeURIComponent(id)}/similar?limit=${limit}`,
   );
-  // Optional recommendation rail — bounded so a slow/hanging upstream can
-  // never hold up the primary detail outcome it's awaited alongside; any
-  // failure (including this timeout) degrades to [], same as always.
+  // The page renders this optional request inside its own Suspense boundary.
+  // Bound its lifetime and leave that slot empty on failure; never cache truth.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SIMILAR_TIMEOUT_MS);
   try {
     const res = await fetch(url, { ...TRUTH_BEARING_FETCH, signal: controller.signal });
     if (!res.ok) return [];
-    const body = (await res.json()) as { opportunities: SimilarOpportunity[] };
-    return body.opportunities ?? [];
+    const body: unknown = await res.json();
+    if (!body || typeof body !== 'object' || !('opportunities' in body)
+      || !Array.isArray(body.opportunities)) return [];
+    // An optional malformed response must not throw while rendering the page.
+    // Eligibility/truth is still checked by the rail; these are its display fields.
+    return body.opportunities.filter((row): row is SimilarOpportunity => {
+      if (!row || typeof row !== 'object' || typeof row.id !== 'string' || row.id.length === 0
+        || typeof row.title !== 'string'
+        || (row.organization != null && typeof row.organization !== 'string')
+        || typeof row.opportunity_type !== 'string') return false;
+      try {
+        // Lone Unicode surrogates cannot form the recommendation's link.
+        encodeURIComponent(row.id);
+        return true;
+      } catch {
+        return false;
+      }
+    });
   } catch {
     return [];
   } finally {

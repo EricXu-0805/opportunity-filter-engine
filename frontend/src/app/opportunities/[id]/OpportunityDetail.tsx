@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
@@ -64,9 +64,11 @@ function ResultsReturnLink({ label }: { label: string }) {
 export default function OpportunityDetail({
   opp,
   similar = [],
+  similarContent,
 }: {
   opp: Opportunity;
   similar?: SimilarOpportunity[];
+  similarContent?: ReactNode;
 }) {
   const { t } = useT();
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
@@ -265,7 +267,7 @@ export default function OpportunityDetail({
               is: read this lab, tailor to this lab, write to this person. */}
           {actionable && <ConciergeRequestSection opportunityId={opp.id} t={t} />}
           <KeywordsSection opp={opp} t={t} />
-          <SimilarOpportunities similar={similar} t={t} />
+          {similarContent ?? <SimilarOpportunities similar={similar} t={t} />}
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">
             {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}

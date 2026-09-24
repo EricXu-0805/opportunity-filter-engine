@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { fetchOpportunityDetail, fetchSimilarServer } from '@/lib/api-server';
+import { fetchOpportunityDetail } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
+import SimilarOpportunitiesSection from './SimilarOpportunitiesSection';
 import OpportunityUnavailable from './OpportunityUnavailable';
 import { buildOpportunityJsonLd } from './json-ld';
 import { opportunityRecordKind } from '@/lib/record-kind';
@@ -114,17 +115,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function OpportunityPage({ params }: PageProps) {
   const { id } = await params;
-  // Both requests fire concurrently, but the primary detail outcome is what
-  // decides notFound()/unavailable() — it must not sit behind the optional
-  // "similar opportunities" rail. fetchSimilarServer carries its own bounded
-  // timeout and fails open to [], so it only ever adds latency to the ok path.
-  const detailPromise = fetchOpportunityDetail(id);
-  const similarPromise = fetchSimilarServer(id, 5);
-  const result = await detailPromise;
+  // Resolve the primary outcome before mounting optional recommendations.
+  // Their own Suspense boundary must not delay the title, actions or return link.
+  const result = await fetchOpportunityDetail(id);
   if (result.status === 'not-found') notFound();
   if (result.status === 'unavailable') return <OpportunityUnavailable />;
   const opp = result.opportunity;
-  const similar = await similarPromise;
 
   const jsonLd = buildOpportunityJsonLd(opp);
 
@@ -143,7 +139,8 @@ export default async function OpportunityPage({ params }: PageProps) {
         route param), leaking Tailor/Renovation modal state and everything
         inside useOpportunityDetail across an opportunity switch.
       */}
-      <OpportunityDetail key={opp.id} opp={opp} similar={similar} />
+      <OpportunityDetail key={opp.id} opp={opp}
+        similarContent={<SimilarOpportunitiesSection opportunityId={opp.id} />} />
     </>
   );
 }

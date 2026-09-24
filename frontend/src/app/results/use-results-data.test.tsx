@@ -1,5 +1,5 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { useCallback, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import { translate } from '@/i18n/translate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type MatchViewRequestState } from '@/lib/api';
@@ -1003,6 +1003,70 @@ describe('same-session cursor validation', () => {
     expect(result.current.data?.result_set_id).toBe('set-fresh-second');
     expect(validated).toHaveBeenCalledWith(expect.objectContaining({ page: 2, cursors: [[1, null], [2, 'restored-server-cursor']] }));
     expect(mocks.readMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('notifies position restoration only after the validated cards replace the loading layout', async () => {
+    const saved = savedPage();
+    let resolve!: (r: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((r) => { resolve = r; }));
+    const committed: Array<{ card: boolean; loading: boolean }> = [];
+    const validated = vi.fn(() => committed.push({
+      card: document.getElementById('match-card-fresh-second') !== null,
+      loading: screen.queryByTestId('loading-layout') !== null,
+    }));
+    function Page() {
+      const data = useResultsData(profile, false, baseView, 2, t, true, undefined,
+        { restore: saved, onValidated: validated });
+      return data.loading ? <div data-testid="loading-layout" />
+        : <div id={`match-card-${data.data?.results[0].opportunity_id}`} />;
+    }
+    render(<Page />);
+    expect(validated).not.toHaveBeenCalled();
+    await act(async () => resolve(response('fresh-second', { view_start: 50 })));
+    expect(committed).toEqual([{ card: true, loading: false }]);
+  });
+
+  it('keeps restoration pending while React defers the validated card commit', async () => {
+    const saved = writeResultSession({ ...savedPage(), anchorId: 'fresh-second', anchorOffset: 160 })!;
+    let resolveFetch!: (r: MatchesResponse) => void;
+    let releaseCommit!: () => void;
+    let commitAllowed = false;
+    const commitGate = new Promise<void>((resolve) => { releaseCommit = resolve; });
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }));
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+    let scrollY = 0;
+    vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY);
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation((options) => {
+      // A loading document is shorter than the saved position. Real browsers
+      // clamp a premature scroll instead of remembering the desired offset.
+      const max = document.getElementById('match-card-fresh-second') ? 8000 : 0;
+      scrollY = Math.min((options as ScrollToOptions).top ?? 0, max);
+    });
+    const paint = () => { while (frames.length) frames.shift()!(0); };
+    function Page() {
+      const [page, setPage] = useState(1);
+      const [showDismissed, setShowDismissed] = useState(false);
+      const view = { ...baseView, show_dismissed: showDismissed };
+      const session = useResultsSession({ arrivalId: saved.id, profile, semantic: false, view,
+        ready: true, failed: false, publicUrl: '/results', page, setPage, setShowDismissed });
+      const data = useResultsData(profile, false, view, page, t, session.settled,
+        session.cursorExpired, { restore: session.restore, onValidated: session.onValidated });
+      if (data.data && !commitAllowed) throw commitGate;
+      return data.loading ? <div data-testid="loading-layout" />
+        : <div id="match-card-fresh-second" ref={(node) => {
+          if (node) node.getBoundingClientRect = () => ({ top: 2160 - scrollY } as DOMRect);
+        }} />;
+    }
+    render(<Suspense fallback={<div data-testid="pending-commit" />}><Page /></Suspense>);
+    await act(async () => resolveFetch(response('fresh-second', { view_start: 50 })));
+    act(paint);
+    expect(scroll).not.toHaveBeenCalled();
+    expect(document.getElementById('match-card-fresh-second')).toBeNull();
+    await act(async () => { commitAllowed = true; releaseCommit(); });
+    act(paint);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scrollY).toBe(2000);
   });
 
   it('rejects another owner before replaying its stored cursor', async () => {
