@@ -156,6 +156,8 @@ test.describe('Target-A journey: Match -> Detail -> Shortlist -> reopen -> reloa
     expect(hrefA).toMatch(/^\/opportunities\//);
     const titleA = await titleLink.innerText();
     const urlPatternA = new RegExp(`${escapeRegExp(hrefA!)}$`);
+    const canonicalPathA = new URL(hrefA!, page.url()).pathname;
+    const canonicalUrlPatternA = new RegExp(`${escapeRegExp(canonicalPathA)}$`);
 
     // 2. Open Detail A.
     await titleLink.click();
@@ -167,19 +169,22 @@ test.describe('Target-A journey: Match -> Detail -> Shortlist -> reopen -> reloa
     await star.click();
     await expect(page.getByRole('button', { name: /Remove from favorites/i })).toBeVisible();
 
-    // 4. Reopen A from the shortlist (Favorites), by its own exact href/title
-    // — never by list position, which could silently land on a different record.
+    // 4. Favorites must keep A's exact identity without carrying the results
+    // session's private return query. Match -> Detail above still checks the
+    // original query in full; shortlist navigation uses the canonical path.
     await page.goto('/favorites');
     const cardLink = page.getByRole('link', { name: titleA });
     await expect(cardLink).toBeVisible({ timeout: 15_000 });
-    await expect(cardLink).toHaveAttribute('href', hrefA!);
+    await expect(cardLink).toHaveAttribute('href', canonicalPathA);
+    await expect(cardLink).not.toHaveAttribute('href', /[?#]/);
     await cardLink.click();
-    await expect(page).toHaveURL(urlPatternA);
+    await expect(page).toHaveURL(canonicalUrlPatternA);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(titleA);
     await expect(page.getByRole('button', { name: /Remove from favorites/i })).toBeVisible();
 
     // 5. Reload and still see A — on the detail page itself...
     await page.reload();
+    await expect(page).toHaveURL(canonicalUrlPatternA);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(titleA);
     await expect(page.getByRole('button', { name: /Remove from favorites/i })).toBeVisible();
 
@@ -188,6 +193,7 @@ test.describe('Target-A journey: Match -> Detail -> Shortlist -> reopen -> reloa
     await page.reload();
     const reloadedLink = page.getByRole('link', { name: titleA });
     await expect(reloadedLink).toBeVisible({ timeout: 15_000 });
-    await expect(reloadedLink).toHaveAttribute('href', hrefA!);
+    await expect(reloadedLink).toHaveAttribute('href', canonicalPathA);
+    await expect(reloadedLink).not.toHaveAttribute('href', /[?#]/);
   });
 });
