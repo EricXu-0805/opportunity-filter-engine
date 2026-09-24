@@ -678,7 +678,9 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
 
   const handleShare = useCallback(async () => {
     const generation = generationRef.current;
-    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const url = typeof window !== 'undefined'
+      ? `${window.location.origin}/opportunities/${encodeURIComponent(opp.id)}`
+      : '';
     try {
       if (navigator.share) {
         await navigator.share({ title: opp.title, url });
@@ -693,7 +695,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     } catch {
       /* user canceled */
     }
-  }, [opp.title]);
+  }, [opp.id, opp.title]);
 
   return {
     identityGeneration,

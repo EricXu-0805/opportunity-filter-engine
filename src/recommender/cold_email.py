@@ -977,15 +977,9 @@ _BULLET_CAP = 220
 
 # Shared words a bullet needs before it counts as speaking to this target.
 #
-# One is a coincidence: "the campus learning center" shares `learn` with a
-# professor's "machine learning" and nothing else. Two is a topic. Measured
-# against production's top 100 for a UIUC ECE sophomore, with a four-line
-# résumé of real work and with a control résumé holding only tutoring and a
-# campus job:
-#
-#   >=1   real 100/100   irrelevant-only 18/100   <- the guard leaks
-#   >=2   real 100/100   irrelevant-only  1/100
-#   >=3   real  10/100   irrelevant-only  0/100   <- coverage collapses
+# One shared word is often a coincidence: "the campus learning center"
+# shares `learn` with "machine learning". Preserve the two-word threshold as
+# a conservative selection heuristic, not proof of a research connection.
 _MIN_BULLET_OVERLAP = 2
 
 
@@ -993,8 +987,8 @@ def _significant_terms(text: str) -> list[str]:
     """Content words from a target's own description of itself.
 
     Split on non-letters so "image segmentation" contributes both halves; the
-    caller drops anything four characters or shorter, which is what keeps "and"
-    and "the" from matching every bullet.
+    caller keeps words of at least four characters, which keeps "and" and
+    "the" from matching every bullet.
     """
     return [w for w in re.split(r"[^a-z]+", text.lower()) if w]
 
@@ -1017,72 +1011,63 @@ def _stem(word: str) -> str:
 
 
 def _target_match_terms(p: dict) -> set[str]:
-    """Everything this target is on record as working on, as comparable stems.
+    """Comparable stems from the target's stated research and requirements.
 
-    ``research_topic`` alone is the first three keywords, which for a strong
-    match is the student's whole FIELD — "signal processing", "biomedical",
-    "algorithms". Those are abstract nouns, and an accomplishment sentence
-    never contains them, so the closer the match the less likely any bullet
-    scored against them. Measured on production's top 100 for a UIUC ECE
-    sophomore, the paragraph fired for 94% of ranks 51-100 and 20% of the top
-    five — inverted exactly where a student actually writes.
-
-    ``research_areas_raw`` is the professor's own prose (Zhi-Pei Liang's says
-    "Magnetic resonance imaging and spectroscopy" while his topic string says
-    "biomedical"), and the student's stated interests are the words that made
-    this a match at all.
+    Student interests may explain motivation, but cannot prove relevance to
+    this target. ``matching_skills`` is also omitted: it is a student-derived
+    subset, while the source requirements and research below stand on their
+    own. These parts already pass the source/attribution gates in _common_parts.
     """
-    return {
-        _stem(t) for t in (
-            [str(k).lower() for k in (p.get("opp_skills_required") or [])]
-            + [str(k).lower() for k in (p.get("matching_skills") or [])]
-            + _significant_terms(str(p.get("research_topic") or ""))
-            + _significant_terms(str(p.get("research_area") or ""))
-            + _significant_terms(str(p.get("research_areas_raw") or ""))
-            + _significant_terms(str(p.get("research_interests") or ""))
-        ) if len(t) > 3
-    }
+    target_text = " ".join(
+        [str(k) for k in (p.get("opp_skills_required") or [])]
+        + [str(p.get(key) or "") for key in (
+            "research_topic", "research_area", "research_areas_raw",
+        )]
+    )
+    return {_stem(t) for t in _significant_terms(target_text) if len(t) > 3}
+
+
+def select_resume_bullets(
+    p: dict, *, limit: int, min_overlap: int = 0,
+) -> list[str]:
+    """Select original experience strings by target-word overlap, then cap.
+
+    Ties retain input order; no source is rewritten or removed from ``p``.
+    The AI brief may retain weak-match experiences as factual background. The
+    template uses a stricter threshold before volunteering one example. This
+    lexical score prioritizes evidence; it does not prove a research connection.
+    """
+    terms = _target_match_terms(p)
+    scored: list[tuple[str, int]] = []
+    for bullet in p.get("resume_bullets") or []:
+        if not isinstance(bullet, str) or not bullet.strip():
+            continue
+        # Equality, not substring containment: "learning center" must not
+        # match a whole topic merely because it contains the stem "learn".
+        words = {_stem(w) for w in _significant_terms(bullet) if len(w) > 3}
+        score = len(terms & words)
+        if score >= min_overlap:
+            scored.append((bullet, score))
+    scored.sort(key=lambda item: item[1], reverse=True)
+    return [bullet for bullet, _score in scored[:max(0, limit)]]
 
 
 def _pick_resume_bullet(p: dict) -> str:
-    """The student's own sentence that best matches this target, or "".
-
-    Quoted verbatim, never paraphrased: a bullet is the student's own statement
-    about themselves, which is the evidence class the claim rules admit. The
-    moment the template restates it in its own words it is asserting detail
-    nothing backs — which is the failure this whole path exists to avoid.
-    """
-    bullets = [b.strip() for b in (p.get("resume_bullets") or []) if b and b.strip()]
-    if not bullets:
+    """The strongest lexical match, quoted from the student's own source."""
+    selected = select_resume_bullets(p, limit=1, min_overlap=_MIN_BULLET_OVERLAP)
+    if not selected:
         return ""
-
-    # Score against what this target actually says, not against the student's
-    # own skill list — otherwise every bullet mentioning Python ties and the
-    # first one wins by accident.
-    terms = _target_match_terms(p)
-
-    def overlap(bullet: str) -> int:
-        # Stems compared for equality, not containment. Containment let short
-        # stems match anywhere — "learning center" scored against a professor's
-        # "machine learning" — and every bullet then matched every target, which
-        # is the same as having no guard at all.
-        words = {_stem(w) for w in _significant_terms(bullet) if len(w) > 3}
-        return len(terms & words)
-
-    best = max(bullets, key=overlap)
-    # Too little in common means nothing here speaks to this lab. Saying
-    # something irrelevant is worse than saying nothing: it reads as a mass
-    # mailing.
-    if overlap(best) < _MIN_BULLET_OVERLAP:
-        return ""
-    return best[:_BULLET_CAP].rstrip()
+    return selected[0].strip()[:_BULLET_CAP].rstrip()
 
 
 def _p3_concrete_work(p: dict) -> str:
     bullet = _pick_resume_bullet(p)
     if not bullet:
         return ""
-    return f"\n\nMost relevant to your work: {bullet}."
+    # Overlap is a selection aid, not proof this is the work most relevant to
+    # the recipient. Quote an actual experience without claiming that link.
+    ending = "" if bullet.endswith((".", "!", "?")) else "."
+    return f"\n\nOne example of my experience: {bullet}{ending}"
 
 
 def _build_balanced(p: dict) -> str:

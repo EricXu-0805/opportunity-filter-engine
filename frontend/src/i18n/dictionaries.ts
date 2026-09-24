@@ -2989,6 +2989,7 @@ export const en = {
     },
     loadFailed: 'Failed to load matches',
     chooseOpportunityTypes: 'Choose opportunity types in your profile',
+    returnReset: 'Your previous results are no longer available. Showing the first page.',
     opportunityFallback: 'Opportunity',
     scopeIndicator: 'Showing: {school} campus + national open opportunities',
     scopeIndicatorPending: "{school} campus data is coming — here's everything you can apply to right now",
@@ -3065,6 +3066,7 @@ export const en = {
   // favorites/OpportunityCard). Distinct from `detail.*` which targets
   // the full opportunity-detail page.
   card: {
+    viewed: 'Viewed this session',
     applyNow: 'Apply Now',
     emailProfessor: 'Email faculty member',
     viewFacultyPage: 'Faculty Page',
@@ -7574,6 +7576,7 @@ export const zh = {
     },
     loadFailed: '加载匹配失败',
     chooseOpportunityTypes: '回档案选择机会类型',
+    returnReset: '原结果已失效，已回到第一页。',
     opportunityFallback: '机会',
     scopeIndicator: '为你展示：{school} 校内 + 全国开放机会',
     scopeIndicatorPending: '{school} 校内数据建设中 —— 以下是你现在就能申请的开放机会',
@@ -7647,6 +7650,7 @@ export const zh = {
   // R70-F: 卡片表面的共用标签（MatchCard + favorites/OpportunityCard）。
   // 与 detail.* 区分 —— 后者用于完整详情页。
   card: {
+    viewed: '本次已查看',
     applyNow: '立即申请',
     emailProfessor: '给教师发邮件',
     viewFacultyPage: '教师主页',

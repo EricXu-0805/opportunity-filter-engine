@@ -24,6 +24,9 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     // ordinary case, since `data.results` is stable between fetches — still
     // skips, which is the only thing this memo was ever for.
     prev.match === next.match &&
+    prev.detailHref === next.detailHref &&
+    prev.isViewed === next.isViewed &&
+    prev.onViewOpportunity === next.onViewOpportunity &&
     prev.isFavorited === next.isFavorited &&
     prev.interaction === next.interaction &&
     prev.favoritePending === next.favoritePending &&
@@ -47,6 +50,10 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
 MemoizedMatchCard.displayName = 'MemoizedMatchCard';
 
 export interface MatchListProps {
+  sessionId?: string | null;
+  returnUrl?: string;
+  viewedIds?: Set<string>;
+  onViewOpportunity?: (id: string) => void;
   matches: MatchResult[];
   profile: ProfileData | null;
   highlightSet: Set<string>;
@@ -98,6 +105,7 @@ export interface MatchListProps {
 }
 
 export function MatchList({
+  sessionId, returnUrl, viewedIds, onViewOpportunity,
   matches,
   profile,
   highlightSet,
@@ -168,6 +176,9 @@ export function MatchList({
               >
                 <MemoizedMatchCard
                   match={match}
+                  detailHref={`/opportunities/${encodeURIComponent(match.opportunity.id)}${returnUrl ? `?returnTo=${encodeURIComponent(returnUrl)}${sessionId ? `&returnSession=${encodeURIComponent(sessionId)}` : ''}` : ''}`}
+                  isViewed={viewedIds?.has(match.opportunity.id)}
+                  onViewOpportunity={onViewOpportunity}
                   profile={profile}
                   onDraftEmail={onDraftEmail}
                   isFavorited={favs.has(match.opportunity.id)}

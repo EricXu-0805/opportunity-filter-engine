@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
+import { resultSessionUrl } from '@/lib/result-session';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { DEFAULT_FILTERS, type Filters, type SortKey, type Tab } from './types';
 
@@ -106,51 +107,52 @@ export function readSemanticRerankUrlPin(
   return null;
 }
 
-// URL writer. Uses history.replaceState (not router.replace) to avoid
-// triggering a Next.js navigation on every filter tick — the URL bar
-// stays in sync but no remount fires. Excludes ?highlight= and
-// ?savedSearchId= intentionally: those are mount-once params consumed by
-// useHighlightSet / useSavedSearchAck and self-clear on the first edit
-// (cross-file contract documented in lib/saved-searches.ts:189).
-export function useResultsUrlSync(state: {
+export interface ResultsUrlState {
   activeTab: Tab;
   debouncedQuery: string;
   filters: Filters;
   sortBy: SortKey;
   semanticRerank: boolean;
-  /** False while the stored preference is still unreadable — see below. */
   semanticSettled: boolean;
-}): void {
-  const {
-    activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
-  } = state;
+}
+
+/** Public filters only; no session, cursor, owner or viewed state is shareable. */
+export function buildResultsUrl(state: ResultsUrlState): string {
+  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled } = state;
+  const params = new URLSearchParams();
+  // R69-A: omit-sentinel is 'high_priority' (the new default). Every other
+  // tab — including 'all' — must round-trip through the URL so /favorites
+  // "Apply saved search" deep links land on the tab the user saved.
+  if (activeTab !== 'high_priority') params.set('tab', activeTab);
+  if (debouncedQuery) params.set('q', debouncedQuery);
+  if (filters.paid) params.set('paid', filters.paid);
+  if (filters.intl) params.set('intl', filters.intl);
+  if (filters.source) params.set('source', filters.source);
+  if (filters.onCampus) params.set('loc', filters.onCampus);
+  if (filters.deadline) params.set('dl', filters.deadline);
+  if (filters.minScore > 0) params.set('min', String(filters.minScore));
+  if (filters.scope) params.set('scope', filters.scope);
+  if (sortBy !== 'score') params.set('sort', sortBy);
+  // Only an accepted AI-refine release may serialize its state into a
+  // shareable URL, and only once that state is real. Writing during the
+  // unreadable window would stamp ?ai=0 into the address bar and turn a
+  // transient "we cannot see the preference yet" into an explicit opt-out
+  // that survives the next reload as a pin.
+  if (RELEASE_SCOPE.matchAiRefine && semanticSettled) {
+    params.set('ai', semanticRerank ? '1' : '0');
+  }
+  const qs = params.toString();
+  return qs ? `/results?${qs}` : '/results';
+}
+
+export function useResultsUrlSync(state: ResultsUrlState & { sessionId?: string | null }): void {
+  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId } = state;
   useEffect(() => {
-    const params = new URLSearchParams();
-    // R69-A: omit-sentinel is 'high_priority' (the new default). Every other
-    // tab — including 'all' — must round-trip through the URL so /favorites
-    // "Apply saved search" deep links land on the tab the user saved.
-    if (activeTab !== 'high_priority') params.set('tab', activeTab);
-    if (debouncedQuery) params.set('q', debouncedQuery);
-    if (filters.paid) params.set('paid', filters.paid);
-    if (filters.intl) params.set('intl', filters.intl);
-    if (filters.source) params.set('source', filters.source);
-    if (filters.onCampus) params.set('loc', filters.onCampus);
-    if (filters.deadline) params.set('dl', filters.deadline);
-    if (filters.minScore > 0) params.set('min', String(filters.minScore));
-    if (filters.scope) params.set('scope', filters.scope);
-    if (sortBy !== 'score') params.set('sort', sortBy);
-    // Only an accepted AI-refine release may serialize its state into a
-    // shareable URL, and only once that state is real. Writing during the
-    // unreadable window would stamp ?ai=0 into the address bar and turn a
-    // transient "we cannot see the preference yet" into an explicit opt-out
-    // that survives the next reload as a pin.
-    if (RELEASE_SCOPE.matchAiRefine && semanticSettled) {
-      params.set('ai', semanticRerank ? '1' : '0');
-    }
-    const qs = params.toString();
-    const newUrl = qs ? `/results?${qs}` : '/results';
-    window.history.replaceState(null, '', newUrl);
-  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled]);
+    const publicUrl = buildResultsUrl({ activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled });
+    const newUrl = sessionId ? resultSessionUrl(publicUrl, sessionId) : publicUrl;
+    // Next owns fields in history.state; preserve them on filter-only changes.
+    window.history.replaceState(window.history.state, '', newUrl);
+  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId]);
 }
 
 export { DEFAULT_FILTERS };

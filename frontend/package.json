@@ -15,7 +15,7 @@
     "predev": "node scripts/prepare-pdfjs-assets.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.103.0",
+    "@supabase/supabase-js": "2.105.4",
     "lucide-react": "^0.400.0",
     "next": "~16.3.4",
     "pdfjs-dist": "^4.4.168",

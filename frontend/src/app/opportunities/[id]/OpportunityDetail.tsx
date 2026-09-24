@@ -1,6 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
@@ -40,6 +43,23 @@ const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ss
 const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
 const ResumeRenovationModal = dynamic(() => import('@/components/ResumeRenovationModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
+
+/** This link carries no authority: /results validates the opaque ticket against
+ * the accepted owner, profile and server cursor. It must be correct before
+ * private favorites/interaction hydration completes (including after reload). */
+function ResultsReturnLink({ label }: { label: string }) {
+  const params = useSearchParams();
+  const publicReturn = publicResultsUrl(params.get('returnTo') ?? '') ?? '/results';
+  const id = params.get(RESULT_SESSION_PARAM);
+  const href = id ? resultSessionUrl(publicReturn, id) : publicReturn;
+  return (
+    <Link href={href} scroll={false} data-testid="return-to-results"
+      className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
+      <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      {label}
+    </Link>
+  );
+}
 
 export default function OpportunityDetail({
   opp,
@@ -111,13 +131,9 @@ export default function OpportunityDetail({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      <Link
-        href="/results"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-      >
-        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-        {t('detail.backToMatches')}
-      </Link>
+      <Suspense fallback={<span className="inline-flex mb-6 text-sm text-gray-500" aria-busy="true">{t('detail.backToMatches')}</span>}>
+        <ResultsReturnLink label={t('detail.backToMatches')} />
+      </Suspense>
 
       <StorageStatusBanner />
 

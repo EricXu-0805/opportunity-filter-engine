@@ -8,7 +8,7 @@ import {
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
 import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
-import { hashProfile } from '@/lib/match-utils';
+import { resultRequestKey, sessionBelongsToOwner, type ResultCursorState, type ResultSession } from '@/lib/result-session';
 import {
   clearMatchCache,
   isTrustedMatchViewPage,
@@ -84,6 +84,7 @@ export function useResultsData(
    * page 1. Optional: a caller that never paginates has nothing to reset.
    */
   onCursorReset?: () => void,
+  navigation?: { restore: ResultSession | null; onValidated: (state: ResultCursorState) => void },
 ): UseResultsDataResult {
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,10 +102,12 @@ export function useResultsData(
   // arrives — two full rankings per page load, server-side, for one page.
   const requestKey = useMemo(
     () => profile && preferenceSettled
-      ? `${hashProfile(profile)}:${semanticRerank ? '1' : '0'}:${JSON.stringify(view)}`
+      ? resultRequestKey(profile, semanticRerank, view)
       : '',
     [profile, preferenceSettled, semanticRerank, view],
   );
+  const navigationRef = useRef(navigation);
+  useLayoutEffect(() => { navigationRef.current = navigation; }, [navigation]);
   const cursorsRef = useRef<CursorState>({
     requestKey: '',
     byPage: new Map([[1, null]]),
@@ -142,9 +145,12 @@ export function useResultsData(
     const { profile: reqProfile, view: reqView } = payloadRef.current;
     if (!reqProfile) return;
     if (cursorsRef.current.requestKey !== requestKey) {
+      const saved = navigationRef.current?.restore;
+      const mayRestore = saved && saved.requestKey === requestKey
+        && sessionBelongsToOwner(saved, captureOwnerToken());
       cursorsRef.current = {
         requestKey,
-        byPage: new Map([[1, null]]),
+        byPage: new Map(mayRestore ? saved.cursors : [[1, null]]),
       };
     }
     const cursor = cursorsRef.current.byPage.get(page);
@@ -155,6 +161,10 @@ export function useResultsData(
       // cursor chain.
       setData(null);
       setLoading(false);
+      if (navigationRef.current && onCursorReset) {
+        onCursorReset();
+        return;
+      }
       setError(t('results.loadFailed'));
       setErrorCode(null);
       setPaginationReady(false);
@@ -305,6 +315,9 @@ export function useResultsData(
           writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
         }
         setPaginationReady(true);
+        if (painting()) navigationRef.current?.onValidated({
+          requestKey, page, cursors: [...cursorsRef.current.byPage.entries()],
+        });
         trackOnce('matches_generated', {
           llm: semanticRerank,
           page,
@@ -323,7 +336,7 @@ export function useResultsData(
           && (caught.code === 'MATCH_CURSOR_INVALID' || caught.code === 'MATCH_CURSOR_EXPIRED')
           && page > 1
         ) {
-          cursorsRef.current.byPage.clear();
+          cursorsRef.current.byPage = new Map([[1, null]]);
           clearMatchCache(cacheToken);
           onCursorReset?.();
           return;

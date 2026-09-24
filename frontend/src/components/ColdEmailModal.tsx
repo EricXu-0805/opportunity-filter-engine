@@ -46,15 +46,18 @@ const AI_VARIANT_ID = 'ai';
 // draft must regenerate from the live corpus.
 export const AI_CACHE_TTL_MS = 30 * 60 * 1000;
 
-/** W12 draft-freshness rule for the in-tab AI cache: an entry is stale once
- *  it outlives the TTL or once the backend's corpus generation moves past
- *  the one that produced it. Exported for tests. */
+/** In-tab reuse needs the pipeline version freshly returned by variants.
+ *  Missing versions cannot establish compatibility. Corpus changes and the
+ *  TTL still expire an otherwise compatible draft. Exported for tests. */
 export function aiCacheEntryIsStale(
-  entry: { response: { corpus_version?: string | null }; at: number },
+  entry: { response: { corpus_version?: string | null; pipeline_version?: string | null }; at: number },
   nowMs: number,
   currentCorpusVersion: string | null,
+  currentPipelineVersion: string | null,
 ): boolean {
   if (nowMs - entry.at > AI_CACHE_TTL_MS) return true;
+  if (!entry.response.pipeline_version?.trim() || !currentPipelineVersion?.trim()
+    || entry.response.pipeline_version !== currentPipelineVersion) return true;
   return (
     !!entry.response.corpus_version &&
     !!currentCorpusVersion &&
@@ -370,10 +373,16 @@ export default function ColdEmailModal({
   // are never cached (they retry on the next open). Cleared when the profile
   // prop changes — a draft must not outlive a profile edit. W12: entries
   // also expire after AI_CACHE_TTL_MS and whenever the backend's
-  // corpus_version moves, so a long-lived tab can never re-serve a draft
-  // built from a superseded professor record.
+  // corpus_version or pipeline_version moves, so a long-lived tab does not
+  // reuse superseded research or writing rules.
   const aiCacheRef = useRef<Map<string, { response: ColdEmailResponse; at: number }>>(new Map());
   const corpusVersionRef = useRef<string | null>(null);
+  // Only the current session's variants may set the comparison version. An
+  // AI response may come from an older worker; it cannot certify itself.
+  const pipelineVersionRef = useRef<string | null>(null);
+  // A target change flushes old passive effects after layout cleanup. They
+  // must not start AI from the previous render's variants/loading values.
+  const variantsReadyRef = useRef(false);
   // Which send session an in-flight persistence belongs to. Bumped on every
   // close and every target change, so a completion that comes back after the
   // modal moved on can be identified as belonging to a session that no longer
@@ -429,6 +438,7 @@ export default function ColdEmailModal({
     const request = ++variantRequestRef.current;
     const current = () => sessionCurrent() && request === variantRequestRef.current;
     const revision = draftRevisionRef.current;
+    if (!preserveDraft) variantsReadyRef.current = false;
     if (missingStudentName) {
       setLoading(false);
       setNameRequired(true);
@@ -445,6 +455,7 @@ export default function ColdEmailModal({
       variantsBuiltWithRef.current = bullets.length;
       const data = await getEmailVariants(profile, opportunityId, bullets);
       if (!current()) return;
+      variantsReadyRef.current = true;
       setVariants(data.variants);
       const inferredLabType =
         data.lab_type
@@ -461,6 +472,7 @@ export default function ColdEmailModal({
       // W12: variants regenerate on every open, so their corpus_version is
       // the "current" mark that decides whether a cached AI draft survives.
       if (data.corpus_version) corpusVersionRef.current = data.corpus_version;
+      pipelineVersionRef.current = data.pipeline_version ?? null;
       if (!preserveDraft && revision === draftRevisionRef.current && data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
@@ -495,6 +507,8 @@ export default function ColdEmailModal({
     if (isOpen) fetchVariants();
     return () => {
       autoFiredRef.current = false;
+      pipelineVersionRef.current = null;
+      variantsReadyRef.current = false;
       // Close or target change ends the send session. Bumping the id first
       // means any persistence still in flight can no longer reach this
       // component's state, so the resets below cannot be undone by a
@@ -644,7 +658,7 @@ export default function ColdEmailModal({
   // silent), it never clobbers a draft the user has meanwhile edited or
   // switched away from, and it seeds/serves the per-open cache.
   const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
-    if (aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
+    if (!variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
     const sessionCurrent = captureDraftSession();
     const request = ++aiRequestRef.current;
     const current = () => sessionCurrent() && request === aiRequestRef.current;
@@ -685,11 +699,11 @@ export default function ColdEmailModal({
     };
 
     // W12 draft freshness: a cached AI draft is only re-served while young
-    // AND while the backend corpus that produced it is still current — a
-    // superseded professor record must not keep personalizing from the cache.
+    // AND while variants confirms the same writing pipeline. A superseded
+    // professor record or pipeline must not keep personalizing from cache.
     const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
     if (cached) {
-      if (aiCacheEntryIsStale(cached, Date.now(), corpusVersionRef.current)) {
+      if (aiCacheEntryIsStale(cached, Date.now(), corpusVersionRef.current, pipelineVersionRef.current)) {
         aiCacheRef.current.delete(`${opportunityId}|${style}`);
       } else {
         // Cache only the AI writing value. Recipient truth was refreshed by
@@ -807,7 +821,7 @@ export default function ColdEmailModal({
   // pipeline once automatically. The template is the instant placeholder; the
   // AI draft takes over on success (unless the user already started editing).
   useEffect(() => {
-    if (!isOpen || loading || variants.length === 0 || autoFiredRef.current) return;
+    if (!isOpen || !variantsReadyRef.current || loading || variants.length === 0 || autoFiredRef.current) return;
     autoFiredRef.current = true;
     generateAi(selectedStyle, { auto: true });
   }, [isOpen, loading, variants.length, selectedStyle, generateAi]);

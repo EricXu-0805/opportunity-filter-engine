@@ -632,6 +632,7 @@ describe('ColdEmailModal', () => {
       recipient_email: 'p@x.edu',
       mailto_link: 'mailto:p@x.edu',
       method: 'ai',
+      pipeline_version: 'pipeline-current',
     };
 
     it('runs the pipeline once on open and switches to the AI draft, no click needed', async () => {
@@ -741,7 +742,7 @@ describe('ColdEmailModal', () => {
     });
 
     it('reopening the same opportunity serves the cached draft without re-billing', async () => {
-      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
       mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
       const profile = makeProfile();
       const { rerender } = render(
@@ -763,10 +764,12 @@ describe('ColdEmailModal', () => {
         .mockResolvedValueOnce({
           variants: [makeVariant({ recipient_email: 'p@x.edu' })],
           recipient_status: 'revealed',
+          pipeline_version: 'pipeline-current',
         })
         .mockResolvedValueOnce({
           variants: [makeVariant({ recipient_email: '' })],
           recipient_status: 'unavailable',
+          pipeline_version: 'pipeline-current',
         });
       mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
       const profile = makeProfile();
