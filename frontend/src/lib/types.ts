@@ -645,6 +645,8 @@ export interface RenovationDoc {
    *  Absent on legacy docs — no staleness claim is made for them (unknown
    *  is not stale, and not fresh). */
   resume_sig?: string;
+  /** Digest of the full profile used for this draft; absent on older drafts. */
+  profile_sig?: string;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────

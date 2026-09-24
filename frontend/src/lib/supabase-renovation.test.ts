@@ -15,13 +15,20 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { loadRenovation, listRenovationVersions, saveRenovation } from './supabase';
+import { loadRenovation, listRenovationVersions, RenovationLoadError, saveRenovation } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
 
 const A = 'renovation-anonymous-a';
 const B = 'renovation-anonymous-b';
 const session = (uid: string) => ({ data: { session: { user: { id: uid, is_anonymous: true } } } });
-const stored = { doc: { sections: ['a'] }, base_snapshot: {}, method: 'ai', warnings: [], updated_at: '' };
+const stored = {
+  doc: {
+    sections: [{ id: 's1', heading: 'Experience', kind: 'experience', bullets: [{
+      id: 'b1', base_text: 'Built a parser.', variants: [{ source: 'macro', text: 'Built a tested parser.', source_evidence: 'Built a parser.' }],
+      current: 0, action: 'keep',
+    }] }], method: 'ai', warnings: [],
+  }, base_snapshot: {}, method: 'ai', warnings: [], updated_at: '',
+};
 let filters: Array<[string, unknown]>;
 
 function deferred<T>() {
@@ -143,5 +150,114 @@ describe('renovation persistence capability', () => {
       ? new Promise(() => {}) : Promise.reject(new Error('history offline')));
     expect(await save()).toBe(true);
     expect(mockUpsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('renovation restore outcomes', () => {
+  it('returns null only for a successful absent row and does not write', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    expect(await loadRenovation('opp-1')).toBeNull();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockVersionInsert).not.toHaveBeenCalled();
+  });
+
+  it.each(['backend', 'transport', 'session'] as const)('turns a %s failure into a safe typed error, not absence', async (kind) => {
+    const secret = 'PRIVATE SAVED RESUME CONTENT';
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    if (kind === 'backend') mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: secret, details: secret } });
+    else if (kind === 'transport') mockMaybeSingle.mockRejectedValueOnce(new Error(secret));
+    else mockGetSession.mockRejectedValueOnce(new Error(secret));
+    try {
+      const caught = await loadRenovation('opp-1').catch((error: unknown) => error);
+      expect(caught).toBeInstanceOf(RenovationLoadError);
+      expect(caught).toMatchObject({ name: 'RenovationLoadError', code: 'read_failed' });
+      expect((caught as Error).message).not.toContain(secret);
+      expect(caught).not.toHaveProperty('cause');
+      expect(JSON.stringify(caught)).not.toContain(secret);
+      expect(warn.mock.calls.flat().join(' ')).not.toContain(secret);
+      expect(mockUpsert).not.toHaveBeenCalled();
+    } finally { warn.mockRestore(); }
+  });
+
+  const section = stored.doc.sections[0];
+  const bullet = section.bullets[0];
+  it.each([
+    ['missing document', undefined], ['array document', []], ['empty document', {}],
+    ['missing sections', { method: 'ai', warnings: [] }],
+    ['empty sections', { ...stored.doc, sections: [] }],
+    ['nonobject section', { ...stored.doc, sections: ['bad'] }],
+    ['missing bullets', { ...stored.doc, sections: [{ id: 's1', heading: '', kind: 'experience' }] }],
+    ['bad heading', { ...stored.doc, sections: [{ ...section, heading: {} }] }],
+    ['bad base text', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, base_text: null }] }] }],
+    ['missing variants', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, variants: undefined }] }] }],
+    ['bad variant', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, variants: ['bad'] }] }] }],
+    ['bad variant text', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, variants: [{ ...bullet.variants[0], text: {} }] }] }] }],
+    ['fractional current', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, current: 0.5 }] }] }],
+    ['out-of-range current', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, current: 1 }] }] }],
+    ['invalid base pointer', { ...stored.doc, sections: [{ ...section, bullets: [{ ...bullet, current: -2 }] }] }],
+    ['duplicate section id', { ...stored.doc, sections: [section, section] }],
+    ['duplicate bullet id', { ...stored.doc, sections: [{ ...section, bullets: [bullet, bullet] }] }],
+    ['missing warnings', { ...stored.doc, warnings: undefined }],
+    ['nonstring warning', { ...stored.doc, warnings: [{}] }],
+    ['bad source signature', { ...stored.doc, resume_sig: {} }],
+    ['bad profile signature', { ...stored.doc, profile_sig: {} }],
+    ['bad processing', { ...stored.doc, processing: { chunks: null } }],
+  ])('rejects %s without coercing an empty draft', async (_name, doc) => {
+    const row = { ...stored, doc }; const before = JSON.stringify(row);
+    mockMaybeSingle.mockResolvedValueOnce({ data: row, error: null });
+    await expect(loadRenovation('opp-1')).rejects.toMatchObject({ code: 'invalid_saved_data' });
+    expect(JSON.stringify(row)).toBe(before);
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockVersionInsert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    undefined, [], { ...stored, base_snapshot: null },
+    { ...stored, base_snapshot: { sections: [{ ...section, bullets: [{ id: 'b1' }] }] } },
+    { ...stored, warnings: [{}] }, { ...stored, updated_at: {} }, { ...stored, method: {} },
+  ])('rejects a malformed stored row or source snapshot', async (data) => {
+    mockMaybeSingle.mockResolvedValueOnce({ data, error: null });
+    await expect(loadRenovation('opp-1')).rejects.toMatchObject({ code: 'invalid_saved_data' });
+  });
+
+  it('preserves a legitimate legacy document without new fingerprints or coverage', async () => {
+    const row = structuredClone(stored);
+    row.doc.sections[0].bullets[0].current = -1;
+    row.doc.sections[0].bullets[0].variants = [];
+    mockMaybeSingle.mockResolvedValueOnce({ data: row, error: null });
+    expect(await loadRenovation('opp-1')).toEqual(row);
+    expect(row.doc).not.toHaveProperty('resume_sig');
+    expect(row.doc).not.toHaveProperty('profile_sig');
+    expect(row.doc).not.toHaveProperty('processing');
+  });
+
+  it('retains current metadata and complete source snapshots without rewriting them', async () => {
+    const row = { ...stored, doc: { ...stored.doc, resume_sig: 'old-source', profile_sig: 'future-format',
+      processing: { input_characters: 10, ai_chunks: 0, heuristic_chunks: 1,
+        chunks: [{ start: 0, end: 10, method: 'heuristic', reason: 'not_configured' }] } },
+      base_snapshot: { sections: [{ id: 's1', heading: '', kind: 'experience', bullets: [{ id: 'b1', text: 'Full original.' }] }] } };
+    mockMaybeSingle.mockResolvedValueOnce({ data: row, error: null });
+    expect(await loadRenovation('opp-1')).toEqual(row);
+  });
+
+  it('a failed read can be retried and then recover the existing document', async () => {
+    mockMaybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    await expect(loadRenovation('opp-1')).rejects.toBeInstanceOf(RenovationLoadError);
+    expect(await loadRenovation('opp-1')).toEqual(stored);
+    expect(mockMaybeSingle).toHaveBeenCalledTimes(2);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  it('prioritizes an owner change over a late rejected transport', async () => {
+    let reject!: (reason: Error) => void;
+    mockMaybeSingle.mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail; }));
+    const pending = loadRenovation('opp-1');
+    const assertion = expect(pending).rejects.toThrow('identity');
+    await waitFor(() => expect(mockMaybeSingle).toHaveBeenCalled());
+    await establish(B);
+    reject(new Error('PRIVATE OLD OWNER CONTENT'));
+    await assertion;
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 });

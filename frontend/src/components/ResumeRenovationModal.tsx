@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import {
   X,
   Copy,
@@ -43,6 +43,8 @@ interface RenovationScope {
   active: boolean;
   owner: OwnerToken;
   saveRevision: number;
+  workRevision: number;
+  profileFingerprint: string;
 }
 
 
@@ -67,6 +69,28 @@ interface ResumeRenovationModalProps {
   profile: ProfileData;
   opportunityId: string;
   opportunityTitle: string;
+}
+
+// Compare complete JSON-safe content synchronously; key insertion order is not
+// a profile change. Only a SHA-256 digest, never this content, is stored in docs.
+function canonicalProfile(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalProfile(item)).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).filter((key) => record[key] !== undefined).sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalProfile(record[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+async function profileSignature(fingerprint: string): Promise<string | undefined> {
+  try {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(fingerprint));
+    return `v1:sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+  } catch {
+    // Unavailable crypto means unknown provenance, never a weak-hash match.
+    return undefined;
+  }
 }
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
@@ -150,13 +174,25 @@ export default function ResumeRenovationModal({
   opportunityTitle,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
+  const profileFingerprint = canonicalProfile(profile);
+  const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileFingerprint), [profileFingerprint]);
+  const [currentSignature, setCurrentSignature] = useState<{ fingerprint: string; signature?: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void profileSignature(profileFingerprint).then((signature) => {
+      if (active) setCurrentSignature({ fingerprint: profileFingerprint, signature });
+    });
+    return () => { active = false; };
+  }, [profileFingerprint]);
 
   // Phase machine: 'idle' (no doc yet, offer to renovate) → 'working'
   // (structure+renovate in flight) → 'doc' (variant-chain review surface).
   // 'restoring' covers the initial saved-doc lookup so the CTA doesn't
   // flash before we know whether a doc exists.
   const [ownerRevision, setOwnerRevision] = useState(0);
-  const [phase, setPhase] = useState<'restoring' | 'idle' | 'working' | 'doc'>('restoring');
+  const [restoreRevision, setRestoreRevision] = useState(0);
+  const [profileChanged, setProfileChanged] = useState(false);
+  const [phase, setPhase] = useState<'restoring' | 'restore-error' | 'idle' | 'working' | 'doc'>('restoring');
   const [workingStep, setWorkingStep] = useState<'structuring' | 'renovating'>('structuring');
   const [doc, setDoc] = useState<RenovationDoc | null>(null);
   const [baseSections, setBaseSections] = useState<ResumeSectionInput[]>([]);
@@ -171,7 +207,7 @@ export default function ResumeRenovationModal({
   const [saveFailed, setSaveFailed] = useState(false);
   // The last persist payload, so the save-failed state can offer a real
   // retry of exactly what failed (W13).
-  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[]; scope: RenovationScope } | null>(null);
+  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[]; scope: RenovationScope; workRevision: number } | null>(null);
   // Per-bullet UI state, keyed by bullet id (ids are unique doc-wide — the
   // backend 422s duplicate ids).
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -189,7 +225,7 @@ export default function ResumeRenovationModal({
   // the target/source, even if the passive restore effect has not run yet.
   useLayoutEffect(() => () => {
     if (scopeRef.current) scopeRef.current.active = false;
-  }, [isOpen, opportunityId, profile.resume_text]);
+  }, [isOpen, opportunityId]);
   const invalidateAndClose = useCallback(() => {
     if (scopeRef.current) scopeRef.current.active = false;
     lastPersistRef.current = null;
@@ -204,17 +240,43 @@ export default function ResumeRenovationModal({
     !!scope && scope.active && scopeRef.current === scope && isTokenOwnerStillCurrent(scope.owner)
   ), []);
 
+  const isCurrentWork = useCallback((scope: RenovationScope | null, revision: number): scope is RenovationScope => (
+    isCurrentScope(scope) && scope.workRevision === revision
+  ), [isCurrentScope]);
+
+  // Retire work before any old continuation can run, while preserving the doc,
+  // base source, variant history, and even an unsaved inline edit. A profile
+  // change is not a new owner/target and must never re-load over that work.
+  useLayoutEffect(() => {
+    const scope = scopeRef.current;
+    if (!isOpen || !scope?.active || scope.profileFingerprint === profileFingerprint) return;
+    scope.profileFingerprint = profileFingerprint;
+    scope.workRevision += 1;
+    lastPersistRef.current = null;
+    setProfileChanged(true);
+    setStructureResult(null);
+    setOptimizingId(null);
+    setBulletNotices({});
+    setError(null);
+    setSaving(false);
+    setSavedFlash(false);
+    setSaveFailed(false);
+    setCopied(false);
+    setPhase((previous) => previous === 'working' ? (docRef.current ? 'doc' : 'idle') : previous);
+  }, [isOpen, profileFingerprint]);
+
   // Reset + restore on every open: a saved doc for this opportunity wins
   // over the empty CTA. setState runs in the async callback.
   useEffect(() => {
     if (!isOpen) return;
-    const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0 };
+    const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0, workRevision: 0, profileFingerprint };
     scopeRef.current = scope;
     lastPersistRef.current = null;
     /* eslint-disable react-hooks/set-state-in-effect --
        Modal-lifecycle reset mirroring TailorModal: every slice returns to a
        known state on open before the async restore resolves. */
     setPhase('restoring');
+    setProfileChanged(false);
     setCurrentDoc(null);
     setBaseSections([]);
     setStructureResult(null);
@@ -274,19 +336,20 @@ export default function ResumeRenovationModal({
           setRestoredFromSave(true);
           setPhase('doc');
         } else {
-          setPhase('idle');
+          setPhase(stored === null ? 'idle' : 'restore-error');
         }
       })
       .catch(() => {
-        if (isCurrentScope(scope)) setPhase('idle');
+        if (isCurrentScope(scope)) setPhase('restore-error');
       });
     return () => {
       scope.active = false;
       unsubscribe();
     };
-    // profile.resume_text feeds the staleness comparison — a resume edit
-    // while the modal is closed must re-evaluate on the next open.
-  }, [isOpen, opportunityId, profile.resume_text, ownerRevision, isCurrentScope, setCurrentDoc]);
+    // Profile-only changes are handled above without replacing local edits.
+    // The new lifecycle captures the content current at this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, opportunityId, ownerRevision, restoreRevision, isCurrentScope, setCurrentDoc]);
 
   // Focus trap + escape + body-overflow lock, lifted from TailorModal so the
   // renovation modal feels identical to keyboard users.
@@ -333,15 +396,15 @@ export default function ResumeRenovationModal({
   }, [isOpen, invalidateAndClose]);
 
   const persist = useCallback(
-    async (nextDoc: RenovationDoc, sections: ResumeSectionInput[], scope: RenovationScope) => {
-      if (!isCurrentScope(scope)) return;
+    async (nextDoc: RenovationDoc, sections: ResumeSectionInput[], scope: RenovationScope, workRevision = scope.workRevision) => {
+      if (!isCurrentWork(scope, workRevision)) return;
       const revision = ++scope.saveRevision;
-      const isLatestSave = () => isCurrentScope(scope) && revision === scope.saveRevision;
+      const isLatestSave = () => isCurrentWork(scope, workRevision) && revision === scope.saveRevision;
       setSaving(true);
       setSavedFlash(false);
       setSaveFailed(false);
       // An edit/retry must not relabel a document as derived from a new source.
-      lastPersistRef.current = { doc: nextDoc, sections, scope };
+      lastPersistRef.current = { doc: nextDoc, sections, scope, workRevision };
       try {
         const ok = await saveRenovation(
           opportunityId,
@@ -364,47 +427,63 @@ export default function ResumeRenovationModal({
         if (isLatestSave()) setSaving(false);
       }
     },
-    [opportunityId, isCurrentScope],
+    [opportunityId, isCurrentWork],
   );
 
   async function handleRenovate() {
     const scope = scopeRef.current;
-    if (!profile.resume_text || phase === 'working' || !isCurrentScope(scope)) return;
-    const resumeSignature = hashString(profile.resume_text);
+    if (!profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
+    const workRevision = ++scope.workRevision;
+    const resumeSignature = hashString(profileSnapshot.resume_text);
+    const originalDoc = docRef.current;
+    lastPersistRef.current = null;
+    setSaving(false);
+    setSavedFlash(false);
+    setSaveFailed(false);
+    setOptimizingId(null);
+    setBulletNotices({});
     setPhase('working');
     setWorkingStep('structuring');
     setStructureResult(null);
     setError(null);
     setRestoredFromSave(false);
     try {
-      const structured = await structureResume(profile.resume_text, { locale });
-      if (!isCurrentScope(scope)) return;
+      const signature = await profileSignature(profileFingerprint);
+      if (!isCurrentWork(scope, workRevision)) return;
+      const structured = await structureResume(profileSnapshot.resume_text, { locale });
+      if (!isCurrentWork(scope, workRevision)) return;
       setStructureResult(structured);
       if (structured.sections.length === 0) {
         setError(t('renovate.noSections'));
-        setPhase('idle');
+        if (originalDoc) setStructureResult(null);
+        setPhase(originalDoc ? 'doc' : 'idle');
         return;
       }
       setWorkingStep('renovating');
-      const renovated = await renovateResume(profile, opportunityId, structured.sections, {
+      const renovated = await renovateResume(profileSnapshot, opportunityId, structured.sections, {
         locale,
       });
-      if (!isCurrentScope(scope)) return;
+      if (!isCurrentWork(scope, workRevision)) return;
       const nextDoc: RenovationDoc = {
         resume_sig: resumeSignature,
+        ...(signature ? { profile_sig: signature } : {}),
         sections: renovated.sections,
         method: renovated.method,
         warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
         processing: structured.processing,
       };
       setCurrentDoc(nextDoc);
+      setProfileChanged(false);
+      setEditingId(null);
+      setEditDraft('');
       setBaseSections(structured.sections);
       setPhase('doc');
-      void persist(nextDoc, structured.sections, scope);
+      void persist(nextDoc, structured.sections, scope, workRevision);
     } catch (err) {
-      if (!isCurrentScope(scope)) return;
+      if (!isCurrentWork(scope, workRevision)) return;
       setError(err instanceof Error ? err.message : t('renovate.failed'));
-      setPhase('idle');
+      if (originalDoc) setStructureResult(null);
+      setPhase(originalDoc ? 'doc' : 'idle');
     }
   }
 
@@ -459,18 +538,19 @@ export default function ResumeRenovationModal({
   async function handleReoptimize(b: RenovatedBullet) {
     const scope = scopeRef.current;
     if (optimizingId || !isCurrentScope(scope)) return;
+    const workRevision = scope.workRevision;
     const isSameBullet = () => docRef.current?.sections.some((s) => s.bullets.some((cur) => cur === b));
     setOptimizingId(b.id);
     setBulletNotices((prev) => ({ ...prev, [b.id]: '' }));
     try {
       const resp = await optimizeBullet(
-        profile,
+        profileSnapshot,
         opportunityId,
         bulletCurrentText(b),
         b.base_text,
         { locale },
       );
-      if (!isCurrentScope(scope) || !isSameBullet()) return;
+      if (!isCurrentWork(scope, workRevision) || !isSameBullet()) return;
       if (resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
@@ -485,16 +565,17 @@ export default function ResumeRenovationModal({
         setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
       }
     } catch {
-      if (!isCurrentScope(scope) || !isSameBullet()) return;
+      if (!isCurrentWork(scope, workRevision) || !isSameBullet()) return;
       setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
     } finally {
-      if (isCurrentScope(scope)) setOptimizingId(null);
+      if (isCurrentWork(scope, workRevision)) setOptimizingId(null);
     }
   }
 
   async function handleCopyAll() {
     const scope = scopeRef.current;
     if (!doc || !isCurrentScope(scope)) return;
+    const workRevision = scope.workRevision;
     const lines: string[] = [];
     for (const s of doc.sections) {
       if (s.heading) lines.push(s.heading.toUpperCase());
@@ -511,15 +592,19 @@ export default function ResumeRenovationModal({
       lines.push('');
     }
     await navigator.clipboard.writeText(lines.join('\n').trim());
-    if (!isCurrentScope(scope)) return;
+    if (!isCurrentWork(scope, workRevision)) return;
     setCopied(true);
-    setTimeout(() => { if (isCurrentScope(scope)) setCopied(false); }, 2000);
+    setTimeout(() => { if (isCurrentWork(scope, workRevision)) setCopied(false); }, 2000);
   }
 
   if (!isOpen) return null;
 
   const warningMessage = doc ? pickRenovationWarning(doc.warnings, t) : null;
-  const hasResume = !!profile.resume_text;
+  const hasResume = !!profileSnapshot.resume_text;
+  const knownSignature = typeof doc?.profile_sig === 'string' && /^v1:sha256:[a-f0-9]{64}$/.test(doc.profile_sig);
+  const comparableSignature = currentSignature?.fingerprint === profileFingerprint ? currentSignature.signature : undefined;
+  const staleProfile = profileChanged || (!!knownSignature && !!comparableSignature && doc?.profile_sig !== comparableSignature);
+  const unknownProfile = !!doc && (!knownSignature || !comparableSignature);
 
   return (
     <div
@@ -569,7 +654,7 @@ export default function ResumeRenovationModal({
                   className="underline hover:text-amber-700"
                   onClick={() => {
                     const last = lastPersistRef.current;
-                    if (last) void persist(last.doc, last.sections, last.scope);
+                    if (last) void persist(last.doc, last.sections, last.scope, last.workRevision);
                   }}
                 >
                   {t('renovate.retrySave')}
@@ -607,6 +692,20 @@ export default function ResumeRenovationModal({
             </div>
           )}
 
+          {phase === 'restore-error' && (
+            <div role="alert" className="flex flex-col items-center justify-center py-16 gap-4 px-6 text-center">
+              <AlertCircle className="w-8 h-8 text-amber-600" aria-hidden="true" />
+              <p className="text-sm text-gray-700">{t('renovate.restoreFailed')}</p>
+              <button type="button" onClick={() => setRestoreRevision((revision) => revision + 1)}
+                className="text-sm font-semibold text-indigo-600 underline">{t('renovate.restoreRetry')}</button>
+            </div>
+          )}
+          {staleProfile && phase !== 'restoring' && (
+            <p role="status" className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" data-testid="renovation-profile-changed">{t('renovate.profileChanged')}</p>
+          )}
+          {unknownProfile && phase === 'doc' && (
+            <p className="mx-4 mt-4 text-sm text-gray-600" data-testid="renovation-profile-unknown">{t('renovate.profileUnknown')}</p>
+          )}
           {phase === 'idle' && (
             <div className="flex flex-col items-center justify-center py-16 gap-4 px-6 text-center">
               <Sparkles className="w-8 h-8 text-indigo-300" aria-hidden="true" />
@@ -647,6 +746,7 @@ export default function ResumeRenovationModal({
 
           {phase === 'doc' && doc && (
             <div className="px-4 sm:px-6 py-4 space-y-5">
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
               {restoredFromSave && (
                 <p className="text-[11.5px] text-indigo-600 bg-indigo-50 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full">
                   <Info className="w-3.5 h-3.5" aria-hidden="true" />
