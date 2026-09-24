@@ -8,6 +8,7 @@ import { useT } from '@/i18n/client';
 
 import { AcademicProfileCard } from './home/AcademicProfileCard';
 import { ExperienceLibraryCard } from './home/ExperienceLibraryCard';
+import { ResumeMasterCard } from './home/ResumeMasterCard';
 import { DocumentsCard } from './home/DocumentsCard';
 import { HeroSection } from './home/HeroSection';
 import { LiveDatabaseCard } from './home/LiveDatabaseCard';
@@ -63,6 +64,7 @@ function HomePageInner() {
     handleResumeParsed,
     handleResumeRemoved,
     handleExperienceChange,
+    handleResumeMasterChange,
     handleGitHubImport,
   } = useProfileForm(t);
 
@@ -109,6 +111,12 @@ function HomePageInner() {
             ready={hydrationState === 'ready' && viewSnapshot !== null}
             onChange={handleExperienceChange}
             t={t}
+          />
+          <ResumeMasterCard
+            key={`resume-master-${identityGeneration}`}
+            profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
+            onChange={handleResumeMasterChange}
           />
           <OnlineProfilesCard
             profile={profile}

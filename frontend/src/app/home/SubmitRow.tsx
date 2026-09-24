@@ -101,7 +101,7 @@ export function SubmitRow({
       {/* Save/sync state is never hidden behind form validity: a failed
           cloud sync is exactly as true (and as retriable) on an incomplete
           profile as on a complete one. */}
-      <div className="flex justify-center items-center gap-2 mt-4 min-h-5" role="status" aria-live="polite">
+      <div id="profile-save-status" className="flex justify-center items-center gap-2 mt-4 min-h-5" role="status" aria-live="polite">
         {saveStatus === 'saving' && (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 animate-pulse">
             <Cloud className="w-3.5 h-3.5" aria-hidden="true" />

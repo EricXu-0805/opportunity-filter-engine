@@ -53,6 +53,70 @@ export interface ExperienceEntry {
   source: ExperienceSource;
 }
 
+// ── Complete résumé master (source-preserving; independent of AI budgets) ──
+export interface ResumeFact {
+  id: string;
+  revision: number;
+  status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
+  value: string; // exact full text; dates/authors remain strings, no inferred parsing
+  source: ExperienceSource;
+}
+export interface ResumeExperienceRef { id: string; revision: number }
+export interface ResumeRawRange { start: number; end: number }
+export interface ResumeBasics {
+  name?: ResumeFact;
+  email?: ResumeFact;
+  phone?: ResumeFact;
+  location?: ResumeFact;
+  links: Array<{ id: string; label: string; url: ResumeFact }>;
+}
+export interface ResumeEducationItem {
+  id: string;
+  school?: ResumeFact;
+  degree?: ResumeFact;
+  field?: ResumeFact;
+  start?: ResumeFact;
+  end?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export interface ResumeActivityItem {
+  id: string;
+  kind: 'employment' | 'research' | 'project' | 'volunteer' | 'other';
+  title?: ResumeFact;
+  organization?: ResumeFact;
+  location?: ResumeFact;
+  start?: ResumeFact;
+  end?: ResumeFact;
+  url?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export interface ResumePublicationItem {
+  id: string;
+  title?: ResumeFact;
+  authors?: ResumeFact;
+  venue?: ResumeFact;
+  date?: ResumeFact;
+  publication_status?: ResumeFact;
+  url?: ResumeFact;
+  doi?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export type ResumeMasterSectionKind = 'basics' | 'education' | 'activities' | 'publications' | 'skills' | 'other';
+export interface ResumeMasterV1 {
+  version: 1;
+  id: string;
+  revision: number;
+  source_signature: string | null;
+  basics: ResumeBasics;
+  education: ResumeEducationItem[];
+  activities: ResumeActivityItem[];
+  publications: ResumePublicationItem[];
+  skills: ResumeFact[]; // exact display text; never updates ProfileData.skills or its levels
+  other_sections: Array<{ id: string; heading: string; items: ResumeFact[] }>;
+  section_order: string[]; // exactly ['basics','education','activities','publications','skills', ...other section IDs], reorderable
+  unmapped_ranges: ResumeRawRange[]; // sorted nonoverlapping; requires source_signature when nonempty
+}
+
 // ── Frontend Profile (form state) ────────────────────────────────────
 export interface ProfileData {
   institution: string;
@@ -78,6 +142,8 @@ export interface ProfileData {
   resume_text?: string;
   /** Missing in older profiles: no student-confirmed experience evidence. */
   experience_entries?: ExperienceEntry[];
+  /** Missing/null means the student has not created a complete master yet. */
+  resume_master?: ResumeMasterV1 | null;
   coursework?: string[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */

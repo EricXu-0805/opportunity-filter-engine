@@ -166,3 +166,107 @@ test.describe('Résumé renovation (real browser)', () => {
       await expect(page.getByRole('button', { name: 'Renovate with AI' })).toHaveCount(0);
     });
 });
+
+
+// M37: complete master editing uses the real browser/profile coordinator and
+// loopback Supabase stub. No model, email or hosted storage is involved.
+test.describe('Complete résumé master', () => {
+  test.describe.configure({ timeout: 60_000 });
+  const source = 'Alex 王\nEducation: Example University, 2026–expected\n' + '完整原文🧪 '.repeat(500);
+  const confirmedDetail = 'Built and documented a reproducible instrument. ' + '实验记录🧪 '.repeat(400);
+  async function openMaster(page: Page) {
+    await page.addInitScript(({ profileKey, localeKey, data }) => {
+      if (!localStorage.getItem('master-browser-seeded')) {
+        localStorage.setItem(profileKey, JSON.stringify(data));
+        localStorage.setItem(localeKey, 'en');
+        localStorage.setItem('master-browser-seeded', '1');
+      }
+    }, { profileKey: STORAGE_KEYS.PROFILE, localeKey: STORAGE_KEYS.LOCALE, data: {
+      ...PROFILE, search_weight: 50, skills: [], resume_text: source,
+      experience_entries: [
+        { id: 'confirmed-project', revision: 3, status: 'confirmed', text: confirmedDetail, source: { kind: 'manual' } },
+        { id: 'candidate-project', revision: 1, status: 'candidate', text: 'Unconfirmed experience must not appear', source: { kind: 'manual' } },
+      ],
+    } });
+    await page.goto('/');
+    const card = page.locator('#resume-master');
+    await card.getByText('Open full résumé editor', { exact: true }).click();
+    await expect(card.getByRole('textbox', { name: 'Full name', exact: true })).toBeEnabled();
+    return card;
+  }
+
+  test('edits exact identity, education and publication fields, then restores them after saving', async ({ page }, testInfo) => {
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    const card = await openMaster(page);
+    const fillConfirmed = async (label: string, value: string) => {
+      await card.getByRole('textbox', { name: label, exact: true }).fill(value);
+      await card.getByRole('button', { name: `Confirm ${label}`, exact: true }).click();
+    };
+    await expect(card.getByRole('textbox', { name: 'Full name', exact: true })).toHaveValue('');
+    await fillConfirmed('Full name', 'Alex 王');
+    await fillConfirmed('Email', 'synthetic-student@example.edu');
+    await card.getByRole('button', { name: 'Add education', exact: true }).click();
+    await fillConfirmed('School', 'Example University');
+    await fillConfirmed('Degree', 'B.S. (in progress)');
+    await fillConfirmed('End date / expected date', 'Expected 2027');
+    await card.getByRole('button', { name: 'Add publication', exact: true }).click();
+    await fillConfirmed('Publication title', 'Instrument study');
+    await fillConfirmed('Authors in exact order', 'J. Lee; Alex 王; M. Doe');
+    await fillConfirmed('Publication status', 'Submitted, not accepted');
+    await card.getByRole('button', { name: 'Add experience or project', exact: true }).click();
+    await fillConfirmed('Role / project title', 'Instrument project');
+    const activity = card.getByRole('group', { name: 'Activity 1', exact: true });
+    await activity.getByRole('checkbox').check();
+    const preview = card.getByRole('region', { name: 'Résumé preview' });
+    await expect(preview).toContainText(confirmedDetail);
+    await expect(preview).not.toContainText('Unconfirmed experience must not appear');
+    await expect(preview).toContainText('Expected 2027');
+    const saved = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_profile_patch_cas')
+      && r.request().postDataJSON()?.p_patch?.resume_master?.basics?.name?.value === 'Alex 王');
+    await card.getByRole('button', { name: 'Apply changes', exact: true }).click();
+    const receipt = await (await saved).json();
+    expect(['applied', 'unchanged']).toContain(receipt.status);
+    expect(receipt.profile.resume_master.publications[0].authors.value).toBe('J. Lee; Alex 王; M. Doe');
+    expect(receipt.profile.resume_text).toBe(source);
+    expect(receipt.profile.experience_entries[0].text).toBe(confirmedDetail);
+    await page.reload();
+    await card.getByText('Open full résumé editor', { exact: true }).click();
+    await expect(card.getByRole('textbox', { name: 'Full name', exact: true })).toHaveValue('Alex 王');
+    await expect(card.getByRole('textbox', { name: 'Authors in exact order', exact: true })).toHaveValue('J. Lee; Alex 王; M. Doe');
+    await expect(preview).toContainText(confirmedDetail);
+    await expect(preview).toContainText('Submitted, not accepted');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+    await preview.screenshot({ path: testInfo.outputPath('complete-master-preview.png') });
+    expect(errors).toEqual([]);
+  });
+
+  test('keeps source and long text intact; unfinished fields do not crash or enter the preview', async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    const card = await openMaster(page);
+    await card.getByText('View complete current résumé source', { exact: true }).click();
+    expect(await card.locator('pre').textContent()).toBe(source);
+    await card.getByRole('button', { name: 'Add link', exact: true }).click();
+    await expect(card.getByRole('button', { name: 'Apply changes', exact: true })).toBeVisible();
+    await card.getByRole('button', { name: 'Remove link', exact: true }).click();
+    await card.getByRole('button', { name: 'Add another section', exact: true }).click();
+    await card.getByRole('textbox', { name: 'Section heading', exact: true }).fill('Additional contributions');
+    await card.getByRole('button', { name: 'Add detail', exact: true }).click();
+    const long = '完整内容🧪'.repeat(1201);
+    await card.getByRole('textbox', { name: 'Additional detail 1', exact: true }).fill(long);
+    const preview = card.getByRole('region', { name: 'Résumé preview' });
+    await expect(preview).not.toContainText(long);
+    await card.getByRole('button', { name: 'Confirm Additional detail 1', exact: true }).click();
+    await expect(preview).toContainText(long);
+    const saved = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_profile_patch_cas')
+      && r.request().postDataJSON()?.p_patch?.resume_master?.other_sections?.[0]?.items?.[0]?.value === long);
+    await card.getByRole('button', { name: 'Apply changes', exact: true }).click();
+    expect((await (await saved).json()).profile.resume_master.other_sections[0].items[0].value).toBe(long);
+    await page.reload();
+    await card.getByText('Open full résumé editor', { exact: true }).click();
+    await expect(card.getByRole('textbox', { name: 'Additional detail 1', exact: true })).toHaveValue(long);
+    await expect(preview).toContainText(long);
+    await card.getByRole('textbox', { name: 'Additional detail 1', exact: true }).fill(`${long} edited`);
+    await expect(preview).not.toContainText(long);
+    expect(errors).toEqual([]);
+  });
+});

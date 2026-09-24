@@ -129,7 +129,7 @@ describe('profile write path — shape contracts', () => {
   });
 
   it('the résumé bundle is exactly the fields a résumé produces', () => {
-    expect([...RESUME_BUNDLE].sort()).toEqual(['coursework', 'experience_entries', 'resume_text']);
+    expect([...RESUME_BUNDLE].sort()).toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 
   it('the sync envelope is cleared on an account switch', () => {
