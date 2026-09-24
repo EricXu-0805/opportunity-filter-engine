@@ -17,6 +17,8 @@ import {
   ArrowDownRight,
   FileText,
 } from 'lucide-react';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
 import { saveRenovation, loadRenovation } from '@/lib/supabase';
@@ -65,6 +67,8 @@ interface RenovationScope {
  */
 interface ResumeRenovationModalProps {
   isOpen: boolean;
+  targetReady?: boolean;
+  profileRefresh?: ProfileRefreshState;
   onClose: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
   profile: ProfileData;
@@ -176,8 +180,12 @@ export default function ResumeRenovationModal({
   opportunityId,
   opportunityTitle,
   onOpenFull,
+  targetReady = true,
+  profileRefresh,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
+  const sourceReady = targetReady && profileRefreshReady(profileRefresh);
+  const sourceRef = useRef({ ready: sourceReady, epoch: 0 });
   const profileFingerprint = canonicalProfile(profile);
   const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileFingerprint), [profileFingerprint]);
   const [currentSignature, setCurrentSignature] = useState<{ fingerprint: string; signature?: string } | null>(null);
@@ -289,6 +297,16 @@ export default function ResumeRenovationModal({
     setCopied(false);
     setPhase((previous) => previous === 'working' ? (docRef.current ? 'doc' : 'idle') : previous);
   }, [isOpen, profileFingerprint]);
+
+  useLayoutEffect(() => {
+    if (sourceRef.current.ready !== sourceReady) sourceRef.current.epoch += 1;
+    sourceRef.current.ready = sourceReady;
+    if (sourceReady || !isOpen) return;
+    // Retire the visible pending action before paint; keep the editor buffer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOptimizingId(null);
+    setPhase((previous) => previous === 'working' ? (docRef.current ? 'doc' : 'idle') : previous);
+  }, [isOpen, sourceReady]);
 
   // Reset + restore on every open: a saved doc for this opportunity wins
   // over the empty CTA. setState runs in the async callback.
@@ -459,8 +477,10 @@ export default function ResumeRenovationModal({
 
   async function handleRenovate() {
     const scope = scopeRef.current;
-    if (!profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
     const workRevision = ++scope.workRevision;
+    const epoch = sourceRef.current.epoch;
+    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && isCurrentWork(scope, workRevision);
     const resumeSignature = hashString(profileSnapshot.resume_text);
     const originalDoc = docRef.current;
     lastPersistRef.current = null;
@@ -476,9 +496,9 @@ export default function ResumeRenovationModal({
     setRestoredFromSave(false);
     try {
       const signature = await profileSignature(profileFingerprint);
-      if (!isCurrentWork(scope, workRevision)) return;
+      if (!current()) return;
       const structured = await structureResume(profileSnapshot.resume_text, { locale });
-      if (!isCurrentWork(scope, workRevision)) return;
+      if (!current()) return;
       setStructureResult(structured);
       if (structured.sections.length === 0) {
         setError(t('renovate.noSections'));
@@ -490,7 +510,7 @@ export default function ResumeRenovationModal({
       const renovated = await renovateResume(profileSnapshot, opportunityId, structured.sections, {
         locale,
       });
-      if (!isCurrentWork(scope, workRevision)) return;
+      if (!current()) return;
       const nextDoc: RenovationDoc = {
         resume_sig: resumeSignature,
         ...(signature ? { profile_sig: signature } : {}),
@@ -507,7 +527,7 @@ export default function ResumeRenovationModal({
       setPhase('doc');
       void persist(nextDoc, structured.sections, scope, workRevision);
     } catch (err) {
-      if (!isCurrentWork(scope, workRevision)) return;
+      if (!current()) return;
       setError(err instanceof Error ? err.message : t('renovate.failed'));
       if (originalDoc) setStructureResult(null);
       setPhase(originalDoc ? 'doc' : 'idle');
@@ -564,8 +584,10 @@ export default function ResumeRenovationModal({
 
   async function handleReoptimize(b: RenovatedBullet) {
     const scope = scopeRef.current;
-    if (optimizingId || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || optimizingId || !isCurrentScope(scope)) return;
     const workRevision = scope.workRevision;
+    const epoch = sourceRef.current.epoch;
+    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && isCurrentWork(scope, workRevision);
     const isSameBullet = () => docRef.current?.sections.some((s) => s.bullets.some((cur) => cur === b));
     setOptimizingId(b.id);
     setBulletNotices((prev) => ({ ...prev, [b.id]: '' }));
@@ -577,7 +599,7 @@ export default function ResumeRenovationModal({
         b.base_text,
         { locale },
       );
-      if (!isCurrentWork(scope, workRevision) || !isSameBullet()) return;
+      if (!current() || !isSameBullet()) return;
       if (resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
@@ -592,10 +614,10 @@ export default function ResumeRenovationModal({
         setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
       }
     } catch {
-      if (!isCurrentWork(scope, workRevision) || !isSameBullet()) return;
+      if (!current() || !isSameBullet()) return;
       setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
     } finally {
-      if (isCurrentWork(scope, workRevision)) setOptimizingId(null);
+      if (current()) setOptimizingId(null);
     }
   }
 
@@ -702,6 +724,8 @@ export default function ResumeRenovationModal({
           </div>
         </div>
 
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} onBeforeReview={() => requestLeave('close')} />
+
         {onOpenFull && <div className="border-b border-gray-100 px-4 py-2 sm:px-6">
           <button type="button" className="text-sm font-medium text-indigo-700 underline"
             onClick={() => requestLeave('full')}>
@@ -753,6 +777,7 @@ export default function ResumeRenovationModal({
                   )}
                   <button
                     type="button"
+                    disabled={!sourceReady}
                     onClick={handleRenovate}
                     className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 shadow-sm transition-all"
                   >
@@ -874,7 +899,7 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => handleReoptimize(b)}
-                                  disabled={isOptimizing || optimizingId !== null}
+                                  disabled={!sourceReady || isOptimizing || optimizingId !== null}
                                   className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-fuchsia-500 hover:text-fuchsia-700 hover:bg-fuchsia-50 disabled:opacity-40 transition-colors"
                                   aria-label={t('renovate.reoptimizeAria')}
                                 >
@@ -955,7 +980,8 @@ export default function ResumeRenovationModal({
           <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
             <button
               type="button"
-              onClick={handleRenovate}
+              disabled={!sourceReady}
+                    onClick={handleRenovate}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors mr-auto"
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />

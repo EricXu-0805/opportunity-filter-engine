@@ -25,6 +25,7 @@ import {
   type OwnerToken,
 } from './identity-owner';
 import { RELEASE_SCOPE } from './release-scope';
+import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
 import { STORAGE_KEYS } from './storage-keys';
 
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
@@ -1331,18 +1332,22 @@ function notReadyFor(candidate: OwnerToken, ensuredId: string | null): Error {
   return new OwnerNotReadyError();
 }
 
-export async function loadProfile(): Promise<LoadedProfile> {
+export async function loadProfile(signal?: AbortSignal): Promise<LoadedProfile> {
+  assertProfileReadActive(signal);
   // Dedup key is the pre-ensure "start-attempt" token: concurrent calls
   // captured at (near-)identical moments — including two concurrent
   // FIRST-ever calls, both uid: null — correctly collapse onto one
   // in-flight promise (R69-D's original mount+onAuthChange double-fire).
   const startAttempt = captureOwnerToken();
   const key = loadProfileKey(startAttempt);
-  const existing = inflightLoadProfile.get(key);
+  // An independently cancellable read must not inherit a hung legacy read,
+  // nor cancel another consumer's request. Legacy callers retain burst dedup.
+  const existing = signal ? undefined : inflightLoadProfile.get(key);
   if (existing) return existing;
 
   const promise = (async (): Promise<LoadedProfile> => {
-    const id = await ensureAnonSession();
+    const id = await awaitProfileRead(ensureAnonSession(), signal);
+    assertProfileReadActive(signal);
     let token = startAttempt;
     if (!isOwnerTokenValid(token, id)) {
       if (token.uid !== null) {
@@ -1389,11 +1394,12 @@ export async function loadProfile(): Promise<LoadedProfile> {
       // the profile row doesn't exist yet — every cold visit produced
       // a console error even though the empty-row case is expected.
       // maybeSingle() returns { data: null, error: null } for missing rows.
-      const result = await supabase
+      const query = supabase
         .from('profiles')
         .select('profile_data, revision')
-        .eq('id', id)
-        .maybeSingle();
+        .eq('id', id);
+      const result = await awaitProfileRead((signal ? query.abortSignal(signal) : query).maybeSingle(), signal);
+      assertProfileReadActive(signal);
 
       // Re-verify after the SELECT's own await — same reasoning as above: a
       // read we can no longer attribute is an error, not an empty profile.
@@ -1433,6 +1439,7 @@ export async function loadProfile(): Promise<LoadedProfile> {
       const profile = (data.profile_data as Record<string, unknown>) ?? {};
       return { source: 'cloud', profile, revision, token };
     } catch (err) {
+      assertProfileReadActive(signal);
       // Ownership is decided FIRST, then the error is interpreted.
       //
       // An already-scoped failure — including everything notReadyFor decided
@@ -1451,6 +1458,7 @@ export async function loadProfile(): Promise<LoadedProfile> {
     }
   })();
 
+  if (signal) return promise;
   inflightLoadProfile.set(key, promise);
   try {
     return await promise;

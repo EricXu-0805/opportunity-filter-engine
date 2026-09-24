@@ -6,7 +6,8 @@
 // OTHER child is stubbed so this stays a narrow, fast test of the wiring,
 // with the REAL TrackerPanel doing the actual mount/unmount work.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Echoing only the key made every interpolated value invisible: "Source:
@@ -29,9 +30,21 @@ vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 // modal and re-fetches the record on success). Deleting the parent's gate must
 // make these tests red, not merely change which branch renders.
 const contactRevealMounts = vi.hoisted(() => [] as string[]);
+const refreshHook = vi.hoisted(() => ({
+  current: { status: 'ready', refresh: vi.fn().mockResolvedValue(true) } as ProfileRefreshState,
+  enabled: undefined as boolean | undefined,
+}));
+vi.mock('@/lib/use-profile-refresh', () => ({
+  useProfileRefresh: (enabled: boolean) => { refreshHook.enabled = enabled; return refreshHook.current; },
+}));
+beforeEach(() => {
+  refreshHook.current = { status: 'ready', refresh: vi.fn().mockResolvedValue(true) };
+  refreshHook.enabled = undefined;
+});
 vi.mock('./ContactRevealSection', () => ({
   ContactRevealSection: (props: { opp: { id: string } }) => {
-    contactRevealMounts.push(props.opp.id);
+    const mountedTarget = useRef(props.opp.id);
+    useEffect(() => { contactRevealMounts.push(mountedTarget.current); }, []);
     return (
       <div data-testid="contact-reveal">
         <a data-testid="contact-reveal-revealed" href="mailto:pi@example.edu">email</a>
@@ -85,15 +98,27 @@ vi.mock('./InteractionPills', () => ({
 // The Cold Email modal was never stubbed here, so nothing checked that a
 // dead target stops mounting it — the real one is dynamically imported and
 // simply never appeared in these tests.
+const writingProps = vi.hoisted(() => ({
+  email: null as { profileRefresh?: ProfileRefreshState } | null,
+  resume: null as { profileRefresh?: ProfileRefreshState } | null,
+}));
 vi.mock('@/components/ColdEmailModal', () => ({
-  default: () => <div data-testid="cold-email-modal" />,
+  default: function MockColdEmail(props: { profileRefresh?: ProfileRefreshState }) {
+    writingProps.email = props;
+    const mount = useRef(Math.random().toString(36).slice(2));
+    return <div data-testid="cold-email-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'} />;
+  },
 }));
 vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => <div data-testid="chat-drawer" /> }));
 vi.mock('./ProfessorFollowToggle', () => ({
   ProfessorFollowToggle: () => <div data-testid="professor-follow" />,
 }));
 vi.mock('@/components/ResumeWorkspaceModal', () => ({
-  default: () => <div data-testid="renovation-modal" />,
+  default: function MockResumeWorkspace(props: { profileRefresh?: ProfileRefreshState }) {
+    writingProps.resume = props;
+    const mount = useRef(Math.random().toString(36).slice(2));
+    return <div data-testid="renovation-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'} />;
+  },
 }));
 vi.mock('@/components/OpportunityChatbot', () => ({
   default: function MockOpportunityChatbot() {
@@ -590,5 +615,63 @@ describe('detail return link before private hydration', () => {
     mockHookState.current = baseHookResult({ ownerReady: false });
     render(<OpportunityDetail opp={opp} />);
     expect(screen.getByTestId('return-to-results')).toHaveAttribute('href', '/results');
+  });
+});
+
+
+describe('OpportunityDetail shared profile refresh wiring', () => {
+  let originalResumeFlag: unknown;
+  beforeEach(() => {
+    originalResumeFlag = releaseFlags.resumeRenovate;
+    releaseFlags.resumeRenovate = true;
+    contactRevealMounts.length = 0;
+    writingProps.email = null; writingProps.resume = null;
+    window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
+      institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
+      research_interests: 'ml', skills: [],
+    }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true });
+  });
+  afterEach(() => { releaseFlags.resumeRenovate = originalResumeFlag; });
+
+  it('forwards the same refresh state and retry to both persistent writing windows without remounting them', async () => {
+    const refresh = vi.fn().mockResolvedValue(true);
+    refreshHook.current = { status: 'ready', refresh };
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const email = await screen.findByTestId('cold-email-modal');
+    const resume = await screen.findByTestId('renovation-modal');
+    const emailMount = email.dataset.mountId;
+    const resumeMount = resume.dataset.mountId;
+    expect(refreshHook.enabled).toBe(true);
+    for (const status of ['checking', 'failed', 'conflict', 'local-only', 'ready'] as const) {
+      refreshHook.current = { status, refresh };
+      rerender(<OpportunityDetail opp={opp} />);
+      expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+      expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+      expect(screen.getByTestId('cold-email-modal')).toHaveAttribute('data-refresh-status', status);
+      expect(screen.getByTestId('renovation-modal')).toHaveAttribute('data-refresh-status', status);
+      expect(screen.getByTestId('cold-email-modal')).toHaveAttribute('data-mount-id', emailMount);
+      expect(screen.getByTestId('renovation-modal')).toHaveAttribute('data-mount-id', resumeMount);
+      if (status === 'failed') fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    }
+    expect(refresh).toHaveBeenCalledTimes(1);
+    // Refresh re-renders are not contact reveals and must not inflate mount evidence.
+    expect(contactRevealMounts).toEqual(['opp-1']);
+  });
+
+  it('does not enable the shared refresher before the detail owner is ready', async () => {
+    mockHookState.current = baseHookResult({ ownerReady: false, emailModalOpen: true, renovationOpen: true });
+    refreshHook.current = { status: 'checking', refresh: vi.fn().mockResolvedValue(false) };
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    await screen.findByTestId('renovation-modal');
+    expect(refreshHook.enabled).toBe(false);
+    expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+    expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+    mockHookState.current = baseHookResult({ ownerReady: true, emailModalOpen: true, renovationOpen: true });
+    refreshHook.current = { status: 'ready', refresh: vi.fn().mockResolvedValue(true) };
+    rerender(<OpportunityDetail opp={opp} />);
+    expect(refreshHook.enabled).toBe(true);
+    expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+    expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
   });
 });

@@ -486,3 +486,26 @@ describe('MatchList — the Tailor modal subtree is keyed by identityGeneration 
     expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-7');
   });
 });
+
+
+describe('MatchList persistent résumé opener', () => {
+  it('forwards the latest opener even when every other memoized card prop is identical', () => {
+    const first = vi.fn(); const second = vi.fn();
+    const match = listingVariant({});
+    const { rerender } = render(<MatchList {...STABLE} matches={[match]} onOpenResume={first} />);
+    fireEvent.click(screen.getByRole('button', { name: 'card.renovateResume' }));
+    expect(first).toHaveBeenCalledWith(match.opportunity.id);
+    rerender(<MatchList {...STABLE} matches={[match]} onOpenResume={second} />);
+    fireEvent.click(screen.getByRole('button', { name: 'card.renovateResume' }));
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledWith(match.opportunity.id);
+  });
+
+  it('does not invoke the parent résumé opener before the owner is ready', () => {
+    const open = vi.fn();
+    render(<MatchList {...STABLE} matches={[listingVariant({})]} ownerReady={false} onOpenResume={open} />);
+    expect(screen.getByRole('button', { name: 'card.renovateResume' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'card.renovateResume' }));
+    expect(open).not.toHaveBeenCalled();
+  });
+});

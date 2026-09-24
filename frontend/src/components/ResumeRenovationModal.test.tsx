@@ -1043,3 +1043,23 @@ describe('legacy registered browser close request', () => {
     view.unmount(); expect(request).toBeNull();
   });
 });
+
+
+describe('bullet editor cloud refresh', () => {
+  it('keeps the unsaved edit and ignores old optimization after checking returns unchanged', async () => {
+    const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+    mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValue(pending.promise);
+    const p = makeProfile(); const view = renderModal(p);
+    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    editFirstBullet('Retain my unsubmitted bullet');
+    const refresh = vi.fn().mockResolvedValue(true);
+    const show = (status: 'checking' | 'ready') => view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Prof. Doe's Lab" profileRefresh={{ status, refresh }} />);
+    show('checking');
+    expect(screen.getByRole('textbox')).toHaveValue('Retain my unsubmitted bullet');
+    expect(screen.getAllByText('renovate.reoptimize')[0].closest('button')).toBeDisabled();
+    show('ready');
+    await act(async () => { pending.resolve({ text: 'Late optimization', changed: true, source_evidence: '' }); });
+    expect(screen.getByRole('textbox')).toHaveValue('Retain my unsubmitted bullet');
+    expect(screen.queryByText(fullText('Late optimization'))).toBeNull(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});

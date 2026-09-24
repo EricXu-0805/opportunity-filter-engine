@@ -6,7 +6,7 @@ import { advanceOwnerEpoch, captureOwnerToken } from '@/lib/identity-owner';
 
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
-  return { useT: () => ({ t }) };
+  return { useT: () => ({ t }), useLocale: () => 'en' };
 });
 const api = vi.hoisted(() => ({
   variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn(),
@@ -50,7 +50,7 @@ function openModal(initialProfile = profile) {
   const view = render(<ColdEmailModal {...props} />);
   return {
     ...view, onClose,
-    show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />),
+    show: (next: Partial<Parameters<typeof ColdEmailModal>[0]>) => view.rerender(<ColdEmailModal {...props} {...next} />),
   };
 }
 async function ready() {
@@ -703,5 +703,57 @@ describe('profile changes preserve the open email', () => {
     expectDraft(); expect(screen.queryByDisplayValue('Draft obsolete')).toBeNull();
     expect(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeEnabled();
     expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('cloud refresh and target readiness', () => {
+  it('waits for the initial profile check before starting templates or AI', async () => {
+    const refresh = vi.fn().mockResolvedValue(true);
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab' };
+    const view = render(<ColdEmailModal {...props} profileRefresh={{ status: 'checking', refresh }} />);
+    expect(screen.getByText('Checking for profile updates…')).toBeVisible();
+    expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+    view.rerender(<ColdEmailModal {...props} profileRefresh={{ status: 'ready', refresh }} />);
+    await ready(); expect(api.variants).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps every manual field and retires refinement even when the check returns unchanged data', async () => {
+    const pending = deferred<{ body: string; method: string }>(); api.refine.mockReturnValue(pending.promise);
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Subject A'), { target: { value: 'My subject' } });
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My body' } });
+    fireEvent.change(screen.getByDisplayValue('A@example.edu'), { target: { value: 'my@example.edu' } });
+    requestEdit();
+    const input = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+    fireEvent.change(input, { target: { value: 'Not submitted yet' } });
+    const refresh = vi.fn().mockResolvedValue(true);
+    view.show({ profileRefresh: { status: 'checking', refresh } });
+    expect(screen.getByDisplayValue('My body')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    view.show({ profileRefresh: { status: 'failed', refresh } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(refresh).toHaveBeenCalledTimes(1);
+    view.show({ profileRefresh: { status: 'ready', refresh } });
+    await act(async () => { pending.resolve({ body: 'Obsolete refinement', method: 'llm' }); });
+    for (const value of ['My subject', 'My body', 'my@example.edu', 'Not submitted yet']) expect(screen.getByDisplayValue(value)).toBeVisible();
+    expect(screen.queryByDisplayValue('Obsolete refinement')).toBeNull();
+    expect(screen.getByText('coldEmail.sourceCheckRetired')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeEnabled();
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the draft when a target is unconfirmed and resumes only after target readiness returns', async () => {
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Keep this draft' } });
+    view.show({ targetReady: false });
+    expect(screen.getByDisplayValue('Keep this draft')).toBeEnabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })); expect(api.refine).not.toHaveBeenCalled();
+    view.show({ targetReady: true });
+    expect(screen.getByDisplayValue('Keep this draft')).toHaveValue('Keep this draft');
+    expect(screen.getByText('coldEmail.openInEmail')).toBeEnabled();
+    expect(api.variants).toHaveBeenCalledTimes(1);
   });
 });

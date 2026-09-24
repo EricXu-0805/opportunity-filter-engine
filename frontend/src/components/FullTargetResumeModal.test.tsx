@@ -457,3 +457,63 @@ describe('full target AI integration', () => {
     expect(storage.save).not.toHaveBeenCalled();
   });
 });
+
+
+describe('profile refresh preserves the full target document', () => {
+  it('keeps manual edits and selection through failed/retried checks and retires an old AI apply callback', async () => {
+    const p = profile(); const { rerender } = await createUI(p); const refresh = vi.fn().mockResolvedValue(true);
+    editName('My uncommitted name');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include field: Degree' }));
+    const old = ai.props!;
+    const base = clone(old.draft.base);
+    const renderState = (status: 'checking' | 'failed' | 'ready') => rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status, refresh }} />);
+    renderState('checking');
+    expect(ai.props!.enabled).toBe(false);
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toBeEnabled();
+    renderState('failed'); fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(refresh).toHaveBeenCalledTimes(1);
+    renderState('ready');
+    const prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
+    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late AI overwrite')));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('My uncommitted name');
+    expect(screen.getByRole('checkbox', { name: 'Include field: Degree' })).not.toBeChecked();
+    expect(ai.props!.draft.base).toEqual(base);
+    expect(storage.load).toHaveBeenCalledTimes(1); expect(storage.save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a pending creation after a check starts and finishes with the same profile', async () => {
+    const p = profile(); const old = await docFor(p); const pending = deferred<TargetResumeV1>();
+    vi.spyOn(contract, 'createTargetResume').mockReturnValueOnce(pending.promise);
+    const { rerender } = renderModal(p); const refresh = vi.fn().mockResolvedValue(true);
+    const create = await screen.findByRole('button', { name: 'Create from confirmed master' });
+    await waitFor(() => expect(create).toBeEnabled()); fireEvent.click(create);
+    rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'checking', refresh }} />);
+    rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh }} />);
+    await act(async () => pending.resolve(old));
+    expect(screen.queryByRole('textbox', { name: 'Edit Full name' })).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+    expect(create).toBeEnabled();
+  });
+});
+
+
+it('keeps dirty work when opening profile conflict review and waits for the existing leave decision', async () => {
+  const p = profile(); const { rerender } = await createUI(p); editName('Unsaved before conflict review');
+  const refresh = vi.fn().mockResolvedValue(false);
+  rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'conflict', refresh }} />);
+  fireEvent.click(screen.getByRole('link', { name: 'Review profile' }));
+  expect(screen.getByRole('button', { name: 'Keep editing' })).toBeVisible();
+  expect(supplement.push).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Unsaved before conflict review');
+});
+
+it('asks before leaving a pending save even after the displayed text is edited back to the saved version', async () => {
+  const p = profile(); const original = await docFor(p); storage.load.mockResolvedValue(loaded(original));
+  const pending = deferred<TargetResumeSaveResult>(); storage.save.mockReturnValue(pending.promise);
+  const onClose = vi.fn(); renderModal(p, opportunity, { onClose });
+  await screen.findByRole('textbox', { name: 'Edit Full name' }); editName('Pending saved name');
+  fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+  await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1));
+  editName('Alex 王'); fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+  expect(onClose).not.toHaveBeenCalled(); expect(screen.getByRole('button', { name: 'Keep editing' })).toBeVisible();
+  await act(async () => pending.resolve({ status: 'failed' }));
+});
