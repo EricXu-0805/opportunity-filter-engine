@@ -1,6 +1,6 @@
 # Cold Email fact and draft contract
 
-Updated 2026-09-24. Pipeline version: `w12.3`. See also `docs/matching_logic.md`;
+Updated 2026-09-24. Pipeline version: `w12.4`. See also `docs/matching_logic.md`;
 Cold Email retains its existing AI pipeline and deterministic fallback, while
 Match remains deterministic by default.
 
@@ -45,7 +45,7 @@ The checks do not prove reply rates or the quality of every provider output.
   twelve bullets of at most 500 characters; this change does not search every
   experience in a full resume. M31 still requires per-email research-connection
   review and evidence coverage beyond this bounded input.
-- Generation (including streaming) and variants report `w12.3`. Refinement has
+- Generation (including streaming) and variants report the current pipeline version (`w12.4`). Refinement has
   no draft-cache/version field. The modal reuses a cached AI draft only when a
   fresh, session-guarded variants response and the cached generation response
   both have the same nonempty pipeline version, as well as satisfying the
@@ -55,6 +55,44 @@ The checks do not prove reply rates or the quality of every provider output.
   session. Late work from an earlier target cannot open that gate. Controlled
   frontend regressions cover these cache/session boundaries; no real provider
   output or overall email quality was validated by those tests.
+
+## Unsupported action claims and skill levels (M32 partial)
+
+- Shared draft, critique/revision and refinement checks reject recognized
+  positive attachment and completed-paper-reading statements. The request has
+  no actual attachment or reader-confirmation field: a resume upload, paper
+  metadata, current draft or edit instruction cannot authorize either claim.
+  Offers to provide materials on request, future reading plans, negation and
+  ordinary references to a paper remain distinct from completed actions.
+- Explicit first-person skill-level claims use `parts.skill_levels`, already
+  reduced through the shared confirmed/claimable student-evidence rules.
+  A beginner skill cannot become experience/proficiency, and an experienced
+  skill cannot become expertise. These checks do not forbid supported project
+  actions such as building a Python parser. Known mixed-level/negated clauses
+  are separated, and C, C++ and C# remain distinct names.
+- Deterministic template and variant outputs pass the same final fact check.
+  A rejected or empty template has one finite recovery path: a trusted
+  recipient salutation and an explicit research-opening inquiry without
+  student identity or competence assertions. It does not call a provider or
+  recursively regenerate. A valid user body is preserved during local editing;
+  this server check does not monitor or overwrite manual edits in the browser.
+- The template label "One example of my experience:" counts examples rather
+  than achievements. Only that fixed label is excluded from numeric checking;
+  the quoted project and any quantity after it still undergo the normal check.
+- Local enthusiastic edits use measured interest wording and do not introduce
+  the `thrilled`/`excited` adjectives forbidden by the lively voice rule.
+- `tests/test_email_claims.py` and `tests/test_cold_email_claim_contract.py`
+  cover recognized positive claims, negative/future controls, real project
+  actions, claimable import levels, provider failure, template/variant recovery,
+  critique and route wiring with provider calls stubbed.
+
+The new checks are bounded English forms, not a language understanding proof.
+They do not cover arbitrary paraphrases, translations, implicit claims or skill
+aliases; they do not establish whether reading actually occurred. Cross-project
+metric/source binding, attachment/reading confirmation schema and follow-up
+questions remain separate work. Authorized real-email review is still needed
+for usefulness and false positives; these tests make no deliverability or reply
+rate claim.
 
 ## Draft lifetime
 
