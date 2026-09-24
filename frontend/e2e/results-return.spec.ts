@@ -246,7 +246,7 @@ test.describe('Results return context', () => {
     await onSecondPage(page, net);
     const url = page.url();
     const count = net.requests.length;
-    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel']]) {
+    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close renovation dialog']]) {
       await card(page).getByRole('button', { name: open, exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       if (exit === 'close button') await page.getByRole('button', { name: close, exact: true }).click();
