@@ -192,7 +192,37 @@ function respondRows(req, res, rows, params, total) {
 // CLIENT sees the same contract; the SQL itself is tested against real
 // Postgres in supabase/tests/.
 // ---------------------------------------------------------------------
+function canonicalJSON(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonicalJSON(value[k])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
 const rpcs = {
+  // Independent full-document CAS. Real RLS/merge/rollback is proven in SQL;
+  // the stub reproduces only this wire contract for local browser tests.
+  commit_target_resume_cas(body, uid) {
+    const { p_expected_owner: owner, p_opportunity_id: opp, p_expected_revision: expected, p_doc: doc } = body;
+    if (!uid || owner !== uid) return { status: 403, body: { code: '42501', message: 'identity_changed' } };
+    if (!Number.isSafeInteger(expected) || expected < 0 || typeof opp !== 'string' || !opp.trim()
+      || Array.from(opp).length > 200 || !doc || doc.kind !== 'full_resume' || doc.version !== 1
+      || doc.opportunity_id !== opp || !doc.base || !doc.base_snapshot || !doc.target_snapshot
+      || !Array.isArray(doc.document?.sections) || Buffer.byteLength(JSON.stringify(doc), 'utf8') > 2097152) {
+      return { status: 400, body: { code: '22023', message: 'invalid_target_resume' } };
+    }
+    if (rowsOf('merged_devices').some(row => row.source_device_id === uid)) return { status: 200, body: { status: 'missing' } };
+    const current = rowsOf('target_resumes');
+    const row = current.find(r => r.owner_id === uid && r.opportunity_id === opp);
+    if (!row && expected !== 0) return { status: 200, body: { status: 'missing' } };
+    const response = (status, value) => ({ status: 200, body: { status, revision: value.revision, doc: value.doc, updated_at: value.updated_at } });
+    if (row && canonicalJSON(row.doc) === canonicalJSON(doc) && [expected, expected + 1].includes(row.revision)) return response('unchanged', row);
+    if (row && row.revision !== expected) return response('conflict', row);
+    if (row && row.revision >= Number.MAX_SAFE_INTEGER) return { status: 400, body: { code: '22023', message: 'revision_limit' } };
+    const next = { owner_id: uid, opportunity_id: opp, revision: (row?.revision ?? 0) + 1,
+      doc: structuredClone(doc), updated_at: new Date().toISOString() };
+    if (row) Object.assign(row, next); else current.push(next);
+    rowsOf('target_resume_versions').push(structuredClone(next));
+    return response('saved', next);
+  },
   // supabase/migrations/027_confirm_interaction_contact.sql
   confirm_interaction_contact(body, uid) {
     const { p_expected_device_id: expected, p_opportunity_id: oppId, p_remind_at: remindAt } = body;

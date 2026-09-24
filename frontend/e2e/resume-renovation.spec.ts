@@ -80,6 +80,7 @@ async function openRenovation(page: Page) {
   await page.goto(`/opportunities/${KNOWN_ID}`);
   await page.getByRole('button', { name: 'Renovate Resume' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
 }
 
 test.describe('Résumé renovation (real browser)', () => {
@@ -116,6 +117,35 @@ test.describe('Résumé renovation (real browser)', () => {
       .first().click();
     await expect(page.getByText(OWN_WORDS)).toBeVisible();
     await expect(page.getByText(REWRITTEN)).toHaveCount(0);
+  });
+
+  test('cancelled exits retain unsaved bullet edits before an explicit switch', async ({ page }) => {
+    await stubRenovate(page);
+    await openRenovation(page);
+    await page.getByRole('button', { name: 'Renovate with AI' }).click();
+    await expect(page.getByText(REWRITTEN)).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Edit this bullet', exact: true }).first().click();
+    const draft = page.getByRole('textbox', { name: 'Edit this bullet', exact: true });
+    await draft.fill('Manual changes that have not been saved');
+    let confirmations = 0;
+    const cancelExit = async (dialog: import('@playwright/test').Dialog) => {
+      expect(dialog.type()).toBe('confirm');
+      confirmations += 1;
+      await dialog.dismiss();
+    };
+    page.on('dialog', cancelExit);
+    await draft.press('Escape');
+    await expect(draft).toHaveValue('Manual changes that have not been saved');
+    await page.getByRole('button', { name: 'Close renovation dialog', exact: true }).click();
+    await expect(draft).toHaveValue('Manual changes that have not been saved');
+    await page.getByRole('button', { name: 'Open full target résumé', exact: true }).click();
+    await expect(draft).toHaveValue('Manual changes that have not been saved');
+    expect(confirmations).toBe(3);
+    page.off('dialog', cancelExit);
+    page.once('dialog', async dialog => { await dialog.accept(); });
+    await page.getByRole('button', { name: 'Open full target résumé', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true })).toBeVisible();
+    await expect(draft).toHaveCount(0);
   });
 
   test('an unavailable model leaves the résumé intact rather than empty', async ({ page }) => {
@@ -162,6 +192,7 @@ test.describe('Résumé renovation (real browser)', () => {
       await page.goto(`/opportunities/${KNOWN_ID}`);
       await page.getByRole('button', { name: 'Renovate Resume' }).click();
 
+      await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
       await expect(page.getByText(/Save a résumé to your profile first/)).toBeVisible();
       await expect(page.getByRole('button', { name: 'Renovate with AI' })).toHaveCount(0);
     });
@@ -268,5 +299,167 @@ test.describe('Complete résumé master', () => {
     await card.getByRole('textbox', { name: 'Additional detail 1', exact: true }).fill(`${long} edited`);
     await expect(preview).not.toContainText(long);
     expect(errors).toEqual([]);
+  });
+});
+
+// Complete target drafts use the real modal, source binding, Supabase client and
+// owner lifecycle. The loopback storage server stands in for hosted persistence;
+// SQL tests separately prove CAS/RLS/merge semantics against PostgreSQL.
+test.describe('Complete target résumé', () => {
+  test.describe.configure({ timeout: 90_000 });
+  const raw = 'Full original résumé source 王🧪\n' + 'Source material beyond old truncation limits. '.repeat(250);
+  const fullDetail = 'Complete project evidence 王🧪 '.repeat(120);
+  const longField = 'L'.repeat(6_004) + '终';
+  const fact = (id: string, value: string) => ({ id, revision: 1, status: 'confirmed', value, source: { kind: 'manual' } });
+  const master = {
+    version: 1, id: 'target-browser-master', revision: 7, source_signature: null,
+    basics: { name: fact('name', 'Alex 王'), email: fact('email', 'synthetic-student@example.edu'), links: [] },
+    education: [{ id: 'education-1', school: fact('school', 'Example University'), degree: fact('degree', 'B.S. (in progress)'), end: fact('end', 'Expected 2027'), details: [] }],
+    activities: [{ id: 'project-1', kind: 'project', title: fact('project-title', 'Instrument project'), details: [{ id: 'project-evidence', revision: 2 }] }],
+    publications: [{ id: 'publication-1', title: fact('paper-title', 'Instrument study'), authors: fact('authors', 'J. Lee; Alex 王; M. Doe'), publication_status: fact('paper-status', 'Submitted, not accepted'), details: [] }],
+    skills: [fact('python', 'Python')],
+    other_sections: [{ id: 'extended', heading: 'Extended note', items: [fact('long-note', longField)] }],
+    section_order: ['basics', 'education', 'activities', 'publications', 'skills', 'extended'], unmapped_ranges: [],
+  };
+  async function seed(page: Page) {
+    await page.addInitScript(({ profileKey, localeKey, data }) => {
+      if (!localStorage.getItem('target-browser-seeded')) {
+        localStorage.setItem(profileKey, JSON.stringify(data));
+        localStorage.setItem(localeKey, 'en');
+        localStorage.setItem('target-browser-seeded', '1');
+      }
+    }, { profileKey: STORAGE_KEYS.PROFILE, localeKey: STORAGE_KEYS.LOCALE, data: {
+      ...PROFILE, search_weight: 50, resume_text: raw, resume_master: master,
+      experience_entries: [
+        { id: 'project-evidence', revision: 2, status: 'confirmed', text: fullDetail, source: { kind: 'manual' } },
+        { id: 'not-confirmed', revision: 1, status: 'candidate', text: 'UNCONFIRMED MUST NOT APPEAR IN DRAFT', source: { kind: 'manual' } },
+      ],
+    } });
+  }
+  async function open(page: Page) {
+    await page.goto(`/opportunities/${KNOWN_ID}`);
+    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Target résumé' })).toBeVisible();
+  }
+  async function create(page: Page) {
+    await seed(page); await open(page);
+    await page.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
+  }
+  async function save(page: Page, expectedRevision: number) {
+    return test.step(`Save from expected revision ${expectedRevision}`, async () => {
+      const button = page.getByRole('button', { name: 'Save target draft', exact: true });
+      await expect(button).toBeEnabled();
+      const [response] = await Promise.all([
+        page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_cas')
+          && r.request().postDataJSON()?.p_expected_revision === expectedRevision, { timeout: 15_000 }),
+        button.click(),
+      ]);
+      return response.json();
+    });
+  }
+  async function unchangedMaster(page: Page) {
+    const saved = await page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}'), STORAGE_KEYS.PROFILE);
+    expect(saved.resume_text).toBe(raw);
+    expect(saved.resume_master).toEqual(master);
+    expect(saved.experience_entries[0].text).toBe(fullDetail);
+  }
+
+  test('keeps full confirmed content, saves independent edits and reloads them without changing the master', async ({ page }, testInfo) => {
+    const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+    await create(page);
+    const preview = page.getByRole('region', { name: 'Current target draft preview' });
+    await expect(preview).toContainText(fullDetail);
+    await expect(preview).toContainText('J. Lee; Alex 王; M. Doe');
+    await expect(preview).toContainText('Submitted, not accepted');
+    await expect(preview).not.toContainText('UNCONFIRMED MUST NOT APPEAR IN DRAFT');
+    await expect(page.getByRole('textbox', { name: 'Edit Extended note', exact: true })).toHaveValue(longField);
+    const name = page.getByRole('textbox', { name: 'Edit Full name', exact: true });
+    await name.fill('Alex 王'); await name.press('End'); await name.pressSequentially(' — targeted');
+    await expect(name).toHaveValue('Alex 王 — targeted');
+    await expect(name).toBeFocused();
+    const receipt = await save(page, 0);
+    expect(receipt.status).toBe('saved'); expect(receipt.revision).toBe(1);
+    expect(receipt.doc.base_snapshot.resume_text).toBe(raw);
+    expect(receipt.doc.base_snapshot.resume_master).toEqual(master);
+    await expect(page.getByText('Saved version 1', { exact: true })).toBeVisible();
+    await unchangedMaster(page);
+    await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await expect(name).toHaveValue('Alex 王 — targeted');
+    await expect(page.getByRole('textbox', { name: 'Edit Extended note', exact: true })).toHaveValue(longField);
+    await expect(preview).toContainText(fullDetail);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+    await preview.screenshot({ path: testInfo.outputPath('full-target-preview.png') });
+    await page.getByRole('button', { name: 'Save target draft', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('full-target-workspace.png'), fullPage: false });
+    await unchangedMaster(page); expect(errors).toEqual([]);
+  });
+
+  test('restores a full historical version as a new save', async ({ page }) => {
+    await create(page); expect((await save(page, 0)).revision).toBe(1);
+    await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Manual version two');
+    expect((await save(page, 1)).revision).toBe(2);
+    await page.getByText('Version history', { exact: true }).click();
+    await page.getByRole('button', { name: 'Load latest 20 versions', exact: true }).click();
+    await page.getByRole('button', { name: /^View version 1 ·/ }).click();
+    const old = page.getByRole('region', { name: 'Selected historical version preview' });
+    await expect(old).toContainText('Alex 王'); await expect(old).toContainText(longField);
+    const response = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_cas')
+      && r.request().postDataJSON()?.p_expected_revision === 2);
+    await page.getByRole('button', { name: 'Restore selected version as a new save', exact: true }).click();
+    const receipt = await (await response).json();
+    expect(receipt.status).toBe('saved'); expect(receipt.revision).toBe(3);
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
+    await page.getByRole('button', { name: 'Load latest 20 versions', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^View version 1 ·/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^View version 2 ·/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^View version 3 ·/ })).toBeVisible();
+    await unchangedMaster(page);
+  });
+
+  test('keeps edits when another tab saves first', async ({ page, context }) => {
+    let targetReads = 0;
+    context.on('request', request => {
+      if (request.method() === 'GET' && request.url().includes('/rest/v1/target_resumes?')) targetReads += 1;
+    });
+    await create(page); expect((await save(page, 0)).revision).toBe(1);
+    const other = await context.newPage();
+    await test.step('Open saved target in second tab', async () => { await open(other); });
+    await expect(other.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
+    await test.step('Edit first tab', async () => {
+      await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('First tab accepted');
+      await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('First tab accepted');
+    });
+    expect((await save(page, 1)).revision).toBe(2);
+    await other.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Second tab unsaved');
+    expect((await save(other, 1)).status).toBe('conflict');
+    await expect(other.getByText(/A newer server version exists/)).toBeVisible();
+    await expect(other.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Second tab unsaved');
+    await other.getByRole('button', { name: 'Discard local edits and load server version', exact: true }).click();
+    await expect(other.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('First tab accepted');
+    await unchangedMaster(page);
+    // Two opening reads and one explicit conflict reload should remain bounded.
+    // The former same-owner marker loop made over 10,000 reads in 90 seconds.
+    expect(targetReads).toBeLessThanOrEqual(6);
+    await other.close();
+  });
+
+  test('read failure pauses creation and retry loads safely', async ({ page }) => {
+    await seed(page);
+    let fail = true;
+    await page.route('**/rest/v1/target_resumes?*', async route => {
+      if (fail) await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'synthetic unavailable' }) });
+      else await route.continue();
+    });
+    await open(page);
+    // The client retries GET 503 after 1s, 2s and 4s before surfacing failure.
+    await expect(page.getByText(/The saved résumé could not be read/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Create from confirmed master', exact: true })).toHaveCount(0);
+    fail = false;
+    await page.getByRole('button', { name: 'Retry reading saved résumé', exact: true }).click();
+    await page.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
   });
 });

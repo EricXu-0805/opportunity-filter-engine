@@ -49,7 +49,7 @@ interface RenovationScope {
 
 
 /**
- * Whole-résumé renovation toward ONE opportunity (per-professor by
+ * Legacy bullet editing toward ONE opportunity (per-professor by
  * construction — the opportunity record carries pi/org/keywords).
  *
  * Flow: structure (résumé text → sections+bullets, verbatim) → renovate
@@ -69,6 +69,7 @@ interface ResumeRenovationModalProps {
   profile: ProfileData;
   opportunityId: string;
   opportunityTitle: string;
+  onOpenFull?: () => void;
 }
 
 // Compare complete JSON-safe content synchronously; key insertion order is not
@@ -172,6 +173,7 @@ export default function ResumeRenovationModal({
   profile,
   opportunityId,
   opportunityTitle,
+  onOpenFull,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
   const profileFingerprint = canonicalProfile(profile);
@@ -219,17 +221,32 @@ export default function ResumeRenovationModal({
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   const closeRef = useRef(onClose);
-  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  const exitRequestedRef = useRef(false);
+  const leaveStateRef = useRef({ editingId, saving, saveFailed, locale, onOpenFull });
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+    leaveStateRef.current = { editingId, saving, saveFailed, locale, onOpenFull };
+  }, [onClose, editingId, saving, saveFailed, locale, onOpenFull]);
   const scopeRef = useRef<RenovationScope | null>(null);
   // Invalidate before paint/microtasks when the parent closes or replaces
   // the target/source, even if the passive restore effect has not run yet.
   useLayoutEffect(() => () => {
     if (scopeRef.current) scopeRef.current.active = false;
   }, [isOpen, opportunityId]);
-  const invalidateAndClose = useCallback(() => {
+  // Keep this callback stable so editing never reinstalls the focus trap.
+  // Only user-requested exits consult dirty state; owner invalidation below
+  // clears private work immediately and never asks to retain it.
+  const requestLeave = useCallback((destination: 'close' | 'full') => {
+    if (exitRequestedRef.current || (scopeRef.current && !scopeRef.current.active)) return;
+    const state = leaveStateRef.current;
+    if ((state.editingId || state.saving || state.saveFailed) && !window.confirm(state.locale === 'zh'
+      ? '还有未保存的改动。离开会丢弃尚未保存的编辑；已经发出的保存仍可能完成。确定离开？'
+      : 'There are unsaved changes. Leaving discards unsaved edits; a save already in progress may still finish. Leave bullet editing?')) return;
+    exitRequestedRef.current = true;
     if (scopeRef.current) scopeRef.current.active = false;
     lastPersistRef.current = null;
-    closeRef.current();
+    if (destination === 'full') state.onOpenFull?.();
+    else closeRef.current();
   }, []);
   const docRef = useRef<RenovationDoc | null>(null);
   const setCurrentDoc = useCallback((next: RenovationDoc | null) => {
@@ -271,6 +288,7 @@ export default function ResumeRenovationModal({
     if (!isOpen) return;
     const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0, workRevision: 0, profileFingerprint };
     scopeRef.current = scope;
+    exitRequestedRef.current = false;
     lastPersistRef.current = null;
     /* eslint-disable react-hooks/set-state-in-effect --
        Modal-lifecycle reset mirroring TailorModal: every slice returns to a
@@ -305,6 +323,7 @@ export default function ResumeRenovationModal({
       }
       // Invalidate synchronously, before React has rendered the next account.
       scope.active = false;
+      exitRequestedRef.current = true;
       lastPersistRef.current = null;
       setCurrentDoc(null);
       setBaseSections([]);
@@ -369,7 +388,7 @@ export default function ResumeRenovationModal({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        invalidateAndClose();
+        requestLeave('close');
         return;
       }
       if (e.key !== 'Tab' || !modalRef.current) return;
@@ -393,7 +412,7 @@ export default function ResumeRenovationModal({
       document.body.style.overflow = prevOverflow;
       previouslyFocusedRef.current?.focus();
     };
-  }, [isOpen, invalidateAndClose]);
+  }, [isOpen, requestLeave]);
 
   const persist = useCallback(
     async (nextDoc: RenovationDoc, sections: ResumeSectionInput[], scope: RenovationScope, workRevision = scope.workRevision) => {
@@ -615,7 +634,7 @@ export default function ResumeRenovationModal({
     >
       <div
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
-        onClick={invalidateAndClose}
+        onClick={() => requestLeave('close')}
         aria-hidden="true"
       />
 
@@ -631,11 +650,11 @@ export default function ResumeRenovationModal({
             </div>
             <div className="min-w-0">
               <h2 id="renovation-modal-title" className="text-lg font-bold text-gray-900">
-                {t('renovate.title')}
+                {onOpenFull ? (locale === 'zh' ? '经历条目编辑' : 'Résumé bullets') : t('renovate.title')}
               </h2>
               <p className="text-sm text-gray-500 truncate max-w-md">{opportunityTitle}</p>
               <p className="text-xs text-gray-400 mt-1 max-w-md hidden sm:block">
-                {t('renovate.subtitle')}
+                {onOpenFull ? (locale === 'zh' ? '逐条调整经历。姓名、教育和完整结构请在目标简历中编辑。' : 'Edit experience bullets. Use the full target résumé for identity, education and complete structure.') : t('renovate.subtitle')}
               </p>
             </div>
           </div>
@@ -666,7 +685,7 @@ export default function ResumeRenovationModal({
             )}
             <button
               type="button"
-              onClick={invalidateAndClose}
+              onClick={() => requestLeave('close')}
               className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
               aria-label={t('renovate.closeAria')}
             >
@@ -675,6 +694,12 @@ export default function ResumeRenovationModal({
           </div>
         </div>
 
+        {onOpenFull && <div className="border-b border-gray-100 px-4 py-2 sm:px-6">
+          <button type="button" className="text-sm font-medium text-indigo-700 underline"
+            onClick={() => requestLeave('full')}>
+            {locale === 'zh' ? '打开完整目标简历' : 'Open full target résumé'}
+          </button>
+        </div>}
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {phase !== 'restoring' && (hasResume || doc?.processing) && (

@@ -253,9 +253,25 @@ function transitionLocked(uid: string, claim: boolean): boolean {
   const existing = read.status === 'present' ? read.marker : null;
 
   if (existing && existing.uid === uid) {
-    // Same owner. A generation left in 'switching' by a crashed transition is
-    // finished here rather than trusted: its namespace is re-verified before
-    // it is published, exactly as a fresh one would be.
+    // A completed namespace can be adopted by this tab without publishing
+    // another switching/ready cycle. Those shared-storage writes make other
+    // tabs temporarily hide their profile, remount private readers, and sync
+    // again — two open readers would otherwise trigger each other forever.
+    if (existing.phase === 'ready') {
+      try {
+        const sentinel = window.localStorage.getItem(physicalKey(NAMESPACE_SENTINEL, existing.generation));
+        if (sentinel === String(existing.generation)) {
+          currentGeneration = existing.generation;
+          setLocalOwnerState(uid, 'ready');
+          return true;
+        }
+      } catch {
+        setLocalOwnerState(uid, 'blocked');
+        return false;
+      }
+    }
+    // An incomplete transition, legacy namespace, or missing/mismatched
+    // sentinel still needs the existing verified repair before it is ready.
     return publishGeneration(uid, existing.generation);
   }
 

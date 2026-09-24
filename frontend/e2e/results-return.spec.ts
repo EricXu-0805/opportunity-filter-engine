@@ -246,7 +246,7 @@ test.describe('Results return context', () => {
     await onSecondPage(page, net);
     const url = page.url();
     const count = net.requests.length;
-    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close renovation dialog']]) {
+    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close target résumé']]) {
       await card(page).getByRole('button', { name: open, exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       if (exit === 'close button') await page.getByRole('button', { name: close, exact: true }).click();
@@ -290,7 +290,8 @@ test.describe('Results return context', () => {
       });
       await onSecondPage(page, net);
       await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
-      const dialog = page.getByRole('dialog', { name: en.renovate.title, exact: true });
+      await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'Résumé bullets', exact: true });
       await expect(dialog.getByText(en.renovate.restoreFailed, { exact: true })).toBeVisible();
       await expect(dialog.getByRole('button', { name: en.renovate.start, exact: true })).toHaveCount(0);
       await expect(dialog.getByText('synthetic-private-backend-detail')).toHaveCount(0);

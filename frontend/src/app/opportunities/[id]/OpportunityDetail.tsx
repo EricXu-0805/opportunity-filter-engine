@@ -41,7 +41,7 @@ const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ss
 // Keeping the same dynamic-ssr-off pattern so this leaf doesn't pull the
 // modal bundle into the server render.
 const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
-const ResumeRenovationModal = dynamic(() => import('@/components/ResumeRenovationModal'), { ssr: false });
+const ResumeRenovationModal = dynamic(() => import('@/components/ResumeWorkspaceModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 
 /** This link carries no authority: /results validates the opaque ticket against
@@ -346,8 +346,7 @@ export default function OpportunityDetail({
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}
           profile={profile}
-          opportunityId={opp.id}
-          opportunityTitle={opp.title}
+          opportunity={opp}
         />
       )}
     </div>
