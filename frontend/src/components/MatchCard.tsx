@@ -65,6 +65,8 @@ export interface MatchCardProps {
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
+  /** Results owns the persistent editor; other callers may retain the local fallback. */
+  onOpenResume?: (opportunityId: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: (opportunityId: string) => void;
   /** True while this card's favorite is unwritable — a write already in
@@ -183,7 +185,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
+export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, onOpenResume, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -530,7 +532,9 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
           {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') { onViewOpportunity?.(opp.id); setRenovationOpen(true); } }}
+              onClick={() => { if (ownerReady && posture === 'actionable') { onViewOpportunity?.(opp.id); if (onOpenResume) onOpenResume(opp.id); else setRenovationOpen(true); } }}
+              disabled={!ownerReady}
+              aria-busy={!ownerReady}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -787,7 +791,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
         ownerScopeKey={ownerScopeKey}
       />
     )}
-    {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
+    {!onOpenResume && RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
       <ResumeRenovationModal
         isOpen={renovationOpen}
         onClose={() => setRenovationOpen(false)}

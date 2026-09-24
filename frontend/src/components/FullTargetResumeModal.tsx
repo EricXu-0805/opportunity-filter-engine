@@ -5,6 +5,8 @@ import { useLocale } from '@/i18n/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
 import TargetResumeExportPanel from './TargetResumeExportPanel';
@@ -29,7 +31,7 @@ type Session = {
   scope: Scope; phase: 'loading' | 'load-error' | 'idle' | 'creating' | 'doc';
   doc: TargetResumeV1 | null; revision: number; savedJson: string | null; editRevision: number;
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
@@ -43,11 +45,13 @@ function canonical(value: unknown): string {
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange }: {
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, profileRefresh }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
+  targetReady?: boolean; profileRefresh?: ProfileRefreshState;
 }) {
   const locale = useLocale();
+  const sourceReady = targetReady && profileRefreshReady(profileRefresh);
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const domId = useId();
   const router = useRouter();
@@ -165,6 +169,16 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       error: old.phase === 'creating' ? 'context' : old.error }));
   }, [isOpen, contextKey, update]);
 
+  useLayoutEffect(() => {
+    const scope = scopeRef.current;
+    if (sourceReady || !isOpen || !scope?.active) return;
+    // A check can finish with unchanged content. Retire work at its start,
+    // so that a false -> true readiness cycle never revives a late result.
+    scope.creation += 1;
+    update(scope, (old) => old.phase === 'creating'
+      ? { ...old, phase: old.doc ? 'doc' : 'idle', error: 'checking' } : old);
+  }, [sourceReady, isOpen, update]);
+
   const activeSession = isOpen && session?.scope.targetId === opportunity.id
     && isTokenOwnerStillCurrent(session.scope.owner) ? session : null;
   const ownerReady = !!activeSession && isOwnerTokenValid(activeSession.scope.owner, activeSession.scope.owner.uid);
@@ -174,9 +188,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const outdated = !!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
     || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source);
   const creating = activeSession?.phase === 'creating';
+  const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (supplementDirty || aiDirty || (session && isDirty(session))) { setLeave(action); return false; }
+    if (supplementDirty || aiDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
   }, [session, supplementDirty, aiDirty, exit]);
 
@@ -215,7 +230,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     });
   };
   const create = async () => {
-    if (!activeSession || !ownerReady || !comparable?.canCreate || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
+    if (!sourceReady || !activeSession || !ownerReady || !comparable?.canCreate || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
     const scope = scopeRef.current;
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     const creation = ++scope.creation;
@@ -330,6 +345,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     </div>)}
   </section>;
   const errors = {
+    checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
     invalid: copy('This draft cannot be saved yet. Check its structure and size limits. Your complete input is still here.', '此文稿暂不能保存，请检查结构与篇幅限制。输入全文仍保留。'),
     save: copy('The save was not confirmed. Your local edits remain here; retry saving.', '保存尚未确认。本地编辑仍保留，请重试保存。'),
@@ -352,12 +368,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} onBeforeReview={() => { askLeave('master'); return false; }} />
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
             : copy('You have unsaved edits, suggestions or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑、建议或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
           <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => setLeave(null)}>{copy('Keep editing', '继续编辑')}</button>
-            <button type="button" className={button} disabled={leave === 'rebuild' && (!comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
+            <button type="button" className={button} disabled={leave === 'rebuild' && (!sourceReady || !comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
         </div>}
       <div className={`min-h-0 overflow-y-auto p-4 sm:p-6 ${supplementOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6' : ''}`}>
         {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
@@ -398,7 +415,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           </details>
         </>}
         {activeSession && activeSession.phase !== 'loading' && activeSession.phase !== 'load-error' && <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
+          <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!sourceReady || !ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
             onClick={() => { if (doc) setLeave('rebuild'); else void create(); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
           {!comparable?.canCreate && ((dirty || supplementDirty)
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
@@ -418,15 +435,15 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
-            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit}
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && sourceReady}
             unsaved={dirty} outdated={outdated} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
-            enabled={canEdit && !!comparable && !outdated && !activeSession.conflict}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setAiDirty(value); }}
             onApply={(expectedCanonical, next) => {
-              if (!canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+              if (!sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
               const checked = validateTargetResume(next);
               if (!checked.ok) return;
               update(activeSession.scope, (old) => {

@@ -48,3 +48,17 @@ describe('useResultsKeyboardNav external destination', () => {
     });
   });
 });
+
+
+it('leaves keyboard actions and Escape to an open writing dialog', () => {
+  const close = vi.fn(), favorite = vi.fn(), help = vi.fn();
+  const row = { opportunity: { id: 'target-one' } } as MatchResult;
+  const { result } = renderHook(() => useResultsKeyboardNav({ paginated: [row], emailModalOpen: true,
+    suspended: true, onCloseEmailModal: close, onToggleFavorite: favorite, onOpenHelp: help }));
+  act(() => result.current.setFocusedIdx(0));
+  for (const key of ['/', '?', 'j', 'k', 's', 'Enter', 'Escape']) {
+    act(() => document.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey: key === '?' })));
+  }
+  expect(close).not.toHaveBeenCalled(); expect(favorite).not.toHaveBeenCalled(); expect(help).not.toHaveBeenCalled();
+  expect(result.current.focusedIdx).toBe(0);
+});

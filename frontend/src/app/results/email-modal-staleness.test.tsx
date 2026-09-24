@@ -1,12 +1,13 @@
 /* @vitest-environment jsdom */
-// The Cold Email dialog is the one target control on /results that does not
-// live inside a result's keyed subtree. Every other one — Tailor, Renovate,
-// gap analysis — is rendered by MatchCard, so when the row disappears React
-// unmounts the control with it. This dialog only copies an id at click time
-// and then survives on its own, which means a refresh that closes the target
-// leaves a working Generate button pointed at it.
+// The page owns writing buffers independently of the result cards. These
+// sentinel editors test mount identity, profile/target forwarding and action
+// eligibility; the real editors' async/provider guards have their own tests.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+import { useLayoutEffect, useState } from 'react';
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import type { Opportunity, ProfileData } from '@/lib/types';
 
 const { getMatchView, generateColdEmail } = vi.hoisted(() => ({
   getMatchView: vi.fn(),
@@ -58,13 +59,13 @@ vi.mock('./use-saved-search-ack', () => ({ useSavedSearchAck: () => {} }));
 // it, and the interesting states here would be unreachable. What is being
 // tested is the page's own guard on the state it holds: an id captured at
 // click time, still held after the results underneath it changed.
-const feed = vi.hoisted(() => ({ current: null as unknown }));
+const feed = vi.hoisted(() => ({ current: null as unknown, loading: false, error: null as string | null }));
 vi.mock('./use-results-data', () => ({
   useResultsData: () => ({
     data: feed.current,
     setData: vi.fn(),
-    loading: false,
-    error: null,
+    loading: feed.loading,
+    error: feed.error,
     showSlowHint: false,
     paginationReady: true,
     refining: false,
@@ -77,9 +78,10 @@ const TEST_PROFILE = {
   institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
   is_international: false, research_interests: 'machine learning', skills: [],
 };
+const profileFeed = vi.hoisted(() => ({ current: undefined as ProfileData | null | undefined }));
 vi.mock('./use-results-profile-view', () => ({
   useAcceptedProfileView: () => ({
-    accepted: { profile: TEST_PROFILE, view: {} }, accept: vi.fn(), clear: vi.fn(),
+    accepted: { profile: profileFeed.current === undefined ? TEST_PROFILE : profileFeed.current, view: {} }, accept: vi.fn(), clear: vi.fn(),
   }),
   useCrossSchoolToggle: () => ({ crossSchool: false, setCrossSchool: vi.fn(), clear: vi.fn() }),
 }));
@@ -92,38 +94,66 @@ vi.mock('@/lib/use-local-storage-json', () => ({
     transform ? transform(null) : null,
   writeLocalStorageJSON: vi.fn().mockReturnValue(true),
 }));
+const ownerFeed = vi.hoisted(() => ({ uid: 'owner-1', generation: 1, ready: true, retire: null as (() => void) | null }));
 vi.mock('./use-results-interactions', () => ({
-  useResultsInteractions: () => ({
+  useResultsInteractions: (retire: () => void) => { ownerFeed.retire = retire; return ({
     favs: new Set(), interactions: new Map(), feedback: new Map(),
-    ownerReady: true, ownerScopeKey: 'owner-1', identityGeneration: 1,
+    ownerReady: ownerFeed.ready, ownerScopeKey: ownerFeed.uid, identityGeneration: ownerFeed.generation,
     favPending: new Set(), trackPending: new Set(),
     favSaveErrors: new Set(), trackSaveErrors: new Set(),
     toggleFavorite: vi.fn(), trackInteraction: vi.fn(),
     retryFavSave: vi.fn(), retryTrackSave: vi.fn(), submitFeedback: vi.fn(),
-  }),
+  }); },
 }));
 
-// The dialog itself is stubbed to something unmistakable and interactive, so
-// "the dialog is gone" is a DOM fact rather than an inference about props.
+const modalHistory = vi.hoisted(() => ({ request: null as (() => boolean) | null, close: null as (() => void) | null }));
+vi.mock('./use-result-modal-history', () => ({
+  useResultModalHistory: (_open: boolean, close: () => void, _owner: unknown, request: () => boolean) => {
+    modalHistory.request = request; modalHistory.close = close;
+  },
+}));
+
 vi.mock('@/components/ColdEmailModal', () => ({
-  default: ({ isOpen, opportunityId }: { isOpen: boolean; opportunityId: string }) => (
-    isOpen
-      ? (
-        <div role="dialog" data-testid="cold-email-modal">
-          <span>target:{opportunityId}</span>
-          <button type="button" onClick={() => generateColdEmail(opportunityId)}>Generate</button>
-        </div>
-        )
-      : null
-  ),
+  default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget }: {
+    isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity;
+  }) {
+    const [text, setText] = useState('Original email');
+    return isOpen ? <div role="dialog" data-testid="cold-email-modal">
+      <span>target:{opportunityId}</span><span data-testid="editor-profile">{profile.research_interests}</span>
+      <textarea aria-label="Email text" value={text} onChange={(event) => setText(event.target.value)} />
+      <button type="button" disabled={!targetReady} onClick={() => generateColdEmail(opportunityId)}>Generate</button>
+      <span data-testid="reminder-target">{reminderTarget?.id ?? 'unavailable'}</span>
+    </div> : null;
+  },
+}));
+vi.mock('@/components/ResumeWorkspaceModal', () => ({
+  default: function ResumeEditor({ isOpen, opportunity, profile, targetReady, onClose, onCloseRequestChange }: {
+    isOpen: boolean; opportunity: Opportunity; profile: ProfileData; targetReady: boolean;
+    onClose: () => void; onCloseRequestChange: (request: (() => boolean) | null) => void;
+  }) {
+    const [text, setText] = useState('Original résumé');
+    const [confirmClose, setConfirmClose] = useState(false);
+    useLayoutEffect(() => {
+      onCloseRequestChange(() => { setConfirmClose(true); return false; });
+      return () => onCloseRequestChange(null);
+    }, [onCloseRequestChange]);
+    return isOpen ? <div role="dialog" data-testid="resume-modal">
+      <span>target:{opportunity.id}</span><span data-testid="target-description">{opportunity.description_clean}</span>
+      <span data-testid="editor-profile">{profile.research_interests}</span>
+      <textarea aria-label="Résumé text" value={text} onChange={(event) => setText(event.target.value)} />
+      <input aria-label="Include degree" type="checkbox" defaultChecked />
+      <button type="button" disabled={!targetReady}>Adapt résumé</button>
+      {confirmClose && <><button onClick={() => setConfirmClose(false)}>Keep editing</button><button onClick={onClose}>Discard</button></>}
+    </div> : null;
+  },
 }));
 
-// Captures the page's own openEmailModal so the dialog can be opened the way
-// a card would open it, without depending on MatchList's markup.
-const captured = vi.hoisted(() => ({ draft: null as null | ((id: string) => void) }));
+const captured = vi.hoisted(() => ({
+  draft: null as null | ((id: string) => void), resume: null as null | ((id: string) => void),
+}));
 vi.mock('./MatchList', () => ({
-  MatchList: (props: { onDraftEmail: (id: string) => void }) => {
-    captured.draft = props.onDraftEmail;
+  MatchList: (props: { onDraftEmail: (id: string) => void; onOpenResume: (id: string) => void }) => {
+    captured.draft = props.onDraftEmail; captured.resume = props.onOpenResume;
     return <div data-testid="mock-match-list" />;
   },
 }));
@@ -215,141 +245,160 @@ async function refeed(
 
 async function openDialogFor(id: string) {
   const mounted = await mountResults();
-  captured.draft!(id);
+  act(() => captured.draft!(id));
   await waitFor(() => {
     expect(screen.getByTestId('cold-email-modal')).toBeInTheDocument();
   });
   return mounted;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  captured.draft = null;
-  feed.current = null;
+  captured.draft = null; captured.resume = null;
+  feed.current = null; feed.loading = false; feed.error = null;
+  profileFeed.current = undefined;
+  ownerFeed.uid = 'owner-1'; ownerFeed.generation = 1; ownerFeed.ready = true;
   window.localStorage.clear();
+  advanceOwnerEpoch('owner-1'); await syncLocalIdentityOwner('owner-1');
 });
 
-describe('the cold email dialog cannot outlive its target', () => {
-  it('opens for a live target, with a Generate button that works', async () => {
-    // The positive control every "not called" assertion below depends on. If
-    // Generate were unreachable even here, those assertions would be vacuous.
+describe('Results keeps writing buffers while current target actions fail closed', () => {
+  it('opens for a current actionable target and Generate works', async () => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
     await openDialogFor('a');
-
-    expect(screen.getByTestId('cold-email-modal')).toHaveTextContent('target:a');
-    screen.getByRole('button', { name: 'Generate' }).click();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
     expect(generateColdEmail).toHaveBeenCalledWith('a');
+    expect(screen.getByTestId('reminder-target')).toHaveTextContent('a');
   });
 
-  it('refuses to open for a target that is not actionable', async () => {
-    feed.current = response([result('a', CLOSED_TRUTH)]);
+  it.each(['closed', 'missing', 'unready'] as const)('refuses both editors at entry when target/owner is %s', async (mode) => {
+    feed.current = response([result('a', mode === 'closed' ? CLOSED_TRUTH : ACTIONABLE_TRUTH)]);
+    ownerFeed.ready = mode !== 'unready';
     await mountResults();
-
-    captured.draft!('a');
-
-    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
+    const id = mode === 'missing' ? 'never-existed' : 'a';
+    act(() => { captured.draft!(id); captured.resume!(id); });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(generateColdEmail).not.toHaveBeenCalled();
   });
 
-  it('refuses to open for an id that is not in the results at all', async () => {
-    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
-    await mountResults();
-
-    captured.draft!('never-existed');
-
-    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
-  });
-
-  it('withdraws itself when the refreshed results no longer contain the target', async () => {
+  it.each(['missing', 'closed', 'loading', 'error'] as const)('keeps the email edit but disables Generate and reminders while %s', async (mode) => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
     const { view, ResultsPage } = await openDialogFor('a');
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
+    const input = screen.getByRole('textbox', { name: 'Email text' });
+    fireEvent.change(input, { target: { value: 'My unsaved email' } });
+    feed.loading = mode === 'loading'; feed.error = mode === 'error' ? 'read failed' : null;
+    const next = mode === 'closed' ? response([result('a', CLOSED_TRUTH)])
+      : mode === 'missing' ? response([]) : mode === 'loading' ? null : feed.current;
+    await refeed(view, ResultsPage, next);
+    expect(screen.getByRole('textbox', { name: 'Email text' })).toBe(input);
+    expect(input).toHaveValue('My unsaved email');
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
+    expect(screen.getByTestId('reminder-target')).toHaveTextContent('unavailable');
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+    expect(generateColdEmail).not.toHaveBeenCalled();
+  });
 
-    // A trusted, genuinely empty result set — same page instance throughout.
+  it('restores actions only from a current same-id actionable row, preserving email edits', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await openDialogFor('a');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email text' }), { target: { value: 'Keep my email' } });
+    await refeed(view, ResultsPage, null);
+    await refeed(view, ResultsPage, response([result('b', ACTIONABLE_TRUTH)]));
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
+    await refeed(view, ResultsPage, response([result('a', CLOSED_TRUTH)]));
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
+    await refeed(view, ResultsPage, response([result('a', ACTIONABLE_TRUTH)]));
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: 'Email text' })).toHaveValue('Keep my email');
+    fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
+    expect(generateColdEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the same résumé editor through rematch, missing rows and errors, and passes new profile/target content', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await mountResults();
+    act(() => captured.resume!('a'));
+    const input = await screen.findByRole('textbox', { name: 'Résumé text' });
+    fireEvent.change(input, { target: { value: 'Unsubmitted résumé edit' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include degree' }));
+    profileFeed.current = { ...TEST_PROFILE, research_interests: 'New confirmed interests' };
+    feed.loading = true;
+    await refeed(view, ResultsPage, null);
+    expect(screen.queryByTestId('mock-match-list')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adapt résumé' })).toBeDisabled();
+    expect(screen.getByTestId('editor-profile')).toHaveTextContent('New confirmed interests');
+    feed.loading = false;
     await refeed(view, ResultsPage, response([]));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'Generate' })).not.toBeInTheDocument();
-    expect(generateColdEmail).not.toHaveBeenCalled();
-  });
-
-  it('withdraws itself when the target comes back non-actionable', async () => {
-    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
-    const { view, ResultsPage } = await openDialogFor('a');
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeInTheDocument();
-
-    await refeed(view, ResultsPage, response([result('a', CLOSED_TRUTH)]));
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'Generate' })).not.toBeInTheDocument();
-    expect(generateColdEmail).not.toHaveBeenCalled();
-  });
-
-  it('withdraws the dialog while a refetch has no results to check against', async () => {
-    // This asserted the opposite, on the reasoning that absence is not
-    // evidence and a draft should not be lost for nothing. Two things
-    // changed. The cache no longer paints, so `data === null` is the ordinary
-    // state between a filter change and its answer rather than a rare blip —
-    // and standing on the check made when the dialog opened means a working
-    // Generate button behind a posture nobody has re-read, against a backend
-    // that during a split deploy may not understand the current truth
-    // contract at all.
-    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
-    const { view, ResultsPage } = await openDialogFor('a');
-
+    expect(screen.getByRole('textbox', { name: 'Résumé text' })).toBe(input);
+    expect(input).toHaveValue('Unsubmitted résumé edit');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+    feed.error = 'read failed';
     await refeed(view, ResultsPage, null);
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'Generate' })).not.toBeInTheDocument();
-    expect(generateColdEmail).not.toHaveBeenCalled();
+    expect(input).toBeInTheDocument();
+    feed.error = null;
+    const refreshed = result('a', ACTIONABLE_TRUTH);
+    refreshed.opportunity.description_clean = 'Updated target requirements';
+    await refeed(view, ResultsPage, response([refreshed]));
+    expect(screen.getByTestId('target-description')).toHaveTextContent('Updated target requirements');
+    expect(screen.getByRole('button', { name: 'Adapt résumé' })).toBeEnabled();
+    expect(input).toHaveValue('Unsubmitted résumé edit');
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
   });
 
-  it('a target that comes back closed does not bring the dialog back', async () => {
+  it('preserves the editor when the same owner profile is temporarily unavailable, without enabling actions', async () => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
     const { view, ResultsPage } = await openDialogFor('a');
-
-    await refeed(view, ResultsPage, null);
-    await waitFor(() => expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument());
-
-    await refeed(view, ResultsPage, response([result('a', CLOSED_TRUTH)]));
-
-    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
+    const input = screen.getByRole('textbox', { name: 'Email text' });
+    fireEvent.change(input, { target: { value: 'My retained email' } });
+    profileFeed.current = null;
+    await refeed(view, ResultsPage, feed.current);
+    expect(screen.getByRole('textbox', { name: 'Email text' })).toBe(input);
+    expect(input).toHaveValue('My retained email');
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
   });
 
-  it('a target that comes back live does not resurface on its own either', async () => {
-    // Withdrawal is not a pause. The student closed nothing and typed
-    // nothing since; a dialog reappearing under their cursor because a
-    // request finished is its own surprise, and re-opening is one click.
+  it.each(['email', 'resume'] as const)('retires the private %s buffer on an owner-generation transition even if the uid is unchanged', async (kind) => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
-    const { view, ResultsPage } = await openDialogFor('a');
-
-    await refeed(view, ResultsPage, null);
-    await waitFor(() => expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument());
-
-    await refeed(view, ResultsPage, response([result('a', ACTIONABLE_TRUTH)]));
-
-    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
+    const { view, ResultsPage } = await mountResults();
+    act(() => (kind === 'email' ? captured.draft : captured.resume)!('a'));
+    await screen.findByRole('dialog');
+    advanceOwnerEpoch(null); advanceOwnerEpoch('owner-1');
+    await syncLocalIdentityOwner('owner-1');
+    await refeed(view, ResultsPage, feed.current);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('can be explicitly reopened against the new live results snapshot', async () => {
+  it('revokes an open résumé immediately on the identity-change callback', async () => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
-    const { view, ResultsPage } = await openDialogFor('a');
+    await mountResults();
+    act(() => captured.resume!('a'));
+    await screen.findByRole('dialog');
+    act(() => ownerFeed.retire!());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 
+  it('keeps the résumé dirty-close guard connected while the list is absent', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await mountResults();
+    act(() => captured.resume!('a'));
+    const input = await screen.findByRole('textbox', { name: 'Résumé text' });
+    fireEvent.change(input, { target: { value: 'Unsaved protected edit' } });
     await refeed(view, ResultsPage, null);
-    await waitFor(() => expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument());
+    act(() => { expect(modalHistory.request!()).toBe(false); });
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(input).toHaveValue('Unsaved protected edit');
+    act(() => { expect(modalHistory.request!()).toBe(false); });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 
-    await refeed(view, ResultsPage, response([result('a', ACTIONABLE_TRUTH)]));
-    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
-
-    captured.draft!('a');
-    await waitFor(() => expect(screen.getByTestId('cold-email-modal')).toBeInTheDocument());
-    screen.getByRole('button', { name: 'Generate' }).click();
-    expect(generateColdEmail).toHaveBeenCalledWith('a');
+  it('does not silently retarget or replace an already open editor', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH), result('b', ACTIONABLE_TRUTH)]);
+    await openDialogFor('a');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email text' }), { target: { value: 'My target A email' } });
+    act(() => { captured.resume!('b'); captured.draft!('b'); });
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByTestId('cold-email-modal')).toHaveTextContent('target:a');
+    expect(screen.getByRole('textbox', { name: 'Email text' })).toHaveValue('My target A email');
   });
 });

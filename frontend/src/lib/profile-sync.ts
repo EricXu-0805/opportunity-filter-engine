@@ -35,6 +35,7 @@
 // the revision + outbox live BESIDE it under STORAGE_KEYS.PROFILE_SYNC.
 
 import type { ProfileData, SkillWithLevel } from './types';
+import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
 import {
@@ -2000,7 +2001,8 @@ export interface ProfileHydration {
  * an unattributable read, Error for a failed one) — a failed read is never
  * turned into "you have no profile".
  */
-export async function hydrateProfile(): Promise<ProfileHydration> {
+export async function hydrateProfile(signal?: AbortSignal): Promise<ProfileHydration> {
+  assertProfileReadActive(signal);
   // The network read happens FIRST and unlocked — holding the shared-state
   // lock across it would freeze every other tab for as long as it takes.
   // What this browser held when the read was ISSUED. An answer is only news
@@ -2014,11 +2016,13 @@ export async function hydrateProfile(): Promise<ProfileHydration> {
   // it was (see OwnerScopedLoadError), and an abandonment already belongs to
   // nobody. Re-interpreting either here would overwrite what the layer that
   // resolved the identity actually established.
-  const loaded = await loadProfile();
+  const loaded = await awaitProfileRead(signal ? loadProfile(signal) : loadProfile(), signal);
+  assertProfileReadActive(signal);
   const token = loaded.token;
   try {
-    return await hydrateLoadedProfile(loaded, token, observedBefore);
+    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, signal), signal);
   } catch (err) {
+    assertProfileReadActive(signal);
     // Everything above this line ran with `token` already fixed, so a failure
     // in it is this identity's — unless the identity is gone.
     //
@@ -2038,7 +2042,9 @@ async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,
   observedBefore: LoadFence,
+  signal?: AbortSignal,
 ): Promise<ProfileHydration> {
+  assertProfileReadActive(signal);
   // BEFORE ensureScope, which mutates module-global coordinator state — the
   // in-memory field intents, the unwritten-confirmation repair marker, the
   // last load source, the skill ops. Running it for a superseded owner
@@ -2050,8 +2056,14 @@ async function hydrateLoadedProfile(
   ensureScope(token);
   const reconciled = await withProfileLock(
     token,
-    () => reconcileLoadedProfile(loaded, token, observedBefore),
+    () => {
+      // The lock may arrive after the caller's deadline/unmount. Reconciliation
+      // below is synchronous: cancellation cannot interleave with its writes.
+      assertProfileReadActive(signal);
+      return reconcileLoadedProfile(loaded, token, observedBefore);
+    },
   );
+  assertProfileReadActive(signal);
   if (reconciled.ok) return reconciled.value;
   // SUPERSEDED is not "we could not serialize" — it is "this read belongs to
   // an owner who is gone". Falling through to the snapshot below would read

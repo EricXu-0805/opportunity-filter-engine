@@ -14,9 +14,9 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
-import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
+import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError, type OwnerToken } from '@/lib/identity-owner';
 
-import type { ProfileData } from '@/lib/types';
+import type { Opportunity, ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
 import { targetPosture } from '@/lib/target-truth';
@@ -89,8 +89,10 @@ import { useHighlightSet } from './use-highlight-set';
 import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
 import { useResultsSession } from './use-results-session';
-import { useResultModalHistory } from './use-result-modal-history';
+import { useResultModalHistory, type ModalCloseRequest } from './use-result-modal-history';
 import { RESULT_SESSION_PARAM } from '@/lib/result-session';
+import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
 import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
@@ -98,6 +100,17 @@ import { useResultsKeyboardNav } from './use-results-keyboard-nav';
 const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
   ssr: false,
 });
+
+const ResumeWorkspaceModal = dynamic(() => import('@/components/ResumeWorkspaceModal'), { ssr: false });
+
+interface WritingSession {
+  kind: 'email' | 'resume';
+  opportunity: Opportunity;
+  profile: ProfileData;
+  owner: OwnerToken;
+  ownerScopeKey: string | null;
+  identityGeneration: number;
+}
 
 const PAGE_SIZE = 50;
 const EMPTY_VIEW_COUNTS: Record<Tab, number> = {
@@ -142,7 +155,7 @@ function ResultsLoading() {
 function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useT();
+  const { t, locale } = useT();
   // R66: openAuthModal is renamed locally to avoid shadowing the email
   // modal's own "open" state names elsewhere in this large component.
   const { openModal: openAuthModal } = useAuthModal();
@@ -207,19 +220,14 @@ function ResultsContent() {
   );
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
-  const [emailModal, setEmailModal] = useState<{
-    open: boolean;
-    opportunityId: string;
-    opportunityTitle: string;
-    opportunitySchool: string | null;
-    openedAgainstResults: MatchResult[] | null;
-  }>({
-    open: false,
-    opportunityId: '',
-    opportunityTitle: '',
-    opportunitySchool: null,
-    openedAgainstResults: null,
-  });
+  // The editor belongs to an owner and a target, not a result row. A rematch
+  // can remove every card without discarding the student's unsaved writing.
+  const [writingSession, setWritingSession] = useState<WritingSession | null>(null);
+  const resumeCloseRequest = useRef<ModalCloseRequest | null>(null);
+  const registerResumeCloseRequest = useCallback((request: ModalCloseRequest | null) => {
+    resumeCloseRequest.current = request;
+  }, []);
+  const closeWritingSession = useCallback(() => setWritingSession(null), []);
 
   // Close (never leave open) the recipient modal on a REAL identity switch —
   // it can trigger a write, and a U1-opened modal must not be left able to
@@ -245,7 +253,7 @@ function ResultsContent() {
   // INSERT creates for the other. Same treatment as the e-mail modal.
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const handleIdentityChange = useCallback(() => {
-    setEmailModal((m) => (m.open ? { ...m, open: false } : m));
+    setWritingSession(null);
     setSaveDialogOpen(false);
     // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
     // on identityGeneration, which runs after paint and would leave U1's
@@ -278,6 +286,7 @@ function ResultsContent() {
     retryTrackSave,
     retryInteractionsLoad,
   } = useResultsInteractions(handleIdentityChange);
+  const profileRefresh = useProfileRefresh(ownerReady);
 
   // Page-level wrappers: preserve the pre-extraction "jump back to page 1"
   // semantics on every favorite/status mutation attempt — the filtered list
@@ -342,7 +351,19 @@ function ResultsContent() {
   });
   useLayoutEffect(() => { clearResultSessionRef.current = resultSession.resetForIdentity; }, [resultSession.resetForIdentity]);
   useResultsUrlSync({ ...urlState, sessionId: resultSession.sessionId });
-  useResultModalHistory(emailModal.open, () => setEmailModal((current) => ({ ...current, open: false })), ownerScopeKey);
+  const writingOwnerCurrent = !!writingSession
+    && writingSession.ownerScopeKey === ownerScopeKey
+    && writingSession.identityGeneration === identityGeneration
+    && isTokenOwnerStillCurrent(writingSession.owner)
+    && writingSession.owner.generation === captureOwnerToken().generation;
+  const requestWritingClose = useCallback(() => {
+    if (writingSession?.kind === 'resume' && resumeCloseRequest.current) {
+      return resumeCloseRequest.current();
+    }
+    closeWritingSession();
+    return true;
+  }, [writingSession?.kind, closeWritingSession]);
+  useResultModalHistory(writingOwnerCurrent, closeWritingSession, ownerScopeKey, requestWritingClose);
 
   const {
     data,
@@ -613,62 +634,26 @@ function ResultsContent() {
     setShowDismissed(next);
   }, []);
 
-  const openEmailModal = useCallback(
-    (opportunityId: string) => {
-      const results = data?.results;
-      if (!results) return;
-      const match = results.find((m) => m.opportunity.id === opportunityId);
-      // Re-checked here, not just on the card that offered the button. This
-      // modal copies an id and then lives on its own — it is the one target
-      // control on this page that is NOT inside the result's keyed subtree,
-      // so nothing unmounts it when the row goes away.
-      if (!match || targetPosture(match.opportunity) !== 'actionable') return;
-      setEmailModal({
-        open: true,
-        opportunityId,
-        opportunityTitle: match.opportunity.title ?? t('results.opportunityFallback'),
-        opportunitySchool: match.opportunity.school ?? null,
-        openedAgainstResults: results,
-      });
-    },
-    [data, t],
-  );
+  const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
+    // Do not retarget an existing editor behind its unsaved-changes guard.
+    if (writingOwnerCurrent || !ownerReady || !profile || loading || error) return;
+    const match = data?.results.find((m) => m.opportunity.id === opportunityId);
+    if (!match || targetPosture(match.opportunity) !== 'actionable') return;
+    setWritingSession({ kind, opportunity: match.opportunity, profile,
+      owner: captureOwnerToken(), ownerScopeKey, identityGeneration });
+  }, [writingOwnerCurrent, ownerReady, profile, loading, error, data, ownerScopeKey, identityGeneration]);
+  const openEmailModal = useCallback((id: string) => openWritingSession('email', id), [openWritingSession]);
+  const openResumeModal = useCallback((id: string) => openWritingSession('resume', id), [openWritingSession]);
 
-  const closeEmailModal = useCallback(() => {
-    setEmailModal({
-      open: false,
-      opportunityId: '',
-      opportunityTitle: '',
-      opportunitySchool: null,
-      openedAgainstResults: null,
-    });
-  }, []);
-
-  // Re-resolved on every render against the CURRENT results, so a stale target
-  // cannot exist rather than being cleaned up after the fact. A passive effect
-  // would run after paint, leaving one frame in which a dialog for a target
-  // that just closed is on screen with a working Generate button.
-  //
-  // Absence of results is not evidence of life either. `data` is null on
-  // every refetch — the cache no longer paints, so that window is now the
-  // normal state between a filter change and its answer — and standing on the
-  // check made when the dialog opened means a Generate button backed by a
-  // posture nobody has re-read. During a split deploy the backend answering
-  // it may not even understand the current truth contract. So a null results
-  // set withdraws the dialog exactly like a set that no longer contains the
-  // target: it fails closed, and a live target has to be opened again
-  // deliberately rather than resurfacing on its own.
-  const emailTargetLive = useMemo(() => {
-    if (!emailModal.open) return false;
-    const results = data?.results;
-    // A modal belongs to the exact results snapshot on which the student
-    // opened it. Once that snapshot is withdrawn or replaced, the old modal
-    // cannot revive when a later response happens to contain the same id;
-    // the student must explicitly open it against the new evidence.
-    if (!results || results !== emailModal.openedAgainstResults) return false;
-    const match = results.find((m) => m.opportunity.id === emailModal.opportunityId);
-    return !!match && targetPosture(match.opportunity) === 'actionable';
-  }, [emailModal.open, emailModal.opportunityId, emailModal.openedAgainstResults, data]);
+  // Keep the editing buffer mounted while separately withdrawing target
+  // actions. Absence from this filtered page means unknown, not closed. Only
+  // a current same-id actionable row can re-enable actions after a rematch.
+  const currentWritingTarget = writingSession
+    ? data?.results.find((m) => m.opportunity.id === writingSession.opportunity.id)?.opportunity
+    : undefined;
+  const writingTargetReady = writingOwnerCurrent && ownerReady && !!profile
+    && !loading && !error && !!currentWritingTarget
+    && targetPosture(currentWritingTarget) === 'actionable';
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [digestAvailable, setDigestAvailable] = useState(false);
@@ -676,8 +661,9 @@ function ResultsContent() {
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
     paginated,
-    emailModalOpen: emailModal.open && emailTargetLive,
-    onCloseEmailModal: closeEmailModal,
+    suspended: writingOwnerCurrent,
+    emailModalOpen: writingOwnerCurrent && writingSession?.kind === 'email',
+    onCloseEmailModal: closeWritingSession,
     onToggleFavorite: handleToggleFav,
     onOpenHelp: openHelp,
   });
@@ -909,6 +895,7 @@ function ResultsContent() {
       </button>
 
       <StorageStatusBanner />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} />
 
       {/*
         Favorite/status SAVE failures are per-opportunity now (favSaveErrors/
@@ -1091,6 +1078,7 @@ function ResultsContent() {
               interactionsUnready={interactionsLoading || interactionsError}
               feedback={feedback}
               onDraftEmail={openEmailModal}
+              onOpenResume={openResumeModal}
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
               onRetryFavSave={retryFavSave}
@@ -1125,26 +1113,32 @@ function ResultsContent() {
         </div>
       )}
 
-      {profile && emailTargetLive && (
+      {writingSession && writingOwnerCurrent && (writingSession.kind === 'email' ? (
         <ColdEmailModal
-          isOpen={emailModal.open}
-          onClose={closeEmailModal}
-          profile={profile}
-          opportunityId={emailModal.opportunityId}
-          opportunityTitle={emailModal.opportunityTitle}
-          opportunitySchool={emailModal.opportunitySchool}
-          // The row as this page currently sees it, re-resolved every render.
-          // Undefined while a refetch is in flight or the row has gone, which
-          // fails the follow-up chips closed rather than letting them write a
-          // reminder against a posture nobody has re-read.
-          reminderTarget={data?.results?.find(
-            (m) => m.opportunity.id === emailModal.opportunityId,
-          )?.opportunity}
+          isOpen
+          onClose={closeWritingSession}
+          profile={profile ?? writingSession.profile}
+          opportunityId={writingSession.opportunity.id}
+          opportunityTitle={(currentWritingTarget ?? writingSession.opportunity).title ?? t('results.opportunityFallback')}
+          opportunitySchool={(currentWritingTarget ?? writingSession.opportunity).school ?? null}
+          targetReady={writingTargetReady}
+          profileRefresh={profileRefresh}
+          reminderTarget={writingTargetReady ? currentWritingTarget : undefined}
           onContactConfirmed={(record) => {
-            if (record?.type) noteContactConfirmed(emailModal.opportunityId, record.type);
+            if (writingTargetReady && record?.type) noteContactConfirmed(writingSession.opportunity.id, record.type);
           }}
         />
-      )}
+      ) : (
+        <ResumeWorkspaceModal
+          isOpen
+          onClose={closeWritingSession}
+          onCloseRequestChange={registerResumeCloseRequest}
+          profile={profile ?? writingSession.profile}
+          opportunity={currentWritingTarget ?? writingSession.opportunity}
+          targetReady={writingTargetReady}
+          profileRefresh={profileRefresh}
+        />
+      ))}
 
       {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} t={t} />}
 

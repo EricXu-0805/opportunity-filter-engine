@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
@@ -70,7 +72,7 @@ export default function OpportunityDetail({
   similar?: SimilarOpportunity[];
   similarContent?: ReactNode;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const {
     identityGeneration,
@@ -112,6 +114,8 @@ export default function OpportunityDetail({
     handleShare,
   } = useOpportunityDetail(opp);
 
+  const profileRefresh = useProfileRefresh(ownerReady);
+
   // One read, used by every action surface on this page. Historical and
   // unverified both resolve to false: the page stays readable either way,
   // but nothing on it may act on the target.
@@ -138,6 +142,7 @@ export default function OpportunityDetail({
       </Suspense>
 
       <StorageStatusBanner />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} />
 
       <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
         <main className="flex-1 min-w-0 lg:max-w-3xl">
@@ -312,6 +317,7 @@ export default function OpportunityDetail({
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
           profile={profile}
+          profileRefresh={profileRefresh}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           opportunitySchool={opp.school ?? null}
@@ -349,6 +355,7 @@ export default function OpportunityDetail({
           onClose={() => setRenovationOpen(false)}
           profile={profile}
           opportunity={opp}
+          profileRefresh={profileRefresh}
         />
       )}
     </div>

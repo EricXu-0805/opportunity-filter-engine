@@ -15,7 +15,7 @@ const SUBJECT = 'My manually edited subject 王';
 const BODY = 'Dear Professor,\n\nThese are my own careful words. I assisted; I did not lead.\n\nBaseline Student 王';
 const CHAT = 'An unsent instruction that must stay in the editor.';
 const RECIPIENT = 'manually-checked@example.edu';
-const PROFILE_CHANGED = 'Your profile changed. Your subject, message and recipient are kept. Regenerate when you are ready to replace this draft.';
+const PROFILE_CHANGED = 'Your profile or target details changed. Your subject, message and recipient are kept. Regenerate when you are ready to replace this draft.';
 const fact = (id: string, value: string): ResumeFact => ({ id, revision: 1, status: 'confirmed', value, source: { kind: 'manual' } });
 const targetDialog = (page: Page) => page.getByRole('dialog', { name: 'Target résumé', exact: true });
 
@@ -201,7 +201,7 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       const footerRect = await page.getByTestId('cold-email-footer').boundingBox();
       expect(inputRect).not.toBeNull(); expect(footerRect).not.toBeNull();
       expect(inputRect!.y + inputRect!.height).toBeLessThanOrEqual(footerRect!.y);
-      await expect(page.getByText('Your profile changed, so this edit was discarded. Your draft is kept.', { exact: true })).toBeVisible();
+      await expect(page.getByText('Your profile or target details changed, so this edit was discarded. Your draft is kept.', { exact: true })).toBeVisible();
       await page.screenshot({ path: test.info().outputPath('email-edits-preserved.png') });
     } finally { release(); await other?.close(); }
   });

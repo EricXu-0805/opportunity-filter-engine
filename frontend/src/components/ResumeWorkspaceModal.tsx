@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import FullTargetResumeModal from './FullTargetResumeModal';
 import ResumeRenovationModal from './ResumeRenovationModal';
 
@@ -11,15 +12,17 @@ interface Props {
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
   profile: ProfileData;
   opportunity: Opportunity;
+  targetReady?: boolean;
+  profileRefresh?: ProfileRefreshState;
 }
 
-function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity }: Omit<Props, 'isOpen'>) {
+function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity, targetReady, profileRefresh }: Omit<Props, 'isOpen'>) {
   const [mode, setMode] = useState<'full' | 'bullets'>('full');
   return mode === 'full'
     ? <FullTargetResumeModal isOpen onClose={onClose} profile={profile}
-        opportunity={opportunity} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
+        opportunity={opportunity} targetReady={targetReady} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
     : <ResumeRenovationModal isOpen onClose={onClose} profile={profile}
-        opportunityId={opportunity.id} opportunityTitle={opportunity.title} onCloseRequestChange={onCloseRequestChange}
+        opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
         onOpenFull={() => setMode('full')} />;
 }
 
