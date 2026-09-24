@@ -609,7 +609,22 @@ class _MatchGenerationChanged(RuntimeError):
 def _normalized_profile(profile: ProfileRequest) -> dict:
     """One profile normalization for every match endpoint — /matches and
     /explain must default the same preferences or their conclusions diverge."""
+    # ProfileRequest supplies the historical defaults only when the field is
+    # omitted. An explicit empty selection means the student cancelled every
+    # type, not permission to silently choose Research and Summer for them.
+    # Keep this Match-only: the same profile is valid in material workflows.
+    selected_types = [value for value in profile.seeking_type if value.strip()]
+    if not selected_types:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "MATCH_TYPE_REQUIRED",
+                "message": "Select at least one opportunity type.",
+                "retryable": False,
+            },
+        )
     profile_dict = profile.model_dump()
+    profile_dict["seeking_type"] = selected_types
     if not feature_enabled("fellowships"):
         seeking = [
             value for value in profile_dict.get("seeking_type", [])

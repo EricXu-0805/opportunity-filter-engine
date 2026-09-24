@@ -53,6 +53,7 @@ function HomePageInner() {
     useCloudVersion,
     hydrationState,
     isValid,
+    missingSeekingTypes,
     identityGeneration,
     viewSnapshot,
     update,
@@ -124,6 +125,7 @@ function HomePageInner() {
 
       <SubmitRow
         isValid={isValid}
+        missingSeekingTypes={missingSeekingTypes}
         shareCopied={shareCopied}
         saveStatus={saveStatus}
         hydrationState={hydrationState}

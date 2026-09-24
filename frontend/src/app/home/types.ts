@@ -26,6 +26,17 @@ export const SEEKING_TYPES = [
 ] as const;
 export type SeekingType = typeof SEEKING_TYPES[number];
 
+/** Show the same defaults the API uses for older profiles without this field.
+ *  An explicit [] is a deliberate empty selection and must remain empty. */
+export function selectedSeekingTypes(profile: Pick<ProfileData, 'seeking_types'>): string[] {
+  return profile.seeking_types ?? ['research', 'summer_program'];
+}
+
+export function hasSelectedSeekingType(profile: Pick<ProfileData, 'seeking_types'>): boolean {
+  const selected = selectedSeekingTypes(profile);
+  return SEEKING_TYPES.some((type) => selected.includes(type));
+}
+
 
 // Outcomes of SAVING. Whether this identity's row has been READ at all is
 // a separate axis — see HydrationState — because "we never loaded your

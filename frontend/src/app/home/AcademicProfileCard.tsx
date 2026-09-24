@@ -15,7 +15,7 @@ import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import { persistHomeSchool } from '@/lib/school-confirmation';
 import { bySlug } from '@/lib/schools';
 import { translateKey } from './home-utils';
-import { SEEKING_TYPES, type TFunc } from './types';
+import { hasSelectedSeekingType, selectedSeekingTypes, SEEKING_TYPES, type TFunc } from './types';
 
 export function AcademicProfileCard({
   profile,
@@ -129,7 +129,8 @@ export function AcademicProfileCard({
     update('college', '');
   }, [catalog, profile.college, update]);
   const majors = catalog && profile.college ? catalog[profile.college] ?? [] : [];
-  const seeking = profile.seeking_types ?? [];
+  const seeking = selectedSeekingTypes(profile);
+  const hasSeekingType = hasSelectedSeekingType(profile);
 
   const seekingLabel = {
     research: 'home.form.seekingResearch',
@@ -348,10 +349,10 @@ export function AcademicProfileCard({
           </button>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <fieldset aria-describedby="seeking-types-help">
+          <legend className="block text-sm font-medium text-gray-700 mb-2">
             {t('home.form.seekingLabel')}
-          </label>
+          </legend>
           <div className="flex flex-wrap gap-2">
             {SEEKING_TYPES.map((type) => {
               const isSelected = seeking.includes(type);
@@ -359,6 +360,7 @@ export function AcademicProfileCard({
                 <button
                   key={type}
                   type="button"
+                  aria-pressed={isSelected}
                   onClick={() => {
                     const next = isSelected ? seeking.filter((tp) => tp !== type) : [...seeking, type];
                     update('seeking_types', next);
@@ -374,7 +376,15 @@ export function AcademicProfileCard({
               );
             })}
           </div>
-        </div>
+          <p
+            id="seeking-types-help"
+            role="status"
+            aria-live="polite"
+            className={`mt-2 text-xs ${hasSeekingType ? 'text-gray-500' : 'text-amber-700'}`}
+          >
+            {t(hasSeekingType ? 'home.form.seekingHint' : 'home.validation.seekingRequired')}
+          </p>
+        </fieldset>
 
         <div>
           <label htmlFor="research_interests" className="block text-sm font-medium text-gray-700 mb-2">

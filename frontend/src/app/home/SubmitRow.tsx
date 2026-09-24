@@ -5,6 +5,7 @@ import type { HydrationState, SaveStatus, TFunc } from './types';
 
 export function SubmitRow({
   isValid,
+  missingSeekingTypes = false,
   shareCopied,
   saveStatus,
   hydrationState,
@@ -19,6 +20,7 @@ export function SubmitRow({
   t,
 }: {
   isValid: boolean;
+  missingSeekingTypes?: boolean;
   shareCopied: boolean;
   saveStatus: SaveStatus;
   hydrationState: HydrationState;
@@ -54,6 +56,7 @@ export function SubmitRow({
           type="button"
           disabled={!canSubmit}
           data-testid="generate-matches"
+          aria-describedby={!isValid ? 'match-validation' : undefined}
           onClick={onSubmit}
           className="group inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-3.5 text-[15px] font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.35)]"
         >
@@ -91,8 +94,8 @@ export function SubmitRow({
         </p>
       )}
       {!isValid && (
-        <p className="text-center text-[13px] text-gray-400 mt-4">
-          {t('home.validation.requiredFields')}
+        <p id="match-validation" className="text-center text-[13px] text-gray-500 mt-4">
+          {t(missingSeekingTypes ? 'home.validation.seekingRequired' : 'home.validation.requiredFields')}
         </p>
       )}
       {/* Save/sync state is never hidden behind form validity: a failed

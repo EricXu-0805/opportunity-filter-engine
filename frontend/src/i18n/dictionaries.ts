@@ -2591,7 +2591,8 @@ export const en = {
       gradePlaceholder: 'Grade when you\u2019d start...',
       internationalLabel: 'International Student',
       internationalHint: "We'll filter for visa-friendly positions",
-      seekingLabel: 'Preferred Opportunity Type',
+      seekingLabel: 'Preferred Opportunity Types',
+      seekingHint: 'Choose one or more types.',
       seekingResearch: 'Research',
       seekingSummer: 'Summer program',
       seekingInternship: 'Internship',
@@ -2646,6 +2647,7 @@ export const en = {
     },
     validation: {
       requiredFields: 'Please select your college, major, and grade to continue',
+      seekingRequired: 'Select at least one opportunity type to generate matches.',
     },
     sharedBanner: 'Loaded a shared profile. Review & tweak before generating matches — your saved profile is untouched until you click generate.',
     saveCta: {
@@ -2986,6 +2988,7 @@ export const en = {
       closeAria: 'Close shortcuts dialog',
     },
     loadFailed: 'Failed to load matches',
+    chooseOpportunityTypes: 'Choose opportunity types in your profile',
     opportunityFallback: 'Opportunity',
     scopeIndicator: 'Showing: {school} campus + national open opportunities',
     scopeIndicatorPending: "{school} campus data is coming — here's everything you can apply to right now",
@@ -3556,6 +3559,10 @@ export const en = {
   },
   coldEmail: {
     title: 'Email Editor',
+    guidelinesTitle: 'Writing guidelines',
+    aiRequestsTitle: 'AI requests',
+    requestLabel: 'Request an edit',
+    submitRequest: 'Submit request',
     closeAria: 'Close email editor',
     generating: 'Generating email variants...',
     loadFailed: 'Could not load email variants.',
@@ -7171,6 +7178,7 @@ export const zh = {
       internationalLabel: '国际学生',
       internationalHint: '我们会筛选对签证友好的职位',
       seekingLabel: '偏好机会类型',
+      seekingHint: '可多选，请至少选择一类。',
       seekingResearch: '研究',
       seekingSummer: '暑期项目',
       seekingInternship: '实习',
@@ -7225,6 +7233,7 @@ export const zh = {
     },
     validation: {
       requiredFields: '请选择学院、专业和年级以继续',
+      seekingRequired: '请至少选择一类机会，再生成匹配结果。',
     },
     sharedBanner: '已加载分享的档案。请在生成匹配前查看并调整 —— 在你点击生成之前，你自己保存的档案不会被修改。',
     saveCta: {
@@ -7564,6 +7573,7 @@ export const zh = {
       closeAria: '关闭快捷键对话框',
     },
     loadFailed: '加载匹配失败',
+    chooseOpportunityTypes: '回档案选择机会类型',
     opportunityFallback: '机会',
     scopeIndicator: '为你展示：{school} 校内 + 全国开放机会',
     scopeIndicatorPending: '{school} 校内数据建设中 —— 以下是你现在就能申请的开放机会',
@@ -8095,6 +8105,10 @@ export const zh = {
   },
   coldEmail: {
     title: '邮件编辑器',
+    guidelinesTitle: '写作指南',
+    aiRequestsTitle: 'AI 修改请求',
+    requestLabel: '输入修改请求',
+    submitRequest: '提交请求',
     closeAria: '关闭邮件编辑器',
     generating: '正在生成邮件版本...',
     loadFailed: '无法加载邮件版本。',

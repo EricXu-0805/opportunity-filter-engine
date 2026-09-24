@@ -284,7 +284,10 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # selected opportunity types are a set; the high-priority shortlist has a
 # strict canonical top-N cap (including ties), with ordered lower-band cutoffs.
 # No layer weights changed, so the manual base retires the old conclusions.
-_MATCHER_VERSION_BASE = "14"
+# 15: selected types are hard result-universe boundaries. Major affinity and
+# unknown record types can no longer admit an opportunity the user did not
+# select; invalidate snapshots and explanations built with that old filter.
+_MATCHER_VERSION_BASE = "15"
 
 
 def _matcher_fingerprint() -> str:

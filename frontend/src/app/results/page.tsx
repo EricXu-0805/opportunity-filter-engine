@@ -334,6 +334,7 @@ function ResultsContent() {
     setData,
     loading,
     error,
+    errorCode,
     showSlowHint,
     paginationReady,
     refining,
@@ -1023,10 +1024,13 @@ function ResultsContent() {
           <p className="text-gray-700 font-medium">{error}</p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              if (errorCode === 'MATCH_TYPE_REQUIRED') router.push('/');
+              else window.location.reload();
+            }}
             className="text-sm text-indigo-600 underline hover:text-indigo-700"
           >
-            {t('common.retry')}
+            {t(errorCode === 'MATCH_TYPE_REQUIRED' ? 'results.chooseOpportunityTypes' : 'common.retry')}
           </button>
         </div>
       )}

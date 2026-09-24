@@ -95,8 +95,7 @@ beforeEach(() => {
   writeTextMock.mockReset().mockResolvedValue(undefined);
   windowOpenMock.mockReset();
 
-  /* jsdom does not implement scrollIntoView; the modal calls it on a chatEnd
-     ref every time chatMessages updates, so we stub it to a no-op spy. */
+  /* A chat update must never scroll a field or any ancestor into view. */
   Element.prototype.scrollIntoView = vi.fn();
 
   /* navigator.clipboard is not present in jsdom by default. The copy button
@@ -478,8 +477,8 @@ describe('ColdEmailModal', () => {
           opportunityTitle="REU"
         />,
       );
-      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
-      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      // The stream starts automatically once templates load. Wait for its
+      // result rather than race the temporary stage label with a pill click.
       await waitFor(() =>
         expect(screen.getByDisplayValue('Streamed AI Body')).toBeInTheDocument(),
       );
@@ -1267,5 +1266,35 @@ describe('W10b recipient states (contact bar)', () => {
     fireEvent.change(toInput, { target: { value: 'typed@example.edu' } });
     fireEvent.click(screen.getByText('Casual'));
     expect(screen.getByDisplayValue('typed@example.edu')).toBeInTheDocument();
+  });
+});
+
+
+describe('ColdEmailModal editing workspace', () => {
+  it('names the guidelines and request areas and scrolls only chat history on new messages', async () => {
+    mockGetVariants.mockResolvedValue({ variants: [makeVariant()], lab_type: 'dry' });
+    mockGenerateColdEmail.mockRejectedValue(new Error('AI unavailable in test'));
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="layout-opp" opportunityTitle="Research" />,
+    );
+    const guidelines = await screen.findByRole('region', { name: 'coldEmail.guidelinesTitle' });
+    expect(guidelines).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('region', { name: 'coldEmail.aiRequestsTitle' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeDisabled();
+
+    const history = screen.getByRole('log', { name: 'coldEmail.aiRequestsTitle' });
+    const workspace = screen.getByTestId('cold-email-workspace');
+    const editor = screen.getByTestId('cold-email-editor-fields');
+    Object.defineProperty(history, 'scrollHeight', { configurable: true, value: 720 });
+    workspace.scrollTop = 130;
+    editor.scrollTop = 90;
+    guidelines.scrollTop = 40;
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.coursework' }));
+    await waitFor(() => expect(history.scrollTop).toBe(720));
+    expect(workspace.scrollTop).toBe(130);
+    expect(editor.scrollTop).toBe(90);
+    expect(guidelines.scrollTop).toBe(40);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 });

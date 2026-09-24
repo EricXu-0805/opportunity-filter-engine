@@ -19,9 +19,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-vi.mock('@/i18n/client', () => ({
-  useT: () => ({ t: (key: string) => key }),
-}));
+vi.mock('@/i18n/client', () => {
+  // Production keeps t stable within a locale; a fresh function on every
+  // render would repeatedly restart the results request during an error.
+  const t = (key: string) => key;
+  return { useT: () => ({ t }) };
+});
 
 const routerRef = { replace: vi.fn(), refresh: vi.fn(), push: vi.fn() };
 vi.mock('next/navigation', () => ({
@@ -195,6 +198,7 @@ vi.mock('./MatchList', () => ({
 }));
 
 import ResultsPage from './page';
+import { ApiError } from '@/lib/api';
 import { getMatchFeedback, setMatchFeedback } from '@/lib/match-feedback';
 import { getAuthState } from '@/lib/supabase';
 import { OwnerMismatchError } from '@/lib/identity-owner';
@@ -443,5 +447,36 @@ describe('ResultsPage -> FilterRail: deadline chips render on evidence', () => {
     // An older deployment, or a cache entry minted before the field existed.
     // No evidence is not evidence of rows.
     expect(await deadlineValues()).toEqual(['', 'rolling']);
+  });
+});
+
+
+describe('ResultsPage — recover from an old explicit empty type selection', () => {
+  it('offers profile editing instead of reload, without filling defaults or changing the stored profile', async () => {
+    const emptyProfile = { ...TEST_PROFILE, seeking_types: [] };
+    acceptedProfile.current = emptyProfile;
+    const before = JSON.stringify(emptyProfile);
+    routerRef.push.mockClear();
+    mockGetMatchView.mockRejectedValue(new ApiError(422, 'MATCH_TYPE_REQUIRED', 'Select at least one opportunity type.', false));
+    render(<ResultsPage />);
+    const action = await screen.findByRole('button', { name: 'results.chooseOpportunityTypes' });
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.retry' })).not.toBeInTheDocument();
+    expect(screen.queryByText('MATCH_TYPE_REQUIRED')).not.toBeInTheDocument();
+    expect(mockGetMatchView.mock.calls[0][0].seeking_types).toEqual([]);
+    fireEvent.click(action);
+    expect(routerRef.push).toHaveBeenCalledWith('/');
+    expect(JSON.stringify(acceptedProfile.current)).toBe(before);
+  });
+
+  it.each([
+    [422, 'OTHER_VALIDATION', 'Check the supplied value.'],
+    [503, 'MATCH_BUSY', 'Matching is busy. Please retry shortly.'],
+  ])('retains ordinary error and retry for %s / %s', async (status, code, message) => {
+    mockGetMatchView.mockRejectedValue(new ApiError(status as number, code as string, message as string, status === 503));
+    render(<ResultsPage />);
+    expect(await screen.findByText(message as string)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.retry' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'results.chooseOpportunityTypes' })).not.toBeInTheDocument();
   });
 });
