@@ -284,6 +284,31 @@ def _render_digest_email(
     return subject, html, text
 
 
+def _stored_profile_for_filters(profile: dict) -> dict | None:
+    """Adapt saved frontend data or historical API data to the ranker's keys.
+
+    Explicit frontend values win, including False and []. An explicit empty
+    or malformed type selection pauses this saved search: Match rejects empty
+    selection with MATCH_TYPE_REQUIRED, whereas a bare ranker context would
+    interpret it as unrestricted. None means pause, not an empty exclusion set.
+    Missing selection fields retain the pre-existing legacy behavior.
+    """
+    adapted = dict(profile)
+    if "is_international" in profile:
+        adapted["international_student"] = profile["is_international"]
+    if "seeking_types" in profile:
+        adapted["seeking_type"] = profile["seeking_types"]
+    if "seeking_type" in adapted:
+        selection = adapted["seeking_type"]
+        if not isinstance(selection, list) or any(not isinstance(value, str) for value in selection):
+            return None
+        selection = [value for value in selection if value.strip()]
+        if not selection:
+            return None
+        adapted["seeking_type"] = selection
+    return adapted
+
+
 # The digest and the site disagreed about what "in your results" means.
 # ranker.hard_exclusion calls itself "the single reason-coded implementation of
 # every rule that drops a record from a profile's result universe" and lists its
@@ -300,8 +325,8 @@ def _render_digest_email(
 # can read the profile it needs with one keyed lookup and no new column.
 async def _ineligible_ids_by_device(
     client, supabase_url: str, headers: dict, corpus: list[dict], device_ids: list[str],
-) -> dict[str, set[str]]:
-    """For each device, the corpus ids its own profile excludes.
+) -> dict[str, set[str] | None]:
+    """For each device, excluded corpus ids; None pauses an invalid selection.
 
     A POSITIVE set of known-ineligible ids, deliberately shaped like
     hidden_opportunity_ids above and for the same reason: built over the whole
@@ -310,7 +335,9 @@ async def _ineligible_ids_by_device(
     pending queue on any night a shard failed to load.
 
     A profile that cannot be read yields an empty set — the digest then behaves
-    exactly as it does today rather than filtering on a guess.
+    exactly as it does today rather than filtering on a guess. An explicitly
+    empty/invalid selection instead yields None: both crons preserve the queue
+    and skip it until the student chooses a type.
     """
     wanted = sorted({d for d in device_ids if d})
     if not wanted:
@@ -333,17 +360,20 @@ async def _ineligible_ids_by_device(
     # Students share contexts — one school, cross-school off — so the corpus
     # sweep runs once per distinct context rather than once per row.
     by_context: dict[tuple, set[str]] = {}
-    out: dict[str, set[str]] = {}
+    out: dict[str, set[str] | None] = {}
     for row in rows:
         device_id = row.get("id")
         profile = row.get("profile_data")
         if not device_id or not isinstance(profile, dict):
             continue
-        ctx = _filter_context(profile)
+        adapted = _stored_profile_for_filters(profile)
+        if adapted is None:
+            out[device_id] = None
+            continue
+        ctx = _filter_context(adapted)
         key = (
             ctx.home_school, ctx.hide_cross_school, ctx.exclude_citizenship_restricted,
             ctx.international_student, frozenset(ctx.seeking),
-            frozenset(ctx.student_majors_norm), frozenset(ctx.related_majors_norm),
         )
         cached = by_context.get(key)
         if cached is None:
@@ -439,6 +469,10 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         for row in rows:
             try:
                 ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
+                if ineligible is None:
+                    # An explicit empty selection is a pause, not a request to
+                    # erase pending matches or advance the refresh baseline.
+                    continue
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
                 prior_ids = set(row.get("last_result_ids") or [])
@@ -601,7 +635,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         )
         list_resp.raise_for_status()
         rows = list_resp.json()
-        ineligible_by_device: dict[str, set[str]] = {}
+        ineligible_by_device: dict[str, set[str] | None] = {}
         if rows:
             # One read of the live queue, and only when there is something to
             # send — a night with no opted-in rows costs nothing extra.
@@ -618,6 +652,11 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
             try:
                 stored_new_ids = row.get("new_match_ids") or []
                 ineligible = ineligible_by_device.get(row.get("device_id") or "", set())
+                if ineligible is None:
+                    # Match cannot run with this explicit selection. Preserve
+                    # queued ids and timestamps without dispatching mail.
+                    skipped += 1
+                    continue
                 new_ids = [
                     opportunity_id
                     for opportunity_id in stored_new_ids
