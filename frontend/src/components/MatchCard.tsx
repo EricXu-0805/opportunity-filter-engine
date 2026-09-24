@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -50,7 +50,7 @@ import {
   type TargetStatusReason,
 } from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { useResultModalHistory } from '@/app/results/use-result-modal-history';
+import { useResultModalHistory, type ModalCloseRequest } from '@/app/results/use-result-modal-history';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
@@ -194,10 +194,19 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
   // is empty).
   const [tailorOpen, setTailorOpen] = useState(false);
   const [renovationOpen, setRenovationOpen] = useState(false);
+  const resumeCloseRequest = useRef<ModalCloseRequest | null>(null);
+  const registerResumeCloseRequest = useCallback((request: ModalCloseRequest | null) => {
+    resumeCloseRequest.current = request;
+  }, []);
   useResultModalHistory(tailorOpen || renovationOpen, () => {
     setTailorOpen(false);
     setRenovationOpen(false);
-  }, ownerScopeKey);
+  }, ownerScopeKey, () => {
+    if (renovationOpen && resumeCloseRequest.current) return resumeCloseRequest.current();
+    setTailorOpen(false);
+    setRenovationOpen(false);
+    return true;
+  });
 
   const { t } = useT();
 
@@ -784,6 +793,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
         onClose={() => setRenovationOpen(false)}
         profile={profile}
         opportunity={opp}
+        onCloseRequestChange={registerResumeCloseRequest}
       />
     )}
     </>

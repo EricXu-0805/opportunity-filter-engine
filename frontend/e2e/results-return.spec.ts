@@ -262,6 +262,31 @@ test.describe('Results return context', () => {
   });
   }
 
+  test('browser Back keeps supplemental answers until the user confirms leaving', async ({ page }) => {
+    const net = await installNetwork(page); await seedProfile(page); await onSecondPage(page, net);
+    const url = page.url(); const count = net.requests.length;
+    await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
+    const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
+    const answer = panel.getByRole('textbox', { name: 'What was the task?', exact: true });
+    await answer.fill('Keep this unconfirmed answer when Back is cancelled.');
+    await page.goBack();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits or answers');
+    await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+    await expect(answer).toHaveValue('Keep this unconfirmed answer when Back is cancelled.');
+    expect(page.url()).toBe(url);
+    await page.goBack();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits or answers');
+    await page.getByRole('button', { name: 'Discard unsaved edits and continue', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+    await expect(title(page)).toBeInViewport();
+    expect(page.url()).toBe(url); expect(net.requests).toHaveLength(count);
+    expectPublicFilters(page.url());
+    expect(net.writes.filter(write => /commit_profile_patch_cas|commit_target_resume_cas/.test(write))).toEqual([]);
+  });
+
   for (const failure of ['read failure', 'invalid saved document'] as const) {
     test(`renovation ${failure} blocks replacement until retry restores the saved draft`, async ({ page }) => {
       const net = await installNetwork(page);

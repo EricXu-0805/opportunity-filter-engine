@@ -365,6 +365,144 @@ test.describe('Complete target résumé', () => {
     expect(saved.experience_entries[0].text).toBe(fullDetail);
   }
 
+  async function prepareSupplement(page: Page) {
+    await seed(page); await page.goto('/');
+    const card = page.locator('#resume-master');
+    await card.getByText('Open full résumé editor', { exact: true }).click();
+    const name = card.getByRole('textbox', { name: 'Full name', exact: true });
+    await expect(name).toBeEnabled();
+    // Make an explicit, real profile action so the sidebar accepts a confirmed
+    // cloud baseline instead of inventing a revision for a local-only seed.
+    await name.fill('Alex 王 (reviewing)');
+    await card.getByRole('button', { name: 'Confirm Full name', exact: true }).click();
+    await name.fill('Alex 王');
+    await card.getByRole('button', { name: 'Confirm Full name', exact: true }).click();
+    const saved = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_profile_patch_cas')
+      && r.request().postDataJSON()?.p_patch?.resume_master?.basics?.name?.value === 'Alex 王');
+    await card.getByRole('button', { name: 'Apply changes', exact: true }).click();
+    const receipt = await (await saved).json(); expect(['applied', 'unchanged']).toContain(receipt.status);
+    await open(page);
+    await page.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
+    expect((await save(page, 0)).status).toBe('saved');
+    await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
+    const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
+    await expect(panel.getByRole('combobox')).toBeEnabled();
+    await panel.getByRole('combobox').selectOption('project-1');
+    return panel;
+  }
+  async function fillSupplement(page: Page, task: string, role = 'I measured 12 samples; the team designed the study.') {
+    const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
+    await panel.getByRole('textbox', { name: 'What was the task?', exact: true }).fill(task);
+    await panel.getByRole('textbox', { name: 'What did you personally do?', exact: true }).fill(role);
+    await panel.getByRole('checkbox', { name: 'Include task', exact: true }).check();
+    await panel.getByRole('checkbox', { name: 'Include my role', exact: true }).check();
+    return panel;
+  }
+  async function confirmSupplement(page: Page) {
+    const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
+    await panel.getByRole('checkbox', { name: 'I confirm the selected information is accurate.', exact: true }).check();
+    await panel.getByRole('button', { name: 'Confirm and add to my master résumé', exact: true }).click();
+    await expect(panel.getByText('Added to your master résumé. The current target draft is unchanged. Rebuild it only when you choose.', { exact: true })).toBeVisible();
+  }
+
+  test('confirms supplemental facts once while preserving the current target until an explicit rebuild', async ({ page }, testInfo) => {
+    const panel = await prepareSupplement(page);
+    const writes: Array<Record<string, unknown>> = [];
+    const providerRequests: string[] = [];
+    page.on('request', r => {
+      if (r.url().includes('/rest/v1/rpc/commit_profile_patch_cas')) writes.push(r.postDataJSON());
+      if (r.url().includes('/api/tailor/')) providerRequests.push(r.url());
+    });
+    await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Target-only manual name');
+    await page.getByRole('checkbox', { name: 'Include field: Degree', exact: true }).uncheck();
+    const task = 'Compare the instrument readings 王🧪; no claim of improved accuracy.';
+    const role = 'I measured 12 samples; the team designed the study.';
+    await fillSupplement(page, task, role);
+    await expect(panel.getByRole('region', { name: 'Information to confirm' })).toHaveText(/Task: Compare the instrument readings/);
+    expect(writes).toHaveLength(0);
+    await expect(panel.getByRole('button', { name: 'Confirm and add to my master résumé', exact: true })).toBeDisabled();
+    await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
+    await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits or answers');
+    await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+    await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
+    await expect(panel.getByRole('textbox', { name: 'What was the task?', exact: true })).toHaveValue(task);
+    await confirmSupplement(page);
+    await expect(panel.getByRole('checkbox', { name: 'I confirm the selected information is accurate.', exact: true })).toBeChecked();
+    await expect(panel.getByRole('button', { name: 'Added to master résumé', exact: true })).toBeDisabled();
+    expect(writes).toHaveLength(1);
+    const patch = writes[0].p_patch as { resume_text: string; experience_entries: { id: string; text: string; status: string; source: {kind:string}; revision: number }[]; resume_master: typeof master };
+    expect(patch.resume_text).toBe(raw);
+    expect(patch.experience_entries[0].text).toBe(fullDetail);
+    const added = patch.experience_entries.filter(e => !['project-evidence', 'not-confirmed'].includes(e.id));
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({ text: `Task: ${task}\nMy role: ${role}`, status: 'confirmed', source: {kind:'manual'}, revision: 1 });
+    expect(patch.resume_master.activities[0].details).toContainEqual({ id: added[0].id, revision: 1 });
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Target-only manual name');
+    await expect(page.getByRole('checkbox', { name: 'Include field: Degree', exact: true })).not.toBeChecked();
+    await expect(page.getByRole('region', { name: 'Current target draft preview' })).not.toContainText(task);
+    await page.getByRole('button', { name: 'Rebuild from current confirmed master', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('Existing edits will not carry over');
+    await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Target-only manual name');
+    await page.screenshot({ path: testInfo.outputPath('supplement-confirmed.png'), fullPage: false });
+    await page.getByRole('button', { name: 'Rebuild from current confirmed master', exact: true }).click();
+    await page.getByRole('button', { name: 'Create new draft', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Current target draft preview' })).toContainText(task);
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Alex 王');
+    expect(providerRequests).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+  });
+
+  test('retries an uncertain supplement save without adding a second entry', async ({ page }) => {
+    const panel = await prepareSupplement(page);
+    const task = 'Record a result without inventing a percentage.';
+    await fillSupplement(page, task);
+    let loseFirstReceipt = true;
+    const sent: Array<{p_patch:{experience_entries:Array<{id:string;text:string}>}}> = [];
+    await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async route => {
+      sent.push(route.request().postDataJSON());
+      if (loseFirstReceipt) {
+        loseFirstReceipt = false;
+        await route.fetch(); // The loopback server commits, but this response is lost.
+        await route.abort('failed');
+      } else await route.continue();
+    });
+    await panel.getByRole('checkbox', { name: 'I confirm the selected information is accurate.', exact: true }).check();
+    await panel.getByRole('button', { name: 'Confirm and add to my master résumé', exact: true }).click();
+    await expect(panel.getByRole('button', { name: 'Retry cloud save', exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(panel.getByRole('textbox', { name: 'What was the task?', exact: true })).toHaveValue(task);
+    await panel.getByRole('button', { name: 'Retry cloud save', exact: true }).click();
+    await expect(panel.getByText(/Added to your master résumé/)).toBeVisible();
+    expect(sent.length).toBeGreaterThanOrEqual(2);
+    const additions = sent.map(request => request.p_patch.experience_entries.filter(e => e.text.includes(task)));
+    expect(additions.every(list => list.length === 1)).toBe(true);
+    expect(new Set(additions.map(list => list[0].id)).size).toBe(1);
+  });
+
+  test('requires review after another tab changes the master and preserves unconfirmed answers', async ({ page, context }) => {
+    const firstPanel = await prepareSupplement(page);
+    await fillSupplement(page, 'First tab personal details');
+    const second = await context.newPage(); await open(second);
+    await second.getByRole('button', { name: 'Add experience details', exact: true }).click();
+    const secondPanel = second.getByRole('region', { name: 'Add experience details', exact: true });
+    await expect(secondPanel.getByRole('combobox')).toBeEnabled();
+    await secondPanel.getByRole('combobox').selectOption('project-1');
+    await fillSupplement(second, 'Second tab confirmed details'); await confirmSupplement(second);
+    await page.bringToFront();
+    await expect(firstPanel.getByText(/Your profile or target changed/)).toBeVisible();
+    await expect(firstPanel.getByRole('textbox', { name: 'What was the task?', exact: true })).toHaveValue('First tab personal details');
+    await expect(firstPanel.getByRole('button', { name: 'Confirm and add to my master résumé', exact: true })).toBeDisabled();
+    await firstPanel.getByRole('button', { name: 'Review current materials', exact: true }).click();
+    await expect(firstPanel.getByRole('combobox')).toBeEnabled();
+    await confirmSupplement(page);
+    const stored = await page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}'), STORAGE_KEYS.PROFILE);
+    expect(stored.experience_entries.filter((e:{text:string}) => e.text.includes('First tab personal details'))).toHaveLength(1);
+    expect(stored.experience_entries.filter((e:{text:string}) => e.text.includes('Second tab confirmed details'))).toHaveLength(1);
+    await second.close();
+  });
+
   test('keeps full confirmed content, saves independent edits and reloads them without changing the master', async ({ page }, testInfo) => {
     const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
     await create(page);

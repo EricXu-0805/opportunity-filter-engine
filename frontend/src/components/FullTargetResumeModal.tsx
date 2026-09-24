@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import ResumeSupplementPanel from './ResumeSupplementPanel';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import { buildResumeMasterPreview, validateResumeMaster } from '@/lib/resume-master';
@@ -28,7 +31,7 @@ type Session = {
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
-type LeaveAction = 'close' | 'legacy' | 'rebuild';
+type LeaveAction = 'close' | 'legacy' | 'master' | 'rebuild';
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 // Synchronous content equality retires creation before a late digest completes.
 function canonical(value: unknown): string {
@@ -38,13 +41,20 @@ function canonical(value: unknown): string {
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy }: {
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
+  onCloseRequestChange?: (request: (() => boolean) | null) => void;
 }) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const domId = useId();
-  const profileKey = canonical(profile);
+  const router = useRouter();
+  const incomingProfileKey = canonical(profile);
+  const [supplementProfile, setSupplementProfile] = useState<{ view: ProfileViewSnapshot; inputKey: string } | null>(null);
+  const acceptedProfile = supplementProfile && supplementProfile.inputKey === incomingProfileKey
+    && isOwnerTokenValid(supplementProfile.view.token, supplementProfile.view.token.uid)
+    ? supplementProfile.view.renderedProfile : profile;
+  const profileKey = canonical(acceptedProfile);
   const target = targetResumeContextFromOpportunity(opportunity);
   const targetKey = canonical(target);
   const contextKey = `${profileKey}\n${targetKey}`;
@@ -54,6 +64,19 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [session, setSession] = useState<Session | null>(null);
   const [lifecycle, setLifecycle] = useState(0);
   const [leave, setLeave] = useState<LeaveAction | null>(null);
+  const [supplementOpen, setSupplementOpen] = useState(false);
+  const [supplementMounted, setSupplementMounted] = useState(false);
+  const [supplementDirty, setSupplementDirty] = useState(false);
+  const supplementInputRef = useRef<string | null>(null);
+  const incomingProfileRef = useRef(incomingProfileKey);
+  const routerRef = useRef(router);
+  useLayoutEffect(() => {
+    if (incomingProfileRef.current !== incomingProfileKey) {
+      // A newly rendered parent profile replaces this temporary accepted view.
+      setSupplementProfile(null);
+    }
+    incomingProfileRef.current = incomingProfileKey; routerRef.current = router;
+  }, [incomingProfileKey, router]);
   const scopeRef = useRef<Scope | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -65,10 +88,11 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!current(scope)) return;
     setSession((old) => old?.scope === scope ? change(old) : old);
   }, [current]);
-  const exit = useCallback((action: 'close' | 'legacy') => {
+  const exit = useCallback((action: 'close' | 'legacy' | 'master') => {
     if (scopeRef.current) scopeRef.current.active = false;
     setLeave(null);
-    if (action === 'legacy') legacyRef.current?.(); else closeRef.current();
+    if (action === 'legacy') legacyRef.current?.();
+    else { closeRef.current(); if (action === 'master') routerRef.current.push('/#resume-master'); }
   }, []);
 
   useEffect(() => {
@@ -89,12 +113,24 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   }, [isOpen, contextKey, profileSnapshot, targetSnapshot]);
 
   useLayoutEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      // Closing the whole workspace retires its private answer buffer.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSupplementDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      supplementInputRef.current = null;
+      return;
+    }
+    const previous = scopeRef.current;
     const scope: Scope = { active: true, owner: captureOwnerToken(), targetId: opportunity.id,
       context: contextKey, creation: 0, historyRequest: 0, historyGeneration: 0, historyListRequest: 0 };
     scopeRef.current = scope;
+    // A target-document read retry does not discard independent answers.
+    if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
+      || previous.owner.epoch !== scope.owner.epoch || previous.owner.generation !== scope.owner.generation) {
+      setSupplementDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      supplementInputRef.current = null;
+    }
     // Opening/retrying/target replacement defines a new private document scope.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSession({ scope, phase: 'loading', doc: null, revision: 0, savedJson: null, editRevision: 0,
       saving: false, reloading: false, conflict: null, error: null, history: null, historyBusy: false,
       historyError: false, historyHasMore: false, selectedRevision: null, selectedVersion: null, versionBusy: false, versionError: false });
@@ -136,12 +172,18 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source);
   const creating = activeSession?.phase === 'creating';
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
-  const askLeave = useCallback((action: 'close' | 'legacy') => {
-    if (session && isDirty(session)) setLeave(action); else exit(action);
-  }, [session, exit]);
+  const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
+    if (supplementDirty || (session && isDirty(session))) { setLeave(action); return false; }
+    exit(action); return true;
+  }, [session, supplementDirty, exit]);
 
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    onCloseRequestChange?.(() => leaveRef.current('close'));
+    return () => onCloseRequestChange?.(null);
+  }, [isOpen, onCloseRequestChange]);
   useEffect(() => {
     if (!isOpen) return;
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -152,7 +194,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       if (event.key === 'Escape') { event.preventDefault(); leaveRef.current('close'); return; }
       if (event.key !== 'Tab') return;
       const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), summary') ?? [])
-        .filter((item) => !item.closest('details:not([open])') || item.tagName === 'SUMMARY');
+        .filter((item) => !item.closest('[hidden]') && (!item.closest('details:not([open])') || item.tagName === 'SUMMARY'));
       if (!items.length) return;
       if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1)?.focus(); }
       else if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0].focus(); }
@@ -170,7 +212,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     });
   };
   const create = async () => {
-    if (!activeSession || !ownerReady || !comparable?.canCreate || activeSession.saving || activeSession.reloading) return;
+    if (!activeSession || !ownerReady || !comparable?.canCreate || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
     const scope = scopeRef.current;
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     const creation = ++scope.creation;
@@ -298,17 +340,43 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     <div className="absolute inset-0 bg-gray-900/60" aria-hidden="true" onClick={() => askLeave('close')} />
     <div ref={panelRef} className="relative flex h-full w-full flex-col overflow-hidden bg-white shadow-xl sm:mx-4 sm:h-auto sm:max-h-[92vh] sm:max-w-6xl sm:rounded-2xl">
       <header className="flex items-start justify-between gap-3 border-b p-4 sm:px-6">
-        <div><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
-        <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
+        <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
+        <div className="ml-3 flex shrink-0 items-start gap-2">
+          <button type="button" className={button} disabled={!ownerReady} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
+            onClick={() => { if (!supplementMounted) supplementInputRef.current = incomingProfileKey; setSupplementMounted(true); setSupplementOpen((old) => !old); }}>
+            {copy('Add experience details', '补充经历')}
+          </button>
+          <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
+        </div>
       </header>
-      <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
-        <p className="mb-2 text-sm font-medium">{copy('Uses only confirmed items in your master résumé. Unconfirmed fields and unlinked experience are not automatically included.', '只使用简历母版中已确认的内容，未确认字段和未关联经历不会自动加入。')}</p>
-        <p className="text-sm text-gray-600">{copy('Select whole confirmed fields and experience blocks, then edit this independent draft by hand. Suggested order uses literal target-word overlap; it does not rewrite or verify claims. PDF and DOCX export are not available here.', '选择完整的已确认字段与经历块，再人工编辑这份独立文稿。排序建议只参考目标词语的字面重合，不改写或核实事实。此处暂不提供 PDF 或 DOCX 导出。')}</p>
-        {leave && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
-          <p>{copy('You have unsaved edits. Discard them to continue, or keep editing. A save already in progress may still finish.', '你有未保存编辑。可放弃后继续，或保留编辑；已经发出的保存仍可能完成。')}</p>
+        {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <p>{leave === 'rebuild'
+            ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
+            : copy('You have unsaved edits or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
           <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => setLeave(null)}>{copy('Keep editing', '继续编辑')}</button>
-            <button type="button" className={button} disabled={leave === 'rebuild' && (!comparable?.canCreate || activeSession?.saving)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
+            <button type="button" className={button} disabled={leave === 'rebuild' && (!comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
         </div>}
+      <div className={`min-h-0 overflow-y-auto p-4 sm:p-6 ${supplementOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6' : ''}`}>
+        {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
+          className="mb-5 min-w-0 rounded-xl border bg-gray-50 p-4 lg:order-2 lg:sticky lg:top-0 lg:mb-0 lg:max-h-[calc(92vh-10rem)] lg:overflow-y-auto">
+          <ResumeSupplementPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}`}
+            owner={activeSession.scope.owner} targetKey={targetKey}
+            onDirtyChange={(value) => { if (current(activeSession.scope)) setSupplementDirty(value); }}
+            onOpenProfile={() => askLeave('master')}
+            onAcceptedProfile={(view, againstView) => {
+              if (current(activeSession.scope) && isOwnerTokenValid(view.token, view.token.uid)
+                && view.token.uid === activeSession.scope.owner.uid && view.token.epoch === activeSession.scope.owner.epoch
+                && view.token.generation === activeSession.scope.owner.generation
+                && isOwnerTokenValid(againstView.token, againstView.token.uid)
+                && (supplementInputRef.current === incomingProfileRef.current
+                  || canonical(againstView.renderedProfile) === incomingProfileRef.current)) {
+                setSupplementProfile({ view, inputKey: incomingProfileRef.current });
+              }
+            }} />
+        </aside>}
+        <div className="min-w-0 lg:order-1">
+        <p className="mb-2 text-sm font-medium">{copy('Uses only confirmed items linked to your master résumé.', '只使用母版中已确认并关联的内容。')}</p>
+        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Suggested order uses matching words. PDF and DOCX export is not available yet.', '选择并编辑适合该机会的内容。排序建议依据词语匹配，暂不支持 PDF 或 DOCX 导出。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
@@ -328,8 +396,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </>}
         {activeSession && activeSession.phase !== 'loading' && activeSession.phase !== 'load-error' && <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
-            onClick={() => { if (dirty) setLeave('rebuild'); else void create(); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
-          {!comparable?.canCreate && (dirty
+            onClick={() => { if (doc) setLeave('rebuild'); else void create(); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
+          {!comparable?.canCreate && ((dirty || supplementDirty)
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
             : <Link href="/#resume-master" className="text-sm text-indigo-700 underline">{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
         </div>}
@@ -394,6 +462,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           </details>
         </>}
         {onOpenLegacy && <button type="button" className={`${button} mt-6`} onClick={() => askLeave('legacy')}>{copy('Edit résumé bullets', '编辑经历条目')}</button>}
+        </div>
       </div>
     </div>
   </div>;

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as contract from '@/lib/target-resume';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
 import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
 import type { LoadedTargetResume, TargetResumeSaveResult, TargetResumeV1 } from '@/lib/target-resume';
 import { DEFAULT_PROFILE } from '@/app/home/types';
@@ -16,6 +18,14 @@ vi.mock('@/lib/target-resume-storage', () => ({
   loadTargetResumeHistory: (...args: unknown[]) => storage.history(...args), loadTargetResumeVersion: (...args: unknown[]) => storage.version(...args),
 }));
 vi.mock('@/i18n/client', () => ({ useLocale: () => 'en' }));
+const supplement = vi.hoisted(() => ({ props: null as ResumeSupplementPanelProps | null, push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: supplement.push }) }));
+vi.mock('./ResumeSupplementPanel', () => ({ default: (props: ResumeSupplementPanelProps) => {
+  supplement.props = props;
+  return <div><label>Supplement test answer<textarea aria-label="Supplement test answer" onChange={(event) => props.onDirtyChange?.(!!event.target.value)} /></label>
+    <button onClick={props.onOpenProfile}>Review master from supplement</button></div>;
+} }));
+
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 const opportunity: Opportunity = {
   id: 'opportunity-one', title: 'Robotics research', organization: 'Example Lab', opportunity_type: 'research',
@@ -54,6 +64,7 @@ beforeEach(async () => {
   vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch('target-resume-owner-a'); await syncLocalIdentityOwner('target-resume-owner-a');
   await waitFor(() => expect(isLocalOwnerReady('target-resume-owner-a')).toBe(true));
+  supplement.props = null; supplement.push.mockReset();
   storage.load.mockReset().mockResolvedValue(null); storage.save.mockReset().mockResolvedValue({ status: 'failed' });
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
@@ -292,8 +303,121 @@ describe('full target résumé modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'View version 1 · old' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild from current confirmed master' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
     await screen.findByDisplayValue('Alex 王');
     await act(async () => body.resolve(loaded(withName(original, 'Late history'))));
     expect(screen.queryByRole('region', { name: 'Selected historical version preview' })).toBeNull();
+  });
+});
+
+
+describe('supplement panel integration', () => {
+  const viewOf = (p: ProfileData): ProfileViewSnapshot => ({ viewId: crypto.randomUUID(), baseProfile: clone(p), renderedProfile: clone(p),
+    revision: 2, token: captureOwnerToken(), identityGeneration: captureOwnerToken().epoch, source: 'hydration' });
+  async function savedUI(p = profile(), onClose = vi.fn()) {
+    storage.load.mockResolvedValue(loaded(withName(await docFor(p), 'Saved hand-written name')));
+    const rendered = renderModal(p, opportunity, { onClose });
+    await screen.findByDisplayValue('Saved hand-written name');
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    return { ...rendered, onClose };
+  }
+  it('keeps unconfirmed answers when collapsed or a close is cancelled, then guards master navigation', async () => {
+    const { onClose } = await savedUI();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Supplement test answer' }), { target: { value: 'I measured the samples, not the whole team.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    expect(screen.queryByRole('textbox', { name: 'Supplement test answer' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('I measured the samples, not the whole team.');
+    fireEvent.click(screen.getByRole('button', { name: 'Review master from supplement' }));
+    expect(supplement.push).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits and continue' }));
+    expect(supplement.push).toHaveBeenCalledWith('/#resume-master'); expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('keeps supplemental answers across a failed target-document read and its retry', async () => {
+    const p = profile(); const onClose = vi.fn();
+    storage.load.mockRejectedValueOnce(new Error('failed target read')).mockResolvedValueOnce(loaded(await docFor(p)));
+    renderModal(p, opportunity, { onClose });
+    await screen.findByText(/The saved résumé could not be read/);
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Supplement test answer' }), { target: { value: 'Keep this independent answer' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry reading saved résumé' }));
+    await screen.findByRole('textbox', { name: 'Edit Full name' });
+    expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('Keep this independent answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits or answers');
+  });
+  it('registers browser-close requests through the same unsaved-answer guard', async () => {
+    const p = profile(); storage.load.mockResolvedValue(loaded(await docFor(p)));
+    const onClose = vi.fn(); const register = vi.fn();
+    const { unmount } = render(<FullTargetResumeModal isOpen onClose={onClose} profile={p} opportunity={opportunity} onCloseRequestChange={register} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Supplement test answer' }), { target: { value: 'Keep on browser Back' } });
+    const request = register.mock.calls.at(-1)![0] as () => boolean;
+    let closed: boolean | undefined; act(() => { closed = request(); });
+    expect(closed).toBe(false); expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits or answers');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('Keep on browser Back');
+    act(() => { closed = request(); }); expect(closed).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits and continue' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    unmount(); expect(register).toHaveBeenLastCalledWith(null);
+  });
+  it('keeps even saved hand edits until the user explicitly accepts a rebuild', async () => {
+    await savedUI();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild from current confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Existing edits will not carry over');
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Saved hand-written name');
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Saved hand-written name');
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
+    await screen.findByDisplayValue('Alex 王'); expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('accepts supplemented profile only for future creation without modifying the current target', async () => {
+    const p = profile(); await savedUI(p);
+    editName('Unsaved name after opening panel');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include field: Degree' }));
+    const next = clone(p); next.resume_master!.basics.name!.value = 'Updated master name'; next.resume_master!.revision += 1;
+    act(() => supplement.props!.onAcceptedProfile?.(viewOf(next), viewOf(p)));
+    await screen.findByText(/created from different profile or target materials/);
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Unsaved name after opening panel');
+    expect(screen.getByRole('checkbox', { name: 'Include field: Degree' })).not.toBeChecked();
+    storage.save.mockImplementationOnce(async (doc: TargetResumeV1) => ({ status: 'saved', value: loaded(doc, 2) }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    expect(storage.save.mock.calls[0][0].base_snapshot.resume_master.basics.name.value).toBe('Alex 王');
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
+    await screen.findByDisplayValue('Updated master name');
+  });
+  it('accepts a supplement made after explicitly reviewing a newer parent profile', async () => {
+    const p = profile(); const { rerender } = await savedUI(p);
+    const newer = clone(p); newer.resume_master!.basics.name!.value = 'Reviewed parent name';
+    rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={newer} opportunity={opportunity} />);
+    const supplemented = clone(newer); supplemented.resume_master!.basics.name!.value = 'Supplement after review';
+    act(() => supplement.props!.onAcceptedProfile?.(viewOf(supplemented), viewOf(newer)));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild from current confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
+    await screen.findByDisplayValue('Supplement after review');
+  });
+  it('does not replace a newer parent profile with a late supplement callback', async () => {
+    const p = profile(); const { rerender } = await savedUI(p);
+    const callback = supplement.props!.onAcceptedProfile!;
+    const newer = clone(p); newer.resume_master!.basics.name!.value = 'Newer parent name';
+    rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={newer} opportunity={opportunity} />);
+    const obsolete = clone(p); obsolete.resume_master!.basics.name!.value = 'Obsolete callback name';
+    act(() => callback(viewOf(obsolete), viewOf(p)));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild from current confirmed master' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild from current confirmed master' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
+    await screen.findByDisplayValue('Newer parent name');
+    expect(screen.queryByDisplayValue('Obsolete callback name')).toBeNull();
   });
 });
