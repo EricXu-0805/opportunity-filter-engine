@@ -19,7 +19,8 @@ import type {
   DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
-import { captureOwnerToken } from './identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from './identity-owner';
+import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
 import { bySlug } from './schools';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
@@ -1031,6 +1032,30 @@ export async function renovateResume(
   return request<RenovateResponse>('/tailor/renovate', {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+/** One explicit batch of whole-document suggestions. Replays may spend again,
+ * so retries remain opt-in at the workspace, never automatic in transport. */
+export async function generateTargetResumeSuggestions(
+  payload: TargetResumeAiRequest,
+  options: { owner: OwnerToken; signal?: AbortSignal },
+): Promise<TargetResumeAiResponse> {
+  const body = JSON.stringify(payload);
+  if (new TextEncoder().encode(body).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) {
+    throw new ApiError(413, 'FULL_TARGET_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
+  }
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  const token = await getRevealAccessToken();
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  return request<TargetResumeAiResponse>('/tailor/full-target/suggestions', {
+    method: 'POST', body, signal: options.signal, cache: 'no-store',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    retries: 0,
   });
 }
 

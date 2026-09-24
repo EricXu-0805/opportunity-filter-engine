@@ -43,12 +43,39 @@ import logging
 import os
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Optional
 
 from backend.lib import llm_budget
 
 logger = logging.getLogger("ofe.llm")
+
+_PRIVATE_PROVIDER_LOGGING = ContextVar("ofe_private_provider_logging", default=False)
+
+
+class _PrivateProviderLogFilter(logging.Filter):
+    def filter(self, record):
+        return not _PRIVATE_PROVIDER_LOGGING.get()
+
+
+_PRIVATE_PROVIDER_LOG_FILTER = _PrivateProviderLogFilter()
+
+
+@contextmanager
+def _provider_log_scope(private: bool):
+    # The installed SDK logs complete RequestOptions at DEBUG and exception
+    # bodies in response parsing. Suppress only this call's SDK diagnostics;
+    # concurrent/legacy calls keep their existing logging configuration.
+    if private:
+        for name in ("openai._base_client", "openai._response", "openai._legacy_response"):
+            logging.getLogger(name).addFilter(_PRIVATE_PROVIDER_LOG_FILTER)
+    token = _PRIVATE_PROVIDER_LOGGING.set(private)
+    try:
+        yield
+    finally:
+        _PRIVATE_PROVIDER_LOGGING.reset(token)
 
 _MAX_ATTEMPTS = 2
 _RETRY_BASE_DELAY_SECONDS = 0.5
@@ -204,6 +231,7 @@ def chat_completion(
     reasoning_effort: str = "none",
     model: Optional[str] = None,
     provider_id: Optional[str] = None,
+    safe_error_logging: bool = False,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
@@ -260,26 +288,30 @@ def chat_completion(
     last_error: Optional[Exception] = None
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
-            client = openai.OpenAI(**client_kwargs)
-            # Counted before the call, and per attempt: a retry is a second
-            # request the provider may well bill for, and a call that raises
-            # after the provider received it is not free either. The day
-            # ceiling has to fail toward under-spending.
-            llm_budget.spend()
-            resp = client.chat.completions.create(**call_kwargs)
-            text = (resp.choices[0].message.content or "").strip()
-            return text or None
+            with _provider_log_scope(safe_error_logging):
+                client = openai.OpenAI(**client_kwargs)
+                # Count per issued attempt, including failed/retried requests.
+                llm_budget.spend()
+                resp = client.chat.completions.create(**call_kwargs)
+                text = (resp.choices[0].message.content or "").strip()
+                return text or None
         except Exception as exc:
             last_error = exc
             if attempt < _MAX_ATTEMPTS:
                 time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
 
-    logger.warning(
-        "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
-        _MAX_ATTEMPTS,
-        effective_model,
-        last_error,
-    )
+    if safe_error_logging:
+        status = getattr(last_error, "status_code", None)
+        logger.warning(
+            "LLM chat_completion failed attempts=%d error_type=%s status=%s",
+            _MAX_ATTEMPTS, type(last_error).__name__,
+            status if type(status) is int and 100 <= status <= 599 else None,
+        )
+    else:
+        logger.warning(
+            "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
+            _MAX_ATTEMPTS, effective_model, last_error,
+        )
     return None
 
 

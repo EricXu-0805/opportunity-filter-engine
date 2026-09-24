@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
+import TargetResumeAiPanel from './TargetResumeAiPanel';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import { buildResumeMasterPreview, validateResumeMaster } from '@/lib/resume-master';
@@ -67,6 +68,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [supplementOpen, setSupplementOpen] = useState(false);
   const [supplementMounted, setSupplementMounted] = useState(false);
   const [supplementDirty, setSupplementDirty] = useState(false);
+  const [aiDirty, setAiDirty] = useState(false);
   const supplementInputRef = useRef<string | null>(null);
   const incomingProfileRef = useRef(incomingProfileKey);
   const routerRef = useRef(router);
@@ -116,7 +118,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!isOpen) {
       // Closing the whole workspace retires its private answer buffer.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSupplementDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAiDirty(false); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
       return;
     }
@@ -127,7 +129,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     // A target-document read retry does not discard independent answers.
     if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
       || previous.owner.epoch !== scope.owner.epoch || previous.owner.generation !== scope.owner.generation) {
-      setSupplementDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAiDirty(false); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
     }
     // Opening/retrying/target replacement defines a new private document scope.
@@ -173,9 +175,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const creating = activeSession?.phase === 'creating';
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (supplementDirty || (session && isDirty(session))) { setLeave(action); return false; }
+    if (supplementDirty || aiDirty || (session && isDirty(session))) { setLeave(action); return false; }
     exit(action); return true;
-  }, [session, supplementDirty, exit]);
+  }, [session, supplementDirty, aiDirty, exit]);
 
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
@@ -352,7 +354,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
-            : copy('You have unsaved edits or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
+            : copy('You have unsaved edits, suggestions or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑、建议或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
           <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => setLeave(null)}>{copy('Keep editing', '继续编辑')}</button>
             <button type="button" className={button} disabled={leave === 'rebuild' && (!comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
         </div>}
@@ -376,7 +378,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </aside>}
         <div className="min-w-0 lg:order-1">
         <p className="mb-2 text-sm font-medium">{copy('Uses only confirmed items linked to your master résumé.', '只使用母版中已确认并关联的内容。')}</p>
-        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Suggested order uses matching words. PDF and DOCX export is not available yet.', '选择并编辑适合该机会的内容。排序建议依据词语匹配，暂不支持 PDF 或 DOCX 导出。')}</p>
+        <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them. PDF and DOCX export is not available yet.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，暂不支持 PDF 或 DOCX 导出。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
@@ -414,6 +416,20 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <p>{copy('A newer server version exists. Your local edits are preserved and have not overwritten it. Loading the server version will discard your local edits.', '服务器已有更新版本。本地编辑仍保留，未覆盖服务器；载入服务器版本会放弃本地编辑。')}</p>
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
+          <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
+            currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
+            enabled={canEdit && !!comparable && !outdated && !activeSession.conflict}
+            onDirtyChange={(value) => { if (current(activeSession.scope)) setAiDirty(value); }}
+            onApply={(expectedCanonical, next) => {
+              if (!canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+              const checked = validateTargetResume(next);
+              if (!checked.ok) return;
+              update(activeSession.scope, (old) => {
+                if (!old.doc || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
+                return { ...old, doc: clone(checked.value), editRevision: old.editRevision + 1, error: null };
+              });
+            }} />
           <div className="space-y-4">
             {doc.document.sections.map((section, sectionIndex) => <fieldset key={section.id} className="min-w-0 rounded-xl border p-3" disabled={!canEdit}>
               <legend className="px-1 font-semibold">{sectionTitle(section)}</legend>
@@ -434,7 +450,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                       <div className="min-w-0"><label htmlFor={inputId} className="text-xs font-medium text-gray-500">{copy('Edit', '编辑')} {label(line)}</label><textarea id={inputId} value={line.text} rows={4} className="mt-1 w-full rounded-lg border p-2 text-sm"
                         onChange={(event) => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = event.target.value; })} /></div>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500">{line.text === line.original ? copy('Kept exactly from the confirmed source.', '与已确认来源完全一致。') : copy('Manually edited. Check the original and target requirements; this change has not been fact-checked automatically.', '已人工修改。请对照原文和目标要求，本次修改未经过自动事实核验。')}</p>
+                    <p className="mt-2 text-xs text-gray-500">{line.text === line.original ? copy('Kept exactly from the confirmed source.', '与已确认来源完全一致。') : copy('Edited from the confirmed source. Check the original and target requirements; this wording has not been fully fact-checked.', '已修改。请对照原文和目标要求核对；此表述尚未完成事实核查。')}</p>
                     <button type="button" className={`${button} mt-2`} disabled={!canEdit || line.text === line.original} aria-label={`${copy('Restore original', '恢复原文')} ${label(line)}`}
                       onClick={() => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = line.original; })}>{copy('Restore original', '恢复原文')}</button>
                   </div>;
