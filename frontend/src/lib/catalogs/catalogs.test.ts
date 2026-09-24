@@ -76,6 +76,10 @@ describe('zh catalog parity — every catalog label has dictionary entries', () 
     const missing: string[] = [];
     for (const school of SCHOOLS) {
       const catalog = await loadCatalog(school.slug);
+      if (!school.catalog) {
+        expect(catalog, `${school.slug}: unannounced catalog`).toBeNull();
+        continue;
+      }
       for (const [college, majors] of Object.entries(catalog!)) {
         if (!enColleges[college]) missing.push(`en colleges: ${school.slug}/${college}`);
         if (!zhColleges[college]) missing.push(`zh colleges: ${school.slug}/${college}`);
@@ -90,10 +94,13 @@ describe('zh catalog parity — every catalog label has dictionary entries', () 
 });
 
 describe('registry counts match catalog data exactly', () => {
-  it('every registered school has a catalog and honest static counts', async () => {
+  it('every registered school declares its real catalog availability and counts', async () => {
     for (const school of SCHOOLS) {
-      expect(school.catalog, `${school.slug} should ship a catalog`).not.toBeNull();
       const catalog = await loadCatalog(school.slug);
+      if (!school.catalog) {
+        expect(catalog, `${school.slug} should use free-text inputs`).toBeNull();
+        continue;
+      }
       expect(catalog, `${school.slug} registry/loader mismatch`).not.toBeNull();
       const colleges = Object.keys(catalog!).length;
       const majors = Object.values(catalog!).reduce((sum, m) => sum + m.length, 0);

@@ -1890,3 +1890,34 @@ describe('W13 target isolation + draft staleness', () => {
     expect(screen.queryByTestId('tailor-stale-draft')).toBeNull();
   });
 });
+
+
+describe('resume processing disclosure', () => {
+  it('shows long-input bounds before extraction and mixed coverage afterward', async () => {
+    const profile = makeProfile({ resume_text: 'x'.repeat(8_100) });
+    mockExtractResumeBullets.mockResolvedValue({
+      method: 'mixed', bullets: ['Final source experience'], warnings: ['bullet_selection_limited'],
+      processing: {
+        input_characters: 8_100, ai_chunks: 1, heuristic_chunks: 1,
+        chunks: [{ start: 0, end: 8_000, method: 'ai' }, { start: 8_000, end: 8_100, method: 'heuristic' }],
+      },
+    });
+    render(<TailorModal {...baseProps} profile={profile} />);
+    expect(screen.getByText('resume.processingLong')).toBeInTheDocument();
+    expect(mockExtractResumeBullets).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
+    await waitFor(() => expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument());
+    expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
+    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text);
+  });
+
+  it('keeps the current draft and shows failure when a long extraction is rejected', async () => {
+    mockExtractResumeBullets.mockRejectedValue(new Error('input rejected'));
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'x'.repeat(8_100) })} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'My current draft' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
+    await waitFor(() => expect(screen.getByText('resume.extractionFailed')).toBeInTheDocument());
+    expect(textarea.value).toBe('My current draft');
+  });
+});

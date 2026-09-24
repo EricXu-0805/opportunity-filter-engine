@@ -636,3 +636,27 @@ it('restarts restore with a fresh capability when the same anonymous owner becom
   await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
   expect(mockSaveRenovation.mock.calls[0][5]).toEqual(readyToken);
 });
+
+
+describe('resume processing coverage persists with the generated document', () => {
+  it('keeps partial extraction metadata and warnings in the saved review document', async () => {
+    const processing = {
+      input_characters: 8_100, ai_chunks: 1, heuristic_chunks: 1,
+      chunks: [{ start: 0, end: 8_000, method: 'ai' }, { start: 8_000, end: 8_100, method: 'heuristic' }],
+    };
+    mockStructureResume.mockResolvedValue({
+      sections: [{ id: 's1', heading: 'Projects', kind: 'projects', bullets: [{ id: 's1b1', text: 'Built a data pipeline' }] }],
+      method: 'mixed', warnings: ['partial_ai_processing', 'bullet_selection_limited'], processing,
+    });
+    mockRenovateResume.mockResolvedValue(makeDoc());
+    renderModal(makeProfile({ resume_text: 'x'.repeat(8_100) }));
+    await screen.findByText('renovate.start');
+    expect(screen.getByText('resume.processingLong')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('renovate.start'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
+    expect(mockSaveRenovation.mock.calls[0][1].processing).toEqual(processing);
+    expect(mockSaveRenovation.mock.calls[0][1].warnings).toContain('partial_ai_processing');
+    expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument();
+    expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
+  });
+});

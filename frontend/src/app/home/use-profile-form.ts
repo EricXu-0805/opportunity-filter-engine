@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
-import { getStats, parseGitHubProfile } from '@/lib/api';
+import { parseGitHubProfile } from '@/lib/api';
 import {
   captureOwnerToken,
   isOwnerScopedLoadError,
@@ -101,8 +101,6 @@ export interface UseProfileFormResult {
   setProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
   searchWeight: number;
   setSearchWeight: (v: number) => void;
-  oppCount: number | null;
-  lastUpdated: string | null;
   ghLoading: boolean;
   ghStatus: string | null;
   sharedBanner: string | null;
@@ -193,8 +191,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchWeight, setSearchWeight] = useState(DEFAULT_SEARCH_WEIGHT);
-  const [oppCount, setOppCount] = useState<number | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [ghLoading, setGhLoading] = useState(false);
   const [ghStatus, setGhStatus] = useState<string | null>(null);
   const [sharedBannerVisible, setSharedBannerVisible] = useState(false);
@@ -1845,11 +1841,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [startLoad, resetForPendingLoad, armRetryable, setSaveStatus]);
 
   useEffect(() => {
-    getStats().then((s) => {
-      setOppCount(s.total);
-      setLastUpdated(s.last_updated_at ?? null);
-    }).catch(() => {});
-
     const shareParam = searchParams.get('share');
     if (shareParam) {
       if (shareImportedParamRef.current === shareParam) {
@@ -3123,8 +3114,6 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     setProfile: editProfile,
     searchWeight,
     setSearchWeight: editSearchWeight,
-    oppCount,
-    lastUpdated,
     ghLoading,
     ghStatus,
     sharedBanner: sharedBannerVisible ? t('home.sharedBanner') : null,

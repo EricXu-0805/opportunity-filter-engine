@@ -533,10 +533,24 @@ export interface ResumeSectionInput {
   bullets: ResumeBulletInput[];
 }
 
+/** Character offsets are Unicode code points, not JavaScript string offsets. */
+export interface ResumeProcessingCoverage {
+  input_characters: number;
+  chunks: Array<{
+    start: number;
+    end: number;
+    method: 'ai' | 'heuristic';
+    reason?: string | null;
+  }>;
+  ai_chunks: number;
+  heuristic_chunks: number;
+}
+
 export interface StructureResumeResponse {
   sections: ResumeSectionInput[];
-  method: 'ai' | 'heuristic';
+  method: 'ai' | 'heuristic' | 'mixed';
   warnings: string[];
+  processing?: ResumeProcessingCoverage;
 }
 
 export type RenovatedVariantSource = 'macro' | 'ai' | 'user';
@@ -579,6 +593,7 @@ export interface BulletOptimizeResponse {
 
 /** The working document the modal edits and supabase persists (doc jsonb). */
 export interface RenovationDoc {
+  processing?: ResumeProcessingCoverage;
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
@@ -602,6 +617,8 @@ export interface ResumeSkillEvidence {
 }
 
 export interface ResumeParseResponse {
+  error_code?: 'text_too_long' | 'no_readable_text' | 'pdf_resources_unavailable';
+  pages_without_text?: number[];
   extracted_skills: string[];
   skill_evidence: ResumeSkillEvidence[];
   extracted_coursework: string[];

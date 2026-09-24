@@ -18,10 +18,12 @@ import {
   FileText,
 } from 'lucide-react';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
+import ResumeProcessingNotice from './ResumeProcessingNotice';
 import { saveRenovation, loadRenovation } from '@/lib/supabase';
 import type {
   ProfileData,
   ResumeSectionInput,
+  StructureResumeResponse,
   RenovationDoc,
   RenovatedBullet,
   RenovatedSection,
@@ -158,6 +160,7 @@ export default function ResumeRenovationModal({
   const [workingStep, setWorkingStep] = useState<'structuring' | 'renovating'>('structuring');
   const [doc, setDoc] = useState<RenovationDoc | null>(null);
   const [baseSections, setBaseSections] = useState<ResumeSectionInput[]>([]);
+  const [structureResult, setStructureResult] = useState<StructureResumeResponse | null>(null);
   const [restoredFromSave, setRestoredFromSave] = useState(false);
   const staleResume = !!doc && typeof doc.resume_sig === 'string' &&
     doc.resume_sig !== hashString(profile.resume_text ?? '');
@@ -214,6 +217,7 @@ export default function ResumeRenovationModal({
     setPhase('restoring');
     setCurrentDoc(null);
     setBaseSections([]);
+    setStructureResult(null);
     setRestoredFromSave(false);
     setError(null);
     setCopied(false);
@@ -242,6 +246,7 @@ export default function ResumeRenovationModal({
       lastPersistRef.current = null;
       setCurrentDoc(null);
       setBaseSections([]);
+      setStructureResult(null);
       setPhase('restoring');
       setEditingId(null);
       setEditDraft('');
@@ -368,11 +373,13 @@ export default function ResumeRenovationModal({
     const resumeSignature = hashString(profile.resume_text);
     setPhase('working');
     setWorkingStep('structuring');
+    setStructureResult(null);
     setError(null);
     setRestoredFromSave(false);
     try {
       const structured = await structureResume(profile.resume_text, { locale });
       if (!isCurrentScope(scope)) return;
+      setStructureResult(structured);
       if (structured.sections.length === 0) {
         setError(t('renovate.noSections'));
         setPhase('idle');
@@ -387,7 +394,8 @@ export default function ResumeRenovationModal({
         resume_sig: resumeSignature,
         sections: renovated.sections,
         method: renovated.method,
-        warnings: renovated.warnings,
+        warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
+        processing: structured.processing,
       };
       setCurrentDoc(nextDoc);
       setBaseSections(structured.sections);
@@ -584,6 +592,15 @@ export default function ResumeRenovationModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
+          {phase !== 'restoring' && (hasResume || doc?.processing) && (
+            <div className="px-4 sm:px-6 pt-4">
+              <ResumeProcessingNotice
+                text={profile.resume_text ?? ''}
+                processing={structureResult?.processing ?? doc?.processing}
+                warnings={structureResult?.warnings ?? doc?.warnings}
+              />
+            </div>
+          )}
           {phase === 'restoring' && (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="w-7 h-7 text-indigo-500 animate-spin" />
