@@ -2392,33 +2392,104 @@ export interface StoredRenovation {
   updated_at: string;
 }
 
+export class RenovationLoadError extends Error {
+  constructor(public readonly code: 'read_failed' | 'invalid_saved_data') {
+    super('The saved résumé could not be restored. Please try again.');
+    this.name = 'RenovationLoadError';
+  }
+}
+
+function renovationRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function renovationStringList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function renovationSectionsValid(value: unknown, renovated: boolean): boolean {
+  if (!Array.isArray(value) || (renovated && value.length === 0)) return false;
+  const sectionIds = new Set<string>();
+  const bulletIds = new Set<string>();
+  return value.every((section) => {
+    if (!renovationRecord(section) || typeof section.id !== 'string' || !section.id.trim()
+      || sectionIds.has(section.id) || typeof section.heading !== 'string'
+      || typeof section.kind !== 'string' || !Array.isArray(section.bullets)) return false;
+    sectionIds.add(section.id);
+    return section.bullets.every((bullet: unknown) => {
+      if (!renovationRecord(bullet) || typeof bullet.id !== 'string' || !bullet.id.trim()
+        || bulletIds.has(bullet.id)) return false;
+      bulletIds.add(bullet.id);
+      if (!renovated) return typeof bullet.text === 'string';
+      if (typeof bullet.base_text !== 'string' || typeof bullet.action !== 'string'
+        || !Array.isArray(bullet.variants) || !Number.isInteger(bullet.current)
+        || (bullet.current as number) < -1 || (bullet.current as number) >= bullet.variants.length) return false;
+      return bullet.variants.every((variant: unknown) => renovationRecord(variant)
+        && typeof variant.source === 'string' && typeof variant.text === 'string'
+        && typeof variant.source_evidence === 'string');
+    });
+  });
+}
+
+function renovationProcessingValid(value: unknown): boolean {
+  if (!renovationRecord(value) || !Array.isArray(value.chunks)) return false;
+  const count = (item: unknown): item is number => Number.isSafeInteger(item) && (item as number) >= 0;
+  return count(value.input_characters) && count(value.ai_chunks) && count(value.heuristic_chunks)
+    && value.chunks.every((chunk: unknown) => renovationRecord(chunk)
+      && count(chunk.start) && count(chunk.end) && chunk.end >= chunk.start
+      && chunk.end <= (value.input_characters as number)
+      && (chunk.method === 'ai' || chunk.method === 'heuristic')
+      && (chunk.reason === undefined || chunk.reason === null || typeof chunk.reason === 'string'));
+}
+
+function storedRenovationValid(value: unknown): value is StoredRenovation {
+  if (!renovationRecord(value) || !renovationRecord(value.doc)
+    || !renovationRecord(value.base_snapshot)
+    || (value.method !== null && typeof value.method !== 'string')
+    || !renovationStringList(value.warnings) || typeof value.updated_at !== 'string') return false;
+  const doc = value.doc;
+  return renovationSectionsValid(doc.sections, true) && typeof doc.method === 'string'
+    && renovationStringList(doc.warnings)
+    // Signatures/coverage were added after the first stored documents. Keep
+    // absence and unknown string signatures intact; do not invent freshness.
+    && (doc.resume_sig === undefined || typeof doc.resume_sig === 'string')
+    && (doc.profile_sig === undefined || typeof doc.profile_sig === 'string')
+    && (doc.processing === undefined || renovationProcessingValid(doc.processing))
+    && (value.base_snapshot.sections === undefined || renovationSectionsValid(value.base_snapshot.sections, false));
+}
+
 export async function loadRenovation(
   opportunityId: string,
   token: OwnerToken = captureOwnerToken(),
 ): Promise<StoredRenovation | null> {
   if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
-  if (!deviceId) return null;
-  const { data, error } = await supabase
-    .from('resume_renovations')
-    .select('doc, base_snapshot, method, warnings, updated_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .maybeSingle();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (error) {
-    console.warn('[ofe] renovation load failed:', error.message);
-    return null;
+  let deviceId: string | null;
+  try {
+    deviceId = await ensureAnonSession();
+  } catch {
+    if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
+    throw new RenovationLoadError('read_failed');
   }
-  if (!data || !data.doc || typeof data.doc !== 'object') return null;
-  return {
-    doc: data.doc as Record<string, unknown>,
-    base_snapshot: (data.base_snapshot ?? {}) as Record<string, unknown>,
-    method: (data.method as string | null) ?? null,
-    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
-    updated_at: String(data.updated_at ?? ''),
-  };
+  if (!isOwnerTokenValid(token, deviceId) || !deviceId) throw new OwnerNotReadyError();
+  let result;
+  try {
+    result = await supabase
+      .from('resume_renovations')
+      .select('doc, base_snapshot, method, warnings, updated_at')
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId)
+      .maybeSingle();
+  } catch {
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    throw new RenovationLoadError('read_failed');
+  }
+  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+  // maybeSingle's successful null is the only evidence that no saved row
+  // exists. Transport/schema failures must never enable a replacement draft.
+  if (result.error) throw new RenovationLoadError('read_failed');
+  if (result.data === null) return null;
+  if (!storedRenovationValid(result.data)) throw new RenovationLoadError('invalid_saved_data');
+  return result.data;
 }
 
 export interface RenovationVersion {

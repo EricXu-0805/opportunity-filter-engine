@@ -145,7 +145,7 @@ async function installNetwork(page: Page, state: Network = { requests: [], write
   return state;
 }
 
-async function seedProfile(page: Page, blockSessionStorage = false): Promise<void> {
+async function seedProfile(page: Page, blockSessionStorage = false, profile: typeof PROFILE & { resume_text?: string } = PROFILE): Promise<void> {
   await page.addInitScript(({ profileKey, profile, localeKey, session, blocked }) => {
     // Do not replace an account after reload/back. This one-time test setup
     // leaves all subsequent owner transitions to the shipped application.
@@ -157,7 +157,7 @@ async function seedProfile(page: Page, blockSessionStorage = false): Promise<voi
     }
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
     if (blocked) Object.defineProperty(window, 'sessionStorage', { configurable: true, get() { throw new DOMException('Blocked for test', 'SecurityError'); } });
-  }, { profileKey: STORAGE_KEYS.PROFILE, profile: PROFILE, localeKey: STORAGE_KEYS.LOCALE, session: authSession(OWNER_A), blocked: blockSessionStorage });
+  }, { profileKey: STORAGE_KEYS.PROFILE, profile, localeKey: STORAGE_KEYS.LOCALE, session: authSession(OWNER_A), blocked: blockSessionStorage });
 }
 
 async function onSecondPage(page: Page, state: Network) {
@@ -260,6 +260,48 @@ test.describe('Results return context', () => {
     expect(net.requests).toHaveLength(count);
     expect(net.writes.filter((write) => /interactions|confirm_interaction_contact/.test(write))).toEqual([]);
   });
+  }
+
+  for (const failure of ['read failure', 'invalid saved document'] as const) {
+    test(`renovation ${failure} blocks replacement until retry restores the saved draft`, async ({ page }) => {
+      const net = await installNetwork(page);
+      await seedProfile(page, false, { ...PROFILE, resume_text: 'Built a small Python research project.' });
+      const existingText = 'Manually edited experience from the saved draft.';
+      const stored = {
+        doc: {
+          sections: [{ id: 's1', heading: 'Projects', kind: 'projects', bullets: [{
+            id: 'b1', base_text: 'Built a Python project.',
+            variants: [{ source: 'user', text: existingText, source_evidence: '' }],
+            current: 0, action: 'keep',
+          }] }], method: 'fallback', warnings: [],
+        },
+        base_snapshot: {}, method: 'fallback', warnings: [], updated_at: '2026-09-24T00:00:00Z',
+      };
+      let reads = 0;
+      await page.route('**/rest/v1/resume_renovations?**', async (route) => {
+        expect(route.request().method()).toBe('GET');
+        reads += 1;
+        if (reads === 1 && failure === 'read failure') {
+          await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'synthetic-private-backend-detail' }) });
+          return;
+        }
+        const data = reads === 1 ? { ...stored, doc: { sections: 'broken' } } : stored;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([data]) });
+      });
+      await onSecondPage(page, net);
+      await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: en.renovate.title, exact: true });
+      await expect(dialog.getByText(en.renovate.restoreFailed, { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: en.renovate.start, exact: true })).toHaveCount(0);
+      await expect(dialog.getByText('synthetic-private-backend-detail')).toHaveCount(0);
+      expect(net.writes.filter((write) => write.includes('resume_renovation'))).toEqual([]);
+      await dialog.getByRole('button', { name: en.renovate.restoreRetry, exact: true }).click();
+      await expect(dialog.getByText(en.renovate.restored, { exact: true })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: en.renovate.copyAll, exact: true })).toBeVisible();
+      await expect(dialog.getByText(existingText, { exact: false })).toBeVisible();
+      expect(reads).toBe(2);
+      expect(net.writes.filter((write) => write.includes('resume_renovation'))).toEqual([]);
+    });
   }
 
   test('an expired result cursor resets once with an explanation and keeps filters', async ({ page }) => {
