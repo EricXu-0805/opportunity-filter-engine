@@ -7,10 +7,15 @@ const MODAL_STATE = '__ofeResultsModal';
 // Closed cards must not remove the history marker owned by another live card.
 const activeEntries = new Set<string>();
 
-/** Back closes a results overlay. It never changes the student's tracker. */
-export function useResultModalHistory(open: boolean, onClose: () => void, ownerScopeKey: string | null) {
+/** A request handles closure itself; false means the editor kept its draft and
+ * displayed its existing discard confirmation. */
+export type ModalCloseRequest = () => boolean;
+
+/** Back requests closure of a results overlay. It never changes the tracker. */
+export function useResultModalHistory(open: boolean, onClose: () => void, ownerScopeKey: string | null, requestClose?: ModalCloseRequest) {
   const closeRef = useRef(onClose);
-  useLayoutEffect(() => { closeRef.current = onClose; }, [onClose]);
+  const requestRef = useRef(requestClose);
+  useLayoutEffect(() => { closeRef.current = onClose; requestRef.current = requestClose; }, [onClose, requestClose]);
   const entryRef = useRef<{ id: string; token: OwnerToken; owner: string | null } | null>(null);
 
   useEffect(() => {
@@ -27,6 +32,7 @@ export function useResultModalHistory(open: boolean, onClose: () => void, ownerS
       strip();
       activeEntries.delete(entry.id);
       entryRef.current = null;
+      closeRef.current();
       return;
     }
     if (open && !entry && window.location.pathname === '/results') {
@@ -49,9 +55,26 @@ export function useResultModalHistory(open: boolean, onClose: () => void, ownerS
     const onPop = () => {
       const entry = entryRef.current;
       if (entry && window.history.state?.[MODAL_STATE] !== entry.id) {
+        // Owner retirement always revokes private work. Never ask to keep it.
+        const canGuard = isOwnerTokenValid(entry.token, entry.token.uid)
+          && window.location.pathname === '/results';
+        let closed = true;
+        if (canGuard && requestRef.current) {
+          try { closed = requestRef.current(); }
+          catch { closed = false; } // an editor error must not discard its draft
+        } else closeRef.current();
+        if (!closed && isOwnerTokenValid(entry.token, entry.token.uid)) {
+          // Back already consumed our entry. Reuse its identity on the current
+          // result URL, preserving Next state, public filters and scroll. A
+          // later explicit discard closes normally and consumes this one entry.
+          try {
+            window.history.pushState({ ...window.history.state, [MODAL_STATE]: entry.id }, '', window.location.href);
+          } catch { /* keep the editor open even when history writes are denied */ }
+          return;
+        }
+        if (!closed) closeRef.current(); // ownership changed during the request
         activeEntries.delete(entry.id);
         entryRef.current = null;
-        closeRef.current();
       } else if (!entry && window.history.state?.[MODAL_STATE]
         && !activeEntries.has(window.history.state[MODAL_STATE])) {
         // Forward may reach an old overlay entry after its draft was closed.

@@ -103,3 +103,80 @@ describe('results modal history ownership', () => {
     expect(window.location.pathname).toBe('/opportunities/robot');
   });
 });
+
+
+describe('editor Back requests', () => {
+  function useEditor() {
+    const [open, setOpen] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const [draft, setDraft] = useState('Unsaved exact text');
+    const [dirty, setDirty] = useState(true);
+    useResultModalHistory(false, () => {}, 'modal-a');
+    useResultModalHistory(open, () => setOpen(false), 'modal-a', () => {
+      if (dirty) { setConfirming(true); return false; }
+      setOpen(false); return true;
+    });
+    useResultModalHistory(false, () => {}, 'modal-a');
+    return { open, setOpen, confirming, setConfirming, draft, setDraft, setDirty };
+  }
+  it('restores the same marker and Next state on refusal; cancel and repeated Back keep the buffer', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    const { result } = renderHook(useEditor);
+    act(() => result.current.setOpen(true));
+    const id = window.history.state[marker];
+    for (let i = 0; i < 2; i++) {
+      act(() => popTo({ __NA: true, nextTree: ['results'], other: 'kept' }));
+      expect(result.current.open).toBe(true); expect(result.current.confirming).toBe(true);
+      expect(result.current.draft).toBe('Unsaved exact text');
+      expect(window.history.state).toEqual({ __NA: true, nextTree: ['results'], other: 'kept', [marker]: id });
+      expect(window.location.search).toBe('?q=robots');
+      act(() => result.current.setConfirming(false));
+    }
+    expect(back).not.toHaveBeenCalled(); expect(scroll).not.toHaveBeenCalled();
+    // The editor's explicit discard uses its normal onClose, consuming exactly
+    // the restored entry. It does not ask a second time.
+    act(() => result.current.setOpen(false));
+    expect(back).toHaveBeenCalledTimes(1);
+  });
+  it('an accepted clean request closes itself without restoring or consuming another entry', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const { result } = renderHook(useEditor);
+    act(() => { result.current.setOpen(true); result.current.setDirty(false); });
+    const push = vi.spyOn(window.history, 'pushState');
+    act(() => popTo({ __NA: true }));
+    expect(result.current.open).toBe(false); expect(push).not.toHaveBeenCalled(); expect(back).not.toHaveBeenCalled();
+  });
+  it('owner invalidation bypasses a dirty guard on Back', async () => {
+    const request = vi.fn(() => false); const close = vi.fn();
+    renderHook(() => useResultModalHistory(true, close, 'modal-a', request));
+    advanceOwnerEpoch('modal-b'); await syncLocalIdentityOwner('modal-b');
+    const push = vi.spyOn(window.history, 'pushState');
+    act(() => popTo({ __NA: true }));
+    expect(request).not.toHaveBeenCalled(); expect(close).toHaveBeenCalledTimes(1); expect(push).not.toHaveBeenCalled();
+  });
+  it('retirement on a changed owner prop closes directly and never asks to keep private text', async () => {
+    const request = vi.fn(() => false); const close = vi.fn();
+    const { rerender } = renderHook(({ owner }) => useResultModalHistory(true, close, owner, request), { initialProps: { owner: 'modal-a' } });
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    advanceOwnerEpoch('modal-b'); await syncLocalIdentityOwner('modal-b');
+    rerender({ owner: 'modal-b' });
+    expect(request).not.toHaveBeenCalled(); expect(close).toHaveBeenCalledOnce(); expect(back).not.toHaveBeenCalled();
+    expect(window.history.state[marker]).toBeUndefined();
+  });
+  it('does not discard the editor if its request or history restoration fails', () => {
+    const close = vi.fn(); const request = vi.fn(() => { throw new Error('editor not ready'); });
+    renderHook(() => useResultModalHistory(true, close, 'modal-a', request));
+    vi.spyOn(window.history, 'pushState').mockImplementation(() => { throw new Error('history denied'); });
+    act(() => popTo({ __NA: true }));
+    expect(request).toHaveBeenCalledOnce(); expect(close).not.toHaveBeenCalled();
+  });
+  it('never restores an editor marker onto another route', () => {
+    const close = vi.fn(); const request = vi.fn(() => false);
+    renderHook(() => useResultModalHistory(true, close, 'modal-a', request));
+    window.history.replaceState({ __NA: true }, '', '/opportunities/other');
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')));
+    expect(close).toHaveBeenCalledOnce(); expect(request).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe('/opportunities/other'); expect(window.history.state[marker]).toBeUndefined();
+  });
+});

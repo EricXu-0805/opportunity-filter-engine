@@ -66,6 +66,7 @@ interface RenovationScope {
 interface ResumeRenovationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCloseRequestChange?: (request: (() => boolean) | null) => void;
   profile: ProfileData;
   opportunityId: string;
   opportunityTitle: string;
@@ -170,6 +171,7 @@ const ACTION_CHIP: Record<string, { className: string; icon: 'up' | 'down' | nul
 export default function ResumeRenovationModal({
   isOpen,
   onClose,
+  onCloseRequestChange,
   profile,
   opportunityId,
   opportunityTitle,
@@ -237,17 +239,23 @@ export default function ResumeRenovationModal({
   // Only user-requested exits consult dirty state; owner invalidation below
   // clears private work immediately and never asks to retain it.
   const requestLeave = useCallback((destination: 'close' | 'full') => {
-    if (exitRequestedRef.current || (scopeRef.current && !scopeRef.current.active)) return;
+    if (exitRequestedRef.current || (scopeRef.current && !scopeRef.current.active)) return true;
     const state = leaveStateRef.current;
     if ((state.editingId || state.saving || state.saveFailed) && !window.confirm(state.locale === 'zh'
       ? '还有未保存的改动。离开会丢弃尚未保存的编辑；已经发出的保存仍可能完成。确定离开？'
-      : 'There are unsaved changes. Leaving discards unsaved edits; a save already in progress may still finish. Leave bullet editing?')) return;
+      : 'There are unsaved changes. Leaving discards unsaved edits; a save already in progress may still finish. Leave bullet editing?')) return false;
     exitRequestedRef.current = true;
     if (scopeRef.current) scopeRef.current.active = false;
     lastPersistRef.current = null;
     if (destination === 'full') state.onOpenFull?.();
     else closeRef.current();
+    return true;
   }, []);
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    onCloseRequestChange?.(() => requestLeave('close'));
+    return () => onCloseRequestChange?.(null);
+  }, [isOpen, onCloseRequestChange, requestLeave]);
   const docRef = useRef<RenovationDoc | null>(null);
   const setCurrentDoc = useCallback((next: RenovationDoc | null) => {
     docRef.current = next;

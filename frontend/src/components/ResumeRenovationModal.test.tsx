@@ -1020,3 +1020,26 @@ describe('legacy user exits preserve unsaved work', () => {
     expect(onClose).toHaveBeenCalledTimes(2); expect(confirm).not.toHaveBeenCalled();
   });
 });
+
+
+describe('legacy registered browser close request', () => {
+  it('uses the same current inline-edit guard and clears registration when unmounted', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const onClose = vi.fn();
+    let request: (() => boolean) | null = null;
+    const register = vi.fn((next: (() => boolean) | null) => { request = next; });
+    const view = render(<ResumeRenovationModal isOpen onClose={onClose} profile={makeProfile()}
+      opportunityId="opp-1" opportunityTitle="Lab" onCloseRequestChange={register} />);
+    fireEvent.click((await screen.findAllByText('renovate.edit'))[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Exact private edit' } });
+    expect(request).not.toBeNull();
+    act(() => expect(request!()).toBe(false));
+    expect(onClose).not.toHaveBeenCalled(); expect(screen.getByRole('textbox')).toHaveValue('Exact private edit');
+    confirm.mockReturnValue(true);
+    act(() => expect(request!()).toBe(true));
+    expect(onClose).toHaveBeenCalledOnce();
+    act(() => expect(request!()).toBe(true)); expect(onClose).toHaveBeenCalledOnce();
+    view.unmount(); expect(request).toBeNull();
+  });
+});

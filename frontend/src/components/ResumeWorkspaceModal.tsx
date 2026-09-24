@@ -8,17 +8,18 @@ import ResumeRenovationModal from './ResumeRenovationModal';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onCloseRequestChange?: (request: (() => boolean) | null) => void;
   profile: ProfileData;
   opportunity: Opportunity;
 }
 
-function WorkspaceSession({ onClose, profile, opportunity }: Omit<Props, 'isOpen'>) {
+function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity }: Omit<Props, 'isOpen'>) {
   const [mode, setMode] = useState<'full' | 'bullets'>('full');
   return mode === 'full'
     ? <FullTargetResumeModal isOpen onClose={onClose} profile={profile}
-        opportunity={opportunity} onOpenLegacy={() => setMode('bullets')} />
+        opportunity={opportunity} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
     : <ResumeRenovationModal isOpen onClose={onClose} profile={profile}
-        opportunityId={opportunity.id} opportunityTitle={opportunity.title}
+        opportunityId={opportunity.id} opportunityTitle={opportunity.title} onCloseRequestChange={onCloseRequestChange}
         onOpenFull={() => setMode('full')} />;
 }
 

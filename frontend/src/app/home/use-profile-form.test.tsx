@@ -3375,9 +3375,18 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     await waitFor(() => expect(screen.getByTestId('resume').textContent).toBe('old text'));
     commitProfilePatch.mockClear();
 
+    // A failed journal write happens before the asynchronous staging result.
+    // Hold that real stage call explicitly so the test exercises both moments
+    // without assuming one microtask has also finished the Web Lock/result chain.
+    const actualSync = await vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync');
+    let releaseStage!: () => void;
+    const stageAllowed = new Promise<void>((resolve) => { releaseStage = resolve; });
+    syncOverrides.stageProfilePatch = (...args: Parameters<typeof actualSync.stageProfilePatch>) => stageAllowed.then(() =>
+      actualSync.stageProfilePatch(...args));
+
     // The spy hands the test a handshake: it reports the first attempted write
-    // before refusing it, so the assertion below waits on the thing that
-    // actually has to happen rather than polling a clock.
+    // before refusing it. This is a write-attempt acknowledgement, not the
+    // final save outcome; the latter is awaited after releasing staging.
     let attempted!: () => void;
     const firstWrite = new Promise<void>((resolve) => { attempted = resolve; });
     const setItemSpy = await registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
@@ -3390,10 +3399,16 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
       await Promise.resolve();
     });
 
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    releaseStage();
+
     // 'error', NOT 'device-failed': device-failed promises the cloud has it.
-    expect(screen.getByTestId('save-status').textContent).toBe('error');
+    await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('error'));
     expect(commitProfilePatch).not.toHaveBeenCalled();
     expect((serverRow as { resume_text?: string }).resume_text).toBe('old text');
+    expect(JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!)).toMatchObject({
+      resume_text: 'old text', coursework: ['ECE 220'],
+    });
   });
 });
 
