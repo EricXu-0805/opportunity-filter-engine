@@ -53,6 +53,7 @@ from backend.routes import (
     roadmap,
     saved_searches,
     tailor,
+    target_resume_ai,
 )
 from backend.routes import email as email_routes
 
@@ -500,6 +501,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # authenticated tier is also token-varied, which no shared cache
             # keys on.
             or path == "/api/ready"
+            or path.rstrip("/") == "/api/tailor/full-target/suggestions"
         ):
             # Admin responses can contain student email addresses, feedback
             # text, order rows, and internal notes. The X-Admin-Token custom
@@ -523,6 +525,7 @@ def _release_feature_for_path(path: str) -> ReleaseFeature | None:
         "/api/tailor/structure",
         "/api/tailor/renovate",
         "/api/tailor/bullet",
+        "/api/tailor/full-target/suggestions",
     }:
         return "resume_renovate"
     if path == "/api/chat/models":
@@ -581,6 +584,12 @@ def _request_body_limit_from_env() -> int:
     return value
 
 
+def _full_target_body_limit_from_env() -> int:
+    """Only the new full-document route gets room for its bounded envelope."""
+    from backend.lib.target_resume_ai_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
 class _BodyTooLarge(StarletteHTTPException):
     """The cumulative chunked body crossed the limit.
 
@@ -607,11 +616,12 @@ class RequestBodyLimitMiddleware:
     trips 413 the moment the cumulative chunk size crosses the limit.
     """
 
-    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES):
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None):
         if max_bytes < 1:
             raise ValueError("max_bytes must be positive")
         self.app = app
         self.max_bytes = max_bytes
+        self.full_target_max_bytes = full_target_max_bytes or max_bytes
 
     @staticmethod
     async def _send_error(send, status: int) -> None:
@@ -645,6 +655,7 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        max_bytes = self.full_target_max_bytes if scope.get("path", "").rstrip("/") == "/api/tailor/full-target/suggestions" else self.max_bytes
         content_lengths = [
             value.strip() for name, value in scope.get("headers", []) if name.lower() == b"content-length"
         ]
@@ -659,7 +670,7 @@ class RequestBodyLimitMiddleware:
             if not raw_length or not raw_length.isdigit() or len(raw_length) > 20:
                 await self._send_error(send, 400)
                 return
-            if int(raw_length) > self.max_bytes:
+            if int(raw_length) > max_bytes:
                 await self._send_error(send, 413)
                 return
 
@@ -671,7 +682,7 @@ class RequestBodyLimitMiddleware:
             message = await receive()
             if message.get("type") == "http.request":
                 received_bytes += len(message.get("body", b"") or b"")
-                if received_bytes > self.max_bytes:
+                if received_bytes > max_bytes:
                     raise _BodyTooLarge()
             return message
 
@@ -728,6 +739,7 @@ app = FastAPI(
 app.add_middleware(
     RequestBodyLimitMiddleware,
     max_bytes=_request_body_limit_from_env(),
+    full_target_max_bytes=_full_target_body_limit_from_env(),
 )
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
@@ -767,6 +779,7 @@ app.include_router(responsiveness.router, prefix="/api", tags=["responsiveness"]
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])
+app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])

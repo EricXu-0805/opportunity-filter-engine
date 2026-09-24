@@ -1,0 +1,560 @@
+{
+  "draft": {
+    "base": {
+      "master_id": "master-golden",
+      "master_revision": 1,
+      "profile_signature": "v1:sha256:178e75c8a9d3c64dddc5338abcc71fd86c1315499faf40463baec2d62acd527c",
+      "source_signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+      "target_signature": "v1:sha256:1bf6b68ee5632c38972ed44398443c63e09d18bbb4d40ab3e1c00e5a8433cce0"
+    },
+    "base_snapshot": {
+      "experience_entries": [
+        {
+          "id": "evidence-one",
+          "revision": 2,
+          "source": {
+            "end": 76,
+            "kind": "resume",
+            "quote": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+            "signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+            "start": 7
+          },
+          "status": "confirmed",
+          "text": "I did not lead the team. I built a Python parser 😀 with my teammates."
+        }
+      ],
+      "resume_master": {
+        "activities": [
+          {
+            "details": [
+              {
+                "id": "evidence-one",
+                "revision": 2
+              }
+            ],
+            "id": "project-one",
+            "kind": "project",
+            "title": {
+              "id": "project-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Parser project 😀"
+            }
+          }
+        ],
+        "basics": {
+          "email": {
+            "id": "email",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "student@example.test"
+          },
+          "links": [],
+          "name": {
+            "id": "name",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "徐同学"
+          }
+        },
+        "education": [
+          {
+            "degree": {
+              "id": "degree",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "B.S. — expected 2028"
+            },
+            "details": [],
+            "id": "education-one",
+            "school": {
+              "id": "school",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "UIUC"
+            }
+          }
+        ],
+        "id": "master-golden",
+        "other_sections": [
+          {
+            "heading": "Awards 奖项",
+            "id": "awards",
+            "items": [
+              {
+                "id": "award",
+                "revision": 1,
+                "source": {
+                  "kind": "manual"
+                },
+                "status": "confirmed",
+                "value": "College scholarship"
+              }
+            ]
+          }
+        ],
+        "publications": [
+          {
+            "authors": {
+              "id": "authors",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Xu, G.; 张三"
+            },
+            "details": [],
+            "id": "publication-one",
+            "publication_status": {
+              "id": "publication-status",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Submitted, not accepted"
+            },
+            "title": {
+              "id": "publication-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "研究记录"
+            }
+          }
+        ],
+        "revision": 1,
+        "section_order": [
+          "basics",
+          "education",
+          "activities",
+          "publications",
+          "skills",
+          "awards"
+        ],
+        "skills": [
+          {
+            "id": "skill",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "Python — beginner"
+          }
+        ],
+        "source_signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+        "unmapped_ranges": [],
+        "version": 1
+      },
+      "resume_text": "姓名：徐同学\nI did not lead the team. I built a Python parser 😀 with my teammates.\n论文：研究记录"
+    },
+    "document": {
+      "sections": [
+        {
+          "blocks": [
+            {
+              "id": "master-golden",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "name",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-1",
+                  "included": true,
+                  "label": "",
+                  "original": "徐同学",
+                  "role": "name",
+                  "text": "徐同学"
+                },
+                {
+                  "evidence": {
+                    "id": "email",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-2",
+                  "included": true,
+                  "label": "",
+                  "original": "student@example.test",
+                  "role": "email",
+                  "text": "student@example.test"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "basics",
+          "included": true,
+          "kind": "basics"
+        },
+        {
+          "blocks": [
+            {
+              "id": "education-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "school",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-3",
+                  "included": true,
+                  "label": "",
+                  "original": "UIUC",
+                  "role": "school",
+                  "text": "UIUC"
+                },
+                {
+                  "evidence": {
+                    "id": "degree",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-4",
+                  "included": true,
+                  "label": "",
+                  "original": "B.S. — expected 2028",
+                  "role": "degree",
+                  "text": "B.S. — expected 2028"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "education",
+          "included": true,
+          "kind": "education"
+        },
+        {
+          "blocks": [
+            {
+              "id": "project-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "project-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-5",
+                  "included": true,
+                  "label": "",
+                  "original": "Parser project 😀",
+                  "role": "title",
+                  "text": "Parser project 😀"
+                },
+                {
+                  "evidence": {
+                    "id": "evidence-one",
+                    "kind": "experience",
+                    "revision": 2
+                  },
+                  "id": "line-6",
+                  "included": true,
+                  "label": "",
+                  "original": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+                  "role": "experience",
+                  "text": "My manual draft edit is not evidence."
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "activities",
+          "included": true,
+          "kind": "activities"
+        },
+        {
+          "blocks": [
+            {
+              "id": "publication-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "publication-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-7",
+                  "included": true,
+                  "label": "",
+                  "original": "研究记录",
+                  "role": "title",
+                  "text": "研究记录"
+                },
+                {
+                  "evidence": {
+                    "id": "authors",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-8",
+                  "included": true,
+                  "label": "",
+                  "original": "Xu, G.; 张三",
+                  "role": "authors",
+                  "text": "Xu, G.; 张三"
+                },
+                {
+                  "evidence": {
+                    "id": "publication-status",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-9",
+                  "included": true,
+                  "label": "",
+                  "original": "Submitted, not accepted",
+                  "role": "publication_status",
+                  "text": "Submitted, not accepted"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "publications",
+          "included": true,
+          "kind": "publications"
+        },
+        {
+          "blocks": [
+            {
+              "id": "skill",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "skill",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-10",
+                  "included": true,
+                  "label": "",
+                  "original": "Python — beginner",
+                  "role": "skill",
+                  "text": "Python — beginner"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "skills",
+          "included": true,
+          "kind": "skills"
+        },
+        {
+          "blocks": [
+            {
+              "id": "award",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "award",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-11",
+                  "included": true,
+                  "label": "Awards 奖项",
+                  "original": "College scholarship",
+                  "role": "other",
+                  "text": "College scholarship"
+                }
+              ]
+            }
+          ],
+          "heading": "Awards 奖项",
+          "id": "awards",
+          "included": true,
+          "kind": "other"
+        }
+      ]
+    },
+    "id": "draft-golden",
+    "kind": "full_resume",
+    "opportunity_id": "golden-opportunity",
+    "target_snapshot": {
+      "description": "Robotics 😀 materials. Research is collaborative.",
+      "opportunity_id": "golden-opportunity",
+      "organization": "Example University",
+      "requirements": [
+        "Python",
+        "😀研究"
+      ],
+      "source_url": "https://example.test/lab",
+      "title": "Robotics research"
+    },
+    "version": 1
+  },
+  "document_signature": "v1:sha256:d8ed6b3e016a8e9007f2d97d38313f21bda0968e15b02c27d85a0741e874f528",
+  "manifest": {
+    "unit_ids": [
+      "line-3",
+      "line-4",
+      "line-5",
+      "line-6",
+      "line-7",
+      "line-8",
+      "line-9",
+      "line-10",
+      "line-11"
+    ],
+    "protected_unit_count": 2
+  },
+  "units": [
+    {
+      "unit_id": "line-3",
+      "section_id": "education",
+      "block_id": "education-one",
+      "evidence": {
+        "id": "school",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "school",
+      "label": "",
+      "original": "UIUC",
+      "before_text": "UIUC"
+    },
+    {
+      "unit_id": "line-4",
+      "section_id": "education",
+      "block_id": "education-one",
+      "evidence": {
+        "id": "degree",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "degree",
+      "label": "",
+      "original": "B.S. — expected 2028",
+      "before_text": "B.S. — expected 2028"
+    },
+    {
+      "unit_id": "line-5",
+      "section_id": "activities",
+      "block_id": "project-one",
+      "evidence": {
+        "id": "project-title",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "title",
+      "label": "",
+      "original": "Parser project 😀",
+      "before_text": "Parser project 😀"
+    },
+    {
+      "unit_id": "line-6",
+      "section_id": "activities",
+      "block_id": "project-one",
+      "evidence": {
+        "id": "evidence-one",
+        "kind": "experience",
+        "revision": 2
+      },
+      "role": "experience",
+      "label": "",
+      "original": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+      "before_text": "My manual draft edit is not evidence."
+    },
+    {
+      "unit_id": "line-7",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "publication-title",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "title",
+      "label": "",
+      "original": "研究记录",
+      "before_text": "研究记录"
+    },
+    {
+      "unit_id": "line-8",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "authors",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "authors",
+      "label": "",
+      "original": "Xu, G.; 张三",
+      "before_text": "Xu, G.; 张三"
+    },
+    {
+      "unit_id": "line-9",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "publication-status",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "publication_status",
+      "label": "",
+      "original": "Submitted, not accepted",
+      "before_text": "Submitted, not accepted"
+    },
+    {
+      "unit_id": "line-10",
+      "section_id": "skills",
+      "block_id": "skill",
+      "evidence": {
+        "id": "skill",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "skill",
+      "label": "",
+      "original": "Python — beginner",
+      "before_text": "Python — beginner"
+    },
+    {
+      "unit_id": "line-11",
+      "section_id": "awards",
+      "block_id": "award",
+      "evidence": {
+        "id": "award",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "other",
+      "label": "Awards 奖项",
+      "original": "College scholarship",
+      "before_text": "College scholarship"
+    }
+  ]
+}

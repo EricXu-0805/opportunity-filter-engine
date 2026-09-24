@@ -6,6 +6,8 @@ import * as contract from '@/lib/target-resume';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
+import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
 import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
 import type { LoadedTargetResume, TargetResumeSaveResult, TargetResumeV1 } from '@/lib/target-resume';
@@ -24,6 +26,12 @@ vi.mock('./ResumeSupplementPanel', () => ({ default: (props: ResumeSupplementPan
   supplement.props = props;
   return <div><label>Supplement test answer<textarea aria-label="Supplement test answer" onChange={(event) => props.onDirtyChange?.(!!event.target.value)} /></label>
     <button onClick={props.onOpenProfile}>Review master from supplement</button></div>;
+} }));
+
+const ai = vi.hoisted(() => ({ props: null as TargetResumeAiPanelProps | null }));
+vi.mock('./TargetResumeAiPanel', () => ({ default: (props: TargetResumeAiPanelProps) => {
+  ai.props = props;
+  return <button onClick={() => props.onDirtyChange?.(true)}>AI suggestions awaiting review</button>;
 } }));
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -64,7 +72,7 @@ beforeEach(async () => {
   vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch('target-resume-owner-a'); await syncLocalIdentityOwner('target-resume-owner-a');
   await waitFor(() => expect(isLocalOwnerReady('target-resume-owner-a')).toBe(true));
-  supplement.props = null; supplement.push.mockReset();
+  ai.props = null; supplement.props = null; supplement.push.mockReset();
   storage.load.mockReset().mockResolvedValue(null); storage.save.mockReset().mockResolvedValue({ status: 'failed' });
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
@@ -92,7 +100,7 @@ describe('full target résumé modal', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Include field: Degree' }));
     expect(preview().queryByText('B.S. expected')).toBeNull();
     editName('New target-only name'); expect(p.resume_master?.basics.name?.value).toBe('Alex 王');
-    expect(screen.getByText('Manually edited. Check the original and target requirements; this change has not been fact-checked automatically.')).toBeVisible();
+    expect(screen.getByText('Edited from the confirmed source. Check the original and target requirements; this wording has not been fully fact-checked.')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Restore original Full name' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
     const secondBlock = screen.getByTestId('target-block-robotics');
@@ -348,7 +356,7 @@ describe('supplement panel integration', () => {
     expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('Keep this independent answer');
     fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits or answers');
+    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits, suggestions or answers');
   });
   it('registers browser-close requests through the same unsaved-answer guard', async () => {
     const p = profile(); storage.load.mockResolvedValue(loaded(await docFor(p)));
@@ -360,7 +368,7 @@ describe('supplement panel integration', () => {
     const request = register.mock.calls.at(-1)![0] as () => boolean;
     let closed: boolean | undefined; act(() => { closed = request(); });
     expect(closed).toBe(false); expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits or answers');
+    expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits, suggestions or answers');
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('Keep on browser Back');
     act(() => { closed = request(); }); expect(closed).toBe(false);
@@ -419,5 +427,33 @@ describe('supplement panel integration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create new draft' }));
     await screen.findByDisplayValue('Newer parent name');
     expect(screen.queryByDisplayValue('Obsolete callback name')).toBeNull();
+  });
+});
+
+
+describe('full target AI integration', () => {
+  it('protects unsaved suggestions when the target draft itself was already saved', async () => {
+    const p = profile(); const doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); const onClose = vi.fn();
+    renderModal(p, opportunity, { onClose }); await screen.findByText('AI suggestions awaiting review');
+    fireEvent.click(screen.getByText('AI suggestions awaiting review')); fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+    expect(onClose).not.toHaveBeenCalled(); expect(screen.getByRole('alert')).toHaveTextContent('unsaved edits, suggestions or answers');
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('applies against the exact current draft locally and saves only on an explicit save', async () => {
+    await createUI(); const before = ai.props!.draft; const prepared = await prepareTargetResumeAI(before); if (!prepared.ok) throw new Error(prepared.code);
+    const next = clone(before); next.document.sections.flatMap((s) => s.blocks.flatMap((b) => b.lines)).find((line) => line.evidence.kind === 'experience')!.text = 'Reviewed robot trials; did not lead the team.';
+    act(() => ai.props!.onApply(prepared.value.canonical_draft, next));
+    expect(preview().getByText('Reviewed robot trials; did not lead the team.')).toBeVisible();
+    expect(storage.save).not.toHaveBeenCalled();
+    storage.save.mockImplementationOnce(async (draft: TargetResumeV1) => ({ status: 'saved', value: loaded(draft, 1) }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 1');
+    expect(storage.save.mock.calls[0][0].base_snapshot).toEqual(before.base_snapshot);
+  });
+  it('refuses an old apply callback after later manual edits', async () => {
+    await createUI(); const old = ai.props!; const prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
+    editName('Keep my later edit'); const next = withName(old.draft, 'Stale change');
+    act(() => old.onApply(prepared.value.canonical_draft, next));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep my later edit');
+    expect(storage.save).not.toHaveBeenCalled();
   });
 });
