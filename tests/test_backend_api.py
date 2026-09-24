@@ -1470,6 +1470,7 @@ class TestColdEmailEngine:
                 "Best,\nTest"
             ),
         )
+        cold_email_body["profile"]["hard_skills"][0]["confirmed"] = True
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
         assert resp.status_code == 200
@@ -1620,6 +1621,7 @@ class TestColdEmailStyle:
         )
 
     def test_ai_path_echoes_applied_style(self, base_body, monkeypatch):
+        base_body["profile"]["hard_skills"][0]["confirmed"] = True
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
@@ -7230,6 +7232,7 @@ class TestColdEmailStream:
         return events
 
     def test_stream_emits_stages_then_done(self, stream_body, monkeypatch):
+        stream_body["profile"]["hard_skills"][0]["confirmed"] = True
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         # Single-draft pipeline: this test pins the stage RELAY order, and the
         # count-based mock below can't serve parallel angled drafts.
