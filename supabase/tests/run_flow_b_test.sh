@@ -104,6 +104,12 @@ echo "==> run merge_grant_replay_test.sql"
 echo "==> run profile_save_cas_test.sql"
 "${PSQL[@]}" -f "$HERE/profile_save_cas_test.sql"
 
+echo "==> run target_resume_cas_test.sql"
+"${PSQL[@]}" -f "$HERE/target_resume_cas_test.sql"
+
+echo "==> run target_resume_concurrency_test.sh"
+source "$HERE/target_resume_concurrency_test.sh"
+
 echo "==> run hidden_capabilities_acl_test.sql"
 "${PSQL[@]}" -f "$HERE/hidden_capabilities_acl_test.sql"
 

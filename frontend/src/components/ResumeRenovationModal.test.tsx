@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 vi.mock('@/i18n/client', () => {
   const stableT = (key: string, vars?: Record<string, string | number>) => {
@@ -908,5 +909,114 @@ describe('retired errors and follow-up attempts', () => {
     await act(async () => { oldOptimization.resolve({ text: 'Old optimization', changed: true, source_evidence: '' }); });
     expect(screen.queryByText('Old optimization')).toBeNull();
     expect(mockSaveRenovation).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('legacy user exits preserve unsaved work', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  function renderWithExits() {
+    const onClose = vi.fn();
+    const onOpenFull = vi.fn();
+    const props = { isOpen: true, onClose, onOpenFull, profile: makeProfile(),
+      opportunityId: 'opp-1', opportunityTitle: 'Lab' };
+    const view = render(<ResumeRenovationModal {...props} />);
+    return { ...view, props, onClose, onOpenFull };
+  }
+
+  function attemptExit(path: 'Escape' | 'backdrop' | 'close' | 'full') {
+    if (path === 'Escape') fireEvent.keyDown(document, { key: 'Escape' });
+    else if (path === 'backdrop') fireEvent.click(screen.getByRole('dialog').firstElementChild!);
+    else fireEvent.click(screen.getByRole('button', { name: path === 'close' ? 'renovate.closeAria' : 'Open full target résumé' }));
+  }
+
+  it.each(['Escape', 'backdrop', 'close', 'full'] as const)(
+    '%s retains the inline buffer when cancelled and exits only once when accepted', async (path) => {
+      mockLoadRenovation.mockResolvedValue(savedDoc());
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const { onClose, onOpenFull } = renderWithExits();
+      fireEvent.click((await screen.findAllByText('renovate.edit'))[0]);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Unsaved personal wording' } });
+      attemptExit(path);
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('textbox')).toHaveValue('Unsaved personal wording');
+      expect(onClose).not.toHaveBeenCalled(); expect(onOpenFull).not.toHaveBeenCalled();
+      expect(mockSaveRenovation).not.toHaveBeenCalled();
+      confirm.mockReturnValue(true);
+      attemptExit(path);
+      // A slow parent has not unmounted yet: a second action must not exit twice.
+      attemptExit(path); fireEvent.keyDown(document, { key: 'Escape' });
+      expect(confirm).toHaveBeenCalledTimes(2);
+      expect(onClose).toHaveBeenCalledTimes(path === 'full' ? 0 : 1);
+      expect(onOpenFull).toHaveBeenCalledTimes(path === 'full' ? 1 : 0);
+    },
+  );
+
+  it('does not move focus as an inline edit changes the exit guard', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    renderWithExits();
+    fireEvent.click((await screen.findAllByText('renovate.edit'))[0]);
+    const input = screen.getByRole('textbox');
+    const user = userEvent.setup();
+    await user.clear(input); await user.type(input, 'Continuous manual typing');
+    expect(input).toHaveValue('Continuous manual typing'); expect(input).toHaveFocus();
+  });
+
+  it('warns during a pending save, permits explicit exit and ignores its late receipt', async () => {
+    const pending = deferred<boolean>();
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockSaveRenovation.mockReturnValue(pending.promise);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { onClose } = renderWithExits();
+    fireEvent.click((await screen.findAllByText('renovate.rollback'))[0]);
+    await screen.findByText('renovate.saving');
+    attemptExit('close'); expect(onClose).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining('a save already in progress may still finish'));
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+    confirm.mockReturnValue(true); attemptExit('close');
+    await act(async () => pending.resolve(true));
+    expect(onClose).toHaveBeenCalledTimes(1); expect(screen.queryByText('renovate.saved')).toBeNull();
+  });
+
+  it('retains failed-save work on cancelled switch and removes the guard after successful retry', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc()); mockSaveRenovation.mockResolvedValue(false);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { onOpenFull } = renderWithExits();
+    fireEvent.click((await screen.findAllByText('renovate.rollback'))[0]);
+    await screen.findByTestId('renovation-save-failed');
+    attemptExit('full'); expect(onOpenFull).not.toHaveBeenCalled();
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+    mockSaveRenovation.mockResolvedValue(true); fireEvent.click(screen.getByText('renovate.retrySave'));
+    await screen.findByText('renovate.saved'); attemptExit('full');
+    expect(onOpenFull).toHaveBeenCalledTimes(1); expect(confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears dirty private work on a real owner change without asking permission to retain it', async () => {
+    const pending = deferred<boolean>();
+    mockLoadRenovation.mockResolvedValue(savedDoc()); mockSaveRenovation.mockReturnValue(pending.promise);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { onClose, onOpenFull } = renderWithExits();
+    fireEvent.click((await screen.findAllByText('renovate.rollback'))[0]);
+    fireEvent.click(screen.getAllByText('renovate.edit')[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Private unsaved wording' } });
+    await switchRenovationOwner();
+    expect(confirm).not.toHaveBeenCalled(); expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('textbox')).toBeNull(); expect(screen.queryByText('Private unsaved wording')).toBeNull();
+    attemptExit('Escape'); attemptExit('full'); await act(async () => pending.resolve(false));
+    expect(onClose).toHaveBeenCalledTimes(1); expect(onOpenFull).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('renovation-save-failed')).toBeNull();
+  });
+
+  it('allows a clean close without a prompt and resets the single-exit guard on reopening', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { props, rerender, onClose } = renderWithExits();
+    await screen.findByText('renovate.restored'); attemptExit('close'); attemptExit('Escape');
+    expect(onClose).toHaveBeenCalledTimes(1); expect(confirm).not.toHaveBeenCalled();
+    rerender(<ResumeRenovationModal {...props} isOpen={false} />);
+    rerender(<ResumeRenovationModal {...props} />);
+    await screen.findByText('renovate.restored'); attemptExit('close');
+    expect(onClose).toHaveBeenCalledTimes(2); expect(confirm).not.toHaveBeenCalled();
   });
 });

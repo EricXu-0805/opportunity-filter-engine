@@ -92,7 +92,7 @@ vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => <div data-testid="chat-drawer
 vi.mock('./ProfessorFollowToggle', () => ({
   ProfessorFollowToggle: () => <div data-testid="professor-follow" />,
 }));
-vi.mock('@/components/ResumeRenovationModal', () => ({
+vi.mock('@/components/ResumeWorkspaceModal', () => ({
   default: () => <div data-testid="renovation-modal" />,
 }));
 vi.mock('@/components/OpportunityChatbot', () => ({

@@ -19,6 +19,9 @@ DO $$ BEGIN CREATE ROLE service_role NOLOGIN;   EXCEPTION WHEN duplicate_object 
 -- auth schema + claim-reading functions.
 CREATE SCHEMA IF NOT EXISTS auth;
 
+-- Platform identity table, required by owner-cascade FKs on target resumes.
+CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
+
 -- Supabase grants the browser roles USAGE on `auth` so a SECURITY INVOKER
 -- function (025's confirm_interaction_contact) can call auth.uid() as the
 -- caller. A vanilla cluster grants USAGE on a new schema to nobody, so
