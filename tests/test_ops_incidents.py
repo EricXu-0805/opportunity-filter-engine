@@ -1282,6 +1282,19 @@ def _health_ledger(rows):
 class TestOpsScanSourceHealth:
     """Per-shard and per-school stale monitoring off the durable ledger."""
 
+    @pytest.fixture(autouse=True)
+    def freeze_ledger_clock(self, monkeypatch):
+        # The dated ledger below deliberately mixes fresh September sources
+        # with stale July sources. Keep that distinction independent of the
+        # day CI runs; the production freshness threshold stays unchanged.
+        class LedgerClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                instant = datetime(2026, 9, 3, tzinfo=UTC)
+                return instant.astimezone(tz) if tz else instant.replace(tzinfo=None)
+
+        monkeypatch.setattr(ops_mod, "datetime", LedgerClock)
+
     def test_stale_shard_opens_an_incident_naming_what_it_holds(
         self, monkeypatch, tmp_path,
     ):
