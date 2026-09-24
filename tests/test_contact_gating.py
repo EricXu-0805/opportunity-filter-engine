@@ -408,7 +408,10 @@ class TestDetailRevealGate:
         body = response.json()
         assert "contact_email" not in body
         assert body["contact_email_status"] == "sign_in_required"
-        assert response.headers["Vary"] == "Authorization"
+        # Vary is a token list; CORS may also add Origin.
+        assert "authorization" in {
+            token.strip().lower() for token in response.headers["Vary"].split(",")
+        }
         assert "no-store" not in response.headers.get("Cache-Control", "")
 
     def test_authed_revealed(self, fake_corpus, authed):
@@ -416,7 +419,10 @@ class TestDetailRevealGate:
         body = response.json()
         assert body["contact_email"] == "jdoe@example.edu"
         assert body["contact_email_status"] == "revealed"
-        assert response.headers["Vary"] == "Authorization"
+        # Vary is a token list; CORS may also add Origin.
+        assert "authorization" in {
+            token.strip().lower() for token in response.headers["Vary"].split(",")
+        }
         assert response.headers["Cache-Control"] == (
             "private, no-store, max-age=0"
         )
