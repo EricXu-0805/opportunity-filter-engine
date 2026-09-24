@@ -354,9 +354,11 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
     # that swallows anything stops noticing when the contract it stands in
     # for changes.
     def fake_generate(profile: dict, safe_opp: dict,
-                      resume_bullets: list[str] | None = None) -> str:
+                      resume_bullets: list[str] | None = None,
+                      *, parts_cache: dict | None = None) -> str:
         captured["profile"] = profile
         captured["opportunity"] = safe_opp
+        captured["parts_cache"] = parts_cache
         return (
             "Subject: Questions for jane@example.edu\n\n"
             "Dear Professor Doe,\nPlease write jane at example dot edu.\n"
@@ -379,6 +381,8 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
 
     assert captured["opportunity"] == _contact_safe_opportunity(opportunity)
     assert not contains_embedded_email(str(captured["opportunity"]))
+    assert isinstance(captured["parts_cache"], dict)
+    assert not contains_embedded_email(str(captured["parts_cache"]))
     assert response["subject"] == "[email redacted]"
     assert response["body"] == "[email redacted]"
     assert response["recipient_email"] == ""
