@@ -1249,3 +1249,19 @@ describe('useOpportunityDetail — a confirmed contact reaches the page', () => 
     expect(result.current.interaction).toBeUndefined();
   });
 });
+
+
+describe('detail public sharing', () => {
+  it.each(['native', 'clipboard'])('strips private result-return context from %s sharing', async (mode) => {
+    window.history.replaceState({}, '', '/opportunities/opp-1?returnSession=private-ticket&returnTo=%2Fresults%3Fq%3Dprivate#anchor');
+    const share = vi.fn().mockResolvedValue(undefined);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { configurable: true, value: mode === 'native' ? share : undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.favoriteLoading).toBe(false));
+    await act(async () => result.current.handleShare());
+    if (mode === 'native') expect(share).toHaveBeenCalledWith({ title: 'Test', url: 'http://localhost:3000/opportunities/opp-1' });
+    else expect(writeText).toHaveBeenCalledWith('http://localhost:3000/opportunities/opp-1');
+  });
+});

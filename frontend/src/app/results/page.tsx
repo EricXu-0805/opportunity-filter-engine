@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -79,6 +79,7 @@ import {
   noMatchCarriesADeadline,
 } from './types';
 import {
+  buildResultsUrl,
   readInitialFiltersFromUrl,
   readSemanticRerankUrlPin,
   resolveSemanticRerank,
@@ -87,6 +88,9 @@ import {
 import { useHighlightSet } from './use-highlight-set';
 import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
+import { useResultsSession } from './use-results-session';
+import { useResultModalHistory } from './use-result-modal-history';
+import { RESULT_SESSION_PARAM } from '@/lib/result-session';
 import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
 import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
@@ -189,9 +193,8 @@ function ResultsContent() {
   const semanticSettled = semanticUrlPin !== null
     || semanticPrefExists !== undefined
     || semanticSettleTimedOut;
-  useResultsUrlSync({
-    activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
-  });
+  const urlState = { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled };
+  const [arrivalSessionId] = useState(() => searchParams.get(RESULT_SESSION_PARAM));
 
   const highlightSet = useHighlightSet(searchParams);
   useSavedSearchAck(searchParams, highlightSet);
@@ -236,6 +239,7 @@ function ResultsContent() {
   // explanations stayed on U2's screen for that whole window, remounted to
   // look like U2's fresh list.
   const clearDataRef = useRef<() => void>(() => {});
+  const clearResultSessionRef = useRef<() => void>(() => {});
   // A dialog U1 was filling in must not survive into U2's session: the name
   // and digest e-mail typed by one account would be filed onto a row the
   // INSERT creates for the other. Same treatment as the e-mail modal.
@@ -250,6 +254,7 @@ function ResultsContent() {
     clearCrossSchoolRef.current();
     clearFeedbackRef.current();
     clearDataRef.current();
+    clearResultSessionRef.current();
     setPage(1);
   }, [clearProfileView]);
   const {
@@ -329,6 +334,16 @@ function ResultsContent() {
     dismissedIds,
     viewToday,
   ]);
+  const resultSession = useResultsSession({
+    arrivalId: arrivalSessionId, profile, semantic: semanticRerank, view: matchView,
+    ready: ownerReady && !interactionsLoading && !interactionsError && !favoritesLoadError && semanticSettled,
+    failed: interactionsError || favoritesLoadError,
+    publicUrl: buildResultsUrl(urlState), page, setPage, setShowDismissed,
+  });
+  useLayoutEffect(() => { clearResultSessionRef.current = resultSession.resetForIdentity; }, [resultSession.resetForIdentity]);
+  useResultsUrlSync({ ...urlState, sessionId: resultSession.sessionId });
+  useResultModalHistory(emailModal.open, () => setEmailModal((current) => ({ ...current, open: false })), ownerScopeKey);
+
   const {
     data,
     setData,
@@ -346,10 +361,11 @@ function ResultsContent() {
     matchView,
     page,
     t,
-    semanticSettled,
+    semanticSettled && resultSession.settled,
     // A dead cursor is dropped by the hook; returning to page 1 is the page's
     // own job, since it owns `page`.
-    useCallback(() => setPage(1), []),
+    resultSession.cursorExpired,
+    { restore: resultSession.restore, onValidated: resultSession.onValidated },
   );
 
   // Facets are derived from the complete canonical snapshot by the backend,
@@ -656,7 +672,7 @@ function ResultsContent() {
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [digestAvailable, setDigestAvailable] = useState(false);
-  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const openHelp = useCallback(() => setHelpOpen(true), [setHelpOpen]);
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
     paginated,
@@ -1018,6 +1034,11 @@ function ResultsContent() {
         </div>
       )}
 
+      {resultSession.resetNotice && (
+        <p role="status" data-testid="results-return-reset" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          {t('results.returnReset')}
+        </p>
+      )}
       {error && (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <AlertCircle className="w-10 h-10 text-red-500" />
@@ -1050,6 +1071,10 @@ function ResultsContent() {
             />
           ) : (
             <MatchList
+              returnUrl={buildResultsUrl(urlState)}
+              sessionId={resultSession.sessionId}
+              viewedIds={resultSession.viewedIds}
+              onViewOpportunity={resultSession.rememberOpportunity}
               matches={paginated}
               profile={profile}
               highlightSet={highlightSet}

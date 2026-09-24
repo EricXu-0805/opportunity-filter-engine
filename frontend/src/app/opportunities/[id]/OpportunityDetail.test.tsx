@@ -19,6 +19,8 @@ vi.mock('@/i18n/client', () => ({
   }),
 }));
 
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
+
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 // Rendered as a sentinel rather than null: "the contact reveal is absent" is
 // a real assertion only if a mounted one would have been visible. It records
@@ -571,5 +573,22 @@ describe('OpportunityDetail target-truth postures', () => {
     for (const id of ALWAYS) {
       expect(screen.getByTestId(id), id).toBeInTheDocument();
     }
+  });
+});
+
+
+describe('detail return link before private hydration', () => {
+  afterEach(() => window.history.replaceState({}, '', '/'));
+  it.each(['loading', 'failed'])('keeps filters and the opaque ticket immediately when favorites are %s', (phase) => {
+    window.history.replaceState({}, '', '/opportunities/opp-1?returnSession=0123456789abcdef&returnTo=%2Fresults%3Ftab%3Dall%26q%3Drobotics');
+    mockHookState.current = baseHookResult({ ownerReady: false, favoriteLoading: phase === 'loading', favoriteError: phase === 'failed' });
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('return-to-results')).toHaveAttribute('href', '/results?tab=all&q=robotics&returnSession=0123456789abcdef');
+  });
+  it('rejects external return routes and invalid tickets without opening a redirect', () => {
+    window.history.replaceState({}, '', '/opportunities/opp-1?returnSession=bad&returnTo=https%3A%2F%2Fevil.example%2Fresults');
+    mockHookState.current = baseHookResult({ ownerReady: false });
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('return-to-results')).toHaveAttribute('href', '/results');
   });
 });

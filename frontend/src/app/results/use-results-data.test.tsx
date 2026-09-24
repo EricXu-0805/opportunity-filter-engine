@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
+import { useResultsSession } from './use-results-session';
+import { readResultSession, resultRequestKey, writeResultSession } from '@/lib/result-session';
 import MatchCard from '@/components/MatchCard';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
@@ -967,5 +969,87 @@ describe('what a warm cache can put in front of a student', () => {
     expect(screen.getByText('Poisontype')).toBeInTheDocument();
     // The cached row's title never appeared at any point.
     expect(screen.queryByText('CACHED Vision Lab RA')).toBeNull();
+  });
+});
+
+
+describe('same-session cursor validation', () => {
+  beforeEach(async () => {
+    mocks.getMatchView.mockReset();
+    mocks.readMatchCache.mockReset();
+    mocks.writeMatchCache.mockReset();
+    mocks.clearMatchCache.mockReset();
+    advanceOwnerEpoch('cursor-owner');
+    await syncLocalIdentityOwner('cursor-owner');
+    window.history.replaceState({}, '', '/results');
+  });
+  function savedPage() {
+    return writeResultSession({ requestKey: resultRequestKey(profile, false, baseView), page: 2,
+      cursors: [[1, null], [2, 'restored-server-cursor']], returnUrl: '/results', showDismissed: false,
+      anchorId: null, anchorOffset: null, scrollY: 1800, viewedIds: [] })!;
+  }
+
+  it('validates the stored cursor on the server before painting any page', async () => {
+    const saved = savedPage();
+    let resolve!: (r: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((r) => { resolve = r; }));
+    const validated = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 2, t, true, undefined,
+      { restore: saved, onValidated: validated }));
+    expect(result.current.data).toBeNull();
+    expect(validated).not.toHaveBeenCalled();
+    expect(mocks.getMatchView.mock.calls[0][2].cursor).toBe('restored-server-cursor');
+    await act(async () => resolve(response('fresh-second', { view_start: 50 })));
+    expect(result.current.data?.result_set_id).toBe('set-fresh-second');
+    expect(validated).toHaveBeenCalledWith(expect.objectContaining({ page: 2, cursors: [[1, null], [2, 'restored-server-cursor']] }));
+    expect(mocks.readMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('rejects another owner before replaying its stored cursor', async () => {
+    const saved = savedPage();
+    advanceOwnerEpoch('other-owner'); await syncLocalIdentityOwner('other-owner');
+    const reset = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 2, t, true, reset,
+      { restore: saved, onValidated: vi.fn() }));
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(mocks.getMatchView).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+  });
+
+  it('replaces an expired restored cursor with one fresh first-page request', async () => {
+    const saved = savedPage();
+    mocks.getMatchView.mockRejectedValueOnce(new ApiError(409, 'MATCH_CURSOR_EXPIRED', 'expired', false))
+      .mockResolvedValueOnce(response('fresh-first'));
+    const validated = vi.fn();
+    const { result } = renderHook(() => {
+      const [page, setPage] = useState(2);
+      const reset = useCallback(() => setPage(1), []);
+      return useResultsData(profile, false, baseView, page, t, true, reset, { restore: saved, onValidated: validated });
+    });
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-fresh-first'));
+    expect(mocks.getMatchView.mock.calls.map((call) => call[2].cursor)).toEqual(['restored-server-cursor', null]);
+    expect(validated).toHaveBeenCalledTimes(1);
+    expect(validated.mock.calls[0][0].page).toBe(1);
+  });
+
+  it('retains the first fast response while initially delayed private reads settle, without a duplicate match request', async () => {
+    mocks.getMatchView.mockResolvedValue(response('first-fast'));
+    const { result, rerender } = renderHook(({ ready }) => {
+      const [page, setPage] = useState(1);
+      const [showDismissed, setShowDismissed] = useState(false);
+      const view = { ...baseView, show_dismissed: showDismissed };
+      const session = useResultsSession({ arrivalId: null, profile, semantic: false, view, ready, failed: false,
+        publicUrl: '/results', page, setPage, setShowDismissed });
+      const data = useResultsData(profile, false, view, page, t, session.settled,
+        session.cursorExpired, { restore: session.restore, onValidated: session.onValidated });
+      return { session, data };
+    }, { initialProps: { ready: false } });
+    await waitFor(() => expect(result.current.data.data?.result_set_id).toBe('set-first-fast'));
+    expect(result.current.session.sessionId).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+    rerender({ ready: true });
+    await waitFor(() => expect(result.current.session.sessionId).not.toBeNull());
+    expect(readResultSession(result.current.session.sessionId)?.page).toBe(1);
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
   });
 });

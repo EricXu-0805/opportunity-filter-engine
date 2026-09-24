@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   ChevronDown,
   ExternalLink,
@@ -49,6 +50,7 @@ import {
   type TargetStatusReason,
 } from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { useResultModalHistory } from '@/app/results/use-result-modal-history';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
@@ -57,6 +59,9 @@ const TailorModal = dynamic(() => import('./TailorModal'), { ssr: false });
 const ResumeRenovationModal = dynamic(() => import('./ResumeRenovationModal'), { ssr: false });
 
 export interface MatchCardProps {
+  detailHref?: string;
+  isViewed?: boolean;
+  onViewOpportunity?: (id: string) => void;
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
@@ -178,7 +183,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
+export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -189,6 +194,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   // is empty).
   const [tailorOpen, setTailorOpen] = useState(false);
   const [renovationOpen, setRenovationOpen] = useState(false);
+  useResultModalHistory(tailorOpen || renovationOpen, () => {
+    setTailorOpen(false);
+    setRenovationOpen(false);
+  }, ownerScopeKey);
+
   const { t } = useT();
 
   const { opportunity: opp } = match;
@@ -271,16 +281,18 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 </button>
               )}
               <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                <a
-                  href={`/opportunities/${encodeURIComponent(opp.id)}`}
-                  onClick={e => e.stopPropagation()}
+                <Link
+                  href={detailHref ?? `/opportunities/${encodeURIComponent(opp.id)}`}
+                  onClick={e => { e.stopPropagation(); onViewOpportunity?.(opp.id); }}
+                  onAuxClick={e => { if (e.button === 1) onViewOpportunity?.(opp.id); }}
                   className="hover:text-indigo-600 focus:outline-none focus-visible:underline decoration-indigo-500 underline-offset-4 transition-colors"
                 >
                   {opp.title}
-                </a>
+                </Link>
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] sm:text-[13px] text-gray-400">
+              {isViewed && <span data-testid="match-viewed" className="text-gray-500">{t('card.viewed')}</span>}
               {opp.organization && (
                 <span className="inline-flex items-center gap-1 min-w-0">
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
@@ -477,7 +489,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {posture === 'actionable' && !facultyUnavailable && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') onDraftEmail(opp.id); }}
+              onClick={() => { if (posture === 'actionable') { onViewOpportunity?.(opp.id); onDraftEmail(opp.id); } }}
               className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
                 emailIsPrimary
                   ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
@@ -497,7 +509,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               // control that is merely not rendered is safe, but a callback
               // reachable some other way (a retained ref, a future refactor
               // that keeps the button and disables it) must refuse too.
-              onClick={() => { if (ownerReady && posture === 'actionable') setTailorOpen(true); }}
+              onClick={() => { if (ownerReady && posture === 'actionable') { onViewOpportunity?.(opp.id); setTailorOpen(true); } }}
               disabled={!ownerReady}
               aria-busy={!ownerReady}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
@@ -509,7 +521,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') setRenovationOpen(true); }}
+              onClick={() => { if (posture === 'actionable') { onViewOpportunity?.(opp.id); setRenovationOpen(true); } }}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
             >
               <FileText className="w-3.5 h-3.5" />
