@@ -128,15 +128,17 @@ test.describe('Résumé renovation (real browser)', () => {
     ));
     const expectedTargetSignature = `v1:sha256:${createHash('sha256').update(canonicalTarget, 'utf8').digest('hex')}`;
     const saved = page.waitForResponse(response => response.request().method() === 'POST'
-      && new URL(response.url()).pathname === '/rest/v1/resume_renovations'
-      && response.request().postDataJSON()?.opportunity_id === KNOWN_ID);
+      && new URL(response.url()).pathname === '/rest/v1/rpc/save_renovation_cas'
+      && response.request().postDataJSON()?.p_opportunity_id === KNOWN_ID);
     await page.getByRole('button', { name: 'Renovate with AI' }).click();
 
     // The AI version is what the student is shown…
     await expect(page.getByText(REWRITTEN)).toBeVisible({ timeout: 30_000 });
     const saveResponse = await saved;
     expect(saveResponse.ok()).toBe(true);
-    const savedPayload = saveResponse.request().postDataJSON();
+    const savedRequest = saveResponse.request().postDataJSON();
+    const savedPayload = savedRequest.p_payload;
+    expect(await saveResponse.json()).toMatchObject({ status: 'saved', current: { revision: 1, payload: savedPayload } });
     expect(savedPayload.doc.target_sig).toMatch(/^v1:sha256:[a-f0-9]{64}$/);
     expect(savedPayload.doc.target_sig).toBe(expectedTargetSignature);
     await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
@@ -147,17 +149,18 @@ test.describe('Résumé renovation (real browser)', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const restored = page.waitForResponse(response => {
       const url = new URL(response.url());
-      return response.request().method() === 'GET' && url.pathname === '/rest/v1/resume_renovations'
-        && url.searchParams.get('opportunity_id') === `eq.${KNOWN_ID}`
-        && url.searchParams.get('device_id') === `eq.${savedPayload.device_id}`;
+      return response.request().method() === 'POST' && url.pathname === '/rest/v1/rpc/read_renovation'
+        && response.request().postDataJSON()?.p_opportunity_id === KNOWN_ID
+        && response.request().postDataJSON()?.p_expected_owner === savedRequest.p_expected_owner;
     });
     await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
     await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
     const restoreResponse = await restored;
     expect(restoreResponse.ok()).toBe(true);
     const restoredBody = await restoreResponse.json();
-    if (Array.isArray(restoredBody)) expect(restoredBody).toHaveLength(1);
-    const restoredRow = Array.isArray(restoredBody) ? restoredBody[0] : restoredBody;
+    expect(restoredBody).toMatchObject({ status: 'found', current: { revision: 1 } });
+    const restoredRow = restoredBody.current.payload;
+    expect(restoredRow.base_snapshot).toEqual(savedPayload.base_snapshot);
     expect(restoredRow.doc).toEqual(savedPayload.doc);
     expect(restoredRow.doc.target_sig).toBe(expectedTargetSignature);
     await expect(page.getByText('Restored your saved renovation for this opportunity', { exact: true })).toBeVisible();
@@ -168,10 +171,35 @@ test.describe('Résumé renovation (real browser)', () => {
     // …and one click puts their own words back. A rollback is a pointer move
     // over a chain that still holds base_text, so this can never be a second
     // generation that happens to look like the original.
+    const secondSave = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/save_renovation_cas'
+      && response.request().postDataJSON()?.p_expected_revision === 1);
     await page.getByRole('button', { name: 'Roll back to the previous version of this bullet' })
       .first().click();
     await expect(page.getByText(OWN_WORDS)).toBeVisible();
     await expect(page.getByText(REWRITTEN)).toHaveCount(0);
+    expect(await (await secondSave).json()).toMatchObject({ status: 'saved', current: { revision: 2 } });
+    await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Edit this bullet', exact: true }).first().click();
+    const manual = 'My third saved edit 王 preserves the original sensor work.';
+    await page.getByRole('textbox', { name: 'Edit this bullet', exact: true }).fill(manual);
+    const thirdSave = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/save_renovation_cas'
+      && response.request().postDataJSON()?.p_expected_revision === 2);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const thirdReceipt = await (await thirdSave).json();
+    expect(thirdReceipt).toMatchObject({ status: 'saved', current: { revision: 3 } });
+    expect(thirdReceipt.current.payload.base_snapshot).toEqual(savedPayload.base_snapshot);
+    expect(thirdReceipt.current.payload.doc.target_sig).toBe(expectedTargetSignature);
+    await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Close renovation dialog', exact: true }).click();
+    const finalRead = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/read_renovation'
+      && response.request().postDataJSON()?.p_opportunity_id === KNOWN_ID);
+    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
+    expect(await (await finalRead).json()).toEqual({ status: 'found', current: thirdReceipt.current });
+    await expect(page.getByText(manual, { exact: true })).toBeVisible();
+    expect(thirdReceipt.current.payload.doc.sections.flatMap((section: { bullets: Array<{ base_text: string }> }) => section.bullets)
+      .some((bullet: { base_text: string }) => bullet.base_text === OWN_WORDS)).toBe(true);
+    expect(renovationRequests).toBe(1);
   });
 
   test('cancelled exits retain unsaved bullet edits before an explicit switch', async ({ page }) => {

@@ -2342,72 +2342,94 @@ export async function getAttachmentSignedUrl(
 }
 
 // ── Resume renovation persistence ──────────────────────────────────────
-// Mirrors the profiles (mutable upsert) + profile_versions (append-only
-// snapshot) split: `resume_renovations` holds ONE working doc per
-// (device, opportunity) — the per-bullet rollback history lives INSIDE the
-// doc's variant chains — and `resume_renovation_versions` appends a whole-doc
-// snapshot on every save as the coarse recovery net. The modal keeps its
-// in-memory doc regardless, but the RESULT is reported truthfully (W13):
-// the UI may only show "Saved" when the working-doc upsert actually
-// succeeded — a swallowed failure flashing "Saved" is a false persistence
-// claim. The version snapshot stays best-effort and cannot hold the working
-// save hostage. These writes are not a database transaction or cross-device CAS.
-// See supabase/migrations/020_resume_renovations.sql.
+// Legacy bullet documents remain distinct from full target resumes. Private
+// table access stays closed: these four RPCs bind owner + target and commit
+// the working payload and a complete historical snapshot atomically.
 
-export async function saveRenovation(
-  opportunityId: string,
-  doc: Record<string, unknown>,
-  baseSnapshot: Record<string, unknown>,
-  method: string,
-  warnings: string[],
-  token: OwnerToken,
-): Promise<boolean> {
-  // Keep the action's original capability through the queue and every await.
-  // An anonymous session is a valid owner; an unresolved or changed one is not.
-  return enqueuePrivateWrite(token, `renovation:${opportunityId}`, async () => {
-    if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-    const deviceId = await ensureAnonSession();
-    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    if (!deviceId) return false;
-    const { error } = await supabase.from('resume_renovations').upsert(
-      {
-        device_id: deviceId,
-        opportunity_id: opportunityId,
-        doc,
-        base_snapshot: baseSnapshot,
-        method,
-        warnings,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'device_id,opportunity_id' },
-    );
-    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    if (error) {
-      console.warn('[ofe] renovation save failed:', error.message);
-      return false;
-    }
-
-    // Best-effort history remains a separate write; do not start it for a
-    // context that changed while the working document was being saved.
-    void Promise.resolve(supabase
-      .from('resume_renovation_versions')
-      .insert({ device_id: deviceId, opportunity_id: opportunityId, doc }))
-      .then(({ error: versionError }) => {
-        if (versionError && !versionError.message.includes('does not exist')) {
-          console.warn('[ofe] renovation version snapshot failed:', versionError.message);
-        }
-      })
-      .catch(() => { console.warn('[ofe] renovation version snapshot unavailable'); });
-    return true;
-  });
-}
-
-export interface StoredRenovation {
+export interface RenovationPayload {
   doc: Record<string, unknown>;
   base_snapshot: Record<string, unknown>;
   method: string | null;
   warnings: string[];
+}
+export interface StoredRenovation extends RenovationPayload {
+  owner_id: string;
+  opportunity_id: string;
+  revision: number;
   updated_at: string;
+}
+export type RenovationSaveResult =
+  | { status: 'saved'; current: StoredRenovation }
+  | { status: 'unchanged'; current: StoredRenovation }
+  | { status: 'conflict'; current: StoredRenovation }
+  | { status: 'missing' | 'abandoned' | 'unavailable' | 'unknown' };
+export interface RenovationHistoryCursor { created_at: string; id: string }
+export interface RenovationVersionSummary extends RenovationHistoryCursor {
+  revision: number | null;
+  snapshot_kind: 'complete' | 'legacy_doc';
+  source_revision: number | null;
+  source_updated_at: string | null;
+}
+export interface RenovationVersion extends RenovationVersionSummary {
+  owner_id: string;
+  opportunity_id: string;
+  payload: {
+    doc: Record<string, unknown>;
+    base_snapshot: Record<string, unknown> | null;
+    method: string | null;
+    warnings: string[] | null;
+  };
+}
+export interface RenovationVersionPage {
+  items: RenovationVersionSummary[];
+  next_cursor: RenovationHistoryCursor | null;
+}
+export class RenovationSaveError extends Error {
+  constructor(public readonly code: 'invalid_payload' | 'invalid_revision' | 'invalid_target') {
+    super('The résumé changes could not be prepared for saving. Your draft is kept.');
+    this.name = 'RenovationSaveError';
+  }
+}
+
+/** The UI owns its sequential latest-pending queue; this call never rebases or retries. */
+export async function saveRenovation(
+  opportunityId: string,
+  doc: Record<string, unknown>,
+  baseSnapshot: Record<string, unknown>,
+  method: string | null,
+  warnings: string[],
+  token: OwnerToken,
+  expectedRevision: number,
+): Promise<RenovationSaveResult> {
+  // Copy and validate before the first await, including the owner capability.
+  // Unknown extensions and incomplete old provenance are retained verbatim.
+  const origin = { ...token };
+  if (!renovationTargetValid(opportunityId)) throw new RenovationSaveError('invalid_target');
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw new RenovationSaveError('invalid_revision');
+  let payload: RenovationPayload;
+  try { payload = renovationPayloadSnapshot({ doc, base_snapshot: baseSnapshot, method, warnings }); }
+  catch { throw new RenovationSaveError('invalid_payload'); }
+  try {
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('save_renovation_cas', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId,
+      p_expected_revision: expectedRevision, p_payload: payload,
+    });
+    renovationOwner(origin);
+    if (error || !renovationRecord(data)) return { status: 'unknown' };
+    if (data.status === 'missing' && renovationKeys(data, ['status'])) return { status: 'missing' };
+    if (typeof data.status !== 'string' || !['saved', 'unchanged', 'conflict'].includes(data.status) || !renovationKeys(data, ['status', 'current'])) return { status: 'unknown' };
+    const current = renovationCurrent(data.current, opportunityId, origin);
+    if (data.status === 'conflict') return { status: 'conflict', current };
+    const received = { doc: current.doc, base_snapshot: current.base_snapshot, method: current.method, warnings: current.warnings };
+    if (renovationCanonical(received) !== renovationCanonical(payload)
+      || (data.status === 'saved' && current.revision !== expectedRevision + 1)
+      || (data.status === 'unchanged' && current.revision !== expectedRevision && current.revision !== expectedRevision + 1)) return { status: 'unknown' };
+    return { status: data.status as 'saved' | 'unchanged', current };
+  } catch (error) {
+    const failure = renovationReadFailure(error, origin);
+    return { status: failure instanceof OwnerMismatchError ? 'abandoned' : failure instanceof OwnerNotReadyError ? 'unavailable' : 'unknown' };
+  }
 }
 
 export class RenovationLoadError extends Error {
@@ -2460,88 +2482,187 @@ function renovationProcessingValid(value: unknown): boolean {
       && (chunk.reason === undefined || chunk.reason === null || typeof chunk.reason === 'string'));
 }
 
-function storedRenovationValid(value: unknown): value is StoredRenovation {
-  if (!renovationRecord(value) || !renovationRecord(value.doc)
-    || !renovationRecord(value.base_snapshot)
-    || (value.method !== null && typeof value.method !== 'string')
-    || !renovationStringList(value.warnings) || typeof value.updated_at !== 'string') return false;
-  const doc = value.doc;
-  return renovationSectionsValid(doc.sections, true) && typeof doc.method === 'string'
+const RENOVATION_MAX_BYTES = 2 * 1024 * 1024;
+const RENOVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function renovationKeys(value: Record<string, unknown>, keys: string[]): boolean {
+  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+}
+function renovationTargetValid(value: unknown): value is string {
+  return typeof value === 'string' && !!value.trim() && Array.from(value).length <= 200 && renovationTextValid(value);
+}
+function renovationPositive(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) > 0;
+}
+function renovationTextValid(value: string): boolean {
+  if (value.includes('\0')) return false;
+  for (let i = 0; i < value.length; i += 1) {
+    const unit = value.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const low = value.charCodeAt(++i);
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return false;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+function renovationSnapshot(value: unknown): unknown {
+  // JSON-compatible optional undefined fields are omitted, as in the existing
+  // wire format. Reject values JSON would otherwise silently turn into null.
+  const serialized = JSON.stringify(value, (key, item: unknown) => {
+    if (!renovationTextValid(key) || (typeof item === 'string' && !renovationTextValid(item))
+      || (typeof item === 'number' && !Number.isFinite(item))
+      || ['bigint', 'symbol', 'function'].includes(typeof item)) throw new RenovationLoadError('invalid_saved_data');
+    return item;
+  });
+  if (typeof serialized !== 'string' || new TextEncoder().encode(serialized).byteLength > RENOVATION_MAX_BYTES) throw new RenovationLoadError('invalid_saved_data');
+  return JSON.parse(serialized);
+}
+function renovationDocumentValid(doc: unknown): doc is Record<string, unknown> {
+  return renovationRecord(doc) && doc.kind !== 'full_resume'
+    && renovationSectionsValid(doc.sections, true) && typeof doc.method === 'string'
     && renovationStringList(doc.warnings)
-    // Signatures/coverage were added after the first stored documents. Keep
-    // absence and unknown string signatures intact; do not invent freshness.
+    // Missing and unknown string signatures remain unknown, never upgraded.
     && (doc.resume_sig === undefined || typeof doc.resume_sig === 'string')
     && (doc.profile_sig === undefined || typeof doc.profile_sig === 'string')
-    && (doc.processing === undefined || renovationProcessingValid(doc.processing))
-    && (value.base_snapshot.sections === undefined || renovationSectionsValid(value.base_snapshot.sections, false));
+    && (doc.target_sig === undefined || typeof doc.target_sig === 'string')
+    && (doc.processing === undefined || renovationProcessingValid(doc.processing));
 }
-
-export async function loadRenovation(
-  opportunityId: string,
-  token: OwnerToken = captureOwnerToken(),
-): Promise<StoredRenovation | null> {
-  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-  let deviceId: string | null;
-  try {
-    deviceId = await ensureAnonSession();
-  } catch {
-    if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-    throw new RenovationLoadError('read_failed');
+function renovationPayloadSnapshot(value: unknown): RenovationPayload {
+  const copy = renovationSnapshot(value);
+  if (!renovationRecord(copy) || !renovationKeys(copy, ['doc', 'base_snapshot', 'method', 'warnings'])
+    || !renovationDocumentValid(copy.doc) || !renovationRecord(copy.base_snapshot)
+    || (copy.method !== null && typeof copy.method !== 'string') || !renovationStringList(copy.warnings)
+    || (copy.base_snapshot.sections !== undefined && !renovationSectionsValid(copy.base_snapshot.sections, false))) {
+    throw new RenovationLoadError('invalid_saved_data');
   }
-  if (!isOwnerTokenValid(token, deviceId) || !deviceId) throw new OwnerNotReadyError();
-  let result;
+  return copy as unknown as RenovationPayload;
+}
+function renovationCanonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(renovationCanonical).join(',')}]`;
+  if (renovationRecord(value)) return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${renovationCanonical(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+/** Keep PostgreSQL microseconds for pagination; Date alone truncates them. */
+function renovationTime(value: unknown): bigint | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return null;
+  const millis = Date.parse(match[1] + match[3]);
+  return Number.isFinite(millis) ? BigInt(millis) * BigInt(1000) + BigInt((match[2] ?? '').padEnd(6, '0')) : null;
+}
+function renovationOwner(token: OwnerToken): void {
+  if (!isTokenOwnerStillCurrent(token) || captureOwnerToken().generation !== token.generation) throw new OwnerMismatchError();
+  if (!token.uid || !isOwnerTokenValid(token, token.uid)) throw new OwnerNotReadyError();
+}
+async function renovationReady(token: OwnerToken): Promise<void> {
+  renovationOwner(token);
+  const uid = await ensureAnonSession();
+  renovationOwner(token);
+  if (!uid) throw new OwnerNotReadyError();
+  if (uid !== token.uid) throw new OwnerMismatchError();
+}
+function renovationReadFailure(error: unknown, token: OwnerToken): Error {
+  try { renovationOwner(token); } catch (ownerError) { return ownerError as Error; }
+  return error instanceof RenovationLoadError || error instanceof OwnerMismatchError || error instanceof OwnerNotReadyError
+    ? error : new RenovationLoadError('read_failed');
+}
+function renovationCurrent(value: unknown, opportunityId: string, token: OwnerToken): StoredRenovation {
+  if (!renovationRecord(value) || !renovationKeys(value, ['owner_id', 'opportunity_id', 'revision', 'payload', 'updated_at'])
+    || value.owner_id !== token.uid || value.opportunity_id !== opportunityId || !renovationPositive(value.revision)
+    || renovationTime(value.updated_at) === null) throw new RenovationLoadError('invalid_saved_data');
+  return { owner_id: value.owner_id as string, opportunity_id: opportunityId, revision: value.revision,
+    ...renovationPayloadSnapshot(value.payload), updated_at: value.updated_at as string };
+}
+
+/** Only an explicit successful absent receipt permits creating a new draft. */
+export async function loadRenovation(opportunityId: string, token: OwnerToken = captureOwnerToken()): Promise<StoredRenovation | null> {
+  const origin = { ...token };
   try {
-    result = await supabase
-      .from('resume_renovations')
-      .select('doc, base_snapshot, method, warnings, updated_at')
-      .eq('device_id', deviceId)
-      .eq('opportunity_id', opportunityId)
-      .maybeSingle();
-  } catch {
-    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    throw new RenovationLoadError('read_failed');
-  }
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  // maybeSingle's successful null is the only evidence that no saved row
-  // exists. Transport/schema failures must never enable a replacement draft.
-  if (result.error) throw new RenovationLoadError('read_failed');
-  if (result.data === null) return null;
-  if (!storedRenovationValid(result.data)) throw new RenovationLoadError('invalid_saved_data');
-  return result.data;
+    if (!renovationTargetValid(opportunityId)) throw new RenovationLoadError('invalid_saved_data');
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('read_renovation', { p_expected_owner: origin.uid, p_opportunity_id: opportunityId });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
+    if (!renovationRecord(data) || data.status !== 'found' || !renovationKeys(data, ['status', 'current'])) throw new RenovationLoadError('invalid_saved_data');
+    return renovationCurrent(data.current, opportunityId, origin);
+  } catch (error) { throw renovationReadFailure(error, origin); }
 }
 
-export interface RenovationVersion {
-  id: string;
-  doc: Record<string, unknown>;
-  created_at: string;
+function renovationCursor(value: unknown): RenovationHistoryCursor {
+  if (!renovationRecord(value) || !renovationKeys(value, ['created_at', 'id']) || typeof value.id !== 'string'
+    || !RENOVATION_UUID.test(value.id) || renovationTime(value.created_at) === null) throw new RenovationLoadError('invalid_saved_data');
+  return { id: value.id, created_at: value.created_at as string };
 }
-
+function renovationSummary(value: unknown): RenovationVersionSummary {
+  if (!renovationRecord(value) || !renovationKeys(value, ['id', 'created_at', 'revision', 'snapshot_kind', 'source_revision', 'source_updated_at'])
+    || typeof value.snapshot_kind !== 'string' || !['complete', 'legacy_doc'].includes(value.snapshot_kind)
+    || (value.revision !== null && !renovationPositive(value.revision))
+    || (value.source_revision !== null && !renovationPositive(value.source_revision))
+    || (value.source_updated_at !== null && renovationTime(value.source_updated_at) === null)
+    || (value.snapshot_kind === 'legacy_doc' && value.revision !== null)) throw new RenovationLoadError('invalid_saved_data');
+  return { ...renovationCursor({ id: value.id, created_at: value.created_at }), revision: value.revision as number | null,
+    snapshot_kind: value.snapshot_kind as RenovationVersionSummary['snapshot_kind'],
+    source_revision: value.source_revision as number | null, source_updated_at: value.source_updated_at as string | null };
+}
+function renovationBefore(left: RenovationHistoryCursor, right: RenovationHistoryCursor): boolean {
+  const a = renovationTime(left.created_at)!; const b = renovationTime(right.created_at)!;
+  return a < b || (a === b && left.id < right.id);
+}
+/** Metadata only, with a bounded stable timestamp/UUID cursor. Errors never become an empty history. */
 export async function listRenovationVersions(
-  opportunityId: string,
-  limit = 10,
-  token: OwnerToken = captureOwnerToken(),
-): Promise<RenovationVersion[]> {
-  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
-  if (!deviceId) return [];
-  const { data, error } = await supabase
-    .from('resume_renovation_versions')
-    .select('id, doc, created_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (error) {
-    console.warn('[ofe] renovation versions load failed:', error.message);
-    return [];
-  }
-  return (data ?? []).map((r) => ({
-    id: String(r.id),
-    doc: (r.doc ?? {}) as Record<string, unknown>,
-    created_at: String(r.created_at ?? ''),
-  }));
+  opportunityId: string, limit = 20, token: OwnerToken = captureOwnerToken(), cursor?: RenovationHistoryCursor,
+): Promise<RenovationVersionPage> {
+  const origin = { ...token };
+  try {
+    if (!renovationTargetValid(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 50) throw new RenovationLoadError('invalid_saved_data');
+    const before = cursor === undefined ? null : renovationCursor(cursor);
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('list_renovation_versions', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_limit: limit,
+      p_before_created_at: before?.created_at ?? null, p_before_id: before?.id ?? null,
+    });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (!renovationRecord(data) || !renovationKeys(data, ['items', 'next_cursor']) || !Array.isArray(data.items) || data.items.length > limit) throw new RenovationLoadError('invalid_saved_data');
+    const items = data.items.map(renovationSummary);
+    if (new Set(items.map((item) => item.id)).size !== items.length
+      || items.some((item, i) => (before && !renovationBefore(item, before)) || (i > 0 && !renovationBefore(item, items[i - 1])))) throw new RenovationLoadError('invalid_saved_data');
+    const next = data.next_cursor === null ? null : renovationCursor(data.next_cursor);
+    const last = items.at(-1);
+    if (next && (items.length !== limit || !last || next.id !== last.id || next.created_at !== last.created_at)) throw new RenovationLoadError('invalid_saved_data');
+    return { items, next_cursor: next };
+  } catch (error) { throw renovationReadFailure(error, origin); }
+}
+
+export async function readRenovationVersion(
+  opportunityId: string, versionId: string, token: OwnerToken = captureOwnerToken(),
+): Promise<RenovationVersion | null> {
+  const origin = { ...token };
+  try {
+    if (!renovationTargetValid(opportunityId) || typeof versionId !== 'string' || !RENOVATION_UUID.test(versionId)) throw new RenovationLoadError('invalid_saved_data');
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('get_renovation_version', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_version_id: versionId,
+    });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
+    if (!renovationRecord(data) || data.status !== 'found' || !renovationKeys(data, ['status', 'version']) || !renovationRecord(data.version)) throw new RenovationLoadError('invalid_saved_data');
+    const row = data.version;
+    if (!renovationKeys(row, ['id', 'created_at', 'revision', 'snapshot_kind', 'source_revision', 'source_updated_at', 'owner_id', 'opportunity_id', 'payload'])
+      || row.id !== versionId || row.owner_id !== origin.uid || row.opportunity_id !== opportunityId) throw new RenovationLoadError('invalid_saved_data');
+    const meta = renovationSummary({ id: row.id, created_at: row.created_at, revision: row.revision, snapshot_kind: row.snapshot_kind,
+      source_revision: row.source_revision, source_updated_at: row.source_updated_at });
+    let payload: RenovationVersion['payload'];
+    if (meta.snapshot_kind === 'complete') payload = renovationPayloadSnapshot(row.payload);
+    else {
+      const legacy = renovationSnapshot(row.payload);
+      if (!renovationRecord(legacy) || !renovationKeys(legacy, ['doc', 'base_snapshot', 'method', 'warnings'])
+        || !renovationDocumentValid(legacy.doc) || legacy.base_snapshot !== null || legacy.method !== null || legacy.warnings !== null) throw new RenovationLoadError('invalid_saved_data');
+      payload = { doc: legacy.doc, base_snapshot: null, method: null, warnings: null };
+    }
+    return { ...meta, owner_id: origin.uid!, opportunity_id: opportunityId, payload };
+  } catch (error) { throw renovationReadFailure(error, origin); }
 }
 
 // ── Professor follows + verified-update read cursors (W8) ─────────────────

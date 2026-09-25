@@ -23,7 +23,9 @@ import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
-import { saveRenovation, loadRenovation } from '@/lib/supabase';
+import { saveRenovation, loadRenovation, type RenovationPayload, type StoredRenovation } from '@/lib/supabase';
+import { RenovationSaveQueue, type RenovationQueueState } from '@/lib/renovation-save-queue';
+import RenovationHistory from './RenovationHistory';
 import type {
   Opportunity,
   ProfileData,
@@ -50,6 +52,8 @@ interface RenovationScope {
   saveRevision: number;
   workRevision: number;
   profileFingerprint: string;
+  queue?: RenovationSaveQueue;
+  material: Omit<RenovationPayload, 'doc'>;
 }
 
 
@@ -287,9 +291,8 @@ export default function ResumeRenovationModal({
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
-  // The last persist payload, so the save-failed state can offer a real
-  // retry of exactly what failed (W13).
-  const lastPersistRef = useRef<{ doc: RenovationDoc; sections: ResumeSectionInput[]; scope: RenovationScope; workRevision: number } | null>(null);
+  const [saveState, setSaveState] = useState<RenovationQueueState>({ status: 'idle' });
+  const [historyOwner, setHistoryOwner] = useState<OwnerToken | null>(null);
   // Per-bullet UI state, keyed by bullet id (ids are unique doc-wide — the
   // backend 422s duplicate ids).
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -319,7 +322,7 @@ export default function ResumeRenovationModal({
   // Invalidate before paint/microtasks when the parent closes or replaces
   // the target/source, even if the passive restore effect has not run yet.
   useLayoutEffect(() => () => {
-    if (scopeRef.current) scopeRef.current.active = false;
+    if (scopeRef.current) { scopeRef.current.active = false; scopeRef.current.queue?.retire(); }
   }, [isOpen, opportunityId]);
   // Keep this callback stable so editing never reinstalls the focus trap.
   // Only user-requested exits consult dirty state; owner invalidation below
@@ -331,8 +334,7 @@ export default function ResumeRenovationModal({
       ? '还有未保存的改动。离开会丢弃尚未保存的编辑；已经发出的保存仍可能完成。确定离开？'
       : 'There are unsaved changes. Leaving discards unsaved edits; a save already in progress may still finish. Leave bullet editing?')) return false;
     exitRequestedRef.current = true;
-    if (scopeRef.current) scopeRef.current.active = false;
-    lastPersistRef.current = null;
+    if (scopeRef.current) { scopeRef.current.active = false; scopeRef.current.queue?.retire(); }
     if (destination === 'full') state.onOpenFull?.();
     else closeRef.current();
     return true;
@@ -364,15 +366,12 @@ export default function ResumeRenovationModal({
     scope.profileFingerprint = profileFingerprint;
     profileRevisionRef.current += 1;
     scope.workRevision += 1;
-    lastPersistRef.current = null;
     setProfileChanged(true);
     setStructureResult(null);
     setOptimizingId(null);
     setBulletNotices({});
     setError(null);
-    setSaving(false);
     setSavedFlash(false);
-    setSaveFailed(false);
     setCopied(false);
     setPhase((previous) => previous === 'working' ? (docRef.current ? 'doc' : 'idle') : previous);
   }, [isOpen, profileFingerprint]);
@@ -393,14 +392,15 @@ export default function ResumeRenovationModal({
   // over the empty CTA. setState runs in the async callback.
   useEffect(() => {
     if (!isOpen) return;
-    const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0, workRevision: 0, profileFingerprint };
+    const scope: RenovationScope = { active: true, owner: captureOwnerToken(), saveRevision: 0, workRevision: 0, profileFingerprint, material: { base_snapshot: {}, method: null, warnings: [] } };
     scopeRef.current = scope;
     exitRequestedRef.current = false;
-    lastPersistRef.current = null;
     /* eslint-disable react-hooks/set-state-in-effect --
        Modal-lifecycle reset mirroring TailorModal: every slice returns to a
        known state on open before the async restore resolves. */
     setPhase('restoring');
+    setSaveState({ status: 'idle' });
+    setHistoryOwner(null);
     setProfileChanged(false);
     setTargetChanged(false);
     setActionChanged(false);
@@ -426,14 +426,17 @@ export default function ResumeRenovationModal({
           // Initial readiness is a new capability, not permission to upgrade
           // an already-running action. Restart restore with a fresh scope.
           scope.active = false;
+          scope.queue?.retire();
           setOwnerRevision((revision) => revision + 1);
         }
         return;
       }
       // Invalidate synchronously, before React has rendered the next account.
       scope.active = false;
+      scope.queue?.retire();
       exitRequestedRef.current = true;
-      lastPersistRef.current = null;
+      setHistoryOwner(null);
+      setSaveState({ status: 'idle' });
       setCurrentDoc(null);
       setBaseSections([]);
       setStructureResult(null);
@@ -452,6 +455,20 @@ export default function ResumeRenovationModal({
     loadRenovation(opportunityId, scope.owner)
       .then((stored) => {
         if (!isCurrentScope(scope)) return;
+        scope.queue = new RenovationSaveQueue(stored?.revision ?? 0,
+          (payload, revision) => saveRenovation(opportunityId, payload.doc, payload.base_snapshot, payload.method, payload.warnings, scope.owner, revision),
+          (state) => {
+            if (!isCurrentScope(scope)) return;
+            const sequence = ++scope.saveRevision;
+            setSaveState(state);
+            setSaving(state.status === 'saving');
+            setSaveFailed(!['idle', 'saving', 'saved'].includes(state.status));
+            setSavedFlash(state.status === 'saved');
+            if (state.status === 'saved') setTimeout(() => {
+              if (isCurrentScope(scope) && scope.saveRevision === sequence) setSavedFlash(false);
+            }, 2000);
+          });
+        if (stored) scope.material = { base_snapshot: stored.base_snapshot, method: stored.method, warnings: stored.warnings };
         const storedDoc = stored?.doc as unknown as RenovationDoc | undefined;
         if (storedDoc && Array.isArray(storedDoc.sections) && storedDoc.sections.length > 0) {
           // Keep the original source signature, including after source removal.
@@ -472,6 +489,7 @@ export default function ResumeRenovationModal({
       });
     return () => {
       scope.active = false;
+      scope.queue?.retire();
       unsubscribe();
     };
     // Profile-only changes are handled above without replacing local edits.
@@ -524,39 +542,49 @@ export default function ResumeRenovationModal({
   }, [isOpen, requestLeave]);
 
   const persist = useCallback(
-    async (nextDoc: RenovationDoc, sections: ResumeSectionInput[], scope: RenovationScope, workRevision = scope.workRevision) => {
+    (nextDoc: RenovationDoc, _sections: ResumeSectionInput[], scope: RenovationScope, workRevision = scope.workRevision) => {
       if (!isCurrentWork(scope, workRevision)) return;
-      const revision = ++scope.saveRevision;
-      const isLatestSave = () => isCurrentWork(scope, workRevision) && revision === scope.saveRevision;
-      setSaving(true);
-      setSavedFlash(false);
-      setSaveFailed(false);
-      // An edit/retry must not relabel a document as derived from a new source.
-      lastPersistRef.current = { doc: nextDoc, sections, scope, workRevision };
-      try {
-        const ok = await saveRenovation(
-          opportunityId,
-          nextDoc as unknown as Record<string, unknown>,
-          { sections } as unknown as Record<string, unknown>,
-          nextDoc.method,
-          nextDoc.warnings,
-          scope.owner,
-        );
-        if (!isLatestSave()) return;
-        if (ok) {
-          setSavedFlash(true);
-          setTimeout(() => { if (isLatestSave()) setSavedFlash(false); }, 2000);
-        } else {
-          setSaveFailed(true);
-        }
-      } catch {
-        if (isLatestSave()) setSaveFailed(true);
-      } finally {
-        if (isLatestSave()) setSaving(false);
-      }
-    },
-    [opportunityId, isCurrentWork],
+      // Keep the entire original envelope, including unknown extension fields.
+      scope.queue?.enqueue({ doc: nextDoc as unknown as Record<string, unknown>, ...scope.material });
+    }, [isCurrentWork],
   );
+
+  function adoptSaved(current: StoredRenovation) {
+    const scope = scopeRef.current;
+    if (!isCurrentScope(scope) || editingId || saving) return;
+    if (!window.confirm(locale === 'zh' ? '使用已保存版本会丢弃当前本地改动。确定继续？' : 'Using the saved version discards your local edits. Continue?')) return;
+    markUserEdit();
+    setStructureResult(null);
+    setProfileChanged(false);
+    setTargetChanged(false);
+    setActionChanged(false);
+    setCopied(false);
+    scope.queue?.resolveConflict();
+    scope.material = { base_snapshot: current.base_snapshot, method: current.method, warnings: current.warnings };
+    setCurrentDoc(current.doc as unknown as RenovationDoc);
+    setBaseSections(Array.isArray(current.base_snapshot.sections) ? current.base_snapshot.sections as ResumeSectionInput[] : []);
+    setRestoredFromSave(true);
+    setHistoryOwner(null);
+  }
+
+  function restoreHistory(payload: RenovationPayload) {
+    const scope = scopeRef.current;
+    if (!isCurrentScope(scope) || editingId || saving || saveFailed || phase !== 'doc') return;
+    markUserEdit();
+    setStructureResult(null);
+    setProfileChanged(false);
+    setTargetChanged(false);
+    setActionChanged(false);
+    setCopied(false);
+    scope.material = { base_snapshot: payload.base_snapshot, method: payload.method, warnings: payload.warnings };
+    const restored = payload.doc as unknown as RenovationDoc;
+    const sections = Array.isArray(payload.base_snapshot.sections) ? payload.base_snapshot.sections as ResumeSectionInput[] : [];
+    setCurrentDoc(restored);
+    setBaseSections(sections);
+    setRestoredFromSave(false);
+    setHistoryOwner(null);
+    persist(restored, sections, scope);
+  }
 
   async function handleRenovate() {
     const scope = scopeRef.current;
@@ -567,10 +595,7 @@ export default function ResumeRenovationModal({
     const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && userEditRef.current === editRevision && isCurrentWork(scope, workRevision);
     const resumeSignature = hashString(profileSnapshot.resume_text);
     const originalDoc = docRef.current;
-    lastPersistRef.current = null;
-    setSaving(false);
     setSavedFlash(false);
-    setSaveFailed(false);
     setOptimizingId(null);
     setBulletNotices({});
     setPhase('working');
@@ -612,6 +637,7 @@ export default function ResumeRenovationModal({
         warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
         processing: structured.processing,
       };
+      scope.material = { base_snapshot: { sections: structured.sections }, method: nextDoc.method, warnings: nextDoc.warnings };
       setCurrentDoc(nextDoc);
       setProfileChanged(false);
       setTargetChanged(false);
@@ -848,25 +874,16 @@ export default function ResumeRenovationModal({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {savedFlash && (
+            {savedFlash && !editingId && (
               <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
                 <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
                 {t('renovate.saved')}
               </span>
             )}
-            {saveFailed && !saving && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-600" data-testid="renovation-save-failed">
-                {t('renovate.saveFailed')}
-                <button
-                  type="button"
-                  className="underline hover:text-amber-700"
-                  onClick={() => {
-                    const last = lastPersistRef.current;
-                    if (last) void persist(last.doc, last.sections, last.scope, last.workRevision);
-                  }}
-                >
-                  {t('renovate.retrySave')}
-                </button>
+            {saveFailed && !saving && ['unknown', 'unavailable'].includes(saveState.status) && (
+              <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-amber-600" data-testid="renovation-save-failed">
+                {locale === 'zh' ? '保存结果未确认' : 'Save not confirmed'}
+                <button type="button" className="underline hover:text-amber-700" onClick={() => scopeRef.current?.queue?.retry()}>{t('renovate.retrySave')}</button>
               </span>
             )}
             {saving && !savedFlash && (
@@ -898,6 +915,21 @@ export default function ResumeRenovationModal({
         </div>}
         {/* Body */}
         <div className="flex-1 overflow-y-auto min-h-0">
+          {phase === 'doc' && <div className="px-4 pt-3"><button type="button" className="text-sm text-indigo-700 underline" onClick={() => { const scope = scopeRef.current; if (isCurrentScope(scope)) setHistoryOwner(owner => owner ? null : scope.owner); }}>{locale === 'zh' ? '历史版本' : 'Version history'}</button></div>}
+          {saveState.status === 'conflict' && saveState.current && <section role="alert" data-testid="renovation-save-conflict" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3">
+            <p>{locale === 'zh' ? '其他设备已保存了新版本。你的本地改动已保留，请比较后选择。' : 'Another device saved a newer version. Your local edits are kept. Compare the saved draft before choosing.'}</p>
+            <details><summary>{locale === 'zh' ? '查看已保存版本' : 'View saved version'}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm" data-testid="renovation-conflict-preview">{(saveState.current.doc as unknown as RenovationDoc).sections.map(s => [s.heading, ...s.bullets.map(bulletCurrentText)].join('\n')).join('\n\n')}</pre></details>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => adoptSaved(saveState.current!)}>{locale === 'zh' ? '使用已保存版本' : 'Use saved version'}</button>
+              <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => {
+                const scope = scopeRef.current;
+                if (isCurrentScope(scope) && docRef.current && !editingId) scope.queue?.resolveConflict({ doc: docRef.current as unknown as Record<string, unknown>, ...scope.material });
+              }}>{locale === 'zh' ? '用我的稿件替换此版本' : 'Save my draft over this version'}</button>
+            </div>
+          </section>}
+          {saveState.status === 'missing' && <p role="alert" className="mx-4 mt-3 rounded-lg bg-amber-50 p-3 text-sm">{locale === 'zh' ? '已保存稿已被移除。请先复制本地内容，再重新打开。当前编辑不会自动重新建稿。' : 'The saved draft was removed. Copy your local text before reopening. These edits will not recreate it automatically.'}</p>}
+          {historyOwner && <RenovationHistory opportunityId={opportunityId} owner={historyOwner} locale={locale} disabled={!!editingId || saving || saveFailed || phase !== 'doc'} onRestore={restoreHistory} onClose={() => setHistoryOwner(null)} />}
+
           {phase !== 'restoring' && (hasResume || doc?.processing) && (
             <div className="px-4 sm:px-6 pt-4">
               <ResumeProcessingNotice

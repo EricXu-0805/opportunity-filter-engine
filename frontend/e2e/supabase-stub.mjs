@@ -197,7 +197,81 @@ function canonicalJSON(value) {
   if (value && typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${JSON.stringify(k)}:${canonicalJSON(value[k])}`).join(',')}}`;
   return JSON.stringify(value);
 }
+function renovationError(message = 'invalid_renovation') {
+  return { status: 400, body: { code: '22023', message } };
+}
+function renovationOwner(body, uid) {
+  if (!uid || body.p_expected_owner !== uid || rowsOf('merged_devices').some(row => row.source_device_id === uid)) {
+    return { status: 403, body: { code: '42501', message: 'identity_changed' } };
+  }
+  if (typeof body.p_opportunity_id !== 'string' || !body.p_opportunity_id.trim()
+    || Array.from(body.p_opportunity_id).length > 200) return renovationError();
+  return null;
+}
+function renovationCurrent(row) {
+  return { owner_id: row.owner_id, opportunity_id: row.opportunity_id, revision: row.revision,
+    updated_at: row.updated_at, payload: structuredClone(row.payload) };
+}
+function renovationSummary(row) {
+  return { id: row.id, created_at: row.created_at, revision: row.revision,
+    snapshot_kind: row.snapshot_kind, source_revision: row.source_revision, source_updated_at: row.source_updated_at };
+}
+const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const rpcs = {
+  // Legacy bullet drafts now use bounded RPCs. The old table REST endpoints
+  // remain closed below; this is client-wire fidelity, not a replacement for
+  // the real PostgreSQL ACL/transaction/concurrency tests.
+  read_renovation(body, uid) {
+    const invalid = renovationOwner(body, uid); if (invalid) return invalid;
+    const row = rowsOf('resume_renovations').find(row => row.owner_id === uid && row.opportunity_id === body.p_opportunity_id);
+    return { status: 200, body: row ? { status: 'found', current: renovationCurrent(row) } : { status: 'absent' } };
+  },
+  save_renovation_cas(body, uid) {
+    const invalid = renovationOwner(body, uid); if (invalid) return invalid;
+    const expected = body.p_expected_revision, payload = body.p_payload, opp = body.p_opportunity_id;
+    if (!Number.isSafeInteger(expected) || expected < 0 || !record(payload)
+      || Object.keys(payload).sort().join(',') !== 'base_snapshot,doc,method,warnings'
+      || !record(payload.doc) || payload.doc.kind === 'full_resume' || !Array.isArray(payload.doc.sections) || !record(payload.base_snapshot)
+      || (payload.method !== null && typeof payload.method !== 'string')
+      || !Array.isArray(payload.warnings) || !payload.warnings.every(item => typeof item === 'string')
+      || Buffer.byteLength(JSON.stringify(payload), 'utf8') > 2 * 1024 * 1024) return renovationError();
+    const rows = rowsOf('resume_renovations');
+    const row = rows.find(row => row.owner_id === uid && row.opportunity_id === opp);
+    if (!row && expected !== 0) return { status: 200, body: { status: 'missing' } };
+    const respond = (status, value) => ({ status: 200, body: { status, current: renovationCurrent(value) } });
+    if (row && canonicalJSON(row.payload) === canonicalJSON(payload) && [expected, expected + 1].includes(row.revision)) return respond('unchanged', row);
+    if (row && expected !== row.revision) return respond('conflict', row);
+    if (row && row.revision >= Number.MAX_SAFE_INTEGER) return renovationError('revision_limit');
+    const now = new Date().toISOString();
+    const next = { owner_id: uid, opportunity_id: opp, revision: (row?.revision ?? 0) + 1,
+      updated_at: now, payload: structuredClone(payload) };
+    if (row) Object.assign(row, next); else rows.push(next);
+    rowsOf('resume_renovation_versions').push({ ...structuredClone(next), id: randomUUID(), created_at: now,
+      snapshot_kind: 'complete', source_revision: null, source_updated_at: null });
+    return respond('saved', next);
+  },
+  list_renovation_versions(body, uid) {
+    const invalid = renovationOwner(body, uid); if (invalid) return invalid;
+    const before = body.p_before_created_at ?? null, beforeId = body.p_before_id ?? null, limit = body.p_limit === undefined ? 20 : body.p_limit;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50 || (before === null) !== (beforeId === null)
+      || (before !== null && (typeof before !== 'string' || !Number.isFinite(Date.parse(before))
+        || typeof beforeId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(beforeId)))) return renovationError('invalid_cursor');
+    const sorted = rowsOf('resume_renovation_versions').filter(row => row.owner_id === uid && row.opportunity_id === body.p_opportunity_id)
+      .filter(row => before === null || Date.parse(row.created_at) < Date.parse(before)
+        || (Date.parse(row.created_at) === Date.parse(before) && row.id < beforeId))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+    const selected = sorted.slice(0, limit), last = selected.at(-1);
+    return { status: 200, body: { items: selected.map(renovationSummary),
+      next_cursor: sorted.length > limit && last ? { created_at: last.created_at, id: last.id } : null } };
+  },
+  get_renovation_version(body, uid) {
+    const invalid = renovationOwner(body, uid); if (invalid) return invalid;
+    if (typeof body.p_version_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.p_version_id)) return renovationError();
+    const row = rowsOf('resume_renovation_versions').find(row => row.owner_id === uid
+      && row.opportunity_id === body.p_opportunity_id && row.id === body.p_version_id);
+    return { status: 200, body: row ? { status: 'found', version: { ...renovationSummary(row), owner_id: uid,
+      opportunity_id: row.opportunity_id, payload: structuredClone(row.payload) } } : { status: 'absent' } };
+  },
   // Independent full-document CAS. Real RLS/merge/rollback is proven in SQL;
   // the stub reproduces only this wire contract for local browser tests.
   commit_target_resume_cas(body, uid) {
@@ -375,6 +449,9 @@ const server = createServer((req, res) => {
     if (path.startsWith('/rest/v1/')) {
       const table = path.slice('/rest/v1/'.length).split('/')[0];
       if (!table) return send(res, 404, { message: 'stub: no table' });
+      if (['resume_renovations', 'resume_renovation_versions'].includes(table)) {
+        return send(res, 403, { code: '42501', message: 'permission denied for legacy renovation table' });
+      }
       const rows = rowsOf(table);
       const params = url.searchParams;
 

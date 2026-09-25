@@ -79,6 +79,9 @@ for f in "$MIGRATIONS"/*.sql; do
         (device_id, professor_id, last_read_event_id)
       VALUES ('acl-preserve-device', 'prof:v1:uiuc:eeeeeeeeeeeeeeeeeeee', 'prof-event:v1:eeeeeeeeeeeeeeeeeeeeeeee');"
   fi
+  if [[ "$base" == "20260925052636_legacy_renovation_cas_rpc.sql" ]]; then
+    "${PSQL[@]}" -f "$HERE/legacy_renovation_seed.sql"
+  fi
   echo "    apply $base"
   "${PSQL[@]}" -f "$f"
 done
@@ -109,6 +112,12 @@ echo "==> run target_resume_cas_test.sql"
 
 echo "==> run target_resume_concurrency_test.sh"
 source "$HERE/target_resume_concurrency_test.sh"
+
+echo "==> run legacy_renovation_cas_test.sql"
+"${PSQL[@]}" -f "$HERE/legacy_renovation_cas_test.sql"
+
+echo "==> run legacy_renovation_concurrency_test.sh"
+source "$HERE/legacy_renovation_concurrency_test.sh"
 
 echo "==> run hidden_capabilities_acl_test.sql"
 "${PSQL[@]}" -f "$HERE/hidden_capabilities_acl_test.sql"

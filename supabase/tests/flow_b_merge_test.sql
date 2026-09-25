@@ -495,6 +495,7 @@ DECLARE
   res jsonb;
   c int;
 BEGIN
+  INSERT INTO auth.users(id) VALUES (u::uuid),(v::uuid) ON CONFLICT DO NOTHING;
   -- ---- seed TARGET (V) ----
   INSERT INTO resume_renovations (device_id, opportunity_id, doc)
     VALUES (v, 'oppR', '{"who":"V"}');                 -- conflict with U's oppR
@@ -538,9 +539,9 @@ BEGIN
       res#>>'{summary,resume_renovations}';
   END IF;
 
-  -- resume_renovation_versions: append-only -> both survive under V.
+  -- Both original histories survive, plus exact source currents and merged target after-image.
   SELECT count(*) INTO c FROM resume_renovation_versions WHERE device_id = v;
-  IF c <> 2 THEN RAISE EXCEPTION 'TEST FAIL s7 renovation_versions: want 2 got %', c; END IF;
+  IF c <> 5 THEN RAISE EXCEPTION 'TEST FAIL s7 renovation_versions: want 5 (two old + two source currents + destination after-image) got %', c; END IF;
 
   -- usage_events: append-only -> all three under V.
   SELECT count(*) INTO c FROM usage_events WHERE device_id = v;

@@ -507,15 +507,18 @@ test.describe('Results return context', () => {
         base_snapshot: {}, method: 'fallback', warnings: [], updated_at: '2026-09-24T00:00:00Z',
       };
       let reads = 0;
-      await page.route('**/rest/v1/resume_renovations?**', async (route) => {
-        expect(route.request().method()).toBe('GET');
+      await page.route('**/rest/v1/rpc/read_renovation', async (route) => {
+        expect(route.request().method()).toBe('POST');
         reads += 1;
         if (reads === 1 && failure === 'read failure') {
           await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'synthetic-private-backend-detail' }) });
           return;
         }
         const data = reads === 1 ? { ...stored, doc: { sections: 'broken' } } : stored;
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([data]) });
+        const request = route.request().postDataJSON();
+        const { updated_at, ...payload } = data;
+        await route.fulfill({ status: 200, json: { status: 'found', current: { owner_id: request.p_expected_owner,
+          opportunity_id: request.p_opportunity_id, revision: 1, updated_at, payload } } });
       });
       await onSecondPage(page, net);
       await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
@@ -524,13 +527,13 @@ test.describe('Results return context', () => {
       await expect(dialog.getByText(en.renovate.restoreFailed, { exact: true })).toBeVisible();
       await expect(dialog.getByRole('button', { name: en.renovate.start, exact: true })).toHaveCount(0);
       await expect(dialog.getByText('synthetic-private-backend-detail')).toHaveCount(0);
-      expect(net.writes.filter((write) => write.includes('resume_renovation'))).toEqual([]);
+      expect(net.writes.filter((write) => write.includes('/save_renovation_cas') || write.includes('/resume_renovations'))).toEqual([]);
       await dialog.getByRole('button', { name: en.renovate.restoreRetry, exact: true }).click();
       await expect(dialog.getByText(en.renovate.restored, { exact: true })).toBeVisible();
       await expect(dialog.getByRole('button', { name: en.renovate.copyAll, exact: true })).toBeVisible();
       await expect(dialog.getByText(existingText, { exact: false })).toBeVisible();
       expect(reads).toBe(2);
-      expect(net.writes.filter((write) => write.includes('resume_renovation'))).toEqual([]);
+      expect(net.writes.filter((write) => write.includes('/save_renovation_cas') || write.includes('/resume_renovations'))).toEqual([]);
     });
   }
 
