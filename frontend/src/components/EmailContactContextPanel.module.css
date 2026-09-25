@@ -1,0 +1,105 @@
+.panel {
+  min-width: 0;
+  margin: 1rem 1.25rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.75rem;
+  background: #f8faff;
+  color: #1f2937;
+}
+.summary {
+  cursor: pointer;
+  padding: 0.75rem;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.summary:focus-visible,
+.content :is(input, select, textarea, button):focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+.badge {
+  display: inline-block;
+  margin-inline-start: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.content {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0 0.75rem 0.75rem;
+}
+.fields {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.field {
+  display: grid;
+  gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.field label { font-weight: 500; }
+.field :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: white;
+  padding: 0.625rem;
+  color: #111827;
+  font: inherit;
+}
+.field textarea {
+  resize: vertical;
+  max-height: 16rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.help, .error {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.help { color: #4b5563; }
+.error { color: #991b1b; }
+.count { color: #4b5563; font-size: 0.75rem; }
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.checkbox input { flex: none; margin-top: 0.25rem; }
+.checkbox span { min-width: 0; overflow-wrap: anywhere; }
+.apply, .secondary {
+  justify-self: start;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #a5b4fc;
+  border-radius: 0.5rem;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+}
+.apply { background: #4338ca; color: white; }
+.secondary { background: white; color: #3730a3; }
+.apply:disabled, .secondary:disabled, .fields:disabled { opacity: 0.6; }
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

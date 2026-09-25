@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -152,8 +153,8 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       variants += 1;
       const request = route.request().postDataJSON();
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-        opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
-        variants: [{ id: 'preservation-template', label: 'Template', subject: 'Original template subject',
+        opportunity_id: request.opportunity_id, target_version: request.expected_target_version, contact_context_receipt: contactReceiptForRequest(request),
+        variants: [{ contact_context_receipt: contactReceiptForRequest(request), id: 'preservation-template', label: 'Template', subject: 'Original template subject',
           body: 'Original complete template body.', recipient_email: 'initial@example.edu', mailto_link: 'mailto:initial@example.edu' }],
         recipient_status: 'revealed', lab_type: null, pipeline_version: 'e2e-profile-preservation', corpus_version: 'e2e-profile-preservation',
       }) });
@@ -166,7 +167,7 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       refinements += 1;
       expect(request.current_body).toBe(BODY);
       await gate;
-      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: request.opportunity_id, target_version: request.expected_target_version, body: 'LATE OLD PROFILE REFINEMENT MUST NOT REPLACE MY WORDS', method: 'llm' }) }); }
+      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: request.opportunity_id, target_version: request.expected_target_version, contact_context_receipt: contactReceiptForRequest(request), body: 'LATE OLD PROFILE REFINEMENT MUST NOT REPLACE MY WORDS', method: 'llm' }) }); }
       catch (error) { if (!route.request().failure()) throw error; }
       finally { settle(); }
     });
@@ -175,9 +176,9 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       await page.goto(`/opportunities/${TARGET}`);
       await page.getByRole('button', { name: 'Draft email', exact: true }).click();
       const editor = page.getByTestId('cold-email-editor-fields');
-      const subject = editor.locator('input[type="text"]');
-      const body = editor.locator('textarea');
-      const recipient = editor.locator('input[type="email"]');
+      const subject = editor.locator('#cold-email-subject');
+      const body = editor.locator('#cold-email-body');
+      const recipient = editor.locator('#cold-email-to');
       await expect(subject).toHaveValue('Original template subject');
       await subject.fill(SUBJECT); await body.fill(BODY); await recipient.fill(RECIPIENT);
       const instruction = page.getByRole('textbox', { name: 'Request an edit', exact: true });

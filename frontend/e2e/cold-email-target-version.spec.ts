@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 
@@ -41,7 +42,7 @@ async function open(page: Page) {
 }
 function fields(page: Page) {
   const editor = page.getByTestId('cold-email-editor-fields');
-  return { subject: editor.locator('input[type="text"]'), body: editor.locator('textarea'), recipient: editor.locator('input[type="email"]') };
+  return { subject: editor.locator('#cold-email-subject'), body: editor.locator('#cold-email-body'), recipient: editor.locator('#cold-email-to') };
 }
 async function edit(page: Page) {
   await fields(page).subject.fill('Manual subject 王'); await fields(page).body.fill('My manual research message 王'); await fields(page).recipient.fill('manual@example.edu');
@@ -61,7 +62,7 @@ async function writing(page: Page) {
   await page.route('**/api/cold-email**', async route => {
     const path = pathOf(route.request().url()), body = route.request().postDataJSON() as WritingCall;
     state.calls.push({ ...body, path }); expect(body.opportunity_id).toBe(ID); expect(body.expected_target_version).toMatch(/^wt1:[0-9a-f]{64}$/);
-    const receipt = { opportunity_id: ID, target_version: body.expected_target_version };
+    const receipt = { opportunity_id: ID, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body) };
     const draft = { ...receipt, subject: 'Checked subject', body: 'Checked body', recipient_email: 'lab@example.edu',
       recipient_status: 'revealed', mailto_link: '', method: 'template', pipeline_version: 'w12.6', corpus_version: 'email-version-test' };
     if (path === '/api/cold-email/variants') { await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } }); return; }

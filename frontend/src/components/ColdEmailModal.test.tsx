@@ -210,7 +210,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGetVariants).toHaveBeenCalledTimes(1));
-      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
+      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('shows a loading spinner before variants resolve', () => {
@@ -462,7 +462,7 @@ describe('ColdEmailModal', () => {
       // the blocking compatibility route landed the draft.
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       // No recommended_style in this variants mock → seeds the default tone.
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION });
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('uses the stream result when streaming succeeds (no blocking call)', async () => {
@@ -528,7 +528,7 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByText('coldEmail.tone.lively')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.tone.lively'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively', expectedTargetVersion: EMAIL_TARGET_VERSION });
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('R72-A: shows the fabrication fallback hint when the AI draft is rejected', async () => {
@@ -757,8 +757,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
-      const bodyArea = screen.getByDisplayValue(/Interested/).closest('div')!.parentElement!
-        .querySelector('textarea[id="email-body"], textarea')!;
+      const bodyArea = screen.getByLabelText('coldEmail.body');
       fireEvent.change(bodyArea, { target: { value: 'my hand-tuned draft' } });
       await act(async () => { release(AI_RESP); });
       // Draft is available on the AI pill but the user's edit stays put.
@@ -906,7 +905,7 @@ describe('ColdEmailModal', () => {
         'Make it more formal and professional',
         makeProfile(),
         'opp',
-        { expectedTargetVersion: EMAIL_TARGET_VERSION },
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
       );
       await waitFor(() =>
         expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
@@ -1039,7 +1038,7 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
-        { expectedTargetVersion: EMAIL_TARGET_VERSION },
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
       );
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });

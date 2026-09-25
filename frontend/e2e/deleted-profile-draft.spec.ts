@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { MatchResult, MatchesResponse, ProfileData, ResumeFact } from '../src/lib/types';
@@ -118,8 +119,8 @@ async function installNetwork(page: Page) {
     await page.route(pattern, route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   }
   await page.route('**/api/cold-email/variants', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-    opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version,
-    variants: [{ id: 'deletion-template', label: 'Template', subject: 'Initial template subject', body: 'Initial template body.', recipient_email: 'initial@example.edu', mailto_link: '' }],
+    opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()),
+    variants: [{ contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), id: 'deletion-template', label: 'Template', subject: 'Initial template subject', body: 'Initial template body.', recipient_email: 'initial@example.edu', mailto_link: '' }],
     recipient_status: 'revealed', pipeline_version: 'profile-deletion-fixture', corpus_version: 'profile-deletion-fixture',
   }) }));
   await page.route('**/api/matches/view**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(matched()) }));
@@ -132,7 +133,7 @@ async function openDraft(page: Page, surface: Surface, editor: Editor): Promise<
   if (editor === 'email') {
     const fields = page.getByTestId('cold-email-editor-fields');
     const modal = page.getByRole('dialog').filter({ has: fields });
-    const subject = fields.locator('input[type="text"]'), body = fields.locator('textarea'), recipient = fields.locator('input[type="email"]');
+    const subject = fields.locator('#cold-email-subject'), body = fields.locator('#cold-email-body'), recipient = fields.locator('#cold-email-to');
     const instruction = page.getByRole('textbox', { name: 'Request an edit', exact: true });
     await expect(subject).toHaveValue('Initial template subject');
     await subject.fill(SUBJECT); await body.fill(BODY); await recipient.fill(RECIPIENT); await instruction.fill(UNSENT);

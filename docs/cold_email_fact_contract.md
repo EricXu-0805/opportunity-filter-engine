@@ -159,3 +159,10 @@ is still required before recording contact in Tracker.
 - `frontend/src/components/ColdEmailModal.async.test.tsx` and the existing modal,
   confirmation and tracking suites: deferred results and actual user edits
   using real component/owner logic and controlled network responses.
+
+## Contact context
+
+First contact, referral and follow-up use a separate confirmed input contract.
+See [email_contact_context.md](email_contact_context.md) for the four-route
+receipt, manual-edit retention and contact-history evidence boundary. Prior
+messages, replies and introductions do not authenticate resume claims.

@@ -1390,12 +1390,14 @@ class TestColdEmailEngine:
         assert body["fallback_reason"] == "not_configured"
 
     def test_engine_ai_marks_method_ai_when_llm_responds(self, cold_email_body, monkeypatch):
+        # The real pipeline always receives prepared contact/evidence parts,
+        # including legacy requests without a contact-context envelope.
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key-for-test")
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: "Subject: A research fit\n\nDear Professor,\nbody text here.\nBest,\nStudent",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -1411,7 +1413,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "I will not write that email.",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: "I will not write that email.",
         )
         payload = {**cold_email_body, "engine": "ai"}
         resp = client.post("/api/cold-email", json=payload)
@@ -1435,7 +1437,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: (
                 "Subject: ML research fit\n\n"
                 "Dear Professor,\n"
                 "I am an expert in PyTorch and have deployed Kubernetes "
@@ -1467,7 +1469,7 @@ class TestColdEmailEngine:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\n"
                 "I have experience with Python from CS 124 and I am interested "
@@ -1632,7 +1634,7 @@ class TestColdEmailStyle:
         import backend.routes.cold_email as ce_module
         monkeypatch.setattr(
             ce_module, "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: (
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: (
                 "Subject: Python research fit\n\n"
                 "Dear Professor,\nI have experience with Python from CS 124 and I "
                 "am interested in machine learning. I would be grateful to contribute.\n"
@@ -2429,7 +2431,7 @@ class TestColdEmailSubjectParsing:
         monkeypatch.setattr(
             ce_module,
             "_pipeline_generate",
-            lambda profile, opp, style=None, resume_bullets=None, on_stage=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
+            lambda profile, opp, style=None, resume_bullets=None, on_stage=None, parts_cache=None: "**Subject: A fit**\n\nDear Professor,\nbody.\nBest,\nS",
         )
         payload = {
             "profile": sample_profile_req,

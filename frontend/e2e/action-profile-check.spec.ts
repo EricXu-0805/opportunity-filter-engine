@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { ExperienceEntry, MatchesResponse, ProfileData, ProfileRequest, ResumeFact } from '../src/lib/types';
@@ -93,7 +94,7 @@ async function installWriting(page: Page) {
     const body = route.request().postDataJSON();
     requests.push({ ...body, path });
     const confirmed = (body.experience_evidence.entries as ExperienceEntry[]).filter(item => item.status === 'confirmed');
-    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: `Checked ${body.profile.name}`, body: `Draft for ${body.profile.name}\n${confirmed.map(item => item.text).join('\n')}`,
+    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body), subject: `Checked ${body.profile.name}`, body: `Draft for ${body.profile.name}\n${confirmed.map(item => item.text).join('\n')}`,
       recipient_email: 'checked@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'llm',
       pipeline_version: 'action-check-fixture', corpus_version: 'action-check-fixture' };
     if (path.endsWith('/variants')) {
@@ -102,7 +103,7 @@ async function installWriting(page: Page) {
     } else if (path.endsWith('/stream')) {
       await route.fulfill({ status: 200, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path.endsWith('/refine')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: body.opportunity_id, target_version: body.expected_target_version, body: 'Unexpected stale refine result', method: 'llm' }) });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: body.opportunity_id, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body), body: 'Unexpected stale refine result', method: 'llm' }) });
     } else if (path === '/api/cold-email') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(draft) });
     } else await route.fulfill({ status: 503, body: '{}' });
@@ -134,7 +135,7 @@ async function detailReady(page: Page) {
 }
 const fields = (page: Page) => {
   const section = page.getByTestId('cold-email-editor-fields');
-  return { subject: section.locator('input[type="text"]'), body: section.locator('textarea'), recipient: section.locator('input[type="email"]'),
+  return { subject: section.locator('#cold-email-subject'), body: section.locator('#cold-email-body'), recipient: section.locator('#cold-email-to'),
     instruction: page.getByRole('textbox', { name: 'Request an edit', exact: true }) };
 };
 function assertLatest(requests: WritingRequest[], entries: ExperienceEntry[]) {

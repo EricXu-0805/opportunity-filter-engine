@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import type { MatchResult, MatchesResponse, ProfileData } from '../src/lib/types';
@@ -108,8 +109,8 @@ async function installNetwork(page: Page, state: Network = { requests: [], write
     expectResearchPython(profile);
     await route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify({
-        opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
-        variants: [{ id: 'return-template', label: 'Template', subject: 'Navigation draft', body: 'Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student', recipient_email: 'professor@example.edu', mailto_link: 'mailto:professor@example.edu' }],
+        opportunity_id: request.opportunity_id, target_version: request.expected_target_version, contact_context_receipt: contactReceiptForRequest(request),
+        variants: [{ contact_context_receipt: contactReceiptForRequest(request), id: 'return-template', label: 'Template', subject: 'Navigation draft', body: 'Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student', recipient_email: 'professor@example.edu', mailto_link: 'mailto:professor@example.edu' }],
         recipient_status: 'revealed', lab_type: 'dry',
       }),
     });
@@ -310,8 +311,8 @@ test.describe('Results return context', () => {
     const before = { url: page.url(), count: net.requests.length };
     await card(page).getByRole('button', { name: 'Draft Email', exact: true }).click();
     const fields = page.getByTestId('cold-email-editor-fields');
-    await expect(fields.locator('input[type="text"]')).toHaveValue('Navigation draft');
-    await expect(fields.locator('textarea')).toHaveValue('Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student');
+    await expect(fields.locator('#cold-email-subject')).toHaveValue('Navigation draft');
+    await expect(fields.locator('#cold-email-body')).toHaveValue('Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student');
     expect(net.variantProfiles.length).toBeGreaterThan(0);
     for (const profile of net.variantProfiles) {
       expectResearchPython(profile);

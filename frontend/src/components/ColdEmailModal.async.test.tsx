@@ -135,7 +135,7 @@ describe('cold email draft lifetime', () => {
     expect(screen.queryByDisplayValue('Old edit')).toBeNull();
     expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
     await act(async () => { second.resolve({ body: 'Current edit', method: 'llm' }); });
-    expect(screen.getByDisplayValue('Current edit')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Current edit')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.editing')).toBeNull();
   });
 
@@ -175,7 +175,7 @@ describe('cold email draft lifetime', () => {
     requestEdit();
     act(() => { advanceOwnerEpoch(captureOwnerToken().uid); });
     await act(async () => { edit.resolve({ body: 'Current owner result', method: 'llm' }); });
-    expect(screen.getByDisplayValue('Current owner result')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Current owner result')).toBeInTheDocument();
     expect(view.onClose).not.toHaveBeenCalled();
   });
 
@@ -201,9 +201,9 @@ describe('cold email draft lifetime', () => {
     await screen.findByDisplayValue('AI grounded draft');
     expect(api.extract).not.toHaveBeenCalled();
     expect(api.variants).toHaveBeenCalledTimes(1);
-    expect(api.variants).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
+    expect(api.variants).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     expect(api.stream).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A',
-      { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION }, expect.any(Function));
+      { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
   });
 
   it('a late stream error does not launch a blocking fallback after unmount', async () => {
@@ -668,10 +668,10 @@ describe('profile changes preserve the open email', () => {
     api.variants.mockReturnValueOnce(next.promise);
     api.stream.mockResolvedValueOnce(aiDraft('AI from updated profile'));
     regenerate(); expectDraft();
-    expect(api.variants).toHaveBeenLastCalledWith(updated, 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
+    expect(api.variants).toHaveBeenLastCalledWith(updated, 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     await act(async () => { next.resolve({ variants: [variant('updated')] }); });
     await screen.findByDisplayValue('AI from updated profile');
-    expect(api.stream).toHaveBeenLastCalledWith(updated, 'A', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION }, expect.any(Function));
+    expect(api.stream).toHaveBeenLastCalledWith(updated, 'A', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
     expect(screen.getByDisplayValue('verified@example.edu')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.profileChanged')).toBeNull();
   });
@@ -684,7 +684,7 @@ describe('profile changes preserve the open email', () => {
     fireEvent.change(input, { target: { value: field === 'recipient' ? 'later@example.edu' : 'Later manual change' } });
     fireEvent.change(input, { target: { value: oldValue } }); // Undo still counts as an intervening edit.
     await act(async () => { next.resolve({ variants: [variant('replacement')] }); });
-    expectDraft(); expect(screen.getByText('coldEmail.editSuperseded')).toBeInTheDocument();
+    await screen.findByText('coldEmail.editSuperseded'); expectDraft();
     expect(screen.getByText('coldEmail.profileChanged')).toBeInTheDocument();
     expect(api.stream).toHaveBeenCalledTimes(1);
   });

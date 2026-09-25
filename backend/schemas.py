@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import json
 import re
+from datetime import date
 from typing import Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
+from backend.lib.email_claims import unsupported_action_claims
+from backend.lib.email_contact_context import contains_context_work_claim
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 
 # Where an imported skill came from. Absence is the student's own choice; an
@@ -387,7 +391,128 @@ class ExperienceEvidence(BaseModel):
         return self
 
 
+# Match ECMAScript String.trim exactly; Python strip differs for FEFF/0085.
+_CONTACT_TRIM = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+
+class _ContactFields(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def exact_user_text(cls, value):
+        if isinstance(value, str):
+            value.encode("utf-8")
+            if not value or value != value.strip(_CONTACT_TRIM) or "\x00" in value:
+                raise ValueError("contact text must be nonblank, trimmed and valid Unicode")
+        return value
+
+
+class EmailReferralContext(_ContactFields):
+    referrer_name: str = Field(max_length=120)
+    referral_note: str = Field(max_length=1500)
+    confirmed: Literal[True]
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit confirmation required")
+        return value
+
+    @field_validator("referrer_name")
+    @classmethod
+    def single_line_name(cls, value):
+        if any(character in value for character in "\r\n\u2028\u2029"):
+            raise ValueError("referrer name must be a single line")
+        if contains_context_work_claim(value) or unsupported_action_claims(value):
+            raise ValueError("referrer name cannot contain a student work or unsupported action claim")
+        return value
+
+
+class EmailFollowUpContext(_ContactFields):
+    sent_confirmed: Literal[True]
+    previous_message: str = Field(max_length=4000)
+    sent_on: str | None = None
+    reply_status: Literal["unknown", "no_reply", "received"]
+    reply_text: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("sent_confirmed", mode="before")
+    @classmethod
+    def explicit_sent_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit sent confirmation required")
+        return value
+
+    @field_validator("sent_on")
+    @classmethod
+    def calendar_date(cls, value):
+        if value is not None:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                raise ValueError("sent date must be YYYY-MM-DD")
+            date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def corresponding_reply(self):
+        if (self.reply_status == "received") != (self.reply_text is not None):
+            raise ValueError("reply text is required only for a received reply")
+        return self
+
+
+class EmailAvailabilityContext(_ContactFields):
+    text: str = Field(max_length=500)
+    confirmed: Literal[True]
+
+    @field_validator("text")
+    @classmethod
+    def availability_not_work_claim(cls, value):
+        if contains_context_work_claim(value) or unsupported_action_claims(value):
+            raise ValueError("availability cannot contain a student work or unsupported action claim")
+        return value
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit confirmation required")
+        return value
+
+
+class EmailContactContext(_ContactFields):
+    version: Literal[1]
+    purpose: Literal["first_contact", "referral", "follow_up"]
+    referral: EmailReferralContext | None = None
+    follow_up: EmailFollowUpContext | None = None
+    availability: EmailAvailabilityContext | None = None
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def integer_version(cls, value):
+        if type(value) is not int:
+            raise ValueError("contact version must be integer 1")
+        return value
+
+    @model_validator(mode="after")
+    def corresponding_context(self):
+        if (self.purpose == "referral") != (self.referral is not None):
+            raise ValueError("referral context must match the purpose")
+        if (self.purpose == "follow_up") != (self.follow_up is not None):
+            raise ValueError("follow-up context must match the purpose")
+        compact = json.dumps(self.model_dump(exclude_none=True), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if len(compact) > 9000:
+            raise ValueError("contact context exceeds its total character budget")
+        return self
+
+
+class EmailContactReceipt(BaseModel):
+    version: Literal[1] = 1
+    purpose: Literal["first_contact", "referral", "follow_up"]
+    context_sig: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class ColdEmailRequest(BaseModel):
+    contact_context: EmailContactContext | None = None
     expected_target_version: str | None = Field(
         default=None, strict=True, min_length=68, max_length=68,
         pattern=r"^wt1:[0-9a-f]{64}$",
@@ -480,6 +605,7 @@ class ExperienceUsage(BaseModel):
 
 
 class ColdEmailResponse(BaseModel):
+    contact_context_receipt: EmailContactReceipt | None = None
     target_version: str | None = None
     opportunity_id: str | None = None
     experience_usage: ExperienceUsage = Field(default_factory=ExperienceUsage)

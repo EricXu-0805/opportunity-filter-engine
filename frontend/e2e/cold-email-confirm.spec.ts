@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
@@ -95,7 +96,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
   await page.route('**/api/cold-email/variants', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, variants: [{ ...VARIANT, body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
+    body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), variants: [{ ...VARIANT, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
   }));
 
   await page.route('**/rest/v1/rpc/confirm_interaction_contact', async (route) => {
@@ -373,7 +374,7 @@ test.describe('Cold Email reachable editing workspace', () => {
     await page.route('**/api/cold-email/refine', (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, body: VARIANT.body.repeat(20), method: 'llm' }),
+      body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: VARIANT.body.repeat(20), method: 'llm' }),
     }));
     await openModal(page);
     const workspace = page.getByTestId('cold-email-workspace');
@@ -499,8 +500,8 @@ test('Cold Email waits for the checked profile and template before exposing draf
     templateStarted = true;
     await templateGate;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-      opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version,
-      variants: [VARIANT], recipient_status: 'revealed', lab_type: 'dry',
+      opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()),
+      variants: [{ ...VARIANT, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()) }], recipient_status: 'revealed', lab_type: 'dry',
     }) });
   });
   try {
@@ -514,8 +515,8 @@ test('Cold Email waits for the checked profile and template before exposing draf
     await expect.poll(() => templateStarted).toBe(true);
     await expect(page.getByTestId('cold-email-footer')).toHaveCount(0);
     releaseTemplate();
-    await expect(page.getByTestId('cold-email-editor-fields').locator('input[type="text"]')).toHaveValue(VARIANT.subject);
-    await expect(page.getByTestId('cold-email-editor-fields').locator('textarea')).toHaveValue(VARIANT.body);
+    await expect(page.getByTestId('cold-email-editor-fields').locator('#cold-email-subject')).toHaveValue(VARIANT.subject);
+    await expect(page.getByTestId('cold-email-editor-fields').locator('#cold-email-body')).toHaveValue(VARIANT.body);
     const footer = page.getByTestId('cold-email-footer');
     await expect(footer).toBeVisible();
     await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeEnabled();

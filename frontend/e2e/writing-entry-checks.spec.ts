@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import type { TargetResumeV1 } from '../src/lib/target-resume';
@@ -122,7 +123,7 @@ async function installWriting(page: Page) {
     requests.push({ ...body, path });
     if (path === '/api/cold-email/variants' || path === '/api/cold-email/stream') {
       const confirmed = body.experience_evidence!.entries.filter(item => item.status === 'confirmed');
-      const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: `Checked ${body.profile!.name}`, body: `Draft for ${body.profile!.name}\n${confirmed.map(item => item.text).join('\n')}`,
+      const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body), subject: `Checked ${body.profile!.name}`, body: `Draft for ${body.profile!.name}\n${confirmed.map(item => item.text).join('\n')}`,
         recipient_email: 'checked@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'ai',
         pipeline_version: 'writing-entry-fixture', corpus_version: 'writing-entry-fixture' };
       if (path.endsWith('/variants')) await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } });
@@ -144,7 +145,7 @@ async function installWriting(page: Page) {
 }
 const emailFields = (page: Page) => {
   const fields = page.getByTestId('cold-email-editor-fields');
-  return { subject: fields.locator('input[type="text"]'), body: fields.locator('textarea'), recipient: fields.locator('input[type="email"]'),
+  return { subject: fields.locator('#cold-email-subject'), body: fields.locator('#cold-email-body'), recipient: fields.locator('#cold-email-to'),
     instruction: page.getByRole('textbox', { name: 'Request an edit', exact: true }) };
 };
 test.afterEach(async ({ context }, info) => {
@@ -408,7 +409,7 @@ test.describe('Writing entry checks use current authoritative targets', () => {
       const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
       requests.push({ ...body, path: '/api/cold-email/stream' }); streamStarted = true;
       await streamGate;
-      try { await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
+      try { await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', opportunity_id: body.opportunity_id, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body),
         subject: 'Completed unchanged-target stream', body: streamBody, recipient_email: 'checked@example.edu',
         recipient_status: 'revealed', method: 'ai', mailto_link: '' })}\n\n` }); }
       catch (error) { if (!route.request().failure()) throw error; }

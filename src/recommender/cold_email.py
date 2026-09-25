@@ -814,6 +814,8 @@ def _common_parts(
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
+        contact_method=(opportunity.get("application") or {}).get("contact_method"),
+        application_url=(opportunity.get("application") or {}).get("application_url"),
         coursework=coursework, lab_type=lab_type,
         # Publication trust boundary: only works with explicitly verified
         # attribution may personalize output — name-matched/legacy/unknown
@@ -833,7 +835,7 @@ def generate_cold_email(
     *, parts_cache: dict | None = None,
 ) -> str:
     p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
-    return _build_balanced(p)
+    return _contact_template(_build_balanced(p), p)
 
 
 def generate_variants(
@@ -843,9 +845,9 @@ def generate_variants(
     p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     lab_type = p["lab_type"]
     return [
-        {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p),     "lab_type": lab_type},
-        {"id": "skills",    "label": "Skills Focus",   "text": _build_skills_focus(p), "lab_type": lab_type},
-        {"id": "concise",   "label": "Concise",        "text": _build_concise(p),      "lab_type": lab_type},
+        {"id": "balanced",  "label": "Balanced",       "text": _contact_template(_build_balanced(p), p),     "lab_type": lab_type},
+        {"id": "skills",    "label": "Skills Focus",   "text": _contact_template(_build_skills_focus(p), p), "lab_type": lab_type},
+        {"id": "concise",   "label": "Concise",        "text": _contact_template(_build_concise(p), p),      "lab_type": lab_type},
     ]
 
 
@@ -858,6 +860,38 @@ def _cap_subject(s: str, limit: int = 72) -> str:
         return s
     trimmed = body[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
     return prefix + trimmed
+
+
+def _contact_template(email: str, p: dict) -> str:
+    """Use only route-admitted contact sentences; old internal callers stay first-contact."""
+    opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
+    availability = p.get("contact_availability") or ""
+    method = p.get("contact_method")
+    application_line = (
+        "Your posting directs formal applications through "
+        + ("an application portal." if method == "portal" else "an application form.")
+        if method in ("portal", "application_form") else ""
+    )
+    if p.get("contact_purpose") == "follow_up":
+        # Contact context authorizes a follow-up, not an application, new
+        # opportunity, reply, promise or another complete self-introduction.
+        subject = _cap_subject(f"Subject: Follow-up — {p.get('title') or 'research inquiry'}")
+        ask = (
+            "Could you let me know whether there are any current or upcoming research "
+            "openings, and the best next step if so?"
+            if p.get("is_faculty") else
+            "Could you let me know the best next step for this opportunity?"
+        )
+        paragraphs = [_greeting(p), opening, application_line, availability, ask]
+        return subject + "\n\n" + "\n\n".join(x for x in paragraphs if x) + _closing(p)
+    subject, body = email.split("\n\n", 1)
+    if opening:
+        greeting, rest = body.split("\n\n", 1)
+        body = f"{greeting}\n\n{opening}\n\n{rest}"
+    additions = "\n\n".join(x for x in (application_line, availability) if x)
+    if additions:
+        body = body.replace("\n\nBest regards,", f"\n\n{additions}\n\nBest regards,", 1)
+    return f"{subject}\n\n{body}"
 
 
 def _subject(p: dict, style: str = "") -> str:
@@ -918,7 +952,7 @@ def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str
     if lab_type == "wet":
         return (
             "\n\nI am eager to develop my wet-lab skills further and"
-            " can commit to in-person hours each week. I am happy to"
+            " would be happy to discuss the preparation needed. I am happy to"
             " complete any required safety training and to start under"
             " a graduate mentor."
             "\n\nWould you be open to a brief meeting to discuss"

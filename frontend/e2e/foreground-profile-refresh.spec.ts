@@ -1,3 +1,4 @@
+import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import type { ExperienceEntry, ProfileData, ProfileRequest } from '../src/lib/types';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -22,7 +23,7 @@ const isProfile = (url: string) => new URL(url).pathname === '/rest/v1/profiles'
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Email Editor', exact: true });
 const fields = (page: Page) => {
   const editor = page.getByTestId('cold-email-editor-fields');
-  return { subject: editor.locator('input[type="text"]'), body: editor.locator('textarea'), recipient: editor.locator('input[type="email"]'),
+  return { subject: editor.locator('#cold-email-subject'), body: editor.locator('#cold-email-body'), recipient: editor.locator('#cold-email-to'),
     instruction: page.getByRole('textbox', { name: 'Request an edit', exact: true }) };
 };
 const entry = (text: string): ExperienceEntry => ({ id: 'foreground-experience', revision: 1, status: 'confirmed', text, source: { kind: 'manual' } });
@@ -93,7 +94,7 @@ async function installWriting(page: Page, holdStream: (request: WritingRequest) 
     }
     const stream = path.endsWith('/stream');
     if (stream) await holdStream(request);
-    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: stream ? `AI ${body.style ?? 'professional'} subject` : 'Template subject',
+    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, contact_context_receipt: contactReceiptForRequest(body), subject: stream ? `AI ${body.style ?? 'professional'} subject` : 'Template subject',
       body: stream ? `AI ${body.style ?? 'professional'} draft for ${body.profile.name}\n${FACT}` : `Template for ${body.profile.name}`,
       recipient_email: 'professor@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'ai',
       pipeline_version: 'foreground-fixture', corpus_version: 'foreground-fixture' };

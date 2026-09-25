@@ -8,6 +8,8 @@ import type {
   ExperienceUsage,
   EmailStyle,
   EmailVariantsResponse,
+  EmailContactContext,
+  EmailContactContextReceipt,
   StatsResponse,
   TailorResponse,
   StructureResumeResponse,
@@ -19,6 +21,7 @@ import type {
   DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
+import { normalizeEmailContactContext } from './email-contact-context';
 import { COLD_EMAIL_STREAM_TIMEOUT_MS, ColdEmailStreamError } from './cold-email-stream';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type OwnerToken } from './identity-owner';
 import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
@@ -860,7 +863,7 @@ function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
 ): Promise<ColdEmailResponse> {
   void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
@@ -868,6 +871,7 @@ export async function generateColdEmail(
     opportunity_id: opportunityId,
     experience_evidence: coldEmailExperienceEvidence(profile),
   };
+  if (options.contactContext != null) body.contact_context = normalizeEmailContactContext(options.contactContext);
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
   if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
@@ -888,9 +892,10 @@ export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
 export async function generateColdEmailStream(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; signal?: AbortSignal } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null; signal?: AbortSignal } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
+  const contactContext = options.contactContext == null ? undefined : normalizeEmailContactContext(options.contactContext);
   const token = captureOwnerToken();
   const controller = new AbortController();
   let response: Response | undefined;
@@ -928,6 +933,7 @@ export async function generateColdEmailStream(
       active();
       const body: Record<string, unknown> = { profile: toProfileRequest(profile), opportunity_id: opportunityId,
         experience_evidence: coldEmailExperienceEvidence(profile) };
+      if (contactContext !== undefined) body.contact_context = contactContext;
       if (options.engine) body.engine = options.engine;
       if (options.style) body.style = options.style;
       if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
@@ -1012,7 +1018,7 @@ export async function getEmailVariants(
   opportunityId: string,
   /** Deprecated compatibility argument: unconfirmed raw strings are ignored. */
   _legacyResumeBullets: string[] = [],
-  options: { expectedTargetVersion?: string } = {},
+  options: { expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
 ): Promise<EmailVariantsResponse> {
   return requestWritingWithAuth<EmailVariantsResponse>(
     '/cold-email/variants',
@@ -1022,6 +1028,7 @@ export async function getEmailVariants(
         profile: toProfileRequest(profile),
         opportunity_id: opportunityId,
         expected_target_version: options.expectedTargetVersion,
+        ...(options.contactContext == null ? {} : { contact_context: normalizeEmailContactContext(options.contactContext) }),
         experience_evidence: coldEmailExperienceEvidence(profile),
       }),
     },
@@ -1037,9 +1044,9 @@ export async function refineEmail(
   // only ever meant "send null and hope"; the modal has always had the id.
   opportunityId: string,
   /** Legacy resumeBullets are ignored; only confirmed profile entries count. */
-  options: { resumeBullets?: string[]; expectedTargetVersion?: string } = {},
-): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null }> {
-  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null }>('/cold-email/refine', {
+  options: { resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
+): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null; contact_context_receipt?: EmailContactContextReceipt }> {
+  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null; contact_context_receipt?: EmailContactContextReceipt }>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
@@ -1047,6 +1054,7 @@ export async function refineEmail(
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,
       expected_target_version: options.expectedTargetVersion,
+      ...(options.contactContext == null ? {} : { contact_context: normalizeEmailContactContext(options.contactContext) }),
       experience_evidence: coldEmailExperienceEvidence(profile),
     }),
   });

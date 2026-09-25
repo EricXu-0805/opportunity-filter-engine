@@ -521,7 +521,32 @@ export interface ExperienceUsage {
   notices: string[];
 }
 
+export type EmailContactPurpose = 'first_contact' | 'referral' | 'follow_up';
+
+/** User-confirmed message context, separate from profile facts and delivery status. */
+export interface EmailContactContext {
+  version: 1;
+  purpose: EmailContactPurpose;
+  referral?: { referrer_name: string; referral_note: string; confirmed: true };
+  follow_up?: {
+    sent_confirmed: true;
+    previous_message: string;
+    sent_on?: string;
+    reply_status: 'unknown' | 'no_reply' | 'received';
+    reply_text?: string;
+  };
+  availability?: { text: string; confirmed: true };
+}
+
+export interface EmailContactContextReceipt {
+  version: 1;
+  purpose: EmailContactPurpose;
+  /** SHA-256 of canonical normalized context, lowercase hex without a prefix. */
+  context_sig: string;
+}
+
 export interface ColdEmailResponse {
+  contact_context_receipt?: EmailContactContextReceipt;
   /** Server receipt for the exact public target used by this writing action. */
   opportunity_id?: string | null;
   target_version?: string | null;
@@ -558,6 +583,7 @@ export interface ColdEmailResponse {
 export type ColdEmailEngine = 'template' | 'ai';
 
 export interface EmailVariant {
+  contact_context_receipt?: EmailContactContextReceipt;
   experience_usage?: ExperienceUsage;
   id: string;
   label: string;
@@ -574,6 +600,7 @@ export interface EmailVariant {
 }
 
 export interface EmailVariantsResponse {
+  contact_context_receipt?: EmailContactContextReceipt;
   /** Server receipt for the exact public target used by this writing action. */
   opportunity_id?: string | null;
   target_version?: string | null;
