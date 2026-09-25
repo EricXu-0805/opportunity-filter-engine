@@ -1,11 +1,14 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense, type ReactNode } from 'react';
+import { Suspense, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
+import { makeProfileViewSnapshot, type ProfileHydration } from '@/lib/profile-sync';
+import { profileActionKey } from '@/lib/use-profile-action';
 import { useProfileRefresh } from '@/lib/use-profile-refresh';
 import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
 import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
@@ -74,7 +77,7 @@ export default function OpportunityDetail({
   similarContent?: ReactNode;
 }) {
   const { t, locale } = useT();
-  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
+  const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const {
     identityGeneration,
     ownerScopeKey,
@@ -115,8 +118,33 @@ export default function OpportunityDetail({
     handleShare,
   } = useOpportunityDetail(opp);
 
-  const profileRefresh = useProfileRefresh(ownerReady);
   const writingScope = `${ownerScopeKey}:${identityGeneration}:${opp.id}`;
+  // Keep the exact candidate from hydrate (including unsent journal edits).
+  // A later, different raw mirror or owner permanently retires this overlay.
+  const rawKey = profileActionKey(rawProfile);
+  const rawKeyRef = useRef(rawKey);
+  useLayoutEffect(() => { rawKeyRef.current = rawKey; }, [rawKey]);
+  const [hydrated, setHydrated] = useState<{ scope: string; before: string | null; key: string | null;
+    profile: ProfileData | null; token: ReturnType<typeof captureOwnerToken> } | null>(null);
+  const applicable = hydrated && hydrated.scope === writingScope && isOwnerTokenValid(hydrated.token, hydrated.token.uid)
+    && (rawKey === hydrated.before || rawKey === hydrated.key);
+  if (hydrated && !applicable) setHydrated(null);
+  else if (hydrated && rawKey === hydrated.key && hydrated.before !== hydrated.key) {
+    // Once the matching mirror has arrived, going back to the old input is a
+    // NEW source change, not permission to resurrect this accepted candidate.
+    setHydrated({ ...hydrated, before: hydrated.key });
+  }
+  const profile = applicable ? hydrated.profile : rawProfile;
+  const acceptHydration = useCallback((loaded: ProfileHydration) => {
+    if (loaded.quarantineFailed || loaded.conflictKeys.length || loaded.conflicts.length
+      || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return;
+    const view = loaded.profile ? makeProfileViewSnapshot({ baseProfile: loaded.baseProfile,
+      renderedProfile: loaded.profile, revision: loaded.revision, token: loaded.token,
+      identityGeneration: loaded.token.epoch, source: 'hydration' }) : null;
+    setHydrated({ scope: writingScope, before: rawKeyRef.current, key: profileActionKey(loaded.profile),
+      profile: view?.renderedProfile ?? null, token: loaded.token });
+  }, [writingScope]);
+  const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
   const emailProfile = useRetainedWritingProfile(profile, emailModalOpen, writingScope);
   const resumeProfile = useRetainedWritingProfile(profile, renovationOpen, writingScope);
 

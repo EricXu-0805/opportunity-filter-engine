@@ -90,7 +90,7 @@ import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
 import { useResultsSession } from './use-results-session';
 import { useResultModalHistory, type ModalCloseRequest } from './use-result-modal-history';
-import { RESULT_SESSION_PARAM } from '@/lib/result-session';
+import { resultRequestKey, type ResultCursorState, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import { useProfileRefresh } from '@/lib/use-profile-refresh';
 import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
@@ -166,6 +166,7 @@ function ResultsContent() {
   const {
     accepted: { profile, view },
     accept: acceptProfileView,
+    acceptHydration,
     clear: clearProfileView,
   } = useAcceptedProfileView();
   const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
@@ -289,7 +290,7 @@ function ResultsContent() {
     retryTrackSave,
     retryInteractionsLoad,
   } = useResultsInteractions(handleIdentityChange);
-  const profileRefresh = useProfileRefresh(ownerReady);
+  const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
 
   // Page-level wrappers: preserve the pre-extraction "jump back to page 1"
   // semantics on every favorite/status mutation attempt — the filtered list
@@ -370,6 +371,17 @@ function ResultsContent() {
     returnToResultsOnClose: profileAvailable,
   });
 
+  const [validatedWritingView, setValidatedWritingView] = useState<{ key: string; page: number; owner: ReturnType<typeof captureOwnerToken> } | null>(null);
+  const onResultValidated = resultSession.onValidated;
+  const acceptResultPage = useCallback((state: ResultCursorState, origin: ReturnType<typeof captureOwnerToken>) => {
+    if (!isOwnerTokenValid(origin, origin.uid)) return;
+    onResultValidated(state, origin);
+    setValidatedWritingView((previous) => previous?.key === state.requestKey && previous.page === state.page && isOwnerTokenValid(previous.owner, previous.owner.uid)
+      ? previous : { key: state.requestKey, page: state.page, owner: origin });
+  }, [onResultValidated]);
+  const writingRequestKey = profileAvailable && profile ? resultRequestKey(profile, semanticRerank, matchView) : '';
+  const writingViewCurrent = validatedWritingView?.key === writingRequestKey && validatedWritingView?.page === page
+    && isOwnerTokenValid(validatedWritingView.owner, validatedWritingView.owner.uid);
   const {
     data,
     setData,
@@ -391,7 +403,7 @@ function ResultsContent() {
     // A dead cursor is dropped by the hook; returning to page 1 is the page's
     // own job, since it owns `page`.
     resultSession.cursorExpired,
-    { restore: resultSession.restore, onValidated: resultSession.onValidated },
+    { owner: view?.token ?? null, restore: resultSession.restore, onValidated: acceptResultPage },
   );
 
   // Facets are derived from the complete canonical snapshot by the backend,
@@ -641,12 +653,12 @@ function ResultsContent() {
 
   const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
     // Do not retarget an existing editor behind its unsaved-changes guard.
-    if (writingOwnerCurrent || !ownerReady || !profileAvailable || !profile || loading || error) return;
+    if (writingOwnerCurrent || !ownerReady || !profileAvailable || !profile || !writingViewCurrent || loading || error) return;
     const match = data?.results.find((m) => m.opportunity.id === opportunityId);
     if (!match || targetPosture(match.opportunity) !== 'actionable') return;
     setWritingSession({ kind, opportunity: match.opportunity, profile,
       owner: captureOwnerToken(), ownerScopeKey, identityGeneration });
-  }, [writingOwnerCurrent, ownerReady, profileAvailable, profile, loading, error, data, ownerScopeKey, identityGeneration]);
+  }, [writingOwnerCurrent, ownerReady, profileAvailable, profile, writingViewCurrent, loading, error, data, ownerScopeKey, identityGeneration]);
   const openEmailModal = useCallback((id: string) => openWritingSession('email', id), [openWritingSession]);
   const openResumeModal = useCallback((id: string) => openWritingSession('resume', id), [openWritingSession]);
 
@@ -657,7 +669,7 @@ function ResultsContent() {
     ? data?.results.find((m) => m.opportunity.id === writingSession.opportunity.id)?.opportunity
     : undefined;
   const writingTargetReady = writingOwnerCurrent && ownerReady && profileAvailable
-    && !loading && !error && !!currentWritingTarget
+    && writingViewCurrent && !loading && !error && !!currentWritingTarget
     && targetPosture(currentWritingTarget) === 'actionable';
 
   const [helpOpen, setHelpOpen] = useState(false);
@@ -1131,6 +1143,7 @@ function ResultsContent() {
           opportunityTitle={(currentWritingTarget ?? writingSession.opportunity).title ?? t('results.opportunityFallback')}
           opportunitySchool={(currentWritingTarget ?? writingSession.opportunity).school ?? null}
           targetReady={writingTargetReady}
+          targetChecking={loading || (!error && profileAvailable && !writingViewCurrent)}
           profileRefresh={profileRefresh}
           reminderTarget={writingTargetReady ? currentWritingTarget : undefined}
           onContactConfirmed={(record) => {
@@ -1146,6 +1159,7 @@ function ResultsContent() {
           profileAvailable={profileAvailable}
           opportunity={currentWritingTarget ?? writingSession.opportunity}
           targetReady={writingTargetReady}
+          targetChecking={loading || (!error && profileAvailable && !writingViewCurrent)}
           profileRefresh={profileRefresh}
         />
       ))}

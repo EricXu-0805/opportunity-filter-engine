@@ -13,15 +13,16 @@ interface Props {
   profile: ProfileData;
   opportunity: Opportunity;
   targetReady?: boolean;
+  targetChecking?: boolean;
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
 }
 
-function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity, targetReady, profileAvailable, profileRefresh }: Omit<Props, 'isOpen'>) {
+function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity, targetReady, targetChecking, profileAvailable, profileRefresh }: Omit<Props, 'isOpen'>) {
   const [mode, setMode] = useState<'full' | 'bullets'>('full');
   return mode === 'full'
     ? <FullTargetResumeModal isOpen onClose={onClose} profile={profile}
-        opportunity={opportunity} targetReady={targetReady} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
+        opportunity={opportunity} targetReady={targetReady} targetChecking={targetChecking} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
     : <ResumeRenovationModal isOpen onClose={onClose} profile={profile}
         opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
         onOpenFull={() => setMode('full')} />;

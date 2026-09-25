@@ -37,6 +37,7 @@ import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/l
 import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
@@ -71,6 +72,7 @@ const STYLE_KEYS: readonly EmailStyle[] = ['professional', 'warm', 'friendly', '
 interface ColdEmailModalProps {
   isOpen: boolean;
   targetReady?: boolean;
+  targetChecking?: boolean;
   /** False keeps the open draft; the retained profile is not current material. */
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
@@ -261,6 +263,7 @@ export default function ColdEmailModal({
   onContactConfirmed,
   onReminderSet,
   targetReady = true,
+  targetChecking = false,
   profileAvailable = true,
   profileRefresh,
 }: ColdEmailModalProps) {
@@ -383,9 +386,14 @@ export default function ColdEmailModal({
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [userEditRevision, setUserEditRevision] = useState(0);
+  const noteUserEdit = () => setUserEditRevision((value) => value + 1);
   const [refining, setRefining] = useState(false);
   const [retired, setRetired] = useState(false);
   const [profileChanged, setProfileChanged] = useState(false);
+  // Layout can flush a queued intent before its state update is rendered.
+  // Retire the old draft synchronously before that executor can consume it.
+  const profileChangedRef = useRef(false);
   const [profileRegenerating, setProfileRegenerating] = useState(false);
   const [profileRegenerateError, setProfileRegenerateError] = useState<'failed' | 'edited' | 'name-required' | null>(null);
   const chatHistoryRef = useRef<HTMLDivElement>(null);
@@ -514,6 +522,7 @@ export default function ColdEmailModal({
         editorUsedRef.current = true;
         setActiveVariant(0);
         setExperienceUsage(first.experience_usage ?? null);
+        profileChangedRef.current = false;
         setProfileChanged(false);
         // Explicit regeneration runs the normal AI pipeline after fresh templates.
         if (keepEditor) autoFiredRef.current = false;
@@ -538,8 +547,42 @@ export default function ColdEmailModal({
     }
   }, [requestProfile, opportunityId, t, missingStudentName, captureDraftSession]);
 
-  const fetchVariantsRef = useRef(fetchVariants);
-  useLayoutEffect(() => { fetchVariantsRef.current = fetchVariants; }, [fetchVariants]);
+  type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
+    | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
+    | { kind: 'refine'; instruction: string; typed?: boolean; label?: string }
+    | { kind: 'coursework' };
+  const action = useProfileAction<WritingIntent>({
+    isOpen: isOpen && !retired, profile: requestProfile, profileAvailable,
+    scopeKey: opportunityId, editRevision: userEditRevision, refresh: profileRefresh,
+    readiness: sourceReady ? 'ready'
+      : profileAvailable && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
+    execute: (intent) => {
+      if (intent.kind === 'variants') { void fetchVariants(intent.preserveDraft, intent.keepEditor); return; }
+      // A source change keeps the existing manual draft. Its user must choose
+      // to rebuild it before new generation or refinement can use that draft.
+      if (profileChangedRef.current || profileChanged || profileRegenerating) return;
+      if (intent.kind === 'ai') {
+        if (intent.selectExisting && aiVariant) selectVariant(variants.length);
+        else void generateAi(intent.style);
+        return;
+      }
+      if (intent.kind === 'coursework') {
+        const { body: next, reply } = applyQuickEdit(body, 'coursework', requestProfile, t);
+        draftRevisionRef.current += 1;
+        setBody(next);
+        setChatMessages((messages) => [...messages, { role: 'user', content: t('coldEmail.quickActions.coursework') }, { role: 'assistant', content: reply }]);
+        return;
+      }
+      if (intent.typed) setChatInput('');
+      setChatMessages((messages) => [...messages, { role: 'user', content: intent.label ?? intent.instruction }]);
+      void runRefine(intent.instruction);
+    },
+  });
+  const requestAction = action.request;
+  const fetchVariantsRef = useRef<(preserveDraft?: boolean, keepEditor?: boolean) => void>(() => {});
+  useLayoutEffect(() => {
+    fetchVariantsRef.current = (preserveDraft, keepEditor) => requestAction({ kind: 'variants', preserveDraft, keepEditor });
+  }, [requestAction]);
 
   useLayoutEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect --
@@ -602,6 +645,7 @@ export default function ColdEmailModal({
       setNameRequired(false);
       setChatMessages([]);
       setChatInput('');
+      profileChangedRef.current = false;
       setProfileChanged(false); setProfileRegenerating(false); setProfileRegenerateError(null);
     };
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -621,6 +665,7 @@ export default function ColdEmailModal({
     variantsReadyRef.current = false; pipelineVersionRef.current = null; corpusVersionRef.current = null;
     aiCacheRef.current.clear();
     const hasDraft = editorUsedRef.current || !!(subject || body || recipient);
+    profileChangedRef.current = hasDraft;
     autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
@@ -649,10 +694,10 @@ export default function ColdEmailModal({
       }
       refineInFlightRef.current = null; aiInFlightRef.current = false;
       setLoading(false); setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
-    } else if (!wasReady && !variantsReadyRef.current && !profileChanged) {
+    } else if (!profileRefresh?.checkForAction && !wasReady && !variantsReadyRef.current && !profileChanged) {
       void fetchVariantsRef.current(editorUsedRef.current);
     }
-  }, [isOpen, sourceReady, profileChanged, t]);
+  }, [isOpen, sourceReady, profileChanged, profileRefresh?.checkForAction, t]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -766,6 +811,7 @@ export default function ColdEmailModal({
     const v = allVariants[idx];
     if (!sourceReadyRef.current || profileChanged || profileRegenerating || !v) return;
     draftRevisionRef.current += 1;
+    noteUserEdit();
     setActiveVariant(idx);
     setSubject(v.subject);
     setBody(v.body);
@@ -920,17 +966,13 @@ export default function ColdEmailModal({
   }, [sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
 
   function handleAiPillClick() {
-    if (aiLoading) return;
-    if (aiVariant) {
-      selectVariant(variants.length);
-      return;
-    }
-    generateAi(selectedStyle);
+    if (aiLoading || action.busy) return;
+    action.request({ kind: 'ai', style: selectedStyle, selectExisting: true });
   }
 
   function handleToneClick(style: EmailStyle) {
-    if (aiLoading) return;
-    generateAi(style);
+    if (aiLoading || action.busy) return;
+    action.request({ kind: 'ai', style });
   }
 
   // Shared grounded-refine runner for typed chat instructions AND the tone
@@ -977,26 +1019,17 @@ export default function ColdEmailModal({
   }
 
   function handleQuickAction(key: QuickActionKey) {
-    if (!sourceReadyRef.current || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
-    const label = t(`coldEmail.quickActions.${key}`);
-    setChatMessages((prev) => [...prev, { role: 'user', content: label }]);
-    if (key === 'coursework') {
-      // Client-side: inserts the student's own courses verbatim.
-      const { body: newBody, reply } = applyQuickEdit(body, key, profile, t);
-      draftRevisionRef.current += 1;
-      setBody(newBody);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-      return;
-    }
-    void runRefine(QUICK_ACTION_INSTRUCTIONS[key]);
+    if (!sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (key === 'coursework') { action.request({ kind: 'coursework' }); return; }
+    action.request({ kind: 'refine', instruction: QUICK_ACTION_INSTRUCTIONS[key], label: t(`coldEmail.quickActions.${key}`) });
   }
 
-  async function handleChatSubmit() {
+  function handleChatSubmit() {
     const msg = chatInput.trim();
-    if (!sourceReadyRef.current || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
-    setChatInput('');
-    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
-    await runRefine(msg);
+    if (!sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    // Do not erase the user's request until a successful check actually starts
+    // refinement. A failed or superseded read leaves the input untouched.
+    action.request({ kind: 'refine', instruction: msg, typed: true });
   }
 
   // Reveal the strip without recording anything — a draft opened/copied is
@@ -1209,6 +1242,11 @@ export default function ColdEmailModal({
             : 'Leaving discards this unsaved email draft. Go to your profile?')) return false;
           closeDraft(); return true;
         }} />
+      {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
+        {locale === 'zh' ? '本次操作未执行。草稿和请求仍保留，请核对资料后重试。' : 'This action did not run. Your draft and request are kept. Review your profile and try again.'}
+        {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
+          onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
+      </div>}
 
         {/* Loading / Error: each state has the same reachable short-screen
             scroll boundary as the editor. The inner panel grows with text. */}
@@ -1248,7 +1286,7 @@ export default function ColdEmailModal({
                   {t('coldEmail.experienceReviewCta')}
                 </Link>
               )}
-              <button type="button" onClick={() => void fetchVariants()} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
+              <button type="button" onClick={() => action.request({ kind: 'variants' })} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
             </div>
           </div>
         )}
@@ -1266,7 +1304,7 @@ export default function ColdEmailModal({
                   {profileRegenerateError === 'name-required' && <Link href="/" onClick={closeDraft}
                     className="mt-1 inline-block font-medium underline">{t('coldEmail.nameRequiredCta')}</Link>}
                   <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium disabled:opacity-50"
-                    disabled={!sourceReady || profileRegenerating} onClick={() => void fetchVariants(false, true)}>
+                    disabled={!sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
                     {profileRegenerating ? t('coldEmail.generating') : t('coldEmail.regenerateFromProfile')}
                   </button>
                 </div>}
@@ -1289,7 +1327,7 @@ export default function ColdEmailModal({
                   <button
                     type="button"
                     onClick={handleAiPillClick}
-                    disabled={!sourceReady || profileChanged || profileRegenerating || aiLoading || refining}
+                    disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                     title={t('coldEmail.aiVariantTitle')}
                     className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                       activeVariant === variants.length && aiVariant
@@ -1320,7 +1358,7 @@ export default function ColdEmailModal({
                         key={s}
                         type="button"
                         onClick={() => handleToneClick(s)}
-                        disabled={!sourceReady || profileChanged || profileRegenerating || aiLoading || refining}
+                        disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                           isActive
                             ? 'bg-indigo-600 text-white shadow-sm'
@@ -1380,7 +1418,7 @@ export default function ColdEmailModal({
                     <input
                       type="email"
                       value={recipient}
-                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; setRecipient(e.target.value); }}
+                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setRecipient(e.target.value); }}
                       placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full min-w-0 px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
@@ -1478,7 +1516,7 @@ export default function ColdEmailModal({
                     <input
                       type="text"
                       value={subject}
-                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; setSubject(e.target.value); }}
+                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setSubject(e.target.value); }}
                       className="w-full min-w-0 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all"
                     />
                   </div>
@@ -1496,7 +1534,7 @@ export default function ColdEmailModal({
                     </div>
                     <textarea
                       value={body}
-                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; setBody(e.target.value); }}
+                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setBody(e.target.value); }}
                       rows={12}
                       className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
@@ -1560,7 +1598,7 @@ export default function ColdEmailModal({
                         key={key}
                         type="button"
                         onClick={() => handleQuickAction(key)}
-                        disabled={!sourceReady || profileChanged || profileRegenerating || refining}
+                        disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || refining}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {t(`coldEmail.quickActions.${key}`)}
@@ -1578,7 +1616,7 @@ export default function ColdEmailModal({
                     <input
                       type="text"
                       value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
+                      onChange={(e) => { noteUserEdit(); setChatInput(e.target.value); }}
                       placeholder={t('coldEmail.refinePlaceholder')}
                       aria-label={t('coldEmail.requestLabel')}
                       className="min-w-0 flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
@@ -1586,7 +1624,7 @@ export default function ColdEmailModal({
                     <button
                       type="submit"
                       aria-label={t('coldEmail.submitRequest')}
-                      disabled={!sourceReady || !chatInput.trim() || profileChanged || profileRegenerating || refining}
+                      disabled={!sourceReady || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />

@@ -6,6 +6,7 @@ import * as contract from '@/lib/target-resume';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
@@ -569,4 +570,57 @@ it('does not reactivate an accepted supplement overlay after profile removal and
   await waitFor(() => expect(ai.props!.currentContext?.profile_signature).toBe(restoredSignature));
   expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Preserve my target edit');
   expect(storage.save).not.toHaveBeenCalled();
+});
+
+
+describe('full résumé creation action checks', () => {
+  const receipt = (p: ProfileData): ProfileActionReceipt => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: clone(p) });
+  it('checks once, waits for the accepted latest profile and target readiness, then builds the complete new source without saving', async () => {
+    const p = profile(), newer = clone(p); newer.resume_text = 'Complete new source 😀 including its final tail';
+    newer.resume_master!.basics.name!.value = 'Freshly confirmed name';
+    const signature = await contract.targetResumeProfileSignature(newer), signatureWait = deferred<string>();
+    const originalSignature = contract.targetResumeProfileSignature;
+    const signatureRead = vi.spyOn(contract, 'targetResumeProfileSignature').mockImplementation((value) => value.resume_text === newer.resume_text ? signatureWait.promise : originalSignature(value));
+    const wait = deferred<ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => wait.promise), refresh = vi.fn().mockResolvedValue(true);
+    const build = vi.spyOn(contract, 'createTargetResume');
+    const view = render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    const button = await screen.findByRole('button', { name: 'Create from confirmed master' });
+    await waitFor(() => expect(button).toBeEnabled()); fireEvent.click(button); fireEvent.click(button);
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1)); expect(build).not.toHaveBeenCalled();
+    await act(async () => wait.resolve(receipt(newer)));
+    expect(build).not.toHaveBeenCalled();
+    view.rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={newer} opportunity={opportunity} targetReady={false} targetChecking profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await waitFor(() => expect(signatureRead).toHaveBeenCalledWith(newer));
+    expect(build).not.toHaveBeenCalled();
+    await act(async () => signatureWait.resolve(signature));
+    expect(build).not.toHaveBeenCalled();
+    view.rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={newer} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    expect(await screen.findByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Freshly confirmed name');
+    expect(build).toHaveBeenCalledTimes(1); expect(build.mock.calls[0][0].resume_text).toBe(newer.resume_text);
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('keeps the discard decision and cancels rebuilding if the user edits during the profile check', async () => {
+    const p = profile(); const initial = await docFor(p); storage.load.mockResolvedValue(loaded(initial));
+    const wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise), refresh = vi.fn().mockResolvedValue(true);
+    const build = vi.spyOn(contract, 'createTargetResume');
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); editName('Before checking');
+    const rebuild = screen.getByRole('button', { name: 'Rebuild from current confirmed master' }); await waitFor(() => expect(rebuild).toBeEnabled());
+    fireEvent.click(rebuild); expect(checkForAction).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Create new draft' })); await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1));
+    editName('New hand edit during check');
+    await act(async () => wait.resolve(receipt(p)));
+    expect(build).not.toHaveBeenCalled(); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('New hand edit during check');
+    expect(screen.getByText(/Your draft or target changed during the check/)).toBeVisible(); expect(storage.save).not.toHaveBeenCalled();
+  });
+  it('does not create from a failed or deleted-profile check', async () => {
+    const p = profile(), checkForAction = vi.fn().mockResolvedValue(null), refresh = vi.fn().mockResolvedValue(false);
+    const build = vi.spyOn(contract, 'createTargetResume');
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    const button = await screen.findByRole('button', { name: 'Create from confirmed master' }); await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button); await screen.findByText(/Current profile could not be verified/); expect(build).not.toHaveBeenCalled();
+    checkForAction.mockResolvedValue({ ...receipt(p), source: 'cloud-absent', profile: null });
+    fireEvent.click(button); await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2)); expect(build).not.toHaveBeenCalled(); expect(storage.save).not.toHaveBeenCalled();
+  });
 });

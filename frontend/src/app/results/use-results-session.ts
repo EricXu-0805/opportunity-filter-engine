@@ -87,9 +87,10 @@ export function useResultsSession(props: Props) {
     setResetNotice(true);
   }, [setPage]);
 
-  const onValidated = useCallback((state: ResultCursorState) => {
+  const onValidated = useCallback((state: ResultCursorState, origin?: OwnerToken) => {
     if (state.requestKey !== requestKey || state.page !== page) return;
-    const token = captureOwnerToken();
+    const token = origin ?? captureOwnerToken();
+    if (!isOwnerTokenValid(token, token.uid)) return;
     validatedRef.current = state;
     validatedOwnerRef.current = token;
     if (!ready) return;
@@ -128,7 +129,7 @@ export function useResultsSession(props: Props) {
   useEffect(() => {
     const validated = validatedRef.current;
     const token = validatedOwnerRef.current;
-    if (ready && validated && token && isOwnerTokenValid(token, token.uid)) onValidated(validated);
+    if (ready && validated && token && isOwnerTokenValid(token, token.uid)) onValidated(validated, token);
   }, [ready, onValidated]);
 
   const rememberOpportunity = useCallback((id: string) => {

@@ -55,6 +55,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 import ColdEmailModal from './ColdEmailModal';
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant } from '@/lib/types';
 
 const profile: ProfileData = {
@@ -78,7 +79,9 @@ const variant: EmailVariant = {
   mailto_link: 'mailto:prof@illinois.edu',
 };
 
-beforeEach(() => {
+beforeEach(async () => {
+  advanceOwnerEpoch('cold-email-tracking-owner');
+  await syncLocalIdentityOwner('cold-email-tracking-owner');
   trackInteractionMock.mockClear();
   getInteractionDetailMock.mockClear().mockResolvedValue(null);
   updateInteractionDetailsMock.mockClear();

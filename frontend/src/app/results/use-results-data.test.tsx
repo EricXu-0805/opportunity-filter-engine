@@ -172,7 +172,8 @@ function response(
 const t = (key: string) => key;
 
 describe('useResultsData', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('results-data-owner'); await syncLocalIdentityOwner('results-data-owner');
     mocks.getMatchView.mockReset();
     mocks.readMatchCache.mockReset();
     mocks.writeMatchCache.mockReset();
@@ -895,7 +896,7 @@ describe('what a warm cache can put in front of a student', () => {
   // without it every mock implementation AND every call count carries over
   // from the tests above — which is how the first draft of these three tests
   // timed out against a call counter that was already at nine.
-  beforeEach(() => {
+  beforeEach(async () => {
     mocks.getMatchView.mockReset();
     mocks.readMatchCache.mockReset();
     mocks.writeMatchCache.mockReset();
@@ -903,6 +904,7 @@ describe('what a warm cache can put in front of a student', () => {
     mocks.trackOnce.mockReset();
     mocks.readMatchCache.mockReturnValue(null);
     localStorage.clear();
+    advanceOwnerEpoch('warm-results-owner'); await syncLocalIdentityOwner('warm-results-owner');
   });
 
   it('nothing, while the live request is still out — no rows, no CTAs, no offer terms', async () => {
@@ -989,6 +991,48 @@ describe('same-session cursor validation', () => {
       anchorId: null, anchorOffset: null, scrollY: 1800, viewedIds: [] })!;
   }
 
+  it('rejects a late result after persistent generation changes with the same uid and epoch', async () => {
+    const origin = captureOwnerToken();
+    let resolve!: (value: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((done) => { resolve = done; }));
+    const validated = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true, undefined,
+      { restore: null, onValidated: validated }));
+    const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
+    localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+    await syncLocalIdentityOwner(origin.uid!);
+    expect(captureOwnerToken()).toMatchObject({ uid: origin.uid, epoch: origin.epoch, generation: origin.generation + 1 });
+    await act(async () => resolve(response('old-generation', { has_more: true, next_cursor: 'old-cursor', ai_refined: true })));
+    expect(validated).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+    expect(result.current.paginationReady).toBe(false); expect(result.current.refined).toBe(false);
+    // Even the refused cache attempt is attributed to the request's origin.
+    expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(origin);
+  });
+
+  it.each(['old-first', 'new-first'] as const)('restarts an identical profile only after a new accepted view owner, with %s receipts', async (order) => {
+    const origin = captureOwnerToken();
+    let oldReply!: (value: MatchesResponse) => void; let newReply!: (value: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValueOnce(new Promise<MatchesResponse>((done) => { oldReply = done; }))
+      .mockReturnValueOnce(new Promise<MatchesResponse>((done) => { newReply = done; }));
+    const validated = vi.fn();
+    const { result, rerender } = renderHook(({ owner }) => useResultsData(profile, false, baseView, 1, t, true, undefined,
+      { owner, restore: null, onValidated: validated }), { initialProps: { owner: origin } });
+    const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
+    localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+    await syncLocalIdentityOwner(origin.uid!);
+    rerender({ owner: origin }); // The unchanged old view is NOT re-authorized.
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    const current = captureOwnerToken(); rerender({ owner: current });
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(2);
+    if (order === 'old-first') await act(async () => oldReply(response('retired')));
+    await act(async () => newReply(response('fresh-generation')));
+    if (order === 'new-first') await act(async () => oldReply(response('retired')));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data?.results[0].opportunity_id).toBe('fresh-generation');
+    expect(validated).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ page: 1 }), current);
+  });
+
   it('validates the stored cursor on the server before painting any page', async () => {
     const saved = savedPage();
     let resolve!: (r: MatchesResponse) => void;
@@ -1001,7 +1045,7 @@ describe('same-session cursor validation', () => {
     expect(mocks.getMatchView.mock.calls[0][2].cursor).toBe('restored-server-cursor');
     await act(async () => resolve(response('fresh-second', { view_start: 50 })));
     expect(result.current.data?.result_set_id).toBe('set-fresh-second');
-    expect(validated).toHaveBeenCalledWith(expect.objectContaining({ page: 2, cursors: [[1, null], [2, 'restored-server-cursor']] }));
+    expect(validated).toHaveBeenCalledWith(expect.objectContaining({ page: 2, cursors: [[1, null], [2, 'restored-server-cursor']] }), captureOwnerToken());
     expect(mocks.readMatchCache).not.toHaveBeenCalled();
   });
 
@@ -1110,7 +1154,7 @@ describe('same-session cursor validation', () => {
     }, { initialProps: { ready: false } });
     await waitFor(() => expect(result.current.data.data?.result_set_id).toBe('set-first-fast'));
     expect(result.current.session.sessionId).toBeNull();
-    expect(sessionStorage.length).toBe(0);
+    expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))).toEqual([]);
     rerender({ ready: true });
     await waitFor(() => expect(result.current.session.sessionId).not.toBeNull());
     expect(readResultSession(result.current.session.sessionId)?.page).toBe(1);

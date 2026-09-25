@@ -13,7 +13,7 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
   from: mocks.from, rpc: mocks.rpc,
 }) }));
-import { PROFILE_REFRESH_DEADLINE_MS, useProfileRefresh } from './use-profile-refresh';
+import { PROFILE_REFRESH_DEADLINE_MS, useProfileRefresh, type ProfileActionReceipt } from './use-profile-refresh';
 import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode, isOwnerTokenValid, PRIVATE_STORAGE_LOCK,
   readUserScopedRaw, syncLocalIdentityOwner } from './identity-owner';
 import { hydrateProfile, readProfileSyncEnvelope, recordProfileIntent, resetProfileDirtyLedger, stageProfilePatch } from './profile-sync';
@@ -76,6 +76,32 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe('owner-scoped read-only cloud refresh', () => {
+  it('returns and accepts the actual reconciled candidate with revision, frozen source and no writes', async () => {
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...BASE, major: 'Unsent draft' }, ['major'], captureOwnerToken())).toBe(true);
+    mocks.read.mockResolvedValue(row({ ...BASE, grade: 'Senior' }, 2));
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    let receipt: Awaited<ReturnType<NonNullable<typeof result.current.checkForAction>>> = null;
+    await act(async () => { receipt = await result.current.checkForAction!(); });
+    expect(receipt).toMatchObject({ revision: 2, source: 'cloud', profile: { major: 'Unsent draft', grade: 'Senior' } });
+    expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ revision: 2,
+      profile: expect.objectContaining({ major: 'Unsent draft', grade: 'Senior' }),
+      baseProfile: expect.objectContaining({ major: 'CS', grade: 'Senior' }) }));
+    expect(Object.isFrozen(receipt)).toBe(true); expect(Object.isFrozen(receipt!.profile)).toBe(true);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it('shares one in-flight action check with refresh but a later action reads again', async () => {
+    const query = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(query.promise);
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain();
+    const first = result.current.checkForAction!(); const second = result.current.checkForAction!();
+    expect(first).toBe(second); const refreshed = result.current.refresh();
+    query.resolve(row()); await drain(); const receipt = await first;
+    expect(await refreshed).toBe(true); expect(receipt?.source).toBe('cloud'); expect(mocks.selects).toHaveLength(1);
+    const next: { value: ProfileActionReceipt | null } = { value: null };
+    await act(async () => { next.value = await result.current.checkForAction!(); });
+    expect(next.value?.checkId).toBeGreaterThan(receipt!.checkId); expect(mocks.selects).toHaveLength(2);
+  });
+
   it('waits while disabled, then reconciles a fresh row without a cloud mutation', async () => {
     const { result, rerender } = renderHook(({ enabled }) => useProfileRefresh(enabled), { initialProps: { enabled: false } });
     await drain(); expect(mocks.getSession).not.toHaveBeenCalled(); expect(await refresh(result)).toBe(false);
@@ -137,7 +163,7 @@ describe('owner-scoped read-only cloud refresh', () => {
     const { result } = renderHook(() => useProfileRefresh(true)); await drain();
     mocks.read.mockResolvedValueOnce({ data: null, error: { message: 'PRIVATE server payload' } });
     expect(await refresh(result)).toBe(false); expect(result.current.status).toBe('failed'); expect(mirror()).toEqual(BASE);
-    expect(Object.keys(result.current).sort()).toEqual(['refresh', 'status']);
+    expect(Object.keys(result.current).sort()).toEqual(['checkForAction', 'refresh', 'status']);
     mocks.read.mockResolvedValueOnce(row({ ...BASE, major: 'Physics' }, 2));
     expect(await refresh(result)).toBe(true); expect(result.current.status).toBe('ready'); expect(mirror().major).toBe('Physics');
     expect(mocks.rpc).not.toHaveBeenCalled();

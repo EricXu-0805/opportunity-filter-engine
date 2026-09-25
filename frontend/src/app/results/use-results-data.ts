@@ -7,7 +7,7 @@ import {
   type MatchViewRequestState,
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
-import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
 import { resultRequestKey, sessionBelongsToOwner, type ResultCursorState, type ResultSession } from '@/lib/result-session';
 import {
   clearMatchCache,
@@ -48,6 +48,7 @@ interface UseResultsDataResult {
 
 interface CursorState {
   requestKey: string;
+  ownerKey: string;
   byPage: Map<number, string | null>;
 }
 
@@ -84,8 +85,15 @@ export function useResultsData(
    * page 1. Optional: a caller that never paginates has nothing to reset.
    */
   onCursorReset?: () => void,
-  navigation?: { restore: ResultSession | null; onValidated: (state: ResultCursorState) => void },
+  navigation?: { owner?: OwnerToken | null; restore: ResultSession | null; onValidated: (state: ResultCursorState, owner: OwnerToken) => void },
 ): UseResultsDataResult {
+  // The real host supplies the owner of its accepted profile view. A new
+  // generation cannot authorize an old profile just by re-capturing identity.
+  // Legacy standalone callers retain their current-token behaviour.
+  const acceptedOwner = navigation?.owner === undefined ? captureOwnerToken() : navigation.owner;
+  const acceptedOwnerKey = acceptedOwner ? JSON.stringify([acceptedOwner.uid, acceptedOwner.epoch, acceptedOwner.generation]) : '';
+  const acceptedOwnerRef = useRef(acceptedOwner);
+  useLayoutEffect(() => { acceptedOwnerRef.current = acceptedOwner; }, [acceptedOwner]);
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,16 +125,16 @@ export function useResultsData(
   const navigationRef = useRef(navigation);
   useLayoutEffect(() => { navigationRef.current = navigation; }, [navigation]);
   const cursorsRef = useRef<CursorState>({
-    requestKey: '',
+    requestKey: '', ownerKey: '',
     byPage: new Map([[1, null]]),
   });
   useLayoutEffect(() => {
     const pending = pendingCommitRef.current;
     if (!pending || loading || error || !paginationReady || pending.response !== data
       || pending.state.requestKey !== requestKey || pending.state.page !== page
-      || !isTokenOwnerStillCurrent(pending.owner)) return;
+      || !isOwnerTokenValid(pending.owner, pending.owner.uid)) return;
     pendingCommitRef.current = null;
-    navigationRef.current?.onValidated(pending.state);
+    navigationRef.current?.onValidated(pending.state, pending.owner);
   }, [data, error, loading, page, paginationReady, requestKey]);
   // What the request is BUILT from, held at latest and never reacted to.
   // requestKey above is the content identity of these two, so listing them as
@@ -157,15 +165,16 @@ export function useResultsData(
 
   useEffect(() => {
     // requestKey is '' whenever profile is null, so this covers both.
-    if (!requestKey) return;
+    const requestOwner = acceptedOwnerRef.current;
+    if (!requestKey || !requestOwner || !isOwnerTokenValid(requestOwner, requestOwner.uid)) return;
     const { profile: reqProfile, view: reqView } = payloadRef.current;
     if (!reqProfile) return;
-    if (cursorsRef.current.requestKey !== requestKey) {
+    if (cursorsRef.current.requestKey !== requestKey || cursorsRef.current.ownerKey !== acceptedOwnerKey) {
       const saved = navigationRef.current?.restore;
       const mayRestore = saved && saved.requestKey === requestKey
-        && sessionBelongsToOwner(saved, captureOwnerToken());
+        && sessionBelongsToOwner(saved, requestOwner);
       cursorsRef.current = {
-        requestKey,
+        requestKey, ownerKey: acceptedOwnerKey,
         byPage: new Map(mayRestore ? saved.cursors : [[1, null]]),
       };
     }
@@ -194,7 +203,7 @@ export function useResultsData(
     // before the write below — a stale caller (identity moved on during
     // the network round-trip) must not write this response into a
     // different account's cache slot.
-    const cacheToken = captureOwnerToken();
+    const cacheToken = requestOwner;
     // Painting is gated on the same token: `active` flips only in this
     // effect's cleanup, one commit after the account changed, so a response
     // landing in that gap would put the previous account's ranked list on
@@ -202,7 +211,7 @@ export function useResultsData(
     // the cache layer itself refuses a write whose token's epoch has moved
     // on, so a late response never reaches another account's slot, and a
     // second gate would only hide that contract.
-    const painting = () => active && isTokenOwnerStillCurrent(cacheToken);
+    const painting = () => active && isOwnerTokenValid(cacheToken, cacheToken.uid);
 
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
@@ -233,7 +242,7 @@ export function useResultsData(
     (async () => {
       // The funnel event below fires after the request settles; it belongs to
       // the account this request was issued for.
-      const owner = captureOwnerToken();
+      const owner = requestOwner;
       const request = getMatchView(reqProfile, reqView, {
         cursor: cursor ?? null,
         pageSize: MATCH_VIEW_PAGE_SIZE,
@@ -277,7 +286,7 @@ export function useResultsData(
             }),
           ]);
           clearTimeout(timer);
-          if (!active) return;
+          if (!painting()) return;
           if (!requestSettled) {
             try {
               const ruleOnly = await getMatchView(reqProfile, reqView, {
@@ -315,7 +324,14 @@ export function useResultsData(
             true,
           );
         }
-        if (painting()) setData(result);
+        if (page === 1) {
+          writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
+        }
+        // A generation switch can keep uid/epoch unchanged. The original
+        // capability must authorize ALL visible state and cursor metadata,
+        // not just the cache primitive or the response's card array.
+        if (!painting()) return;
+        setData(result);
         // What the server says happened, not what this request asked for. The
         // two differ whenever the provider was unconfigured, the day budget
         // degraded the call, or a batch came back unusable — and each of those
@@ -327,11 +343,8 @@ export function useResultsData(
         } else {
           cursorsRef.current.byPage.delete(page + 1);
         }
-        if (page === 1) {
-          writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
-        }
         setPaginationReady(true);
-        if (painting()) pendingCommitRef.current = {
+        pendingCommitRef.current = {
           response: result,
           state: { requestKey, page, cursors: [...cursorsRef.current.byPage.entries()] },
           owner: cacheToken,
@@ -389,7 +402,7 @@ export function useResultsData(
     // captures whichever instance existed at mount, which is the classic stale
     // closure. Callers pass a stable (useCallback) reference, so listing it
     // does not cause a refetch.
-  }, [semanticRerank, page, requestKey, t, onCursorReset]);
+  }, [semanticRerank, page, requestKey, acceptedOwnerKey, t, onCursorReset]);
 
   return {
     data, setData, loading, error, errorCode, showSlowHint, paginationReady, refining, refined, refineFailed,

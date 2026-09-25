@@ -5,6 +5,8 @@ import golden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import type { TargetResumeV1 } from '@/lib/target-resume';
+import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
+import { DEFAULT_PROFILE } from '@/app/home/types';
 import type { PreparedTargetResumeAi, TargetResumeAiRequest, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 import { ApiError } from '@/lib/api';
 import TargetResumeAiPanel, { type TargetResumeAiPanelProps } from './TargetResumeAiPanel';
@@ -29,7 +31,8 @@ function response(payload: TargetResumeAiRequest, structureOnly = false): Target
     })) };
 }
 function props(): TargetResumeAiPanelProps {
-  return { draft: clone(golden.draft) as TargetResumeV1, owner: captureOwnerToken()!, contextKey: 'source-and-target-one',
+  const draft = clone(golden.draft) as TargetResumeV1;
+  return { profile: { ...DEFAULT_PROFILE, ...draft.base_snapshot }, draft, owner: captureOwnerToken()!, contextKey: 'source-and-target-one',
     currentContext: clone(golden.draft.base), enabled: true, onApply: vi.fn(), onDirtyChange: vi.fn() };
 }
 const generate = async () => { fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' })); await waitFor(() => expect(mocked.generate).toHaveBeenCalled()); };
@@ -93,5 +96,62 @@ describe('full résumé AI review workspace', () => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => { const result = response(payload); result.receipts[0].suggestion!.target_evidence[0].quote = 'Invented requirement'; return result; });
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
     expect(screen.queryByText('Invented requirement')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('AI action profile checks and partial coverage', () => {
+  const receipt = (p: TargetResumeAiPanelProps): ProfileActionReceipt => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: clone(p.profile) });
+  it('retains verified partial receipts during Continue checking, then requests only remaining units', async () => {
+    const p = props(), firstCheck = vi.fn().mockResolvedValue(receipt(p)), refresh = vi.fn().mockResolvedValue(true);
+    const retriedUnit = prepared.units.find((unit) => unit.evidence.kind === 'experience')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); const skipped = result.receipts.find((unit) => unit.unit_id === retriedUnit)!;
+      result.method = 'partial'; skipped.status = 'skipped'; skipped.reason_code = 'budget_exhausted'; skipped.suggestion = null; return result;
+    });
+    const view = render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction: firstCheck }} />);
+    await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('allowance is used up');
+    const coverage = screen.getByText(/Reviewed 8 of 9 items/); expect(coverage).toBeVisible();
+    const wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise);
+    view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1)); expect(mocked.generate).toHaveBeenCalledTimes(1);
+    view.rerender(<TargetResumeAiPanel {...p} enabled={false} readiness="waiting" profileRefresh={{ status: 'checking', refresh, checkForAction }} />);
+    expect(coverage).toBeVisible(); expect(screen.getByRole('checkbox', { name: 'Use suggested section and block order' })).toBeDisabled();
+    await act(async () => wait.resolve(receipt(p))); expect(mocked.generate).toHaveBeenCalledTimes(1);
+    view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await reviewReady(); expect(mocked.generate).toHaveBeenCalledTimes(2);
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([retriedUnit]);
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(p.onApply).not.toHaveBeenCalled();
+  });
+  it('aborts an in-flight batch on a read pause and rejects the late batch even after readiness returns', async () => {
+    const p = props();
+    const wait = deferred<TargetResumeAiResponse>();
+    mocked.generate.mockReturnValueOnce(wait.promise);
+    const view = render(<TargetResumeAiPanel {...p} />); await generate(); const payload = mocked.generate.mock.calls[0][0];
+    view.rerender(<TargetResumeAiPanel {...p} enabled={false} readiness="waiting" />);
+    expect(mocked.generate.mock.calls[0][1].signal.aborted).toBe(true);
+    view.rerender(<TargetResumeAiPanel {...p} />);
+    await act(async () => wait.resolve(response(payload)));
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Continue remaining suggestions' })).toBeEnabled();
+  });
+  it.each(['document', 'source'] as const)('cancels a queued AI intent when the %s changes during the check', async (kind) => {
+    const p = props(), wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise), refresh = vi.fn().mockResolvedValue(true);
+    const view = render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' })); await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1));
+    const changed = clone(p.draft); if (kind === 'document') changed.document.sections[0].blocks[0].lines[0].text = 'Latest hand edit';
+    view.rerender(<TargetResumeAiPanel {...p} draft={changed} contextKey={kind === 'source' ? 'changed-source' : p.contextKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await act(async () => wait.resolve(receipt(p))); expect(mocked.generate).not.toHaveBeenCalled(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/changed during the check/)).toBeVisible();
+  });
+  it('keeps existing suggestions on a failed recheck and does not silently retry the model', async () => {
+    const p = props(), checkForAction = vi.fn().mockResolvedValue(receipt(p)), refresh = vi.fn().mockResolvedValue(true);
+    render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />); await generate(); await reviewReady();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Use rewrite:/ }));
+    expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeEnabled();
+    checkForAction.mockResolvedValue(null); fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    await screen.findByText(/Current profile could not be verified/);
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeDisabled(); expect(mocked.generate).toHaveBeenCalledTimes(1); expect(p.onApply).not.toHaveBeenCalled();
   });
 });

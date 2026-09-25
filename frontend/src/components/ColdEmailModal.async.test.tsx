@@ -2,7 +2,7 @@ import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ColdEmailResponse, EmailVariant, ExperienceEntry, ExperienceUsage, ProfileData } from '@/lib/types';
-import { advanceOwnerEpoch, captureOwnerToken } from '@/lib/identity-owner';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
@@ -62,8 +62,10 @@ function requestEdit() {
   fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' }));
 }
 let ownerSequence = 0;
-beforeEach(() => {
-  advanceOwnerEpoch(`draft-owner-${++ownerSequence}`);
+beforeEach(async () => {
+  const uid = `draft-owner-${++ownerSequence}`;
+  advanceOwnerEpoch(uid);
+  await syncLocalIdentityOwner(uid);
   api.variants.mockReset().mockImplementation((_profile: ProfileData, id: string) =>
     Promise.resolve({ variants: [variant(id)] }));
   // Automatic fallback leaves the template on screen.
@@ -153,6 +155,7 @@ describe('cold email draft lifetime', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     await act(async () => { old.resolve(aiDraft('Private old result')); });
     view.show({ isOpen: false });
+    await act(async () => { await syncLocalIdentityOwner('next-owner'); });
     view.show({});
     await screen.findByDisplayValue('Draft A');
     await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
@@ -785,5 +788,101 @@ describe('missing profile keeps the email draft', () => {
     expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
     await act(async () => {});
     expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('action-time profile checks', () => {
+  it('does not refine an existing manual draft on the render that accepts changed source facts', async () => {
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValueOnce(receipt).mockReturnValue(pending.promise);
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab',
+      profileRefresh: { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction } };
+    const view = render(<ColdEmailModal {...props} />); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My existing manual draft' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'Keep this request until I review changes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    const changed = { ...profile, coursework: ['New course only'] };
+    // The receipt can arrive before React commits the accepted profile.
+    await act(async () => { pending.resolve({ ...receipt, checkId: 2, revision: 2, profile: changed }); });
+    view.rerender(<ColdEmailModal {...props} profile={changed} />);
+    await act(async () => {});
+    expect(api.refine).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('My existing manual draft')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Keep this request until I review changes');
+  });
+
+  it('checks again before reusing an AI draft and before inserting coursework', async () => {
+    api.stream.mockResolvedValue({ ...aiDraft('Cached verified AI draft'), pipeline_version: 'v1' });
+    api.variants.mockResolvedValue({ variants: [variant('A')], pipeline_version: 'v1' });
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValue(receipt);
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="A" opportunityTitle="Lab"
+      profileRefresh={{ status: 'ready', refresh: vi.fn(async () => true), checkForAction }} />);
+    await screen.findByDisplayValue('Cached verified AI draft');
+    fireEvent.change(screen.getByDisplayValue('Cached verified AI draft'), { target: { value: 'My new manual wording' } });
+    checkForAction.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2));
+    expect(screen.getByDisplayValue('My new manual wording')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.coursework' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(3));
+    await screen.findByDisplayValue(/My new manual wording[\s\S]*CS 225/);
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for a checked profile to be rendered before opening templates, then uses the new complete profile', async () => {
+    const checked = { ...profile, name: 'Updated student', experience_entries: [{ id: 'new-fact', revision: 2, status: 'confirmed' as const, source: { kind: 'manual' as const }, text: 'New complete experience' }] };
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => pending.promise);
+    const refresh = { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction };
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', profileRefresh: refresh };
+    const view = render(<ColdEmailModal {...props} />);
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1));
+    expect(api.variants).not.toHaveBeenCalled();
+    await act(async () => { pending.resolve({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: checked }); });
+    expect(api.variants).not.toHaveBeenCalled();
+    view.rerender(<ColdEmailModal {...props} profile={checked} />);
+    await ready();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+    expect(api.variants.mock.calls[0][0]).toEqual(checked);
+    expect(api.stream.mock.calls[0][0]).toEqual(checked);
+    expect(checkForAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a typed instruction and manual draft when their action check fails, then retries once explicitly', async () => {
+    const checkForAction = vi.fn().mockResolvedValue({ checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud', profile });
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', profileRefresh: { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction } };
+    render(<ColdEmailModal {...props} />); await ready();
+    const input = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+    fireEvent.change(input, { target: { value: 'Keep my exact request' } });
+    checkForAction.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(input).toHaveValue('Keep my exact request');
+    expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
+    expect(api.refine).not.toHaveBeenCalled();
+    api.refine.mockResolvedValueOnce({ body: 'Verified refinement', method: 'llm' });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    await screen.findByDisplayValue('Verified refinement');
+    expect(checkForAction).toHaveBeenCalledTimes(3);
+    expect(api.refine).toHaveBeenCalledTimes(1);
+    expect(api.refine.mock.calls[0][1]).toBe('Keep my exact request');
+  });
+
+  it('cancels a queued refinement when the user edits during its profile check', async () => {
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValueOnce(receipt).mockReturnValue(pending.promise);
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="A" opportunityTitle="Lab"
+      profileRefresh={{ status: 'ready', refresh: vi.fn(async () => true), checkForAction }} />);
+    await ready(); requestEdit();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'I changed the draft during the read' } });
+    await act(async () => { pending.resolve({ ...receipt, checkId: 2 }); });
+    expect(api.refine).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('I changed the draft during the read')).toBeInTheDocument();
   });
 });
