@@ -196,7 +196,7 @@ test.describe('Profile readiness and same-account writing preservation', () => {
       await expect(page.getByText(PROFILE_CHANGED, { exact: true })).toBeVisible();
       await expect(subject).toHaveValue(SUBJECT); await expect(body).toHaveValue(BODY);
       await expect(recipient).toHaveValue(RECIPIENT); await expect(instruction).toHaveValue(CHAT);
-      await expect(page.getByRole('button', { name: 'Regenerate from updated profile', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Regenerate from updated materials', exact: true })).toBeEnabled();
       await expect(page.getByRole('button', { name: 'Submit request', exact: true })).toBeDisabled();
       await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeEnabled();
       expect(variants, 'a profile update must not silently regenerate over manual text').toBe(1);

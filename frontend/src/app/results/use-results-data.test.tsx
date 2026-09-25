@@ -51,7 +51,7 @@ vi.mock('@/i18n/client', () => ({
       (vars && 'count' in vars ? `${key}:${vars.count}` : key),
   }),
 }));
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: () => <div data-testid="tailor-modal" />,
 }));
 

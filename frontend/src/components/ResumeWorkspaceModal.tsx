@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useWritingTarget } from '@/lib/use-writing-target';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import FullTargetResumeModal from './FullTargetResumeModal';
@@ -18,13 +19,17 @@ interface Props {
   profileRefresh?: ProfileRefreshState;
 }
 
-function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity, targetReady, targetChecking, profileAvailable, profileRefresh }: Omit<Props, 'isOpen'>) {
+function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity: initialTarget, targetReady: membership = true, targetChecking: parentChecking = false, profileAvailable, profileRefresh }: Omit<Props, 'isOpen'>) {
   const [mode, setMode] = useState<'full' | 'bullets'>('full');
+  const targetRefresh = useWritingTarget(true, initialTarget.id);
+  const opportunity = targetRefresh.target ?? initialTarget;
+  const targetReady = membership && targetRefresh.status === 'ready';
+  const targetChecking = parentChecking || targetRefresh.status === 'checking';
   return mode === 'full'
     ? <FullTargetResumeModal isOpen onClose={onClose} profile={profile}
-        opportunity={opportunity} targetReady={targetReady} targetChecking={targetChecking} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
+        opportunity={opportunity} targetReady={targetReady} targetChecking={targetChecking} targetRefresh={targetRefresh} targetMembershipReady={membership} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
     : <ResumeRenovationModal isOpen onClose={onClose} profile={profile}
-        opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} targetChecking={targetChecking} targetKey={JSON.stringify(opportunity)} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
+        opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} targetChecking={targetChecking} targetRefresh={targetRefresh} targetMembershipReady={membership} target={opportunity} targetKey={JSON.stringify(opportunity)} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
         onOpenFull={() => setMode('full')} />;
 }
 

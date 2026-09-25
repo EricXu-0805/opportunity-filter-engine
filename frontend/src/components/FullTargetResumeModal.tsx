@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
+import { writingTargetKey } from '@/lib/writing-target';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
@@ -46,13 +48,14 @@ function canonical(value: unknown): string {
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh }: {
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh, targetRefresh, targetMembershipReady }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
   targetReady?: boolean; targetChecking?: boolean; profileAvailable?: boolean; profileRefresh?: ProfileRefreshState;
+  targetRefresh?: WritingTargetState; targetMembershipReady?: boolean;
 }) {
   const locale = useLocale();
-  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const profileAvailableRef = useRef(profileAvailable);
   useLayoutEffect(() => { profileAvailableRef.current = profileAvailable; }, [profileAvailable]);
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
@@ -66,7 +69,11 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const profileKey = canonical(acceptedProfile);
   const target = targetResumeContextFromOpportunity(opportunity);
   const targetKey = canonical(target);
-  const contextKey = `${profileKey}\n${targetKey}`;
+  // The persisted résumé snapshot is deliberately narrower than the live
+  // public target. Retire pending work for any live change without rebinding
+  // that snapshot or reopening this owner-scoped editor.
+  const liveTargetKey = writingTargetKey(opportunity);
+  const contextKey = `${profileKey}\n${targetKey}\n${liveTargetKey}`;
   const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileKey), [profileKey]);
   const targetSnapshot = useMemo(() => JSON.parse(targetKey) as typeof target, [targetKey]);
   const [checks, setChecks] = useState<{ key: string; profile: string; target: string; source: string; canCreate: boolean } | null>(null);
@@ -254,8 +261,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       ? 'waiting' : !targetReady || !profileRefreshReady(profileRefresh) || !comparable.canCreate ? 'blocked' : 'ready';
   const createAction = useProfileAction<'create'>({
     isOpen: isOpen && !!activeSession, profile: acceptedProfile, profileAvailable,
-    scopeKey: `${opportunity.id}:${lifecycle}:${targetKey}`, editRevision: activeSession?.editRevision ?? 0,
-    refresh: profileRefresh, readiness: createReadiness, execute: () => { void create(); },
+    scopeKey: `${opportunity.id}:${lifecycle}:${liveTargetKey}`, editRevision: activeSession?.editRevision ?? 0,
+    refresh: profileRefresh, target: opportunity, targetRefresh, readiness: createReadiness, execute: () => { void create(); },
   });
   const persist = async (payload: TargetResumeV1) => {
     if (!activeSession || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
@@ -379,7 +386,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
-      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
@@ -414,8 +421,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
           <button type="button" className={`${button} mt-2`} onClick={() => setLifecycle((old) => old + 1)}>{copy('Retry reading saved résumé', '重试读取已保存简历')}</button>
         </div>}
-        {createAction.busy && <p role="status" className="mt-3 text-sm">{copy('Checking current profile before creating the draft…', '创建文稿前正在核对最新资料…')}</p>}
-        {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy('Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
+        {createAction.busy && <p role="status" className="mt-3 text-sm">{copy(targetRefresh ? 'Checking current profile and opportunity before creating the draft…' : 'Checking current profile before creating the draft…', targetRefresh ? '创建文稿前正在核对最新资料及机会…' : '创建文稿前正在核对最新资料…')}</p>}
+        {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy(targetRefresh ? 'Your profile or opportunity could not be verified. Your draft is kept; retry the check before creating a new draft.' : 'Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', targetRefresh ? '未能核对当前资料或机会。文稿仍保留，请重试核对后再创建新稿。' : '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
         {activeSession?.error && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
         {doc && <>
           {!comparable && <p role="status" className="mt-3 text-sm text-amber-800">{copy('Current source comparison is unavailable or still loading. This draft keeps its original source snapshots.', '当前来源对比尚未完成或不可用，此稿仍保留原始来源快照。')}</p>}
@@ -449,11 +456,11 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
-            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (sourceReady || !profileAvailable)}
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
             unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
-            profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh}
+            profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
             readiness={createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
             enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict}

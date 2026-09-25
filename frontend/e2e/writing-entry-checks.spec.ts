@@ -1,6 +1,7 @@
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
-import type { ExperienceEntry, ProfileData, ProfileRequest, ResumeSectionInput } from '../src/lib/types';
+import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
+import type { ExperienceEntry, Opportunity, ProfileData, ProfileRequest, ResumeSectionInput } from '../src/lib/types';
 import { attachProfileReadDiagnostics } from './profile-read-diagnostics';
 
 // Production UI and SDK, real loopback auth/profile/favorite writes. Silent
@@ -262,5 +263,202 @@ test.describe('Writing entry checks use current profiles', () => {
       expect(requests).toHaveLength(count); expect(writes).toEqual([]);
       await page.screenshot({ path: test.info().outputPath('detail-legacy-source-change-keeps-inline-edit.png') });
     } finally { gate?.release(); await owner.http.dispose(); }
+  });
+});
+
+// Batch 22 additions: the authority fixture starts with the real anonymous
+// loopback detail projection, not a card or an internally stamped record.
+async function installControlledWritingTarget(page: Page) {
+  const baseURL = String(test.info().project.use.baseURL);
+  expect(new URL(baseURL).hostname).toBe('127.0.0.1');
+  const path = `/api/opportunities/${encodeURIComponent(TARGET)}`;
+  const response = await page.request.get(`${path}?_release_scope=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  expect(response.status()).toBe(200);
+  const base = await response.json() as Opportunity;
+  expect(base).toMatchObject({ id: TARGET, title: expect.any(String), organization: expect.any(String),
+    metadata: expect.any(Object), target_truth: { actionable: true } });
+  expect(base.contact_email_status).not.toBe('revealed');
+  expect(base).not.toHaveProperty('contact_email');
+  let reply: { status: number; body: unknown } = { status: 200, body: base };
+  let reads = 0;
+  let held: { gate: Promise<void>; release: () => void; started: boolean } | null = null;
+  await page.route(url => url.pathname === path, async route => {
+    const url = new URL(route.request().url());
+    // Only the new anonymous, release-scoped detail reader is controlled.
+    // Favorites' existing list/detail and contact-reveal reads remain real.
+    if (route.request().method() !== 'GET'
+      || url.searchParams.get('_release_scope') !== PUBLIC_RELEASE_CACHE_VERSION
+      || route.request().headers().authorization !== undefined) { await route.fallback(); return; }
+    reads += 1;
+    const captured = structuredClone(reply), gate = held;
+    if (gate) { held = null; gate.started = true; await gate.gate; }
+    try { await route.fulfill({ status: captured.status, json: captured.body, headers: { 'Cache-Control': 'no-store' } }); }
+    catch (error) { if (!route.request().failure()) throw error; }
+  });
+  return {
+    base, reads: () => reads,
+    respond(status: number, body: unknown = base) { reply = { status, body }; },
+    holdNext() {
+      let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+      const record = { gate, release, started: false }; held = record;
+      return { release, started: () => record.started };
+    },
+  };
+}
+async function openTargetCheckedEmail(page: Page, requests: WritingRequest[]) {
+  await enter(page, 'favorites');
+  await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+  await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
+  await expect.poll(() => requests.some(request => request.path === '/api/cold-email/stream')).toBe(true);
+  await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
+}
+async function fillRetainedEmail(page: Page) {
+  const fields = emailFields(page);
+  await fields.subject.fill('My target-check subject 王'); await fields.body.fill(MANUAL);
+  await fields.recipient.fill('manual-target@example.edu'); await fields.instruction.fill('Keep my unsent target-check request.');
+  return fields;
+}
+async function expectRetainedEmail(page: Page) {
+  const fields = emailFields(page);
+  await expect(fields.subject).toHaveValue('My target-check subject 王'); await expect(fields.body).toHaveValue(MANUAL);
+  await expect(fields.recipient).toHaveValue('manual-target@example.edu'); await expect(fields.instruction).toHaveValue('Keep my unsent target-check request.');
+  await expect(fields.body).toBeEditable();
+}
+async function reconnectWritingPage(page: Page) {
+  // Real browser connectivity events: Chromium focus alone is not reliable
+  // in headless test contexts. No synthesized application/DOM callbacks.
+  await page.context().setOffline(true);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+  await page.bringToFront();
+  await page.context().setOffline(false);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+}
+
+test.describe('Writing entry checks use current authoritative targets', () => {
+  for (const scenario of [
+    { name: '503 preflight failure', code: 503, reason: 'Could not verify this opportunity. Your draft is kept; generation and outreach are paused.', preflight: true },
+    { name: '404 after reconnect', code: 404, reason: 'This opportunity could not be found. Your draft is kept; generation and outreach are paused.', preflight: false },
+    { name: 'closed target after reconnect', code: 200, reason: 'Applications for this opportunity are closed. Your draft is kept; generation and outreach are paused.', preflight: false },
+  ]) test(`Favorites email preserves every manual field through ${scenario.name} and an explicit same-target retry`, async ({ page }) => {
+    const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
+    try {
+      const target = await installControlledWritingTarget(page);
+      await openTargetCheckedEmail(page, requests); await fillRetainedEmail(page);
+      const count = requests.length, reads = target.reads(), dialog = await page.getByRole('dialog').elementHandle();
+      const closed = { ...target.base, target_truth: { ...target.base.target_truth!, actionable: false,
+        listing_state: 'closed', accepting_state: 'not_accepting', reason_code: 'listing_closed' },
+        application: { ...target.base.application, application_url: null }, contact_email_status: 'unavailable' };
+      target.respond(scenario.code, scenario.code === 200 ? closed : { detail: 'Synthetic target read failure' });
+      if (scenario.preflight) await page.getByRole('button', { name: 'Shorter', exact: true }).click();
+      else await reconnectWritingPage(page);
+      await expect.poll(target.reads).toBeGreaterThan(reads);
+      const notice = page.getByRole('dialog').getByTestId('writing-target-status');
+      await expect(notice).toContainText(scenario.reason);
+      await expect(notice.getByRole('button', { name: 'Check opportunity again', exact: true })).toBeEnabled();
+      await expectRetainedEmail(page);
+      expect(await dialog!.evaluate(element => element.isConnected)).toBe(true);
+      await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Submit request', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Open in Email', exact: true })).toBeDisabled();
+      expect(requests).toHaveLength(count); expect(requests.filter(request => request.path.endsWith('/refine'))).toEqual([]);
+      target.respond(200);
+      await notice.getByRole('button', { name: 'Check opportunity again', exact: true }).click();
+      await expect(page.getByRole('dialog').getByTestId('writing-target-status')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
+      await expectRetainedEmail(page); expect(requests).toHaveLength(count); expect(writes).toEqual([]);
+      await page.screenshot({ path: test.info().outputPath(`target-${scenario.code}-email-retained.png`) });
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('a same-id target description change discovered by Shorter preserves the draft and requires explicit regeneration', async ({ page }) => {
+    const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
+    try {
+      const target = await installControlledWritingTarget(page);
+      await openTargetCheckedEmail(page, requests); await fillRetainedEmail(page);
+      const count = requests.length, reads = target.reads();
+      target.respond(200, { ...target.base, description_clean: `${target.base.description_clean}\nUpdated target requirements: document calibration uncertainty.` });
+      await page.getByRole('button', { name: 'Shorter', exact: true }).click();
+      await expect.poll(target.reads).toBeGreaterThan(reads);
+      await expect(page.getByText('Your profile or target details changed. Your subject, message and recipient are kept. Regenerate when you are ready to replace this draft.', { exact: true })).toBeVisible();
+      await expectRetainedEmail(page);
+      await expect(page.getByRole('button', { name: 'Regenerate from updated materials', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Submit request', exact: true })).toBeDisabled();
+      expect(requests).toHaveLength(count); expect(writes).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('a quiet unchanged target read keeps the in-flight automatic email stream eligible to populate the editor', async ({ page }) => {
+    await page.clock.install();
+    const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
+    let releaseStream!: () => void;
+    const streamGate = new Promise<void>(resolve => { releaseStream = resolve; });
+    let targetGate: { release: () => void; started: () => boolean } | undefined;
+    const streamBody = 'Stream completed after an unchanged public target check. 王';
+    let streamStarted = false;
+    await page.route('**/api/cold-email/stream', async route => {
+      const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
+      requests.push({ ...body, path: '/api/cold-email/stream' }); streamStarted = true;
+      await streamGate;
+      try { await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done',
+        subject: 'Completed unchanged-target stream', body: streamBody, recipient_email: 'checked@example.edu',
+        recipient_status: 'revealed', method: 'ai', mailto_link: '' })}\n\n` }); }
+      catch (error) { if (!route.request().failure()) throw error; }
+    });
+    try {
+      const target = await installControlledWritingTarget(page);
+      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+      await expect.poll(() => streamStarted).toBe(true);
+      await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
+      const node = await page.getByTestId('cold-email-editor-fields').elementHandle(), reads = target.reads();
+      targetGate = target.holdNext();
+      await page.clock.fastForward(60_000);
+      await expect.poll(targetGate.started).toBe(true); expect(target.reads()).toBeGreaterThan(reads);
+      await expect(page.getByRole('dialog').getByTestId('writing-target-status')).toHaveCount(0);
+      expect(await node!.evaluate(element => element.isConnected)).toBe(true);
+      // Register before release so an immediate local response cannot be missed.
+      const response = page.waitForResponse(reply => new URL(reply.url()).pathname === `/api/opportunities/${TARGET}`
+        && new URL(reply.url()).searchParams.get('_release_scope') === PUBLIC_RELEASE_CACHE_VERSION
+        && reply.request().headers().authorization === undefined && reply.status() === 200);
+      targetGate.release();
+      await response;
+      releaseStream();
+      await expect(emailFields(page).body).toHaveValue(streamBody);
+      await expect(emailFields(page).subject).toHaveValue('Completed unchanged-target stream');
+      await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
+      expect(requests.filter(request => request.path === '/api/cold-email/stream')).toHaveLength(1);
+      expect(requests.filter(request => request.path === '/api/cold-email')).toEqual([]);
+      expect(writes).toEqual([]);
+    } finally { targetGate?.release(); releaseStream(); await owner.http.dispose(); }
+  });
+
+  test('a changed opportunity keeps the complete manually edited target résumé on its original snapshot and disables AI', async ({ page }) => {
+    const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
+    try {
+      const target = await installControlledWritingTarget(page);
+      await enter(page, 'detail'); await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'Target résumé', exact: true });
+      await dialog.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
+      const name = dialog.getByRole('textbox', { name: 'Edit Full name', exact: true });
+      await expect(name).toHaveValue(OLD_NAME); await name.fill(MANUAL);
+      const title = dialog.getByRole('checkbox', { name: 'Include field: Title', exact: true }); await title.uncheck();
+      const ai = dialog.getByRole('button', { name: 'Generate AI suggestions', exact: true }); await expect(ai).toBeEnabled();
+      const count = requests.length, reads = target.reads(), node = await name.elementHandle();
+      const changedDescription = 'Newly revised target description: different instrumentation requirements.';
+      target.respond(200, { ...target.base, description_clean: changedDescription });
+      await reconnectWritingPage(page); await expect.poll(target.reads).toBeGreaterThan(reads);
+      await expect(dialog.getByText('This draft was created from different profile or target materials. Your edits and original source remain intact; they were not rebound to the current profile.', { exact: true })).toBeVisible();
+      await expect(ai).toBeDisabled(); await expect(name).toHaveValue(MANUAL); await expect(name).toBeEditable();
+      await expect(title).not.toBeChecked(); expect(await node!.evaluate(element => element.isConnected)).toBe(true);
+      const originals = dialog.locator('details').filter({ has: page.getByText('Target requirements and original materials', { exact: true }) });
+      await originals.locator('summary').first().click();
+      await expect(originals.getByText(target.base.description_clean, { exact: true })).toBeVisible();
+      await expect(originals.getByText(changedDescription, { exact: true })).toHaveCount(0);
+      await expect(dialog.getByRole('button', { name: 'Rebuild from current confirmed master', exact: true })).toBeEnabled();
+      await expect(dialog.getByText('Unsaved local edits', { exact: true })).toBeVisible();
+      expect(requests).toHaveLength(count); expect(writes).toEqual([]);
+    } finally { await owner.http.dispose(); }
   });
 });

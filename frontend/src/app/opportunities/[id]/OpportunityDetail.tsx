@@ -40,11 +40,11 @@ import { SimilarOpportunities } from './SimilarOpportunities';
 import { TrackerPanel } from './TrackerPanel';
 import { useOpportunityDetail } from './use-opportunity-detail';
 
-const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
+const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), { ssr: false });
 // R71 PR-3: second entry point for the tailor modal (first was MatchCard).
 // Keeping the same dynamic-ssr-off pattern so this leaf doesn't pull the
 // modal bundle into the server render.
-const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
+const TailorModal = dynamic(() => import('@/components/CheckedTailorModal'), { ssr: false });
 const ResumeRenovationModal = dynamic(() => import('@/components/ResumeWorkspaceModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
 
@@ -329,6 +329,7 @@ export default function OpportunityDetail({
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           opportunitySchool={opp.school ?? null}
+          target={opp}
           reminderTarget={opp}
           onContactConfirmed={noteContactConfirmed}
           onReminderSet={noteReminderSet}
@@ -346,6 +347,7 @@ export default function OpportunityDetail({
           key={`${identityGeneration}:${opp.id}`}
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
+          target={opp}
           targetKey={JSON.stringify(opp)}
           profile={tailorProfile.profile}
           profileAvailable={profile !== null}

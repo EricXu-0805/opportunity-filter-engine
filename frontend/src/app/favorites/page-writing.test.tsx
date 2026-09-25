@@ -37,8 +37,8 @@ function Editor({ kind, ...props }: EditorProps & { kind: string }) {
     <output data-testid={`${kind}-check`}>{String(props.profileRefresh?.checkForAction === fixture.refresh.checkForAction)}</output>
     <button onClick={props.onClose}>Close {kind}</button></section>;
 }
-vi.mock('@/components/ColdEmailModal', () => ({ default: (props: EditorProps) => <Editor kind="email" {...props} /> }));
-vi.mock('@/components/TailorModal', () => ({ default: (props: EditorProps) => <Editor kind="tailor" {...props} /> }));
+vi.mock('@/components/CheckedColdEmailModal', () => ({ default: (props: EditorProps) => <Editor kind="email" {...props} /> }));
+vi.mock('@/components/CheckedTailorModal', () => ({ default: (props: EditorProps) => <Editor kind="tailor" {...props} /> }));
 import FavoritesPage from './page';
 const profile = (name = 'Original student'): ProfileData => ({ name, institution: 'UIUC', major: 'CS', college: 'Engineering', grade: 'Sophomore', is_international: false,
   research_interests: 'research', skills: [], resume_text: 'Original source' });

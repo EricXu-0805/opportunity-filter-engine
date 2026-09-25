@@ -49,6 +49,7 @@ function ResumeRenovationModal(props: React.ComponentProps<typeof ActualResumeRe
 }
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { Opportunity, ProfileData, RenovationDoc } from '@/lib/types';
+import { hashString } from '@/lib/match-utils';
 
 // The word-diff splits changed bullet text into per-word nodes; match on
 // assembled textContent instead (same helper as TailorModal.test).
@@ -267,7 +268,7 @@ describe('ResumeRenovationModal', () => {
 
   it('re-optimize appends an ai variant when the backend accepts', async () => {
     mockLoadRenovation.mockResolvedValue({
-      doc: makeDoc() as unknown as Record<string, unknown>,
+      doc: makeCurrentDoc() as unknown as Record<string, unknown>,
       base_snapshot: { sections: [] },
       method: 'ai',
       warnings: [],
@@ -282,7 +283,7 @@ describe('ResumeRenovationModal', () => {
     renderModal();
     await waitFor(() => expect(screen.getAllByText('renovate.reoptimize').length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getAllByText('renovate.reoptimize')[0]);
+    await clickOptimize();
     await waitFor(() =>
       expect(
         screen.getByText(fullText('Engineered a resilient ETL pipeline powering ML experiments')),
@@ -300,7 +301,7 @@ describe('ResumeRenovationModal', () => {
 
   it('re-optimize declined (changed=false) keeps the text and says so', async () => {
     mockLoadRenovation.mockResolvedValue({
-      doc: makeDoc() as unknown as Record<string, unknown>,
+      doc: makeCurrentDoc() as unknown as Record<string, unknown>,
       base_snapshot: { sections: [] },
       method: 'ai',
       warnings: [],
@@ -315,7 +316,7 @@ describe('ResumeRenovationModal', () => {
     renderModal();
     await waitFor(() => expect(screen.getAllByText('renovate.reoptimize').length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getAllByText('renovate.reoptimize')[0]);
+    await clickOptimize();
     await waitFor(() =>
       expect(screen.getByText('renovate.bulletUnchanged')).toBeInTheDocument(),
     );
@@ -488,6 +489,17 @@ async function switchRenovationOwner() {
   });
 }
 
+// Only fixtures explicitly exercising current-source AI receive provenance.
+// makeDoc/savedDoc otherwise stay legacy-unknown for compatibility coverage.
+function makeCurrentDoc(overrides: Partial<RenovationDoc> = {}, profile = makeProfile()) {
+  return makeDoc({ profile_sig: targetFixtureSignature(profile), ...overrides });
+}
+
+async function clickOptimize() {
+  await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
+  fireEvent.click(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]);
+}
+
 function savedDoc(doc = makeDoc()) {
   return { doc, base_snapshot: { sections: [] }, method: 'ai', warnings: [], updated_at: '' };
 }
@@ -552,10 +564,11 @@ describe('renovation owner and request lifecycle', () => {
 
   it('cannot apply a late bullet optimization over a newer manual edit', async () => {
     const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
     mockOptimizeBullet.mockReturnValue(pending.promise);
     renderModal();
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     fireEvent.click(screen.getAllByText('renovate.edit')[0]);
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'A newer manual edit' } });
     fireEvent.click(screen.getByText('renovate.save'));
@@ -567,10 +580,11 @@ describe('renovation owner and request lifecycle', () => {
 
   it('cannot save a late bullet optimization under a new owner', async () => {
     const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
     mockOptimizeBullet.mockReturnValue(pending.promise);
     renderModal();
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     await switchRenovationOwner();
     await act(async () => { pending.resolve({ text: 'Late AI text', changed: true, source_evidence: '' }); });
     expect(mockSaveRenovation).not.toHaveBeenCalled();
@@ -795,10 +809,11 @@ describe('M43 complete profile content owns asynchronous work', () => {
 
   it('retires a late bullet optimization while keeping an unsaved manual edit and the old provenance', async () => {
     const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ resume_sig: 'source-before-edit', profile_sig: 'v1:sha256:' + 'a'.repeat(64) })));
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({ resume_sig: hashString(makeProfile().resume_text!) })));
     mockOptimizeBullet.mockReturnValue(pending.promise);
     const view = renderModal();
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     editFirstBullet('Manual draft remains mine');
     showProfile(view, makeProfile({ coursework: ['CS 374'] }));
     await act(async () => { pending.resolve({ text: 'Retired AI wording', changed: true, source_evidence: '' }); });
@@ -807,15 +822,16 @@ describe('M43 complete profile content owns asynchronous work', () => {
     expect(mockSaveRenovation).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('renovate.save'));
     await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
-    expect(mockSaveRenovation.mock.calls[0][1].profile_sig).toBe('v1:sha256:' + 'a'.repeat(64));
-    expect(mockSaveRenovation.mock.calls[0][1].resume_sig).toBe('source-before-edit');
+    expect(mockSaveRenovation.mock.calls[0][1].profile_sig).toBe(targetFixtureSignature(makeProfile()));
+    expect(mockSaveRenovation.mock.calls[0][1].resume_sig).toBe(hashString(makeProfile().resume_text!));
   });
 
   it('accepts pending optimization across equal content with reordered object keys and does not reload', async () => {
     const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValue(pending.promise);
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc())); mockOptimizeBullet.mockReturnValue(pending.promise);
     const input = makeProfile(); const view = renderModal(input);
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     const reordered = Object.fromEntries(Object.entries(input).reverse()) as unknown as ProfileData;
     reordered.skills = input.skills.map((skill) => Object.fromEntries(Object.entries(skill).reverse()) as unknown as typeof skill);
     showProfile(view, reordered);
@@ -883,9 +899,9 @@ describe('retired errors and follow-up attempts', () => {
     mockSaveRenovation.mockResolvedValue(true);
     if (stage === 'structure') mockStructureResume.mockReturnValueOnce(old.promise);
     if (stage === 'renovate') mockRenovateResume.mockReturnValueOnce(old.promise);
-    if (stage === 'optimize') { mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValueOnce(old.promise); }
+    if (stage === 'optimize') { mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc())); mockOptimizeBullet.mockReturnValueOnce(old.promise); }
     const view = renderModal();
-    if (stage === 'optimize') fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    if (stage === 'optimize') { await clickOptimize(); await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce()); }
     else {
       fireEvent.click(await screen.findByText('renovate.start'));
       await waitFor(() => expect(stage === 'structure' ? mockStructureResume : mockRenovateResume).toHaveBeenCalledTimes(1));
@@ -902,13 +918,14 @@ describe('retired errors and follow-up attempts', () => {
 
   it('does not leave a retired save retry or optimization lock on a failed rerun', async () => {
     const oldOptimization = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
     mockSaveRenovation.mockResolvedValue(false);
     mockOptimizeBullet.mockReturnValueOnce(oldOptimization.promise);
     mockStructureResume.mockRejectedValue(new Error('New rerun failed'));
     renderModal(); fireEvent.click((await screen.findAllByText('renovate.rollback'))[0]);
     await screen.findByText('renovate.retrySave');
-    fireEvent.click(screen.getAllByText('renovate.reoptimize')[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByText('renovate.rerun'));
     await screen.findByText('New rerun failed');
     expect(screen.queryByText('renovate.retrySave')).toBeNull();
@@ -1055,9 +1072,10 @@ describe('legacy registered browser close request', () => {
 describe('bullet editor cloud refresh', () => {
   it('keeps the unsaved edit and ignores old optimization after checking returns unchanged', async () => {
     const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-    mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValue(pending.promise);
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc())); mockOptimizeBullet.mockReturnValue(pending.promise);
     const p = makeProfile(); const view = renderModal(p);
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
     editFirstBullet('Retain my unsubmitted bullet');
     const refresh = vi.fn().mockResolvedValue(true);
     const show = (status: 'checking' | 'ready') => view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Prof. Doe's Lab" profileRefresh={{ status, refresh }} />);
@@ -1074,9 +1092,10 @@ describe('bullet editor cloud refresh', () => {
 
 it('keeps the bullet draft after profile removal and rejects late optimization even after restoration', async () => {
   const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
-  mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValue(pending.promise);
+  mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc())); mockOptimizeBullet.mockReturnValue(pending.promise);
   const p = makeProfile(); const view = renderModal(p);
-  fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+  await clickOptimize();
+  await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
   editFirstBullet('Keep my bullet after removal');
   const show = (profileAvailable: boolean) => view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Prof. Doe's Lab" profileAvailable={profileAvailable} />);
   show(false);
@@ -1093,11 +1112,12 @@ describe('legacy renovation per-action profile checks', () => {
   it.each(['start', 'optimize'] as const)('does not issue %s requests while the latest-profile check is unresolved', async (entry) => {
     const profile = makeProfile(), check = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
     const checkForAction = vi.fn(() => check.promise), refresh = vi.fn().mockResolvedValue(true);
-    if (entry === 'optimize') mockLoadRenovation.mockResolvedValue(savedDoc());
+    if (entry === 'optimize') mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({}, profile)));
     mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
     mockOptimizeBullet.mockResolvedValue({ text: 'Checked wording', changed: true, source_evidence: '' });
     render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle="Lab" profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
-    fireEvent.click(entry === 'start' ? await screen.findByText('renovate.start') : (await screen.findAllByText('renovate.reoptimize'))[0]);
+    if (entry === 'start') fireEvent.click(await screen.findByText('renovate.start'));
+    else await clickOptimize();
     // Either the read boundary or the model boundary must have started. This
     // does not infer successful gating merely from waiting a fixed duration.
     await waitFor(() => expect(checkForAction.mock.calls.length + mockStructureResume.mock.calls.length + mockOptimizeBullet.mock.calls.length).toBeGreaterThan(0));
@@ -1114,7 +1134,7 @@ describe('checked legacy renovation intents', () => {
     checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: structuredClone(profile),
   });
   function harness(profile = makeProfile(), stored = false) {
-    if (stored) mockLoadRenovation.mockResolvedValue(savedDoc());
+    if (stored) mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({}, profile)));
     const check = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
     const checkForAction = vi.fn(() => check.promise), refresh = vi.fn().mockResolvedValue(true);
     const show = (p: ProfileData, extra: Partial<React.ComponentProps<typeof ResumeRenovationModal>> = {}) =>
@@ -1142,7 +1162,7 @@ describe('checked legacy renovation intents', () => {
     const old = makeProfile(), fresh = makeProfile({ resume_text: 'New full source', coursework: ['Updated course'] });
     const view = harness(old, true);
     await screen.findByText('renovate.copyAll'); editFirstBullet('Keep my unsaved first bullet');
-    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await clickOptimize();
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     view.rerender(view.show(fresh));
     await act(async () => view.check.resolve(receipt(fresh)));
@@ -1153,7 +1173,7 @@ describe('checked legacy renovation intents', () => {
   });
   it('does not revive a bullet intent if the profile changes away and back during its check', async () => {
     const old = makeProfile(), view = harness(old, true);
-    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await clickOptimize();
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     view.rerender(view.show(makeProfile({ coursework: ['Temporary new source'] })));
     view.rerender(view.show(old));
@@ -1164,7 +1184,7 @@ describe('checked legacy renovation intents', () => {
   it.each(['typing', 'target update', 'owner switch', 'close'] as const)('retires a pending check after %s without model calls', async (change) => {
     const profile = makeProfile(), view = harness(profile, true);
     await screen.findByText('renovate.copyAll'); editFirstBullet('Original inline draft');
-    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await clickOptimize();
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     const checked = receipt(profile);
     if (change === 'typing') fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New inline draft during read' } });
@@ -1196,7 +1216,7 @@ describe('checked legacy renovation intents', () => {
     mockOptimizeBullet.mockReturnValue(pending.promise);
     const profile = makeProfile(), view = harness(profile, true);
     await screen.findByText('renovate.copyAll'); editFirstBullet('Unsaved answer before check');
-    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await clickOptimize();
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     await act(async () => view.check.resolve(receipt(profile)));
     await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
@@ -1348,7 +1368,7 @@ describe('persisted full target provenance', () => {
 describe('full target digest boundaries', () => {
   it('accepts key-order-only changes and retains the target digest on a manual save', async () => {
     const reordered = Object.fromEntries(Object.entries({ ...targetA, eligibility: Object.fromEntries(Object.entries(targetA.eligibility).reverse()) }).reverse());
-    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
     render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(reordered)} />);
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
     editFirstBullet('My manual wording'); fireEvent.click(screen.getByText('renovate.save'));
@@ -1476,5 +1496,43 @@ describe('public target projection compatibility', () => {
     render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={target.title} targetKey={JSON.stringify(target)} />);
     expect((await screen.findByText('renovate.start')).closest('button')).toBeDisabled();
     expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('legacy unknown profile cannot optimize', () => {
+  it.each([undefined, 'not-a-profile-digest'])('requires a successful rebuild for profile provenance %s while preserving manual operations', async (profile_sig) => {
+    const digests: Promise<ArrayBuffer>[] = [];
+    vi.stubGlobal('crypto', { subtle: { digest: (algorithm: AlgorithmIdentifier, input: BufferSource) => {
+      const pending = webcrypto.subtle.digest(algorithm, input); digests.push(pending); return pending;
+    } } });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ profile_sig })));
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    mockOptimizeBullet.mockResolvedValue({ text: 'Checked rebuilt wording', changed: true, source_evidence: 'Built a data pipeline' });
+    const profile = makeProfile(); renderModal(profile);
+    await screen.findByText('renovate.copyAll');
+    // Resolve the real source digests before checking authority: a transient
+    // pending hash must not make this provenance regression pass by accident.
+    await act(async () => { await Promise.all(digests); });
+    const optimize = screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0];
+    expect(optimize).toBeDisabled();
+    fireEvent.click(optimize);
+    expect(mockOptimizeBullet).not.toHaveBeenCalled();
+    editFirstBullet('Keep my manual legacy wording'); fireEvent.click(screen.getByText('renovate.save'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(mockSaveRenovation.mock.calls[0][1].profile_sig).toBe(profile_sig);
+    expect(mockSaveRenovation.mock.calls[0][1].target_sig).toBe(targetFixtureSignature(targetA));
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(writeText.mock.calls[0][0]).toContain('Keep my manual legacy wording');
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(2));
+    expect(mockSaveRenovation.mock.calls[1][1].profile_sig).toBe(targetFixtureSignature(profile));
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]);
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
   });
 });

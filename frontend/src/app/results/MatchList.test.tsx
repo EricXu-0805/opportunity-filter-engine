@@ -21,7 +21,7 @@ vi.mock('@/lib/api', () => ({
 // ever disappear — a prop-only change could never do that. mountId is
 // generated exactly once per genuine mount (useRef's initializer), so it
 // can ONLY change via an actual unmount+remount.
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: function MockTailorModal(props: {
     isOpen: boolean;
     ownerReady: boolean;

@@ -9,8 +9,9 @@ import {
   type TargetResumeAICurrentContext,
 } from '@/lib/target-resume-ai';
 import type { TargetResumeV1 } from '@/lib/target-resume';
-import type { ProfileData } from '@/lib/types';
+import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
 import type { PreparedTargetResumeAi, TargetResumeAiReceipt, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 
@@ -19,6 +20,8 @@ export interface TargetResumeAiPanelProps {
   profile: ProfileData;
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
+  target?: Opportunity | null;
+  targetRefresh?: WritingTargetState;
   readiness?: 'ready' | 'waiting' | 'blocked';
   owner: OwnerToken;
   contextKey: string;
@@ -32,7 +35,7 @@ const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opa
 const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
-export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange }: TargetResumeAiPanelProps) {
+export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange }: TargetResumeAiPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
@@ -168,7 +171,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
   };
   const action = useProfileAction<'start' | 'continue'>({
     isOpen: true, profile, profileAvailable, scopeKey: binding, editRevision: draftKey,
-    refresh: profileRefresh, readiness: readiness ?? (enabled ? 'ready' : 'blocked'),
+    refresh: profileRefresh, target, targetRefresh, readiness: readiness ?? (enabled ? 'ready' : 'blocked'),
     execute: (intent) => { void generate(intent === 'continue'); },
   });
   const working = busy || action.busy;
@@ -214,8 +217,8 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
       {canContinue && <button type="button" className={button} disabled={!ready || working} onClick={() => action.request('continue')}>{copy('Continue remaining suggestions', '继续处理未完成项')}</button>}
       {working && <button type="button" className={button} onClick={cancel}>{copy('Cancel generation', '停止生成')}</button>}
     </div>
-    {action.busy && <p role="status" className="mt-2 text-sm">{copy('Checking current profile before AI review…', 'AI 核对前正在检查最新资料…')}</p>}
-    {action.error && <p role="alert" className="mt-2 text-sm text-amber-800">{action.error === 'changed' ? copy('Your draft, profile or target changed during the check. Review the current materials before trying again.', '核对期间文稿、资料或目标已变更，请核对当前材料后再试。') : copy('Current profile could not be verified. Your draft and completed suggestions are kept.', '未能核对当前资料。文稿及已完成建议保留。')}</p>}
+    {action.busy && <p role="status" className="mt-2 text-sm">{copy(targetRefresh ? 'Checking current profile and opportunity before AI review…' : 'Checking current profile before AI review…', targetRefresh ? 'AI 核对前正在检查最新资料及机会…' : 'AI 核对前正在检查最新资料…')}</p>}
+    {action.error && <p role="alert" className="mt-2 text-sm text-amber-800">{action.error === 'changed' ? copy('Your draft, profile or target changed during the check. Review the current materials before trying again.', '核对期间文稿、资料或目标已变更，请核对当前材料后再试。') : copy(targetRefresh ? 'Your profile or opportunity could not be verified. Your draft and completed suggestions are kept.' : 'Current profile could not be verified. Your draft and completed suggestions are kept.', targetRefresh ? '未能核对当前资料或机会。文稿及已完成建议保留。' : '未能核对当前资料。文稿及已完成建议保留。')}</p>}
     {busy && <p role="status" className="mt-2 text-sm">{copy('Reviewing your complete materials…', '正在核对完整材料…')}</p>}
     {error && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm">{reasonText(error)}</p>}
     {notice && <p role="status" className="mt-2 text-sm">{notice === 'applied'

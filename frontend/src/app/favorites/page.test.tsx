@@ -39,7 +39,7 @@ vi.mock('./use-saved-searches', () => ({
   }),
 }));
 vi.mock('./SelectionFooter', () => ({ SelectionFooter: () => null }));
-vi.mock('@/components/ColdEmailModal', () => ({ default: () => null }));
+vi.mock('@/components/CheckedColdEmailModal', () => ({ default: () => null }));
 
 // A sentinel mock, NOT the real OpportunityCard: exposes onOpenTailorModal
 // via a plain button and tailorDisabled as visible text, so the test can
@@ -74,7 +74,7 @@ vi.mock('./OpportunityCard', () => ({
 // one thing a missing/wrong key would fail to cause. The real
 // opportunityId/ownerReady/ownerScopeKey props are rendered too, so the
 // wiring of those (separately from the key) stays covered.
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: function MockTailorModal(props: {
     isOpen: boolean;
     opportunityId: string;

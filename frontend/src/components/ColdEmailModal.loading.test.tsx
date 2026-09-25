@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import type { ProfileData, EmailVariant } from '@/lib/types';
+import type { Opportunity, ProfileData, EmailVariant } from '@/lib/types';
 import type { ProfileActionReceipt, ProfileRefreshState } from '@/lib/use-profile-refresh';
 
 vi.mock('@/i18n/client', () => {
@@ -14,6 +14,8 @@ vi.mock('@/lib/api', () => ({ getEmailVariants: api.variants, generateColdEmailS
 vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmInteractionContact: vi.fn(), updateInteractionDetails: vi.fn() }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
 import ColdEmailModal from './ColdEmailModal';
+import type { TargetActionReceipt, WritingTargetState } from '@/lib/use-writing-target';
+import { writingTargetKey } from '@/lib/writing-target';
 
 const profile: ProfileData = { name: 'Alex', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
   is_international: false, research_interests: 'robotics', skills: [], coursework: [] };
@@ -127,5 +129,60 @@ describe('cold email initial readiness versus a retained editor', () => {
     expect(screen.queryByTestId('cold-email-footer')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tryAgain' }));
     expect(await screen.findByDisplayValue('Checked body')).toBeVisible();
+  });
+});
+
+const checkedTarget: Opportunity = { id: 'loading-target', title: 'Lab', organization: 'University', opportunity_type: 'research',
+  paid: 'unknown', location: 'Campus', on_campus: true, description_clean: 'Original laboratory research.', keywords: [],
+  eligibility: { international_friendly: 'unknown', preferred_year: [], majors: [], skills_required: [], citizenship_required: null },
+  application: { application_effort: 'unknown', requires_resume: 'unknown', contact_method: 'email' }, metadata: { is_active: true, confidence_score: 1 } };
+const targetReceipt = (target = checkedTarget): TargetActionReceipt => ({ checkId: 1, owner: captureOwnerToken(), target, key: writingTargetKey(target)! });
+function targetHarness(checkForAction: WritingTargetState['checkForAction'], status: WritingTargetState['status'] = 'ready') {
+  const show = (next = status, target = checkedTarget) => <ColdEmailModal isOpen onClose={vi.fn()} profile={profile}
+    opportunityId={target.id} opportunityTitle={target.title} target={target} reminderTarget={target}
+    targetReady={next === 'ready'} targetChecking={next === 'checking'} targetMembershipReady
+    targetRefresh={{ status: next, target, reason: next === 'failed' ? 'timeout' : null, refresh: vi.fn(), checkForAction }}
+    profileRefresh={{ status: 'ready', refresh: vi.fn(), checkForAction: async () => receipt() }} />;
+  return { ...render(show()), show };
+}
+describe('cold email committed target receipts', () => {
+  it('waits for the target receipt before templates or automatic AI even when the profile is ready', async () => {
+    const held = deferred<TargetActionReceipt | null>(); const check = vi.fn(() => held.promise);
+    const view = targetHarness(check, 'checking');
+    await waitFor(() => expect(check).toHaveBeenCalledOnce());
+    expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+    view.rerender(view.show('ready'));
+    await act(async () => held.resolve(targetReceipt()));
+    await waitFor(() => expect(api.variants).toHaveBeenCalledOnce());
+    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    expect(check).toHaveBeenCalledOnce();
+  });
+  it('lets an in-flight automatic draft land across an unchanged quiet target read', async () => {
+    const held = deferred<typeof variant & { method: string }>(); api.stream.mockReturnValue(held.promise);
+    const view = targetHarness(async () => targetReceipt());
+    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    // Quiet reader retains ready and the exact target while its HTTP read is pending.
+    view.rerender(view.show('ready', { ...checkedTarget }));
+    await act(async () => held.resolve({ ...variant, body: 'Completed unchanged-target AI draft', method: 'ai' }));
+    expect(await screen.findByDisplayValue('Completed unchanged-target AI draft')).toBeVisible();
+    expect(api.stream).toHaveBeenCalledOnce();
+  });
+  it('keeps the manual draft and request and never refines after a changed target receipt', async () => {
+    const held = deferred<TargetActionReceipt | null>();
+    const check = vi.fn<WritingTargetState['checkForAction']>().mockResolvedValueOnce(targetReceipt()).mockReturnValue(held.promise);
+    const view = targetHarness(check);
+    const body = await screen.findByDisplayValue('Checked body');
+    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    fireEvent.change(body, { target: { value: 'My manual draft' } });
+    const instruction = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+    fireEvent.change(instruction, { target: { value: 'Keep my pending request' } });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    const changed = { ...checkedTarget, description_clean: 'Changed laboratory requirements.' };
+    view.rerender(view.show('ready', changed));
+    await act(async () => held.resolve(targetReceipt(changed)));
+    expect(body).toHaveValue('My manual draft'); expect(instruction).toHaveValue('Keep my pending request');
+    expect(api.refine).not.toHaveBeenCalled();
+    expect(screen.getByText('coldEmail.profileChanged')).toBeVisible();
   });
 });

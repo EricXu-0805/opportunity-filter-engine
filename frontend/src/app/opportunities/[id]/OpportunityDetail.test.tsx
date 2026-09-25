@@ -106,7 +106,7 @@ const writingProps = vi.hoisted(() => ({
   email: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
   resume: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
 }));
-vi.mock('@/components/ColdEmailModal', () => ({
+vi.mock('@/components/CheckedColdEmailModal', () => ({
   default: function MockColdEmail(props: { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
     writingProps.email = props;
     const mount = useRef(Math.random().toString(36).slice(2));
@@ -141,7 +141,7 @@ vi.mock('@/components/OpportunityChatbot', () => ({
 // one thing a missing key would fail to cause. The real ownerReady/
 // ownerScopeKey props are rendered too, so the wiring of those (separately
 // from the key) stays covered.
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: function MockTailorModal(props: { isOpen: boolean; ownerReady: boolean; ownerScopeKey: string | null; profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
     writingProps.tailor = props;
     const [text, setText] = useState("Original tailor");

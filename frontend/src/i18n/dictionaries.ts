@@ -3608,7 +3608,7 @@ export const en = {
   coldEmail: {
     title: 'Email Editor',
     profileChanged: 'Your profile or target details changed. Your subject, message and recipient are kept. Regenerate when you are ready to replace this draft.',
-    regenerateFromProfile: 'Regenerate from updated profile',
+    regenerateFromProfile: 'Regenerate from updated materials',
     profileRegenerateFailed: 'Regeneration failed. Your draft is kept; try again.',
     profileEditRetired: 'Your profile or target details changed, so this edit was discarded. Your draft is kept.',
     sourceCheckRetired: "Your profile or target is being checked, so this edit was discarded. Your draft is kept.",
@@ -8222,7 +8222,7 @@ export const zh = {
   coldEmail: {
     title: '邮件编辑器',
     profileChanged: '资料或目标信息已更新，主题、正文和收件人已保留。点击重新生成才会替换文稿。',
-    regenerateFromProfile: '使用更新后的资料重新生成',
+    regenerateFromProfile: '按最新资料和机会重新生成',
     profileRegenerateFailed: '重新生成失败，原稿已保留，请重试。',
     profileEditRetired: '资料或目标信息已更新，本次 AI 修改已作废，原稿已保留。',
     sourceCheckRetired: "正在核对资料或目标，本次编辑结果已作废，草稿仍保留。",

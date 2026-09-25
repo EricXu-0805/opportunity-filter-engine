@@ -1,5 +1,7 @@
 'use client';
 
+import type { Opportunity } from '@/lib/types';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -29,14 +31,14 @@ import { useCompareSelection } from './use-compare-selection';
 import { useFavoritesData } from './use-favorites-data';
 import { useSavedSearches } from './use-saved-searches';
 
-const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
+const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), {
   ssr: false,
 });
 // R71 PR-3: third entry point for the tailor modal. Same shape as the
 // email modal — favorites/page owns the open/close state, OpportunityCard
 // gets a callback prop, and the modal is mounted once at the page level
 // (not per-card) so we don't pay the dynamic-import cost N times.
-const TailorModal = dynamic(() => import('@/components/TailorModal'), {
+const TailorModal = dynamic(() => import('@/components/CheckedTailorModal'), {
   ssr: false,
 });
 
@@ -320,6 +322,7 @@ export default function FavoritesPage() {
           opportunityId={emailModal.id}
           opportunityTitle={emailModal.title}
           opportunitySchool={emailModal.school}
+          target={opportunities.find((o) => o.id === emailModal.id) as Opportunity | undefined}
           reminderTarget={emailTargetActionable ? opportunities.find((o) => o.id === emailModal.id) : undefined}
         />
       )}
@@ -337,6 +340,7 @@ export default function FavoritesPage() {
           key={`${identityGeneration}:${tailorModal.id}`}
           isOpen={tailorModal.open}
           onClose={closeTailorModal}
+          target={serverOpportunities.find((item) => item.id === tailorModal.id) as Opportunity | undefined}
           targetKey={JSON.stringify(serverOpportunities.find((item) => item.id === tailorModal.id) ?? null)}
           profile={tailorProfile.profile}
           profileAvailable={tailorProfile.profileAvailable}

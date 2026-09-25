@@ -34,9 +34,10 @@ import {
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 import { useAuthModal } from '@/lib/auth-modal-context';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
-import type { ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
+import type { Opportunity, ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import LabTypeBadge from './LabTypeBadge';
@@ -76,6 +77,9 @@ interface ColdEmailModalProps {
   /** False keeps the open draft; the retained profile is not current material. */
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
+  target?: Opportunity | null;
+  targetRefresh?: WritingTargetState;
+  targetMembershipReady?: boolean;
   onClose: () => void;
   profile: ProfileData;
   opportunityId: string;
@@ -266,9 +270,12 @@ export default function ColdEmailModal({
   targetChecking = false,
   profileAvailable = true,
   profileRefresh,
+  target,
+  targetRefresh,
+  targetMembershipReady,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
-  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const sourceReadyRef = useRef(sourceReady);
   useLayoutEffect(() => { sourceReadyRef.current = sourceReady; }, [sourceReady]);
   const { openModal } = useAuthModal();
@@ -553,7 +560,7 @@ export default function ColdEmailModal({
     | { kind: 'coursework' };
   const action = useProfileAction<WritingIntent>({
     isOpen: isOpen && !retired, profile: requestProfile, profileAvailable,
-    scopeKey: opportunityId, editRevision: userEditRevision, refresh: profileRefresh,
+    scopeKey: `${opportunityId}\n${targetFingerprint}`, editRevision: userEditRevision, refresh: profileRefresh, target, targetRefresh,
     readiness: sourceReady ? 'ready'
       : profileAvailable && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
     execute: (intent) => {
@@ -1243,14 +1250,14 @@ export default function ColdEmailModal({
           </button>
         </div>
 
-        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => {
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => {
           if (editorUsedRef.current && !window.confirm(locale === 'zh'
             ? '离开会丢弃未保存的邮件草稿。确定去核对资料？'
             : 'Leaving discards this unsaved email draft. Go to your profile?')) return false;
           closeDraft(); return true;
         }} />
       {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
-        {locale === 'zh' ? '本次操作未执行。草稿和请求仍保留，请核对资料后重试。' : 'This action did not run. Your draft and request are kept. Review your profile and try again.'}
+        {locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿和请求仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿和请求仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft and request are kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft and request are kept. Review your profile and try again.')}
         {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
           onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
       </div>}

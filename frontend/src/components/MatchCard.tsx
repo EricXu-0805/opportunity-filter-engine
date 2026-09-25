@@ -55,7 +55,7 @@ import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
-const TailorModal = dynamic(() => import('./TailorModal'), { ssr: false });
+const TailorModal = dynamic(() => import('./CheckedTailorModal'), { ssr: false });
 const ResumeRenovationModal = dynamic(() => import('./ResumeWorkspaceModal'), { ssr: false });
 
 export interface MatchCardProps {
@@ -782,6 +782,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
         `isOpen` prop one state change away from opening. */}
     {profile && posture === 'actionable' && (
       <TailorModal
+        target={opp}
         isOpen={tailorOpen}
         onClose={() => setTailorOpen(false)}
         profile={profile}

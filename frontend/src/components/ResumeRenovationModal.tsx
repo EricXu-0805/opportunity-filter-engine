@@ -18,12 +18,14 @@ import {
   FileText,
 } from 'lucide-react';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
 import { saveRenovation, loadRenovation } from '@/lib/supabase';
 import type {
+  Opportunity,
   ProfileData,
   ResumeSectionInput,
   StructureResumeResponse,
@@ -75,6 +77,9 @@ interface ResumeRenovationModalProps {
   /** False keeps the open draft; the retained profile is not current material. */
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
+  target?: Opportunity | null;
+  targetRefresh?: WritingTargetState;
+  targetMembershipReady?: boolean;
   onClose: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
   profile: ProfileData;
@@ -226,9 +231,12 @@ export default function ResumeRenovationModal({
   targetKey,
   profileAvailable = true,
   profileRefresh,
+  target,
+  targetRefresh,
+  targetMembershipReady,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
-  const sourceReady = profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const targetFingerprint = useMemo(() => targetFingerprintFor(targetKey, opportunityId), [targetKey, opportunityId]);
   const targetBinding = targetFingerprint ?? targetKey ?? canonicalProfile({ opportunityId, opportunityTitle });
   const targetBindingRef = useRef(targetBinding);
@@ -719,8 +727,9 @@ export default function ResumeRenovationModal({
   const knownTargetSignature = typeof doc?.target_sig === 'string' && /^v1:sha256:[a-f0-9]{64}$/.test(doc.target_sig);
   const unknownTarget = !!doc && !knownTargetSignature;
   const staleTarget = !!knownTargetSignature && !!comparableTargetSignature && doc?.target_sig !== comparableTargetSignature;
-  const docSourceCurrent = !staleProfile && !staleResume && !targetChanged && !!knownTargetSignature &&
-    !!comparableTargetSignature && doc?.target_sig === comparableTargetSignature;
+  const docSourceCurrent = !!knownSignature && !!comparableSignature && doc?.profile_sig === comparableSignature
+    && !staleProfile && !staleResume && !targetChanged && !!knownTargetSignature
+    && !!comparableTargetSignature && doc?.target_sig === comparableTargetSignature;
 
   const profileAction = useProfileAction<{ kind: 'generate' } | { kind: 'optimize'; bulletId: string; profileFingerprint: string; sourceRevision: number }>({
     isOpen,
@@ -728,7 +737,7 @@ export default function ResumeRenovationModal({
     profileAvailable,
     scopeKey: canonicalProfile([opportunityId, targetBinding]),
     editRevision: userEditRevision,
-    refresh: profileRefresh,
+    refresh: profileRefresh, target, targetRefresh,
     readiness: profileAvailable && (targetChecking || profileRefresh?.status === 'checking' || currentSignature?.fingerprint !== profileFingerprint || targetSignaturePending)
       ? 'waiting' : sourceReady && !targetBindingUnavailable && ['idle', 'doc'].includes(phase) ? 'ready' : 'blocked',
     execute: (intent) => {
@@ -796,8 +805,8 @@ export default function ResumeRenovationModal({
       ? (locale === 'zh' ? '重新生成后再优化条目。' : 'Re-renovate before optimizing bullets.')
       : readUnavailable
         ? (locale === 'zh'
-          ? `未能核对资料，草稿已保留。${draftStale ? '请重试核对，再重新生成后优化条目。' : '请重试核对后再操作。'}`
-          : `Could not check your profile. Your draft is kept. ${draftStale ? 'Retry the check, then re-renovate before optimizing bullets.' : 'Retry the check before continuing.'}`)
+          ? `未能核对${targetRefresh ? '资料或机会' : '资料'}，草稿已保留。${draftStale ? '请重试核对，再重新生成后优化条目。' : '请重试核对后再操作。'}`
+          : `Could not check your ${targetRefresh ? 'profile or opportunity' : 'profile'}. Your draft is kept. ${draftStale ? 'Retry the check, then re-renovate before optimizing bullets.' : 'Retry the check before continuing.'}`)
         : draftStale
           ? (locale === 'zh' ? '资料或目标已变。草稿和手改已保留，请重新生成后再优化条目。' : 'Profile or target changed. Your draft and edits are kept. Re-renovate before optimizing bullets.')
           : profileChanged && !doc
@@ -874,10 +883,10 @@ export default function ResumeRenovationModal({
           </div>
         </div>
 
-        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => requestLeave('close')} />
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => requestLeave('close')} />
 
         {profileAction.busy && <p role="status" data-testid="renovation-action-check" className="px-4 py-2 text-sm text-indigo-700">
-          {locale === 'zh' ? '正在核对最新资料，完成后再开始润色…' : 'Checking current profile before renovation…'}
+          {locale === 'zh' ? (targetRefresh ? '正在核对最新资料及机会，完成后再开始润色…' : '正在核对最新资料，完成后再开始润色…') : (targetRefresh ? 'Checking current profile and opportunity before renovation…' : 'Checking current profile before renovation…')}
         </p>}
 
 

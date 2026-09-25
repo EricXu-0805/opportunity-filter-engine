@@ -118,3 +118,95 @@ describe('read before profile-dependent action', () => {
     expect(check).not.toHaveBeenCalled(); expect(execute).toHaveBeenCalledExactlyOnceWith({ kind: 'legacy' });
   });
 });
+
+// Queue tests use a small target. The transport tests cover full wire records.
+const target = { id: 'target-one', title: 'Robotics', description_clean: 'Build robots' } as import('./types').Opportunity;
+function targetReceipt(next = target): import('./use-writing-target').TargetActionReceipt {
+  return { checkId: 1, owner: captureOwnerToken(), target: next, key: JSON.stringify(next, Object.keys(next).sort()) };
+}
+function setupBoth() {
+  const targetRead = deferred<import('./use-writing-target').TargetActionReceipt | null>();
+  const targetCheck = vi.fn(() => targetRead.promise);
+  const targetRefresh: import('./use-writing-target').WritingTargetState = {
+    status: 'ready', target, reason: null, refresh: vi.fn(), checkForAction: targetCheck,
+  };
+  return { ...setup({ target, targetRefresh }), targetRead, targetCheck, targetRefresh };
+}
+describe('profile and authoritative target preflight', () => {
+  it.each(['profile-first', 'target-first'] as const)('starts both reads together and executes only after both commits: %s', async (order) => {
+    const s = setupBoth();
+    act(() => { s.result.current.request({ kind: 'generate' }); s.result.current.request({ kind: 'double' }); }); await drain();
+    expect(s.check).toHaveBeenCalledOnce(); expect(s.targetCheck).toHaveBeenCalledOnce();
+    const nextProfile = { ...profile, major: 'Physics' }; const nextTarget = { ...target, title: 'Optics' };
+    if (order === 'profile-first') s.read.resolve(receipt(nextProfile)); else s.targetRead.resolve(targetReceipt(nextTarget));
+    await drain(); expect(s.execute).not.toHaveBeenCalled(); expect(s.result.current.busy).toBe(true);
+    if (order === 'profile-first') s.targetRead.resolve(targetReceipt(nextTarget)); else s.read.resolve(receipt(nextProfile));
+    await drain(); expect(s.execute).not.toHaveBeenCalled();
+    s.rerender({ ...s.options, profile: nextProfile }); await drain(); expect(s.execute).not.toHaveBeenCalled();
+    const current = vi.fn(); s.rerender({ ...s.options, profile: nextProfile, target: nextTarget,
+      targetRefresh: { ...s.targetRefresh, target: nextTarget }, execute: current }); await drain();
+    expect(current).toHaveBeenCalledExactlyOnceWith({ kind: 'generate' }); expect(s.execute).not.toHaveBeenCalled();
+    expect(s.result.current.busy).toBe(false);
+  });
+  it('ignores target object key ordering and waits for target checking to finish', async () => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    s.read.resolve(receipt()); s.targetRead.resolve(targetReceipt());
+    s.rerender({ ...s.options, targetRefresh: { ...s.targetRefresh, status: 'checking' } }); await drain();
+    expect(s.execute).not.toHaveBeenCalled();
+    s.rerender({ ...s.options, target: Object.fromEntries(Object.entries(target).reverse()) as typeof target }); await drain();
+    expect(s.execute).toHaveBeenCalledOnce();
+  });
+  it.each(['null', 'reject', 'id', 'key', 'owner'] as const)('rejects unusable target receipt: %s', async (kind) => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    s.read.resolve(receipt()); const next = targetReceipt();
+    if (kind === 'reject') s.targetRead.reject(new Error('PRIVATE response body'));
+    else s.targetRead.resolve(kind === 'null' ? null : kind === 'id' ? targetReceipt({ ...target, id: 'target-two' })
+      : kind === 'key' ? { ...next, key: 'wrong' } : { ...next, owner: { ...next.owner, epoch: next.owner.epoch + 1 } });
+    await drain(); expect(s.result.current.error).toBe('unavailable'); expect(s.execute).not.toHaveBeenCalled();
+  });
+  it.each(['missing', 'failed', 'blocked'] as const)('cannot consume a success after target becomes %s', async (status) => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    s.read.resolve(receipt()); s.targetRead.resolve(targetReceipt());
+    s.rerender({ ...s.options, targetRefresh: { ...s.targetRefresh, status } }); await drain();
+    expect(s.execute).not.toHaveBeenCalled(); expect(s.result.current.error).toBe('unavailable');
+  });
+  it('cannot override blocked Results membership with a successful target read', async () => {
+    const s = setupBoth(); s.rerender({ ...s.options, readiness: 'blocked' });
+    act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    s.read.resolve(receipt()); s.targetRead.resolve(targetReceipt()); await drain();
+    expect(s.execute).not.toHaveBeenCalled(); expect(s.result.current.error).toBe('unavailable');
+  });
+  it.each(['revert', 'third'] as const)('rejects target %s while profile waits for commit', async (change) => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    const next = { ...target, title: 'New requirements' }; const nextProfile = { ...profile, major: 'Physics' };
+    s.read.resolve(receipt(nextProfile)); s.targetRead.resolve(targetReceipt(next)); await drain();
+    if (change === 'revert') { s.rerender({ ...s.options, target: next }); await drain(); }
+    s.rerender({ ...s.options, profile: nextProfile, target: change === 'revert' ? target : { ...target, title: 'Third' } }); await drain();
+    expect(s.result.current.error).toBe('changed'); expect(s.execute).not.toHaveBeenCalled();
+  });
+  it.each(['id', 'removed-reader', 'owner', 'edit', 'close'] as const)('retires intent on %s and ignores late receipts', async (change) => {
+    const s = setupBoth(); const checked = targetReceipt(); const checkedProfile = receipt();
+    act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    if (change === 'owner') await act(async () => { advanceOwnerEpoch(null); advanceOwnerEpoch('action-owner'); await syncLocalIdentityOwner('action-owner'); });
+    else s.rerender({ ...s.options, ...(change === 'id' ? { target: { ...target, id: 'target-two' } }
+      : change === 'removed-reader' ? { targetRefresh: undefined } : change === 'edit' ? { editRevision: 2 } : { isOpen: false }) });
+    s.rerender(s.options); s.read.resolve(checkedProfile); s.targetRead.resolve(checked); await drain();
+    expect(s.result.current.busy).toBe(false); expect(s.execute).not.toHaveBeenCalled();
+  });
+  it.each(['read', 'commit'] as const)('bounds a target that never completes %s', async (phase) => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); await drain();
+    s.read.resolve(receipt()); if (phase === 'commit') s.targetRead.resolve(targetReceipt({ ...target, title: 'New' })); await drain();
+    await act(async () => vi.advanceTimersByTimeAsync(15_000));
+    expect(s.result.current.error).toBe('unavailable'); expect(s.result.current.busy).toBe(false);
+    s.targetRead.resolve(targetReceipt()); await drain(); expect(s.execute).not.toHaveBeenCalled();
+  });
+  it('can check the target alone while retaining the local profile binding', async () => {
+    const s = setupBoth(); s.rerender({ ...s.options, refresh: undefined });
+    act(() => s.result.current.request({ kind: 'generate' })); await drain(); s.targetRead.resolve(targetReceipt()); await drain();
+    expect(s.check).not.toHaveBeenCalled(); expect(s.targetCheck).toHaveBeenCalledOnce(); expect(s.execute).toHaveBeenCalledOnce();
+  });
+  it('does not start either read after immediate unmount', async () => {
+    const s = setupBoth(); act(() => s.result.current.request({ kind: 'generate' })); s.unmount(); await drain();
+    expect(s.check).not.toHaveBeenCalled(); expect(s.targetCheck).not.toHaveBeenCalled();
+  });
+});

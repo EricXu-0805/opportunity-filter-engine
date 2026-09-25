@@ -223,7 +223,7 @@ test.describe('Action-time profile checks without refresh events', () => {
       expect(requests).toHaveLength(initialCount);
       await page.screenshot({ path: test.info().outputPath('manual-draft-after-source-change.png') });
       gate = await holdNextProfileRead(page);
-      await page.getByRole('button', { name: 'Regenerate from updated profile', exact: true }).click();
+      await page.getByRole('button', { name: 'Regenerate from updated materials', exact: true }).click();
       await expect.poll(gate.started).toBe(true);
       expect(requests).toHaveLength(initialCount);
       gate.release();

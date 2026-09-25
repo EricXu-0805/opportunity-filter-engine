@@ -26,7 +26,8 @@ function Editor({ label, onClose, onCloseRequestChange, onOpenLegacy, onOpenFull
 }
 vi.mock('./FullTargetResumeModal', () => ({ default: (props: EditorProps) => <Editor label="Full" {...props} /> }));
 vi.mock('./ResumeRenovationModal', () => ({ default: (props: EditorProps) => <Editor label="Legacy" {...props} /> }));
-vi.mock('./TailorModal', () => ({ default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div role="dialog" aria-label="Tailor" /> : null }));
+vi.mock('./CheckedTailorModal', () => ({ default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div role="dialog" aria-label="Tailor" /> : null }));
+vi.mock('@/lib/use-writing-target', () => ({ useWritingTarget: () => ({ status: 'ready', target: null, reason: null, refresh: vi.fn(), checkForAction: vi.fn() }) }));
 import MatchCard from './MatchCard';
 
 const profile: ProfileData = { institution: 'UIUC', college: 'Engineering', major: 'CS', grade: 'Junior', is_international: false, research_interests: '', skills: [] };

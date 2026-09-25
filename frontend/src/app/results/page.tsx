@@ -97,7 +97,7 @@ import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-prof
 import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
 
-const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
+const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), {
   ssr: false,
 });
 
@@ -1145,6 +1145,7 @@ function ResultsContent() {
           targetReady={writingTargetReady}
           targetChecking={loading || (!error && profileAvailable && !writingViewCurrent)}
           profileRefresh={profileRefresh}
+          target={currentWritingTarget ?? writingSession.opportunity}
           reminderTarget={writingTargetReady ? currentWritingTarget : undefined}
           onContactConfirmed={(record) => {
             if (writingTargetReady && record?.type) noteContactConfirmed(writingSession.opportunity.id, record.type);

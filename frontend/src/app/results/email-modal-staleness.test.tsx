@@ -127,7 +127,7 @@ vi.mock('./use-result-modal-history', async (importOriginal) => {
   };
 });
 
-vi.mock('@/components/ColdEmailModal', () => ({
+vi.mock('@/components/CheckedColdEmailModal', () => ({
   default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget, profileAvailable, onClose }: {
     isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity; profileAvailable?: boolean; onClose: () => void;
   }) {

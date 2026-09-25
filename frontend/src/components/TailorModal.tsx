@@ -19,6 +19,7 @@ import ResumeProcessingNotice from './ResumeProcessingNotice';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { useProfileAction } from '@/lib/use-profile-action';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import type { WritingTargetState } from '@/lib/use-writing-target';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 
 function subscribeOwner(changed: () => void): () => void {
@@ -33,7 +34,7 @@ const ownerSnapshot = () => {
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { hashString } from '@/lib/match-utils';
-import type { ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
+import type { Opportunity, ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
 
@@ -163,6 +164,9 @@ interface TailorModalProps {
    *  means no safe scope exists, so the draft stays in-memory only. */
   ownerScopeKey: string | null;
   profileRefresh?: ProfileRefreshState;
+  target?: Opportunity | null;
+  targetRefresh?: WritingTargetState;
+  targetMembershipReady?: boolean;
   profileAvailable?: boolean;
   targetReady?: boolean;
   targetChecking?: boolean;
@@ -306,6 +310,9 @@ export default function TailorModal({
   ownerReady,
   ownerScopeKey,
   profileRefresh,
+  target,
+  targetRefresh,
+  targetMembershipReady,
   profileAvailable = true,
   targetReady = true,
   targetChecking = false,
@@ -327,7 +334,7 @@ export default function TailorModal({
     setOwnerLifetime({ ...ownerLifetime, retired: true });
   }
   const targetFingerprint = targetKey ?? JSON.stringify([opportunityId, opportunityTitle]);
-  const sourceReady = !retired && ownerReady && profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh);
+  const sourceReady = !retired && ownerReady && profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   // A failed previous read must still allow an explicit fresh attempt.
   const canRequest = !retired && ownerReady && profileAvailable && (targetReady || targetChecking);
   const [userEditRevision, setUserEditRevision] = useState(0);
@@ -469,7 +476,7 @@ export default function TailorModal({
   const action = useProfileAction<'generate' | 'extract'>({
     isOpen: isOpen && !retired, profile, profileAvailable,
     scopeKey: JSON.stringify([ownerScopeKey, opportunityId, targetFingerprint]), editRevision: userEditRevision,
-    refresh: profileRefresh,
+    refresh: profileRefresh, target, targetRefresh,
     readiness: sourceReady ? 'ready'
       : canRequest && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
     execute: (intent) => { if (intent === 'extract') void handleExtractFromResume(); else void handleGenerate(); },
@@ -933,10 +940,10 @@ export default function TailorModal({
           </button>
         </div>
 
-        <ProfileRefreshBanner refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} locale={locale}
+        <ProfileRefreshBanner refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} locale={locale}
           onBeforeReview={() => window.confirm(locale === 'zh' ? '离开会丢弃尚未保存的右侧编辑。确定核对资料？' : 'Leaving will discard unsaved output edits. Review your profile?')} />
-        {action.busy && <p role="status" className="shrink-0 px-5 py-2 text-sm text-gray-600">{locale === 'zh' ? '正在核对本次操作的最新资料…' : 'Checking the latest profile for this action…'}</p>}
-        {action.error && <p role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{locale === 'zh' ? '本次操作未执行。草稿仍保留，请核对资料后重试。' : 'This action did not run. Your draft is kept. Review your profile and try again.'}</p>}
+        {action.busy && <p role="status" className="shrink-0 px-5 py-2 text-sm text-gray-600">{locale === 'zh' ? (targetRefresh ? '正在核对本次操作的最新资料及机会…' : '正在核对本次操作的最新资料…') : (targetRefresh ? 'Checking the latest profile and opportunity for this action…' : 'Checking the latest profile for this action…')}</p>}
+        {action.error && <p role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft is kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft is kept. Review your profile and try again.')}</p>}
         {sourceChanged && <p role="status" className="shrink-0 px-5 py-2 text-sm text-amber-800">{locale === 'zh' ? '资料已更新；现有文字和编辑仍保留。重新提取或改写前请核对。' : 'Your profile changed. Existing text and edits are kept; review them before extracting or tailoring again.'}</p>}
 
         {/* R71-G: up-front AI-unavailable banner. Only on explicit false
