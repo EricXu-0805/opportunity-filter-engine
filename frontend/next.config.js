@@ -29,6 +29,10 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // Next also clones bodies before fallback API rewrites, even when the
+    // page Proxy matcher excludes /api. Preserve a 64 MiB PDF plus its
+    // bounded multipart envelope; the backend independently enforces limits.
+    proxyClientMaxBodySize: 64 * 1024 * 1024 + 65536,
   },
   async rewrites() {
     const isProduction = process.env.VERCEL_ENV === "production"

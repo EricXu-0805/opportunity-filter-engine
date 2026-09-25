@@ -54,6 +54,8 @@ export const USER_SCOPED_PREFIXES: readonly string[] = [
   // the shared settled/claim lane. Same data as PROFILE/PROFILE_SYNC — an
   // operation staged by one account must never be replayed under another's.
   STORAGE_KEYS.PROFILE_JOURNAL_PREFIX,
+  STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX, // metadata only; never PDF bytes
+  STORAGE_KEYS.APPLICATION_MATERIAL_DELETE_PREFIX, // opaque IDs for uncertain deletion
   STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX, // exact private submission snapshots awaiting a verified receipt
 ];
 

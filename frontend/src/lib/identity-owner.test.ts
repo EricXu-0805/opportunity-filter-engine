@@ -59,6 +59,9 @@ function seedUserScopedValues(): Record<string, string> {
   const applicationKey = `${STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX}opp-123`;
   seeded[applicationKey] = 'private pending application';
   localStorage.setItem(applicationKey, seeded[applicationKey]);
+  for (const prefix of [STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX, STORAGE_KEYS.APPLICATION_MATERIAL_DELETE_PREFIX]) {
+    const key = prefix + 'scope'; seeded[key] = 'private material pending'; localStorage.setItem(key, seeded[key]);
+  }
   seeded[DRAFT_KEY] = 'Dear Professor…';
   localStorage.setItem(DRAFT_KEY, seeded[DRAFT_KEY]);
   return seeded;

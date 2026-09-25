@@ -5,6 +5,7 @@ import { getApplicationEvents } from '@/lib/supabase';
 import type { ApplicationEvent, ApplicationEventCursor } from '@/lib/application-ledger';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
+import ApplicationMaterials from './ApplicationMaterials';
 
 interface Props {
   opportunityId: string;
@@ -115,6 +116,7 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
               <div><dt className="font-medium text-gray-600">{label('confirmedAt')}</dt><dd className="text-gray-700"><time dateTime={event.confirmedAt}>{dateLabel(event.confirmedAt)}</time></dd></div>
               {(['notes', 'resultNote', 'nextStep'] as const).map(field => event[field] && <div key={field}><dt className="font-medium text-gray-600">{label(field)}</dt><dd className="mt-1 whitespace-pre-wrap text-gray-700">{event[field]}</dd></div>)}
             </dl>
+            <ApplicationMaterials opportunityId={opportunityId} applicationEventId={event.id} />
             <details className="mt-3 min-w-0 border-t border-gray-100 pt-2 text-xs text-gray-500" data-testid="application-event-details">
               <summary className="min-h-9 cursor-pointer font-medium focus-visible:ring-2 focus-visible:ring-indigo-500">{label('recordDetails')}</summary>
               <p className="mt-2 break-words [overflow-wrap:anywhere]">{label('eventId')}: <span className="font-mono">{event.id}</span></p>

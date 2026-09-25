@@ -38,6 +38,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.routes import (
     admin,
+    application_materials,
     cold_email,
     import_text,
     import_url,
@@ -600,6 +601,11 @@ def _export_body_limit_from_env() -> int:
     return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
 
 
+def _material_body_limit_from_env() -> int:
+    from backend.lib.material_archive_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
 class _BodyTooLarge(StarletteHTTPException):
     """The cumulative chunked body crossed the limit.
 
@@ -626,13 +632,14 @@ class RequestBodyLimitMiddleware:
     trips 413 the moment the cumulative chunk size crosses the limit.
     """
 
-    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None):
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None, material_max_bytes: int | None = None):
         if max_bytes < 1:
             raise ValueError("max_bytes must be positive")
         self.app = app
         self.max_bytes = max_bytes
         self.full_target_max_bytes = full_target_max_bytes or max_bytes
         self.export_max_bytes = export_max_bytes or max_bytes
+        self.material_max_bytes = material_max_bytes or max_bytes
 
     @staticmethod
     async def _send_error(send, status: int) -> None:
@@ -671,6 +678,8 @@ class RequestBodyLimitMiddleware:
             max_bytes = self.full_target_max_bytes
         elif path == "/api/resume/full-target/export":
             max_bytes = self.export_max_bytes
+        elif path == "/api/application-materials" and scope.get("method") == "POST":
+            max_bytes = self.material_max_bytes
         else:
             max_bytes = self.max_bytes
         content_lengths = [
@@ -740,7 +749,19 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(_warmup)
     except Exception as exc:  # never let a warmup hiccup block boot
         logger.warning("Startup warmup failed (will load lazily): %s", exc)
-    yield
+    from backend.lib import material_cleanup
+    stop_material_cleanup = asyncio.Event()
+    cleanup_task = asyncio.create_task(material_cleanup.run_forever(stop_material_cleanup)) if material_cleanup.configured() else None
+    try:
+        yield
+    finally:
+        stop_material_cleanup.set()
+        if cleanup_task is not None:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(
@@ -758,6 +779,7 @@ app.add_middleware(
     max_bytes=_request_body_limit_from_env(),
     full_target_max_bytes=_full_target_body_limit_from_env(),
     export_max_bytes=_export_body_limit_from_env(),
+    material_max_bytes=_material_body_limit_from_env(),
 )
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
@@ -784,10 +806,10 @@ app.add_middleware(
     # cross-origin admin call from a first-party origin fails preflight, so the
     # route would look broken in exactly the NEXT_PUBLIC_API_URL → Render
     # configuration the X-Admin-Token grant below already anticipates.
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     # X-Admin-Actor is the self-declared operator label (see admin.require_admin).
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Admin-Actor"],
-    expose_headers=["x-ofe-export-request", "x-ofe-document-signature", "x-ofe-export-signature", "x-ofe-export-template", "Content-Disposition"],
+    expose_headers=["x-ofe-export-request", "x-ofe-document-signature", "x-ofe-export-signature", "x-ofe-export-template", "Content-Disposition", "x-ofe-material-id", "x-ofe-material-record", "x-ofe-material-sha256"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
@@ -800,6 +822,7 @@ app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_export.router, prefix="/api", tags=["resume"])
+app.include_router(application_materials.router, prefix="/api", tags=["materials"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])

@@ -1,0 +1,235 @@
+\set ON_ERROR_STOP on
+SET client_min_messages=warning;
+INSERT INTO auth.users(id) SELECT ('33000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid FROM generate_series(1,20)n;
+INSERT INTO auth.sessions(id,user_id) SELECT id,id FROM auth.users WHERE id::text LIKE '33000000-%';
+-- Auth fixtures carry real session IDs/exp rather than treating a still-signed
+-- access token as proof the session survived sign-out.
+CREATE FUNCTION pg_temp.login(n int) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE u text:='33000000-0000-4000-8000-'||lpad(n::text,12,'0');
+BEGIN PERFORM set_config('test.uid',u,false); PERFORM set_config('test.jwt',jsonb_build_object('session_id',u,'exp',floor(extract(epoch FROM clock_timestamp()+interval '1 hour')))::text,false); RETURN u; END $$;
+CREATE FUNCTION pg_temp.event(n int) RETURNS uuid LANGUAGE plpgsql AS $$
+DECLARE u text:=pg_temp.login(n);
+BEGIN PERFORM public.confirm_application_event(u,u::uuid,'opp','web_form','https://example.edu/apply'); RETURN u::uuid; END $$;
+DO $$BEGIN FOR n IN 1..20 LOOP PERFORM pg_temp.event(n); END LOOP; END$$;
+CREATE TABLE public.material_test_receipts(k text PRIMARY KEY,v jsonb);
+GRANT ALL ON public.material_test_receipts TO authenticated,service_role;
+SET ROLE authenticated;
+SELECT pg_temp.login(1);
+INSERT INTO public.material_test_receipts VALUES('first',public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000001','33000000-0000-4000-a000-000000000001',auth.uid(),'opp','Résumé.pdf',123,repeat('a',64)));
+DO $$DECLARE r jsonb; BEGIN
+ SELECT v INTO r FROM public.material_test_receipts WHERE k='first';
+ IF r#>>'{artifact,status}'<>'staged' OR r#>'{artifact,sha256}'<>'null'::jsonb OR r#>'{artifact,recorded_at}'<>'null'::jsonb OR r->>'replayed'<>'false' THEN RAISE EXCEPTION 'stage fabricated verified record'; END IF;
+ IF public.list_application_materials(auth.uid()::text,auth.uid(),'opp')->'items'<>'[]'::jsonb THEN RAISE EXCEPTION 'staged listed as recorded'; END IF;
+ BEGIN PERFORM public.authorize_application_material_download(auth.uid()::text,'33000000-0000-4000-a000-000000000001',auth.uid(),'opp'); RAISE EXCEPTION 'staged download'; EXCEPTION WHEN object_not_in_prerequisite_state THEN NULL; END;
+ BEGIN PERFORM public.finalize_application_material(auth.uid(),auth.uid(),'33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'browser forged verified hash'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ INSERT INTO public.material_test_receipts VALUES('rotated',public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000001','33000000-0000-4000-a000-000000000001',auth.uid(),'opp','Résumé.pdf',123,repeat('a',64)));
+ IF (SELECT v#>>'{upload,stage_token}' FROM public.material_test_receipts WHERE k='rotated')=r#>>'{upload,stage_token}' THEN RAISE EXCEPTION 'stage retry did not fence old request'; END IF;
+ FOR n IN 1..4 LOOP BEGIN
+  PERFORM public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000001',CASE WHEN n=1 THEN gen_random_uuid() ELSE '33000000-0000-4000-a000-000000000001'::uuid END,auth.uid(),'opp',CASE WHEN n=2 THEN 'other.pdf' ELSE 'Résumé.pdf' END,CASE WHEN n=3 THEN 456 ELSE 123 END,repeat(CASE WHEN n=4 THEN 'b' ELSE 'a' END,64));
+  RAISE EXCEPTION 'changed stage accepted'; EXCEPTION WHEN unique_violation THEN IF SQLERRM<>'application_material_conflict' THEN RAISE; END IF; END; END LOOP;
+ RAISE WARNING 'PASS stage is durable but unverified, old token fenced, exact request frozen, browser cannot finalize';
+END$$;
+RESET ROLE;
+SET ROLE service_role;
+DO $$DECLARE r jsonb; BEGIN
+ SELECT v INTO r FROM public.material_test_receipts WHERE k='first';
+ BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'old token finalized'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ SELECT v INTO r FROM public.material_test_receipts WHERE k='rotated';
+ BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('b',64)); RAISE EXCEPTION 'false hash finalized'; EXCEPTION WHEN unique_violation THEN NULL; END;
+ INSERT INTO public.material_test_receipts VALUES('final',public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)));
+ r:=public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
+ IF r->>'replayed'<>'true' OR r->'artifact'<>(SELECT v->'artifact' FROM public.material_test_receipts WHERE k='final') THEN RAISE EXCEPTION 'final replay changed receipt'; END IF;
+END$$;
+RESET ROLE;
+SET ROLE authenticated;
+DO $$DECLARE r jsonb; BEGIN
+ r:=public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000001','33000000-0000-4000-a000-000000000001',auth.uid(),'opp','Résumé.pdf',123,repeat('a',64));
+ IF r#>>'{artifact,status}'<>'ready' OR r->'upload'<>'null'::jsonb THEN RAISE EXCEPTION 'ready retry requires reupload'; END IF;
+ IF public.list_application_materials(auth.uid()::text,auth.uid(),'opp')#>>'{items,0,sha256}'<>repeat('a',64) THEN RAISE EXCEPTION 'ready not in list'; END IF;
+ r:=public.authorize_application_material_download(auth.uid()::text,'33000000-0000-4000-a000-000000000001',auth.uid(),'opp');
+ IF r->>'object_key'<>'pdf/33000000-0000-4000-9000-000000000001.pdf' THEN RAISE EXCEPTION 'object key not stable owner-free'; END IF;
+ r:=public.delete_application_material(auth.uid()::text,'33000000-0000-4000-a000-000000000001','33000000-0000-4000-9000-000000000001',auth.uid(),'opp');
+ IF r#>>'{artifact,status}'<>'deleted' OR r#>'{artifact,filename}'<>'null'::jsonb OR r#>'{artifact,sha256}'<>'null'::jsonb OR r#>'{artifact,byte_length}'<>'null'::jsonb THEN RAISE EXCEPTION 'delete did not redact'; END IF;
+ IF public.delete_application_material(auth.uid()::text,'33000000-0000-4000-a000-000000000001','33000000-0000-4000-9000-000000000001',auth.uid(),'opp')->>'replayed'<>'true' THEN RAISE EXCEPTION 'delete not idempotent'; END IF;
+ IF public.list_application_materials(auth.uid()::text,auth.uid(),'opp')#>>'{items,0,status}'<>'deleted' THEN RAISE EXCEPTION 'deleted historical declaration vanished'; END IF;
+ IF public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000001','33000000-0000-4000-a000-000000000001',auth.uid(),'opp','Résumé.pdf',123,repeat('a',64))#>>'{artifact,status}'<>'deleted' THEN RAISE EXCEPTION 'revoked key resurrected'; END IF;
+ BEGIN PERFORM public.authorize_application_material_download(auth.uid()::text,'33000000-0000-4000-a000-000000000001',auth.uid(),'opp'); RAISE EXCEPTION 'deleted download'; EXCEPTION WHEN object_not_in_prerequisite_state THEN NULL; END;
+ RAISE WARNING 'PASS verified finalize/replay, immutable key, redaction, revoked download and retained minimal association';
+END$$;
+RESET ROLE;
+DO $$BEGIN
+ IF NOT EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='33000000-0000-4000-9000-000000000001') THEN RAISE EXCEPTION 'delete missing cleanup intent'; END IF;
+ IF (SELECT count(*) FROM public.application_events WHERE device_id='33000000-0000-4000-8000-000000000001')<>1 OR (SELECT count(*) FROM public.interaction_status_changes WHERE device_id='33000000-0000-4000-8000-000000000001')<>1 THEN RAISE EXCEPTION 'material changed original event/status'; END IF;
+END$$;
+CREATE FUNCTION pg_temp.stage(n int,m int) RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE u text:=pg_temp.login(n);
+BEGIN RETURN public.stage_application_material(u,('33000000-0000-4000-9000-'||lpad(m::text,12,'0'))::uuid,('33000000-0000-4000-a000-'||lpad(m::text,12,'0'))::uuid,u::uuid,'opp','submitted.pdf',123,repeat('a',64)); END$$;
+CREATE FUNCTION pg_temp.archive(n int,m int) RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE r jsonb:=pg_temp.stage(n,m);u uuid:=auth.uid();
+BEGIN RETURN public.finalize_application_material(u,u,(r#>>'{artifact,material_id}')::uuid,(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); END$$;
+DO $$DECLARE bad text;r jsonb;u text:=pg_temp.login(2);BEGIN
+ FOREACH bad IN ARRAY ARRAY['notpdf','x.pdf/other.pdf',E'x\\evil.pdf',E'x\001.pdf','x'||chr(127)||'.pdf',repeat('a',197)||'.pdf'] LOOP
+  BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp',bad,123,repeat('a',64)); RAISE EXCEPTION 'invalid filename accepted %',bad; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+ FOREACH bad IN ARRAY ARRAY['A'||repeat('a',63),repeat('g',64),repeat('a',63)] LOOP
+  BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',123,bad); RAISE EXCEPTION 'invalid hash accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+ BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',0,repeat('a',64)); RAISE EXCEPTION 'zero bytes'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',67108865,repeat('a',64)); RAISE EXCEPTION 'over 64MiB'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ r:=public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp',repeat('研',195)||'😀.PDF',67108864,repeat('a',64));
+ IF r#>>'{artifact,byte_length}'<>'67108864' THEN RAISE EXCEPTION 'exact limits rejected'; END IF;
+ BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'other','x.pdf',123,repeat('a',64)); RAISE EXCEPTION 'target mismatch'; EXCEPTION WHEN no_data_found THEN NULL; END;
+ BEGIN PERFORM public.stage_application_material(u,gen_random_uuid(),gen_random_uuid(),'33000000-0000-4000-8000-000000000001','opp','x.pdf',123,repeat('a',64)); RAISE EXCEPTION 'foreign event'; EXCEPTION WHEN no_data_found THEN NULL; END;
+ IF public.get_application_material(u,'33000000-0000-4000-a000-000000000001',u::uuid,'opp')->'artifact'<>'null'::jsonb THEN RAISE EXCEPTION 'cross-owner metadata exposed'; END IF;
+ r:=pg_temp.archive(2,2);
+ BEGIN UPDATE public.material_artifacts SET filename='replacement.pdf' WHERE material_id='33000000-0000-4000-9000-000000000002'; RAISE EXCEPTION 'privileged content mutated'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN UPDATE public.application_material_records SET recorded_at=now() WHERE material_id='33000000-0000-4000-9000-000000000002'; RAISE EXCEPTION 'record timestamp mutable'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE WARNING 'PASS input boundaries, 64MiB/200 codepoints, scoped event lookup, immutable content and declaration times';
+END$$;
+DO $$DECLARE u text:=pg_temp.login(3);claims text:=current_setting('test.jwt');BEGIN
+ PERFORM set_config('test.jwt','{}',false);
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'missing session read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('test.jwt',jsonb_build_object('session_id',u,'exp',1)::text,false);
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'expired JWT read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('test.jwt',jsonb_build_object('session_id','33000000-0000-4000-8000-000000000004','exp',floor(extract(epoch FROM now()+interval '1 hour')))::text,false);
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'foreign session read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ PERFORM set_config('test.jwt',claims,false); UPDATE auth.users SET is_anonymous=true WHERE id=u::uuid;
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'anonymous read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE auth.users SET is_anonymous=false WHERE id=u::uuid; UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE id=u::uuid;
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'not_after expiry ignored'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ UPDATE auth.sessions SET not_after=NULL WHERE id=u::uuid; DELETE FROM auth.sessions WHERE id=u::uuid;
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp'); RAISE EXCEPTION 'signed-out JWT read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ INSERT INTO auth.sessions(id,user_id) VALUES(u::uuid,u::uuid);
+ RAISE WARNING 'PASS formal owner, JWT expiry, session owner/existence/not_after and logout checks';
+END$$;
+-- Broad inherited Storage grants/policies must not expose the new bucket.
+GRANT USAGE ON SCHEMA storage TO authenticated,anon;
+GRANT SELECT,INSERT,UPDATE,DELETE ON storage.objects TO authenticated,anon;
+CREATE POLICY material_test_broad_storage_policy ON storage.objects FOR ALL TO authenticated,anon USING(true) WITH CHECK(true);
+INSERT INTO storage.objects(bucket_id,name) VALUES('application-materials','private.pdf');
+SET ROLE authenticated;
+DO $$BEGIN
+ BEGIN PERFORM * FROM public.material_artifacts; RAISE EXCEPTION 'browser direct metadata SELECT'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN UPDATE public.material_artifacts SET sha256=repeat('f',64); RAISE EXCEPTION 'browser metadata DML'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM * FROM private.material_cleanup_outbox; RAISE EXCEPTION 'browser cleanup metadata'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='application-materials') THEN RAISE EXCEPTION 'browser bucket leaked'; END IF;
+ BEGIN INSERT INTO storage.objects(bucket_id,name) VALUES('application-materials','injected.pdf'); RAISE EXCEPTION 'direct bucket upload'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('stage_application_material','finalize_application_material','claim_material_cleanup') AND p.prosecdef) THEN RAISE EXCEPTION 'public definer'; END IF;
+END$$;
+RESET ROLE;
+DROP POLICY material_test_broad_storage_policy ON storage.objects;
+DO $$DECLARE role_name text;f regprocedure;BEGIN
+ FOREACH role_name IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP
+  IF has_table_privilege(role_name,'public.material_artifacts','INSERT,UPDATE,DELETE,SELECT') OR has_table_privilege(role_name,'public.application_material_records','INSERT,UPDATE,DELETE,SELECT') THEN RAISE EXCEPTION 'direct table grant %',role_name; END IF;
+ END LOOP;
+ FOREACH f IN ARRAY ARRAY['private.finalize_application_material(uuid,uuid,uuid,uuid,bigint,text)'::regprocedure,'public.finalize_application_material(uuid,uuid,uuid,uuid,bigint,text)'::regprocedure,'private.claim_material_cleanup(integer)'::regprocedure,'public.claim_material_cleanup(integer)'::regprocedure] LOOP
+  IF has_function_privilege('authenticated',f,'EXECUTE') OR has_function_privilege('anon',f,'EXECUTE') OR NOT has_function_privilege('service_role',f,'EXECUTE') THEN RAISE EXCEPTION 'service function ACL'; END IF;
+ END LOOP;
+ RAISE WARNING 'PASS real browser/service ACL and restrictive private-bucket policy';
+END$$;
+CREATE FUNCTION pg_temp.fail_material_record() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.owner_id='33000000-0000-4000-8000-000000000004' THEN RAISE EXCEPTION 'synthetic_record_failure'; END IF; RETURN NEW; END$$;
+CREATE TRIGGER material_test_record_fail BEFORE INSERT ON public.application_material_records FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_material_record();
+DO $$DECLARE r jsonb:=pg_temp.stage(4,4);BEGIN
+ BEGIN PERFORM public.finalize_application_material(auth.uid(),auth.uid(),(r#>>'{artifact,material_id}')::uuid,(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'missing synthetic failure'; EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'synthetic_record_failure' THEN RAISE; END IF; END;
+ IF (SELECT status FROM public.material_artifacts WHERE material_id='33000000-0000-4000-9000-000000000004')<>'staged' OR EXISTS(SELECT 1 FROM public.application_material_records WHERE material_id='33000000-0000-4000-9000-000000000004') THEN RAISE EXCEPTION 'torn finalize/association'; END IF;
+ RAISE WARNING 'PASS finalize and application association roll back atomically';
+END$$;
+DROP TRIGGER material_test_record_fail ON public.application_material_records;
+-- Expired records represent stages left behind by a stopped backend.
+INSERT INTO public.material_artifacts(material_id,record_id,owner_id,application_event_id,opportunity_id,status,filename,byte_length,declared_sha256,created_at,expires_at,stage_token,stage_session_id,authorized_until)
+SELECT ('33000000-0000-4000-9000-'||lpad(n::text,12,'0'))::uuid,('33000000-0000-4000-a000-'||lpad(n::text,12,'0'))::uuid,'33000000-0000-4000-8000-000000000005','33000000-0000-4000-8000-000000000005','opp','staged','expired.pdf',123,repeat('a',64),now()-interval '2 days',now()-interval '1 day',gen_random_uuid(),'33000000-0000-4000-8000-000000000005',now()+interval '1 hour' FROM generate_series(5,7)n;
+DO $$DECLARE u text:=pg_temp.login(5);r jsonb;j jsonb;token uuid;BEGIN
+ r:=public.stage_application_material(u,'33000000-0000-4000-9000-000000000005','33000000-0000-4000-a000-000000000005',u::uuid,'opp','expired.pdf',123,repeat('a',64));
+ IF r#>>'{artifact,status}'<>'deleted' THEN RAISE EXCEPTION 'expired stage renewed'; END IF;
+ SELECT stage_token INTO token FROM public.material_artifacts WHERE material_id='33000000-0000-4000-9000-000000000006';
+ r:=public.finalize_application_material(u::uuid,u::uuid,'33000000-0000-4000-9000-000000000006',token,123,repeat('a',64));
+ IF r#>>'{artifact,status}'<>'deleted' THEN RAISE EXCEPTION 'expired finalized'; END IF;
+ r:=public.claim_material_cleanup(100);
+ IF EXISTS(SELECT 1 FROM public.material_artifacts WHERE material_id='33000000-0000-4000-9000-000000000007' AND status<>'deleted') THEN RAISE EXCEPTION 'sweeper missed expired stage'; END IF;
+ FOR j IN SELECT value FROM jsonb_array_elements(r->'jobs') LOOP
+  IF public.ack_material_cleanup((j->>'material_id')::uuid,gen_random_uuid(),true)->>'accepted'<>'false' THEN RAISE EXCEPTION 'stale cleanup ack'; END IF;
+  IF public.ack_material_cleanup((j->>'material_id')::uuid,(j->>'claim_token')::uuid,true)->>'accepted'<>'true' THEN RAISE EXCEPTION 'cleanup ack absent'; END IF;
+ END LOOP;
+ IF (SELECT count(*) FROM private.material_cleanup_outbox)<4 OR EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='33000000-0000-4000-9000-000000000002') THEN RAISE EXCEPTION 'cleanup tombstones missing or ready object scheduled'; END IF;
+ IF public.claim_material_cleanup(100)->'jobs'<>'[]'::jsonb THEN RAISE EXCEPTION 'successful cleanup hot-loop'; END IF;
+ UPDATE private.material_cleanup_outbox SET next_attempt_at=clock_timestamp()-interval '1 second';
+ r:=public.claim_material_cleanup(100);
+ IF jsonb_array_length(r->'jobs')<4 THEN RAISE EXCEPTION 'successful removal lost late-upload recheck'; END IF;
+ RAISE WARNING 'PASS expiry commit, deleted-stage no revival, cleanup lease fencing and permanent late-upload rechecks';
+END$$;
+-- Complete Flow B: keep immutable ready content; revoke unfinished uploads.
+DO $$DECLARE src text:=pg_temp.login(8);dst text:='33000000-0000-4000-8000-000000000009';tok uuid;before jsonb;r jsonb;BEGIN
+ r:=pg_temp.archive(8,8);before:=r->'artifact';PERFORM pg_temp.stage(8,9);
+ PERFORM set_config('test.jwt','{"is_anonymous":true}',false);tok:=public.mint_merge_grant('materials-merge@example.invalid');
+ PERFORM pg_temp.login(9);PERFORM set_config('test.jwt',(auth.jwt()||'{"email":"materials-merge@example.invalid"}'::jsonb)::text,false);
+ r:=public.redeem_merge_grant(tok);
+ IF r->>'merged'<>'true' OR EXISTS(SELECT 1 FROM public.material_artifacts WHERE owner_id=src::uuid) THEN RAISE EXCEPTION 'material merge stranded owner'; END IF;
+ r:=public.get_application_material(dst,'33000000-0000-4000-a000-000000000008',src::uuid,'opp');
+ IF (r->'artifact')-'owner_id'<>before-'owner_id' THEN RAISE EXCEPTION 'ready material payload/time changed during merge'; END IF;
+ r:=public.get_application_material(dst,'33000000-0000-4000-a000-000000000009',src::uuid,'opp');
+ IF r#>>'{artifact,status}'<>'deleted' OR r#>'{artifact,recorded_at}'<>'null'::jsonb THEN RAISE EXCEPTION 'unfinished upload resumed after merge'; END IF;
+ PERFORM public.authorize_application_material_download(dst,'33000000-0000-4000-a000-000000000008',src::uuid,'opp');
+ PERFORM pg_temp.login(8);
+ BEGIN PERFORM public.list_application_materials(src,src::uuid,'opp'); RAISE EXCEPTION 'merged source read'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ DELETE FROM auth.users WHERE id=src::uuid;
+ IF NOT EXISTS(SELECT 1 FROM public.material_artifacts WHERE material_id='33000000-0000-4000-9000-000000000008' AND status='ready') OR EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='33000000-0000-4000-9000-000000000008') THEN RAISE EXCEPTION 'source deletion erased transferred material'; END IF;
+ DELETE FROM auth.users WHERE id=dst::uuid;
+ IF EXISTS(SELECT 1 FROM public.material_artifacts WHERE owner_id=dst::uuid) OR EXISTS(SELECT 1 FROM public.application_material_records WHERE owner_id=dst::uuid)
+   OR NOT EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='33000000-0000-4000-9000-000000000008') THEN RAISE EXCEPTION 'target deletion failed metadata/bytes cleanup intent'; END IF;
+ PERFORM pg_temp.login(2);
+ BEGIN PERFORM public.stage_application_material(auth.uid()::text,'33000000-0000-4000-9000-000000000008',gen_random_uuid(),auth.uid(),'opp','new.pdf',123,repeat('a',64)); RAISE EXCEPTION 'erased key reused'; EXCEPTION WHEN unique_violation THEN NULL; END;
+ RAISE WARNING 'PASS Flow B preserves ready archive, revokes unfinished stage, account deletion cleans only current owner and never reuses revoked key';
+END$$;
+DO $$DECLARE src text:=pg_temp.login(10);dst text:='33000000-0000-4000-8000-000000000011';tok uuid;before jsonb;r jsonb;BEGIN
+ r:=pg_temp.archive(10,10);before:=r->'artifact';
+ PERFORM set_config('test.jwt','{"is_anonymous":true}',false);tok:=public.mint_merge_grant('materials-collision@example.invalid');
+ PERFORM pg_temp.login(11);PERFORM public.confirm_application_event(dst,src::uuid,'opp','other','collision');
+ PERFORM set_config('test.jwt',(auth.jwt()||'{"email":"materials-collision@example.invalid"}'::jsonb)::text,false);
+ BEGIN PERFORM public.redeem_merge_grant(tok); RAISE EXCEPTION 'event collision merge accepted'; EXCEPTION WHEN unique_violation THEN NULL; END;
+ IF (SELECT private.material_json(a) FROM public.material_artifacts a WHERE material_id='33000000-0000-4000-9000-000000000010')<>before
+   OR EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='33000000-0000-4000-9000-000000000010')
+   OR EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src)
+   OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NOT NULL THEN RAISE EXCEPTION 'collision partially committed'; END IF;
+ RAISE WARNING 'PASS merge collision rolls back artifact/association/event/grant together';
+END$$;
+-- Tie-safe keyset pagination uses the association timestamp, never the mutable
+-- source resume revision, upload time, or filename.
+DO $$DECLARE u text:=pg_temp.login(12);mid uuid;rid uuid;r jsonb;r2 jsonb;c jsonb;stamp timestamptz:='2026-01-01';BEGIN
+ FOR n IN 1201..1221 LOOP
+  mid:=('33000000-0000-4000-9000-'||lpad(n::text,12,'0'))::uuid;rid:=('33000000-0000-4000-a000-'||lpad(n::text,12,'0'))::uuid;
+  INSERT INTO public.material_artifacts(material_id,record_id,owner_id,application_event_id,opportunity_id,status,filename,byte_length,declared_sha256,sha256,created_at,expires_at,archived_at,stage_token,stage_session_id,authorized_until)
+   VALUES(mid,rid,u::uuid,u::uuid,'opp','ready','same-name.pdf',123,repeat('a',64),repeat('a',64),stamp,stamp+interval '1 day',stamp,gen_random_uuid(),u::uuid,stamp+interval '1 hour');
+  INSERT INTO public.application_material_records(record_id,material_id,owner_id,application_event_id,opportunity_id,recorded_at) VALUES(rid,mid,u::uuid,u::uuid,'opp',stamp);
+ END LOOP;
+ r:=public.list_application_materials(u,u::uuid,'opp');c:=r->'next_cursor';
+ IF jsonb_array_length(r->'items')<>20 OR c='null'::jsonb THEN RAISE EXCEPTION 'default 20+1 missing'; END IF;
+ r2:=public.list_application_materials(u,u::uuid,'opp',(c->>'recorded_at')::timestamptz,(c->>'record_id')::uuid);
+ IF jsonb_array_length(r2->'items')<>1 OR r2->'next_cursor'<>'null'::jsonb OR (r2#>>'{items,0,record_id}')>=(r#>>'{items,19,record_id}') THEN RAISE EXCEPTION 'tie cursor duplicate/loss'; END IF;
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp',stamp,NULL); RAISE EXCEPTION 'partial cursor'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN PERFORM public.list_application_materials(u,u::uuid,'opp',NULL,NULL,51); RAISE EXCEPTION 'unbounded list'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ RAISE WARNING 'PASS bounded 20+1 keyset pages with identical timestamps and filenames';
+END$$;
+
+-- Explicit cancellation is durable even before the first stage exists.
+DO $$DECLARE u text:=pg_temp.login(6);mid uuid:=gen_random_uuid();rid uuid:=gen_random_uuid();other uuid:=gen_random_uuid();r jsonb;before jsonb;BEGIN
+ r:=public.delete_application_material(u,rid,mid,u::uuid,'opp');before:=r->'artifact';
+ IF r->>'replayed'<>'false' OR r#>>'{artifact,status}'<>'deleted' OR r#>'{artifact,filename}'<>'null'::jsonb OR r#>'{artifact,recorded_at}'<>'null'::jsonb
+  OR NOT EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id=mid) THEN RAISE EXCEPTION 'pre-stage cancel missing durable redacted tombstone'; END IF;
+ IF public.delete_application_material(u,rid,mid,u::uuid,'opp')->>'replayed'<>'true' THEN RAISE EXCEPTION 'pre-stage cancel retry not idempotent'; END IF;
+ r:=public.stage_application_material(u,mid,rid,u::uuid,'opp','late.pdf',123,repeat('a',64));
+ IF r->'artifact'<>before OR r->'upload'<>'null'::jsonb THEN RAISE EXCEPTION 'late stage resurrected cancelled ID'; END IF;
+ r:=public.finalize_application_material(u::uuid,u::uuid,mid,gen_random_uuid(),123,repeat('a',64));
+ IF r->'artifact'<>before OR public.list_application_materials(u,u::uuid,'opp')->'items'<>'[]'::jsonb THEN RAISE EXCEPTION 'cancelled ID finalized or fabricated submission record'; END IF;
+ BEGIN PERFORM public.delete_application_material(u,gen_random_uuid(),mid,u::uuid,'opp'); RAISE EXCEPTION 'material mismatch cancellation'; EXCEPTION WHEN unique_violation THEN IF SQLERRM<>'application_material_conflict' THEN RAISE; END IF; END;
+ BEGIN PERFORM public.delete_application_material(u,rid,other,u::uuid,'opp'); RAISE EXCEPTION 'record collision cancellation'; EXCEPTION WHEN unique_violation THEN IF SQLERRM<>'application_material_conflict' THEN RAISE; END IF; END;
+ IF EXISTS(SELECT 1 FROM public.material_artifacts WHERE material_id=other) OR EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id=other) THEN RAISE EXCEPTION 'cancel collision partially committed'; END IF;
+ BEGIN PERFORM public.delete_application_material(u,NULL,gen_random_uuid(),u::uuid,'opp'); RAISE EXCEPTION 'null record accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ BEGIN PERFORM public.delete_application_material(u,gen_random_uuid(),NULL,u::uuid,'opp'); RAISE EXCEPTION 'null material accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ PERFORM pg_temp.login(7);
+ BEGIN PERFORM public.delete_application_material(auth.uid()::text,rid,mid,auth.uid(),'opp'); RAISE EXCEPTION 'cross-owner cancellation accepted'; EXCEPTION WHEN unique_violation THEN IF SQLERRM<>'application_material_conflict' THEN RAISE; END IF; END;
+ IF (SELECT private.material_json(a) FROM public.material_artifacts a WHERE material_id=mid)<>before THEN RAISE EXCEPTION 'conflict changed cancelled tombstone'; END IF;
+ r:=pg_temp.stage(6,600);PERFORM public.delete_application_material(u,(r#>>'{artifact,record_id}')::uuid,(r#>>'{artifact,material_id}')::uuid,u::uuid,'opp');
+ IF public.finalize_application_material(u::uuid,u::uuid,(r#>>'{artifact,material_id}')::uuid,(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64))#>>'{artifact,status}'<>'deleted' THEN RAISE EXCEPTION 'in-flight finalize resurrected cancelled stage'; END IF;
+ IF (SELECT count(*) FROM public.application_events WHERE device_id=u)<>1 OR (SELECT count(*) FROM public.interaction_status_changes WHERE device_id=u)<>1 THEN RAISE EXCEPTION 'cancel fabricated application/status'; END IF;
+ RAISE WARNING 'PASS pre-stage cancellation, late stage/finalize fencing, exact IDs and cross-owner conflict rollback';
+END$$;
