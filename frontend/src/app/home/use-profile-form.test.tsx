@@ -3297,7 +3297,21 @@ describe('useProfileForm — the share receipt outlives the draft', () => {
 });
 
 describe('useProfileForm — a save that half-landed is never a dead end', () => {
-  it('local write blocked + cloud rejected: reported as an error, and Retry still finishes the job', async () => {
+  it('local write blocked + cloud rejected: reported as an error, and Retry still finishes the job', async ({ onTestFailed }) => {
+    let phase = 'setup';
+    let statusNode: Element | null = null;
+    onTestFailed(() => {
+      // Keep the node reference: onTestFailed can run after cleanup removed
+      // it from document. Report state/counts only, never the résumé body.
+      console.error('[Home half-landed save failure]', JSON.stringify({
+        phase,
+        stageCalls: syncOverrides.stageCalls,
+        flushCalls: syncOverrides.flushCalls,
+        rpcCalls: commitProfilePatch.mock.calls.length,
+        owner: captureOwnerToken(),
+        saveStatus: statusNode?.textContent ?? null,
+      }));
+    });
     let rejectCloud = true;
     commitProfilePatch.mockReset();
     // A cloud write that does not land REPORTS that; commitProfilePatch
@@ -3311,6 +3325,8 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     ));
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'old text', coursework: ['ECE 220'] }));
     render(<Suspense fallback={null}><ResumeRemovalHarness /></Suspense>);
+    statusNode = document.querySelector('[data-testid="save-status"]');
+    phase = 'initial-profile-wait';
     await waitFor(() => expect(screen.getByTestId('resume').textContent).toBe('old text'));
 
     // Storage is refusing writes (quota / private mode) — the identity is
@@ -3318,7 +3334,9 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     const setItemSpy = await registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
       throw new Error('QuotaExceededError');
     });
+    phase = 'remove-action';
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
+    phase = 'error-status-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('error'));
     // Still the row as loaded: the removal reached neither the journal nor
     // the mirror, which is exactly why it is reported as a failure.
@@ -3328,9 +3346,12 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     // snapshot is replayed, both halves, under the SAME owner.
     setItemSpy.mockRestore();
     rejectCloud = false;
+    phase = 'retry-action';
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
 
+    phase = 'saved-status-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('saved'));
+    phase = 'stored-result-assertions';
     const stored = JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!);
     expect(stored.resume_text).toBe('');
     expect(stored.coursework).toEqual([]);

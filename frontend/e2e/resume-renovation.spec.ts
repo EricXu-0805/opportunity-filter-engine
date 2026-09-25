@@ -1,4 +1,6 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { TargetResumeV1 } from '../src/lib/target-resume';
 import type { TargetResumeAiEvidence, TargetResumeAiRequest, TargetResumeAiResponse } from '../src/lib/target-resume-ai-protocol';
@@ -105,12 +107,63 @@ test.describe('Résumé renovation (real browser)', () => {
 
   test('renovating keeps the student\'s own sentence one click away', async ({ page }) => {
     await stubRenovate(page);
+    let renovationRequests = 0;
+    page.on('request', request => {
+      if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/tailor/renovate') renovationRequests += 1;
+    });
     await openRenovation(page);
 
+    // Independently read the SAME anonymous public projection used by SSR:
+    // identical release-scope query, no SDK Authorization/reveal credentials.
+    const targetResponse = await page.request.get(`/api/opportunities/${KNOWN_ID}?_release_scope=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`);
+    expect(targetResponse.ok()).toBe(true);
+    const publicTarget = await targetResponse.json();
+    expect(publicTarget.id).toBe(KNOWN_ID);
+    expect(publicTarget.contact_email_status).not.toBe('revealed');
+    expect(publicTarget.contact_email).toBeUndefined();
+    const canonicalTarget = JSON.stringify(publicTarget, (_key, value: unknown) => (
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
+        : value
+    ));
+    const expectedTargetSignature = `v1:sha256:${createHash('sha256').update(canonicalTarget, 'utf8').digest('hex')}`;
+    const saved = page.waitForResponse(response => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/rest/v1/resume_renovations'
+      && response.request().postDataJSON()?.opportunity_id === KNOWN_ID);
     await page.getByRole('button', { name: 'Renovate with AI' }).click();
 
     // The AI version is what the student is shown…
     await expect(page.getByText(REWRITTEN)).toBeVisible({ timeout: 30_000 });
+    const saveResponse = await saved;
+    expect(saveResponse.ok()).toBe(true);
+    const savedPayload = saveResponse.request().postDataJSON();
+    expect(savedPayload.doc.target_sig).toMatch(/^v1:sha256:[a-f0-9]{64}$/);
+    expect(savedPayload.doc.target_sig).toBe(expectedTargetSignature);
+    await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
+
+    // One real loopback SDK save, followed by a real read on a new editor
+    // lifetime. Neither persisted data nor app callbacks are replaced here.
+    await page.getByRole('button', { name: 'Close renovation dialog', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    const restored = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return response.request().method() === 'GET' && url.pathname === '/rest/v1/resume_renovations'
+        && url.searchParams.get('opportunity_id') === `eq.${KNOWN_ID}`
+        && url.searchParams.get('device_id') === `eq.${savedPayload.device_id}`;
+    });
+    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
+    const restoreResponse = await restored;
+    expect(restoreResponse.ok()).toBe(true);
+    const restoredBody = await restoreResponse.json();
+    if (Array.isArray(restoredBody)) expect(restoredBody).toHaveLength(1);
+    const restoredRow = Array.isArray(restoredBody) ? restoredBody[0] : restoredBody;
+    expect(restoredRow.doc).toEqual(savedPayload.doc);
+    expect(restoredRow.doc.target_sig).toBe(expectedTargetSignature);
+    await expect(page.getByText('Restored your saved renovation for this opportunity', { exact: true })).toBeVisible();
+    await expect(page.getByText(REWRITTEN)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ask AI to re-optimize this bullet', exact: true }).first()).toBeEnabled();
+    expect(renovationRequests).toBe(1);
 
     // …and one click puts their own words back. A rollback is a pointer move
     // over a chain that still holds base_text, so this can never be a second

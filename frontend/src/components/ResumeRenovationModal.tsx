@@ -70,7 +70,7 @@ interface ResumeRenovationModalProps {
   isOpen: boolean;
   targetReady?: boolean;
   targetChecking?: boolean;
-  /** Complete public target binding supplied by the workspace. */
+  /** Current public target payload (detail or match-card projection). */
   targetKey?: string;
   /** False keeps the open draft; the retained profile is not current material. */
   profileAvailable?: boolean;
@@ -93,6 +93,41 @@ function canonicalProfile(value: unknown): string {
       .map((key) => `${JSON.stringify(key)}:${canonicalProfile(record[key])}`).join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
+}
+
+// The workspace supplies the current public target payload (detail or
+// match-card projection), not the full server record. ID/title alone cannot
+// establish saved provenance; malformed/mismatched input stays unknown.
+function targetFingerprintFor(key: string | undefined, opportunityId: string): string | null {
+  if (!key) return null;
+  try {
+    const value: unknown = JSON.parse(key);
+    const record = (item: unknown): item is Record<string, unknown> => !!item && typeof item === 'object' && !Array.isArray(item);
+    const strings = (item: unknown): item is string[] => Array.isArray(item) && item.every((entry) => typeof entry === 'string');
+    const nullableBoolean = (item: unknown) => item === null || typeof item === 'boolean';
+    if (!record(value) || value.id !== opportunityId ||
+        !['title', 'organization', 'opportunity_type', 'paid', 'location', 'description_clean'].every((field) => typeof value[field] === 'string') ||
+        !strings(value.keywords) || !nullableBoolean(value.on_campus)) return null;
+    const { eligibility, application, metadata } = value;
+    if (!record(eligibility) || typeof eligibility.international_friendly !== 'string' ||
+        !strings(eligibility.skills_required) ||
+        ('preferred_year' in eligibility && !strings(eligibility.preferred_year)) ||
+        ('majors' in eligibility && !strings(eligibility.majors)) ||
+        ('citizenship_required' in eligibility && !nullableBoolean(eligibility.citizenship_required)) ||
+        !record(application) || typeof application.requires_resume !== 'string' || typeof application.contact_method !== 'string' ||
+        ('application_effort' in application && typeof application.application_effort !== 'string')) return null;
+    // Public projection strips internal is_active; match cards also omit all
+    // metadata and detail-only eligibility/application fields. Missing is not
+    // malformed. If supplied, known fields must still have their declared type.
+    if ('metadata' in value && (!record(metadata) ||
+        ('is_active' in metadata && typeof metadata.is_active !== 'boolean') ||
+        ('confidence_score' in metadata && (typeof metadata.confidence_score !== 'number' || !Number.isFinite(metadata.confidence_score))))) return null;
+    // Validate the required public shape without projecting: optional/new
+    // fields also participate in the digest. Actionability is a separate gate.
+    return canonicalProfile(value);
+  } catch {
+    return null;
+  }
 }
 
 async function profileSignature(fingerprint: string): Promise<string | undefined> {
@@ -194,7 +229,8 @@ export default function ResumeRenovationModal({
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
   const sourceReady = profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh);
-  const targetBinding = targetKey ?? canonicalProfile({ opportunityId, opportunityTitle });
+  const targetFingerprint = useMemo(() => targetFingerprintFor(targetKey, opportunityId), [targetKey, opportunityId]);
+  const targetBinding = targetFingerprint ?? targetKey ?? canonicalProfile({ opportunityId, opportunityTitle });
   const targetBindingRef = useRef(targetBinding);
   const sourceRef = useRef({ ready: sourceReady, epoch: 0 });
   const profileFingerprint = canonicalProfile(profile);
@@ -215,6 +251,19 @@ export default function ResumeRenovationModal({
   // flash before we know whether a doc exists.
   const [ownerRevision, setOwnerRevision] = useState(0);
   const [restoreRevision, setRestoreRevision] = useState(0);
+  const [currentTargetSignature, setCurrentTargetSignature] = useState<{ fingerprint: string; signature?: string } | null>(null);
+  useEffect(() => {
+    if (!isOpen || targetFingerprint === null) return;
+    let active = true;
+    const owner = captureOwnerToken();
+    void profileSignature(targetFingerprint).then((signature) => {
+      if (active && isOwnerTokenValid(owner, owner.uid)) setCurrentTargetSignature({ fingerprint: targetFingerprint, signature });
+    });
+    return () => { active = false; };
+  }, [isOpen, ownerRevision, targetFingerprint]);
+  const targetSignaturePending = targetFingerprint !== null && currentTargetSignature?.fingerprint !== targetFingerprint;
+  const comparableTargetSignature = currentTargetSignature?.fingerprint === targetFingerprint ? currentTargetSignature.signature : undefined;
+  const targetBindingUnavailable = targetFingerprint === null || (!targetSignaturePending && !comparableTargetSignature);
   const [profileChanged, setProfileChanged] = useState(false);
   const [targetChanged, setTargetChanged] = useState(false);
   const [phase, setPhase] = useState<'restoring' | 'restore-error' | 'idle' | 'working' | 'doc'>('restoring');
@@ -503,7 +552,7 @@ export default function ResumeRenovationModal({
 
   async function handleRenovate() {
     const scope = scopeRef.current;
-    if (!sourceRef.current.ready || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || !comparableTargetSignature || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
     const workRevision = ++scope.workRevision;
     const epoch = sourceRef.current.epoch;
     const editRevision = userEditRef.current;
@@ -522,8 +571,16 @@ export default function ResumeRenovationModal({
     setError(null);
     setRestoredFromSave(false);
     try {
-      const signature = await profileSignature(profileFingerprint);
+      const [signature, targetSignature] = await Promise.all([
+        profileSignature(profileFingerprint),
+        targetFingerprint === null ? Promise.resolve(undefined) : profileSignature(targetFingerprint),
+      ]);
       if (!current()) return;
+      if (!targetSignature) {
+        setError(locale === 'zh' ? '未能核对目标来源。草稿已保留，请重新打开后重试。' : 'Could not verify the target source. Your draft is kept. Reopen and try again.');
+        setPhase(originalDoc ? 'doc' : 'idle');
+        return;
+      }
       const structured = await structureResume(profileSnapshot.resume_text, { locale });
       if (!current()) return;
       setStructureResult(structured);
@@ -541,6 +598,7 @@ export default function ResumeRenovationModal({
       const nextDoc: RenovationDoc = {
         resume_sig: resumeSignature,
         ...(signature ? { profile_sig: signature } : {}),
+        target_sig: targetSignature,
         sections: renovated.sections,
         method: renovated.method,
         warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
@@ -658,7 +716,11 @@ export default function ResumeRenovationModal({
   const comparableSignature = currentSignature?.fingerprint === profileFingerprint ? currentSignature.signature : undefined;
   const staleProfile = profileChanged || (!!knownSignature && !!comparableSignature && doc?.profile_sig !== comparableSignature);
   const unknownProfile = !!doc && (!knownSignature || !comparableSignature);
-  const docSourceCurrent = !staleProfile && !staleResume && !targetChanged;
+  const knownTargetSignature = typeof doc?.target_sig === 'string' && /^v1:sha256:[a-f0-9]{64}$/.test(doc.target_sig);
+  const unknownTarget = !!doc && !knownTargetSignature;
+  const staleTarget = !!knownTargetSignature && !!comparableTargetSignature && doc?.target_sig !== comparableTargetSignature;
+  const docSourceCurrent = !staleProfile && !staleResume && !targetChanged && !!knownTargetSignature &&
+    !!comparableTargetSignature && doc?.target_sig === comparableTargetSignature;
 
   const profileAction = useProfileAction<{ kind: 'generate' } | { kind: 'optimize'; bulletId: string; profileFingerprint: string; sourceRevision: number }>({
     isOpen,
@@ -667,8 +729,8 @@ export default function ResumeRenovationModal({
     scopeKey: canonicalProfile([opportunityId, targetBinding]),
     editRevision: userEditRevision,
     refresh: profileRefresh,
-    readiness: profileAvailable && (targetChecking || profileRefresh?.status === 'checking' || currentSignature?.fingerprint !== profileFingerprint)
-      ? 'waiting' : sourceReady && ['idle', 'doc'].includes(phase) ? 'ready' : 'blocked',
+    readiness: profileAvailable && (targetChecking || profileRefresh?.status === 'checking' || currentSignature?.fingerprint !== profileFingerprint || targetSignaturePending)
+      ? 'waiting' : sourceReady && !targetBindingUnavailable && ['idle', 'doc'].includes(phase) ? 'ready' : 'blocked',
     execute: (intent) => {
       if (intent.kind === 'generate') {
         // The committed executor sees the checked profile, never the click's
@@ -721,9 +783,14 @@ export default function ResumeRenovationModal({
   const hasResume = !!profileSnapshot.resume_text;
   // One provenance/action notice: a stale draft is stronger than unknown
   // provenance or a stopped intent. The shared banner owns read-error retry.
-  const draftStale = !!doc && !docSourceCurrent;
+  const draftStale = !!doc && (staleProfile || staleResume || targetChanged || staleTarget);
   const sharedReadFailure = profileRefresh?.status === 'failed';
   const readUnavailable = profileAction.error === 'unavailable';
+  const provenanceNotice = !draftStale && (targetBindingUnavailable || unknownTarget)
+    ? targetBindingUnavailable
+      ? (locale === 'zh' ? '未能核对机会资料。草稿已保留，请重新打开机会后重试。' : 'Could not verify the opportunity information. Your draft is kept. Reopen the opportunity and try again.')
+      : (locale === 'zh' ? '旧稿的目标来源未知。草稿和手改已保留，请重新生成后再优化条目。' : 'This draft’s saved target is unknown. Your draft and edits are kept. Re-renovate before optimizing bullets.')
+    : null;
   const actionNotice = draftStale || (!sharedReadFailure && (profileAction.error || actionChanged || profileChanged))
     ? sharedReadFailure
       ? (locale === 'zh' ? '重新生成后再优化条目。' : 'Re-renovate before optimizing bullets.')
@@ -736,7 +803,7 @@ export default function ResumeRenovationModal({
           : profileChanged && !doc
             ? (locale === 'zh' ? '资料已变，请核对当前资料后重试。' : 'Your profile changed. Review the current information and try again.')
             : (locale === 'zh' ? '资料、目标或编辑内容已变。草稿已保留，请核对后重试。' : 'The profile, target or edits changed. Your draft is kept. Review it and try again.')
-    : null;
+    : provenanceNotice;
 
   return (
     <div
@@ -847,7 +914,7 @@ export default function ResumeRenovationModal({
           )}
           {actionNotice && phase !== 'restoring' && (
             <p role="status" className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
-              data-testid={draftStale ? 'renovation-source-review' : 'renovation-action-error'}>{actionNotice}</p>
+              data-testid={draftStale || provenanceNotice ? 'renovation-source-review' : 'renovation-action-error'}>{actionNotice}</p>
           )}
           {unknownProfile && phase === 'doc' && !actionNotice && !sharedReadFailure && (
             <p className="mx-4 mt-4 text-sm text-gray-600" data-testid="renovation-profile-unknown">{t('renovate.profileUnknown')}</p>
@@ -866,7 +933,7 @@ export default function ResumeRenovationModal({
                   )}
                   <button
                     type="button"
-                    disabled={!sourceReady || profileAction.busy}
+                    disabled={!sourceReady || targetBindingUnavailable || profileAction.busy}
                     onClick={requestGeneration}
                     className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 shadow-sm transition-all"
                   >
@@ -1064,7 +1131,7 @@ export default function ResumeRenovationModal({
           <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
             <button
               type="button"
-              disabled={!sourceReady || profileAction.busy}
+              disabled={!sourceReady || targetBindingUnavailable || profileAction.busy}
               onClick={requestGeneration}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors mr-auto"
             >

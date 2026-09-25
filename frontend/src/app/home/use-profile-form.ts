@@ -1814,7 +1814,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   useEffect(() => {
     const observeIdentity = (uid: string | null) => {
       const firstObservation = lastUidRef.current === undefined;
-      const ownerEpoch = captureOwnerToken().epoch;
+      const observedOwner = captureOwnerToken();
+      const ownerEpoch = observedOwner.epoch;
       if (!firstObservation && uid === lastUidRef.current && ownerEpoch === lastOwnerEpochRef.current) {
         // Same owner capability re-observed (TOKEN_REFRESHED, INITIAL_SESSION).
         // Not a transition — but if this identity's row never loaded, it is
@@ -1844,6 +1845,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const editsBelongToNobody = gapCarriedRef.current || (
         editOriginRef.current !== null && editOriginRef.current.token.uid === null
       );
+      // The SDK can resolve the FIRST UID before the fallback read freezes its
+      // origin, then finish local-owner sync before delivering this callback.
+      // Input in that window already names this UID, but has never belonged to
+      // an accepted view or any prior Home identity. Keep it only for this exact
+      // first owner/epoch/screen. An established namespace changing is a real
+      // boundary; only -1 (OwnerToken's unestablished sentinel) may become the
+      // first verified generation. Compute before the screen generation moves.
+      const firstEdit = editOriginRef.current;
+      const firstOwnerEdits = firstObservation && virginScreen && viewSnapshotRef.current === null
+        && uid !== null && observedOwner.uid === uid && firstEdit !== null
+        && firstEdit.token.uid === uid && firstEdit.token.epoch === observedOwner.epoch
+        && firstEdit.generation === identityGenerationRef.current
+        && isOwnerTokenValid(observedOwner, uid)
+        && (firstEdit.token.generation === observedOwner.generation || firstEdit.token.generation === -1);
       gapCarriedRef.current = false;
       if (uid) everHadRealUidRef.current = true;
       liveIdentityObservedRef.current = true;
@@ -1915,7 +1930,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         loadingOriginRef.current = { token: captureOwnerToken(), generation };
         return;
       }
-      if (virginScreen && editsBelongToNobody) {
+      if (virginScreen && (editsBelongToNobody || firstOwnerEdits)) {
         // The browser's FIRST identity landing on a screen that has never
         // shown anyone's row, carrying edits that were made while the browser
         // belonged to nobody. Anonymous sign-in arrives as two observations
@@ -1925,6 +1940,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // isolation from a previous account; there was none. It is throwing
         // away the first thing they did.
         //
+        // The same applies when the fallback captured this first UID before
+        // its local realm was ready: firstOwnerEdits proved it is still the
+        // same first owner, not an old account being reassigned.
         // Locked for the load all the same, and WITHOUT clearing the dirty
         // ledger: hydrate() re-applies those keys over the row it loads, the
         // same treatment an edit made during any other load already gets.

@@ -8,7 +8,7 @@
  * variant only when the backend accepted it.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -40,9 +40,15 @@ vi.mock('@/lib/supabase', () => ({
   loadRenovation: (...args: unknown[]) => mockLoadRenovation(...args),
 }));
 
-import ResumeRenovationModal from './ResumeRenovationModal';
+import ActualResumeRenovationModal from './ResumeRenovationModal';
+
+// Normal callers supply the complete public target. Explicit undefined in
+// malformed/legacy tests still reaches production unchanged.
+function ResumeRenovationModal(props: React.ComponentProps<typeof ActualResumeRenovationModal>) {
+  return <ActualResumeRenovationModal targetKey={JSON.stringify({ ...targetA, id: props.opportunityId })} {...props} />;
+}
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import type { ProfileData, RenovationDoc } from '@/lib/types';
+import type { Opportunity, ProfileData, RenovationDoc } from '@/lib/types';
 
 // The word-diff splits changed bullet text into per-word nodes; match on
 // assembled textContent instead (same helper as TailorModal.test).
@@ -97,6 +103,7 @@ function makeDoc(overrides: Partial<RenovationDoc> = {}): RenovationDoc {
     ],
     method: 'ai',
     warnings: [],
+    target_sig: targetFixtureSignature(targetA),
     ...overrides,
   };
 }
@@ -1161,7 +1168,7 @@ describe('checked legacy renovation intents', () => {
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     const checked = receipt(profile);
     if (change === 'typing') fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New inline draft during read' } });
-    else if (change === 'target update') view.rerender(view.show(profile, { targetKey: 'new public target material' }));
+    else if (change === 'target update') view.rerender(view.show(profile, { targetKey: JSON.stringify(targetB) }));
     else if (change === 'owner switch') await switchRenovationOwner();
     else view.rerender(view.show(profile, { isOpen: false }));
     await act(async () => view.check.resolve(checked));
@@ -1209,9 +1216,9 @@ describe('legacy doc provenance before an explicit bullet request', () => {
     const refresh = vi.fn().mockResolvedValue(true);
     const checkForAction = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: fresh }));
     const show = (p: ProfileData, targetKey: string) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Lab" targetKey={targetKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />;
-    const view = render(show(old, 'target-original'));
+    const view = render(show(old, JSON.stringify(targetA)));
     await screen.findByText('renovate.copyAll'); editFirstBullet('Keep old-source manual input');
-    view.rerender(show(fresh, changed === 'same-ID target' ? 'target-updated' : 'target-original'));
+    view.rerender(show(fresh, changed === 'same-ID target' ? JSON.stringify(targetB) : JSON.stringify(targetA)));
     const optimize = screen.getByRole('button', { name: 'renovate.reoptimizeAria' });
     // Provenance changed before this click, so no read or model operation may
     // give this old document a new source. An explicit whole rebuild is needed.
@@ -1230,9 +1237,9 @@ it('retains stale target provenance after a failed rebuild, clearing it only aft
   const profile = makeProfile(), refresh = vi.fn().mockResolvedValue(true);
   const checkForAction = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile }));
   const show = (targetKey: string) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle="Lab" targetKey={targetKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />;
-  const view = render(show('original-target'));
+  const view = render(show(JSON.stringify(targetA)));
   await screen.findByText('renovate.copyAll'); editFirstBullet('Keep my prior target edit');
-  view.rerender(show('updated-target'));
+  view.rerender(show(JSON.stringify(targetB)));
   expect(screen.getByRole('button', { name: 'renovate.reoptimizeAria' })).toBeDisabled();
   fireEvent.click(screen.getByText('renovate.rerun'));
   await screen.findByRole('alert');
@@ -1281,6 +1288,193 @@ describe('concise legacy source notices', () => {
     expect(screen.getByRole('textbox')).toHaveValue('Keep through failed read');
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(refresh).toHaveBeenCalledOnce();
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+
+// Full public target fixtures intentionally share id/title; provenance must
+// include nested requirements and other public material, not a display label.
+const targetA = {
+  id: 'opp-1', title: "Prof. Doe's Lab", organization: 'UIUC', opportunity_type: 'research',
+  paid: 'unknown', location: 'Urbana', on_campus: true, description_clean: 'Research vision systems', keywords: ['vision'],
+  eligibility: { international_friendly: 'yes', preferred_year: ['Sophomore', 'Junior'], majors: ['CS'], skills_required: ['Python'], citizenship_required: null },
+  application: { application_effort: 'low', requires_resume: 'yes', contact_method: 'email' },
+  metadata: { is_active: true, confidence_score: 0.9 },
+} satisfies Opportunity;
+const targetB = { ...targetA, eligibility: { ...targetA.eligibility, preferred_year: ['Junior', 'Senior'] } };
+function canonicalTargetFixture(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalTargetFixture).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonicalTargetFixture(item)}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+const targetFixtureSignature = (target: unknown) => `v1:sha256:${createHash('sha256').update(canonicalTargetFixture(target)).digest('hex')}`;
+
+describe('persisted full target provenance', () => {
+  it('keeps a nested target change stale after closing and reopening the saved draft', async () => {
+    const stored = Object.assign(makeDoc(), { target_sig: targetFixtureSignature(targetA) });
+    mockLoadRenovation.mockResolvedValue(savedDoc(stored));
+    const profile = makeProfile();
+    const show = (isOpen: boolean, target: typeof targetA) => <ResumeRenovationModal isOpen={isOpen} onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />;
+    const view = render(show(true, targetA));
+    await screen.findByText('renovate.copyAll');
+    view.rerender(show(true, targetB));
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    view.rerender(show(false, targetB));
+    view.rerender(show(true, targetB));
+    await screen.findByText('renovate.copyAll');
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    editFirstBullet('Keep editing the old target draft');
+    expect(screen.getByRole('textbox')).toHaveValue('Keep editing the old target draft');
+    expect(screen.getByRole('button', { name: 'renovate.copyAll' })).toBeEnabled();
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+  it.each([undefined, 'not-a-target-digest'])('keeps an unbound older draft (%s) editable but requires explicit regeneration before optimization', async (target_sig) => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ target_sig })));
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(targetA)} />);
+    await screen.findByText('renovate.copyAll');
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('saved target is unknown');
+    editFirstBullet('Keep this unsaved answer until regeneration succeeds');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(mockSaveRenovation.mock.calls[0][1].target_sig).toBe(targetFixtureSignature(targetA));
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled();
+  });
+});
+
+describe('full target digest boundaries', () => {
+  it('accepts key-order-only changes and retains the target digest on a manual save', async () => {
+    const reordered = Object.fromEntries(Object.entries({ ...targetA, eligibility: Object.fromEntries(Object.entries(targetA.eligibility).reverse()) }).reverse());
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(reordered)} />);
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
+    editFirstBullet('My manual wording'); fireEvent.click(screen.getByText('renovate.save'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(mockSaveRenovation.mock.calls[0][1].target_sig).toBe(targetFixtureSignature(targetA));
+    expect(mockSaveRenovation.mock.calls[0][1].sections[0].bullets[0].base_text).toBe('Built a data pipeline');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockRenovateResume).not.toHaveBeenCalled();
+  });
+  it('does not rebind a stale saved target when the user saves or copies manual wording', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(targetB)} />);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep this old-target manual version');
+    fireEvent.click(screen.getByText('renovate.save'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(mockSaveRenovation.mock.calls[0][1].target_sig).toBe(targetFixtureSignature(targetA));
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(writeText.mock.calls[0][0]).toContain('Keep this old-target manual version');
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    expect(mockOptimizeBullet).not.toHaveBeenCalled();
+  });
+  it.each([undefined, 'opaque-display-key', '[]', JSON.stringify({ ...targetA, id: 'different-opportunity' })])('keeps the draft but blocks derivation for invalid full target input %s', async (targetKey) => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={targetKey} />);
+    await screen.findByText('renovate.copyAll');
+    expect(screen.getByText('renovate.rerun').closest('button')).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('Could not verify the opportunity information');
+    editFirstBullet('Still editable without a valid target');
+    expect(screen.getByRole('textbox')).toHaveValue('Still editable without a valid target');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+  it('does not create provenance when SHA-256 is unavailable', async () => {
+    vi.stubGlobal('crypto', { subtle: { digest: vi.fn().mockRejectedValue(new Error('crypto unavailable')) } });
+    mockLoadRenovation.mockResolvedValue(savedDoc()); renderModal();
+    await screen.findByText('renovate.copyAll');
+    await waitFor(() => expect(screen.getByText('renovate.rerun').closest('button')).toBeDisabled());
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('Could not verify the opportunity information');
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+  it.each(['target update', 'owner switch'] as const)('retires an intent waiting for target SHA after %s', async (change) => {
+    const pending = deferred<ArrayBuffer>();
+    const targetInput = canonicalTargetFixture(targetA);
+    const originalDigest = await webcrypto.subtle.digest('SHA-256', new TextEncoder().encode(targetInput));
+    const digest = vi.fn((algorithm: AlgorithmIdentifier, input: BufferSource) => {
+      if (new TextDecoder().decode(input) === targetInput) return pending.promise;
+      return webcrypto.subtle.digest(algorithm, input);
+    });
+    vi.stubGlobal('crypto', { subtle: { digest } });
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    const profile = makeProfile();
+    const show = (target: typeof targetA) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />;
+    const view = render(show(targetA));
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await screen.findByTestId('renovation-action-check');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    if (change === 'target update') view.rerender(show(targetB));
+    else await switchRenovationOwner();
+    await act(async () => { pending.resolve(originalDigest); });
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockRenovateResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    if (change === 'target update') {
+      fireEvent.click(screen.getByText('renovate.start'));
+      await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+      expect(mockSaveRenovation.mock.calls[0][1].target_sig).toBe(targetFixtureSignature(targetB));
+    }
+  });
+});
+
+
+describe('complete target input structure', () => {
+  it.each([
+    { id: 'opp-1' },
+    { id: 'opp-1', title: targetA.title },
+    { ...targetA, description_clean: 123 },
+    { ...targetA, eligibility: { ...targetA.eligibility, preferred_year: [2] } },
+    { ...targetA, application: { application_effort: 'low' } },
+    { ...targetA, metadata: { confidence_score: 'high' } },
+  ])('refuses incomplete or malformed target material %#', async (target) => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />);
+    await screen.findByText('renovate.copyAll');
+    expect(screen.getByText('renovate.rerun').closest('button')).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeDisabled();
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('Could not verify the opportunity information');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+describe('public target projection compatibility', () => {
+  // public_projection.py removes metadata.is_active; matches.py additionally
+  // drops metadata and the detail-only eligibility/application fields.
+  const publicDetail = { ...targetA, metadata: { confidence_score: 0.75, manually_reviewed: true } };
+  const { metadata: detailMetadata, ...cardFields } = publicDetail;
+  void detailMetadata;
+  const publicCard = {
+    ...cardFields,
+    eligibility: { international_friendly: 'yes', skills_required: ['Python'] },
+    application: { requires_resume: 'yes', contact_method: 'email' },
+  };
+  it.each([['detail', publicDetail], ['results card', publicCard]] as const)('generates and reopens a bound draft from the actual public %s shape', async (_surface, target) => {
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    const profile = makeProfile();
+    const show = (isOpen: boolean) => <ResumeRenovationModal isOpen={isOpen} onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={target.title} targetKey={JSON.stringify(target)} />;
+    const view = render(show(true));
+    const start = await screen.findByText('renovate.start');
+    expect(start.closest('button')).toBeEnabled();
+    fireEvent.click(start);
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    const saved = mockSaveRenovation.mock.calls[0][1] as RenovationDoc;
+    expect(saved.target_sig).toBe(targetFixtureSignature(target));
+    mockLoadRenovation.mockResolvedValue(savedDoc(saved));
+    view.rerender(show(false)); view.rerender(show(true));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
+    expect(mockStructureResume).toHaveBeenCalledOnce();
+  });
+  it.each([
+    { ...publicDetail, metadata: { ...publicDetail.metadata, is_active: 'true' } },
+    { ...publicCard, eligibility: { ...publicCard.eligibility, preferred_year: 'senior' } },
+    { ...publicCard, application: { ...publicCard.application, application_effort: false } },
+    { ...publicCard, metadata: [] },
+  ])('still refuses a projected field with a malformed supplied value %#', async (target) => {
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={target.title} targetKey={JSON.stringify(target)} />);
+    expect((await screen.findByText('renovate.start')).closest('button')).toBeDisabled();
     expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
 });

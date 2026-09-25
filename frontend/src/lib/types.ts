@@ -713,6 +713,8 @@ export interface RenovationDoc {
   resume_sig?: string;
   /** Digest of the full profile used for this draft; absent on older drafts. */
   profile_sig?: string;
+  /** SHA-256 of the exact provided public target payload (detail or match-card projection); older drafts are unbound. */
+  target_sig?: string;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────
