@@ -7,6 +7,7 @@ import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
 import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -115,6 +116,9 @@ export default function OpportunityDetail({
   } = useOpportunityDetail(opp);
 
   const profileRefresh = useProfileRefresh(ownerReady);
+  const writingScope = `${ownerScopeKey}:${identityGeneration}:${opp.id}`;
+  const emailProfile = useRetainedWritingProfile(profile, emailModalOpen, writingScope);
+  const resumeProfile = useRetainedWritingProfile(profile, renovationOpen, writingScope);
 
   // One read, used by every action surface on this page. Historical and
   // unverified both resolve to false: the page stays readable either way,
@@ -160,10 +164,10 @@ export default function OpportunityDetail({
               // from the accessibility tree and the tab order entirely. A
               // disabled button is still announced, still focusable, and still
               // says the action exists.
-              onOpenEmailModal={actionable ? () => setEmailModalOpen(true) : undefined}
-              onOpenTailorModal={actionable ? () => setTailorOpen(true) : undefined}
+              onOpenEmailModal={profile && actionable ? () => setEmailModalOpen(true) : undefined}
+              onOpenTailorModal={profile && actionable ? () => setTailorOpen(true) : undefined}
               tailorDisabled={!ownerReady}
-              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && actionable
+              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && profile && actionable
                 ? () => setRenovationOpen(true)
                 : undefined}
               onShare={handleShare}
@@ -312,11 +316,13 @@ export default function OpportunityDetail({
           résumé to it, or asking an AI how to approach it are the actions
           that must not exist — including as a closed modal one state change
           from opening. */}
-      {profile && actionable && (
+      {emailProfile.profile && actionable && (
         <ColdEmailModal
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
-          profile={profile}
+          profile={emailProfile.profile}
+          profileAvailable={emailProfile.profileAvailable}
+          targetReady={actionable}
           profileRefresh={profileRefresh}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
@@ -349,11 +355,13 @@ export default function OpportunityDetail({
       {/* `actionable` is stated explicitly rather than left to the release
           flag. A test that passes only because resumeRenovate is false proves
           nothing about the day it is turned on. */}
-      {RELEASE_SCOPE.resumeRenovate && profile && actionable && (
+      {RELEASE_SCOPE.resumeRenovate && resumeProfile.profile && actionable && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}
-          profile={profile}
+          profile={resumeProfile.profile}
+          profileAvailable={resumeProfile.profileAvailable}
+          targetReady={actionable}
           opportunity={opp}
           profileRefresh={profileRefresh}
         />

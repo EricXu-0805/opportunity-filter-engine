@@ -12,7 +12,13 @@ const activeEntries = new Set<string>();
 export type ModalCloseRequest = () => boolean;
 
 /** Back requests closure of a results overlay. It never changes the tracker. */
-export function useResultModalHistory(open: boolean, onClose: () => void, ownerScopeKey: string | null, requestClose?: ModalCloseRequest) {
+export function useResultModalHistory(
+  open: boolean,
+  onClose: () => void,
+  ownerScopeKey: string | null,
+  requestClose?: ModalCloseRequest,
+  { returnToResultsOnClose = true }: { returnToResultsOnClose?: boolean } = {},
+) {
   const closeRef = useRef(onClose);
   const requestRef = useRef(requestClose);
   useLayoutEffect(() => { closeRef.current = onClose; requestRef.current = requestClose; }, [onClose, requestClose]);
@@ -47,9 +53,15 @@ export function useResultModalHistory(open: boolean, onClose: () => void, ownerS
     } else if (!open && entry) {
       activeEntries.delete(entry.id);
       entryRef.current = null;
-      if (ownsTop() && window.location.pathname === '/results') window.history.back();
+      if (ownsTop() && window.location.pathname === '/results') {
+        // A host leaving Results (for example after its profile disappears)
+        // owns that navigation. An asynchronous Back here would race its
+        // router.replace and could restore the now-empty Results route.
+        if (returnToResultsOnClose) window.history.back();
+        else strip();
+      }
     }
-  }, [open, ownerScopeKey]);
+  }, [open, ownerScopeKey, returnToResultsOnClose]);
 
   useEffect(() => {
     const onPop = () => {

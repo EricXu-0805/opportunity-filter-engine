@@ -60,6 +60,26 @@ describe('results modal history ownership', () => {
     }
   });
 
+  it('leaves navigation to a departing host, stripping only its marker without Back', () => {
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const { result, rerender } = renderHook(({ available }) => {
+      const [open, setOpen] = useState(false);
+      useResultModalHistory(open, () => setOpen(false), 'modal-a', undefined, {
+        returnToResultsOnClose: available,
+      });
+      return { open, setOpen };
+    }, { initialProps: { available: true } });
+    act(() => result.current.setOpen(true));
+    const id = window.history.state[marker];
+    rerender({ available: false });
+    expect(window.history.state[marker]).toBe(id);
+    expect(result.current.open).toBe(true);
+    act(() => result.current.setOpen(false));
+    expect(back).not.toHaveBeenCalled();
+    expect(window.history.state).toEqual({ __NA: true, nextTree: ['results'], other: 'kept' });
+    expect(window.location.search).toBe('?q=robots');
+  });
+
   it('Forward to an already closed overlay preserves Next state without reopening a draft', () => {
     const { result } = renderHook(useHarness);
     act(() => result.current.setOpen(true));

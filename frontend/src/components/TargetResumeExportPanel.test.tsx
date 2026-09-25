@@ -66,3 +66,19 @@ describe('complete target résumé export', () => {
     mocked.locale='zh'; mocked.fetch.mockRejectedValueOnce(new ApiError(504, 'export_timeout', 'PRIVATE', false)); render(<TargetResumeExportPanel {...props()} />); await start('导出 PDF'); expect(await screen.findByRole('alert')).toHaveTextContent('导出未及时完成'); expect(mocked.fetch.mock.calls[0][0].projection.locale).toBe('zh');
   });
 });
+
+
+it('retires the pending file when the profile disappears, then exports only the explicit retained draft', async () => {
+  const held = deferred<TargetResumeExportFile>(); mocked.fetch.mockReturnValueOnce(held.promise);
+  const p = props(); const view = render(<TargetResumeExportPanel {...p} />); await start();
+  const snapshot = JSON.stringify(p.draft); const signal = mocked.fetch.mock.calls[0][1].signal;
+  view.rerender(<TargetResumeExportPanel {...p} profileAvailable={false} />);
+  expect(signal.aborted).toBe(true);
+  expect(screen.getByText(/Exports this retained draft without restoring your profile/)).toBeVisible();
+  await act(async () => { held.resolve(file); }); expect(mocked.download).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+  await start(); await waitFor(() => expect(mocked.download).toHaveBeenCalledTimes(1));
+  expect(mocked.fetch).toHaveBeenCalledTimes(2);
+  expect(mocked.fetch.mock.calls[1][0].projection).toEqual(mocked.fetch.mock.calls[0][0].projection);
+  expect(JSON.stringify(p.draft)).toBe(snapshot);
+});

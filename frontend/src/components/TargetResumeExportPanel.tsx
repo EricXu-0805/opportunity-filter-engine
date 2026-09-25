@@ -11,10 +11,10 @@ import type { TargetResumeExportFormat, TargetResumeExportLocale, TargetResumeEx
 
 export interface TargetResumeExportPanelProps {
   draft: TargetResumeV1; owner: OwnerToken; contextKey: string;
-  enabled: boolean; unsaved: boolean; outdated: boolean;
+  enabled: boolean; unsaved: boolean; outdated: boolean; profileAvailable?: boolean;
 }
 const control = 'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-40';
-export default function TargetResumeExportPanel({ draft, owner, contextKey, enabled, unsaved, outdated }: TargetResumeExportPanelProps) {
+export default function TargetResumeExportPanel({ draft, owner, contextKey, enabled, unsaved, outdated, profileAvailable = true }: TargetResumeExportPanelProps) {
   const uiLocale = useLocale(); const copy = (en: string, zh: string) => uiLocale === 'zh' ? zh : en;
   const [locale, setLocale] = useState<TargetResumeExportLocale>(uiLocale === 'zh' ? 'zh' : 'en');
   const [pageSize, setPageSize] = useState<TargetResumeExportPageSize>('letter');
@@ -22,7 +22,7 @@ export default function TargetResumeExportPanel({ draft, owner, contextKey, enab
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
-  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\n${locale}:${pageSize}\n${draftKey}`;
+  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\nprofile:${profileAvailable ? 'available' : 'missing'}\n${locale}:${pageSize}\n${draftKey}`;
   const state = useRef({ binding, owner, draft, enabled });
   const operation = useRef({ generation: 0, controller: null as AbortController | null, busy: false });
   useLayoutEffect(() => {
@@ -75,6 +75,7 @@ export default function TargetResumeExportPanel({ draft, owner, contextKey, enab
   return <section aria-label="Export current résumé" className="my-4 min-w-0 rounded-xl border p-4">
     <h3 className="font-semibold">{copy('Export current draft', '导出当前稿')}</h3>
     <p className="mt-1 text-sm text-gray-600">{copy('Exports the selected content shown in your current draft. Section headings change language; your wording stays as written.', '导出当前稿中已勾选的内容。语言选项只改变章节及字段标签，正文保持原文。')}</p>
+    {!profileAvailable && <p className="mt-2 text-sm text-amber-800">{copy('Your profile is unavailable. Exports this retained draft without restoring your profile or updating its original sources.', '个人资料已不可用。仅导出保留稿，不恢复资料，也不更新稿件的原始来源。')}</p>}
     {unsaved && <p className="mt-2 text-sm text-amber-800">{copy('Includes unsaved edits. Exporting does not save this version to your account.', '包含未保存的修改；导出不会将此版本保存到账户。')}</p>}
     {outdated && <p className="mt-2 text-sm text-amber-800">{copy('This draft uses earlier source materials. Exporting keeps that version.', '此稿使用较早的来源材料，导出保留该版本。')}</p>}
     <div className="mt-3 flex flex-wrap items-end gap-3">

@@ -999,6 +999,27 @@ async function withSharedState<T>(
   };
 }
 
+/** A server receipt may describe a write from before another device deleted
+ * this profile. Inspect the deletion fence inside the same lock as its local
+ * settlement: even an already-saved response must not clear a newer fence or
+ * acknowledge away the retained pending edits. This does not cancel a CAS
+ * that has already reached the server. */
+async function withProfileReceiptState<T>(
+  token: OwnerToken,
+  fn: () => T,
+): Promise<{ ok: true; value: T } | { ok: false; result: ProfileSaveResult }> {
+  const settled = await withSharedState(token, () => {
+    const fence = readProfileSyncEnvelope()?.tombstone;
+    if (fence) return { accepted: false as const, reason: fence.reason };
+    return { accepted: true as const, value: fn() };
+  });
+  if (!settled.ok) return settled;
+  if (!settled.value.accepted) return { ok: false, result: {
+    status: 'missing', reason: settled.value.reason === 'merged' ? 'merged_away' : 'absent',
+  } };
+  return { ok: true, value: settled.value.value };
+}
+
 /**
  * The operations inside `ids` that are FINISHED, as whole dependency
  * closures.
@@ -4095,7 +4116,7 @@ export async function flushPendingProfileWrite(token: OwnerToken): Promise<Profi
     // a newer edit in between, and this repair would put the older one back
     // over it. The revision is checked too — a confirmation older than what
     // is already recorded is not news.
-    const repaired = await withSharedState(token, () => {
+    const repaired = await withProfileReceiptState(token, () => {
       const env = readProfileSyncEnvelope();
       const recorded = env?.confirmed;
       if (recorded && recorded.revision > revision) {
@@ -4349,7 +4370,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // own journal operations and record the confirmed revision. Both read
         // shared state and write it back, and another tab doing the same in
         // between would decide from a half-updated view.
-        const settled = await withSharedState(token, () => {
+        const settled = await withProfileReceiptState(token, () => {
           const acked = ackConfirmedJournalOpsLocked(pending, sendKeys as string[], profile, outcome.revision, token);
           clearConfirmedKeys(sendKeys as string[], pending.keyVersions, pending);
           const survivor = survivorFor(pending, sendKeys as string[], outcome.revision, profile);
@@ -4397,7 +4418,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // what is there when the write happens — never from a copy read
         // beforehand. Another tab can stage between the two, and writing back
         // a pre-lock snapshot would put its edit back to what it was.
-        const superseded = await withSharedState(token, () => {
+        const superseded = await withProfileReceiptState(token, () => {
           const live = readProfileSyncEnvelope()?.pending ?? null;
           if (!live || live.mutationId === pending.mutationId) return { newer: false as const };
           const written = writeEnvelope(
@@ -4425,7 +4446,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // applyKeys would report every all-keys-collide conflict as a success
         // and drop the working copy with it.
         if (resolution.applyKeys.length === 0 && resolution.conflictKeys.length === 0) {
-          const settled = await withSharedState(token, () => {
+          const settled = await withProfileReceiptState(token, () => {
             const acked = ackConfirmedJournalOpsLocked(pending, sendKeys as string[], remote, outcome.revision, token);
             clearConfirmedKeys(sendKeys as string[], pending.keyVersions, pending);
             const survivor = survivorFor(pending, sendKeys as string[], outcome.revision, remote);
@@ -4462,7 +4483,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
             desiredProfile: rebasedDesired,
             dirtyKeys: [...new Set([...resolution.applyKeys as string[], ...pending.lockedKeys])],
           };
-          const rebasedWrite = await withSharedState(token, () => (
+          const rebasedWrite = await withProfileReceiptState(token, () => (
             writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: rebased, tombstone: null },
               token,
@@ -4498,7 +4519,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
             lockedKeys: [...new Set([...pending.lockedKeys, ...conflictKeys])],
             conflictRemote: remote,
           };
-          const partialWrite = await withSharedState(token, () => (
+          const partialWrite = await withProfileReceiptState(token, () => (
             writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: partial, tombstone: null },
               token,
@@ -4528,7 +4549,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
           lockedKeys: [...new Set([...pending.lockedKeys, ...toLock])],
           conflictRemote: remote,
         };
-        const lockRecorded = await withSharedState(token, () => writeEnvelope(
+        const lockRecorded = await withProfileReceiptState(token, () => writeEnvelope(
           { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: conflicted, tombstone: null },
           token,
         ));

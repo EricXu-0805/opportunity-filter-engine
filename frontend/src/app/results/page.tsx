@@ -14,7 +14,7 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
-import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError, type OwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, OwnerMismatchError, type OwnerToken } from '@/lib/identity-owner';
 
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
@@ -169,6 +169,9 @@ function ResultsContent() {
     clear: clearProfileView,
   } = useAcceptedProfileView();
   const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
+  // The key can disappear before the accepting effect publishes a null view.
+  // Never use that one-render-old view as current material or for a new action.
+  const profileAvailable = hasStoredProfile !== false && profile !== null;
 
   const initialUrl = useMemo(() => readInitialFiltersFromUrl(searchParams), [searchParams]);
   const [activeTab, setActiveTab] = useState<Tab>(initialUrl.activeTab);
@@ -344,17 +347,17 @@ function ResultsContent() {
     viewToday,
   ]);
   const resultSession = useResultsSession({
-    arrivalId: arrivalSessionId, profile, semantic: semanticRerank, view: matchView,
+    arrivalId: arrivalSessionId, profile: profileAvailable ? profile : null, semantic: semanticRerank, view: matchView,
     ready: ownerReady && !interactionsLoading && !interactionsError && !favoritesLoadError && semanticSettled,
     failed: interactionsError || favoritesLoadError,
     publicUrl: buildResultsUrl(urlState), page, setPage, setShowDismissed,
   });
   useLayoutEffect(() => { clearResultSessionRef.current = resultSession.resetForIdentity; }, [resultSession.resetForIdentity]);
-  useResultsUrlSync({ ...urlState, sessionId: resultSession.sessionId });
+  useResultsUrlSync({ ...urlState, sessionId: resultSession.sessionId, enabled: profileAvailable });
   const writingOwnerCurrent = !!writingSession
     && writingSession.ownerScopeKey === ownerScopeKey
     && writingSession.identityGeneration === identityGeneration
-    && isTokenOwnerStillCurrent(writingSession.owner)
+    && isOwnerTokenValid(writingSession.owner, writingSession.owner.uid)
     && writingSession.owner.generation === captureOwnerToken().generation;
   const requestWritingClose = useCallback(() => {
     if (writingSession?.kind === 'resume' && resumeCloseRequest.current) {
@@ -363,7 +366,9 @@ function ResultsContent() {
     closeWritingSession();
     return true;
   }, [writingSession?.kind, closeWritingSession]);
-  useResultModalHistory(writingOwnerCurrent, closeWritingSession, ownerScopeKey, requestWritingClose);
+  useResultModalHistory(writingOwnerCurrent, closeWritingSession, ownerScopeKey, requestWritingClose, {
+    returnToResultsOnClose: profileAvailable,
+  });
 
   const {
     data,
@@ -377,7 +382,7 @@ function ResultsContent() {
     refined,
     refineFailed,
   } = useResultsData(
-    profile,
+    profileAvailable ? profile : null,
     semanticRerank,
     matchView,
     page,
@@ -494,8 +499,8 @@ function ResultsContent() {
   }, []);
 
   useEffect(() => {
-    if (hasStoredProfile === false) router.replace('/');
-  }, [hasStoredProfile, router]);
+    if (hasStoredProfile === false && !writingOwnerCurrent) router.replace('/');
+  }, [hasStoredProfile, writingOwnerCurrent, router]);
 
   const toggleSemantic = useCallback((next: boolean) => {
     if (!RELEASE_SCOPE.matchAiRefine) return;
@@ -636,12 +641,12 @@ function ResultsContent() {
 
   const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
     // Do not retarget an existing editor behind its unsaved-changes guard.
-    if (writingOwnerCurrent || !ownerReady || !profile || loading || error) return;
+    if (writingOwnerCurrent || !ownerReady || !profileAvailable || !profile || loading || error) return;
     const match = data?.results.find((m) => m.opportunity.id === opportunityId);
     if (!match || targetPosture(match.opportunity) !== 'actionable') return;
     setWritingSession({ kind, opportunity: match.opportunity, profile,
       owner: captureOwnerToken(), ownerScopeKey, identityGeneration });
-  }, [writingOwnerCurrent, ownerReady, profile, loading, error, data, ownerScopeKey, identityGeneration]);
+  }, [writingOwnerCurrent, ownerReady, profileAvailable, profile, loading, error, data, ownerScopeKey, identityGeneration]);
   const openEmailModal = useCallback((id: string) => openWritingSession('email', id), [openWritingSession]);
   const openResumeModal = useCallback((id: string) => openWritingSession('resume', id), [openWritingSession]);
 
@@ -651,7 +656,7 @@ function ResultsContent() {
   const currentWritingTarget = writingSession
     ? data?.results.find((m) => m.opportunity.id === writingSession.opportunity.id)?.opportunity
     : undefined;
-  const writingTargetReady = writingOwnerCurrent && ownerReady && !!profile
+  const writingTargetReady = writingOwnerCurrent && ownerReady && profileAvailable
     && !loading && !error && !!currentWritingTarget
     && targetPosture(currentWritingTarget) === 'actionable';
 
@@ -881,7 +886,7 @@ function ResultsContent() {
   // performs the actual navigation. hasStoredProfile is undefined while
   // localStorage probes; we only skip rendering once it's been confirmed
   // absent (=== false), so users with profiles never hit this branch.
-  if (hasStoredProfile === false) return null;
+  if (hasStoredProfile === false && !writingOwnerCurrent) return null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -921,6 +926,7 @@ function ResultsContent() {
         </div>
       )}
 
+      {profileAvailable && <>
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
@@ -1113,11 +1119,14 @@ function ResultsContent() {
         </div>
       )}
 
+      </>}
+
       {writingSession && writingOwnerCurrent && (writingSession.kind === 'email' ? (
         <ColdEmailModal
           isOpen
           onClose={closeWritingSession}
-          profile={profile ?? writingSession.profile}
+          profile={profileAvailable && profile ? profile : writingSession.profile}
+          profileAvailable={profileAvailable}
           opportunityId={writingSession.opportunity.id}
           opportunityTitle={(currentWritingTarget ?? writingSession.opportunity).title ?? t('results.opportunityFallback')}
           opportunitySchool={(currentWritingTarget ?? writingSession.opportunity).school ?? null}
@@ -1133,7 +1142,8 @@ function ResultsContent() {
           isOpen
           onClose={closeWritingSession}
           onCloseRequestChange={registerResumeCloseRequest}
-          profile={profile ?? writingSession.profile}
+          profile={profileAvailable && profile ? profile : writingSession.profile}
+          profileAvailable={profileAvailable}
           opportunity={currentWritingTarget ?? writingSession.opportunity}
           targetReady={writingTargetReady}
           profileRefresh={profileRefresh}

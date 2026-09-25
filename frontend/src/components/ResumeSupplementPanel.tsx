@@ -10,6 +10,7 @@ import { useResumeSupplement } from './use-resume-supplement';
 export interface ResumeSupplementPanelProps {
   owner: OwnerToken;
   targetKey: string;
+  profileAvailable?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   onAcceptedProfile?: (view: ProfileViewSnapshot, againstView: ProfileViewSnapshot) => void;
   onOpenProfile?: () => void;
@@ -25,11 +26,11 @@ export default function ResumeSupplementPanel(props: ResumeSupplementPanelProps)
   return <SupplementSession key={ownerKey} {...props} />;
 }
 
-function SupplementSession({ owner, targetKey, onDirtyChange, onAcceptedProfile, onOpenProfile }: ResumeSupplementPanelProps) {
+function SupplementSession({ owner, targetKey, profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile }: ResumeSupplementPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const id = useId();
-  const controller = useResumeSupplement({ enabled: true, owner, targetKey, onAcceptedProfile });
+  const controller = useResumeSupplement({ enabled: true, profileAvailable, owner, targetKey, onAcceptedProfile });
   const [entryId, setEntryId] = useState(() => crypto.randomUUID());
   const [activityId, setActivityId] = useState('');
   const [answers, setAnswers] = useState<SupplementAnswers>(emptyAnswers);
@@ -54,7 +55,7 @@ function SupplementSession({ owner, targetKey, onDirtyChange, onAcceptedProfile,
   const master = view?.renderedProfile.resume_master;
   const activities = master?.activities ?? [];
   const activity = activities.find((item) => item.id === activityId);
-  const saved = controller.phase === 'saved' && controller.confirmedEntryId === entryId;
+  const saved = profileAvailable && controller.phase === 'saved' && controller.confirmedEntryId === entryId;
   const hasInput = Object.values(answers).some((value) => value.length > 0);
   const hasUnselectedInput = SUPPLEMENT_ANSWER_KEYS.some((key) => !selected.includes(key) && answers[key].length > 0);
   const dirty = controller.phase !== 'retired' && hasInput && (!saved || hasUnselectedInput);
@@ -63,7 +64,7 @@ function SupplementSession({ owner, targetKey, onDirtyChange, onAcceptedProfile,
   const locked = busy || !!nextRound || controller.operationLocked || ['saving', 'recorded', 'conflict', 'save-unknown', 'saved', 'retired'].includes(controller.phase);
   const fingerprint = JSON.stringify([targetKey, view?.viewId, draft]);
   const confirmed = confirmedFor === fingerprint;
-  const ready = controller.phase === 'ready' || controller.phase === 'save-error';
+  const ready = profileAvailable && (controller.phase === 'ready' || controller.phase === 'save-error');
   const canConfirm = ready && !!activity && preview.ok && confirmed && !locked;
   const questions: Record<SupplementAnswerKey, { question: string; include: string; label: string }> = {
     task: { question: copy('What was the task?', '当时要完成什么任务？'), include: copy('Include task', '纳入任务'), label: copy('Task', '任务') },
@@ -89,16 +90,17 @@ function SupplementSession({ owner, targetKey, onDirtyChange, onAcceptedProfile,
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setNextRound(null); return;
     }
-    if (controller.phase === 'ready') {
+    if (controller.phase === 'ready' && profileAvailable) {
       // The user explicitly requested another supplement; only discard this
       // already-saved answer round after accepting a fresh profile view.
       setEntryId(crypto.randomUUID()); setAnswers(emptyAnswers()); setSelected([]);
       setConfirmedFor(null); setNextRound(null); setLocalError(false);
-    } else if (controller.phase === 'retired') setNextRound(null);
-  }, [nextRound, controller.phase, entryId, targetKey]);
+    } else if (controller.phase === 'retired' || !profileAvailable) setNextRound(null);
+  }, [nextRound, controller.phase, entryId, targetKey, profileAvailable]);
   const messages: Partial<Record<typeof controller.phase, string>> = {
     loading: copy('Loading your saved profile…', '正在读取已保存的资料…'),
     'load-error': copy('Your profile could not be read. Your answers are still here. Retry before confirming.', '暂时无法读取资料，填写内容仍保留。请重试后再确认。'),
+    'profile-unavailable': copy('Your saved profile is unavailable. Your answers are kept; adding information and retrying saves are paused.', '已保存的个人资料不可用。答案仍保留，补充与重试保存已暂停。'),
     'not-saved': copy('Save your profile first, then return to add this information.', '请先保存个人资料，再回来补充。'),
     stale: copy('Your profile or target changed. Your answers are kept; review the current materials before confirming.', '资料或目标已更新。答案仍保留，请重新核对当前材料后再确认。'),
     saving: copy('Recording your confirmed information…', '正在保存你确认的信息…'),
@@ -118,9 +120,9 @@ function SupplementSession({ owner, targetKey, onDirtyChange, onAcceptedProfile,
     {messages[controller.phase] && <p role={['load-error', 'conflict', 'save-error'].includes(controller.phase) ? 'alert' : 'status'} className="mt-3 whitespace-pre-wrap text-sm text-indigo-900">{messages[controller.phase]}</p>}
     {localError && <p role="alert" className="mt-3 text-sm text-red-700">{copy('That action could not finish. Your answers are kept; please retry.', '操作未能完成，答案仍保留，请重试。')}</p>}
     {(noMaster || noActivities) && <p className="mt-3 text-sm text-amber-900">{noMaster ? copy('Create your master résumé before adding details here.', '请先建立简历母版，再在这里补充。') : copy('Add a project or experience to your master résumé first.', '请先在简历母版中添加一项项目或经历。')}</p>}
-    {(noMaster || noActivities || ['not-saved', 'conflict', 'save-error'].includes(controller.phase)) && onOpenProfile && <button type="button" className={`${button} mt-2`} onClick={onOpenProfile}>{copy('Review my profile', '核对个人资料')}</button>}
-    {['load-error', 'not-saved', 'stale', 'conflict'].includes(controller.phase) && <button type="button" className={`${button} mt-2`} disabled={busy} onClick={refresh}>{controller.phase === 'load-error' ? copy('Retry reading profile', '重试读取资料') : copy('Review current materials', '重新核对当前材料')}</button>}
-    {['recorded', 'save-unknown'].includes(controller.phase) && <button type="button" className={`${button} mt-2`} disabled={busy} onClick={() => void run(() => controller.retryRecorded())}>{copy('Retry cloud save', '重试云端保存')}</button>}
+    {(noMaster || noActivities || ['not-saved', 'conflict', 'save-error', 'profile-unavailable'].includes(controller.phase)) && onOpenProfile && <button type="button" className={`${button} mt-2`} onClick={onOpenProfile}>{copy('Review my profile', '核对个人资料')}</button>}
+    {['load-error', 'not-saved', 'stale', 'conflict'].includes(controller.phase) && <button type="button" className={`${button} mt-2`} disabled={busy || !profileAvailable} onClick={refresh}>{controller.phase === 'load-error' ? copy('Retry reading profile', '重试读取资料') : copy('Review current materials', '重新核对当前材料')}</button>}
+    {['recorded', 'save-unknown'].includes(controller.phase) && <button type="button" className={`${button} mt-2`} disabled={busy || !profileAvailable} onClick={() => { if (profileAvailable) void run(() => controller.retryRecorded()); }}>{copy('Retry cloud save', '重试云端保存')}</button>}
     <div className="mt-4">
       <label htmlFor={`${id}-activity`} className="text-sm font-medium">{copy('Project or experience in your master résumé', '母版中的项目或经历')}</label>
       <select id={`${id}-activity`} value={activityId} disabled={locked || !activities.length} className="mt-1 w-full rounded-lg border p-2 text-sm"

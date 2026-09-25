@@ -30,10 +30,11 @@ vi.mock('@/lib/api', () => ({
 }));
 
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: () => {}, replace: () => {} }),
-  useSearchParams: () => new URLSearchParams(),
-}));
+vi.mock('next/navigation', () => {
+  const router = { push: () => {}, replace: (url: string) => profileFeed.replace(url) };
+  const params = new URLSearchParams();
+  return { useRouter: () => router, useSearchParams: () => params };
+});
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ open: () => {} }) }));
 vi.mock('@/lib/supabase', () => ({
   getAuthState: vi.fn().mockResolvedValue({
@@ -78,7 +79,7 @@ const TEST_PROFILE = {
   institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
   is_international: false, research_interests: 'machine learning', skills: [],
 };
-const profileFeed = vi.hoisted(() => ({ current: undefined as ProfileData | null | undefined }));
+const profileFeed = vi.hoisted(() => ({ current: undefined as ProfileData | null | undefined, present: true, replace: vi.fn() }));
 vi.mock('./use-results-profile-view', () => ({
   useAcceptedProfileView: () => ({
     accepted: { profile: profileFeed.current === undefined ? TEST_PROFILE : profileFeed.current, view: {} }, accept: vi.fn(), clear: vi.fn(),
@@ -89,7 +90,7 @@ vi.mock('./use-results-keyboard-nav', () => ({
   useResultsKeyboardNav: () => ({ focusedIdx: -1, setFocusedIdx: vi.fn() }),
 }));
 vi.mock('@/lib/use-local-storage-json', () => ({
-  useHasLocalStorageKey: () => true,
+  useHasLocalStorageKey: () => profileFeed.present,
   useLocalStorageJSON: (_key: string, transform?: (raw: unknown) => unknown) =>
     transform ? transform(null) : null,
   writeLocalStorageJSON: vi.fn().mockReturnValue(true),
@@ -106,20 +107,25 @@ vi.mock('./use-results-interactions', () => ({
   }); },
 }));
 
-const modalHistory = vi.hoisted(() => ({ request: null as (() => boolean) | null, close: null as (() => void) | null }));
-vi.mock('./use-result-modal-history', () => ({
-  useResultModalHistory: (_open: boolean, close: () => void, _owner: unknown, request: () => boolean) => {
-    modalHistory.request = request; modalHistory.close = close;
-  },
-}));
+const modalHistory = vi.hoisted(() => ({ real: false, request: null as (() => boolean) | null, close: null as (() => void) | null }));
+vi.mock('./use-result-modal-history', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./use-result-modal-history')>();
+  return {
+    useResultModalHistory: (...args: Parameters<typeof actual.useResultModalHistory>) => {
+      modalHistory.request = args[3] ?? null; modalHistory.close = args[1];
+      // Selected before mount; this regression needs the actual history lifecycle.
+      if (modalHistory.real) actual.useResultModalHistory(...args);
+    },
+  };
+});
 
 vi.mock('@/components/ColdEmailModal', () => ({
-  default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget }: {
-    isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity;
+  default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget, profileAvailable, onClose }: {
+    isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity; profileAvailable?: boolean; onClose: () => void;
   }) {
     const [text, setText] = useState('Original email');
     return isOpen ? <div role="dialog" data-testid="cold-email-modal">
-      <span>target:{opportunityId}</span><span data-testid="editor-profile">{profile.research_interests}</span>
+      <span data-testid="profile-available">{String(profileAvailable)}</span><button onClick={onClose}>Close email</button><span>target:{opportunityId}</span><span data-testid="editor-profile">{profile.research_interests}</span>
       <textarea aria-label="Email text" value={text} onChange={(event) => setText(event.target.value)} />
       <button type="button" disabled={!targetReady} onClick={() => generateColdEmail(opportunityId)}>Generate</button>
       <span data-testid="reminder-target">{reminderTarget?.id ?? 'unavailable'}</span>
@@ -127,8 +133,8 @@ vi.mock('@/components/ColdEmailModal', () => ({
   },
 }));
 vi.mock('@/components/ResumeWorkspaceModal', () => ({
-  default: function ResumeEditor({ isOpen, opportunity, profile, targetReady, onClose, onCloseRequestChange }: {
-    isOpen: boolean; opportunity: Opportunity; profile: ProfileData; targetReady: boolean;
+  default: function ResumeEditor({ isOpen, opportunity, profile, targetReady, onClose, onCloseRequestChange, profileAvailable }: {
+    isOpen: boolean; opportunity: Opportunity; profile: ProfileData; targetReady: boolean; profileAvailable?: boolean;
     onClose: () => void; onCloseRequestChange: (request: (() => boolean) | null) => void;
   }) {
     const [text, setText] = useState('Original résumé');
@@ -138,7 +144,7 @@ vi.mock('@/components/ResumeWorkspaceModal', () => ({
       return () => onCloseRequestChange(null);
     }, [onCloseRequestChange]);
     return isOpen ? <div role="dialog" data-testid="resume-modal">
-      <span>target:{opportunity.id}</span><span data-testid="target-description">{opportunity.description_clean}</span>
+      <span data-testid="profile-available">{String(profileAvailable)}</span><span>target:{opportunity.id}</span><span data-testid="target-description">{opportunity.description_clean}</span>
       <span data-testid="editor-profile">{profile.research_interests}</span>
       <textarea aria-label="Résumé text" value={text} onChange={(event) => setText(event.target.value)} />
       <input aria-label="Include degree" type="checkbox" defaultChecked />
@@ -254,9 +260,11 @@ async function openDialogFor(id: string) {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  modalHistory.real = false; profileFeed.replace.mockReset();
+  window.history.replaceState({ __NA: true }, '', '/results');
   captured.draft = null; captured.resume = null;
   feed.current = null; feed.loading = false; feed.error = null;
-  profileFeed.current = undefined;
+  profileFeed.current = undefined; profileFeed.present = true;
   ownerFeed.uid = 'owner-1'; ownerFeed.generation = 1; ownerFeed.ready = true;
   window.localStorage.clear();
   advanceOwnerEpoch('owner-1'); await syncLocalIdentityOwner('owner-1');
@@ -400,5 +408,90 @@ describe('Results keeps writing buffers while current target actions fail closed
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     expect(screen.getByTestId('cold-email-modal')).toHaveTextContent('target:a');
     expect(screen.getByRole('textbox', { name: 'Email text' })).toHaveValue('My target A email');
+  });
+});
+
+
+describe('Results whole-profile deletion while writing', () => {
+  it.each(['email', 'resume'] as const)('exits %s to Home without a delayed modal Back restoring Results', async (kind) => {
+    modalHistory.real = true;
+    const queuedBack: (() => void)[] = [];
+    vi.spyOn(window.history, 'back').mockImplementation(() => {
+      // history.back is asynchronous in browsers. Deliver its popstate after
+      // the host's router.replace to reproduce the competing navigation.
+      queuedBack.push(() => {
+        window.history.replaceState({ __NA: true }, '', '/results?tab=all&returnSession=old');
+        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+      });
+    });
+    profileFeed.replace.mockImplementation((url: string) => {
+      window.history.replaceState({ __NA: true, page: 'home' }, '', url);
+    });
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await mountResults();
+    act(() => (kind === 'email' ? captured.draft : captured.resume)!('a'));
+    const input = await screen.findByRole('textbox', { name: kind === 'email' ? 'Email text' : 'Résumé text' });
+    fireEvent.change(input, { target: { value: 'Exact unsaved writing' } });
+    expect(window.history.state.__ofeResultsModal).toEqual(expect.any(String));
+    profileFeed.current = null; profileFeed.present = false;
+    view.rerender(<ResultsPage />);
+    expect(screen.getByRole('textbox')).toBe(input);
+    expect(profileFeed.replace).not.toHaveBeenCalled();
+    if (kind === 'email') fireEvent.click(screen.getByRole('button', { name: 'Close email' }));
+    else {
+      act(() => { modalHistory.request!(); });
+      fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    }
+    await waitFor(() => expect(profileFeed.replace).toHaveBeenCalledWith('/'));
+    act(() => queuedBack.forEach((pop) => pop()));
+    // A late filters/session effect while the outgoing page remains mounted
+    // also has no authority to replace the destination with its old URL.
+    view.rerender(<ResultsPage />);
+    expect(window.location.pathname).toBe('/');
+    expect(queuedBack).toHaveLength(0);
+    expect(window.history.state.__ofeResultsModal).toBeUndefined();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(generateColdEmail).not.toHaveBeenCalled();
+  });
+
+  it.each(['email', 'resume'] as const)('keeps the current owner %s buffer after actual profile absence, with no redirect or usable old source', async (kind) => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await mountResults();
+    act(() => (kind === 'email' ? captured.draft : captured.resume)!('a'));
+    const input = await screen.findByRole('textbox', { name: kind === 'email' ? 'Email text' : 'Résumé text' });
+    fireEvent.change(input, { target: { value: 'Manual unsaved writing' } });
+    profileFeed.current = null; profileFeed.present = false;
+    view.rerender(<ResultsPage />);
+    expect(screen.getByRole('textbox')).toBe(input);
+    expect(input).toHaveValue('Manual unsaved writing');
+    expect(screen.getByTestId('profile-available')).toHaveTextContent('false');
+    expect(screen.getByRole('button', { name: kind === 'email' ? 'Generate' : 'Adapt résumé' })).toBeDisabled();
+    expect(profileFeed.replace).not.toHaveBeenCalled();
+    expect(generateColdEmail).not.toHaveBeenCalled();
+    // Closing releases the retained session; the ordinary absent-profile path resumes.
+    if (kind === 'email') fireEvent.click(screen.getByRole('button', { name: 'Close email' }));
+    else { act(() => { modalHistory.request!(); }); fireEvent.click(screen.getByRole('button', { name: 'Discard' })); }
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(profileFeed.replace).toHaveBeenCalledWith('/'));
+    act(() => { captured.draft!('a'); captured.resume!('a'); });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not mistake a still-accepted old view for a live profile once the storage key is gone', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await openDialogFor('a');
+    profileFeed.present = false; // The view-accepting effect has not committed null yet.
+    view.rerender(<ResultsPage />);
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
+    expect(screen.getByTestId('profile-available')).toHaveTextContent('false');
+    expect(profileFeed.replace).not.toHaveBeenCalled();
+  });
+
+  it('still redirects a cold visit without a profile or writing session', async () => {
+    profileFeed.present = false; profileFeed.current = null;
+    const { default: ResultsPage } = await import('./page');
+    render(<ResultsPage />);
+    await waitFor(() => expect(profileFeed.replace).toHaveBeenCalledWith('/'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

@@ -45,19 +45,21 @@ function canonical(value: unknown): string {
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, profileRefresh }: {
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, profileAvailable = true, profileRefresh }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
-  targetReady?: boolean; profileRefresh?: ProfileRefreshState;
+  targetReady?: boolean; profileAvailable?: boolean; profileRefresh?: ProfileRefreshState;
 }) {
   const locale = useLocale();
-  const sourceReady = targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
+  const profileAvailableRef = useRef(profileAvailable);
+  useLayoutEffect(() => { profileAvailableRef.current = profileAvailable; }, [profileAvailable]);
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const domId = useId();
   const router = useRouter();
   const incomingProfileKey = canonical(profile);
   const [supplementProfile, setSupplementProfile] = useState<{ view: ProfileViewSnapshot; inputKey: string } | null>(null);
-  const acceptedProfile = supplementProfile && supplementProfile.inputKey === incomingProfileKey
+  const acceptedProfile = profileAvailable && supplementProfile && supplementProfile.inputKey === incomingProfileKey
     && isOwnerTokenValid(supplementProfile.view.token, supplementProfile.view.token.uid)
     ? supplementProfile.view.renderedProfile : profile;
   const profileKey = canonical(acceptedProfile);
@@ -78,12 +80,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const incomingProfileRef = useRef(incomingProfileKey);
   const routerRef = useRef(router);
   useLayoutEffect(() => {
-    if (incomingProfileRef.current !== incomingProfileKey) {
-      // A newly rendered parent profile replaces this temporary accepted view.
+    if (!profileAvailable || incomingProfileRef.current !== incomingProfileKey) {
+      // A missing or newly rendered profile retires this temporary accepted view.
       setSupplementProfile(null);
     }
     incomingProfileRef.current = incomingProfileKey; routerRef.current = router;
-  }, [incomingProfileKey, router]);
+  }, [incomingProfileKey, profileAvailable, router]);
   const scopeRef = useRef<Scope | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -184,7 +186,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const ownerReady = !!activeSession && isOwnerTokenValid(activeSession.scope.owner, activeSession.scope.owner.uid);
   const dirty = !!activeSession && isDirty(activeSession);
   const doc = activeSession?.doc ?? null;
-  const comparable = checks?.key === contextKey ? checks : null;
+  const comparable = profileAvailable && checks?.key === contextKey ? checks : null;
   const outdated = !!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
     || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source);
   const creating = activeSession?.phase === 'creating';
@@ -361,14 +363,14 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       <header className="flex items-start justify-between gap-3 border-b p-4 sm:px-6">
         <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
         <div className="ml-3 flex shrink-0 items-start gap-2">
-          <button type="button" className={button} disabled={!ownerReady} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
+          <button type="button" className={button} disabled={!ownerReady || (!profileAvailable && !supplementMounted)} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
             onClick={() => { if (!supplementMounted) supplementInputRef.current = incomingProfileKey; setSupplementMounted(true); setSupplementOpen((old) => !old); }}>
             {copy('Add experience details', '补充经历')}
           </button>
           <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
         </div>
       </header>
-      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} onBeforeReview={() => { askLeave('master'); return false; }} />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => { askLeave('master'); return false; }} />
         {leave && <div role="alert" className="mx-4 my-2 max-h-[35vh] shrink-0 overflow-y-auto rounded-xl border border-amber-300 bg-amber-50 p-3">
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
@@ -380,11 +382,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
           className="mb-5 min-w-0 rounded-xl border bg-gray-50 p-4 lg:order-2 lg:sticky lg:top-0 lg:mb-0 lg:max-h-[calc(92vh-10rem)] lg:overflow-y-auto">
           <ResumeSupplementPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}`}
-            owner={activeSession.scope.owner} targetKey={targetKey}
+            owner={activeSession.scope.owner} targetKey={targetKey} profileAvailable={profileAvailable}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setSupplementDirty(value); }}
             onOpenProfile={() => askLeave('master')}
             onAcceptedProfile={(view, againstView) => {
-              if (current(activeSession.scope) && isOwnerTokenValid(view.token, view.token.uid)
+              if (profileAvailableRef.current && current(activeSession.scope)
+                && activeSession.scope.creation === acceptedCreation && isOwnerTokenValid(view.token, view.token.uid)
                 && view.token.uid === activeSession.scope.owner.uid && view.token.epoch === activeSession.scope.owner.epoch
                 && view.token.generation === activeSession.scope.owner.generation
                 && isOwnerTokenValid(againstView.token, againstView.token.uid)
@@ -417,7 +420,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {activeSession && activeSession.phase !== 'loading' && activeSession.phase !== 'load-error' && <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!sourceReady || !ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
             onClick={() => { if (doc) setLeave('rebuild'); else void create(); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
-          {!comparable?.canCreate && ((dirty || supplementDirty)
+          {profileAvailable && !comparable?.canCreate && ((dirty || supplementDirty)
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
             : <Link href="/#resume-master" className="text-sm text-indigo-700 underline">{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
         </div>}
@@ -435,8 +438,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
-            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && sourceReady}
-            unsaved={dirty} outdated={outdated} />
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (sourceReady || !profileAvailable)}
+            unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}

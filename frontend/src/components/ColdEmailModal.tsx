@@ -71,6 +71,8 @@ const STYLE_KEYS: readonly EmailStyle[] = ['professional', 'warm', 'friendly', '
 interface ColdEmailModalProps {
   isOpen: boolean;
   targetReady?: boolean;
+  /** False keeps the open draft; the retained profile is not current material. */
+  profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
   onClose: () => void;
   profile: ProfileData;
@@ -259,10 +261,11 @@ export default function ColdEmailModal({
   onContactConfirmed,
   onReminderSet,
   targetReady = true,
+  profileAvailable = true,
   profileRefresh,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
-  const sourceReady = targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
   const sourceReadyRef = useRef(sourceReady);
   useLayoutEffect(() => { sourceReadyRef.current = sourceReady; }, [sourceReady]);
   const { openModal } = useAuthModal();
@@ -1200,7 +1203,7 @@ export default function ColdEmailModal({
           </button>
         </div>
 
-        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} onBeforeReview={() => {
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => {
           if (editorUsedRef.current && !window.confirm(locale === 'zh'
             ? '离开会丢弃未保存的邮件草稿。确定去核对资料？'
             : 'Leaving discards this unsaved email draft. Go to your profile?')) return false;

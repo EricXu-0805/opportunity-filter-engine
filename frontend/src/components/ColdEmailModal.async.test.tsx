@@ -757,3 +757,33 @@ describe('cloud refresh and target readiness', () => {
     expect(api.variants).toHaveBeenCalledTimes(1);
   });
 });
+
+
+describe('missing profile keeps the email draft', () => {
+  it('keeps manual fields and copy, pauses generation and retires late refinement', async () => {
+    const pending = deferred<{ body: string; method: string }>(); api.refine.mockReturnValue(pending.promise);
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Keep my email after profile removal' } });
+    requestEdit();
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'Keep my next request' } });
+    view.show({ profileAvailable: false });
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+    expect(screen.getByDisplayValue('Keep my email after profile removal')).toBeEnabled();
+    expect(screen.getByDisplayValue('Keep my next request')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    view.show({ profileAvailable: true });
+    await act(async () => { pending.resolve({ body: 'Late deleted-profile refinement', method: 'llm' }); });
+    expect(screen.getByDisplayValue('Keep my email after profile removal')).toBeVisible();
+    expect(screen.queryByDisplayValue('Late deleted-profile refinement')).toBeNull();
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not generate from a retained snapshot when opened without a current profile', async () => {
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} profileAvailable={false} opportunityId="A" opportunityTitle="Lab" />);
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+    await act(async () => {});
+    expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+  });
+});
