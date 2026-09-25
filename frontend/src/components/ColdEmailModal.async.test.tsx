@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ColdEmailResponse, EmailVariant, ExperienceEntry, ExperienceUsage, ProfileData } from '@/lib/types';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
@@ -884,5 +885,23 @@ describe('action-time profile checks', () => {
     await act(async () => { pending.resolve({ ...receipt, checkId: 2 }); });
     expect(api.refine).not.toHaveBeenCalled();
     expect(screen.getByDisplayValue('I changed the draft during the read')).toBeInTheDocument();
+  });
+});
+
+
+describe('stream failures do not repeat generation', () => {
+  it.each(['timeout', 'network_error', 'invalid_response'] as const)('preserves the draft and avoids a second POST after %s', async code => {
+    const held = deferred<ColdEmailResponse>(); api.stream.mockReturnValue(held.promise);
+    openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My manual cold email' } });
+    await act(async () => { held.reject(new ColdEmailStreamError(code)); });
+    expect(screen.getByDisplayValue('My manual cold email')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled();
+  });
+  it.each([404, 405])('permits one compatibility request only after HTTP %i', async status => {
+    api.stream.mockRejectedValue(new ColdEmailStreamError('unsupported', status));
+    api.generate.mockResolvedValue(aiDraft('Compatible draft'));
+    openModal(); await screen.findByDisplayValue('Compatible draft');
+    expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).toHaveBeenCalledOnce();
   });
 });

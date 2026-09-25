@@ -1,5 +1,7 @@
 'use client';
 
+import { canFallbackColdEmailStream } from '@/lib/cold-email-stream';
+
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
@@ -915,14 +917,14 @@ export default function ColdEmailModal({
       const opts = { engine: 'ai' as const, style };
       let resp;
       try {
-        // Stream-first: shows which pipeline stage is running. Any transport
-        // failure (old backend, proxy buffering, network hiccup mid-stream)
-        // falls back to the blocking route.
+        // A definite old backend may use the blocking compatibility route.
+        // Timeouts/disconnects may already have generated a draft: never replay.
         resp = await generateColdEmailStream(requestProfile, opportunityId, opts, (stage) => {
           if (current()) setAiStage(stage);
         });
-      } catch {
+      } catch (streamError) {
         if (!current()) return;
+        if (!canFallbackColdEmailStream(streamError)) throw streamError;
         setAiStage(null);
         resp = await generateColdEmail(requestProfile, opportunityId, opts);
       }

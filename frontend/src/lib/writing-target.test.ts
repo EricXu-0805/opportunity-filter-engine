@@ -45,6 +45,12 @@ describe('readWritingTarget anonymous full-detail transport', () => {
     expect(auth.get).not.toHaveBeenCalled(); expect(auth.refresh).not.toHaveBeenCalled();
   });
 
+  it('keeps the exact server writing version with the complete target', async () => {
+    const target = { ...full(), writing_target_version: 'wt1:' + 'a'.repeat(64) };
+    fetchMock.mockResolvedValue(json(target));
+    expect(await readWritingTarget(target.id)).toEqual(target);
+  });
+
   it('encodes the whole id as one path segment and honors the configured API base', async () => {
     vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://api.example.test/api/');
     const id = '学校/target ?#%'; fetchMock.mockResolvedValue(json(full(id)));
@@ -100,6 +106,7 @@ describe('readWritingTarget anonymous full-detail transport', () => {
     ['coercible record kind', (target: Record<string, unknown>) => { target.record_kind = ['listing']; }],
     ['malformed metadata', (target: Record<string, unknown>) => { target.metadata = []; }],
     ['malformed keywords', (target: Record<string, unknown>) => { target.keywords = [1]; }],
+    ['malformed writing version', (target: Record<string, unknown>) => { target.writing_target_version = 'wt1:' + 'a'.repeat(64) + '\n'; }],
     ['partial eligibility', (target: Record<string, unknown>) => { target.eligibility = { skills_required: [] }; }],
     ['malformed application', (target: Record<string, unknown>) => { target.application = 'apply'; }],
     ['revealed contact', (target: Record<string, unknown>) => { target.contact_email = 'private@example.test'; }],

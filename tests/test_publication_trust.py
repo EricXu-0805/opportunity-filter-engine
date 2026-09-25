@@ -245,9 +245,11 @@ class TestServedPayloads:
         # _redact — one gate, no per-endpoint drift.
         import inspect
 
+        from backend.lib.public_opportunity_detail import project_public_detail
         from backend.routes import opportunities as op
 
-        assert "works_are_verified" in inspect.getsource(op._redact)
+        assert "project_public_detail" in inspect.getsource(op._redact)
+        assert "works_are_verified" in inspect.getsource(project_public_detail)
         assert "recent_works" in op._UNVERIFIED_PUBLICATION_KEYS
         src_batch = inspect.getsource(op.get_opportunities_batch)
         src_similar = inspect.getsource(op.get_similar_opportunities)

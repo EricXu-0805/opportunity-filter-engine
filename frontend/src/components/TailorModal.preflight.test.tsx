@@ -10,10 +10,10 @@ vi.mock('@/lib/api', () => ({ tailorResume: api.tailor, extractResumeBullets: ap
 import TailorModal from './TailorModal';
 const profile: ProfileData = { institution: 'UIUC', college: 'Engineering', major: 'CS', grade: 'Junior',
   is_international: false, research_interests: 'robots', skills: [], resume_text: 'Full saved résumé source' };
-const response: TailorResponse = { opportunity_id: 'target-one', pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00', method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0 }] };
+const response: TailorResponse = { opportunity_id: 'target-one', target_version: `wt1:${'a'.repeat(64)}`, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0 }] };
 function publicTarget(id = 'target-one'): Opportunity {
   return { id, title: 'Target one', organization: 'UIUC', source_type: 'manual', record_kind: 'listing',
-    opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
+    writing_target_version: `wt1:${'a'.repeat(64)}`, opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
     description_clean: 'Student research', keywords: ['research'],
     eligibility: { preferred_year: [], majors: [], skills_required: [], international_friendly: 'unknown', citizenship_required: null },
     application: { application_effort: 'unknown', requires_resume: 'yes', contact_method: 'email' },
@@ -39,7 +39,7 @@ const textarea = () => screen.getByPlaceholderText('tailor.bulletsPlaceholder');
 const generate = () => screen.getByRole('button', { name: /^tailor\.(generate|regenerate)$/ });
 function type(text = 'My unchanged manual bullet') { fireEvent.change(textarea(), { target: { value: text } }); }
 beforeEach(async () => { vi.resetAllMocks(); localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('tailor-owner'); await syncLocalIdentityOwner('tailor-owner');
-  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.2' }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'], pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00' }); });
+  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'], pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00' }); });
 afterEach(() => cleanup());
 
 describe('Tailor profile preflight', () => {
@@ -57,14 +57,14 @@ describe('Tailor profile preflight', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tailor.reviewDraft' })); await drain();
     fireEvent.click(generate()); await drain();
     expect(check).toHaveBeenCalledTimes(3); // initial action, explicit review, then generation
-    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.2' });
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
   });
   it('extracts the latest complete résumé only after its receipt is rendered', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' })); await drain();
     expect(api.extract).not.toHaveBeenCalled(); const fresh = { ...profile, resume_text: '完整尾页🚀'.repeat(1000) };
     read.resolve(receipt(fresh)); await drain(); expect(api.extract).not.toHaveBeenCalled();
-    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { expectedPipelineVersion: 'w13.2' });
+    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { expectedPipelineVersion: 'w13.3' });
   });
   it.each(['null', 'rejected', 'deleted'] as const)('keeps manual text on %s read and allows a fresh retry', async (kind) => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn().mockImplementationOnce(() => read.promise).mockResolvedValue(receipt());

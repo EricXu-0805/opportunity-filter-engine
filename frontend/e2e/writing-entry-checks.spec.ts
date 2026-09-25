@@ -25,7 +25,7 @@ const rawResume = (first: string) => `EXPERIENCE\n- ${first}\n- ${SECOND_BULLET}
 interface Owner { http: APIRequestContext; uid: string; token: string; revision: number }
 interface WritingRequest {
   path: string; profile?: ProfileRequest; opportunity_id?: string; resume_text?: string;
-  original_bullets?: string[]; sections?: ResumeSectionInput[]; current_text?: string;
+  expected_target_version?: string; original_bullets?: string[]; sections?: ResumeSectionInput[]; current_text?: string;
   experience_evidence?: { version: number; resume_text: string; entries: ExperienceEntry[] };
 }
 function profile(): ProfileData {
@@ -117,7 +117,7 @@ async function installWriting(page: Page) {
   const requests: WritingRequest[] = [];
   for (const pattern of ['**/api/tailor**', '**/api/cold-email**', '**/api/resume/**']) await page.route(pattern, async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.2' } }); return; }
+    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.3' } }); return; }
     const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
     requests.push({ ...body, path });
     if (path === '/api/cold-email/variants' || path === '/api/cold-email/stream') {
@@ -128,7 +128,7 @@ async function installWriting(page: Page) {
       if (path.endsWith('/variants')) await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } });
       else await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path === '/api/tailor') {
-      await route.fulfill({ json: { opportunity_id: TARGET, method: 'ai', warnings: [], pipeline_version: 'w13.2', generated_at: new Date().toISOString(),
+      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [], pipeline_version: 'w13.3', generated_at: new Date().toISOString(),
         tailored_bullets: body.original_bullets!.map((text, index) => ({ text, source_evidence: text, source_index: index })) } });
     } else if (path === '/api/tailor/structure') {
       const bullets = body.resume_text!.split('\n').filter(line => line.startsWith('- ')).map((line, index) => ({ id: `bullet-${index}`, text: line.slice(2) }));
@@ -593,4 +593,29 @@ test.describe('Saved opportunity requirements', () => {
       expect(ai).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
+});
+
+
+test('an interrupted email stream keeps manual text and does not make a second generation request', async ({ page }) => {
+  const owner = await seed(page), requests = await installWriting(page);
+  let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+  let started = false;
+  await page.route('**/api/cold-email/stream', async route => {
+    requests.push({ ...route.request().postDataJSON(), path: '/api/cold-email/stream' }); started = true;
+    await gate;
+    await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Private upstream details must not appear' });
+  });
+  try {
+    await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+    await expect.poll(() => started).toBe(true);
+    await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
+    await emailFields(page).body.fill(MANUAL);
+    const failed = page.waitForResponse(response => new URL(response.url()).pathname === '/api/cold-email/stream' && response.status() === 503);
+    release(); await failed;
+    await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
+    await expect(emailFields(page).body).toHaveValue(MANUAL);
+    await expect(page.getByText('Private upstream details must not appear')).toHaveCount(0);
+    expect(requests.filter(request => request.path === '/api/cold-email/stream')).toHaveLength(1);
+    expect(requests.filter(request => request.path === '/api/cold-email')).toEqual([]);
+  } finally { release(); await owner.http.dispose(); }
 });

@@ -34,14 +34,14 @@ vi.mock('@/lib/api', () => ({
     // Normal old fixtures get the actual wire receipt. Explicit malformed
     // target/version fields stay malformed so isolation tests remain meaningful.
     return result && typeof result === 'object'
-      ? { opportunity_id: args[1], pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
       : result;
   },
   getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
   extractResumeBullets: async (...args: unknown[]) => {
     const result = await mockExtractResumeBullets(...args);
     return result && typeof result === 'object'
-      ? { pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      ? { pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
       : result;
   },
 }));
@@ -76,7 +76,7 @@ function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
 
 function publicTarget(id = 'opp-123'): Opportunity {
   return { id, title: 'Some research opportunity', organization: 'UIUC', source_type: 'manual', record_kind: 'listing',
-    opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
+    writing_target_version: `wt1:${'a'.repeat(64)}`, opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
     description_clean: 'Student research', keywords: ['research'],
     eligibility: { preferred_year: [], majors: [], skills_required: [], international_friendly: 'unknown', citizenship_required: null },
     application: { application_effort: 'unknown', requires_resume: 'yes', contact_method: 'email' },
@@ -132,7 +132,7 @@ beforeEach(async () => {
     // R71-G: default the status probe to "AI available" so the
     // unavailable banner stays hidden and pre-existing assertions are
     // untouched. Tests that exercise the banner override this.
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.2' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
   });
 
 describe('TailorModal', () => {
@@ -192,7 +192,7 @@ describe('TailorModal', () => {
         expect.objectContaining({ major: 'CS' }),
         'opp-123',
         ['Worked on Python projects in CS 225'],
-        { locale: 'en', expectedPipelineVersion: 'w13.2' },
+        { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` },
       ),
     );
 
@@ -541,7 +541,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: shows the AI-unavailable banner when status probe returns false', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w13.2' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w13.3' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -551,7 +551,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: hides the AI-unavailable banner when AI is configured', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.2' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -723,7 +723,7 @@ describe('TailorModal', () => {
         expect.any(Object),
         'opp-123',
         ['first bullet', 'second bullet', 'third bullet'],
-        { locale: 'en', expectedPipelineVersion: 'w13.2' },
+        { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` },
       ),
     );
   });
@@ -1979,7 +1979,7 @@ describe('W13 target isolation + draft staleness', () => {
     window.localStorage.setItem(
       DRAFT_KEY,
       encodeDraft(createDraft(OWNER, 'opp-123', 'old bullet draft', 'manual',
-        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w13.2'))),
+        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w13.3'))),
     );
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
     expect(await screen.findByTestId('tailor-stale-draft')).toBeTruthy();
@@ -2011,7 +2011,7 @@ describe('resume processing disclosure', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
     await waitFor(() => expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument());
     expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
-    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w13.2' });
+    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
   });
 
   it('keeps the current draft and shows failure when a long extraction is rejected', async () => {

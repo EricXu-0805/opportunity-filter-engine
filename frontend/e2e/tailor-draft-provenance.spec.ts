@@ -20,7 +20,7 @@ interface Owner { http: APIRequestContext; session: Session; uid: string; revisi
 interface Binding { profile_sig: string; target_sig: string; resume_sig: string; pipeline_version: string; rule_version: string }
 interface SavedDraft { version: 2; owner_id: string; opportunity_id: string; text: string;
   origin: { kind: string; binding: Binding | null }; review: null | { text_sig: string; binding: Binding } }
-interface ModelRequest { path: string; original_bullets?: string[]; expected_pipeline_version?: string; resume_text?: string; profile?: unknown }
+interface ModelRequest { path: string; original_bullets?: string[]; expected_pipeline_version?: string; expected_target_version?: string; resume_text?: string; profile?: unknown }
 async function commit(owner: Owner, patch: Partial<ProfileData>) {
   const response = await owner.http.post(new URL('/rest/v1/rpc/commit_profile_patch_cas', STUB).href, {
     headers: { Authorization: `Bearer ${owner.session.access_token}` },
@@ -55,17 +55,22 @@ async function open(page: Page) {
 }
 const generate = (page: Page) => page.getByRole('button', { name: /^(Tailor with AI|Re-tailor)$/ });
 async function models(page: Page) {
-  const state = { version: 'w13.2', rejectNext: false, requests: [] as ModelRequest[], statusReads: 0 };
+  const state = { version: 'w13.3', rejectNext: false, rejectTargetNext: false, targetChanged: false, requests: [] as ModelRequest[], statusReads: 0 };
   await page.route('**/api/tailor**', async route => {
     const path = pathOf(route.request().url());
     if (path === '/api/tailor/status') { state.statusReads += 1; await route.fulfill({ json: { ai_available: true, pipeline_version: state.version } }); return; }
     const body = route.request().postDataJSON() as Omit<ModelRequest, 'path'>; state.requests.push({ path, ...body });
+    if (path === '/api/tailor') expect(body.expected_target_version).toMatch(/^wt1:[0-9a-f]{64}$/);
+    if (state.rejectTargetNext) {
+      state.rejectTargetNext = false; state.targetChanged = true;
+      await route.fulfill({ status: 409, json: { detail: { code: 'WRITING_TARGET_CHANGED', message: 'The opportunity changed.', retryable: false } } }); return;
+    }
     if (state.rejectNext) {
-      state.rejectNext = false; state.version = 'w13.3-fixture';
+      state.rejectNext = false; state.version = 'w13.4-fixture';
       await route.fulfill({ status: 409, json: { detail: { code: 'TAILOR_PIPELINE_CHANGED', message: 'Tailoring rules changed. Check again before continuing.', retryable: false, pipeline_version: state.version } } }); return;
     }
     expect(body.expected_pipeline_version).toBe(state.version);
-    if (path === '/api/tailor') await route.fulfill({ json: { opportunity_id: TARGET, method: 'ai', warnings: [],
+    if (path === '/api/tailor') await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [],
       pipeline_version: state.version, generated_at: new Date().toISOString(),
       tailored_bullets: body.original_bullets!.map((text, source_index) => ({ text, source_evidence: text, source_index })) } });
     else if (path === '/api/tailor/extract-bullets') await route.fulfill({ json: { bullets: [BULLET], method: 'heuristic', warnings: [],
@@ -146,6 +151,7 @@ test.describe('Saved Tailor draft provenance', () => {
           const previous = value.eligibility.preferred_year;
           const next = JSON.stringify(previous) === JSON.stringify(['Senior']) ? ['Junior'] : ['Senior'];
           expect(next).not.toEqual(previous); value.eligibility = { ...value.eligibility, preferred_year: next };
+          value.writing_target_version = `wt1:${'b'.repeat(64)}`;
         }
         await route.fulfill({ response, json: value });
       });
@@ -163,7 +169,7 @@ test.describe('Saved Tailor draft provenance', () => {
     const owner = await account();
     try {
       await seed(page, owner); const state = await models(page), writesSeen = writes(page); const initial = await establish(page, owner, state);
-      await page.getByRole('button', { name: 'Close tailor panel', exact: true }).click(); state.version = 'w13.2-next-fixture';
+      await page.getByRole('button', { name: 'Close tailor panel', exact: true }).click(); state.version = 'w13.3-next-fixture';
       await open(page); await blocked(page, state, 1, STALE); await review(page);
       expect((await saved(page, owner))!.value.review?.binding.pipeline_version).toBe(state.version);
       state.rejectNext = true; await generate(page).click();
@@ -171,7 +177,7 @@ test.describe('Saved Tailor draft provenance', () => {
       await expect(page.locator('#tailor-bullets-input')).toHaveValue(BULLET);
       await blocked(page, state, 2, STALE); // fresh status may run, but no automatic POST at the new version
       await review(page); await generate(page).click(); await expect.poll(() => state.requests.length).toBe(3);
-      expect(state.requests.at(-1)?.expected_pipeline_version).toBe('w13.3-fixture');
+      expect(state.requests.at(-1)?.expected_pipeline_version).toBe('w13.4-fixture');
       expect((await saved(page, owner))!.value.origin).toEqual(initial.value.origin); expect(writesSeen).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
@@ -188,6 +194,47 @@ test.describe('Saved Tailor draft provenance', () => {
       await review(page); await generate(page).click(); await expect.poll(() => state.requests.length).toBe(2);
       expect(state.requests.at(-1)?.original_bullets).toEqual([MANUAL]);
       expect((await saved(page, owner))!.value.origin).toEqual({ kind: 'unknown', binding: null }); expect(writesSeen).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('manual review cannot supply a missing server target version', async ({ page }) => {
+    const owner = await account(); let missing = false;
+    try {
+      await seed(page, owner); const state = await models(page), writesSeen = writes(page);
+      await page.route(`**/api/opportunities/${TARGET}**`, async route => {
+        const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200); const value = await response.json();
+        if (missing) delete value.writing_target_version;
+        await route.fulfill({ response, json: value });
+      });
+      const initial = await establish(page, owner, state); await page.getByRole('button', { name: 'Close tailor panel', exact: true }).click();
+      missing = true; await open(page); await expect(page.locator('#tailor-bullets-input')).toHaveValue(BULLET);
+      await expect(page.getByRole('button', { name: 'I reviewed these bullets', exact: true })).toBeVisible();
+      await review(page); await generate(page).click();
+      await expect(page.getByText('The opportunity could not be verified. Your text is kept. Check again before tailoring.', { exact: true })).toBeVisible();
+      expect(state.requests).toHaveLength(1); expect((await saved(page, owner))!.value.origin).toEqual(initial.value.origin);
+      await expect(page.locator('#tailor-bullets-input')).toHaveValue(BULLET); expect(writesSeen).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('a server target-version conflict keeps the draft and waits for review of the new target', async ({ page }) => {
+    const owner = await account(); const nextVersion = `wt1:${'c'.repeat(64)}`;
+    try {
+      await seed(page, owner); const state = await models(page), writesSeen = writes(page);
+      await page.route(`**/api/opportunities/${TARGET}**`, async route => {
+        const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200); const value = await response.json();
+        if (state.targetChanged) { value.writing_target_version = nextVersion; value.description_clean += '\nUpdated public research requirements.'; }
+        await route.fulfill({ response, json: value });
+      });
+      const initial = await establish(page, owner, state); await page.locator('#tailor-bullets-input').fill(MANUAL);
+      state.rejectTargetNext = true; await generate(page).click();
+      await expect(page.getByText('The opportunity changed. Your text is kept. Check it again before tailoring.', { exact: true })).toBeVisible();
+      await expect(generate(page)).toBeEnabled(); expect(state.requests).toHaveLength(2);
+      await expect(page.locator('#tailor-bullets-input')).toHaveValue(MANUAL);
+      await generate(page).click(); // fresh GET discovers a different complete target and retires this intent
+      await expect(page.getByText(STALE, { exact: true })).toBeVisible(); expect(state.requests).toHaveLength(2);
+      await review(page); await generate(page).click(); await expect.poll(() => state.requests.length).toBe(3);
+      expect(state.requests[2]).toMatchObject({ original_bullets: [MANUAL], expected_target_version: nextVersion });
+      expect((await saved(page, owner))!.value.origin).toEqual(initial.value.origin); expect(writesSeen).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
 

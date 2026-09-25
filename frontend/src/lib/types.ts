@@ -303,6 +303,8 @@ export type FacultyAvailabilityStatus =
   | 'research_inactive';
 
 export interface Opportunity {
+  /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
+  writing_target_version?: string;
   id: string;
   title: string;
   organization: string;
@@ -618,6 +620,8 @@ export interface TailoredBullet {
  *   - `all_bullets_rejected`      — every bullet was flagged → passthrough
  */
 export interface TailorResponse {
+  /** Exact server snapshot used for this result, separate from code pipeline rules. */
+  target_version?: string | null;
   tailored_bullets: TailoredBullet[];
   method: 'ai' | 'fallback';
   warnings: string[];

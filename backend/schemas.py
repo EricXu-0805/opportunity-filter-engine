@@ -570,6 +570,12 @@ class TailorRequest(BaseModel):
         default=None, strict=True, min_length=1, max_length=80,
         pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
     )
+    # Optional for older clients; new writing actions bind to an anonymous
+    # full-detail snapshot checked before provider work.
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     # R71-D: caller-declared output language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
     # to pick between the EN and ZH system prompts; everything else (the
@@ -634,6 +640,7 @@ class TailorResponse(BaseModel):
     opportunity_id: str | None = None
     generated_at: str | None = None
     pipeline_version: str | None = None
+    target_version: str | None = None
 
 
 class ResumeProcessingChunk(BaseModel):

@@ -34,6 +34,7 @@ const ownerSnapshot = () => {
 };
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { writingTargetVersion } from '@/lib/writing-target-version';
 import type { Opportunity, ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
@@ -706,6 +707,10 @@ export default function TailorModal({
 
   async function handleGenerate() {
     if (!sourceReadyRef.current) return;
+    // Only the server-issued receipt from this exact checked target can
+    // authorize target-conditioned generation; local review cannot create it.
+    const expectedTargetVersion = writingTargetVersion(target);
+    if (!expectedTargetVersion) { setError(t('tailor.targetVersionUnavailable')); return; }
     const owner = captureOwnerToken();
     if (!isOwnerTokenValid(owner, owner.uid)) return;
     const bullets = parseBullets(draft);
@@ -743,11 +748,12 @@ export default function TailorModal({
       setDraftStatus(status);
       if (bound !== record) setRecord(bound);
       if (status !== 'current' || rulesNeedReview) return;
-      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale, expectedPipelineVersion: binding.pipeline_version });
+      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale, expectedPipelineVersion: binding.pipeline_version, expectedTargetVersion });
       if (!stillCurrent()) return; // superseded — N1's result must never appear as N2's
       // W13: a response the backend stamped for a DIFFERENT target than the
       // one this call was made for is dropped outright.
       if (data.opportunity_id !== ctx.opportunityId || !hasReceipt(data, binding)) throw new Error(t('tailor.rulesUnavailable'));
+      if (data.target_version !== expectedTargetVersion) throw new Error(t('tailor.targetVersionUnavailable'));
       outputBindingRef.current = binding;
       setSubmittedBullets(bullets);
       setRejected(new Set()); setEdits({}); setEditingIdx(null);
@@ -755,8 +761,12 @@ export default function TailorModal({
       setResp(data);
     } catch (err) {
       if (!stillCurrent()) return;
-      setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
-      handleRuleFailure(err);
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') {
+        setError(t('tailor.targetVersionChanged'));
+      } else {
+        setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
+        handleRuleFailure(err);
+      }
     } finally {
       // Old finally blocks must not clear a NEWER request's loading state.
       if (stillCurrent()) setLoading(false);
@@ -1002,6 +1012,7 @@ export default function TailorModal({
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
+              {sourceReady && target && !writingTargetVersion(target) && !error && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.targetVersionUnavailable')}</p>}
               {inputRejected && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.invalidDraftText')}</p>}
               {record && needsReview && (
                 <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" data-testid="tailor-draft-review">

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
   /* The real useT memoizes `t` via useCallback so it is stable across
@@ -93,9 +94,11 @@ beforeEach(async () => {
   await syncLocalIdentityOwner('cold-email-test-owner');
   mockGetVariants.mockReset();
   mockGenerateColdEmail.mockReset();
-  // The modal is stream-first with a blocking-route fallback; existing AI
-  // tests exercise the fallback path by default (stream "unavailable").
-  mockGenerateColdEmailStream.mockReset().mockRejectedValue(new Error('no stream in tests'));
+  // These legacy AI fixtures exercise a known old backend: its SSE endpoint
+  // returns 404 before generation begins. Only that explicit unsupported
+  // result permits the blocking compatibility request; network/timeout
+  // failures remain covered separately and must never replay.
+  mockGenerateColdEmailStream.mockReset().mockRejectedValue(new ColdEmailStreamError('unsupported', 404));
   mockRefineEmail.mockReset();
   mockExtractResumeBullets.mockReset().mockResolvedValue({
     bullets: [],
@@ -451,8 +454,8 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
-      // Stream-first: the (default-rejecting) stream mock was tried before the
-      // blocking fallback landed the draft.
+      // Stream-first: the known unsupported (404) endpoint was checked before
+      // the blocking compatibility route landed the draft.
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       // No recommended_style in this variants mock → seeds the default tone.
       expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional' });
@@ -731,7 +734,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-silent" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
-      // the automatic attempt did run (stream rejected → blocking fallback)…
+      // the automatic attempt did run (known stream 404 → compatibility POST)…
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
       // …but the user never asked, so nothing is announced or switched.
       expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument();

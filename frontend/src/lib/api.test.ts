@@ -1063,3 +1063,27 @@ describe('opportunity-type request intent', () => {
     }
   });
 });
+
+
+describe('Tailor server target version transport', () => {
+  it('sends the checked version unchanged, separately from code rules', async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    const token = 'wt1:' + 'a'.repeat(64);
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser'], {
+      expectedTargetVersion: token, expectedPipelineVersion: 'w13.2', locale: 'zh',
+    });
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/tailor');
+    expect(JSON.parse((call![1] as RequestInit).body as string)).toMatchObject({
+      opportunity_id: 'opp-1', original_bullets: ['Built a parser'],
+      expected_target_version: token, expected_pipeline_version: 'w13.2', locale: 'zh',
+    });
+  });
+  it('leaves an omitted legacy version absent and does not silently discard an explicitly bad one', async () => {
+    fetchMock.mockImplementation(async () => okJson({}));
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser']);
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser'], { expectedTargetVersion: '' });
+    const calls = fetchMock.mock.calls.filter(([url]) => url === '/api/tailor');
+    expect(JSON.parse((calls[0][1] as RequestInit).body as string)).not.toHaveProperty('expected_target_version');
+    expect(JSON.parse((calls[1][1] as RequestInit).body as string)).toHaveProperty('expected_target_version', '');
+  });
+});

@@ -19,7 +19,8 @@ import type {
   DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
-import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from './identity-owner';
+import { COLD_EMAIL_STREAM_TIMEOUT_MS, ColdEmailStreamError } from './cold-email-stream';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type OwnerToken } from './identity-owner';
 import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
 import { bySlug } from './schools';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
@@ -161,47 +162,75 @@ async function requestOnce<T>(
     ...fetchOptions
   } = options;
   const controller = new AbortController();
-  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  let response: Response | undefined;
+  let interruption: ApiError | DOMException | null = null;
+  let rejectInterruption!: (error: ApiError | DOMException) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const cancelResponseBody = () => {
+    // Real fetch aborts its reader; a late/fake response may ignore that signal.
+    // Cancellation is best effort (a body already locked by json/text rejects).
+    try { void response?.body?.cancel().catch(() => {}); } catch { /* no raw transport error */ }
+  };
+  const interrupt = (error: ApiError | DOMException) => {
+    if (interruption !== null) return; // the first timeout/caller decision wins
+    interruption = error;
+    rejectInterruption(error);
+    controller.abort(error);
+    cancelResponseBody();
+  };
+  const throwIfInterrupted = () => { if (interruption !== null) throw interruption; };
+  const abortFromCaller = () => interrupt(new DOMException('The request was cancelled.', 'AbortError'));
   if (callerSignal?.aborted) abortFromCaller();
   else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timer = setTimeout(
-    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
-    timeoutMs,
-  );
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (callerHeaders instanceof Headers) {
-    callerHeaders.forEach((value, key) => { headers[key] = value; });
-  } else if (Array.isArray(callerHeaders)) {
-    for (const [key, value] of callerHeaders) headers[key] = value;
-  } else if (callerHeaders) {
-    Object.assign(headers, callerHeaders);
-  }
+  const timer = setTimeout(() => interrupt(new ApiError(
+    408, 'REQUEST_TIMEOUT', 'The request took too long. Please try again.', true,
+  )), timeoutMs);
 
-  let res: Response;
   try {
-    res = await fetch(`${API_BASE}${url}`, {
-      ...fetchOptions,
-      headers,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.aborted && !callerSignal?.aborted) {
-      throw new ApiError(
-        408,
-        'REQUEST_TIMEOUT',
-        'The request took too long. Please try again.',
-        true,
-      );
-    }
-    throw error;
+    return await Promise.race([interrupted, (async () => {
+      throwIfInterrupted();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (callerHeaders instanceof Headers) {
+        callerHeaders.forEach((value, key) => { headers[key] = value; });
+      } else if (Array.isArray(callerHeaders)) {
+        for (const [key, value] of callerHeaders) headers[key] = value;
+      } else if (callerHeaders) {
+        Object.assign(headers, callerHeaders);
+      }
+      try {
+        response = await fetch(`${API_BASE}${url}`, { ...fetchOptions, headers, signal: controller.signal });
+      } catch {
+        throwIfInterrupted();
+        // Preserve existing retry policy: a raw network failure did not opt in
+        // to replay, even for an endpoint which retries declared HTTP failures.
+        throw new ApiError(0, 'NETWORK_ERROR', 'The service could not be reached. Please try again.', false);
+      }
+      if (interruption !== null) { cancelResponseBody(); throwIfInterrupted(); }
+      if (!response.ok) {
+        let error: ApiError;
+        try { error = await apiErrorFromResponse(response); }
+        catch {
+          throwIfInterrupted();
+          error = new ApiError(response.status, `HTTP_${response.status}`, safeHttpMessage(response.status), response.status >= 500 || response.status === 429);
+        }
+        throwIfInterrupted();
+        throw error;
+      }
+      try {
+        const result = await response.json() as T;
+        throwIfInterrupted();
+        return result;
+      } catch {
+        throwIfInterrupted();
+        throw new ApiError(response.status, 'INVALID_RESPONSE', 'The response could not be read. Please try again.', false);
+      }
+    })()]);
   } finally {
+    // One deadline covers headers AND success/error body consumption. The
+    // race also settles when a fetch/body implementation ignores AbortSignal.
     clearTimeout(timer);
     callerSignal?.removeEventListener('abort', abortFromCaller);
   }
-  if (!res.ok) {
-    throw await apiErrorFromResponse(res);
-  }
-  return res.json() as Promise<T>;
 }
 
 /**
@@ -799,96 +828,113 @@ export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
  * SSE variant of `generateColdEmail`: relays `{"stage": ...}` progress events
  * while the multi-call pipeline runs (draft → critique → revise), then
  * resolves with the final payload carried by the `done` event. Throws on any
- * transport/shape problem — callers fall back to the blocking route.
+ * transport/shape problem. Only a definite unsupported endpoint permits a blocking compatibility request.
  */
 export async function generateColdEmailStream(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; signal?: AbortSignal } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
-  // The stream runs for seconds; the funnel event at the end belongs to the
-  // account that asked for the draft, not whoever is signed in when it ends.
   const token = captureOwnerToken();
-  // NOTE: the funnel event fires only after a successful done event (bottom of
-  // this function) — a failed stream falls back to generateColdEmail, which
-  // tracks itself, so one user click never double-counts ai_feature_used.
-  const body: Record<string, unknown> = {
-    profile: toProfileRequest(profile),
-    opportunity_id: opportunityId,
-    experience_evidence: coldEmailExperienceEvidence(profile),
+  const controller = new AbortController();
+  let response: Response | undefined;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let interruption: ColdEmailStreamError | null = null;
+  let retired = false;
+  let cancelledBody = false;
+  const cancelBody = (body: ReadableStream<Uint8Array> | null | undefined) => {
+    try { if (body) void Promise.resolve(body.cancel()).catch(() => {}); } catch { /* safe best effort */ }
   };
-  if (options.engine) body.engine = options.engine;
-  if (options.style) body.style = options.style;
-
-  // Reveal token only (no refresh-retry here: the variants call that always
-  // precedes a stream already refreshed a stale session, and a locked stream
-  // still delivers the draft — the UI keys the recipient state off the
-  // response's recipient_status).
-  const streamToken = await getRevealAccessToken();
-  const res = await fetch(`${API_BASE}/cold-email/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
-  }
-  if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
-    throw new Error('API stream: not an event stream');
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let final: ColdEmailResponse | null = null;
-
-  const handleFrame = (frame: string) => {
-    for (const line of frame.split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      const payload = JSON.parse(line.slice(6)) as { stage?: string } & Record<string, unknown>;
-      if (payload.stage === 'done') {
-        final = payload as unknown as ColdEmailResponse;
-      } else if (payload.stage) {
-        onStage?.(payload.stage as ColdEmailStage);
-      }
-    }
+  const release = () => {
+    if (cancelledBody || (!reader && !response?.body)) return;
+    cancelledBody = true;
+    if (reader) { try { void Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* safe best effort */ } }
+    else cancelBody(response?.body);
   };
-
+  let rejectInterruption!: (error: ColdEmailStreamError) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const interrupt = (code: 'timeout' | 'cancelled') => {
+    if (interruption || retired) return;
+    interruption = new ColdEmailStreamError(code);
+    rejectInterruption(interruption);
+    controller.abort(); release();
+  };
+  const active = () => {
+    if (!isTokenOwnerStillCurrent(token)) interrupt('cancelled');
+    if (interruption) throw interruption;
+  };
+  const abortFromCaller = () => interrupt('cancelled');
+  if (options.signal?.aborted) abortFromCaller();
+  else options.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(() => interrupt('timeout'), COLD_EMAIL_STREAM_TIMEOUT_MS);
   try {
-    for (;;) {
-      const { value, done: readerDone } = await reader.read();
-      if (readerDone) break;
-      buffer += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buffer.indexOf('\n\n')) !== -1) {
-        const frame = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
-        handleFrame(frame);
+    return await Promise.race([interrupted, (async () => {
+      active();
+      const body: Record<string, unknown> = { profile: toProfileRequest(profile), opportunity_id: opportunityId,
+        experience_evidence: coldEmailExperienceEvidence(profile) };
+      if (options.engine) body.engine = options.engine;
+      if (options.style) body.style = options.style;
+      // Authentication, headers and the complete SSE body share one deadline.
+      const streamToken = await getRevealAccessToken();
+      active();
+      response = await fetch(`${API_BASE}/cold-email/stream`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
+          ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}) },
+        body: JSON.stringify(body), signal: controller.signal,
+      });
+      if (interruption) { cancelBody(response.body); active(); }
+      if (!response.ok) {
+        // The HTTP status is sufficient; never wait for or expose an upstream error body.
+        throw new ColdEmailStreamError(response.status === 404 || response.status === 405 ? 'unsupported' : 'http_error', response.status);
       }
-    }
+      if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
+        throw new ColdEmailStreamError('invalid_response');
+      }
+      reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let final: ColdEmailResponse | null = null;
+      while (final === null) {
+        const { value, done } = await reader.read();
+        active();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let index;
+        while (final === null && (index = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, index); buffer = buffer.slice(index + 2);
+          for (const line of frame.split('\n')) {
+            active();
+            if (!line.startsWith('data: ')) continue;
+            let payload: unknown;
+            try { payload = JSON.parse(line.slice(6)); } catch { throw new ColdEmailStreamError('invalid_response'); }
+            if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new ColdEmailStreamError('invalid_response');
+            const data = payload as Record<string, unknown>;
+            if (data.stage === 'done') {
+              if (typeof data.subject !== 'string' || typeof data.body !== 'string') throw new ColdEmailStreamError('invalid_response');
+              final = data as unknown as ColdEmailResponse;
+              break;
+            }
+            if (data.stage === 'drafting' || data.stage === 'judging' || data.stage === 'critiquing' || data.stage === 'revising') {
+              onStage?.(data.stage); active();
+            }
+          }
+        }
+      }
+      if (!final) throw new ColdEmailStreamError('invalid_response');
+      active();
+      void track('ai_feature_used', { feature: 'cold_email' }, token);
+      return final;
+    })()]);
+  } catch (error) {
+    active();
+    if (error instanceof ColdEmailStreamError) throw error;
+    throw new ColdEmailStreamError('network_error');
   } finally {
-    // Release the connection even when a parse error throws mid-stream —
-    // otherwise the fallback path opens a second connection while this one
-    // lingers until GC.
-    void reader.cancel().catch(() => {});
+    retired = true; clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abortFromCaller);
+    release();
   }
-  // TS doesn't reset a closed-over let's narrowing on function calls, so it
-  // still believes `final` is null here despite handleFrame's assignment.
-  const f = final as unknown as (ColdEmailResponse & { stage?: string }) | null;
-  if (!f) throw new Error('API stream: closed before the done event');
-  // Version-skew guard: a done event missing the core fields must trigger the
-  // blocking fallback, not flow undefined into the compose UI / mailto link.
-  if (typeof f.subject !== 'string' || typeof f.body !== 'string') {
-    throw new Error('API stream: malformed done payload');
-  }
-  void track('ai_feature_used', { feature: 'cold_email' }, token);
-  return f;
 }
 
 export async function getEmailVariants(
@@ -952,7 +998,7 @@ export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
-  options: { locale?: string; expectedPipelineVersion?: string } = {},
+  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string } = {},
 ): Promise<TailorResponse> {
   void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
@@ -962,6 +1008,7 @@ export async function tailorResume(
   };
   if (options.locale) body.locale = options.locale;
   if (options.expectedPipelineVersion) body.expected_pipeline_version = options.expectedPipelineVersion;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<TailorResponse>('/tailor', {
     method: 'POST',
     body: JSON.stringify(body),

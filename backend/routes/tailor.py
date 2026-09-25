@@ -33,6 +33,7 @@ import logging
 import os
 import re
 import unicodedata
+from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
@@ -47,6 +48,7 @@ from backend.lib.grounding import validate_no_fabrication as _validate_no_fabric
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.resume_input import (
     RESUME_AI_CHUNK_CHARACTERS,
@@ -97,7 +99,7 @@ _DEFAULT_BULLETS_PER_REQUEST = 12
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w13.2"
+TAILOR_PIPELINE_VERSION = "w13.3"
 
 
 def _require_pipeline_version(expected: str | None) -> str:
@@ -764,15 +766,31 @@ async def tailor_status() -> TailorStatusResponse:
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
     """Apply the optional rule precondition and stamp every accepted outcome."""
     version = _require_pipeline_version(request.expected_pipeline_version)
-    result = await _generate_tailor_response(request)
+    resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    # Detach before any await. Truth, version and model input must describe the
+    # same source snapshot even if the cached corpus changes during generation.
+    source = deepcopy(resolved)
+    assert_target_actionable(source)
+    snapshot = project_public_detail(source)
+    target_version = writing_target_version(snapshot)
+    if request.expected_target_version is not None and request.expected_target_version != target_version:
+        raise prework_refusal(409, {
+            "code": "WRITING_TARGET_CHANGED",
+            "message": "This opportunity changed. Check it again before continuing.",
+            "retryable": False,
+        })
+    result = await _generate_tailor_response(request, snapshot)
     return result.model_copy(update={
         "opportunity_id": request.opportunity_id,
         "generated_at": datetime.now(UTC).isoformat(),
         "pipeline_version": version,
+        "target_version": target_version,
     })
 
 
-async def _generate_tailor_response(request: TailorRequest) -> TailorResponse:
+async def _generate_tailor_response(request: TailorRequest, opp: dict) -> TailorResponse:
     """Tailor a student's resume bullets for a specific opportunity.
 
     Always returns a usable response:
@@ -781,14 +799,6 @@ async def _generate_tailor_response(request: TailorRequest) -> TailorResponse:
         passthrough fallback so the user never sees a 5xx).
       - Empty ``original_bullets`` → 200 with empty list and a hint.
     """
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
-
     if not request.original_bullets:
         return TailorResponse(
             tailored_bullets=[],
