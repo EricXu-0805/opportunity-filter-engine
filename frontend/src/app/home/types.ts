@@ -68,3 +68,6 @@ export type SaveStatus =
 // 'failed'  → the read itself failed; nothing is persisted, and the row is
 //             NOT assumed empty (see useProfileForm's hydration gate)
 export type HydrationState = 'loading' | 'ready' | 'failed';
+
+/** Freshness of an already loaded form; separate from its initial read and saves. */
+export type HomeProfileRefreshStatus = 'ready' | 'checking' | 'failed' | 'deleted';

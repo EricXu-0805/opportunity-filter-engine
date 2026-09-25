@@ -50,6 +50,8 @@ function HomePageInner() {
     isSubmitting,
     retryCloudSave,
     retryProfileLoad,
+    profileRefreshStatus,
+    retryProfileRefresh,
     canRetrySync,
     conflicts,
     keepMyChanges,
@@ -88,7 +90,7 @@ function HomePageInner() {
             key={identityGeneration}
             profile={profile}
             update={update}
-            viewSnapshot={viewSnapshot}
+            viewSnapshot={profileRefreshStatus === 'ready' ? viewSnapshot : null}
             t={t}
           />
         </div>
@@ -153,6 +155,8 @@ function HomePageInner() {
         canRetrySync={canRetrySync}
         onRetrySync={retryCloudSave}
         onRetryProfileLoad={retryProfileLoad}
+        profileRefreshStatus={profileRefreshStatus}
+        onRetryProfileRefresh={retryProfileRefresh}
         onKeepMyChanges={keepMyChanges}
         onUseCloudVersion={useCloudVersion}
         onSubmit={handleSubmit}

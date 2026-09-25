@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, CheckCircle2, Cloud, CloudOff, Share2, Sparkles } from 'lucide-react';
-import type { HydrationState, SaveStatus, TFunc } from './types';
+import type { HomeProfileRefreshStatus, HydrationState, SaveStatus, TFunc } from './types';
 
 export function SubmitRow({
   isValid,
@@ -9,6 +9,8 @@ export function SubmitRow({
   shareCopied,
   saveStatus,
   hydrationState,
+  profileRefreshStatus = 'ready',
+  onRetryProfileRefresh,
   isSubmitting,
   hasConflict,
   canRetrySync,
@@ -25,6 +27,8 @@ export function SubmitRow({
   shareCopied: boolean;
   saveStatus: SaveStatus;
   hydrationState: HydrationState;
+  profileRefreshStatus?: HomeProfileRefreshStatus;
+  onRetryProfileRefresh?: () => void;
   isSubmitting: boolean;
   /** Whether a disagreement is still open. Independent of `saveStatus`: an
    *  unrelated clean save, or a rejected answer, moves the wording on while
@@ -44,13 +48,14 @@ export function SubmitRow({
   // stored row has been read, that write would replace fields the form has
   // never seen — so the action is unavailable, with the reason spelled out
   // rather than a button that silently does nothing.
-  const canSubmit = isValid && hydrationState === 'ready' && !isSubmitting;
+  const refreshReady = profileRefreshStatus === 'ready';
+  const canSubmit = isValid && hydrationState === 'ready' && refreshReady && !isSubmitting;
   // A generic Retry cannot unlock a conflicted key (see the coordinator's
   // lock rule), so while a question is open it is not a way out — it is a
   // second button next to the real one that would replay the same locked
   // write. A conflict result arms a retryable, so without this a rejected
   // answer's 'cloud-failed' drew exactly that.
-  const showRetry = canRetrySync && !hasConflict;
+  const showRetry = canRetrySync && !hasConflict && refreshReady;
   return (
     <>
       <div className="flex flex-col sm:flex-row items-center justify-center mt-8 gap-3">
@@ -96,6 +101,19 @@ export function SubmitRow({
             <button type="button" data-testid="retry-profile-load" onClick={() => onRetryProfileLoad()}
               className="mt-2 min-h-11 rounded-lg px-4 py-2 font-medium text-indigo-700 underline underline-offset-2 hover:bg-indigo-50">
               {t('home.actions.retryProfileLoad')}
+            </button>
+          )}
+        </div>
+      )}
+      {hydrationState === 'ready' && !refreshReady && (
+        <div data-testid="home-profile-refresh-status" className="mt-4 text-center text-[13px] text-amber-700"
+          role={profileRefreshStatus === 'checking' ? 'status' : 'alert'}>
+          <p>{t(profileRefreshStatus === 'deleted' ? 'home.actions.profileRefreshDeleted'
+            : profileRefreshStatus === 'failed' ? 'home.actions.profileRefreshFailed' : 'home.actions.profileRefreshing')}</p>
+          {profileRefreshStatus !== 'checking' && onRetryProfileRefresh && (
+            <button type="button" data-testid="retry-profile-refresh" onClick={() => onRetryProfileRefresh()}
+              className="mt-2 min-h-11 rounded-lg px-4 py-2 font-medium text-indigo-700 underline underline-offset-2 hover:bg-indigo-50">
+              {t('home.actions.retryProfileRefresh')}
             </button>
           )}
         </div>
@@ -221,6 +239,7 @@ export function SubmitRow({
             <button
               type="button"
               data-testid="conflict-keep-mine"
+              disabled={!refreshReady}
               onClick={() => onKeepMyChanges()}
               className="underline underline-offset-2 hover:text-amber-700"
             >
@@ -229,6 +248,7 @@ export function SubmitRow({
             <button
               type="button"
               data-testid="conflict-use-cloud"
+              disabled={!refreshReady}
               onClick={() => onUseCloudVersion()}
               className="underline underline-offset-2 hover:text-amber-700"
             >

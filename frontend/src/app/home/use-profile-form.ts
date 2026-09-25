@@ -17,6 +17,8 @@ import {
 import { clearMatchCache } from '@/lib/match-cache';
 import { createProfileReadTrace, type ProfileReadObserver } from '@/lib/profile-read-diagnostics';
 import { normalizeProfileForRelease } from '@/lib/release-scope';
+import { migrateProfile } from '@/lib/profile-compat';
+import { PROFILE_REFRESH_INTERVAL_MS, PROFILE_REFRESH_DEADLINE_MS } from '@/lib/use-profile-refresh';
 import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
 import { onAuthChange } from '@/lib/supabase';
@@ -45,7 +47,7 @@ import {
   type ProfileConflictPrompt,
 } from '@/lib/profile-sync';
 import { decodeProfileWithKeys, buildShareUrl } from '@/lib/profile-share';
-import { DEFAULT_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type SaveStatus, type TFunc } from './types';
+import { DEFAULT_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
 
 /** Who a rendered screen belongs to: the owner it was issued for and the
  *  identity generation it was built under. Immutable — an action carries the
@@ -142,6 +144,8 @@ export interface UseProfileFormResult {
   hydrationState: HydrationState;
   /** Read retry only; keeps same-owner inputs and never creates a default row. */
   retryProfileLoad: () => void;
+  profileRefreshStatus: HomeProfileRefreshStatus;
+  retryProfileRefresh: () => void;
   isValid: boolean;
   missingSeekingTypes: boolean;
   /** Increments on every identity transition this form observes. Mount it as
@@ -235,6 +239,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // The synchronous companion: a submit landing in the same tick as a failed
   // read must see the failure, not the state React has yet to commit.
   const hydrationStateRef = useRef<HydrationState>('loading');
+  const [profileRefreshStatus, setProfileRefreshStatus] = useState<HomeProfileRefreshStatus>('ready');
+  const profileRefreshStatusRef = useRef<HomeProfileRefreshStatus>('ready');
+  const backgroundPausedEditsRef = useRef(false);
+  // A confirmed deletion ends a row's revision sequence. Retained editor data
+  // keeps its old view, but a later explicit server recreation may start at 1.
+  // This fact survives failed checks and belongs only to this owner/screen.
+  const backgroundAbsenceRef = useRef<ScreenOrigin | null>(null);
+  const publishProfileRefresh = useCallback((status: HomeProfileRefreshStatus) => {
+    profileRefreshStatusRef.current = status;
+    setProfileRefreshStatus(status);
+  }, []);
+  const backgroundReadRef = useRef<(() => void) | null>(null);
+  const stopBackgroundReadRef = useRef<(() => void) | null>(null);
+  const retryProfileRefresh = useCallback(() => { backgroundReadRef.current?.(); }, []);
   const [viewSnapshot, setViewSnapshot] = useState<ProfileViewSnapshot | null>(null);
   // The view that was on screen when the CURRENT conflict question was
   // published. An answer belongs to it and to nothing else.
@@ -259,6 +277,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // place they cannot see. Cleared by the Generate that deliberately saves
   // the draft, and by any real identity transition.
   const shareDraftActiveRef = useRef(false);
+  const [shareDraftActive, setShareDraftActive] = useState(false);
   // Fields the visitor changed WHILE a shared draft was on screen. Memory
   // only: a draft is somebody else's profile, and recording it in this
   // account's journal would make it durable, flushable and — after a reload
@@ -646,6 +665,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     dirtyKeysRef.current = new Set();
     weightDirtyRef.current = false;
     shareDraftActiveRef.current = false;
+    setShareDraftActive(false);
+    backgroundPausedEditsRef.current = false;
+    backgroundAbsenceRef.current = null;
     draftTouchedRef.current.clear();
     hydrationReadyRef.current = false;
     hydrationStateRef.current = 'loading';
@@ -977,6 +999,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // a save issued later is resolved three ways against what the user
     // actually started from rather than against whatever the row has become.
     if (touched.size > 0) {
+      if (profileRefreshStatusRef.current !== 'ready') backgroundPausedEditsRef.current = true;
       if (gapCarry) {
         // Remembered as owed, not journalled: recordIntent would be a
         // private write under an owner this keystroke was never made by.
@@ -1055,6 +1078,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     if (!origin && !gapCarry) return;
     if (origin) editOriginRef.current = origin;
     weightDirtyRef.current = true;
+    if (profileRefreshStatusRef.current !== 'ready') backgroundPausedEditsRef.current = true;
     bumpEditEpochs(['search_weight']);
     // The LIVE document moves, exactly as it does for every other field —
     // not a mirror beside it. A weight kept only in `weightRef` left
@@ -1604,6 +1628,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const previous = activeLoadRef.current;
     if (!replace && previous?.generation === generation && !previous.controller.signal.aborted) return;
     retireProfileLoad();
+    stopBackgroundReadRef.current?.();
+    publishProfileRefresh('ready');
+    backgroundAbsenceRef.current = null;
     const trace = createProfileReadTrace('home');
     trace('started');
     // The origin of the screen this load is for. An edit made before the row
@@ -1755,7 +1782,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         setHydrationState('failed');
       }
     });
-  }, [hydrate, applySaveResult, epochsNow, ownsScreen, retireProfileLoad, armRetryable, setSaveStatus]);
+  }, [hydrate, applySaveResult, epochsNow, ownsScreen, retireProfileLoad, armRetryable, setSaveStatus, publishProfileRefresh]);
 
   useEffect(() => {
     loadMountedRef.current = true;
@@ -1954,6 +1981,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // A newly accepted share owns the screen. Neither the old row nor its
         // deadline may replace this draft or fail it after its read was retired.
         retireProfileLoad();
+        stopBackgroundReadRef.current?.();
+        backgroundPausedEditsRef.current = false;
+        backgroundAbsenceRef.current = null;
         shareImportedRef.current = true;
         shareImportedParamRef.current = shareParam;
         // Whatever the visitor's OWN profile had pending stops here: the
@@ -1985,6 +2015,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
            form renders pre-filled from the share link before any user
            interaction; otherwise the home page would flash empty fields. */
         armRetryable(null);
+        publishProfileRefresh('ready');
         // Marked hydrated, not edited: the banner promises the visitor's
         // OWN saved profile stays untouched until they hit generate, so
         // importing a link must not arm the autosave.
@@ -1992,6 +2023,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         hydratedWeightRef.current = weight;
         hydrationReadyRef.current = true; // the draft itself needs no load
         shareDraftActiveRef.current = true;
+        setShareDraftActive(true);
         // This screen never loads a row, so nothing else would ever give it an
         // origin — and Generate, which DOES read the visitor's own row and
         // stage against it, would have no capability to act under. The draft
@@ -2049,7 +2081,170 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         fallbackLoadTimerRef.current = null;
       }
     };
-  }, [searchParams, startLoad, retireProfileLoad, armRetryable, setSaveStatus]);
+  }, [searchParams, startLoad, retireProfileLoad, armRetryable, setSaveStatus, publishProfileRefresh]);
+
+  // This is deliberately not startLoad()/hydrate(): a foreground check does
+  // not replay the historical dirty buffer, apply URL prefills, flush an outbox,
+  // or reset the save receipt. It only adopts one owner-bound reconciled read.
+  const backgroundOwnerKey = viewSnapshot
+    ? JSON.stringify([viewSnapshot.token.uid, viewSnapshot.token.epoch, viewSnapshot.token.generation]) : null;
+  const backgroundShare = shareDraftActive;
+  useEffect(() => {
+    if (hydrationState !== 'ready' || !backgroundOwnerKey || backgroundShare) return;
+    const view = viewSnapshotRef.current;
+    if (!view) return;
+    const origin: ScreenOrigin = { token: view.token, generation: view.identityGeneration };
+    let disposed = false;
+    let caughtUpOnce = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let active: { controller: AbortController; deadline: ReturnType<typeof setTimeout> } | null = null;
+    const foreground = () => document.visibilityState === 'visible' && navigator.onLine;
+    const current = () => !disposed && !shareDraftActiveRef.current && hydrationReadyRef.current
+      && ownsScreen(origin) && isOwnerTokenValid(origin.token, origin.token.uid);
+    const stopTimer = () => { if (timer !== null) clearTimeout(timer); timer = null; };
+    const retire = () => {
+      stopTimer();
+      if (active) { clearTimeout(active.deadline); active.controller.abort(); active = null; }
+    };
+    const schedule = (delay = PROFILE_REFRESH_INTERVAL_MS) => {
+      stopTimer();
+      if (!current() || !foreground()) return;
+      timer = setTimeout(() => { timer = null; run(); }, delay);
+    };
+    const run = () => {
+      if (!current() || !foreground() || active || activeLoadRef.current) return;
+      // Do not restart an explicit submit or conflict decision halfway through.
+      if (submittingRef.current || activeResolveRef.current !== null) { schedule(); return; }
+      stopTimer();
+      const hadPausedSave = pendingSaveRef.current !== null;
+      const absence = backgroundAbsenceRef.current;
+      // Captured at issue: no row response begun before this absence can use
+      // it afterwards as permission to resurrect an older profile.
+      const afterConfirmedAbsence = absence?.generation === origin.generation
+        && absence.token.uid === origin.token.uid && absence.token.epoch === origin.token.epoch
+        && absence.token.generation === origin.token.generation;
+      const atIssue = epochsNow(PROFILE_KEYS as readonly string[]);
+      const unrepresented = unrepresentedNow();
+      const observed = viewSnapshotRef.current;
+      if (!observed || !isOwnerTokenValid(observed.token, observed.token.uid)) return;
+      const controller = new AbortController();
+      const trace = createProfileReadTrace('home'); trace('started');
+      const record = { controller, deadline: setTimeout(() => controller.abort(), PROFILE_REFRESH_DEADLINE_MS) };
+      active = record;
+      publishProfileRefresh('checking');
+      // Keep the pending payload/origin: these are actual user edits. Only the
+      // not-yet-issued timer is paused; an already issued CAS owns its receipt.
+      if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+      let superseded = false;
+      void hydrateProfile(controller.signal, trace).then((loaded) => {
+        if (!current() || active !== record || controller.signal.aborted) return;
+        if (loaded.token.uid !== origin.token.uid || loaded.token.epoch !== origin.token.epoch
+          || loaded.token.generation !== origin.token.generation || !isOwnerTokenValid(loaded.token, loaded.token.uid)) {
+          publishProfileRefresh('failed'); trace('owner-rejected'); return;
+        }
+        if (loaded.quarantineFailed) { publishProfileRefresh('failed'); trace('failed'); return; }
+        const latestView = viewSnapshotRef.current;
+        // A legitimate in-flight write may have acknowledged a newer row while
+        // this GET was held. Re-read, never move that accepted baseline back.
+        if (latestView && latestView.revision > loaded.revision
+          && !(afterConfirmedAbsence && loaded.source === 'cloud')
+          && (loaded.source !== 'cloud-absent' || latestView.revision > observed.revision)) {
+          superseded = !caughtUpOnce; caughtUpOnce = true;
+          if (!superseded) publishProfileRefresh('failed');
+          return;
+        }
+        if (loaded.source === 'cloud-absent' && (observed.baseProfile !== null
+          || afterConfirmedAbsence)) {
+          backgroundAbsenceRef.current = { token: { ...origin.token }, generation: origin.generation };
+          publishProfileRefresh('deleted'); trace('ready'); return;
+        }
+        // Owed keystrokes were made against the OLD displayed base. Record only
+        // those existing intents before advancing it, never invent a poll edit.
+        const owed = unrepresentedNow();
+        if (owed.size > 0 && !recordOutstandingIntents(profileRef.current)) {
+          publishProfileRefresh('failed'); trace('failed'); return;
+        }
+        const dirty = getDirtyProfileKeys(origin.token, HOME_FORM_WRITER);
+        if (!dirty.ok) { publishProfileRefresh('failed'); trace('failed'); return; }
+        caughtUpOnce = false;
+        const candidate = migrateProfile(loaded.profile);
+        const next = normalizeProfileForRelease({ ...DEFAULT_PROFILE, ...(candidate ?? {}) } as ProfileData);
+        const combined = { ...next } as unknown as Record<string, unknown>;
+        const live = profileRef.current as unknown as Record<string, unknown>;
+        const disputed = new Set(loaded.conflictKeys);
+        const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
+        const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
+          || unrepresented.has(key) || owed.has(key) || disputed.has(key)));
+        const sourceBundle = ['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const;
+        // The source and its confirmations are one revision, never a mixture
+        // of the old editor's metadata with the newly read résumé text.
+        if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
+        for (const key of preserve) {
+          if (key in live) combined[key] = live[key]; else delete combined[key];
+        }
+        const weight = typeof combined.search_weight === 'number' ? combined.search_weight : DEFAULT_SEARCH_WEIGHT;
+        const rendered = { ...combined, search_weight: weight } as unknown as ProfileData;
+        const accepted = makeProfileViewSnapshot({ baseProfile: loaded.baseProfile, renderedProfile: rendered,
+          revision: loaded.revision, token: loaded.token, identityGeneration: origin.generation, source: 'hydration' });
+        const questions = loaded.conflicts.filter((question) => !moved(question.key)
+          && !unrepresented.has(question.key) && !owed.has(question.key));
+        const pendingKeys = new Set<keyof ProfileData>(dirty.value);
+        for (const key of unrecordedRef.current) pendingKeys.add(key);
+        dirtyKeysRef.current = pendingKeys;
+        weightDirtyRef.current = pendingKeys.has('search_weight');
+        // Remote changes alone must never arm an autosave. A real pending local
+        // edit resumes through the existing one-writer debounce, once, instead.
+        const resumeSave = (hadPausedSave || backgroundPausedEditsRef.current)
+          && [...pendingKeys].some((key) => !disputed.has(key));
+        hydratedProfileRef.current = resumeSave ? null : rendered;
+        hydratedWeightRef.current = resumeSave ? null : weight;
+        backgroundPausedEditsRef.current = false;
+        pendingSaveRef.current = resumeSave ? rendered as ProfileData & { search_weight: number } : null;
+        pendingSaveOriginRef.current = resumeSave ? editOriginRef.current : null;
+        profileRef.current = rendered; weightRef.current = weight;
+        viewSnapshotRef.current = accepted;
+        setViewSnapshot(accepted); setProfile(rendered); setSearchWeight(weight);
+        publishConflicts(questions, accepted);
+        if (questions.length) setSaveStatus('conflict');
+        if (loaded.source === 'cloud') backgroundAbsenceRef.current = null;
+        publishProfileRefresh('ready'); trace('ready');
+        if (resumeSave) setHydrationTick((value) => value + 1);
+      }).catch(() => {
+        if (current() && active === record) { publishProfileRefresh('failed'); trace(controller.signal.aborted ? 'timed-out' : 'failed'); }
+      }).finally(() => {
+        clearTimeout(record.deadline);
+        if (active !== record) return;
+        active = null;
+        if (current()) schedule(superseded ? 0 : PROFILE_REFRESH_INTERVAL_MS);
+      });
+    };
+    backgroundReadRef.current = run;
+    stopBackgroundReadRef.current = retire;
+    const recheck = () => { if (foreground()) run(); else stopTimer(); };
+    const ownerChanged = () => {
+      if (!current()) {
+        retire();
+        const held = viewSnapshotRef.current;
+        if (!disposed && !shareDraftActiveRef.current && origin.generation === identityGenerationRef.current
+          && held?.token.uid === origin.token.uid && held.token.epoch === origin.token.epoch
+          && held.token.generation === origin.token.generation) publishProfileRefresh('failed');
+      }
+    };
+    const stopOwner = onLocalOwnerStateChange(ownerChanged);
+    window.addEventListener('storage', ownerChanged);
+    window.addEventListener('focus', recheck); window.addEventListener('online', recheck);
+    window.addEventListener('offline', recheck); document.addEventListener('visibilitychange', recheck);
+    schedule(); // The initial load just completed; do not duplicate it.
+    return () => {
+      disposed = true; retire(); stopOwner();
+      if (backgroundReadRef.current === run) backgroundReadRef.current = null;
+      if (stopBackgroundReadRef.current === retire) stopBackgroundReadRef.current = null;
+      window.removeEventListener('storage', ownerChanged);
+      window.removeEventListener('focus', recheck); window.removeEventListener('online', recheck);
+      window.removeEventListener('offline', recheck); document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [hydrationState, backgroundOwnerKey, backgroundShare, identityGeneration, epochsNow, unrepresentedNow,
+    recordOutstandingIntents, ownsScreen, publishConflicts, publishProfileRefresh, setSaveStatus]);
 
   // The onboarding school gate (a layout-level overlay) finishes *after* this
   // form has already mounted and loaded its profile, so its localStorage write
@@ -2126,6 +2321,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     origin: ScreenOrigin,
     intent: number,
   ) => {
+    if (profileRefreshStatusRef.current !== 'ready') return Promise.resolve(undefined);
     const token = origin.token;
     const generation = origin.generation;
     // The FULL universe, not just this patch's keys. A generic conflict's
@@ -2184,7 +2380,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // A shared draft is explicitly not the visitor's own profile — see
     // shareDraftActiveRef. Their tweaks stay on screen; only Generate
     // commits them.
-    if (shareDraftActiveRef.current) return;
+    if (shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready') return;
     // Hydrated data is not an edit: re-saving what a load (or the identity
     // reset) just put on screen would write one identity's row from
     // another's response ordering.
@@ -2220,7 +2416,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // BEFORE the journal is read. An old token is not a defence: the reads
       // below go to whatever this browser holds NOW, and the new owner's
       // dirty set would be answered with the old screen's document.
-      if (!ownsScreen(origin)) return;
+      if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready') return;
       const token = origin.token;
       // The keys the CLOUD has not confirmed — read at fire time, so an edit
       // made during the debounce is included. Never the whole document. A
@@ -2258,7 +2454,15 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       textBurstRef.current = { timer: null, origin: null };
       // A shared draft is never flushed: the banner promises the visitor's
       // own profile stays untouched until they generate.
-      const pending = shareDraftActiveRef.current ? null : pendingSaveRef.current;
+      if (!shareDraftActiveRef.current && profileRefreshStatusRef.current !== 'ready') {
+        const held = screenOrigin();
+        if (held && ownsScreen(held) && isOwnerTokenValid(held.token, held.token.uid)) {
+          // Even while cloud writes are paused, the final owed keystrokes must
+          // survive unmount in their original journal, without a network flush.
+          recordOutstandingIntents(profileRef.current);
+        }
+      }
+      const pending = shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready' ? null : pendingSaveRef.current;
       const origin = pendingSaveOriginRef.current;
       // Same rule on the way out. Leaving the page is not a reason to send an
       // old screen's document under whoever owns the browser now, and the
@@ -2302,7 +2506,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         shareTimerRef.current = null;
       }
     };
-  }, [recordOutstandingIntents, ownsScreen]);
+  }, [recordOutstandingIntents, ownsScreen, screenOrigin]);
 
   const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
     // BEFORE the skill ledger. The replace marker is sticky — it suppresses
@@ -2449,6 +2653,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [identityGeneration, editProfile, editingOrigin, setSaveStatus]);
 
   const handleResumeRemoved = useCallback(() => {
+    if (profileRefreshStatusRef.current !== 'ready') return false;
     if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     // PREFLIGHT. This action edits the form, takes the status line and sends
     // immediately, so a check further down would already have painted a dead
@@ -2612,6 +2817,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  made by whoever is signed in now. A payload left behind by a previous
    *  identity is dropped, never re-sent. */
   const retryCloudSave = useCallback(() => {
+    if (profileRefreshStatusRef.current !== 'ready') return;
     const failed = retryableRef.current;
     if (!failed) return;
     const token = captureOwnerToken();
@@ -2692,6 +2898,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // From the PUBLISHED prompt, not from React state: the two can disagree
     // for a tick, and a click landing in that window would answer a question
     // that is no longer the one on screen.
+    if (profileRefreshStatusRef.current !== 'ready') return;
     const published = conflictPromptRef.current;
     if (!published) return;
     const asking = only ? narrowConflictPrompt(published, only) : published;
@@ -2907,7 +3114,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // submit whose own GitHub request invalidates the first's import, and
     // the first would still write, clear the cache and navigate — with the
     // skills it was told to drop missing from the row it just saved.
-    if (submittingRef.current) return;
+    if (submittingRef.current || profileRefreshStatusRef.current !== 'ready') return;
     // Backstop for the disabled button, before imports, saves or navigation.
     // [] means the user deselected every type; it is not a request for defaults.
     if (!hasSelectedSeekingType(profileRef.current)) return;
@@ -2980,7 +3187,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // generation cannot see. Checked here, ahead of the visitor's own-row
     // read, the skill ledger, the journal and the stage: from this line down
     // everything either reads private data or writes it.
-    if (!ownsScreen(origin)) return;
+    if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready') return;
     // Built from the LIVE form, after the await — the user keeps typing
     // while GitHub is being fetched, and persisting the snapshot this
     // handler closed over would silently roll those edits back (and then
@@ -3167,6 +3374,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // edit to one of them is lost to a response that predates it.
     const submitFieldEpochs = epochsNow(PROFILE_KEYS as readonly string[]);
     setSaveStatus('saving');
+    if (profileRefreshStatusRef.current !== 'ready') return;
     const saveKeys = dirty.length > 0
       ? dirty
       : (hasConfirmedProfileRevision() ? [] : (Object.keys(profileToSave) as (keyof ProfileData)[]));
@@ -3207,7 +3415,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       saveResult, token, submitGeneration, submitIntent, !noop, ownsSubmit,
       submitFieldEpochs, submitEditEpoch,
     );
-    if (disposition !== ADOPTED) return;
+    if (disposition !== ADOPTED || profileRefreshStatusRef.current !== 'ready') return;
     // Re-read, not the snapshot taken before the await above: applying the
     // result can itself await, and an edit made during THAT is just as newer
     // as one made during the write. Its facts are kept — they are the row —
@@ -3245,6 +3453,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // The visitor deliberately generated from the shared draft: it is
     // their own profile from here on.
     shareDraftActiveRef.current = false;
+    setShareDraftActive(false);
     router.push('/results');
     } catch {
       // The coordinator REJECTED — a transport failure thrown out of the
@@ -3309,6 +3518,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     useCloudVersion,
     hydrationState,
     retryProfileLoad,
+    profileRefreshStatus,
+    retryProfileRefresh,
     isValid,
     missingSeekingTypes,
     identityGeneration,

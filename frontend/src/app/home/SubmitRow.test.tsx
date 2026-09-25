@@ -183,3 +183,41 @@ describe('SubmitRow — an empty opportunity selection', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+
+describe('SubmitRow — background profile checks', () => {
+  it.each(['failed', 'deleted'] as const)('keeps a separate %s notice and retries reading without saving or matching', (profileRefreshStatus) => {
+    const onRetryProfileRefresh = vi.fn(), onRetrySync = vi.fn(), onSubmit = vi.fn();
+    renderRow({ profileRefreshStatus, onRetryProfileRefresh, onRetrySync, onSubmit,
+      saveStatus: 'cloud-failed', canRetrySync: true });
+    expect(screen.getByTestId('generate-matches')).toBeDisabled();
+    expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent(
+      profileRefreshStatus === 'deleted' ? 'home.actions.profileRefreshDeleted' : 'home.actions.profileRefreshFailed');
+    expect(screen.getByText('home.actions.profileCloudFailed')).toBeVisible();
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+    fireEvent.click(screen.getByTestId('retry-profile-refresh'));
+    expect(onRetryProfileRefresh.mock.calls).toEqual([[]]);
+    expect(onRetrySync).not.toHaveBeenCalled(); expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('makes an explicit pending check unavailable for duplicate reads and matching without changing save status', () => {
+    renderRow({ profileRefreshStatus: 'checking', onRetryProfileRefresh: vi.fn(), saveStatus: 'saved' });
+    expect(screen.getByTestId('generate-matches')).toBeDisabled();
+    expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent('home.actions.profileRefreshing');
+    expect(screen.getByText('home.actions.profileSaved')).toBeVisible();
+    expect(screen.queryByTestId('retry-profile-refresh')).toBeNull();
+  });
+
+  it('retains the conflict question while a failed read pauses its answer buttons', () => {
+    renderRow({ profileRefreshStatus: 'failed', hasConflict: true, saveStatus: 'conflict' });
+    expect(screen.getByTestId('conflict-keep-mine')).toBeVisible();
+    expect(screen.getByTestId('conflict-keep-mine')).toBeDisabled();
+    expect(screen.getByTestId('conflict-use-cloud')).toBeDisabled();
+  });
+
+  it('has no refresh banner once the read is ready', () => {
+    renderRow({ profileRefreshStatus: 'ready', onRetryProfileRefresh: vi.fn() });
+    expect(screen.getByTestId('generate-matches')).toBeEnabled();
+    expect(screen.queryByTestId('home-profile-refresh-status')).toBeNull();
+  });
+});

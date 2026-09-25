@@ -2686,6 +2686,10 @@ export const en = {
       profileLoading: 'Loading your saved profile…',
       profileLoadFailed: "Couldn't load your saved profile. Your edits are kept; retry to continue.",
       retryProfileLoad: 'Retry loading profile',
+      profileRefreshing: 'Checking for profile updates…',
+      profileRefreshFailed: 'Could not check for profile updates. Your entries are kept; saving and matching are paused.',
+      profileRefreshDeleted: 'Your saved profile was deleted elsewhere. Your entries are kept; saving and matching are paused.',
+      retryProfileRefresh: 'Check again',
     },
     validation: {
       requiredFields: 'Please select your college, major, and grade to continue',
@@ -7336,6 +7340,10 @@ export const zh = {
       profileLoading: '正在读取你已保存的档案…',
       profileLoadFailed: '资料读取失败。已输入的内容保留，请重试。',
       retryProfileLoad: '重新读取资料',
+      profileRefreshing: '正在核对资料更新…',
+      profileRefreshFailed: '暂时无法核对资料。本页输入已保留，保存和匹配暂停。',
+      profileRefreshDeleted: '已保存的资料已在其他地方删除。本页输入保留，保存和匹配暂停。',
+      retryProfileRefresh: '重新核对',
     },
     validation: {
       requiredFields: '请选择学院、专业和年级以继续',

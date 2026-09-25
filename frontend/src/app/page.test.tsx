@@ -148,6 +148,48 @@ describe('HomePage — identity-private child state', () => {
     expect(screen.getByTestId('resume-filename')).toBe(uploader);
     expect(screen.getByTestId('resume-filename').textContent).toBe('u1-resume.pdf');
   });
+
+  it.each(['unchanged', 'failed', 'deleted'] as const)(
+    'keeps the selected resume mounted while a background read is checking and then %s',
+    async (outcome) => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+      render(<HomePage />);
+      await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+      await act(async () => { resolveProfileLoad?.(VALID_ROW); });
+      await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
+      fireEvent.click(screen.getByTestId('pick-resume'));
+      const uploader = screen.getByTestId('resume-filename');
+      resolveProfileLoad = null;
+      rejectProfileLoad = null;
+
+      fireEvent.focus(window);
+      await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+      expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent('home.actions.profileRefreshing');
+      expect(screen.getByTestId('generate-matches')).toBeDisabled();
+      expect(screen.queryByTestId('hydration-note')).toBeNull();
+      expect(screen.getByTestId('resume-filename')).toBe(uploader);
+      expect(uploader).toHaveTextContent('u1-resume.pdf');
+
+      await act(async () => {
+        if (outcome === 'failed') rejectProfileLoad?.(new Error('background read failed'));
+        else resolveProfileLoad?.(outcome === 'deleted' ? null : VALID_ROW);
+      });
+      if (outcome === 'unchanged') {
+        await waitFor(() => expect(screen.queryByTestId('home-profile-refresh-status')).toBeNull());
+        expect(screen.getByTestId('generate-matches')).not.toBeDisabled();
+      } else {
+        await waitFor(() => expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent(
+          outcome === 'deleted' ? 'home.actions.profileRefreshDeleted' : 'home.actions.profileRefreshFailed',
+        ));
+        expect(screen.getByTestId('generate-matches')).toBeDisabled();
+      }
+      expect(screen.queryByTestId('hydration-note')).toBeNull();
+      expect(screen.getByTestId('resume-filename')).toBe(uploader);
+      expect(uploader).toHaveTextContent('u1-resume.pdf');
+    },
+  );
+
 });
 
 describe('HomePage — Generate is unavailable until the profile row has loaded', () => {
