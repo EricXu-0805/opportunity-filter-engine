@@ -175,14 +175,14 @@ class TestStatus:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         resp = client.get("/api/tailor/status")
         assert resp.status_code == 200
-        assert resp.json() == {"ai_available": True}
+        assert resp.json() == {"ai_available": True, "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION}
 
     def test_status_false_when_no_provider(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
             monkeypatch.delenv(k, raising=False)
         resp = client.get("/api/tailor/status")
         assert resp.status_code == 200
-        assert resp.json() == {"ai_available": False}
+        assert resp.json() == {"ai_available": False, "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION}
 
 
 class TestExtractBullets:
@@ -192,7 +192,11 @@ class TestExtractBullets:
         resp = client.post("/api/tailor/extract-bullets", json={"resume_text": "   "})
         assert resp.status_code == 200
         body = resp.json()
-        assert body == {"bullets": [], "method": "heuristic", "warnings": [], "processing": None}
+        assert body == {
+            "bullets": [], "method": "heuristic", "warnings": [], "processing": None,
+            "generated_at": body["generated_at"], "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION,
+        }
+        assert body["generated_at"]
 
     def test_no_provider_uses_glyph_heuristic(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):

@@ -1,8 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ProfileData, TailorResponse } from '@/lib/types';
+import type { Opportunity, ProfileData, TailorResponse } from '@/lib/types';
 import type { ProfileActionReceipt, ProfileRefreshState } from '@/lib/use-profile-refresh';
-import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { advanceOwnerEpoch, captureOwnerToken, readUserScopedEntry, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 vi.mock('@/i18n/client', () => { const t = (key: string) => key; return { useT: () => ({ t, locale: 'en' }) }; });
 const api = vi.hoisted(() => ({ tailor: vi.fn(), extract: vi.fn(), status: vi.fn() }));
@@ -10,8 +10,18 @@ vi.mock('@/lib/api', () => ({ tailorResume: api.tailor, extractResumeBullets: ap
 import TailorModal from './TailorModal';
 const profile: ProfileData = { institution: 'UIUC', college: 'Engineering', major: 'CS', grade: 'Junior',
   is_international: false, research_interests: 'robots', skills: [], resume_text: 'Full saved résumé source' };
-const response: TailorResponse = { method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0 }] };
-const base = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'target-one', opportunityTitle: 'Target one', ownerReady: true, ownerScopeKey: 'tailor-owner' };
+const response: TailorResponse = { opportunity_id: 'target-one', pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00', method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0 }] };
+function publicTarget(id = 'target-one'): Opportunity {
+  return { id, title: 'Target one', organization: 'UIUC', source_type: 'manual', record_kind: 'listing',
+    opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
+    description_clean: 'Student research', keywords: ['research'],
+    eligibility: { preferred_year: [], majors: [], skills_required: [], international_friendly: 'unknown', citizenship_required: null },
+    application: { application_effort: 'unknown', requires_resume: 'yes', contact_method: 'email' },
+    metadata: { is_active: true, confidence_score: 1 },
+    target_truth: { listing_state: 'open', accepting_state: 'accepting', actionable: true, reference_only: false,
+      reason_code: null, verified_at: null, expires_at: null } };
+}
+const base = { target: publicTarget(), isOpen: true, onClose: vi.fn(), profile, opportunityId: 'target-one', opportunityTitle: 'Target one', ownerReady: true, ownerScopeKey: 'tailor-owner' };
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 function receipt(next: ProfileData | null = profile): ProfileActionReceipt {
@@ -21,15 +31,19 @@ async function drain() { await act(async () => { for (let i = 0; i < 12; i++) aw
 function refresh(check: ProfileRefreshState['checkForAction'], status: ProfileRefreshState['status'] = 'ready'): ProfileRefreshState {
   return { status, refresh: vi.fn(async () => true), checkForAction: check };
 }
+function savedRaw(key: string): string | null {
+  const entry = readUserScopedEntry(key);
+  return entry.status === 'present' ? entry.value : localStorage.getItem(key);
+}
 const textarea = () => screen.getByPlaceholderText('tailor.bulletsPlaceholder');
 const generate = () => screen.getByRole('button', { name: /^tailor\.(generate|regenerate)$/ });
 function type(text = 'My unchanged manual bullet') { fireEvent.change(textarea(), { target: { value: text } }); }
 beforeEach(async () => { vi.resetAllMocks(); localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('tailor-owner'); await syncLocalIdentityOwner('tailor-owner');
-  api.status.mockResolvedValue({ ai_available: true }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'] }); });
+  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.2' }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'], pipeline_version: 'w13.2', generated_at: '2026-09-25T12:00:00+00:00' }); });
 afterEach(() => cleanup());
 
 describe('Tailor profile preflight', () => {
-  it('waits for the actual fresh profile render and target validation, retaining the manual input', async () => {
+  it('waits for fresh profile and target validation, then requires explicit review of retained manual input', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(generate()); await drain();
     expect(check).toHaveBeenCalledOnce(); expect(api.tailor).not.toHaveBeenCalled();
@@ -38,14 +52,19 @@ describe('Tailor profile preflight', () => {
     view.rerender(<TailorModal {...props} profile={fresh} targetChecking targetReady={false} />); await drain(); expect(api.tailor).not.toHaveBeenCalled();
     expect(textarea()).toHaveValue('My unchanged manual bullet');
     view.rerender(<TailorModal {...props} profile={fresh} />); await drain();
-    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en' });
+    expect(api.tailor).not.toHaveBeenCalled();
+    expect(textarea()).toHaveValue('My unchanged manual bullet');
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.reviewDraft' })); await drain();
+    fireEvent.click(generate()); await drain();
+    expect(check).toHaveBeenCalledTimes(3); // initial action, explicit review, then generation
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.2' });
   });
   it('extracts the latest complete résumé only after its receipt is rendered', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' })); await drain();
     expect(api.extract).not.toHaveBeenCalled(); const fresh = { ...profile, resume_text: '完整尾页🚀'.repeat(1000) };
     read.resolve(receipt(fresh)); await drain(); expect(api.extract).not.toHaveBeenCalled();
-    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text);
+    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { expectedPipelineVersion: 'w13.2' });
   });
   it.each(['null', 'rejected', 'deleted'] as const)('keeps manual text on %s read and allows a fresh retry', async (kind) => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn().mockImplementationOnce(() => read.promise).mockResolvedValue(receipt());
@@ -78,7 +97,7 @@ describe('Tailor profile preflight', () => {
   it('retires a pending check on target change without sending a request under the new target', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(generate()); await drain();
-    view.rerender(<TailorModal {...props} opportunityId="target-two" />); read.resolve(receipt()); await drain(); expect(api.tailor).not.toHaveBeenCalled();
+    view.rerender(<TailorModal {...props} opportunityId="target-two" target={publicTarget("target-two")} />); read.resolve(receipt()); await drain(); expect(api.tailor).not.toHaveBeenCalled();
   });
   it('rejects an old generation response and clears its private editor content', async () => {
     const pending = deferred<TailorResponse>(); api.tailor.mockReturnValueOnce(pending.promise);
@@ -120,17 +139,20 @@ describe('Tailor profile preflight', () => {
   });
   it('never rebinds a stored manual draft to a changed résumé just because profile props refreshed', async () => {
     const props = { ...base, profileRefresh: refresh(async () => receipt()) }; const view = render(<TailorModal {...props} />); type();
-    const key = 'ofe_tailor_draft_tailor-owner:target-one'; const original = localStorage.getItem(key); expect(original).not.toBeNull();
+    const key = 'ofe_tailor_draft_tailor-owner:target-one'; const original = savedRaw(key); expect(original).not.toBeNull();
     view.rerender(<TailorModal {...props} profile={{ ...profile, resume_text: 'Different full source' }} />); await drain();
-    expect(localStorage.getItem(key)).toBe(original); expect(textarea()).toHaveValue('My unchanged manual bullet');
+    expect(savedRaw(key)).toBe(original); expect(textarea()).toHaveValue('My unchanged manual bullet');
   });
 
-  it.each(['plain', 'null-envelope'] as const)('does not upgrade unknown %s draft provenance to the current résumé', async (format) => {
+  it.each(['plain', 'null-envelope', 'legacy-resume-hash'] as const)('does not upgrade unknown %s draft provenance to the current résumé', async (format) => {
     const key = 'ofe_tailor_draft_tailor-owner:target-one';
-    localStorage.setItem(key, format === 'plain' ? 'Unknown old source' : JSON.stringify({ t: 'Unknown old source', s: null }));
+    localStorage.setItem(key, format === 'plain' ? 'Unknown old source' : JSON.stringify({ t: 'Unknown old source', s: format === 'legacy-resume-hash' ? 'old-resume-hash-only' : null }));
     render(<TailorModal {...base} profileRefresh={refresh(async () => receipt())} />); await drain();
     expect(textarea()).toHaveValue('Unknown old source'); type('An explicit manual edit'); await drain();
-    expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ t: 'An explicit manual edit', s: null });
+    const saved = JSON.parse(savedRaw(key)!);
+    expect(saved).toMatchObject({ version: 2, owner_id: 'tailor-owner', opportunity_id: 'target-one',
+      text: 'An explicit manual edit', origin: { kind: 'unknown', binding: null }, review: null });
+    expect(api.tailor).not.toHaveBeenCalled();
   });
 
 });

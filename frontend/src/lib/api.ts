@@ -952,7 +952,7 @@ export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
-  options: { locale?: string } = {},
+  options: { locale?: string; expectedPipelineVersion?: string } = {},
 ): Promise<TailorResponse> {
   void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
@@ -961,6 +961,7 @@ export async function tailorResume(
     original_bullets: originalBullets,
   };
   if (options.locale) body.locale = options.locale;
+  if (options.expectedPipelineVersion) body.expected_pipeline_version = options.expectedPipelineVersion;
   return request<TailorResponse>('/tailor', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -969,10 +970,57 @@ export async function tailorResume(
 
 export interface TailorStatus {
   ai_available: boolean;
+  pipeline_version: string;
 }
 
+export const TAILOR_STATUS_TIMEOUT_MS = 15_000;
+
+/** One public source read, bounded through the complete body. A fetch/body
+ * implementation that ignores abort still cannot hold the editor indefinitely. */
 export async function getTailorStatus(): Promise<TailorStatus> {
-  return request<TailorStatus>('/tailor/status');
+  const controller = new AbortController();
+  let response: Response | undefined;
+  const message = 'Tailoring rules could not be checked. Please try again.';
+  const invalid = () => new ApiError(200, 'INVALID_TAILOR_STATUS', message, true);
+  const timeout = () => new ApiError(408, 'TAILOR_STATUS_TIMEOUT', message, true);
+  const http = (status: number) => new ApiError(status, `HTTP_${status}`, message, status === 429 || status >= 500);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      void response?.body?.cancel().catch(() => {});
+      reject(timeout());
+    }, TAILOR_STATUS_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      response = await fetch(`${API_BASE}/tailor/status`, {
+        method: 'GET', cache: 'no-store', credentials: 'omit',
+        headers: { Accept: 'application/json' }, signal: controller.signal,
+      });
+      if (controller.signal.aborted) { void response.body?.cancel().catch(() => {}); throw timeout(); }
+      let body: string;
+      try { body = await response.text(); }
+      catch {
+        if (controller.signal.aborted) throw timeout();
+        if (!response.ok) throw http(response.status);
+        throw invalid();
+      }
+      if (controller.signal.aborted) throw timeout();
+      if (!response.ok) throw http(response.status);
+      let value: unknown;
+      try { value = JSON.parse(body); } catch { throw invalid(); }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
+      const result = value as Record<string, unknown>;
+      if (typeof result.ai_available !== 'boolean' || typeof result.pipeline_version !== 'string'
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(result.pipeline_version)) throw invalid();
+      return { ai_available: result.ai_available, pipeline_version: result.pipeline_version };
+    })()]);
+  } catch (error) {
+    if (controller.signal.aborted) throw timeout();
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(0, 'TAILOR_STATUS_UNAVAILABLE', message, true);
+  } finally { if (timer !== undefined) clearTimeout(timer); }
 }
 
 /**
@@ -1088,6 +1136,8 @@ export async function optimizeBullet(
 }
 
 export interface ExtractBulletsResponse {
+  pipeline_version?: string;
+  generated_at?: string;
   bullets: string[];
   method: 'ai' | 'heuristic' | 'mixed';
   warnings?: string[];
@@ -1101,10 +1151,12 @@ export interface ExtractBulletsResponse {
  */
 export async function extractResumeBullets(
   resumeText: string,
+  options: { expectedPipelineVersion?: string } = {},
 ): Promise<ExtractBulletsResponse> {
   return request<ExtractBulletsResponse>('/tailor/extract-bullets', {
     method: 'POST',
-    body: JSON.stringify({ resume_text: resumeText }),
+    body: JSON.stringify({ resume_text: resumeText,
+      ...(options.expectedPipelineVersion ? { expected_pipeline_version: options.expectedPipelineVersion } : {}) }),
   });
 }
 

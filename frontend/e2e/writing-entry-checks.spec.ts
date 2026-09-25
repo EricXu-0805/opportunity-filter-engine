@@ -117,7 +117,7 @@ async function installWriting(page: Page) {
   const requests: WritingRequest[] = [];
   for (const pattern of ['**/api/tailor**', '**/api/cold-email**', '**/api/resume/**']) await page.route(pattern, async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true } }); return; }
+    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.2' } }); return; }
     const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
     requests.push({ ...body, path });
     if (path === '/api/cold-email/variants' || path === '/api/cold-email/stream') {
@@ -128,7 +128,7 @@ async function installWriting(page: Page) {
       if (path.endsWith('/variants')) await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } });
       else await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path === '/api/tailor') {
-      await route.fulfill({ json: { opportunity_id: TARGET, method: 'ai', warnings: [],
+      await route.fulfill({ json: { opportunity_id: TARGET, method: 'ai', warnings: [], pipeline_version: 'w13.2', generated_at: new Date().toISOString(),
         tailored_bullets: body.original_bullets!.map((text, index) => ({ text, source_evidence: text, source_index: index })) } });
     } else if (path === '/api/tailor/structure') {
       const bullets = body.resume_text!.split('\n').filter(line => line.startsWith('- ')).map((line, index) => ({ id: `bullet-${index}`, text: line.slice(2) }));
@@ -206,6 +206,10 @@ test.describe('Writing entry checks use current profiles', () => {
       await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
       await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
       gate.release();
+      await expect(page.getByText('Your profile, opportunity requirements, or tailoring rules changed. Review these bullets before continuing.', { exact: true })).toBeVisible();
+      expect(requests).toEqual([]);
+      await page.getByRole('button', { name: 'I reviewed these bullets', exact: true }).click();
+      await page.getByRole('button', { name: 'Tailor with AI', exact: true }).click();
       await expect.poll(() => requests.length).toBe(1);
       expect(requests[0]).toMatchObject({ path: '/api/tailor', opportunity_id: TARGET,
         profile: { name: NEW_NAME, hard_skills: skills, coursework: ['STAT 400'] }, original_bullets: [MANUAL] });

@@ -20,7 +20,8 @@ import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanne
 import { useProfileAction } from '@/lib/use-profile-action';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
-import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, readUserScopedEntry, writeUserScopedRaw, type OwnerToken } from '@/lib/identity-owner';
+import { createBinding, createDraft, editDraft as editTailorDraft, reviewDraft, compareDraft, decodeDraft, encodeDraft, type TailorDraftV2, type TailorDraftBinding } from '@/lib/tailor-draft';
 
 function subscribeOwner(changed: () => void): () => void {
   const unsubscribe = onLocalOwnerStateChange(changed);
@@ -33,98 +34,38 @@ const ownerSnapshot = () => {
 };
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import { hashString } from '@/lib/match-utils';
 import type { Opportunity, ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
 import { diffWords, isWhitespace } from '@/lib/word-diff';
 
-// R71-F: persist the textarea draft per-opportunity so the user doesn't
-// lose typed bullets if they close the modal accidentally.
-//
-// C1-R2B: keying by opportunity id ALONE is not enough to isolate drafts
-// between different accounts on the same browser — a deferred write (e.g.
-// smart-extract resolving after a U1->U2 switch) could repopulate the slot
-// U2 reads from when opening the SAME opportunity. Every key is now
-// owner-scoped too (ownerScopeKey:opportunityId). The prefix itself is
-// unchanged (STORAGE_KEYS.TAILOR_DRAFT_PREFIX), so the existing
-// USER_SCOPED_PREFIXES sweep in identity-owner.ts already covers every new
-// key without any change there — it matches by startsWith(prefix), and the
-// owner segment lives entirely AFTER the prefix.
-const DRAFT_STORAGE_PREFIX = STORAGE_KEYS.TAILOR_DRAFT_PREFIX;
-
-function draftStorageKey(ownerScopeKey: string, opportunityId: string): string {
-  return `${DRAFT_STORAGE_PREFIX}${ownerScopeKey}:${opportunityId}`;
+// Only UID-scoped old drafts may be read for compatibility. Ownerless drafts
+// cannot establish ownership and are never read, migrated, or deleted here.
+function draftStorageKey(owner: string, opportunity: string): string {
+  return `${STORAGE_KEYS.TAILOR_DRAFT_PREFIX}${owner}:${opportunity}`;
 }
-
-// A null ownerScopeKey means no confirmed, safe scope exists (identity
-// unresolved, or the transient window between a sign-out and its
-// replacement anon session) — persisting anything there would land under a
-// bare, ownerless slot the NEXT identity to open this opportunity could
-// read. Draft state stays purely in-memory (React state) for that window;
-// these two functions simply no-op instead.
-//
-// W13: drafts carry a fingerprint of profile.resume_text at save time so a
-// restored draft built against a since-edited résumé is flagged, not
-// silently preferred. Legacy plain-string drafts have no sig — unknown, so
-// no staleness claim is made for them.
-interface StoredDraft {
-  text: string;
-  sig: string | null;
-}
-
-function loadSavedDraft(ownerScopeKey: string | null, opportunityId: string): StoredDraft | null {
-  if (typeof window === 'undefined' || !ownerScopeKey) return null;
-  try {
-    const raw = window.localStorage.getItem(draftStorageKey(ownerScopeKey, opportunityId));
-    if (raw === null) return null;
-    try {
-      const parsed = JSON.parse(raw) as { t?: unknown; s?: unknown };
-      if (parsed && typeof parsed.t === 'string') {
-        return { text: parsed.t, sig: typeof parsed.s === 'string' ? parsed.s : null };
-      }
-    } catch { /* legacy plain-string draft */ }
-    return { text: raw, sig: null };
-  } catch {
-    // localStorage can throw in private-mode Safari and embedded webviews.
-    // Swallow — persistence is a UX nicety, not a correctness requirement.
-    return null;
+function loadSavedDraft(owner: OwnerToken, ownerId: string | null, opportunity: string):
+  { status: 'found'; draft: TailorDraftV2 } | { status: 'absent' | 'unavailable' | 'invalid' } {
+  if (!ownerId || owner.uid !== ownerId || !isOwnerTokenValid(owner, ownerId)) return { status: 'unavailable' };
+  const key = draftStorageKey(ownerId, opportunity);
+  const entry = readUserScopedEntry(key);
+  if (entry.status === 'unavailable') return { status: 'unavailable' };
+  let raw = entry.status === 'present' ? entry.value : null;
+  // Previous versions wrote this UID-specific slot outside the generation
+  // namespace. A namespaced record (including empty text) always wins.
+  if (raw === null) {
+    try { raw = window.localStorage.getItem(key); }
+    catch { return { status: 'unavailable' }; }
   }
+  if (!isOwnerTokenValid(owner, ownerId)) return { status: 'unavailable' };
+  if (raw === null) return { status: 'absent' };
+  const decoded = decodeDraft(raw, ownerId, opportunity);
+  return decoded.status === 'v2' || decoded.status === 'legacy'
+    ? { status: 'found', draft: decoded.draft } : { status: 'invalid' };
 }
-
-function saveDraft(
-  ownerScopeKey: string | null,
-  opportunityId: string,
-  value: string,
-  resumeSig: string | null,
-): void {
-  if (typeof window === 'undefined' || !ownerScopeKey) return;
-  try {
-    const key = draftStorageKey(ownerScopeKey, opportunityId);
-    if (value.trim().length === 0) {
-      window.localStorage.removeItem(key);
-    } else {
-      window.localStorage.setItem(key, JSON.stringify({ t: value, s: resumeSig }));
-    }
-  } catch {
-    // Same rationale as loadSavedDraft — never crash the modal on quota
-    // / private-mode failures.
-  }
-}
-
-// C1-R2B: an earlier version of this file attempted a one-time forward
-// migration of the pre-owner-scoping (opportunity-only) draft key into the
-// new owner-scoped one, gated on the browser's LOCAL_IDENTITY_OWNER marker
-// matching. That marker is NOT unforgeable proof of current ownership —
-// identity-owner.ts's own doc comment calls out multi-tab races and
-// delayed writes as accepted residual risk: a stale U1 browser tab can
-// still write the OLD opp-only key AFTER the marker has already moved on
-// to U2, and a "does the marker match" check has no way to tell that write
-// apart from a genuinely-U2 one. Migrating on that basis would hand U1's
-// content to U2. Privacy wins over convenience here: the legacy key is
-// never read, never migrated, and never deleted by this component — it is
-// simply ignored. (It remains subject to identity-owner.ts's own
-// USER_SCOPED_PREFIXES sweep on a real owner switch, same as every
-// owner-scoped key.)
+const hasRuleVersion = (value: unknown): value is string =>
+  typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value);
+const hasReceipt = (data: { pipeline_version?: string | null; generated_at?: string | null }, binding: TailorDraftBinding) =>
+  data.pipeline_version === binding.pipeline_version && typeof data.generated_at === 'string' && Number.isFinite(Date.parse(data.generated_at));
 
 /**
  * R71 resume-tailor modal — side-by-side originals vs AI rewrite.
@@ -333,13 +274,28 @@ export default function TailorModal({
     retired = true;
     setOwnerLifetime({ ...ownerLifetime, retired: true });
   }
-  const targetFingerprint = targetKey ?? JSON.stringify([opportunityId, opportunityTitle]);
+  const targetFingerprint = JSON.stringify([targetKey ?? null, canonicalFingerprint(target ?? { id: opportunityId, title: opportunityTitle })]);
   const sourceReady = !retired && ownerReady && profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   // A failed previous read must still allow an explicit fresh attempt.
   const canRequest = !retired && ownerReady && profileAvailable && (targetReady || targetChecking);
   const [userEditRevision, setUserEditRevision] = useState(0);
   const [sourceChanged, setSourceChanged] = useState(false);
-  const [draftSourceSig, setDraftSourceSig] = useState<string | null>(null);
+  const [pipelineVersion, setPipelineVersion] = useState<string | null>(null);
+  const [record, setRecord] = useState<TailorDraftV2 | null>(null);
+  const draft = record?.text ?? '';
+  const [draftStatus, setDraftStatus] = useState<'checking' | 'current' | 'stale' | 'unknown'>('checking');
+  const [bindingState, setBindingState] = useState<{ key: string; binding: TailorDraftBinding } | null>(null);
+  const [storageRead, setStorageRead] = useState<'ready' | 'unavailable' | 'invalid'>('unavailable');
+  const [saveFailed, setSaveFailed] = useState(false);
+  const [inputRejected, setInputRejected] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [rulesNeedReview, setRulesNeedReview] = useState(false);
+  const outputBindingRef = useRef<TailorDraftBinding | null>(null);
+  const draftOwnerRef = useRef<OwnerToken | null>(null);
+  const freshDraftRef = useRef<{ profile: string; target: string | null } | null>(null);
+  const statusAttemptRef = useRef(0);
+  const skipPersistRef = useRef(false);
+  const [rulesUnavailable, setRulesUnavailable] = useState(false);
 
 
   // Heuristic prefill from `profile.resume_text` — used when no saved
@@ -363,9 +319,11 @@ export default function TailorModal({
   // R71-F: initial draft = saved draft for THIS opportunity (if any)
   // over heuristic prefill over empty. Computed once per modal open;
   // see the open-effect below for the actual loading.
-  const [draft, setDraft] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
-  const [draftStale, setDraftStale] = useState(false);
+  const bindingKey = JSON.stringify([profileFingerprint, targetFingerprint, pipelineVersion]);
+  const currentBinding = bindingState?.key === bindingKey ? bindingState.binding : null;
+  const draftStale = rulesNeedReview || draftStatus === 'stale';
+  const needsReview = rulesNeedReview || draftStatus === 'stale' || draftStatus === 'unknown';
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -466,29 +424,30 @@ export default function TailorModal({
     if (changed) {
       sessionEpochRef.current += 1;
       // Retire network callbacks without taking ownership of the editor.
-      setLoading(false); setExtracting(false);
+      setLoading(false); setExtracting(false); setReviewing(false);
       if (changedProfile) setSourceChanged(true);
     }
   }, [isOpen, opportunityId, ownerScopeKey, ownerReady, profileFingerprint, targetFingerprint, sourceReady, retired]);
   const generateAttemptRef = useRef(0);
   const extractAttemptRef = useRef(0);
 
-  const action = useProfileAction<'generate' | 'extract'>({
+  const action = useProfileAction<'generate' | 'extract' | 'review'>({
     isOpen: isOpen && !retired, profile, profileAvailable,
     scopeKey: JSON.stringify([ownerScopeKey, opportunityId, targetFingerprint]), editRevision: userEditRevision,
     refresh: profileRefresh, target, targetRefresh,
     readiness: sourceReady ? 'ready'
       : canRequest && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
-    execute: (intent) => { if (intent === 'extract') void handleExtractFromResume(); else void handleGenerate(); },
+    execute: (intent) => { if (intent === 'extract') void handleExtractFromResume(); else if (intent === 'review') void handleReviewDraft(); else void handleGenerate(); },
   });
   const { request: requestAction, cancel: cancelAction } = action;
-  const markUserEdit = useCallback(() => {
+  const markUserEdit = () => {
     cancelAction(); setUserEditRevision((value) => value + 1);
     generateAttemptRef.current += 1; extractAttemptRef.current += 1;
-    setLoading(false); setExtracting(false);
-  }, [cancelAction]);
-  const requestGeneration = () => { if (canRequest && !loading && !extracting) requestAction('generate'); };
-  const requestExtraction = () => { if (canRequest && !loading && !extracting) requestAction('extract'); };
+    setLoading(false); setExtracting(false); setReviewing(false);
+  };
+  const requestGeneration = () => { if (canRequest && !loading && !extracting && !reviewing) requestAction('generate'); };
+  const requestReview = () => { if (canRequest && !loading && !extracting && !reviewing) requestAction('review'); };
+  const requestExtraction = () => { if (canRequest && !loading && !extracting && !reviewing) requestAction('extract'); };
 
   // Every close path (the X button, the backdrop click, Escape) routes
   // through here instead of calling the `onClose` prop directly.
@@ -509,8 +468,8 @@ export default function TailorModal({
     onClose();
   }, [onClose, cancelAction]);
 
-  // Only a genuine editor lifetime change may initialize its buffers. A
-  // same-owner refresh retires old work above but must not replace manual text.
+  // Preserve the editor across material refreshes; initialize only on open or
+  // a target change. A failed read never licenses overwriting an unread draft.
   const initializedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isOpen) { initializedRef.current = null; return; }
@@ -518,93 +477,128 @@ export default function TailorModal({
     const key = JSON.stringify([ownerScopeKey, opportunityId]);
     if (initializedRef.current === key) return;
     initializedRef.current = key;
-    const saved = loadSavedDraft(ownerScopeKey, opportunityId);
-    setDraft(saved?.text ?? heuristicPrefill);
-    setDraftSourceSig(saved ? saved.sig : (profile.resume_text ? hashString(profile.resume_text) : null));
-    setDraftRestored(saved !== null && saved.text.length > 0);
-    setDraftStale(!!saved?.sig && !!profile.resume_text && saved.sig !== hashString(profile.resume_text));
-    setSourceChanged(false);
+    skipPersistRef.current = true;
+    const owner = captureOwnerToken();
+    draftOwnerRef.current = owner;
+    const saved = loadSavedDraft(owner, ownerScopeKey, opportunityId);
+    const absent = saved.status === 'absent';
+    freshDraftRef.current = absent ? { profile: profileFingerprint,
+      target: targetReady && !targetChecking && (!targetRefresh || targetRefresh.status === 'ready') ? targetFingerprint : null } : null;
+    setRecord(saved.status === 'found' ? saved.draft : createDraft(ownerScopeKey ?? 'unresolved', opportunityId,
+      absent ? heuristicPrefill : '', absent ? (heuristicPrefill ? 'heuristic' : 'manual') : 'unknown', null));
+    setStorageRead(saved.status === 'invalid' ? 'invalid' : saved.status === 'unavailable' ? 'unavailable' : 'ready');
+    setPipelineVersion(null); setRulesUnavailable(false);
+    setSaveFailed(false); setInputRejected(false); setDraftStatus('checking'); setBindingState(null); setRulesNeedReview(false);
+    setDraftRestored(saved.status === 'found' && saved.draft.text.length > 0);
+    setSourceChanged(false); outputBindingRef.current = null;
     setResp(null); setError(null); setCopied(false); setCopiedBulletIdx(null);
-    setLoading(false); setExtracting(false); setExtractionResult(null); setExtractionError(false);
+    setLoading(false); setExtracting(false); setReviewing(false); setExtractionResult(null); setExtractionError(false);
     setSubmittedBullets([]); setRejected(new Set()); setEdits({}); setEditingIdx(null); setEditDraft('');
-  }, [isOpen, retired, heuristicPrefill, opportunityId, ownerScopeKey, profile.resume_text]);
+  }, [isOpen, retired, heuristicPrefill, opportunityId, ownerScopeKey, profileFingerprint, targetFingerprint, targetReady, targetChecking, targetRefresh]);
 
-  // Tracks the (ownerScopeKey, opportunityId) the persist effect below last
-  // ACTUALLY wrote under. Guards against a real cross-owner leak: if
-  // ownerScopeKey/opportunityId change on an ALREADY-OPEN modal (isOpen
-  // never flips false — e.g. a caller that doesn't remount/close on
-  // identity change, unlike MatchList's key-based one), the reset-on-open
-  // effect above and this persist effect BOTH have those props in their
-  // dependency arrays and so BOTH fire in the SAME commit; React runs them
-  // in declaration order (reset first), but the reset effect's own
-  // setDraft(...) does not retroactively update the `draft` CLOSURE this
-  // persist effect already captured for the CURRENT render — that only
-  // takes effect on the NEXT render. Without this guard, this effect would
-  // still fire with the OLD owner's `draft` text and the NEW ownerScopeKey,
-  // writing it under the NEW owner's key. Relying on isOpen alone is not
-  // enough — it only helps on the (currently, but not necessarily always)
-  // common case where a caller closes the modal in the exact same batch as
-  // the identity reset.
-  const lastPersistedContextRef = useRef<{ ownerScopeKey: string | null; opportunityId: string } | null>(null);
-
-  // R71-F: persist draft to localStorage as the user types. localStorage
-  // is synchronous and cheap enough that per-keystroke writes are fine —
-  // no debouncing needed for typical resume-bullet inputs (<3KB). The
-  // helper swallows quota/private-mode errors so persistence failures
-  // never break the modal. No-ops (ephemeral, in-memory only) when
-  // ownerScopeKey is null — see saveDraft's own doc comment.
+  const persistRecord = useCallback((value: TailorDraftV2) => {
+    const owner = draftOwnerRef.current;
+    if (!isOpen || !isOpenRef.current || retired || !profileAvailable || storageRead !== 'ready' || !owner
+      || value.owner_id !== ownerScopeKey || value.opportunity_id !== opportunityId || owner.uid !== ownerScopeKey) return;
+    setSaveFailed(!writeUserScopedRaw(draftStorageKey(value.owner_id, value.opportunity_id), encodeDraft(value), owner));
+  }, [isOpen, retired, profileAvailable, storageRead, ownerScopeKey, opportunityId, setSaveFailed]);
   useEffect(() => {
-    if (!isOpen || retired || !profileAvailable) return;
-    const prevCtx = lastPersistedContextRef.current;
-    const contextChanged =
-      !prevCtx || prevCtx.ownerScopeKey !== ownerScopeKey || prevCtx.opportunityId !== opportunityId;
-    lastPersistedContextRef.current = { ownerScopeKey, opportunityId };
-    // The render where a context change is FIRST observed is exactly the
-    // one whose `draft` closure might still belong to the OLD context (see
-    // the ref's doc comment above) — skip writing on it. The very next
-    // render (once the reset effect's setDraft has actually propagated,
-    // giving `draft` the new context's real value) has contextChanged ===
-    // false and persists normally.
-    if (contextChanged) return;
-    saveDraft(ownerScopeKey, opportunityId, draft, draftSourceSig);
-  }, [isOpen, retired, profileAvailable, ownerScopeKey, opportunityId, draft, draftSourceSig]);
+    if (skipPersistRef.current) { skipPersistRef.current = false; return; }
+    if (record) persistRecord(record);
+  }, [record, persistRecord]);
 
-  // R71-G: probe server AI availability each time the modal opens so the
-  // banner reflects current config (a Render env-var change shouldn't need
-  // a page reload to surface). setState runs in the async callback, not
-  // synchronously in the effect body, so it's outside the
-  // react-hooks/set-state-in-effect rule's scope.
+  // A newly typed draft can bind to this open's original material snapshot.
+  // Saved unknown/stale drafts never acquire new provenance through typing.
+  const anchorFreshTarget = useCallback(() => {
+    const fresh = freshDraftRef.current;
+    // Initial cards are not source receipts. Attach a new, unsaved draft to
+    // the first verified full target only; later target changes stay stale.
+    if (fresh && fresh.target === null && fresh.profile === profileFingerprint) fresh.target = targetFingerprint;
+  }, [profileFingerprint, targetFingerprint]);
+  const bindFresh = useCallback((value: TailorDraftV2, binding: TailorDraftBinding): TailorDraftV2 => {
+    const fresh = freshDraftRef.current;
+    return fresh && fresh.profile === profileFingerprint && fresh.target === targetFingerprint && value.origin.binding === null
+      && value.owner_id === ownerScopeKey && value.opportunity_id === opportunityId
+      ? { ...value, origin: { ...value.origin, binding } } : value;
+  }, [profileFingerprint, targetFingerprint, ownerScopeKey, opportunityId]);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || retired) return;
+    const owner = captureOwnerToken(); const attempt = ++statusAttemptRef.current;
     let ignore = false;
-    getTailorStatus()
-      .then((s) => {
-        if (!ignore) setAiAvailable(s.ai_available);
-      })
-      .catch(() => {
-        if (!ignore) setAiAvailable(null);
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [isOpen]);
+    getTailorStatus().then((status) => {
+      if (ignore || !mountedRef.current || !isOpenRef.current || opportunityIdRef.current !== opportunityId || statusAttemptRef.current !== attempt || !isOwnerTokenValid(owner, owner.uid)) return;
+      if (!hasRuleVersion(status.pipeline_version)) throw new Error('Invalid rule version');
+      setAiAvailable(status.ai_available); setPipelineVersion(status.pipeline_version);
+    }).catch(() => {
+      if (!ignore && mountedRef.current && isOpenRef.current && opportunityIdRef.current === opportunityId && statusAttemptRef.current === attempt && isOwnerTokenValid(owner, owner.uid)) {
+        setAiAvailable(null); setPipelineVersion(null); setRulesUnavailable(true);
+      }
+    });
+    return () => { ignore = true; };
+  }, [isOpen, retired, ownerScopeKey, opportunityId]);
 
-  const handleClearDraft = useCallback(() => {
+  useEffect(() => {
+    if (!isOpen || !sourceReady || !pipelineVersion) return;
+    const owner = captureOwnerToken(); const epoch = sessionEpochRef.current; let ignore = false;
+    createBinding(profile, target?.id === opportunityId ? target : null, pipelineVersion).then(binding => {
+      if (ignore || !mountedRef.current || !isOpenRef.current || sessionEpochRef.current !== epoch || !isOwnerTokenValid(owner, owner.uid)) return;
+      anchorFreshTarget();
+      setBindingState({ key: bindingKey, binding }); setRulesUnavailable(false);
+      setRecord(previous => previous ? bindFresh(previous, binding) : previous);
+    }).catch(() => { if (!ignore) { setBindingState(null); setRulesUnavailable(true); } });
+    return () => { ignore = true; };
+  }, [isOpen, sourceReady, pipelineVersion, bindingKey, profile, target, opportunityId, bindFresh, anchorFreshTarget]);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!record || !currentBinding) return;
+    compareDraft(record, currentBinding).then(status => { if (!ignore) setDraftStatus(status); })
+      .catch(() => { if (!ignore) setDraftStatus('unknown'); });
+    return () => { ignore = true; };
+  }, [record, currentBinding]);
+
+  // Every explicit action checks current server rules, then sends that exact
+  // version. The backend refuses a deploy between this check and the POST.
+  async function checkedBinding(stillCurrent: () => boolean): Promise<TailorDraftBinding | null> {
+    const attempt = ++statusAttemptRef.current;
+    const status = await getTailorStatus();
+    if (!stillCurrent() || attempt !== statusAttemptRef.current) return null;
+    if (!hasRuleVersion(status.pipeline_version)) throw new Error(t('tailor.rulesUnavailable'));
+    setPipelineVersion(status.pipeline_version); setAiAvailable(status.ai_available); setRulesUnavailable(false);
+    const binding = await createBinding(profile, target?.id === opportunityId ? target : null, status.pipeline_version);
+    if (!stillCurrent() || attempt !== statusAttemptRef.current) return null;
+    anchorFreshTarget();
+    setBindingState({ key: JSON.stringify([profileFingerprint, targetFingerprint, status.pipeline_version]), binding });
+    return binding;
+  }
+  function handleRuleFailure(error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'TAILOR_PIPELINE_CHANGED') {
+      setRulesNeedReview(true); setPipelineVersion(null); setError(t('tailor.rulesChanged'));
+    }
+  }
+  async function handleReviewDraft() {
+    if (!sourceReadyRef.current || !record) return;
+    const owner = captureOwnerToken(), epoch = sessionEpochRef.current, attempt = ++generateAttemptRef.current;
+    const stillCurrent = () => mountedRef.current && sessionEpochRef.current === epoch
+      && generateAttemptRef.current === attempt && isOwnerTokenValid(owner, owner.uid);
+    setReviewing(true); setError(null);
+    try {
+      const binding = await checkedBinding(stillCurrent);
+      if (!binding) return;
+      const reviewed = await reviewDraft(record, binding);
+      if (!stillCurrent()) return;
+      freshDraftRef.current = null;
+      setRecord(reviewed); setRulesNeedReview(false); setDraftStatus('current'); setSourceChanged(false);
+    } catch { if (stillCurrent()) setError(t('tailor.rulesUnavailable')); }
+    finally { if (stillCurrent()) setReviewing(false); }
+  }
+  const handleClearDraft = () => {
     markUserEdit();
-    setDraftSourceSig(null);
-    setDraft('');
-    setDraftRestored(false);
-    saveDraft(ownerScopeKey, opportunityId, '', null);
-    // See the textarea onChange handler below — a manual draft mutation of
-    // any kind invalidates a still-pending Extract. setExtracting(false)
-    // right here, synchronously, rather than only bumping the attempt
-    // counter: the invalidated extract's own guarded `finally` will now
-    // correctly see itself as superseded and skip its setExtracting(false)
-    // call, so without this the spinner/disabled state would otherwise be
-    // stuck true forever with nothing left to clear it.
-    extractAttemptRef.current += 1;
-    setExtracting(false);
-  }, [ownerScopeKey, opportunityId, markUserEdit]);
+    freshDraftRef.current = { profile: profileFingerprint, target: targetFingerprint };
+    setRecord(createDraft(ownerScopeKey ?? 'unresolved', opportunityId, '', 'manual', currentBinding));
+    setDraftRestored(false); setRulesNeedReview(false);
+  };
 
   // Focus trap + escape + body-overflow lock. Lifted verbatim from
   // ColdEmailModal so the two modals feel identical to keyboard users.
@@ -688,21 +682,21 @@ export default function TailorModal({
     setExtractionResult(null);
     setExtractionError(false);
     try {
-      const data = await extractResumeBullets(profile.resume_text);
+      const binding = await checkedBinding(stillCurrent);
+      if (!binding) return;
+      const data = await extractResumeBullets(profile.resume_text, { expectedPipelineVersion: binding.pipeline_version });
       if (!stillCurrent()) return; // closed/unmounted/switched/superseded — drop silently, no write
+      if (!hasReceipt(data, binding)) throw new Error('Invalid extraction receipt');
       setExtractionResult(data);
       if (data.bullets.length > 0) {
-        const next = data.bullets.join('\n');
-        setDraft(next);
-        setDraftSourceSig(profile.resume_text ? hashString(profile.resume_text) : null);
-        setSourceChanged(false); setDraftStale(false);
-        saveDraft(ctx.ownerScopeKey, ctx.opportunityId, next,
-          profile.resume_text ? hashString(profile.resume_text) : null);
+        freshDraftRef.current = null;
+        setRecord(createDraft(ctx.ownerScopeKey ?? 'unresolved', ctx.opportunityId, data.bullets.join('\n'), 'extract', binding, data.processing));
+        setSourceChanged(false); setRulesNeedReview(false); setDraftStatus('current');
         setDraftRestored(false);
       }
-    } catch {
-      // Keep the user's draft on API rejection, failure, or timeout.
-      if (stillCurrent()) setExtractionError(true);
+    } catch (error) {
+      // Failed or mismatched extraction never replaces the user's text.
+      if (stillCurrent()) { setExtractionError(true); handleRuleFailure(error); }
     } finally {
       // An old, superseded attempt's finally must never clear a NEWER
       // attempt's `extracting` spinner.
@@ -741,11 +735,20 @@ export default function TailorModal({
     setCopied(false);
     // Keep the previous reviewed output until a new result actually succeeds.
     try {
-      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale });
+      const binding = await checkedBinding(stillCurrent);
+      if (!binding || !record) return;
+      const bound = bindFresh(record, binding);
+      const status = await compareDraft(bound, binding);
+      if (!stillCurrent()) return;
+      setDraftStatus(status);
+      if (bound !== record) setRecord(bound);
+      if (status !== 'current' || rulesNeedReview) return;
+      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale, expectedPipelineVersion: binding.pipeline_version });
       if (!stillCurrent()) return; // superseded — N1's result must never appear as N2's
       // W13: a response the backend stamped for a DIFFERENT target than the
       // one this call was made for is dropped outright.
-      if (data.opportunity_id && data.opportunity_id !== ctx.opportunityId) return;
+      if (data.opportunity_id !== ctx.opportunityId || !hasReceipt(data, binding)) throw new Error(t('tailor.rulesUnavailable'));
+      outputBindingRef.current = binding;
       setSubmittedBullets(bullets);
       setRejected(new Set()); setEdits({}); setEditingIdx(null);
       setSourceChanged(false);
@@ -753,6 +756,7 @@ export default function TailorModal({
     } catch (err) {
       if (!stillCurrent()) return;
       setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
+      handleRuleFailure(err);
     } finally {
       // Old finally blocks must not clear a NEWER request's loading state.
       if (stillCurrent()) setLoading(false);
@@ -815,9 +819,12 @@ export default function TailorModal({
     const kept = keptTexts();
     if (kept.length === 0) return;
     const next = kept.join('\n');
-    markUserEdit();
-    setDraft(next);
-    if (profileAvailable) saveDraft(ownerScopeKey, opportunityId, next, draftSourceSig);
+    let promoted: TailorDraftV2;
+    try { promoted = createDraft(ownerScopeKey ?? 'unresolved', opportunityId, next, 'reviewed_output', outputBindingRef.current); }
+    catch { setInputRejected(true); return; }
+    markUserEdit(); setInputRejected(false);
+    freshDraftRef.current = null;
+    setRecord(promoted);
     setDraftRestored(false);
     // See the textarea onChange handler below — a manual draft mutation of
     // any kind invalidates a still-pending Extract; setExtracting(false)
@@ -956,9 +963,9 @@ export default function TailorModal({
         )}
 
         {/* Body — two panel layout */}
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
           {/* Left panel — originals */}
-          <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0">
+          <div className="flex-1 flex flex-col lg:border-r border-gray-100 min-w-0 shrink-0 lg:min-h-0 lg:overflow-y-auto">
             <div className="px-5 pt-4 pb-2 shrink-0">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <label
@@ -995,6 +1002,18 @@ export default function TailorModal({
               <p className="text-xs text-gray-400 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
+              {inputRejected && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.invalidDraftText')}</p>}
+              {record && needsReview && (
+                <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" data-testid="tailor-draft-review">
+                  <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>
+                  <button type="button" onClick={requestReview} disabled={reviewing || loading || extracting || action.busy || !canRequest}
+                    className="mt-2 font-semibold underline underline-offset-2 disabled:opacity-50">{t('tailor.reviewDraft')}</button>
+                </div>
+              )}
+              {(!pipelineVersion || (pipelineVersion && !currentBinding)) && <p className="mb-2 text-xs text-gray-500">{t(rulesUnavailable ? 'tailor.rulesUnavailable' : 'tailor.rulesChecking')}</p>}
+              {storageRead !== 'ready' && <p role="alert" className="mb-2 text-xs text-amber-800">{t(storageRead === 'invalid' ? 'tailor.draftUnreadable' : 'tailor.draftReadFailed')}</p>}
+              {saveFailed && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.draftSaveFailed')}{' '}
+                <button type="button" className="underline" onClick={() => { if (record) persistRecord(record); }}>{t('tailor.retrySave')}</button></p>}
               {profile.resume_text && (
                 <ResumeProcessingNotice text={profile.resume_text} processing={extractionResult?.processing} warnings={extractionResult?.warnings} />
               )}
@@ -1003,7 +1022,7 @@ export default function TailorModal({
                 <button
                   type="button"
                   onClick={requestExtraction}
-                  disabled={extracting || loading || action.busy || !canRequest}
+                  disabled={extracting || loading || reviewing || action.busy || !canRequest}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed mb-2"
                 >
                   {extracting ? (
@@ -1020,13 +1039,16 @@ export default function TailorModal({
                 </button>
               )}
             </div>
-            <div className="flex-1 px-5 pb-4 min-h-0">
+            <div className="flex-1 px-5 pb-4 min-h-[220px]">
               <textarea
                 id="tailor-bullets-input"
                 value={draft}
                 onChange={(e) => {
-                  markUserEdit();
-                  setDraft(e.target.value);
+                  if (!record) return;
+                  let next: TailorDraftV2;
+                  try { next = editTailorDraft(record, e.target.value); }
+                  catch { setInputRejected(true); return; }
+                  markUserEdit(); setInputRejected(false); setRecord(next);
                   // Any user edit clears the "restored" indicator since
                   // the draft is no longer purely the restored copy.
                   if (draftRestored) setDraftRestored(false);
@@ -1043,7 +1065,6 @@ export default function TailorModal({
                   // else would ever clear the spinner otherwise.
                   extractAttemptRef.current += 1;
                   setExtracting(false);
-                  if (draftStale) setDraftStale(false);
                 }}
                 placeholder={t('tailor.bulletsPlaceholder')}
                 rows={12}
@@ -1053,7 +1074,7 @@ export default function TailorModal({
           </div>
 
           {/* Right panel — tailored output */}
-          <div className="w-full lg:w-[480px] flex flex-col bg-gray-50/60 min-w-0 border-t lg:border-t-0 border-gray-100">
+          <div className="w-full lg:w-[480px] flex flex-col bg-gray-50/60 min-w-0 min-h-[240px] lg:min-h-0 shrink-0 border-t lg:border-t-0 border-gray-100">
             <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-2 shrink-0">
               <label
                 className="block text-xs font-semibold text-gray-500 uppercase tracking-wider"
@@ -1329,7 +1350,7 @@ export default function TailorModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-3 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
           {resp?.method === 'ai' && hasResults && (
             <button
               type="button"
@@ -1364,7 +1385,7 @@ export default function TailorModal({
           <button
             type="button"
             onClick={requestGeneration}
-            disabled={loading || extracting || action.busy || draft.trim().length === 0 || !canRequest}
+            disabled={loading || extracting || reviewing || action.busy || draft.trim().length === 0 || !canRequest}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
           >
             {resp ? (

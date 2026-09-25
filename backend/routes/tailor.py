@@ -54,7 +54,7 @@ from backend.lib.resume_input import (
     RESUME_AI_TIME_BUDGET_SECONDS,
     resume_chunks,
 )
-from backend.lib.target_actionability import assert_target_actionable
+from backend.lib.target_actionability import assert_target_actionable, prework_refusal
 from backend.schemas import (
     BulletOptimizeRequest,
     BulletOptimizeResponse,
@@ -73,6 +73,7 @@ from backend.schemas import (
     TailoredBullet,
     TailorRequest,
     TailorResponse,
+    TailorStatusResponse,
 )
 from src.evidence import is_inferred
 from src.recommender.cold_email import filter_course_entries
@@ -96,7 +97,25 @@ _DEFAULT_BULLETS_PER_REQUEST = 12
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w13.1"
+TAILOR_PIPELINE_VERSION = "w13.2"
+
+
+def _require_pipeline_version(expected: str | None) -> str:
+    """Capture the serving rules before lookup/extraction/provider work.
+
+    A status read can hit an older deploy. Refuse its subsequent action without
+    spending a provider call, and stamp accepted work with this captured value,
+    never a later global value. This does not verify the origin of user bullets.
+    """
+    actual = TAILOR_PIPELINE_VERSION
+    if expected is not None and expected != actual:
+        raise prework_refusal(409, {
+            "code": "TAILOR_PIPELINE_CHANGED",
+            "message": "Tailoring rules changed. Check again before continuing.",
+            "retryable": False,
+            "pipeline_version": actual,
+        })
+    return actual
 
 
 def _verify_evidence(evidence: str, corpus: str) -> str:
@@ -705,9 +724,13 @@ def _select_bullets_across_chunks(groups: list[list[str]], limit: int = 12) -> t
 @router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
 async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsResponse:
     """Select reviewable bullets from every accepted part of the resume."""
+    version = _require_pipeline_version(request.expected_pipeline_version)
     text = request.resume_text or ""
     if not text.strip():
-        return ExtractBulletsResponse(bullets=[], method="heuristic")
+        return ExtractBulletsResponse(
+            bullets=[], method="heuristic", pipeline_version=version,
+            generated_at=datetime.now(UTC).isoformat(),
+        )
     results, coverage = await _process_resume_chunks(text, _ai_extract_bullets)
     groups = [result or _heuristic_bullets(chunk, limit=1000)
               for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
@@ -717,27 +740,39 @@ async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsRespo
         warnings.append("bullet_selection_limited")
     return ExtractBulletsResponse(
         bullets=bullets, method=_processing_method(coverage), warnings=warnings, processing=coverage,
+        pipeline_version=version, generated_at=datetime.now(UTC).isoformat(),
     )
 
 
-@router.get("/tailor/status")
-async def tailor_status() -> dict[str, bool]:
+@router.get("/tailor/status", response_model=TailorStatusResponse)
+async def tailor_status() -> TailorStatusResponse:
     """Report whether server-side AI tailoring is available.
 
     Lets the frontend modal warn up-front ("AI unavailable — results will
     just echo your originals") instead of the user typing bullets, clicking
     Generate, and only *then* discovering everything silently degraded to
-    the passthrough fallback. Returns a single boolean — never *which*
-    provider is configured, so we don't leak key-shape / vendor details.
+    the passthrough fallback. Returns availability and the serving code version,
+    never which provider is configured or any key-shape / vendor details.
 
     Cheap + synchronous: ``is_configured()`` only inspects env vars, it
     never contacts a provider.
     """
-    return {"ai_available": is_configured()}
+    return TailorStatusResponse(ai_available=is_configured(), pipeline_version=TAILOR_PIPELINE_VERSION)
 
 
 @router.post("/tailor", response_model=TailorResponse)
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
+    """Apply the optional rule precondition and stamp every accepted outcome."""
+    version = _require_pipeline_version(request.expected_pipeline_version)
+    result = await _generate_tailor_response(request)
+    return result.model_copy(update={
+        "opportunity_id": request.opportunity_id,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "pipeline_version": version,
+    })
+
+
+async def _generate_tailor_response(request: TailorRequest) -> TailorResponse:
     """Tailor a student's resume bullets for a specific opportunity.
 
     Always returns a usable response:
@@ -846,9 +881,6 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         tailored_bullets=accepted,
         method="ai",
         warnings=warnings,
-        opportunity_id=request.opportunity_id,
-        generated_at=datetime.now(UTC).replace(tzinfo=None).isoformat(),
-        pipeline_version=TAILOR_PIPELINE_VERSION,
     )
 
 

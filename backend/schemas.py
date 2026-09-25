@@ -564,6 +564,12 @@ class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
     original_bullets: list[str] = Field(default_factory=list)
+    # Optional for older clients. A supplied code version is an exact pre-work
+    # condition, not a claim that user-provided bullets are confirmed evidence.
+    expected_pipeline_version: str | None = Field(
+        default=None, strict=True, min_length=1, max_length=80,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    )
     # R71-D: caller-declared output language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
     # to pick between the EN and ZH system prompts; everything else (the
@@ -612,6 +618,11 @@ class TailoredBullet(BaseModel):
     source_index: int = 0
 
 
+class TailorStatusResponse(BaseModel):
+    ai_available: bool
+    pipeline_version: str
+
+
 class TailorResponse(BaseModel):
     tailored_bullets: list[TailoredBullet]
     method: str = "fallback"  # "ai" | "fallback"
@@ -644,6 +655,10 @@ class ExtractBulletsRequest(BaseModel):
     # Store/accept the complete supported document. Model inputs have their
     # own smaller bound and total time/concurrency budget in the route.
     resume_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
+    expected_pipeline_version: str | None = Field(
+        default=None, strict=True, min_length=1, max_length=80,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    )
 
 
 class ExtractBulletsResponse(BaseModel):
@@ -651,6 +666,8 @@ class ExtractBulletsResponse(BaseModel):
     method: str = "heuristic"  # "ai" | "heuristic" | "mixed"
     warnings: list[str] = Field(default_factory=list)
     processing: ResumeProcessingCoverage | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 # --- Résumé renovation (staged: structure → macro renovate → per-bullet) -----
