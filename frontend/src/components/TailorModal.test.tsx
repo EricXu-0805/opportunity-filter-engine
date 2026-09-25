@@ -36,6 +36,7 @@ vi.mock('@/lib/api', () => ({
 
 import TailorModal from './TailorModal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, TailorResponse } from '@/lib/types';
 
 // R71-G word-diff splits bullet text into per-word <span>/<ins>/<del>
@@ -92,19 +93,20 @@ function storedDraftText(key: string): string | null {
 }
 
 
-describe('TailorModal', () => {
-  beforeEach(() => {
+beforeEach(async () => {
     vi.resetAllMocks();
     // R71-F: every test starts with a clean localStorage so a leftover
     // draft from a previous test can't leak into the next one's
     // "initial state" assertions.
     window.localStorage.clear();
+    advanceOwnerEpoch(null); advanceOwnerEpoch(OWNER); await syncLocalIdentityOwner(OWNER);
     // R71-G: default the status probe to "AI available" so the
     // unavailable banner stays hidden and pre-existing assertions are
     // untouched. Tests that exercise the banner override this.
     mockGetTailorStatus.mockResolvedValue({ ai_available: true });
   });
 
+describe('TailorModal', () => {
   it('does not render when closed', () => {
     render(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
     expect(screen.queryByText('tailor.title')).toBeNull();

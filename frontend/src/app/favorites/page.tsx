@@ -12,6 +12,10 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
+import { useCheckedWritingProfile } from '@/lib/use-checked-writing-profile';
+import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
+import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner, { profileRefreshReady } from '@/components/ProfileRefreshBanner';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
 
@@ -75,9 +79,9 @@ function SavedSearchesPanel({
 
 export default function FavoritesPage() {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
 
-  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
+  const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customImports = useCustomImports();
   const [savedSearchesEpoch, setSavedSearchesEpoch] = useState(0);
   const {
@@ -119,6 +123,13 @@ export default function FavoritesPage() {
     handleRemove,
   } = useFavoritesData(resetPageLocalState);
 
+  const writingScope = `${ownerScopeKey}:${identityGeneration}`;
+  const { profile, acceptHydration } = useCheckedWritingProfile(rawProfile, writingScope);
+  const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
+  const emailProfile = useRetainedWritingProfile(profile, emailModal.open, `${writingScope}:${emailModal.id}`);
+  const tailorProfile = useRetainedWritingProfile(profile, tailorModal.open, `${writingScope}:${tailorModal.id}`);
+  const canOpenWriting = ownerReady && !loading && !error && !!profile && profileRefreshReady(profileRefresh);
+
   const opportunities = useMemo<Opp[]>(
     () => [...customImports.map(customImportToOpp), ...serverOpportunities],
     [customImports, serverOpportunities],
@@ -143,25 +154,25 @@ export default function FavoritesPage() {
     // Second gate, independent of the card's. The card decides what to render;
     // this decides what may actually open, so a card variant that keeps a
     // control cannot reach a modal the server would refuse to serve.
-    if (targetPosture(opp) !== 'actionable') return;
+    if (!canOpenWriting || emailModal.open || tailorModal.open || targetPosture(opp) !== 'actionable') return;
     setEmailModal({ open: true, id: opp.id, title: opp.title, school: opp.school ?? null });
-  }, []);
+  }, [canOpenWriting, emailModal.open, tailorModal.open]);
 
   const closeEmailModal = useCallback(() => {
     setEmailModal({ open: false, id: '', title: '', school: null });
   }, []);
 
   const openTailorModal = useCallback((opp: Opp) => {
-    if (!ownerReady) return; // fail-closed — the CTA is disabled too, this is defense-in-depth
+    if (!canOpenWriting || emailModal.open || tailorModal.open) return;
     if (targetPosture(opp) !== 'actionable') return;
     setTailorModal({ open: true, id: opp.id, title: opp.title });
-  }, [ownerReady]);
+  }, [canOpenWriting, emailModal.open, tailorModal.open]);
 
   const closeTailorModal = useCallback(() => {
     setTailorModal({ open: false, id: '', title: '' });
   }, []);
 
-  if (loading) {
+  if (loading && !emailModal.open && !tailorModal.open) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
@@ -181,7 +192,7 @@ export default function FavoritesPage() {
   // refusing. Looked up in the canonical server list, so a custom import (no
   // server truth) also fails closed here.
   const modalTargetActionable = (id: string) => {
-    if (!id) return false;
+    if (!id || loading || error || !ownerReady) return false;
     const record = serverOpportunities.find((o) => o.id === id);
     return !!record && targetPosture(record) === 'actionable';
   };
@@ -200,6 +211,7 @@ export default function FavoritesPage() {
       </button>
 
       <StorageStatusBanner />
+      <ProfileRefreshBanner refresh={profileRefresh} locale={locale} />
 
       {/* R66: the lone anchor prompt — only renders when an anonymous
           user has 3+ favorites AND has not dismissed it (localStorage
@@ -273,13 +285,13 @@ export default function FavoritesPage() {
               isSelected={selected.has(opp.id)}
               selectedSize={selected.size}
               isExpanded={expanded.has(opp.id)}
-              hasProfile={!!profile}
+              hasProfile={canOpenWriting}
               onToggleExpand={toggleExpand}
               onToggleSelect={toggleSelect}
               onRemove={handleRemove}
               onOpenEmailModal={openEmailModal}
               onOpenTailorModal={openTailorModal}
-              tailorDisabled={!ownerReady}
+              tailorDisabled={!canOpenWriting}
               t={t}
             />
           ))}
@@ -296,19 +308,23 @@ export default function FavoritesPage() {
         />
       )}
 
-      {profile && emailTargetActionable && (
+      {emailProfile.profile && (
         <ColdEmailModal
           isOpen={emailModal.open}
           onClose={closeEmailModal}
-          profile={profile}
+          profile={emailProfile.profile}
+          profileAvailable={emailProfile.profileAvailable}
+          profileRefresh={profileRefresh}
+          targetReady={emailTargetActionable}
+          targetChecking={loading}
           opportunityId={emailModal.id}
           opportunityTitle={emailModal.title}
           opportunitySchool={emailModal.school}
-          reminderTarget={opportunities.find((o) => o.id === emailModal.id)}
+          reminderTarget={emailTargetActionable ? opportunities.find((o) => o.id === emailModal.id) : undefined}
         />
       )}
 
-      {profile && tailorTargetActionable && (
+      {tailorProfile.profile && (
         <TailorModal
           // Generation-qualified key: a real identity transition forces a
           // full remount, destroying this modal's own local state (draft,
@@ -321,7 +337,12 @@ export default function FavoritesPage() {
           key={`${identityGeneration}:${tailorModal.id}`}
           isOpen={tailorModal.open}
           onClose={closeTailorModal}
-          profile={profile}
+          targetKey={JSON.stringify(serverOpportunities.find((item) => item.id === tailorModal.id) ?? null)}
+          profile={tailorProfile.profile}
+          profileAvailable={tailorProfile.profileAvailable}
+          profileRefresh={profileRefresh}
+          targetReady={tailorTargetActionable}
+          targetChecking={loading}
           opportunityId={tailorModal.id}
           opportunityTitle={tailorModal.title}
           ownerReady={ownerReady}

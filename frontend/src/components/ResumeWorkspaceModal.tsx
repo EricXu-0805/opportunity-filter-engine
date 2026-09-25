@@ -24,7 +24,7 @@ function WorkspaceSession({ onClose, onCloseRequestChange, profile, opportunity,
     ? <FullTargetResumeModal isOpen onClose={onClose} profile={profile}
         opportunity={opportunity} targetReady={targetReady} targetChecking={targetChecking} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange} onOpenLegacy={() => setMode('bullets')} />
     : <ResumeRenovationModal isOpen onClose={onClose} profile={profile}
-        opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
+        opportunityId={opportunity.id} opportunityTitle={opportunity.title} targetReady={targetReady} targetChecking={targetChecking} targetKey={JSON.stringify(opportunity)} profileAvailable={profileAvailable} profileRefresh={profileRefresh} onCloseRequestChange={onCloseRequestChange}
         onOpenFull={() => setMode('full')} />;
 }
 

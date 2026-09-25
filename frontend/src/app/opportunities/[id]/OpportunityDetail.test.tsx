@@ -7,7 +7,7 @@
 // with the REAL TrackerPanel doing the actual mount/unmount work.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useEffect, useRef, useState } from 'react';
-import type { ProfileData } from '@/lib/types';
+import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileHydration } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -102,6 +102,7 @@ vi.mock('./InteractionPills', () => ({
 // dead target stops mounting it — the real one is dynamically imported and
 // simply never appeared in these tests.
 const writingProps = vi.hoisted(() => ({
+  tailor: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
   email: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
   resume: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
 }));
@@ -141,11 +142,14 @@ vi.mock('@/components/OpportunityChatbot', () => ({
 // ownerScopeKey props are rendered too, so the wiring of those (separately
 // from the key) stays covered.
 vi.mock('@/components/TailorModal', () => ({
-  default: function MockTailorModal(props: { isOpen: boolean; ownerReady: boolean; ownerScopeKey: string | null }) {
+  default: function MockTailorModal(props: { isOpen: boolean; ownerReady: boolean; ownerScopeKey: string | null; profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
+    writingProps.tailor = props;
+    const [text, setText] = useState("Original tailor");
     const mountIdRef = useRef(Math.random().toString(36).slice(2));
     if (!props.isOpen) return null;
     return (
       <div data-testid="mock-tailor-modal">
+        <textarea aria-label="Tailor buffer" value={text} onChange={event => setText(event.target.value)} />
         <span data-testid="mount-id">{mountIdRef.current}</span>
         <span data-testid="owner-ready">{String(props.ownerReady)}</span>
         <span data-testid="owner-scope-key">{String(props.ownerScopeKey)}</span>
@@ -306,7 +310,7 @@ describe('OpportunityDetail — TrackerPanel is keyed by identityGeneration', ()
 });
 
 describe('OpportunityDetail — TailorModal is keyed by identityGeneration (C1-R2B)', () => {
-  it('an identityGeneration bump force-remounts TailorModal — proven via a sentinel mount-id that can ONLY change on a genuine unmount+remount, not merely on a prop change (the real component\'s own ownerScopeKey-driven internal reset would otherwise mask a missing key). tailorOpen is kept true across BOTH renders (the mock fully controls it) to isolate the key\'s OWN protection from hydrate()\'s separate setTailorOpen(false) safety net', async () => {
+  it('retires the old Tailor lifetime on an identity change and only acquires the new owner after closing', async () => {
     window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
       institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
       research_interests: 'ml', skills: [],
@@ -335,8 +339,13 @@ describe('OpportunityDetail — TailorModal is keyed by identityGeneration (C1-R
     });
     rerender(<OpportunityDetail opp={opp} />);
 
-    const mountId2 = screen.getByTestId('mount-id').textContent;
-    expect(mountId2).not.toBe(mountId1); // genuinely torn down and recreated — a fresh instance
+    expect(screen.queryByTestId('mount-id')).toBeNull();
+    mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2', tailorOpen: false });
+    rerender(<OpportunityDetail opp={opp} />);
+    mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2', tailorOpen: true });
+    rerender(<OpportunityDetail opp={opp} />);
+    const mountId2 = (await screen.findByTestId('mount-id')).textContent;
+    expect(mountId2).not.toBe(mountId1); // a fresh open lifetime, never the old draft
     expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-2'); // real props still flow through
   });
 
@@ -523,7 +532,7 @@ describe('OpportunityDetail target-truth postures', () => {
       'renovation-modal', 'opportunity-chatbot',
     ];
 
-    it.each(POSTURES)('tears down every action surface when a target becomes %s', async (_label, truth) => {
+    it.each(POSTURES)('pauses retained editors and removes other action surfaces when a target becomes %s', async (_label, truth) => {
       // A transition, not a fresh render. Four of these arrive through
       // next/dynamic, so querying a freshly-rendered dead target proves
       // nothing: the sentinel would be absent for a tick either way. Mount
@@ -536,9 +545,13 @@ describe('OpportunityDetail target-truth postures', () => {
 
       rerender(<OpportunityDetail opp={targetWith(truth)} />);
 
-      for (const id of [...DYNAMIC, 'chat-drawer']) {
-        expect(screen.queryByTestId(id), id).toBeNull();
+      for (const id of ['cold-email-modal', 'mock-tailor-modal', 'renovation-modal']) {
+        expect(screen.getByTestId(id), id).toBeInTheDocument();
       }
+      for (const props of [writingProps.email, writingProps.tailor, writingProps.resume]) {
+        expect(props?.targetReady).toBe(false);
+      }
+      for (const id of ['opportunity-chatbot', 'chat-drawer']) expect(screen.queryByTestId(id), id).toBeNull();
       // And the openers the header would have rendered controls for.
       expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
       expect(screen.getByTestId('header-tailor-handler')).toHaveTextContent('false');
@@ -721,18 +734,42 @@ describe('OpportunityDetail whole-profile deletion while writing', () => {
     expect(writingProps.email?.profileAvailable).toBe(false);
     expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
   });
-  it('keeps both manually edited buffers mounted and withdraws current source authority on deletion', async () => {
+  it('keeps already-open drafts when the target closes, without opening a new historical-target editor', async () => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', skills: [] }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true, tailorOpen: true });
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const labels = ['Email buffer', 'Résumé buffer', 'Tailor buffer'];
+    for (const label of labels) fireEvent.change(await screen.findByRole('textbox', { name: label }), { target: { value: `Keep ${label}` } });
+    const closed: Opportunity = { ...(opp as Opportunity), target_truth: { listing_state: 'closed' as const, reference_only: true, actionable: false,
+      accepting_state: 'not_accepting' as const, reason_code: 'listing_closed', verified_at: null, expires_at: null } };
+    rerender(<OpportunityDetail opp={closed} />);
+    for (const label of labels) expect(screen.getByRole('textbox', { name: label })).toHaveValue(`Keep ${label}`);
+    for (const props of [writingProps.email, writingProps.resume, writingProps.tailor]) {
+      expect(props?.targetReady).toBe(false); expect(props?.profileAvailable).toBe(true);
+    }
+    mockHookState.current = baseHookResult(); rerender(<OpportunityDetail opp={closed} />);
+    expect(screen.queryByTestId('cold-email-modal')).toBeNull();
+    expect(screen.queryByTestId('renovation-modal')).toBeNull();
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+  });
+  it('keeps all three manually edited buffers mounted and withdraws current source authority on deletion', async () => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', grade: 'Junior', skills: [] }));
-    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true });
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true, tailorOpen: true });
     const { rerender } = render(<OpportunityDetail opp={opp} />);
     const email = await screen.findByRole('textbox', { name: 'Email buffer' });
     const resume = await screen.findByRole('textbox', { name: 'Résumé buffer' });
+    const tailor = await screen.findByRole('textbox', { name: 'Tailor buffer' });
+    fireEvent.change(tailor, { target: { value: 'Keep unsaved tailor' } });
     fireEvent.change(email, { target: { value: 'Keep unsaved email' } });
     fireEvent.change(resume, { target: { value: 'Keep unsaved résumé' } });
     act(() => { localStorage.removeItem(STORAGE_KEYS.PROFILE); window.dispatchEvent(new Event('storage')); });
     rerender(<OpportunityDetail opp={opp} />);
     expect(screen.getByRole('textbox', { name: 'Email buffer' })).toBe(email);
     expect(screen.getByRole('textbox', { name: 'Résumé buffer' })).toBe(resume);
+    expect(screen.getByRole('textbox', { name: 'Tailor buffer' })).toBe(tailor);
+    expect(tailor).toHaveValue('Keep unsaved tailor');
+    expect(writingProps.tailor?.profileAvailable).toBe(false);
+    expect(writingProps.tailor?.profileRefresh).toBe(refreshHook.current);
     expect(email).toHaveValue('Keep unsaved email'); expect(resume).toHaveValue('Keep unsaved résumé');
     expect(writingProps.email?.profileAvailable).toBe(false); expect(writingProps.resume?.profileAvailable).toBe(false);
     expect(writingProps.email?.targetReady).toBe(true); expect(writingProps.resume?.targetReady).toBe(true);

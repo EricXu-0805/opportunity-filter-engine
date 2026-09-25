@@ -1,14 +1,12 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
-import { makeProfileViewSnapshot, type ProfileHydration } from '@/lib/profile-sync';
-import { profileActionKey } from '@/lib/use-profile-action';
+import { useCheckedWritingProfile } from '@/lib/use-checked-writing-profile';
 import { useProfileRefresh } from '@/lib/use-profile-refresh';
 import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
 import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
@@ -119,39 +117,18 @@ export default function OpportunityDetail({
   } = useOpportunityDetail(opp);
 
   const writingScope = `${ownerScopeKey}:${identityGeneration}:${opp.id}`;
-  // Keep the exact candidate from hydrate (including unsent journal edits).
-  // A later, different raw mirror or owner permanently retires this overlay.
-  const rawKey = profileActionKey(rawProfile);
-  const rawKeyRef = useRef(rawKey);
-  useLayoutEffect(() => { rawKeyRef.current = rawKey; }, [rawKey]);
-  const [hydrated, setHydrated] = useState<{ scope: string; before: string | null; key: string | null;
-    profile: ProfileData | null; token: ReturnType<typeof captureOwnerToken> } | null>(null);
-  const applicable = hydrated && hydrated.scope === writingScope && isOwnerTokenValid(hydrated.token, hydrated.token.uid)
-    && (rawKey === hydrated.before || rawKey === hydrated.key);
-  if (hydrated && !applicable) setHydrated(null);
-  else if (hydrated && rawKey === hydrated.key && hydrated.before !== hydrated.key) {
-    // Once the matching mirror has arrived, going back to the old input is a
-    // NEW source change, not permission to resurrect this accepted candidate.
-    setHydrated({ ...hydrated, before: hydrated.key });
-  }
-  const profile = applicable ? hydrated.profile : rawProfile;
-  const acceptHydration = useCallback((loaded: ProfileHydration) => {
-    if (loaded.quarantineFailed || loaded.conflictKeys.length || loaded.conflicts.length
-      || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return;
-    const view = loaded.profile ? makeProfileViewSnapshot({ baseProfile: loaded.baseProfile,
-      renderedProfile: loaded.profile, revision: loaded.revision, token: loaded.token,
-      identityGeneration: loaded.token.epoch, source: 'hydration' }) : null;
-    setHydrated({ scope: writingScope, before: rawKeyRef.current, key: profileActionKey(loaded.profile),
-      profile: view?.renderedProfile ?? null, token: loaded.token });
-  }, [writingScope]);
+  const { profile, acceptHydration } = useCheckedWritingProfile(rawProfile, writingScope);
   const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
-  const emailProfile = useRetainedWritingProfile(profile, emailModalOpen, writingScope);
-  const resumeProfile = useRetainedWritingProfile(profile, renovationOpen, writingScope);
+  const actionable = targetPosture(opp) === 'actionable';
+  // Only an editor opened while actionable may retain its draft after the
+  // target closes. Target readiness, separate from profile availability, stops actions.
+  const emailProfile = useRetainedWritingProfile(actionable ? profile : null, emailModalOpen, writingScope);
+  const resumeProfile = useRetainedWritingProfile(actionable ? profile : null, renovationOpen, writingScope);
+  const tailorProfile = useRetainedWritingProfile(actionable ? profile : null, tailorOpen, writingScope);
 
   // One read, used by every action surface on this page. Historical and
   // unverified both resolve to false: the page stays readable either way,
   // but nothing on it may act on the target.
-  const actionable = targetPosture(opp) === 'actionable';
   // Which body sections may exist at all. Each of the four gated below is a
   // block of offer terms — what it pays, when it closes, who may apply, what
   // to submit — and the sections themselves only knew `source_type`, so a
@@ -339,17 +316,14 @@ export default function OpportunityDetail({
         />
       )}
 
-      {/* Historical and unverified targets mount none of these. A closed
-          listing stays readable; drafting an email about it, tailoring a
-          résumé to it, or asking an AI how to approach it are the actions
-          that must not exist — including as a closed modal one state change
-          from opening. */}
-      {emailProfile.profile && actionable && (
+      {/* Historical targets cannot start a writing session. An already-open
+          editor may keep its buffer while targetReady stops derived actions. */}
+      {emailProfile.profile && (
         <ColdEmailModal
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
           profile={emailProfile.profile}
-          profileAvailable={emailProfile.profileAvailable}
+          profileAvailable={profile !== null}
           targetReady={actionable}
           profileRefresh={profileRefresh}
           opportunityId={opp.id}
@@ -361,7 +335,7 @@ export default function OpportunityDetail({
         />
       )}
 
-      {profile && actionable && (
+      {tailorProfile.profile && (
         <TailorModal
           // Generation-qualified key (same fix as TrackerPanel above): a
           // real identity transition forces a full remount, destroying
@@ -372,7 +346,11 @@ export default function OpportunityDetail({
           key={`${identityGeneration}:${opp.id}`}
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
-          profile={profile}
+          targetKey={JSON.stringify(opp)}
+          profile={tailorProfile.profile}
+          profileAvailable={profile !== null}
+          profileRefresh={profileRefresh}
+          targetReady={actionable}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           ownerReady={ownerReady}
@@ -380,15 +358,13 @@ export default function OpportunityDetail({
         />
       )}
 
-      {/* `actionable` is stated explicitly rather than left to the release
-          flag. A test that passes only because resumeRenovate is false proves
-          nothing about the day it is turned on. */}
-      {RELEASE_SCOPE.resumeRenovate && resumeProfile.profile && actionable && (
+      {/* The retained profile can exist only after an actionable entry. */}
+      {RELEASE_SCOPE.resumeRenovate && resumeProfile.profile && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}
           profile={resumeProfile.profile}
-          profileAvailable={resumeProfile.profileAvailable}
+          profileAvailable={profile !== null}
           targetReady={actionable}
           opportunity={opp}
           profileRefresh={profileRefresh}

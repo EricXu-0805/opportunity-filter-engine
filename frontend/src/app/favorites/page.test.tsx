@@ -18,6 +18,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn() }),
 }));
 
+vi.mock('@/lib/use-profile-refresh', () => ({ useProfileRefresh: () => ({ status: 'ready', refresh: async () => true, checkForAction: async () => null }) }));
+
 vi.mock('@/lib/custom-imports', () => ({
   useCustomImports: () => [],
 }));
@@ -78,6 +80,7 @@ vi.mock('@/components/TailorModal', () => ({
     opportunityId: string;
     ownerReady: boolean;
     ownerScopeKey: string | null;
+    targetReady?: boolean;
   }) {
     const mountIdRef = useRef(Math.random().toString(36).slice(2));
     if (!props.isOpen) return null;
@@ -85,6 +88,7 @@ vi.mock('@/components/TailorModal', () => ({
       <div data-testid="mock-tailor-modal">
         <span data-testid="mount-id">{mountIdRef.current}</span>
         <span data-testid="tailor-opp-id">{props.opportunityId}</span>
+        <span data-testid="target-ready">{String(props.targetReady)}</span>
         <span data-testid="owner-ready">{String(props.ownerReady)}</span>
         <span data-testid="owner-scope-key">{String(props.ownerScopeKey)}</span>
       </div>
@@ -152,7 +156,7 @@ function setProfile() {
 }
 
 describe('FavoritesPage — TailorModal is keyed by identityGeneration (C1-R2B)', () => {
-  it('an identityGeneration bump (a real account switch) force-remounts TailorModal — proven via a sentinel mount-id that can ONLY change on a genuine unmount+remount. tailorModal stays open across both renders (page-owned state, never explicitly closed here) to isolate the key\'s OWN protection', async () => {
+  it('retires the old open Tailor lifetime when the owner scope changes', async () => {
     setProfile();
     mockHookState.current = baseHookResult({ identityGeneration: 1, ownerScopeKey: 'owner-1' });
     const { rerender } = render(<FavoritesPage />);
@@ -168,9 +172,8 @@ describe('FavoritesPage — TailorModal is keyed by identityGeneration (C1-R2B)'
     mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2' });
     rerender(<FavoritesPage />);
 
-    const mountId2 = screen.getByTestId('mount-id').textContent;
-    expect(mountId2).not.toBe(mountId1); // genuinely torn down and recreated — a fresh instance
-    expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-2'); // real props still flow through
+    expect(mountId1).toBeTruthy();
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull(); // no old draft is transferred to the new owner
   });
 
   it('a re-render with the SAME identityGeneration (e.g. a manual data retry — different serverOpportunities/unavailableCount, same identity) does NOT remount TailorModal — the sentinel\'s mount-id survives', async () => {
@@ -264,7 +267,7 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     ['malformed truth', { listing_state: 'open' }],
   ];
 
-  it.each(DEGRADED)('unmounts the modal when the target becomes %s', async (_label, truth) => {
+  it.each(DEGRADED)('retains the editor but pauses target actions when the target becomes %s', async (_label, truth) => {
     // The modal opened while the target was live. A refresh then closed it —
     // same identity, so nothing remounts and no callback runs again. Checking
     // only at open time would leave a Tailor session attached to a target the
@@ -284,10 +287,11 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     });
     rerender(<FavoritesPage />);
 
-    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+    expect(screen.getByTestId('mock-tailor-modal')).toBeTruthy();
+    expect(screen.getByTestId('target-ready')).toHaveTextContent('false');
   });
 
-  it('unmounts the modal when the target disappears from the corpus', async () => {
+  it('retains the editor but pauses target actions when the target disappears from the corpus', async () => {
     setProfile();
     mockHookState.current = withTarget(live());
     const { rerender } = render(<FavoritesPage />);
@@ -297,6 +301,7 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     mockHookState.current = withTarget(null);
     rerender(<FavoritesPage />);
 
-    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+    expect(screen.getByTestId('mock-tailor-modal')).toBeTruthy();
+    expect(screen.getByTestId('target-ready')).toHaveTextContent('false');
   });
 });

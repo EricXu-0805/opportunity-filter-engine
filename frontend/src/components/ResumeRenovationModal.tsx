@@ -18,6 +18,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
@@ -68,6 +69,9 @@ interface RenovationScope {
 interface ResumeRenovationModalProps {
   isOpen: boolean;
   targetReady?: boolean;
+  targetChecking?: boolean;
+  /** Complete public target binding supplied by the workspace. */
+  targetKey?: string;
   /** False keeps the open draft; the retained profile is not current material. */
   profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
@@ -183,13 +187,18 @@ export default function ResumeRenovationModal({
   opportunityTitle,
   onOpenFull,
   targetReady = true,
+  targetChecking = false,
+  targetKey,
   profileAvailable = true,
   profileRefresh,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
-  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh);
+  const targetBinding = targetKey ?? canonicalProfile({ opportunityId, opportunityTitle });
+  const targetBindingRef = useRef(targetBinding);
   const sourceRef = useRef({ ready: sourceReady, epoch: 0 });
   const profileFingerprint = canonicalProfile(profile);
+  const profileRevisionRef = useRef(0);
   const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileFingerprint), [profileFingerprint]);
   const [currentSignature, setCurrentSignature] = useState<{ fingerprint: string; signature?: string } | null>(null);
   useEffect(() => {
@@ -207,6 +216,7 @@ export default function ResumeRenovationModal({
   const [ownerRevision, setOwnerRevision] = useState(0);
   const [restoreRevision, setRestoreRevision] = useState(0);
   const [profileChanged, setProfileChanged] = useState(false);
+  const [targetChanged, setTargetChanged] = useState(false);
   const [phase, setPhase] = useState<'restoring' | 'restore-error' | 'idle' | 'working' | 'doc'>('restoring');
   const [workingStep, setWorkingStep] = useState<'structuring' | 'renovating'>('structuring');
   const [doc, setDoc] = useState<RenovationDoc | null>(null);
@@ -229,6 +239,14 @@ export default function ResumeRenovationModal({
   const [editDraft, setEditDraft] = useState('');
   const [optimizingId, setOptimizingId] = useState<string | null>(null);
   const [bulletNotices, setBulletNotices] = useState<Record<string, string>>({});
+  const [userEditRevision, setUserEditRevision] = useState(0);
+  const userEditRef = useRef(0);
+  const [actionChanged, setActionChanged] = useState(false);
+  const markUserEdit = () => {
+    userEditRef.current += 1;
+    setUserEditRevision(userEditRef.current);
+    setOptimizingId(null);
+  };
 
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -277,7 +295,7 @@ export default function ResumeRenovationModal({
   ), []);
 
   const isCurrentWork = useCallback((scope: RenovationScope | null, revision: number): scope is RenovationScope => (
-    isCurrentScope(scope) && scope.workRevision === revision
+    isCurrentScope(scope) && isOwnerTokenValid(scope.owner, scope.owner.uid) && scope.workRevision === revision
   ), [isCurrentScope]);
 
   // Retire work before any old continuation can run, while preserving the doc,
@@ -287,6 +305,7 @@ export default function ResumeRenovationModal({
     const scope = scopeRef.current;
     if (!isOpen || !scope?.active || scope.profileFingerprint === profileFingerprint) return;
     scope.profileFingerprint = profileFingerprint;
+    profileRevisionRef.current += 1;
     scope.workRevision += 1;
     lastPersistRef.current = null;
     setProfileChanged(true);
@@ -302,14 +321,16 @@ export default function ResumeRenovationModal({
   }, [isOpen, profileFingerprint]);
 
   useLayoutEffect(() => {
-    if (sourceRef.current.ready !== sourceReady) sourceRef.current.epoch += 1;
+    const didTargetChange = targetBindingRef.current !== targetBinding;
+    targetBindingRef.current = targetBinding;
+    if (sourceRef.current.ready !== sourceReady || didTargetChange) sourceRef.current.epoch += 1;
     sourceRef.current.ready = sourceReady;
-    if (sourceReady || !isOpen) return;
+    if ((sourceReady && !didTargetChange) || !isOpen) return;
+    if (didTargetChange) { setActionChanged(true); setTargetChanged(true); }
     // Retire the visible pending action before paint; keep the editor buffer.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOptimizingId(null);
     setPhase((previous) => previous === 'working' ? (docRef.current ? 'doc' : 'idle') : previous);
-  }, [isOpen, sourceReady]);
+  }, [isOpen, sourceReady, targetBinding]);
 
   // Reset + restore on every open: a saved doc for this opportunity wins
   // over the empty CTA. setState runs in the async callback.
@@ -324,6 +345,8 @@ export default function ResumeRenovationModal({
        known state on open before the async restore resolves. */
     setPhase('restoring');
     setProfileChanged(false);
+    setTargetChanged(false);
+    setActionChanged(false);
     setCurrentDoc(null);
     setBaseSections([]);
     setStructureResult(null);
@@ -483,7 +506,8 @@ export default function ResumeRenovationModal({
     if (!sourceRef.current.ready || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
     const workRevision = ++scope.workRevision;
     const epoch = sourceRef.current.epoch;
-    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && isCurrentWork(scope, workRevision);
+    const editRevision = userEditRef.current;
+    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && userEditRef.current === editRevision && isCurrentWork(scope, workRevision);
     const resumeSignature = hashString(profileSnapshot.resume_text);
     const originalDoc = docRef.current;
     lastPersistRef.current = null;
@@ -524,6 +548,7 @@ export default function ResumeRenovationModal({
       };
       setCurrentDoc(nextDoc);
       setProfileChanged(false);
+      setTargetChanged(false);
       setEditingId(null);
       setEditDraft('');
       setBaseSections(structured.sections);
@@ -560,20 +585,24 @@ export default function ResumeRenovationModal({
 
   function handleRollback(b: RenovatedBullet) {
     if (b.current < 0) return;
+    markUserEdit();
     updateBullet(b.id, (cur) => ({ ...cur, current: cur.current - 1 }));
   }
 
   function handleRollForward(b: RenovatedBullet) {
     if (b.current >= b.variants.length - 1) return;
+    markUserEdit();
     updateBullet(b.id, (cur) => ({ ...cur, current: cur.current + 1 }));
   }
 
   function startEdit(b: RenovatedBullet) {
+    markUserEdit();
     setEditingId(b.id);
     setEditDraft(bulletCurrentText(b));
   }
 
   function saveEdit(b: RenovatedBullet) {
+    markUserEdit();
     const trimmed = editDraft.trim();
     setEditingId(null);
     setEditDraft('');
@@ -587,10 +616,11 @@ export default function ResumeRenovationModal({
 
   async function handleReoptimize(b: RenovatedBullet) {
     const scope = scopeRef.current;
-    if (!sourceRef.current.ready || optimizingId || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || !docSourceCurrent || optimizingId || !isCurrentScope(scope)) return;
     const workRevision = scope.workRevision;
     const epoch = sourceRef.current.epoch;
-    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && isCurrentWork(scope, workRevision);
+    const editRevision = userEditRef.current;
+    const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && userEditRef.current === editRevision && isCurrentWork(scope, workRevision);
     const isSameBullet = () => docRef.current?.sections.some((s) => s.bullets.some((cur) => cur === b));
     setOptimizingId(b.id);
     setBulletNotices((prev) => ({ ...prev, [b.id]: '' }));
@@ -624,6 +654,42 @@ export default function ResumeRenovationModal({
     }
   }
 
+  const knownSignature = typeof doc?.profile_sig === 'string' && /^v1:sha256:[a-f0-9]{64}$/.test(doc.profile_sig);
+  const comparableSignature = currentSignature?.fingerprint === profileFingerprint ? currentSignature.signature : undefined;
+  const staleProfile = profileChanged || (!!knownSignature && !!comparableSignature && doc?.profile_sig !== comparableSignature);
+  const unknownProfile = !!doc && (!knownSignature || !comparableSignature);
+  const docSourceCurrent = !staleProfile && !staleResume && !targetChanged;
+
+  const profileAction = useProfileAction<{ kind: 'generate' } | { kind: 'optimize'; bulletId: string; profileFingerprint: string; sourceRevision: number }>({
+    isOpen,
+    profile,
+    profileAvailable,
+    scopeKey: canonicalProfile([opportunityId, targetBinding]),
+    editRevision: userEditRevision,
+    refresh: profileRefresh,
+    readiness: profileAvailable && (targetChecking || profileRefresh?.status === 'checking' || currentSignature?.fingerprint !== profileFingerprint)
+      ? 'waiting' : sourceReady && ['idle', 'doc'].includes(phase) ? 'ready' : 'blocked',
+    execute: (intent) => {
+      if (intent.kind === 'generate') {
+        // The committed executor sees the checked profile, never the click's
+        // captured profile. Existing drafts change only after a full success.
+        void handleRenovate();
+        return;
+      }
+      // A single-bullet request belongs to its original material. Checking a
+      // newer profile must not silently rebind an old bullet to that source.
+      if (!docSourceCurrent || intent.profileFingerprint !== profileFingerprint || intent.sourceRevision !== profileRevisionRef.current) { setActionChanged(true); return; }
+      const bullet = docRef.current?.sections.flatMap((section) => section.bullets).find((item) => item.id === intent.bulletId);
+      if (bullet) void handleReoptimize(bullet);
+    },
+  });
+  const requestGeneration = () => { setActionChanged(false); profileAction.request({ kind: 'generate' }); };
+  const requestOptimization = (bullet: RenovatedBullet) => {
+    if (!docSourceCurrent) return;
+    setActionChanged(false);
+    profileAction.request({ kind: 'optimize', bulletId: bullet.id, profileFingerprint, sourceRevision: profileRevisionRef.current });
+  };
+
   async function handleCopyAll() {
     const scope = scopeRef.current;
     if (!doc || !isCurrentScope(scope)) return;
@@ -653,10 +719,24 @@ export default function ResumeRenovationModal({
 
   const warningMessage = doc ? pickRenovationWarning(doc.warnings, t) : null;
   const hasResume = !!profileSnapshot.resume_text;
-  const knownSignature = typeof doc?.profile_sig === 'string' && /^v1:sha256:[a-f0-9]{64}$/.test(doc.profile_sig);
-  const comparableSignature = currentSignature?.fingerprint === profileFingerprint ? currentSignature.signature : undefined;
-  const staleProfile = profileChanged || (!!knownSignature && !!comparableSignature && doc?.profile_sig !== comparableSignature);
-  const unknownProfile = !!doc && (!knownSignature || !comparableSignature);
+  // One provenance/action notice: a stale draft is stronger than unknown
+  // provenance or a stopped intent. The shared banner owns read-error retry.
+  const draftStale = !!doc && !docSourceCurrent;
+  const sharedReadFailure = profileRefresh?.status === 'failed';
+  const readUnavailable = profileAction.error === 'unavailable';
+  const actionNotice = draftStale || (!sharedReadFailure && (profileAction.error || actionChanged || profileChanged))
+    ? sharedReadFailure
+      ? (locale === 'zh' ? '重新生成后再优化条目。' : 'Re-renovate before optimizing bullets.')
+      : readUnavailable
+        ? (locale === 'zh'
+          ? `未能核对资料，草稿已保留。${draftStale ? '请重试核对，再重新生成后优化条目。' : '请重试核对后再操作。'}`
+          : `Could not check your profile. Your draft is kept. ${draftStale ? 'Retry the check, then re-renovate before optimizing bullets.' : 'Retry the check before continuing.'}`)
+        : draftStale
+          ? (locale === 'zh' ? '资料或目标已变。草稿和手改已保留，请重新生成后再优化条目。' : 'Profile or target changed. Your draft and edits are kept. Re-renovate before optimizing bullets.')
+          : profileChanged && !doc
+            ? (locale === 'zh' ? '资料已变，请核对当前资料后重试。' : 'Your profile changed. Review the current information and try again.')
+            : (locale === 'zh' ? '资料、目标或编辑内容已变。草稿已保留，请核对后重试。' : 'The profile, target or edits changed. Your draft is kept. Review it and try again.')
+    : null;
 
   return (
     <div
@@ -729,6 +809,11 @@ export default function ResumeRenovationModal({
 
         <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => requestLeave('close')} />
 
+        {profileAction.busy && <p role="status" data-testid="renovation-action-check" className="px-4 py-2 text-sm text-indigo-700">
+          {locale === 'zh' ? '正在核对最新资料，完成后再开始润色…' : 'Checking current profile before renovation…'}
+        </p>}
+
+
         {onOpenFull && <div className="border-b border-gray-100 px-4 py-2 sm:px-6">
           <button type="button" className="text-sm font-medium text-indigo-700 underline"
             onClick={() => requestLeave('full')}>
@@ -760,10 +845,11 @@ export default function ResumeRenovationModal({
                 className="text-sm font-semibold text-indigo-600 underline">{t('renovate.restoreRetry')}</button>
             </div>
           )}
-          {staleProfile && phase !== 'restoring' && (
-            <p role="status" className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" data-testid="renovation-profile-changed">{t('renovate.profileChanged')}</p>
+          {actionNotice && phase !== 'restoring' && (
+            <p role="status" className="mx-4 mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+              data-testid={draftStale ? 'renovation-source-review' : 'renovation-action-error'}>{actionNotice}</p>
           )}
-          {unknownProfile && phase === 'doc' && (
+          {unknownProfile && phase === 'doc' && !actionNotice && !sharedReadFailure && (
             <p className="mx-4 mt-4 text-sm text-gray-600" data-testid="renovation-profile-unknown">{t('renovate.profileUnknown')}</p>
           )}
           {phase === 'idle' && (
@@ -780,8 +866,8 @@ export default function ResumeRenovationModal({
                   )}
                   <button
                     type="button"
-                    disabled={!sourceReady}
-                    onClick={handleRenovate}
+                    disabled={!sourceReady || profileAction.busy}
+                    onClick={requestGeneration}
                     className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 shadow-sm transition-all"
                   >
                     <Wand2 className="w-4 h-4" aria-hidden="true" />
@@ -813,12 +899,6 @@ export default function ResumeRenovationModal({
                   <Info className="w-3.5 h-3.5" aria-hidden="true" />
                   {t('renovate.restored')}
                 </p>
-              )}
-              {staleResume && (
-                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12.5px] text-amber-800" data-testid="renovation-stale-resume">
-                  <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{t('renovate.staleResume')}</span>
-                </div>
               )}
               {warningMessage && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12.5px] text-amber-800">
@@ -901,8 +981,8 @@ export default function ResumeRenovationModal({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleReoptimize(b)}
-                                  disabled={!sourceReady || isOptimizing || optimizingId !== null}
+                                  onClick={() => requestOptimization(b)}
+                                  disabled={!sourceReady || !docSourceCurrent || profileAction.busy || isOptimizing || optimizingId !== null}
                                   className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-fuchsia-500 hover:text-fuchsia-700 hover:bg-fuchsia-50 disabled:opacity-40 transition-colors"
                                   aria-label={t('renovate.reoptimizeAria')}
                                 >
@@ -921,7 +1001,7 @@ export default function ResumeRenovationModal({
                             <div className="mt-1.5">
                               <textarea
                                 value={editDraft}
-                                onChange={(e) => setEditDraft(e.target.value)}
+                                onChange={(e) => { markUserEdit(); setEditDraft(e.target.value); }}
                                 rows={3}
                                 className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-[13.5px] text-gray-800 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 outline-none resize-y"
                                 aria-label={t('renovate.editAria')}
@@ -938,6 +1018,7 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    markUserEdit();
                                     setEditingId(null);
                                     setEditDraft('');
                                   }}
@@ -983,8 +1064,8 @@ export default function ResumeRenovationModal({
           <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0">
             <button
               type="button"
-              disabled={!sourceReady}
-                    onClick={handleRenovate}
+              disabled={!sourceReady || profileAction.busy}
+              onClick={requestGeneration}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors mr-auto"
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />

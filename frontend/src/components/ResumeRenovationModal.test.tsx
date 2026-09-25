@@ -404,7 +404,7 @@ describe('W13 save truthfulness + staleness', () => {
     });
     renderModal();
     await waitFor(() =>
-      expect(screen.getByTestId('renovation-stale-resume')).toBeInTheDocument(),
+      expect(screen.getByTestId('renovation-source-review')).toBeInTheDocument(),
     );
   });
 
@@ -418,7 +418,7 @@ describe('W13 save truthfulness + staleness', () => {
     });
     renderModal();
     await waitFor(() => expect(screen.getByText('renovate.restored')).toBeInTheDocument());
-    expect(screen.queryByTestId('renovation-stale-resume')).toBeNull();
+    expect(screen.queryByTestId('renovation-source-review')).toBeNull();
   });
   it('copying the renovated résumé keeps de-emphasized bullets, placed lower', async () => {
     // "demote" is defined to the model as "kept but de-emphasized (placed
@@ -536,11 +536,11 @@ describe('renovation owner and request lifecycle', () => {
   it('keeps an old source signature and stale warning when the source is removed and the doc edited', async () => {
     mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ resume_sig: 'original-source' })));
     renderModal(makeProfile({ resume_text: '' }));
-    expect(await screen.findByTestId('renovation-stale-resume')).toBeInTheDocument();
+    expect(await screen.findByTestId('renovation-source-review')).toBeInTheDocument();
     fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
     await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
     expect(mockSaveRenovation.mock.calls[0][1].resume_sig).toBe('original-source');
-    expect(screen.getByTestId('renovation-stale-resume')).toBeInTheDocument();
+    expect(screen.getByTestId('renovation-source-review')).toBeInTheDocument();
   });
 
   it('cannot apply a late bullet optimization over a newer manual edit', async () => {
@@ -638,7 +638,7 @@ it('restarts restore with a fresh capability when the same anonymous owner becom
   expect(readyToken.uid).toBe(originalToken.uid);
   expect(readyToken.generation).not.toBe(originalToken.generation);
   await act(async () => { pending.resolve(savedDoc(makeDoc({ resume_sig: 'stale-late-restore' }))); });
-  expect(screen.queryByTestId('renovation-stale-resume')).toBeNull();
+  expect(screen.queryByTestId('renovation-source-review')).toBeNull();
   fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
   await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(1));
   expect(mockSaveRenovation.mock.calls[0][5]).toEqual(readyToken);
@@ -738,7 +738,7 @@ describe('M43 complete profile content owns asynchronous work', () => {
       if (field === 'source' && input.experience_entries![0].source.kind === 'resume') input.experience_entries![0].source.signature = 'b'.repeat(64);
       if (field === 'resume') input.resume_text = 'Replacement source';
       showProfile(view, input);
-      expect(screen.getByTestId('renovation-profile-changed')).toBeInTheDocument();
+      expect(screen.getByTestId('renovation-action-error')).toHaveTextContent('Your profile changed');
       await act(async () => { pending.resolve(structuredResume); });
       expect(mockRenovateResume).not.toHaveBeenCalled();
       expect(mockSaveRenovation).not.toHaveBeenCalled();
@@ -814,7 +814,7 @@ describe('M43 complete profile content owns asynchronous work', () => {
     showProfile(view, reordered);
     await act(async () => { pending.resolve({ text: 'Current accepted wording', changed: true, source_evidence: '' }); });
     expect(screen.getByText(fullText('Current accepted wording'))).toBeInTheDocument();
-    expect(screen.queryByTestId('renovation-profile-changed')).toBeNull();
+    expect(screen.queryByTestId('renovation-source-review')).toBeNull();
     expect(mockLoadRenovation).toHaveBeenCalledTimes(1);
     expect(mockSaveRenovation).toHaveBeenCalledTimes(1);
   });
@@ -851,7 +851,7 @@ describe('M43 complete profile content owns asynchronous work', () => {
     expect(signature).not.toContain('Python');
     await waitFor(() => expect(screen.queryByTestId('renovation-profile-unknown')).toBeNull());
     showProfile(view, makeProfile({ skills: [] }));
-    expect(screen.getByTestId('renovation-profile-changed')).toBeInTheDocument();
+    expect(screen.getByTestId('renovation-source-review')).toBeInTheDocument();
     fireEvent.click(screen.getByText('renovate.rerun'));
     await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledTimes(2));
     expect(mockSaveRenovation.mock.calls[1][1].profile_sig).not.toBe(signature);
@@ -1080,4 +1080,207 @@ it('keeps the bullet draft after profile removal and rejects late optimization e
   await act(async () => { pending.resolve({ text: 'Late removal optimization', changed: true, source_evidence: '' }); });
   expect(screen.getByRole('textbox')).toHaveValue('Keep my bullet after removal');
   expect(screen.queryByText(fullText('Late removal optimization'))).toBeNull(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+});
+
+describe('legacy renovation per-action profile checks', () => {
+  it.each(['start', 'optimize'] as const)('does not issue %s requests while the latest-profile check is unresolved', async (entry) => {
+    const profile = makeProfile(), check = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => check.promise), refresh = vi.fn().mockResolvedValue(true);
+    if (entry === 'optimize') mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    mockOptimizeBullet.mockResolvedValue({ text: 'Checked wording', changed: true, source_evidence: '' });
+    render(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle="Lab" profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    fireEvent.click(entry === 'start' ? await screen.findByText('renovate.start') : (await screen.findAllByText('renovate.reoptimize'))[0]);
+    // Either the read boundary or the model boundary must have started. This
+    // does not infer successful gating merely from waiting a fixed duration.
+    await waitFor(() => expect(checkForAction.mock.calls.length + mockStructureResume.mock.calls.length + mockOptimizeBullet.mock.calls.length).toBeGreaterThan(0));
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled();
+    expect(mockRenovateResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    expect(checkForAction).toHaveBeenCalledTimes(1);
+    await act(async () => { check.resolve(null); });
+  });
+});
+
+
+describe('checked legacy renovation intents', () => {
+  const receipt = (profile: ProfileData): import('@/lib/use-profile-refresh').ProfileActionReceipt => ({
+    checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: structuredClone(profile),
+  });
+  function harness(profile = makeProfile(), stored = false) {
+    if (stored) mockLoadRenovation.mockResolvedValue(savedDoc());
+    const check = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => check.promise), refresh = vi.fn().mockResolvedValue(true);
+    const show = (p: ProfileData, extra: Partial<React.ComponentProps<typeof ResumeRenovationModal>> = {}) =>
+      <ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Lab"
+        profileRefresh={{ status: 'ready', refresh, checkForAction }} {...extra} />;
+    const view = render(show(profile));
+    return { ...view, check, checkForAction, show };
+  }
+  it('uses the checked full source only after the matching profile and target are committed', async () => {
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    const old = makeProfile(), fresh = makeProfile({ resume_text: 'Complete new source including its final paragraph', coursework: ['New confirmed course'] });
+    const view = harness(old);
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    await act(async () => view.check.resolve(receipt(fresh)));
+    expect(mockStructureResume).not.toHaveBeenCalled();
+    view.rerender(view.show(fresh, { targetChecking: true, targetReady: false }));
+    expect(mockStructureResume).not.toHaveBeenCalled();
+    view.rerender(view.show(fresh));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(mockStructureResume).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { locale: 'en' });
+    expect(mockRenovateResume).toHaveBeenCalledExactlyOnceWith(fresh, 'opp-1', structuredResume.sections, { locale: 'en' });
+  });
+  it('rejects a queued bullet operation when checking discovers new source, preserving unsaved text', async () => {
+    const old = makeProfile(), fresh = makeProfile({ resume_text: 'New full source', coursework: ['Updated course'] });
+    const view = harness(old, true);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep my unsaved first bullet');
+    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    view.rerender(view.show(fresh));
+    await act(async () => view.check.resolve(receipt(fresh)));
+    await screen.findByTestId('renovation-source-review');
+    expect(screen.getByRole('textbox')).toHaveValue('Keep my unsaved first bullet');
+    expect(screen.getByText('Led a robotics club project')).toBeInTheDocument();
+    expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+  it('does not revive a bullet intent if the profile changes away and back during its check', async () => {
+    const old = makeProfile(), view = harness(old, true);
+    fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    view.rerender(view.show(makeProfile({ coursework: ['Temporary new source'] })));
+    view.rerender(view.show(old));
+    await act(async () => view.check.resolve(receipt(old)));
+    await screen.findByTestId('renovation-source-review');
+    expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+  it.each(['typing', 'target update', 'owner switch', 'close'] as const)('retires a pending check after %s without model calls', async (change) => {
+    const profile = makeProfile(), view = harness(profile, true);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Original inline draft');
+    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    const checked = receipt(profile);
+    if (change === 'typing') fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New inline draft during read' } });
+    else if (change === 'target update') view.rerender(view.show(profile, { targetKey: 'new public target material' }));
+    else if (change === 'owner switch') await switchRenovationOwner();
+    else view.rerender(view.show(profile, { isOpen: false }));
+    await act(async () => view.check.resolve(checked));
+    expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    if (change === 'typing' || change === 'target update') expect(screen.getByRole('textbox')).toHaveValue(change === 'typing' ? 'New inline draft during read' : 'Original inline draft');
+    else expect(screen.queryByRole('textbox')).toBeNull();
+  });
+  it('keeps an inline draft when the check fails, then checks again before explicit regeneration', async () => {
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
+    const profile = makeProfile(), view = harness(profile, true);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep on unavailable check');
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    await act(async () => view.check.resolve(null));
+    expect(await screen.findByTestId('renovation-action-error')).toHaveTextContent('Could not check your profile');
+    expect(screen.getByRole('textbox')).toHaveValue('Keep on unavailable check');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+    view.checkForAction.mockResolvedValue(receipt(profile));
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+    expect(view.checkForAction).toHaveBeenCalledTimes(2);
+  });
+  it('does not land an already-dispatched optimization after a new unsaved keystroke', async () => {
+    const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+    mockOptimizeBullet.mockReturnValue(pending.promise);
+    const profile = makeProfile(), view = harness(profile, true);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Unsaved answer before check');
+    fireEvent.click(screen.getByText('renovate.reoptimize'));
+    await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
+    await act(async () => view.check.resolve(receipt(profile)));
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Unsaved answer after dispatch' } });
+    await act(async () => pending.resolve({ text: 'Late optimized second bullet', changed: true, source_evidence: '' }));
+    expect(screen.getByRole('textbox')).toHaveValue('Unsaved answer after dispatch');
+    expect(screen.queryByText(fullText('Late optimized second bullet'))).toBeNull(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('legacy doc provenance before an explicit bullet request', () => {
+  it.each(['profile', 'same-ID target'] as const)('requires rebuilding after %s has already changed before clicking optimize', async (changed) => {
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockOptimizeBullet.mockResolvedValue({ text: 'Wrong new-source optimization', changed: true, source_evidence: '' });
+    const old = makeProfile(), fresh = changed === 'profile' ? makeProfile({ resume_text: 'An entirely new resume' }) : old;
+    const refresh = vi.fn().mockResolvedValue(true);
+    const checkForAction = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: fresh }));
+    const show = (p: ProfileData, targetKey: string) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Lab" targetKey={targetKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />;
+    const view = render(show(old, 'target-original'));
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep old-source manual input');
+    view.rerender(show(fresh, changed === 'same-ID target' ? 'target-updated' : 'target-original'));
+    const optimize = screen.getByRole('button', { name: 'renovate.reoptimizeAria' });
+    // Provenance changed before this click, so no read or model operation may
+    // give this old document a new source. An explicit whole rebuild is needed.
+    expect(optimize).toBeDisabled();
+    fireEvent.click(optimize);
+    expect(screen.getByRole('textbox')).toHaveValue('Keep old-source manual input');
+    expect(checkForAction).not.toHaveBeenCalled(); expect(mockOptimizeBullet).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
+});
+
+
+it('retains stale target provenance after a failed rebuild, clearing it only after a successful explicit rebuild', async () => {
+  mockLoadRenovation.mockResolvedValue(savedDoc());
+  mockStructureResume.mockRejectedValueOnce(new Error('Controlled generation failure')).mockResolvedValue(structuredResume);
+  mockRenovateResume.mockResolvedValue(makeDoc());
+  const profile = makeProfile(), refresh = vi.fn().mockResolvedValue(true);
+  const checkForAction = vi.fn().mockImplementation(async () => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile }));
+  const show = (targetKey: string) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle="Lab" targetKey={targetKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />;
+  const view = render(show('original-target'));
+  await screen.findByText('renovate.copyAll'); editFirstBullet('Keep my prior target edit');
+  view.rerender(show('updated-target'));
+  expect(screen.getByRole('button', { name: 'renovate.reoptimizeAria' })).toBeDisabled();
+  fireEvent.click(screen.getByText('renovate.rerun'));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('textbox')).toHaveValue('Keep my prior target edit');
+  expect(screen.getByRole('button', { name: 'renovate.reoptimizeAria' })).toBeDisabled();
+  expect(screen.getByTestId('renovation-source-review')).toBeInTheDocument();
+  expect(mockSaveRenovation).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('renovate.rerun'));
+  await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
+  expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled();
+  expect(screen.queryByTestId('renovation-source-review')).toBeNull();
+});
+
+
+describe('concise legacy source notices', () => {
+  it('shows one stale-source notice when changed profile, raw resume, unknown provenance and stopped intent overlap', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ resume_sig: 'old-raw-signature' })));
+    const old = makeProfile(), fresh = makeProfile({ resume_text: 'Updated raw source' });
+    const view = renderModal(old);
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep my manual input');
+    view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={fresh} opportunityId="opp-1" opportunityTitle="Updated target" />);
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent('Profile or target changed. Your draft and edits are kept. Re-renovate before optimizing bullets.');
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+    expect(screen.queryByTestId('renovation-action-error')).toBeNull();
+    expect(screen.queryByTestId('renovation-profile-unknown')).toBeNull();
+    expect(screen.queryByText('renovate.staleResume')).toBeNull();
+    expect(screen.queryByText('renovate.profileChanged')).toBeNull();
+    expect(screen.getByRole('textbox')).toHaveValue('Keep my manual input');
+    expect(screen.getByRole('button', { name: 'renovate.reoptimizeAria' })).toBeDisabled();
+  });
+  it('leaves read failure and Retry with the shared banner, adding only the stale rebuild requirement', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeDoc({ resume_sig: 'old-raw-signature' })));
+    const p = makeProfile(), check = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => check.promise), refresh = vi.fn().mockResolvedValue(true);
+    const show = (status: 'ready' | 'failed') => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Lab" profileRefresh={{ status, checkForAction, refresh }} />;
+    const view = render(show('ready'));
+    await screen.findByText('renovate.copyAll'); editFirstBullet('Keep through failed read');
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledOnce());
+    view.rerender(show('failed'));
+    await act(async () => check.resolve(null));
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Could not check for profile updates. Your draft is kept.');
+    expect(screen.getByTestId('renovation-source-review')).toHaveTextContent(/^Re-renovate before optimizing bullets\.$/);
+    expect(screen.queryByTestId('renovation-action-error')).toBeNull();
+    expect(screen.queryByTestId('renovation-profile-unknown')).toBeNull();
+    expect(screen.getByRole('textbox')).toHaveValue('Keep through failed read');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+  });
 });
