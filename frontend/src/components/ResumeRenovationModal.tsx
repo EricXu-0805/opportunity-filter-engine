@@ -68,6 +68,8 @@ interface RenovationScope {
 interface ResumeRenovationModalProps {
   isOpen: boolean;
   targetReady?: boolean;
+  /** False keeps the open draft; the retained profile is not current material. */
+  profileAvailable?: boolean;
   profileRefresh?: ProfileRefreshState;
   onClose: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
@@ -181,10 +183,11 @@ export default function ResumeRenovationModal({
   opportunityTitle,
   onOpenFull,
   targetReady = true,
+  profileAvailable = true,
   profileRefresh,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
-  const sourceReady = targetReady && profileRefreshReady(profileRefresh);
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
   const sourceRef = useRef({ ready: sourceReady, epoch: 0 });
   const profileFingerprint = canonicalProfile(profile);
   const profileSnapshot = useMemo<ProfileData>(() => JSON.parse(profileFingerprint), [profileFingerprint]);
@@ -724,7 +727,7 @@ export default function ResumeRenovationModal({
           </div>
         </div>
 
-        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} onBeforeReview={() => requestLeave('close')} />
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetReady={targetReady} profileAvailable={profileAvailable} onBeforeReview={() => requestLeave('close')} />
 
         {onOpenFull && <div className="border-b border-gray-100 px-4 py-2 sm:px-6">
           <button type="button" className="text-sm font-medium text-indigo-700 underline"

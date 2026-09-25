@@ -6,9 +6,9 @@
 // OTHER child is stubbed so this stays a narrow, fast test of the wiring,
 // with the REAL TrackerPanel doing the actual mount/unmount work.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Echoing only the key made every interpolated value invisible: "Source:
 // jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
@@ -99,14 +99,15 @@ vi.mock('./InteractionPills', () => ({
 // dead target stops mounting it — the real one is dynamically imported and
 // simply never appeared in these tests.
 const writingProps = vi.hoisted(() => ({
-  email: null as { profileRefresh?: ProfileRefreshState } | null,
-  resume: null as { profileRefresh?: ProfileRefreshState } | null,
+  email: null as { profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
+  resume: null as { profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
 }));
 vi.mock('@/components/ColdEmailModal', () => ({
-  default: function MockColdEmail(props: { profileRefresh?: ProfileRefreshState }) {
+  default: function MockColdEmail(props: { profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
     writingProps.email = props;
     const mount = useRef(Math.random().toString(36).slice(2));
-    return <div data-testid="cold-email-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'} />;
+    const [text, setText] = useState('Original email');
+    return <div data-testid="cold-email-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'}><textarea aria-label="Email buffer" value={text} onChange={(event) => setText(event.target.value)} /></div>;
   },
 }));
 vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => <div data-testid="chat-drawer" /> }));
@@ -114,10 +115,11 @@ vi.mock('./ProfessorFollowToggle', () => ({
   ProfessorFollowToggle: () => <div data-testid="professor-follow" />,
 }));
 vi.mock('@/components/ResumeWorkspaceModal', () => ({
-  default: function MockResumeWorkspace(props: { profileRefresh?: ProfileRefreshState }) {
+  default: function MockResumeWorkspace(props: { profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
     writingProps.resume = props;
     const mount = useRef(Math.random().toString(36).slice(2));
-    return <div data-testid="renovation-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'} />;
+    const [text, setText] = useState('Original résumé');
+    return <div data-testid="renovation-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'}><textarea aria-label="Résumé buffer" value={text} onChange={(event) => setText(event.target.value)} /></div>;
   },
 }));
 vi.mock('@/components/OpportunityChatbot', () => ({
@@ -168,6 +170,11 @@ vi.mock('./use-opportunity-detail', () => ({
 
 import OpportunityDetail from './OpportunityDetail';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { advanceOwnerEpoch, enterLocalOnlyMode } from '@/lib/identity-owner';
+
+// Hook state below says ownerReady=true; establish its matching readable local
+// realm before mounting, rather than depending on an attachment child's effect.
+beforeEach(() => { advanceOwnerEpoch(null); expect(enterLocalOnlyMode()).toBe(true); });
 
 function baseHookResult(overrides: Record<string, unknown> = {}) {
   return {
@@ -673,5 +680,34 @@ describe('OpportunityDetail shared profile refresh wiring', () => {
     expect(refreshHook.enabled).toBe(true);
     expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
     expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+  });
+});
+
+
+describe('OpportunityDetail whole-profile deletion while writing', () => {
+  let originalResumeFlag: unknown;
+  beforeEach(() => { originalResumeFlag = releaseFlags.resumeRenovate; releaseFlags.resumeRenovate = true; });
+  afterEach(() => { releaseFlags.resumeRenovate = originalResumeFlag; });
+  it('keeps both manually edited buffers mounted and withdraws current source authority on deletion', async () => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', grade: 'Junior', skills: [] }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true });
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const email = await screen.findByRole('textbox', { name: 'Email buffer' });
+    const resume = await screen.findByRole('textbox', { name: 'Résumé buffer' });
+    fireEvent.change(email, { target: { value: 'Keep unsaved email' } });
+    fireEvent.change(resume, { target: { value: 'Keep unsaved résumé' } });
+    act(() => { localStorage.removeItem(STORAGE_KEYS.PROFILE); window.dispatchEvent(new Event('storage')); });
+    rerender(<OpportunityDetail opp={opp} />);
+    expect(screen.getByRole('textbox', { name: 'Email buffer' })).toBe(email);
+    expect(screen.getByRole('textbox', { name: 'Résumé buffer' })).toBe(resume);
+    expect(email).toHaveValue('Keep unsaved email'); expect(resume).toHaveValue('Keep unsaved résumé');
+    expect(writingProps.email?.profileAvailable).toBe(false); expect(writingProps.resume?.profileAvailable).toBe(false);
+    expect(writingProps.email?.targetReady).toBe(true); expect(writingProps.resume?.targetReady).toBe(true);
+    expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
+    expect(screen.getByTestId('header-renovate-handler')).toHaveTextContent('false');
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
+    mockHookState.current = baseHookResult(); rerender(<OpportunityDetail opp={opp} />);
+    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('renovation-modal')).not.toBeInTheDocument();
   });
 });

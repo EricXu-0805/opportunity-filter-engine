@@ -517,3 +517,56 @@ it('asks before leaving a pending save even after the displayed text is edited b
   expect(onClose).not.toHaveBeenCalled(); expect(screen.getByRole('button', { name: 'Keep editing' })).toBeVisible();
   await act(async () => pending.resolve({ status: 'failed' }));
 });
+
+
+it('keeps an independent target draft when its profile disappears, without treating the snapshot as current', async () => {
+  const p = profile(); const { rerender } = await createUI(p);
+  editName('Keep this independently edited résumé');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Include field: Degree' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+  const answer = screen.getByRole('textbox', { name: 'Supplement test answer' });
+  fireEvent.change(answer, { target: { value: 'Unsubmitted answer survives' } });
+  const oldAi = ai.props!; const base = clone(oldAi.draft.base);
+  rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileAvailable={false} targetReady={false} />);
+  expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+  expect(screen.queryByText(/This target is not confirmed/)).toBeNull();
+  expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep this independently edited résumé');
+  expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toBeEnabled();
+  expect(screen.getByRole('checkbox', { name: 'Include field: Degree' })).not.toBeChecked();
+  expect(answer).toHaveValue('Unsubmitted answer survives');
+  expect(supplement.props!.profileAvailable).toBe(false);
+  expect(ai.props!.enabled).toBe(false);
+  expect(screen.getByRole('button', { name: 'Rebuild from current confirmed master' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+  expect(screen.getByText(/Exports this retained draft without restoring your profile/)).toBeVisible();
+  expect(storage.save).not.toHaveBeenCalled();
+  const prepared = await prepareTargetResumeAI(oldAi.draft); if (!prepared.ok) throw new Error(prepared.code);
+  act(() => oldAi.onApply(prepared.value.canonical_draft, withName(oldAi.draft, 'Late deleted profile AI')));
+  expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep this independently edited résumé');
+  fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+  await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1));
+  expect(storage.save.mock.calls[0][0].base).toEqual(base);
+  expect(JSON.stringify(storage.save.mock.calls[0][0])).toContain('Keep this independently edited résumé');
+});
+
+
+it('does not reactivate an accepted supplement overlay after profile removal and same-value restoration', async () => {
+  const p = profile(); const { rerender } = await createUI(p);
+  editName('Preserve my target edit');
+  fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+  const viewOf = (value: ProfileData): ProfileViewSnapshot => ({ viewId: crypto.randomUUID(), baseProfile: clone(value), renderedProfile: clone(value),
+    revision: 2, token: captureOwnerToken(), identityGeneration: captureOwnerToken().epoch, source: 'hydration' });
+  const overlay = { ...p, resume_text: 'Supplement previously accepted before removal' };
+  const acceptedBeforeRemoval = supplement.props!.onAcceptedProfile!;
+  const overlayView = viewOf(overlay), originalView = viewOf(p);
+  act(() => acceptedBeforeRemoval(overlayView, originalView));
+  const overlaySignature = await contract.targetResumeProfileSignature(overlay);
+  await waitFor(() => expect(ai.props!.currentContext?.profile_signature).toBe(overlaySignature));
+  rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileAvailable={false} />);
+  rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={opportunity} profileAvailable />);
+  act(() => acceptedBeforeRemoval(overlayView, originalView));
+  const restoredSignature = await contract.targetResumeProfileSignature(p);
+  await waitFor(() => expect(ai.props!.currentContext?.profile_signature).toBe(restoredSignature));
+  expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Preserve my target edit');
+  expect(storage.save).not.toHaveBeenCalled();
+});

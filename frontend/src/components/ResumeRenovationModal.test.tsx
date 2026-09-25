@@ -1063,3 +1063,21 @@ describe('bullet editor cloud refresh', () => {
     expect(screen.queryByText(fullText('Late optimization'))).toBeNull(); expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
 });
+
+
+it('keeps the bullet draft after profile removal and rejects late optimization even after restoration', async () => {
+  const pending = deferred<{ text: string; changed: boolean; source_evidence: string }>();
+  mockLoadRenovation.mockResolvedValue(savedDoc()); mockOptimizeBullet.mockReturnValue(pending.promise);
+  const p = makeProfile(); const view = renderModal(p);
+  fireEvent.click((await screen.findAllByText('renovate.reoptimize'))[0]);
+  editFirstBullet('Keep my bullet after removal');
+  const show = (profileAvailable: boolean) => view.rerender(<ResumeRenovationModal isOpen onClose={vi.fn()} profile={p} opportunityId="opp-1" opportunityTitle="Prof. Doe's Lab" profileAvailable={profileAvailable} />);
+  show(false);
+  expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+  expect(screen.getByRole('textbox')).toHaveValue('Keep my bullet after removal');
+  expect(screen.getAllByText('renovate.reoptimize')[0].closest('button')).toBeDisabled();
+  show(true);
+  await act(async () => { pending.resolve({ text: 'Late removal optimization', changed: true, source_evidence: '' }); });
+  expect(screen.getByRole('textbox')).toHaveValue('Keep my bullet after removal');
+  expect(screen.queryByText(fullText('Late removal optimization'))).toBeNull(); expect(mockSaveRenovation).not.toHaveBeenCalled();
+});

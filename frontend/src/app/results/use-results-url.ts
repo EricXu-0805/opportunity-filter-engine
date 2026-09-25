@@ -145,14 +145,17 @@ export function buildResultsUrl(state: ResultsUrlState): string {
   return qs ? `/results?${qs}` : '/results';
 }
 
-export function useResultsUrlSync(state: ResultsUrlState & { sessionId?: string | null }): void {
-  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId } = state;
+export function useResultsUrlSync(state: ResultsUrlState & { sessionId?: string | null; enabled?: boolean }): void {
+  const { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId, enabled = true } = state;
   useEffect(() => {
+    // A retained editor without a live profile may stay mounted, but its
+    // outgoing Results state must not compete with the host's navigation.
+    if (!enabled) return;
     const publicUrl = buildResultsUrl({ activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled });
     const newUrl = sessionId ? resultSessionUrl(publicUrl, sessionId) : publicUrl;
     // Next owns fields in history.state; preserve them on filter-only changes.
     window.history.replaceState(window.history.state, '', newUrl);
-  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId]);
+  }, [activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled, sessionId, enabled]);
 }
 
 export { DEFAULT_FILTERS };

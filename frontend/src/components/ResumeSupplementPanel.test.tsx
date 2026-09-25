@@ -241,4 +241,31 @@ describe('resume supplement panel', () => {
     expect(screen.getByRole('button', { name: '确认并加入简历母版' })).toBeDisabled();
     expect(screen.getByText(/不必写数字或结果/)).toBeInTheDocument(); expect(current().confirm).not.toHaveBeenCalled();
   });
+  it('preserves answers, selections and dirty state while a deleted profile pauses confirmation', () => {
+    const dirty = vi.fn(); const onOpenProfile = vi.fn(); const mounted = mount({ onDirtyChange: dirty, onOpenProfile });
+    fill('Unsubmitted answer stays here'); fireEvent.click(confirm());
+    mocked.controller = controller({ phase: 'profile-unavailable', view: null, acceptedView: null });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable={false} />);
+    expect(task()).toHaveValue('Unsubmitted answer stays here');
+    expect(screen.getByRole('checkbox', { name: 'Include task' })).toBeChecked();
+    expect(submit()).toBeDisabled(); expect(confirm()).toBeDisabled(); expect(confirm()).not.toBeChecked();
+    expect(dirty).toHaveBeenLastCalledWith(true); expect((mocked.options as ResumeSupplementOptions).profileAvailable).toBe(false);
+    expect(screen.getByText(/adding information and retrying saves are paused/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review my profile' })); expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    mocked.controller = controller({ phase: 'stale', view: null, acceptedView: null });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable />);
+    expect(task()).toHaveValue('Unsubmitted answer stays here'); expect(submit()).toBeDisabled();
+    mocked.controller = controller({ view: { ...view(), viewId: 'restored-current-view' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable />);
+    expect(confirm()).not.toBeChecked(); expect(submit()).toBeDisabled(); expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it('does not offer a writable retry for a recorded supplement while the parent marks the profile unavailable', () => {
+    const mounted = mount(); fill('Recorded answer');
+    const retry = vi.fn(); mocked.controller = controller({ phase: 'recorded', operationLocked: true, retryRecorded: retry });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable={false} />);
+    expect(task()).toHaveValue('Recorded answer'); expect(task()).toBeDisabled();
+    const control = screen.getByRole('button', { name: 'Retry cloud save' }); expect(control).toBeDisabled();
+    fireEvent.click(control); expect(retry).not.toHaveBeenCalled(); expect(current().confirm).not.toHaveBeenCalled();
+  });
+
 });

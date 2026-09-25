@@ -172,6 +172,18 @@ describe('useResultsUrlSync (R69-A omit-sentinel)', () => {
     semanticSettled: true,
   };
 
+  it('does not rewrite a destination while Results synchronization is disabled', () => {
+    const { rerender } = renderHook(({ enabled, sessionId }) => useResultsUrlSync({
+      ...EMPTY_STATE, activeTab: 'all', enabled, sessionId,
+    }), { initialProps: { enabled: true, sessionId: 'old-session' } });
+    expect(lastUrl()).toContain('/results?tab=all');
+    replaceStateSpy.mockClear();
+    rerender({ enabled: false, sessionId: 'new-late-session' });
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+    rerender({ enabled: false, sessionId: 'another-late-session' });
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
+
   it('omits ?tab= when activeTab is the new default "high_priority"', () => {
     renderHook(() => useResultsUrlSync(EMPTY_STATE));
     expect(lastUrl()).toBe('/results');

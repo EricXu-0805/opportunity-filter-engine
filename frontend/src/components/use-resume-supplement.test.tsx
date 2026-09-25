@@ -260,4 +260,71 @@ describe('resume supplement controller with the real profile coordinator', () =>
     await act(async () => { await result.current.retryRecorded(); });
     expect(flush).toHaveBeenCalledTimes(1); expect(result.current.phase).toBe('stale'); expect(commit).not.toHaveBeenCalled();
   });
+  it('never reads or writes while the parent confirms that the profile is unavailable', async () => {
+    const hook = renderHook(() => useResumeSupplement({ targetKey: 'a', profileAvailable: false }));
+    expect(hook.result.current.phase).toBe('profile-unavailable');
+    expect(hook.result.current.view).toBeNull(); expect(hook.result.current.baseline('activity')).toBeNull();
+    await act(async () => { await hook.result.current.acceptCurrent(); expect(await hook.result.current.retryRecorded()).toEqual({ status: 'missing', reason: 'absent' }); });
+    expect(load).not.toHaveBeenCalled(); expect(commit).not.toHaveBeenCalled();
+  });
+  it('rejects retained confirmation callbacks after absence and requires explicit fresh review after availability returns', async () => {
+    const hook = renderHook(({ available }) => useResumeSupplement({ targetKey: 'a', profileAvailable: available }), { initialProps: { available: true } });
+    await waitFor(() => expect(hook.result.current.phase).toBe('ready'));
+    const baseline = hook.result.current.baseline('activity')!; const confirm = hook.result.current.confirm;
+    hook.rerender({ available: false });
+    expect(hook.result.current.phase).toBe('profile-unavailable'); expect(hook.result.current.view).toBeNull();
+    await act(async () => { expect(await confirm(draft(), baseline)).toEqual({ durable: false, reason: 'stale-view' }); });
+    expect(commit).not.toHaveBeenCalled(); expect(readOutstandingOps()).toMatchObject({ ok: true, value: [] });
+    hook.rerender({ available: true });
+    expect(hook.result.current.phase).toBe('stale'); expect(hook.result.current.baseline('activity')).toBeNull();
+    expect(load).toHaveBeenCalledTimes(1);
+    base = { ...base, coursework: ['Current restored course'] }; load.mockResolvedValue(cloud(base, 8));
+    await act(async () => { await hook.result.current.acceptCurrent(); });
+    expect(hook.result.current.phase).toBe('ready'); expect(hook.result.current.view?.renderedProfile.coursework).toEqual(['Current restored course']);
+    expect(hook.result.current.view).not.toBe(baseline.view); expect(commit).not.toHaveBeenCalled();
+  });
+  it('keeps a recorded operation identity but refuses its replay after confirmed whole-profile deletion', async () => {
+    const hook = renderHook(({ available }) => useResumeSupplement({ targetKey: 'a', profileAvailable: available }), { initialProps: { available: true } });
+    await waitFor(() => expect(hook.result.current.phase).toBe('ready'));
+    commit.mockResolvedValueOnce({ status: 'transport-error', message: 'offline' });
+    await act(async () => { await hook.result.current.confirm(draft(), hook.result.current.baseline('activity')!); });
+    expect(hook.result.current.phase).toBe('recorded');
+    const journal = readOutstandingOps(); expect(journal.ok && journal.value).toHaveLength(1);
+    load.mockResolvedValue(cloud(null)); await act(async () => { await sync.hydrateProfile(); });
+    expect(sync.readProfileSyncEnvelope()?.tombstone?.reason).toBe('deleted');
+    hook.rerender({ available: false });
+    await act(async () => { expect(await hook.result.current.retryRecorded()).toEqual({ status: 'missing', reason: 'absent' }); });
+    expect(hook.result.current.operationLocked).toBe(true); expect(hook.result.current.phase).toBe('profile-unavailable');
+    expect(readOutstandingOps()).toEqual(journal); expect(commit).toHaveBeenCalledTimes(1);
+    expect(sync.readProfileSyncEnvelope()?.tombstone?.reason).toBe('deleted');
+  });
+  it('cancels an old supplement read before its late row can repopulate the local mirror', async () => {
+    const wait = deferred<LoadedProfile>(); const old = cloud(base); load.mockReturnValueOnce(wait.promise);
+    const hook = renderHook(({ available }) => useResumeSupplement({ targetKey: 'a', profileAvailable: available }), { initialProps: { available: true } });
+    expect(load).toHaveBeenCalledTimes(1);
+    hook.rerender({ available: false }); hook.rerender({ available: true });
+    await act(async () => { wait.resolve(old); });
+    expect(hook.result.current.phase).toBe('stale'); expect(hook.result.current.view).toBeNull();
+    expect(sync.readProfileSyncEnvelope()).toBeNull(); expect(commit).not.toHaveBeenCalled();
+    await act(async () => { await hook.result.current.acceptCurrent(); });
+    expect(hook.result.current.phase).toBe('ready'); expect(load).toHaveBeenCalledTimes(2);
+  });
+  it('does not revoke an already-sent CAS, but an absence/recovery cycle retires its old successful UI receipt', async () => {
+    const accepted = vi.fn();
+    const hook = renderHook(({ available }) => useResumeSupplement({ targetKey: 'a', profileAvailable: available, onAcceptedProfile: accepted }), { initialProps: { available: true } });
+    await waitFor(() => expect(hook.result.current.phase).toBe('ready'));
+    const wait = deferred<ProfilePatchOutcome>(); commit.mockReturnValueOnce(wait.promise);
+    let pending!: Promise<unknown>; act(() => { pending = hook.result.current.confirm(draft(), hook.result.current.baseline('activity')!); });
+    await waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+    const desired = { ...base, ...commit.mock.calls[0][0].patch } as ProfileData;
+    hook.rerender({ available: false }); hook.rerender({ available: true });
+    await act(async () => { wait.resolve(saved(desired)); await pending; });
+    expect(hook.result.current.phase).toBe('stale'); expect(hook.result.current.confirmedEntryId).toBeNull();
+    expect(hook.result.current.operationLocked).toBe(true); expect(accepted).not.toHaveBeenCalled(); expect(commit).toHaveBeenCalledTimes(1);
+    load.mockResolvedValue(cloud(desired, 8));
+    await act(async () => { await hook.result.current.acceptCurrent(); });
+    expect(hook.result.current.phase).toBe('saved'); expect(accepted).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.view?.baseProfile?.experience_entries).toHaveLength(1); expect(commit).toHaveBeenCalledTimes(1);
+  });
+
 });
