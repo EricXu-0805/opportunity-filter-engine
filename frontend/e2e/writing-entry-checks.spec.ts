@@ -117,27 +117,27 @@ async function installWriting(page: Page) {
   const requests: WritingRequest[] = [];
   for (const pattern of ['**/api/tailor**', '**/api/cold-email**', '**/api/resume/**']) await page.route(pattern, async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.3' } }); return; }
+    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.4' } }); return; }
     const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
     requests.push({ ...body, path });
     if (path === '/api/cold-email/variants' || path === '/api/cold-email/stream') {
       const confirmed = body.experience_evidence!.entries.filter(item => item.status === 'confirmed');
-      const draft = { subject: `Checked ${body.profile!.name}`, body: `Draft for ${body.profile!.name}\n${confirmed.map(item => item.text).join('\n')}`,
+      const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: `Checked ${body.profile!.name}`, body: `Draft for ${body.profile!.name}\n${confirmed.map(item => item.text).join('\n')}`,
         recipient_email: 'checked@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'ai',
         pipeline_version: 'writing-entry-fixture', corpus_version: 'writing-entry-fixture' };
       if (path.endsWith('/variants')) await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } });
       else await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path === '/api/tailor') {
-      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [], pipeline_version: 'w13.3', generated_at: new Date().toISOString(),
+      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [], pipeline_version: 'w13.4', generated_at: new Date().toISOString(),
         tailored_bullets: body.original_bullets!.map((text, index) => ({ text, source_evidence: text, source_index: index })) } });
     } else if (path === '/api/tailor/structure') {
       const bullets = body.resume_text!.split('\n').filter(line => line.startsWith('- ')).map((line, index) => ({ id: `bullet-${index}`, text: line.slice(2) }));
       await route.fulfill({ json: { sections: [{ id: 'section', heading: 'Experience', kind: 'experience', bullets }], method: 'heuristic', warnings: [] } });
     } else if (path === '/api/tailor/renovate') {
-      await route.fulfill({ json: { opportunity_id: TARGET, sections: body.sections!.map(section => ({ ...section,
+      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, sections: body.sections!.map(section => ({ ...section,
         bullets: section.bullets.map(bullet => ({ id: bullet.id, base_text: bullet.text, action: 'keep', variants: [], current: -1 })) })), method: 'fallback', warnings: [] } });
     } else if (path === '/api/tailor/bullet') {
-      await route.fulfill({ json: { text: body.current_text, source_evidence: '', changed: false, method: 'fallback', warnings: [] } });
+      await route.fulfill({ json: { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, text: body.current_text, source_evidence: '', changed: false, method: 'fallback', warnings: [] } });
     } else await route.fulfill({ status: 503, json: { error: 'Unrequested synthetic generation route' } });
   });
   return requests;
@@ -408,7 +408,7 @@ test.describe('Writing entry checks use current authoritative targets', () => {
       const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
       requests.push({ ...body, path: '/api/cold-email/stream' }); streamStarted = true;
       await streamGate;
-      try { await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done',
+      try { await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
         subject: 'Completed unchanged-target stream', body: streamBody, recipient_email: 'checked@example.edu',
         recipient_status: 'revealed', method: 'ai', mailto_link: '' })}\n\n` }); }
       catch (error) { if (!route.request().failure()) throw error; }

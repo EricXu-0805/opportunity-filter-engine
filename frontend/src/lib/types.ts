@@ -522,6 +522,9 @@ export interface ExperienceUsage {
 }
 
 export interface ColdEmailResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   experience_usage?: ExperienceUsage;
   subject: string;
   body: string;
@@ -571,6 +574,9 @@ export interface EmailVariant {
 }
 
 export interface EmailVariantsResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   experience_usage?: ExperienceUsage;
   variants: EmailVariant[];
   lab_type?: LabType | null;
@@ -698,12 +704,18 @@ export interface RenovatedSection {
 }
 
 export interface RenovateResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
 }
 
 export interface BulletOptimizeResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   text: string;
   source_evidence: string;
   changed: boolean;

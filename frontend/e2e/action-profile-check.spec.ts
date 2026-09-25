@@ -93,7 +93,7 @@ async function installWriting(page: Page) {
     const body = route.request().postDataJSON();
     requests.push({ ...body, path });
     const confirmed = (body.experience_evidence.entries as ExperienceEntry[]).filter(item => item.status === 'confirmed');
-    const draft = { subject: `Checked ${body.profile.name}`, body: `Draft for ${body.profile.name}\n${confirmed.map(item => item.text).join('\n')}`,
+    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: `Checked ${body.profile.name}`, body: `Draft for ${body.profile.name}\n${confirmed.map(item => item.text).join('\n')}`,
       recipient_email: 'checked@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'llm',
       pipeline_version: 'action-check-fixture', corpus_version: 'action-check-fixture' };
     if (path.endsWith('/variants')) {
@@ -102,7 +102,7 @@ async function installWriting(page: Page) {
     } else if (path.endsWith('/stream')) {
       await route.fulfill({ status: 200, contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path.endsWith('/refine')) {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ body: 'Unexpected stale refine result', method: 'llm' }) });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: body.opportunity_id, target_version: body.expected_target_version, body: 'Unexpected stale refine result', method: 'llm' }) });
     } else if (path === '/api/cold-email') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(draft) });
     } else await route.fulfill({ status: 503, body: '{}' });

@@ -198,15 +198,18 @@ test.describe('Server-only profile refresh', () => {
     await blockPaidWriting(page);
     await page.route('**/api/cold-email/variants', route => {
       variants += 1;
+      const request = route.request().postDataJSON();
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
         variants: [{ id: 'cloud-template', label: 'Template', subject: 'Initial template subject', body: 'Initial template body.', recipient_email: 'initial@example.edu', mailto_link: '' }],
         recipient_status: 'revealed', pipeline_version: 'cloud-refresh-fixture', corpus_version: 'cloud-refresh-fixture',
       }) });
     });
     await page.route('**/api/cold-email/refine', async route => {
-      refinements += 1; expect(route.request().postDataJSON().current_body).toBe(BODY);
+      const request = route.request().postDataJSON();
+      refinements += 1; expect(request.current_body).toBe(BODY);
       await gate;
-      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ body: 'LATE PRE-REFRESH AI RESULT', method: 'llm' }) }); }
+      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: request.opportunity_id, target_version: request.expected_target_version, body: 'LATE PRE-REFRESH AI RESULT', method: 'llm' }) }); }
       catch (error) { if (!route.request().failure()) throw error; }
       finally { settle(); }
     });

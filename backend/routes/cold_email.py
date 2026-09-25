@@ -45,7 +45,7 @@ from backend.lib.public_projection import (
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.supabase_auth import authenticated_uid
-from backend.lib.target_actionability import assert_target_actionable
+from backend.lib.writing_target import WritingTargetSnapshot, prepare_writing_snapshot
 from backend.schemas import ColdEmailRequest, ColdEmailResponse, ExperienceEvidence, ProfileRequest
 from src.evidence import faculty_availability_status
 from src.matcher.ranker import _is_grad_year
@@ -1594,6 +1594,29 @@ def _build_email_corpus(p: dict, opp: dict) -> str:
     return " ".join(parts).lower()
 
 
+def _email_target(request: ColdEmailRequest | EmailRefineRequest) -> WritingTargetSnapshot:
+    resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    return prepare_writing_snapshot(resolved, request.expected_target_version,
+                                    source_guard=_assert_outreach_allowed)
+
+
+def _bound_email_response(
+    response: ColdEmailResponse, request: ColdEmailRequest, target: WritingTargetSnapshot,
+    pipeline_version: str, authenticated: bool,
+) -> ColdEmailResponse:
+    # Raw source has exactly one role beyond source freshness: trusted reveal.
+    # Public source was used for all model/template/grounding work above.
+    status, email = contact_email_status(target.source, authenticated=authenticated)
+    return response.model_copy(update={
+        "opportunity_id": request.opportunity_id, "target_version": target.version,
+        "pipeline_version": pipeline_version, "recipient_status": status,
+        "recipient_email": email, "mailto_link": _build_mailto_link(email, response.subject, response.body),
+        "source_freshness": _source_freshness(target.source),
+    })
+
+
 @router.post("/cold-email", response_model=ColdEmailResponse)
 async def generate_email(
     request: ColdEmailRequest,
@@ -1612,23 +1635,19 @@ async def generate_email(
     bar (verified provenance + signed-in session); drafting itself is open to
     everyone. A stale token degrades to the anonymous shape, never a 401.
     """
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
-    _assert_outreach_allowed(opp)
+    pipeline_version = COLD_EMAIL_PIPELINE_VERSION
+    target = _email_target(request)
+    opp = target.public
 
     authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
     if request.engine != "ai":
         # The template path contains no provider I/O and should not wait behind
         # a saturated AI pool.
-        return _run_engine(request, opp, profile_dict, authed)
+        return _bound_email_response(_run_engine(request, opp, profile_dict, authed),
+                                     request, target, pipeline_version, authed)
     try:
-        return await run_blocking(
+        response = await run_blocking(
             _run_engine,
             request,
             opp,
@@ -1636,15 +1655,17 @@ async def generate_email(
             authed,
             timeout_seconds=MULTI_LLM_TIMEOUT_SECONDS,
         )
+        return _bound_email_response(response, request, target, pipeline_version, authed)
     except BlockingWorkTimeout:
         logger.warning("cold-email: generation timed out; using template")
-        return _template_after_timeout(request, opp, profile_dict, authed)
+        return _bound_email_response(_template_after_timeout(request, opp, profile_dict, authed),
+                                     request, target, pipeline_version, authed)
 
 
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.5"
+COLD_EMAIL_PIPELINE_VERSION = "w12.6"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -1944,14 +1965,9 @@ async def generate_email_stream(
     show which stage the (now multi-call) pipeline is in instead of one long
     opaque spinner. Same never-5xx contract: engine errors surface as the
     template payload in the ``done`` event."""
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
-    _assert_outreach_allowed(opp)
+    pipeline_version = COLD_EMAIL_PIPELINE_VERSION
+    target = _email_target(request)
+    opp = target.public
     # Resolved before the stream starts: the generator outlives the request
     # handler, and the recipient decision must not wait behind LLM stages.
     authed = await authenticated_uid(authorization) is not None
@@ -1999,6 +2015,7 @@ async def generate_email_stream(
             # _run_engine is designed never to raise; this is the last belt.
             logger.exception("cold-email stream: engine crashed; using template")
             resp = _template_after_timeout(request, opp, profile_dict, authed)
+        resp = _bound_email_response(resp, request, target, pipeline_version, authed)
         yield _sse_frame({"stage": "done", **resp.model_dump()})
 
     return StreamingResponse(
@@ -2013,14 +2030,9 @@ async def generate_email_variants(
     request: ColdEmailRequest,
     authorization: str | None = Header(default=None),
 ):
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
-    _assert_outreach_allowed(opp)
+    pipeline_version = COLD_EMAIL_PIPELINE_VERSION
+    target = _email_target(request)
+    opp = target.public
 
     authed = await authenticated_uid(authorization) is not None
     profile_dict = request.profile.model_dump()
@@ -2046,7 +2058,7 @@ async def generate_email_variants(
     # level) because it is a property of the opportunity + session, not of a
     # variant. recipient_email stays "" unless revealed.
     recipient_status, recipient_email = contact_email_status(
-        opp, authenticated=authed,
+        target.source, authenticated=authed,
     )
 
     results = []
@@ -2084,12 +2096,18 @@ async def generate_email_variants(
         # W12 draft provenance (same contract as /cold-email).
         "generated_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
         "corpus_version": corpus_version(),
-        "pipeline_version": COLD_EMAIL_PIPELINE_VERSION,
-        "source_freshness": _source_freshness(opp),
+        "pipeline_version": pipeline_version,
+        "opportunity_id": request.opportunity_id,
+        "target_version": target.version,
+        "source_freshness": _source_freshness(target.source),
     }
 
 
 class EmailRefineRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     current_body: str
     instruction: str
     subject: str = ""
@@ -2253,17 +2271,14 @@ def _local_refine_fallback(
 
 @router.post("/cold-email/refine")
 async def refine_email(request: EmailRefineRequest):
-    # Canonical lookup first, then actionability, then the source's own
-    # outreach refusal — every gate ahead of any provider call or evidence read.
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if opp is None:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
-    _assert_outreach_allowed(opp)
+    pipeline_version = COLD_EMAIL_PIPELINE_VERSION
+    target = _email_target(request)
+    result = await _refine_email_snapshot(request, target.public)
+    return {**result, "opportunity_id": request.opportunity_id,
+            "target_version": target.version, "pipeline_version": pipeline_version}
 
+
+async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
     # A browser can still hold a pre-contact-trust draft. Never send that raw
     # text to a provider: remove any visible/encoded/obfuscated address before
     # both the remote editor and every local fallback path see it.

@@ -112,16 +112,17 @@ describe('getOpportunityById (reveal-aware)', () => {
   });
 });
 
-describe('getEmailVariants (reveal-aware)', () => {
-  it('retries once on a stale-token locked response', async () => {
+describe('getEmailVariants (single generation with contact state)', () => {
+  it('returns the locked draft without refreshing auth or generating twice', async () => {
     mockGetToken.mockResolvedValue('tok-stale');
     mockRefreshToken.mockResolvedValue('tok-fresh');
     fetchMock
       .mockResolvedValueOnce(okJson({ variants: [], recipient_status: 'sign_in_required' }))
       .mockResolvedValueOnce(okJson({ variants: [], recipient_status: 'revealed' }));
     const body = await getEmailVariants(profile, 'opp-1');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(body.recipient_status).toBe('revealed');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(body.recipient_status).toBe('sign_in_required');
   });
 
   it('ignores legacy raw bullets and sends an explicit empty evidence envelope', async () => {

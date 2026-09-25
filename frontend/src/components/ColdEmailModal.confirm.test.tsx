@@ -40,7 +40,7 @@ vi.mock('@/i18n/client', () => {
 
 const mockGetVariants = vi.fn();
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn().mockRejectedValue(new Error('no ai in tests')),
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),
   refineEmail: vi.fn(),
@@ -81,7 +81,11 @@ vi.mock('@/lib/supabase', () => ({
   onAuthChange: () => () => {},
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import {
   advanceOwnerEpoch,
   captureOwnerToken,

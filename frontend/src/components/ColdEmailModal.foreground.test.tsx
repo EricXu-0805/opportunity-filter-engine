@@ -16,15 +16,19 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
   from: services.from, rpc: services.rpc,
 }) }));
-vi.mock('@/lib/api', () => ({ getEmailVariants: services.variants,
-  generateColdEmailStream: services.stream, generateColdEmail: services.generate,
-  refineEmail: services.refine, getVapidPublicKey: vi.fn() }));
+vi.mock('@/lib/api', () => ({ getEmailVariants: (...args: unknown[]) => emailReceipt(services.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmailStream: (...args: unknown[]) => emailReceipt(services.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmail: (...args: unknown[]) => emailReceipt(services.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  refineEmail: (...args: unknown[]) => emailReceipt(services.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), getVapidPublicKey: vi.fn() }));
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
   return { useT: () => ({ t, locale: 'en' }), useLocale: () => 'en' };
 });
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import { PROFILE_REFRESH_INTERVAL_MS, useProfileRefresh } from '@/lib/use-profile-refresh';
 import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, syncLocalIdentityOwner } from '@/lib/identity-owner';

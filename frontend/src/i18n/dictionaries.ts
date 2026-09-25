@@ -3606,6 +3606,9 @@ export const en = {
     subjectFavorites: 'Your {count} saved opportunities',
   },
   coldEmail: {
+    targetVersionUnavailable: 'The opportunity could not be verified. Your draft is kept. Check it again before continuing.',
+    targetVersionChanged: 'The opportunity changed. Your draft is kept. Check it again before continuing.',
+    targetVersionRetry: 'Check opportunity again',
     title: 'Email Editor',
     profileChanged: 'Your profile or target details changed. Your subject, message and recipient are kept. Regenerate when you are ready to replace this draft.',
     regenerateFromProfile: 'Regenerate from updated materials',
@@ -3782,6 +3785,9 @@ export const en = {
     },
   },
   renovate: {
+    targetVersionUnavailable: 'The opportunity could not be verified. Your draft is kept. Check it again before continuing.',
+    targetVersionChanged: 'The opportunity changed. Your draft is kept. Check it again before continuing.',
+    targetVersionRetry: 'Check opportunity again',
     title: 'Renovate Resume',
     subtitle: 'Review and adapt your experience bullets for this opportunity.',
     closeAria: 'Close renovation dialog',
@@ -8233,6 +8239,9 @@ export const zh = {
     subjectFavorites: '你的 {count} 个已保存机会',
   },
   coldEmail: {
+    targetVersionUnavailable: '未能核对机会资料，草稿已保留。请重新核对后继续。',
+    targetVersionChanged: '机会资料已变化，草稿已保留。请重新核对后继续。',
+    targetVersionRetry: '重新核对机会',
     title: '邮件编辑器',
     profileChanged: '资料或目标信息已更新，主题、正文和收件人已保留。点击重新生成才会替换文稿。',
     regenerateFromProfile: '按最新资料和机会重新生成',
@@ -8405,6 +8414,9 @@ export const zh = {
     },
   },
   renovate: {
+    targetVersionUnavailable: '未能核对机会资料，草稿已保留。请重新核对后继续。',
+    targetVersionChanged: '机会资料已变化，草稿已保留。请重新核对后继续。',
+    targetVersionRetry: '重新核对机会',
     title: '简历翻新',
     subtitle: '按当前机会调整经历条目，逐条核对和修改。',
     closeAria: '关闭简历翻新弹窗',

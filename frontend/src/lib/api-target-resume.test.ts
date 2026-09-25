@@ -6,7 +6,7 @@ import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest } from './tar
 const auth = vi.hoisted(() => ({ token: vi.fn() }));
 vi.mock('./supabase', () => ({ getRevealAccessToken: auth.token, refreshRevealAccessToken: vi.fn() }));
 vi.mock('./analytics', () => ({ track: vi.fn() }));
-import { generateTargetResumeSuggestions } from './api';
+import { generateTargetResumeSuggestions, WRITING_AUTH_TIMEOUT_MS } from './api';
 const fetchMock = vi.fn();
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((yes) => { resolve = yes; }); return { promise, resolve }; };
 const request = () => ({ version: 1, request_id: 'request-one', locale: 'en', draft: structuredClone(golden.draft),
@@ -15,7 +15,7 @@ beforeEach(async () => {
   vi.stubGlobal('crypto', webcrypto); localStorage.clear(); advanceOwnerEpoch('full-ai-owner'); await syncLocalIdentityOwner('full-ai-owner');
   auth.token.mockReset().mockResolvedValue('synthetic-test-token'); fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock);
 });
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('full target résumé transport', () => {
   it('sends the complete frozen request once, without private-content truncation or caching', async () => {
     const payload = request(); payload.draft.base_snapshot.resume_text = '完整材料 😀 '.repeat(12000) + 'TAIL-END';
@@ -41,6 +41,24 @@ describe('full target résumé transport', () => {
     const assertion = expect(promise).rejects.toMatchObject({ code: 'FULL_TARGET_OWNER_CHANGED' });
     controller.abort(); pending.resolve('synthetic-test-token'); await assertion; expect(fetchMock).not.toHaveBeenCalled();
     expect(auth.token).toHaveBeenCalledTimes(when === 'before' ? 0 : 1);
+  });
+  it('bounds a stalled auth lookup and cannot dispatch when the SDK returns late', async () => {
+    vi.useFakeTimers();
+    const pending = deferred<string>(); auth.token.mockReturnValueOnce(pending.promise);
+    const payload = request(); const original = structuredClone(payload);
+    const outcome = generateTargetResumeSuggestions(payload, { owner: captureOwnerToken()! }).catch(error => error);
+    await vi.advanceTimersByTimeAsync(WRITING_AUTH_TIMEOUT_MS);
+    expect(await outcome).toMatchObject({ code: 'WRITING_AUTH_TIMEOUT', retryable: false });
+    expect(fetchMock).not.toHaveBeenCalled(); expect(payload).toEqual(original);
+    pending.resolve('synthetic-late-token'); await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+  });
+  it('settles cancellation without waiting for the auth SDK to finish', async () => {
+    const controller = new AbortController(); auth.token.mockReturnValueOnce(new Promise(() => {}));
+    const outcome = generateTargetResumeSuggestions(request(), { owner: captureOwnerToken()!, signal: controller.signal }).catch(error => error);
+    controller.abort();
+    expect(await outcome).toMatchObject({ code: 'FULL_TARGET_OWNER_CHANGED' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
   it('refuses an oversized UTF-8 body before auth or network and preserves the input', async () => {
     const payload = request(); payload.draft.base_snapshot.resume_text = '界'.repeat(Math.ceil(FULL_TARGET_AI_MAX_BODY_BYTES / 3));

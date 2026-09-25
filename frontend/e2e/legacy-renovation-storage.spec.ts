@@ -54,7 +54,7 @@ async function setup(page: Page, account: Owner) {
         bullets: [{ id: 'sensor', text: ORIGINAL }] }], method: 'heuristic', warnings: [] } });
     } else if (path === '/api/tailor/renovate') {
       expect(body.sections).toHaveLength(1);
-      await route.fulfill({ json: { opportunity_id: TARGET, method: 'fallback', warnings: [],
+      await route.fulfill({ json: { opportunity_id: TARGET, target_version: route.request().postDataJSON().expected_target_version, method: 'fallback', warnings: [],
         sections: body.sections!.map(section => ({ ...section, bullets: section.bullets.map(bullet => ({
           id: bullet.id, base_text: bullet.text, variants: [], current: -1, action: 'keep',
         })) })) } });

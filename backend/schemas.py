@@ -388,6 +388,10 @@ class ExperienceEvidence(BaseModel):
 
 
 class ColdEmailRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
     engine: str = "template"
@@ -476,6 +480,8 @@ class ExperienceUsage(BaseModel):
 
 
 class ColdEmailResponse(BaseModel):
+    target_version: str | None = None
+    opportunity_id: str | None = None
     experience_usage: ExperienceUsage = Field(default_factory=ExperienceUsage)
     subject: str
     body: str
@@ -754,6 +760,10 @@ class StructureResumeResponse(BaseModel):
 
 
 class RenovateRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
     sections: list[ResumeSection] = Field(default_factory=list)
@@ -843,6 +853,7 @@ class RenovatedSection(BaseModel):
 
 
 class RenovateResponse(BaseModel):
+    target_version: str | None = None
     sections: list[RenovatedSection]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
@@ -856,6 +867,10 @@ class RenovateResponse(BaseModel):
 
 
 class BulletOptimizeRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
     current_text: str = Field(default="", max_length=600)
@@ -871,6 +886,7 @@ class BulletOptimizeRequest(BaseModel):
 
 
 class BulletOptimizeResponse(BaseModel):
+    target_version: str | None = None
     text: str
     source_evidence: str = ""
     changed: bool = False

@@ -29,8 +29,10 @@ const mockRenovateResume = vi.fn();
 const mockOptimizeBullet = vi.fn();
 vi.mock('@/lib/api', () => ({
   structureResume: (...args: unknown[]) => mockStructureResume(...args),
-  renovateResume: (...args: unknown[]) => mockRenovateResume(...args),
-  optimizeBullet: (...args: unknown[]) => mockOptimizeBullet(...args),
+  // These older tests exercise editing/provenance, using a known valid server
+  // receipt. Raw missing/wrong receipts live in the separate target-version suite.
+  renovateResume: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockRenovateResume(...args) }),
+  optimizeBullet: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[4] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockOptimizeBullet(...args) }),
 }));
 
 const mockSaveRenovation = vi.fn();
@@ -49,7 +51,10 @@ import ActualResumeRenovationModal from './ResumeRenovationModal';
 // Normal callers supply the complete public target. Explicit undefined in
 // malformed/legacy tests still reaches production unchanged.
 function ResumeRenovationModal(props: React.ComponentProps<typeof ActualResumeRenovationModal>) {
-  return <ActualResumeRenovationModal targetKey={JSON.stringify({ ...targetA, id: props.opportunityId })} {...props} />;
+  const key = Object.hasOwn(props, 'targetKey') ? props.targetKey : JSON.stringify({ ...targetA, id: props.opportunityId });
+  let target: Opportunity | undefined;
+  try { target = key === undefined ? undefined : JSON.parse(key); } catch { /* malformed fixtures stay unverified */ }
+  return <ActualResumeRenovationModal targetKey={key} target={target} {...props} />;
 }
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { Opportunity, ProfileData, RenovationDoc } from '@/lib/types';
@@ -1169,7 +1174,7 @@ describe('checked legacy renovation intents', () => {
     view.rerender(view.show(fresh));
     await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalledOnce());
     expect(mockStructureResume).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { locale: 'en' });
-    expect(mockRenovateResume).toHaveBeenCalledExactlyOnceWith(fresh, 'opp-1', structuredResume.sections, { locale: 'en' });
+    expect(mockRenovateResume).toHaveBeenCalledExactlyOnceWith(fresh, 'opp-1', structuredResume.sections, { locale: 'en', expectedTargetVersion: targetA.writing_target_version });
   });
   it('rejects a queued bullet operation when checking discovers new source, preserving unsaved text', async () => {
     const old = makeProfile(), fresh = makeProfile({ resume_text: 'New full source', coursework: ['Updated course'] });
@@ -1333,7 +1338,7 @@ const targetA = {
   paid: 'unknown', location: 'Urbana', on_campus: true, description_clean: 'Research vision systems', keywords: ['vision'],
   eligibility: { international_friendly: 'yes', preferred_year: ['Sophomore', 'Junior'], majors: ['CS'], skills_required: ['Python'], citizenship_required: null },
   application: { application_effort: 'low', requires_resume: 'yes', contact_method: 'email' },
-  metadata: { is_active: true, confidence_score: 0.9 },
+  metadata: { is_active: true, confidence_score: 0.9 }, writing_target_version: `wt1:${'a'.repeat(64)}`,
 } satisfies Opportunity;
 const targetB = { ...targetA, eligibility: { ...targetA.eligibility, preferred_year: ['Junior', 'Senior'] } };
 function canonicalTargetFixture(value: unknown): string {
@@ -1484,7 +1489,8 @@ describe('public target projection compatibility', () => {
     eligibility: { international_friendly: 'yes', skills_required: ['Python'] },
     application: { requires_resume: 'yes', contact_method: 'email' },
   };
-  it.each([['detail', publicDetail], ['results card', publicCard]] as const)('generates and reopens a bound draft from the actual public %s shape', async (_surface, target) => {
+  it('generates and reopens a bound draft from the verified public detail shape', async () => {
+    const target = publicDetail;
     mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockResolvedValue(makeDoc());
     const profile = makeProfile();
     const show = (isOpen: boolean) => <ResumeRenovationModal isOpen={isOpen} onClose={vi.fn()} profile={profile} opportunityId="opp-1" opportunityTitle={target.title} targetKey={JSON.stringify(target)} />;
@@ -1499,6 +1505,19 @@ describe('public target projection compatibility', () => {
     view.rerender(show(false)); view.rerender(show(true));
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' })[0]).toBeEnabled());
     expect(mockStructureResume).toHaveBeenCalledOnce();
+  });
+  it('keeps a card-bound saved draft editable but requires verified detail before generation', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({ target_sig: targetFixtureSignature(publicCard) })));
+    const show = (target: unknown) => <ResumeRenovationModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-1" opportunityTitle={targetA.title} targetKey={JSON.stringify(target)} />;
+    const view = render(show(publicCard));
+    await screen.findByText(fullText('Built a fault-tolerant data pipeline for ML workloads'));
+    expect(screen.getByRole('button', { name: 'renovate.rerun' })).toBeDisabled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'renovate.editAria' })[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Preserved card-era manual draft' } });
+    view.rerender(show(publicDetail));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'renovate.rerun' })).toBeEnabled());
+    expect(screen.getByRole('textbox')).toHaveValue('Preserved card-era manual draft');
+    expect(mockStructureResume).not.toHaveBeenCalled(); expect(mockRenovateResume).not.toHaveBeenCalled(); expect(mockSaveRenovation).not.toHaveBeenCalled();
   });
   it.each([
     { ...publicDetail, metadata: { ...publicDetail.metadata, is_active: 'true' } },

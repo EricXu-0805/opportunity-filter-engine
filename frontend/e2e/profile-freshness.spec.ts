@@ -150,7 +150,9 @@ test.describe('Profile readiness and same-account writing preservation', () => {
     await page.route('**/api/cold-email**', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
     await page.route('**/api/cold-email/variants', route => {
       variants += 1;
+      const request = route.request().postDataJSON();
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
         variants: [{ id: 'preservation-template', label: 'Template', subject: 'Original template subject',
           body: 'Original complete template body.', recipient_email: 'initial@example.edu', mailto_link: 'mailto:initial@example.edu' }],
         recipient_status: 'revealed', lab_type: null, pipeline_version: 'e2e-profile-preservation', corpus_version: 'e2e-profile-preservation',
@@ -160,10 +162,11 @@ test.describe('Profile readiness and same-account writing preservation', () => {
     const gate = new Promise<void>(resolve => { release = resolve; });
     const settled = new Promise<void>(resolve => { settle = resolve; });
     await page.route('**/api/cold-email/refine', async route => {
+      const request = route.request().postDataJSON();
       refinements += 1;
-      expect(route.request().postDataJSON().current_body).toBe(BODY);
+      expect(request.current_body).toBe(BODY);
       await gate;
-      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ body: 'LATE OLD PROFILE REFINEMENT MUST NOT REPLACE MY WORDS', method: 'llm' }) }); }
+      try { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ opportunity_id: request.opportunity_id, target_version: request.expected_target_version, body: 'LATE OLD PROFILE REFINEMENT MUST NOT REPLACE MY WORDS', method: 'llm' }) }); }
       catch (error) { if (!route.request().failure()) throw error; }
       finally { settle(); }
     });

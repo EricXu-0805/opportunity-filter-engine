@@ -66,6 +66,28 @@ describe('independent cold email stream boundaries', () => {
     const networkSignal = fetchMock.mock.calls[0][1]?.signal; caller.abort(); await vi.advanceTimersByTimeAsync(COLD_EMAIL_STREAM_TIMEOUT_MS);
     expect(result).toMatchObject(payload); expect(networkSignal?.aborted).toBe(false); expect(response.cancel).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
   });
+  it.each([
+    ['WRITING_TARGET_CHANGED', 'WRITING_TARGET_CHANGED'],
+    ['OTHER_CONFLICT', 'http_error'],
+  ])('only preserves the approved conflict code %s', async (code, expected) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code, message: 'PRIVATE provider message' } }),
+      { status: 409, headers: { 'content-type': 'application/json' } }));
+    const error = await generateColdEmailStream(profile, 'target-a').catch(value => value);
+    expect(error).toMatchObject({ code: expected, status: 409 });
+    expect(String(error)).not.toContain('PRIVATE'); expect(canFallbackColdEmailStream(error)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+  });
+  it('bounds a stalled JSON conflict body and ignores a late target-change code', async () => {
+    const pending = deferred<unknown>(); const cancel = vi.fn();
+    fetchMock.mockResolvedValue({ ok: false, status: 409, headers: new Headers({ 'content-type': 'application/json' }),
+      json: () => pending.promise, body: { cancel } } as unknown as Response);
+    const result = observe(generateColdEmailStream(profile, 'target-a')); await drain();
+    await vi.advanceTimersByTimeAsync(COLD_EMAIL_STREAM_TIMEOUT_MS);
+    expect(result.value).toMatchObject({ code: 'timeout' });
+    pending.resolve({ detail: { code: 'WRITING_TARGET_CHANGED' } }); await drain();
+    expect(result.value).toMatchObject({ code: 'timeout' }); expect(canFallbackColdEmailStream(result.value)).toBe(false);
+    expect(cancel).toHaveBeenCalledOnce(); expect(fetchMock).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+  });
   it('cancels while error headers are pending without turning a late 404 into permission to replay', async () => {
     const pending = deferred<Response>(); fetchMock.mockReturnValue(pending.promise); const caller = new AbortController();
     const result = observe(generateColdEmailStream(profile, 'target-a', { signal: caller.signal })); await drain();

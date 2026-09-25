@@ -49,6 +49,7 @@ const PROFILE = {
 async function stubRenovate(page: Page) {
   await page.route('**/api/tailor/renovate', async (route: Route) => {
     const body = route.request().postDataJSON() as {
+      opportunity_id: string; expected_target_version: string;
       sections: { id: string; heading: string; kind: string;
                   bullets: { id: string; text: string }[] }[];
     };
@@ -70,7 +71,7 @@ async function stubRenovate(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        sections, method: 'ai', warnings: [], opportunity_id: KNOWN_ID,
+        sections, method: 'ai', warnings: [], opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
       }),
     });
   });
@@ -237,6 +238,7 @@ test.describe('Résumé renovation (real browser)', () => {
     // what they see is still their own résumé, never a blank or an invention.
     await page.route('**/api/tailor/renovate', async (route: Route) => {
       const body = route.request().postDataJSON() as {
+        opportunity_id: string; expected_target_version: string;
         sections: { id: string; heading: string; kind: string;
                     bullets: { id: string; text: string }[] }[];
       };
@@ -253,6 +255,7 @@ test.describe('Résumé renovation (real browser)', () => {
               action: 'keep', variants: [], current: -1,
             })),
           })),
+          opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
           method: 'fallback',
           warnings: ['llm_not_configured'],
         }),

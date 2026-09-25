@@ -20,6 +20,8 @@ import {
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
+import { isPublicDetail } from '@/lib/public-target-shape';
+import { writingTargetVersion } from '@/lib/writing-target-version';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
@@ -240,9 +242,16 @@ export default function ResumeRenovationModal({
   targetMembershipReady,
 }: ResumeRenovationModalProps) {
   const { t, locale } = useT();
-  const sourceReady = profileAvailable && targetReady && !targetChecking && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const targetFingerprint = useMemo(() => targetFingerprintFor(targetKey, opportunityId), [targetKey, opportunityId]);
-  const targetBinding = targetFingerprint ?? targetKey ?? canonicalProfile({ opportunityId, opportunityTitle });
+  // Only a verified detail receipt can authorize model work. The legacy
+  // provenance key must describe that same target, never a seed/list card.
+  const expectedTargetVersion = isPublicDetail(target, opportunityId) && canonicalProfile(target) === targetFingerprint
+    ? writingTargetVersion(target) : null;
+  const [targetVersionIssue, setTargetVersionIssue] = useState<'changed' | 'unavailable' | null>(null);
+  const [targetVersionChecking, setTargetVersionChecking] = useState(false);
+  const sourceReady = profileAvailable && targetReady && !targetChecking && !!expectedTargetVersion
+    && !targetVersionIssue && !targetVersionChecking && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
+  const targetBinding = canonicalProfile([targetFingerprint ?? targetKey ?? { opportunityId, opportunityTitle }, expectedTargetVersion]);
   const targetBindingRef = useRef(targetBinding);
   const sourceRef = useRef({ ready: sourceReady, epoch: 0 });
   const profileFingerprint = canonicalProfile(profile);
@@ -404,6 +413,8 @@ export default function ResumeRenovationModal({
     setProfileChanged(false);
     setTargetChanged(false);
     setActionChanged(false);
+    setTargetVersionIssue(null);
+    setTargetVersionChecking(false);
     setCurrentDoc(null);
     setBaseSections([]);
     setStructureResult(null);
@@ -586,9 +597,24 @@ export default function ResumeRenovationModal({
     persist(restored, sections, scope);
   }
 
+  // A mismatch is terminal for this attempt. Rechecking never replays it.
+  async function recheckTargetVersion() {
+    const scope = scopeRef.current;
+    if (!isCurrentScope(scope) || !targetRefresh || targetVersionChecking) return;
+    setTargetVersionChecking(true);
+    try {
+      const accepted = await targetRefresh.refresh();
+      if (isCurrentScope(scope) && accepted) setTargetVersionIssue(null);
+    } catch {
+      // The reader owns its failure notice. Keep the mismatch fence and draft.
+    } finally {
+      if (isCurrentScope(scope)) setTargetVersionChecking(false);
+    }
+  }
+
   async function handleRenovate() {
     const scope = scopeRef.current;
-    if (!sourceRef.current.ready || !comparableTargetSignature || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || !expectedTargetVersion || !comparableTargetSignature || !profileSnapshot.resume_text || !['idle', 'doc'].includes(phase) || !isCurrentScope(scope)) return;
     const workRevision = ++scope.workRevision;
     const epoch = sourceRef.current.epoch;
     const editRevision = userEditRef.current;
@@ -602,7 +628,6 @@ export default function ResumeRenovationModal({
     setWorkingStep('structuring');
     setStructureResult(null);
     setError(null);
-    setRestoredFromSave(false);
     try {
       const [signature, targetSignature] = await Promise.all([
         profileSignature(profileFingerprint),
@@ -616,7 +641,6 @@ export default function ResumeRenovationModal({
       }
       const structured = await structureResume(profileSnapshot.resume_text, { locale });
       if (!current()) return;
-      setStructureResult(structured);
       if (structured.sections.length === 0) {
         setError(t('renovate.noSections'));
         if (originalDoc) setStructureResult(null);
@@ -625,9 +649,16 @@ export default function ResumeRenovationModal({
       }
       setWorkingStep('renovating');
       const renovated = await renovateResume(profileSnapshot, opportunityId, structured.sections, {
-        locale,
+        locale, expectedTargetVersion,
       });
       if (!current()) return;
+      if (renovated?.opportunity_id !== opportunityId || renovated.target_version !== expectedTargetVersion) {
+        setTargetVersionIssue('unavailable');
+        setPhase(originalDoc ? 'doc' : 'idle');
+        return;
+      }
+      setStructureResult(structured);
+      setRestoredFromSave(false);
       const nextDoc: RenovationDoc = {
         resume_sig: resumeSignature,
         ...(signature ? { profile_sig: signature } : {}),
@@ -648,7 +679,8 @@ export default function ResumeRenovationModal({
       void persist(nextDoc, structured.sections, scope, workRevision);
     } catch (err) {
       if (!current()) return;
-      setError(err instanceof Error ? err.message : t('renovate.failed'));
+      if (err && typeof err === 'object' && 'status' in err && err.status === 409 && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') setTargetVersionIssue('changed');
+      else setError(err instanceof Error ? err.message : t('renovate.failed'));
       if (originalDoc) setStructureResult(null);
       setPhase(originalDoc ? 'doc' : 'idle');
     }
@@ -708,7 +740,7 @@ export default function ResumeRenovationModal({
 
   async function handleReoptimize(b: RenovatedBullet) {
     const scope = scopeRef.current;
-    if (!sourceRef.current.ready || !docSourceCurrent || optimizingId || !isCurrentScope(scope)) return;
+    if (!sourceRef.current.ready || !expectedTargetVersion || !docSourceCurrent || optimizingId || !isCurrentScope(scope)) return;
     const workRevision = scope.workRevision;
     const epoch = sourceRef.current.epoch;
     const editRevision = userEditRef.current;
@@ -722,9 +754,13 @@ export default function ResumeRenovationModal({
         opportunityId,
         bulletCurrentText(b),
         b.base_text,
-        { locale },
+        { locale, expectedTargetVersion },
       );
       if (!current() || !isSameBullet()) return;
+      if (resp?.opportunity_id !== opportunityId || resp.target_version !== expectedTargetVersion) {
+        setTargetVersionIssue('unavailable');
+        return;
+      }
       if (resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
@@ -738,9 +774,10 @@ export default function ResumeRenovationModal({
         // Backend declined (validation or no improvement) — honest no-op.
         setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
       }
-    } catch {
+    } catch (err) {
       if (!current() || !isSameBullet()) return;
-      setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
+      if (err && typeof err === 'object' && 'status' in err && err.status === 409 && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') setTargetVersionIssue('changed');
+      else setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
     } finally {
       if (current()) setOptimizingId(null);
     }
@@ -901,6 +938,12 @@ export default function ResumeRenovationModal({
         </div>
 
         <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => requestLeave('close')} />
+
+        {(!expectedTargetVersion || targetVersionIssue) && phase !== 'restoring' && <div role="status" data-testid="renovation-target-version" className="mx-4 mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p>{t(targetVersionIssue === 'changed' ? 'renovate.targetVersionChanged' : 'renovate.targetVersionUnavailable')}</p>
+          {targetRefresh && <button type="button" disabled={targetVersionChecking || targetRefresh.status === 'checking'}
+            className="mt-2 underline disabled:opacity-50" onClick={() => { void recheckTargetVersion(); }}>{t('renovate.targetVersionRetry')}</button>}
+        </div>}
 
         {profileAction.busy && <p role="status" data-testid="renovation-action-check" className="px-4 py-2 text-sm text-indigo-700">
           {locale === 'zh' ? (targetRefresh ? '正在核对最新资料及机会，完成后再开始润色…' : '正在核对最新资料，完成后再开始润色…') : (targetRefresh ? 'Checking current profile and opportunity before renovation…' : 'Checking current profile before renovation…')}

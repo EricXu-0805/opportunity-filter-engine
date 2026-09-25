@@ -9,11 +9,15 @@ vi.mock('@/i18n/client', () => {
   return { useT: () => ({ t, locale: 'en' }), useLocale: () => 'en' };
 });
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn() }));
-vi.mock('@/lib/api', () => ({ getEmailVariants: api.variants, generateColdEmailStream: api.stream,
-  generateColdEmail: api.generate, refineEmail: api.refine, extractResumeBullets: api.extract, getVapidPublicKey: vi.fn() }));
+vi.mock('@/lib/api', () => ({ getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), extractResumeBullets: api.extract, getVapidPublicKey: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmInteractionContact: vi.fn(), updateInteractionDetails: vi.fn() }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import type { TargetActionReceipt, WritingTargetState } from '@/lib/use-writing-target';
 import { writingTargetKey } from '@/lib/writing-target';
 
@@ -132,7 +136,7 @@ describe('cold email initial readiness versus a retained editor', () => {
   });
 });
 
-const checkedTarget: Opportunity = { id: 'loading-target', title: 'Lab', organization: 'University', opportunity_type: 'research',
+const checkedTarget: Opportunity = { writing_target_version: EMAIL_TARGET_VERSION, id: 'loading-target', title: 'Lab', organization: 'University', opportunity_type: 'research',
   paid: 'unknown', location: 'Campus', on_campus: true, description_clean: 'Original laboratory research.', keywords: [],
   eligibility: { international_friendly: 'unknown', preferred_year: [], majors: [], skills_required: [], citizenship_required: null },
   application: { application_effort: 'unknown', requires_resume: 'unknown', contact_method: 'email' }, metadata: { is_active: true, confidence_score: 1 } };

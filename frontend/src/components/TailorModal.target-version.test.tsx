@@ -82,6 +82,10 @@ describe('Tailor authoritative target version', () => {
     expect(screen.queryByText('server private message')).not.toBeInTheDocument();
     view.rerender(<TailorModal {...base} target={{ ...target, writing_target_version: B }} />); await ready();
     fireEvent.click(generate()); await drain(); expect(api.tailor).toHaveBeenCalledTimes(2);
+    // Generate must finish its native SHA checks and refuse the stale draft
+    // before the explicit review button can accept the user's next action.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'tailor.reviewDraft' })).toBeEnabled());
+    expect(api.tailor).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole('button', { name: 'tailor.reviewDraft' }));
     await waitFor(() => expect(screen.queryByTestId('tailor-draft-review')).not.toBeInTheDocument());
     api.tailor.mockResolvedValueOnce(response(B, 'New target verified suggestion')); fireEvent.click(generate());

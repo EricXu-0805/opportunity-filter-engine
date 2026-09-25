@@ -24,10 +24,10 @@ const mockGenerateColdEmailStream = vi.fn();
 const mockRefineEmail = vi.fn();
 const mockExtractResumeBullets = vi.fn();
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
-  generateColdEmail: (...args: unknown[]) => mockGenerateColdEmail(...args),
-  generateColdEmailStream: (...args: unknown[]) => mockGenerateColdEmailStream(...args),
-  refineEmail: (...args: unknown[]) => mockRefineEmail(...args),
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmail: (...args: unknown[]) => emailReceipt(mockGenerateColdEmail(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmailStream: (...args: unknown[]) => emailReceipt(mockGenerateColdEmailStream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  refineEmail: (...args: unknown[]) => emailReceipt(mockRefineEmail(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   extractResumeBullets: (...args: unknown[]) => mockExtractResumeBullets(...args),
 }));
 
@@ -52,7 +52,11 @@ vi.mock('@/lib/supabase', () => ({
   updateInteractionDetails: vi.fn(),
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 import { en, zh } from '@/i18n/dictionaries';
@@ -93,7 +97,7 @@ beforeEach(async () => {
   advanceOwnerEpoch('cold-email-test-owner');
   await syncLocalIdentityOwner('cold-email-test-owner');
   mockGetVariants.mockReset();
-  mockGenerateColdEmail.mockReset();
+  mockGenerateColdEmail.mockReset().mockResolvedValue({ ...makeVariant(), method: 'template' });
   // These legacy AI fixtures exercise a known old backend: its SSE endpoint
   // returns 404 before generation begins. Only that explicit unsupported
   // result permits the blocking compatibility request; network/timeout
@@ -206,7 +210,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGetVariants).toHaveBeenCalledTimes(1));
-      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42');
+      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
     });
 
     it('shows a loading spinner before variants resolve', () => {
@@ -458,7 +462,7 @@ describe('ColdEmailModal', () => {
       // the blocking compatibility route landed the draft.
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       // No recommended_style in this variants mock → seeds the default tone.
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional' });
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION });
     });
 
     it('uses the stream result when streaming succeeds (no blocking call)', async () => {
@@ -524,7 +528,7 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByText('coldEmail.tone.lively')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.tone.lively'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively' });
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively', expectedTargetVersion: EMAIL_TARGET_VERSION });
     });
 
     it('R72-A: shows the fabrication fallback hint when the AI draft is rejected', async () => {
@@ -902,6 +906,7 @@ describe('ColdEmailModal', () => {
         'Make it more formal and professional',
         makeProfile(),
         'opp',
+        { expectedTargetVersion: EMAIL_TARGET_VERSION },
       );
       await waitFor(() =>
         expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
@@ -1034,6 +1039,7 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
+        { expectedTargetVersion: EMAIL_TARGET_VERSION },
       );
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
     });

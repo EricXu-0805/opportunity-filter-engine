@@ -24,7 +24,7 @@ vi.mock('@/i18n/client', () => {
 
 const mockGetVariants = vi.fn();
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn(),
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),
   refineEmail: vi.fn(),
@@ -54,7 +54,11 @@ vi.mock('@/lib/supabase', () => ({
   onAuthChange: () => () => {},
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant } from '@/lib/types';
 
@@ -178,23 +182,23 @@ describe('ColdEmailModal — verified send tracking', () => {
 describe('W12 draft freshness — in-tab AI cache', () => {
   it('expires a cached draft after the TTL', async () => {
     const { aiCacheEntryIsStale, AI_CACHE_TTL_MS } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: 1_000 };
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1', 'pipeline-current')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1', 'pipeline-current')).toBe(false);
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: 1_000 };
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(true);
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 
   it('expires a cached draft when the corpus generation moves', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1', 'pipeline-current')).toBe(false);
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(true);
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 
   it('allows missing corpus metadata only when pipeline compatibility is established', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
     // Corpus metadata keeps its legacy behavior; pipeline metadata is now
     // independently required, so an unversioned AI draft is never reused.
-    const entry = { response: { pipeline_version: 'pipeline-current' }, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current')).toBe(false);
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 });

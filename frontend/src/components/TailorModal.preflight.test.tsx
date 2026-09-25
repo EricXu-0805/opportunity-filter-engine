@@ -101,7 +101,10 @@ describe('Tailor profile preflight', () => {
   });
   it('rejects an old generation response and clears its private editor content', async () => {
     const pending = deferred<TailorResponse>(); api.tailor.mockReturnValueOnce(pending.promise);
-    render(<TailorModal {...base} profileRefresh={refresh(async () => receipt())} />); type('Old generation private text'); fireEvent.click(generate()); await drain(); expect(api.tailor).toHaveBeenCalledOnce();
+    render(<TailorModal {...base} profileRefresh={refresh(async () => receipt())} />); type('Old generation private text'); fireEvent.click(generate()); await drain();
+    // Native SHA work is not exhausted by a fixed number of Promise turns.
+    // Establish an in-flight request before retiring its owner generation.
+    await waitFor(() => expect(api.tailor).toHaveBeenCalledOnce());
     await act(async () => { const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
       localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
       window.dispatchEvent(new StorageEvent('storage', { key: 'ofe_local_identity_owner' })); await syncLocalIdentityOwner('tailor-owner'); });
@@ -118,6 +121,13 @@ describe('Tailor profile preflight', () => {
     const check = vi.fn(() => phase === 'queued' ? read.promise : Promise.resolve(receipt())); api.tailor.mockReturnValueOnce(pending.promise);
     const props = { ...base, targetKey: 'target version one', profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(generate()); await drain();
+    if (phase === 'network') {
+      // Change the target after the real async provenance checks dispatch POST.
+      await waitFor(() => expect(api.tailor).toHaveBeenCalledOnce());
+    } else {
+      await waitFor(() => expect(check).toHaveBeenCalledOnce());
+      expect(api.tailor).not.toHaveBeenCalled();
+    }
     view.rerender(<TailorModal {...props} targetKey="target version two" />); read.resolve(receipt()); pending.resolve(response); await drain();
     expect(api.tailor).toHaveBeenCalledTimes(phase === 'queued' ? 0 : 1); expect(screen.queryByText('tailor.methodAi')).toBeNull(); expect(textarea()).toHaveValue('My unchanged manual bullet');
   });

@@ -102,11 +102,13 @@ async function installNetwork(page: Page, state: Network = { requests: [], write
   await page.route('**/api/tailor**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.route('**/api/resume/**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.route('**/api/cold-email/variants', async (route) => {
-    const profile = route.request().postDataJSON().profile as Record<string, unknown>;
+    const request = route.request().postDataJSON();
+    const profile = request.profile as Record<string, unknown>;
     state.variantProfiles.push(profile);
     expectResearchPython(profile);
     await route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify({
+        opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
         variants: [{ id: 'return-template', label: 'Template', subject: 'Navigation draft', body: 'Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student', recipient_email: 'professor@example.edu', mailto_link: 'mailto:professor@example.edu' }],
         recipient_status: 'revealed', lab_type: 'dry',
       }),

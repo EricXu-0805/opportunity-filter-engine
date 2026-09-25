@@ -13,10 +13,10 @@ const api = vi.hoisted(() => ({
   variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn(),
 }));
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: api.variants,
-  generateColdEmailStream: api.stream,
-  generateColdEmail: api.generate,
-  refineEmail: api.refine,
+  getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   extractResumeBullets: api.extract,
   getVapidPublicKey: vi.fn(),
 }));
@@ -26,7 +26,11 @@ vi.mock('@/lib/supabase', () => ({
   updateInteractionDetails: vi.fn(),
 }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 
 const profile: ProfileData = {
   name: 'Alex', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
@@ -197,9 +201,9 @@ describe('cold email draft lifetime', () => {
     await screen.findByDisplayValue('AI grounded draft');
     expect(api.extract).not.toHaveBeenCalled();
     expect(api.variants).toHaveBeenCalledTimes(1);
-    expect(api.variants).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A');
+    expect(api.variants).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
     expect(api.stream).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A',
-      { engine: 'ai', style: 'professional' }, expect.any(Function));
+      { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION }, expect.any(Function));
   });
 
   it('a late stream error does not launch a blocking fallback after unmount', async () => {
@@ -355,6 +359,7 @@ describe('cold email pipeline cache compatibility', () => {
     expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
     view.show({ opportunityId: 'A' });
     await screen.findByDisplayValue('Cached target A draft');
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']);
     await act(async () => {
       otherTarget.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
     });
@@ -362,7 +367,7 @@ describe('cold email pipeline cache compatibility', () => {
     await act(async () => {});
     expect(screen.getByDisplayValue('Cached target A draft')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Draft B')).toBeNull();
-    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']);
   });
 });
 
@@ -663,10 +668,10 @@ describe('profile changes preserve the open email', () => {
     api.variants.mockReturnValueOnce(next.promise);
     api.stream.mockResolvedValueOnce(aiDraft('AI from updated profile'));
     regenerate(); expectDraft();
-    expect(api.variants).toHaveBeenLastCalledWith(updated, 'A');
+    expect(api.variants).toHaveBeenLastCalledWith(updated, 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION });
     await act(async () => { next.resolve({ variants: [variant('updated')] }); });
     await screen.findByDisplayValue('AI from updated profile');
-    expect(api.stream).toHaveBeenLastCalledWith(updated, 'A', { engine: 'ai', style: 'professional' }, expect.any(Function));
+    expect(api.stream).toHaveBeenLastCalledWith(updated, 'A', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION }, expect.any(Function));
     expect(screen.getByDisplayValue('verified@example.edu')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.profileChanged')).toBeNull();
   });

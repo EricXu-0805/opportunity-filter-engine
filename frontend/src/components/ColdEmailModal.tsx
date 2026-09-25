@@ -1,6 +1,8 @@
 'use client';
 
 import { canFallbackColdEmailStream } from '@/lib/cold-email-stream';
+import { writingTargetVersion } from '@/lib/writing-target-version';
+import { isPublicDetail } from '@/lib/public-target-shape';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
@@ -56,11 +58,13 @@ export const AI_CACHE_TTL_MS = 30 * 60 * 1000;
  *  Missing versions cannot establish compatibility. Corpus changes and the
  *  TTL still expire an otherwise compatible draft. Exported for tests. */
 export function aiCacheEntryIsStale(
-  entry: { response: { corpus_version?: string | null; pipeline_version?: string | null }; at: number },
+  entry: { response: { corpus_version?: string | null; pipeline_version?: string | null; target_version?: string | null }; at: number },
   nowMs: number,
   currentCorpusVersion: string | null,
   currentPipelineVersion: string | null,
+  currentTargetVersion: string | null,
 ): boolean {
+  if (!currentTargetVersion || entry.response.target_version !== currentTargetVersion) return true;
   if (nowMs - entry.at > AI_CACHE_TTL_MS) return true;
   if (!entry.response.pipeline_version?.trim() || !currentPipelineVersion?.trim()
     || entry.response.pipeline_version !== currentPipelineVersion) return true;
@@ -69,6 +73,19 @@ export function aiCacheEntryIsStale(
     !!currentCorpusVersion &&
     entry.response.corpus_version !== currentCorpusVersion
   );
+}
+type TargetVersionFailure = 'unavailable' | 'changed';
+function targetVersionFailure(error: unknown): TargetVersionFailure | null {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null;
+  return error.code === 'WRITING_TARGET_CHANGED' ? 'changed'
+    : error.code === 'INVALID_WRITING_TARGET_RECEIPT' ? 'unavailable' : null;
+}
+function requireTargetReceipt(response: unknown, id: string, version: string) {
+  if (!response || typeof response !== 'object' || Array.isArray(response)
+    || !('opportunity_id' in response) || response.opportunity_id !== id
+    || !('target_version' in response) || response.target_version !== version) {
+    throw Object.assign(new Error('Invalid writing target receipt'), { code: 'INVALID_WRITING_TARGET_RECEIPT' });
+  }
 }
 const STYLE_KEYS: readonly EmailStyle[] = ['professional', 'warm', 'friendly', 'lively'];
 
@@ -277,6 +294,7 @@ export default function ColdEmailModal({
   targetMembershipReady,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
+  const expectedTargetVersion = isPublicDetail(target, opportunityId) ? writingTargetVersion(target) : null;
   const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const sourceReadyRef = useRef(sourceReady);
   useLayoutEffect(() => { sourceReadyRef.current = sourceReady; }, [sourceReady]);
@@ -286,8 +304,8 @@ export default function ColdEmailModal({
   const profileFingerprint = JSON.stringify(profile);
   // A list refresh may temporarily withdraw the target. That is unknown,
   // not a change to its facts. Keep the last observed content for comparison.
-  const [knownTarget, setKnownTarget] = useState({ id: opportunityId, fingerprint: JSON.stringify(reminderTarget ?? null) });
-  const targetFingerprint = reminderTarget ? JSON.stringify(reminderTarget)
+  const [knownTarget, setKnownTarget] = useState({ id: opportunityId, fingerprint: JSON.stringify(target ?? reminderTarget ?? null) });
+  const targetFingerprint = target || reminderTarget ? JSON.stringify(target ?? reminderTarget)
     : knownTarget.id === opportunityId ? knownTarget.fingerprint : 'null';
   if (knownTarget.id !== opportunityId || knownTarget.fingerprint !== targetFingerprint) {
     setKnownTarget({ id: opportunityId, fingerprint: targetFingerprint });
@@ -296,6 +314,7 @@ export default function ColdEmailModal({
   const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [targetVersionError, setTargetVersionError] = useState<TargetVersionFailure | null>(null);
   // Missing sender identity is its own state (not a generic error): the fix is
   // "add your name to your profile", so the UI links there instead of offering
   // a pointless retry.
@@ -411,6 +430,9 @@ export default function ColdEmailModal({
   // AI is the default engine: one automatic pipeline run per open, kicked off
   // once the template variants land. Reset on close.
   const autoFiredRef = useRef(false);
+  // A failed receipt may be checked again without spending generation or
+  // replacing a draft. Only an explicit generation intent clears this fence.
+  const targetCheckOnlyRef = useRef(false);
   // Real AI drafts per (opportunity, style): reopening the same opportunity
   // reuses the draft instead of re-billing the pipeline. Fallback responses
   // are never cached (they retry on the next open). Cleared when the profile
@@ -480,6 +502,23 @@ export default function ColdEmailModal({
 
   useLayoutEffect(() => { aiCacheRef.current.clear(); }, [materialFingerprint]);
 
+  const reportTargetVersionFailure = useCallback((failure: TargetVersionFailure) => {
+    // Reveal can fail concurrently with AI/refine. Retire every writing
+    // callback synchronously, not the human editor or confirmed send state.
+    profileSessionRef.current += 1;
+    variantRequestRef.current += 1; aiRequestRef.current += 1;
+    const retiredRefine = refineInFlightRef.current;
+    refineInFlightRef.current = null; aiInFlightRef.current = false;
+    setLoading(false); setAiLoading(false); setAiStage(null);
+    setRefining(false); setProfileRegenerating(false);
+    if (retiredRefine !== null) setChatMessages(messages => messages.map(message =>
+      message.requestId === retiredRefine ? { ...message, content: t('coldEmail.editFailed') } : message));
+    targetCheckOnlyRef.current = true;
+    variantsReadyRef.current = false;
+    aiCacheRef.current.clear();
+    setTargetVersionError(failure);
+  }, [t]);
+
   const fetchVariants = useCallback(async (preserveDraft = false, keepEditor = false) => {
     if (!sourceReadyRef.current) return;
     const sessionCurrent = captureDraftSession();
@@ -487,6 +526,7 @@ export default function ColdEmailModal({
     const current = () => sessionCurrent() && request === variantRequestRef.current;
     const revision = draftRevisionRef.current;
     if (!preserveDraft) variantsReadyRef.current = false;
+    if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); setLoading(false); return; }
     if (missingStudentName) {
       setLoading(false);
       if (keepEditor) setProfileRegenerateError('name-required');
@@ -498,14 +538,16 @@ export default function ColdEmailModal({
     setError(null);
     setNameRequired(false);
     try {
-      const data = await getEmailVariants(requestProfile, opportunityId);
+      const data = await getEmailVariants(requestProfile, opportunityId, undefined, { expectedTargetVersion });
       if (!current()) return;
+      requireTargetReceipt(data, opportunityId, expectedTargetVersion);
       if (data.variants.length === 0) throw new Error(t('coldEmail.failedGenerate'));
       if (keepEditor && revision !== draftRevisionRef.current) {
         setProfileRegenerateError('edited');
         return;
       }
       variantsReadyRef.current = true;
+      setTargetVersionError(null);
       setVariants(data.variants);
       const inferredLabType =
         data.lab_type
@@ -541,7 +583,9 @@ export default function ColdEmailModal({
       ]);
     } catch (err) {
       if (!current()) return;
-      if (keepEditor) {
+      const targetFailure = targetVersionFailure(err);
+      if (targetFailure) { reportTargetVersionFailure(targetFailure); }
+      else if (keepEditor) {
         setProfileRegenerateError(isStudentNameRequiredError(err) ? 'name-required' : 'failed');
       } else if (isStudentNameRequiredError(err)) {
         setNameRequired(true);
@@ -554,7 +598,7 @@ export default function ColdEmailModal({
         else if (!preserveDraft) setLoading(false);
       }
     }
-  }, [requestProfile, opportunityId, t, missingStudentName, captureDraftSession]);
+  }, [requestProfile, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
@@ -566,7 +610,9 @@ export default function ColdEmailModal({
     readiness: sourceReady ? 'ready'
       : profileAvailable && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
     execute: (intent) => {
-      if (intent.kind === 'variants') { void fetchVariants(intent.preserveDraft, intent.keepEditor); return; }
+      if (intent.kind === 'variants') { targetCheckOnlyRef.current = false; void fetchVariants(intent.preserveDraft, intent.keepEditor); return; }
+      if (intent.kind !== 'coursework' && !expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
+      if (intent.kind !== 'coursework' && targetVersionError) return;
       // A source change keeps the existing manual draft. Its user must choose
       // to rebuild it before new generation or refinement can use that draft.
       if (profileChangedRef.current || profileChanged || profileRegenerating) return;
@@ -606,6 +652,7 @@ export default function ColdEmailModal({
     if (isOpen) void fetchVariantsRef.current();
     return () => {
       autoFiredRef.current = false;
+      targetCheckOnlyRef.current = false;
       pipelineVersionRef.current = null;
       variantsReadyRef.current = false;
       // Close or target change ends the send session. Bumping the id first
@@ -651,6 +698,7 @@ export default function ColdEmailModal({
       setCopied(false);
       setCopyFailed(false);
       setError(null);
+      setTargetVersionError(null);
       setNameRequired(false);
       setChatMessages([]);
       setChatInput('');
@@ -678,12 +726,12 @@ export default function ColdEmailModal({
     autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
-    setLoading(!hasDraft); setError(null); setNameRequired(false); setExperienceUsage(null);
+    setLoading(!hasDraft); setError(null); if (!targetCheckOnlyRef.current) setTargetVersionError(null); setNameRequired(false); setExperienceUsage(null);
     setProfileRegenerating(false); setProfileRegenerateError(null); setProfileChanged(hasDraft);
     if (retiredRefine !== null) setChatMessages((messages) => messages.map((message) =>
       message.requestId === retiredRefine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
     // Initial material arriving before any draft may use the normal open flow.
-    if (!hasDraft) void fetchVariantsRef.current();
+    if (!hasDraft && !targetCheckOnlyRef.current) void fetchVariantsRef.current();
   }, [isOpen, materialFingerprint, subject, body, recipient, t]);
 
   const wasSourceReadyRef = useRef(sourceReady);
@@ -706,7 +754,7 @@ export default function ColdEmailModal({
       // Only an existing editor is kept visible while its source is checked.
       setLoading(!editorUsedRef.current && !(subject || body || recipient));
       setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
-    } else if (!profileRefresh?.checkForAction && !wasReady && !variantsReadyRef.current && !profileChanged) {
+    } else if (!targetCheckOnlyRef.current && !profileRefresh?.checkForAction && !wasReady && !variantsReadyRef.current && !profileChanged) {
       void fetchVariantsRef.current(editorUsedRef.current);
     }
   }, [isOpen, sourceReady, profileChanged, profileRefresh?.checkForAction, subject, body, recipient, t]);
@@ -802,26 +850,31 @@ export default function ColdEmailModal({
   // subscription also fires with the current session on mount, which
   // self-heals the stale-token case where the api-level refresh-retry failed.
   useEffect(() => {
-    if (!sourceReady || !isOpen || recipientStatus !== 'sign_in_required') return;
+    if (!sourceReady || !isOpen || !expectedTargetVersion || targetVersionError || recipientStatus !== 'sign_in_required') return;
     const current = captureDraftSession();
     const unsubscribe = onAuthChange((state) => {
       if (!current() || !state.session || state.isAnonymous) return;
       void (async () => {
         try {
-          const data = await getEmailVariants(profile, opportunityId);
+          const data = await getEmailVariants(profile, opportunityId, undefined, { expectedTargetVersion });
           if (!current()) return;
+          requireTargetReceipt(data, opportunityId, expectedTargetVersion);
           const email = data.variants[0]?.recipient_email ?? '';
           setRecipientStatus(statusOf(data.recipient_status, email));
           if (email) setRecipient((prev) => prev || email);
-        } catch { /* keep the sign-in affordance */ }
+        } catch (error) {
+          const failure = targetVersionFailure(error);
+          if (current() && failure) reportTargetVersionFailure(failure);
+          // Other reveal failures keep the existing sign-in affordance.
+        }
       })();
     });
     return unsubscribe;
-  }, [sourceReady, isOpen, recipientStatus, profile, opportunityId, captureDraftSession]);
+  }, [sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure]);
 
   function selectVariant(idx: number) {
     const v = allVariants[idx];
-    if (!sourceReadyRef.current || profileChanged || profileRegenerating || !v) return;
+    if (!sourceReadyRef.current || targetVersionError || profileChanged || profileRegenerating || !v) return;
     draftRevisionRef.current += 1;
     noteUserEdit();
     setActiveVariant(idx);
@@ -845,6 +898,8 @@ export default function ColdEmailModal({
   // switched away from, and it seeds/serves the per-open cache.
   const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
     if (!sourceReadyRef.current || profileChanged || profileRegenerating || !variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
+    if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
+    if (targetVersionError) return;
     const sessionCurrent = captureDraftSession();
     const request = ++aiRequestRef.current;
     const current = () => sessionCurrent() && request === aiRequestRef.current;
@@ -891,7 +946,7 @@ export default function ColdEmailModal({
     // professor record or pipeline must not keep personalizing from cache.
     const cached = aiCacheRef.current.get(`${opportunityId}|${style}`);
     if (cached) {
-      if (aiCacheEntryIsStale(cached, Date.now(), corpusVersionRef.current, pipelineVersionRef.current)) {
+      if (cached.response.opportunity_id !== opportunityId || aiCacheEntryIsStale(cached, Date.now(), corpusVersionRef.current, pipelineVersionRef.current, expectedTargetVersion)) {
         aiCacheRef.current.delete(`${opportunityId}|${style}`);
       } else {
         // Cache only the AI writing value. Recipient truth was refreshed by
@@ -914,7 +969,7 @@ export default function ColdEmailModal({
     try {
       // Confirmed entries travel in the API's evidence envelope. The modal
       // never extracts raw strings or confirms an imported experience itself.
-      const opts = { engine: 'ai' as const, style };
+      const opts = { engine: 'ai' as const, style, expectedTargetVersion };
       let resp;
       try {
         // A definite old backend may use the blocking compatibility route.
@@ -929,6 +984,7 @@ export default function ColdEmailModal({
         resp = await generateColdEmail(requestProfile, opportunityId, opts);
       }
       if (!current()) return;
+      requireTargetReceipt(resp, opportunityId, expectedTargetVersion);
       if (resp.method === 'ai') {
         aiCacheRef.current.set(`${opportunityId}|${style}`, {
           // Recipient truth stripped before caching — same reason as the
@@ -952,8 +1008,10 @@ export default function ColdEmailModal({
           content: resp.method === 'ai' ? t('coldEmail.aiGenerated') : aiFallbackMessage(resp.fallback_reason, t),
         },
       ]);
-    } catch {
-      if (current() && !auto) {
+    } catch (error) {
+      const failure = targetVersionFailure(error);
+      if (current() && failure) reportTargetVersionFailure(failure);
+      else if (current() && !auto) {
         setChatMessages((prev) => [
           ...prev,
           { role: 'assistant', content: t('coldEmail.aiFailed') },
@@ -966,7 +1024,7 @@ export default function ColdEmailModal({
         setAiStage(null);
       }
     }
-  }, [profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, opportunityId, labType, t, captureDraftSession]);
+  }, [profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -993,6 +1051,8 @@ export default function ColdEmailModal({
   // no LLM is configured), then replaces the placeholder with the outcome.
   async function runRefine(instruction: string) {
     if (!sourceReadyRef.current || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
+    if (targetVersionError) return;
     const sessionCurrent = captureDraftSession();
     const requestId = ++refineRequestRef.current;
     refineInFlightRef.current = requestId;
@@ -1003,12 +1063,13 @@ export default function ColdEmailModal({
       msg.requestId === requestId ? { ...msg, content } : msg));
     setChatMessages((prev) => [...prev, { requestId, role: 'assistant', content: t('coldEmail.editing') }]);
     try {
-      const result = await refineEmail(body, instruction, requestProfile, opportunityId);
+      const result = await refineEmail(body, instruction, requestProfile, opportunityId, { expectedTargetVersion });
       if (!current()) return;
       if (draftRevisionRef.current !== revision) {
         reply(t('coldEmail.editSuperseded'));
         return;
       }
+      requireTargetReceipt(result, opportunityId, expectedTargetVersion);
       setBody(result.body);
       setExperienceUsage(result.experience_usage ?? null);
       reply(
@@ -1020,8 +1081,12 @@ export default function ColdEmailModal({
                   ? t('coldEmail.refineFabrication')
                   : t('coldEmail.doneFallback'),
       );
-    } catch {
-      if (current()) reply(t('coldEmail.editFailed'));
+    } catch (error) {
+      if (current()) {
+        const failure = targetVersionFailure(error);
+        if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
+        else reply(t('coldEmail.editFailed'));
+      }
     } finally {
       if (current()) {
         refineInFlightRef.current = null;
@@ -1212,7 +1277,7 @@ export default function ColdEmailModal({
   if (!isOpen || retired) return null;
 
   const hasEditor = variants.length > 0 || profileChanged || !!(subject || body || recipient);
-  const showInitialWait = loading && !error && !nameRequired && !action.error && profileAvailable
+  const showInitialWait = loading && !error && !targetVersionError && !nameRequired && !action.error && profileAvailable
     && (targetReady || targetChecking) && profileRefresh?.status !== 'failed' && profileRefresh?.status !== 'conflict';
 
   return (
@@ -1263,6 +1328,17 @@ export default function ColdEmailModal({
         {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
           onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
       </div>}
+
+        {targetVersionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
+          <p>{t(targetVersionError === 'changed' ? 'coldEmail.targetVersionChanged' : 'coldEmail.targetVersionUnavailable')}</p>
+          <button type="button" disabled={action.busy || profileRegenerating || !targetRefresh || targetRefresh.status === 'checking'}
+            className="mt-1 font-semibold underline disabled:opacity-50"
+            onClick={() => { targetCheckOnlyRef.current = true; void targetRefresh?.refresh().catch(() => false); }}>{t('coldEmail.targetVersionRetry')}</button>
+          {!profileChanged && <button type="button" disabled={action.busy || profileRegenerating || !sourceReady}
+            className="ml-3 mt-1 font-semibold underline disabled:opacity-50"
+            onClick={() => action.request({ kind: 'variants', keepEditor: hasEditor })}>
+            {t(hasEditor ? 'coldEmail.regenerateFromProfile' : 'coldEmail.tryAgain')}</button>}
+        </div>}
 
         {/* Loading / Error: each state has the same reachable short-screen
             scroll boundary as the editor. The inner panel grows with text. */}

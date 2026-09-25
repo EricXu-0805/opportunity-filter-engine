@@ -57,6 +57,7 @@ from backend.lib.resume_input import (
     resume_chunks,
 )
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
+from backend.lib.writing_target import prepare_writing_snapshot
 from backend.schemas import (
     BulletOptimizeRequest,
     BulletOptimizeResponse,
@@ -99,7 +100,7 @@ _DEFAULT_BULLETS_PER_REQUEST = 12
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w13.3"
+TAILOR_PIPELINE_VERSION = "w13.4"
 
 
 def _require_pipeline_version(expected: str | None) -> str:
@@ -1287,6 +1288,21 @@ def _assemble_renovation(
 async def renovate_resume(
     request: RenovateRequest, authorization: str | None = Header(default=None),
 ) -> RenovateResponse:
+    pipeline_version = TAILOR_PIPELINE_VERSION
+    resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    target = prepare_writing_snapshot(resolved, request.expected_target_version)
+    result = await _renovate_resume_snapshot(request, target.public, authorization)
+    return result.model_copy(update={
+        "opportunity_id": request.opportunity_id,
+        "target_version": target.version,
+        "pipeline_version": pipeline_version,
+        "generated_at": datetime.now(UTC).isoformat(),
+    })
+
+
+async def _renovate_resume_snapshot(request: RenovateRequest, opp: dict, authorization: str | None) -> RenovateResponse:
     """Macro-renovate a structured résumé toward one opportunity.
 
     Reorders sections/bullets (ID-only plan) and rewrites the foregrounded
@@ -1294,13 +1310,7 @@ async def renovate_resume(
     rejected rewrite falls back to the student's own base_text. Never 5xx for
     LLM issues — degrades to a passthrough doc (every bullet at base_text).
     """
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
+
 
     sections = request.sections
     if not sections or not any(s.bullets for s in sections):
@@ -1483,6 +1493,21 @@ def _ai_optimize_bullet(
 async def optimize_bullet(
     request: BulletOptimizeRequest, authorization: str | None = Header(default=None),
 ) -> BulletOptimizeResponse:
+    pipeline_version = TAILOR_PIPELINE_VERSION
+    resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    target = prepare_writing_snapshot(resolved, request.expected_target_version)
+    result = await _optimize_bullet_snapshot(request, target.public, authorization)
+    return result.model_copy(update={
+        "opportunity_id": request.opportunity_id,
+        "target_version": target.version,
+        "pipeline_version": pipeline_version,
+        "generated_at": datetime.now(UTC).isoformat(),
+    })
+
+
+async def _optimize_bullet_snapshot(request: BulletOptimizeRequest, opp: dict, authorization: str | None) -> BulletOptimizeResponse:
     """Re-optimize a single résumé bullet (the per-point AI channel).
 
     Grounds the rewrite against the STUDENT-only corpus (profile + this bullet's
@@ -1490,13 +1515,7 @@ async def optimize_bullet(
     unchanged with a warning and ``changed=false`` — never fabricates, never
     5xx for LLM issues.
     """
-    opp = release_visible_opportunity_by_id(
-        load_opportunities_by_id(),
-        request.opportunity_id,
-    )
-    if not opp:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    assert_target_actionable(opp)
+
 
     current = request.current_text.strip()
     if not current:

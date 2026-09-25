@@ -80,7 +80,7 @@ function deferred() {
   const promise = new Promise<void>(resolve => { release = resolve; });
   return { promise, release };
 }
-interface WritingRequest { path: string; style?: string; profile: ProfileRequest; experience_evidence: { entries: ExperienceEntry[] } }
+interface WritingRequest { path: string; opportunity_id: string; expected_target_version: string; style?: string; profile: ProfileRequest; experience_evidence: { entries: ExperienceEntry[] } }
 async function installWriting(page: Page, holdStream: (request: WritingRequest) => Promise<void> = async () => {}) {
   const requests: WritingRequest[] = [];
   for (const pattern of ['**/api/cold-email**', '**/api/tailor**', '**/api/resume/**']) await page.route(pattern, async route => {
@@ -93,7 +93,7 @@ async function installWriting(page: Page, holdStream: (request: WritingRequest) 
     }
     const stream = path.endsWith('/stream');
     if (stream) await holdStream(request);
-    const draft = { subject: stream ? `AI ${body.style ?? 'professional'} subject` : 'Template subject',
+    const draft = { opportunity_id: body.opportunity_id, target_version: body.expected_target_version, subject: stream ? `AI ${body.style ?? 'professional'} subject` : 'Template subject',
       body: stream ? `AI ${body.style ?? 'professional'} draft for ${body.profile.name}\n${FACT}` : `Template for ${body.profile.name}`,
       recipient_email: 'professor@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'ai',
       pipeline_version: 'foreground-fixture', corpus_version: 'foreground-fixture' };

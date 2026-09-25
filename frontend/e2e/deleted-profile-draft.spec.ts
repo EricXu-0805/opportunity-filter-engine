@@ -118,6 +118,7 @@ async function installNetwork(page: Page) {
     await page.route(pattern, route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   }
   await page.route('**/api/cold-email/variants', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+    opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version,
     variants: [{ id: 'deletion-template', label: 'Template', subject: 'Initial template subject', body: 'Initial template body.', recipient_email: 'initial@example.edu', mailto_link: '' }],
     recipient_status: 'revealed', pipeline_version: 'profile-deletion-fixture', corpus_version: 'profile-deletion-fixture',
   }) }));

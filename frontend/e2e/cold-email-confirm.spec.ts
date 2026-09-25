@@ -95,7 +95,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
   await page.route('**/api/cold-email/variants', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ variants: [{ ...VARIANT, body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
+    body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, variants: [{ ...VARIANT, body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
   }));
 
   await page.route('**/rest/v1/rpc/confirm_interaction_contact', async (route) => {
@@ -373,7 +373,7 @@ test.describe('Cold Email reachable editing workspace', () => {
     await page.route('**/api/cold-email/refine', (route) => route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ body: VARIANT.body.repeat(20), method: 'llm' }),
+      body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, body: VARIANT.body.repeat(20), method: 'llm' }),
     }));
     await openModal(page);
     const workspace = page.getByTestId('cold-email-workspace');
@@ -499,6 +499,7 @@ test('Cold Email waits for the checked profile and template before exposing draf
     templateStarted = true;
     await templateGate;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version,
       variants: [VARIANT], recipient_status: 'revealed', lab_type: 'dry',
     }) });
   });

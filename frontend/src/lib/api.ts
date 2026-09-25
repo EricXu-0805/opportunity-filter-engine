@@ -233,6 +233,61 @@ async function requestOnce<T>(
   }
 }
 
+export const WRITING_AUTH_TIMEOUT_MS = 15_000;
+
+/** Preserve legacy unresolved callers, but never cross an identity generation. */
+function isWritingOwnerCurrent(owner: OwnerToken): boolean {
+  return isTokenOwnerStillCurrent(owner)
+    && captureOwnerToken().generation === owner.generation
+    && (owner.generation < 0 || isOwnerTokenValid(owner, owner.uid));
+}
+
+/** Bound the pre-request identity lookup; a late SDK result cannot start a POST. */
+async function writingAccessToken(owner: OwnerToken, signal?: AbortSignal): Promise<string | null> {
+  let timedOut = false;
+  let rejectCancel!: (error: DOMException) => void;
+  const cancelled = new Promise<never>((_resolve, reject) => { rejectCancel = reject; });
+  const abort = () => rejectCancel(new DOMException('The request was cancelled.', 'AbortError'));
+  const active = () => {
+    if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
+    if (!isWritingOwnerCurrent(owner)) throw new ApiError(409, 'WRITING_OWNER_CHANGED', 'The active profile changed. Your draft is kept.', false);
+    if (timedOut) throw new ApiError(408, 'WRITING_AUTH_TIMEOUT', 'Your sign-in could not be checked. Your draft is kept. Please try again.', false);
+  };
+  active();
+  signal?.addEventListener('abort', abort, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => { timedOut = true; reject(new ApiError(408, 'WRITING_AUTH_TIMEOUT',
+      'Your sign-in could not be checked. Your draft is kept. Please try again.', false)); }, WRITING_AUTH_TIMEOUT_MS);
+  });
+  try {
+    const token = await Promise.race([getRevealAccessToken(), deadline, cancelled]);
+    active();
+    return token;
+  } catch (error) {
+    active();
+    if (error instanceof ApiError || (error instanceof DOMException && error.name === 'AbortError')) throw error;
+    throw new ApiError(0, 'WRITING_AUTH_UNAVAILABLE', 'Your sign-in could not be checked. Your draft is kept. Please try again.', false);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
+/** A completed draft with a locked recipient must not trigger a second generation. */
+async function requestWritingWithAuth<T>(url: string, init: Omit<RequestInit, 'headers'>): Promise<T> {
+  const owner = captureOwnerToken();
+  const token = await writingAccessToken(owner, init.signal ?? undefined);
+  const assertOwner = () => {
+    if (!isWritingOwnerCurrent(owner)) throw new ApiError(409, 'WRITING_OWNER_CHANGED', 'The active profile changed. Your draft is kept.', false);
+  };
+  assertOwner();
+  const result = await request<T>(url, { ...init, retries: 0,
+    headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  assertOwner();
+  return result;
+}
+
 /**
  * W10b contact reveal: run a request with the signed-in session's token
  * attached, and — when the backend still answers "sign_in_required" for a
@@ -805,7 +860,7 @@ function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string } = {},
 ): Promise<ColdEmailResponse> {
   void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
@@ -815,10 +870,10 @@ export async function generateColdEmail(
   };
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
-  return requestWithRevealRetry<ColdEmailResponse>(
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
+  return requestWritingWithAuth<ColdEmailResponse>(
     '/cold-email',
     { method: 'POST', body: JSON.stringify(body) },
-    (resp) => resp.recipient_status === 'sign_in_required',
   );
 }
 
@@ -833,7 +888,7 @@ export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
 export async function generateColdEmailStream(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; signal?: AbortSignal } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; signal?: AbortSignal } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
   const token = captureOwnerToken();
@@ -861,7 +916,7 @@ export async function generateColdEmailStream(
     controller.abort(); release();
   };
   const active = () => {
-    if (!isTokenOwnerStillCurrent(token)) interrupt('cancelled');
+    if (!isWritingOwnerCurrent(token)) interrupt('cancelled');
     if (interruption) throw interruption;
   };
   const abortFromCaller = () => interrupt('cancelled');
@@ -875,17 +930,32 @@ export async function generateColdEmailStream(
         experience_evidence: coldEmailExperienceEvidence(profile) };
       if (options.engine) body.engine = options.engine;
       if (options.style) body.style = options.style;
+      if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
+      // Freeze nested course/experience arrays before credentials yield control.
+      const requestBody = JSON.stringify(body);
       // Authentication, headers and the complete SSE body share one deadline.
       const streamToken = await getRevealAccessToken();
       active();
       response = await fetch(`${API_BASE}/cold-email/stream`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
           ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}) },
-        body: JSON.stringify(body), signal: controller.signal,
+        body: requestBody, signal: controller.signal,
       });
       if (interruption) { cancelBody(response.body); active(); }
       if (!response.ok) {
-        // The HTTP status is sufficient; never wait for or expose an upstream error body.
+        // Read only the one actionable conflict code, within the existing deadline.
+        // Upstream messages and unknown conflict codes never reach the editor.
+        if (response.status === 409 && response.headers?.get('content-type')?.includes('application/json')) {
+          const failure: unknown = await response.json().catch(() => null);
+          active();
+          if (failure && typeof failure === 'object' && 'detail' in failure) {
+            const detail = (failure as { detail: unknown }).detail;
+            if (detail && typeof detail === 'object' && 'code' in detail
+              && detail.code === 'WRITING_TARGET_CHANGED') {
+              throw new ColdEmailStreamError('WRITING_TARGET_CHANGED', 409);
+            }
+          }
+        }
         throw new ColdEmailStreamError(response.status === 404 || response.status === 405 ? 'unsupported' : 'http_error', response.status);
       }
       if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
@@ -942,18 +1012,19 @@ export async function getEmailVariants(
   opportunityId: string,
   /** Deprecated compatibility argument: unconfirmed raw strings are ignored. */
   _legacyResumeBullets: string[] = [],
+  options: { expectedTargetVersion?: string } = {},
 ): Promise<EmailVariantsResponse> {
-  return requestWithRevealRetry<EmailVariantsResponse>(
+  return requestWritingWithAuth<EmailVariantsResponse>(
     '/cold-email/variants',
     {
       method: 'POST',
       body: JSON.stringify({
         profile: toProfileRequest(profile),
         opportunity_id: opportunityId,
+        expected_target_version: options.expectedTargetVersion,
         experience_evidence: coldEmailExperienceEvidence(profile),
       }),
     },
-    (resp) => resp.recipient_status === 'sign_in_required',
   );
 }
 
@@ -965,16 +1036,17 @@ export async function refineEmail(
   // server resolves that target before it will spend anything. Optional here
   // only ever meant "send null and hope"; the modal has always had the id.
   opportunityId: string,
-  /** Deprecated compatibility argument: only profile experience entries count. */
-  _legacyOptions: { resumeBullets?: string[] } = {},
-): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage }> {
-  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage }>('/cold-email/refine', {
+  /** Legacy resumeBullets are ignored; only confirmed profile entries count. */
+  options: { resumeBullets?: string[]; expectedTargetVersion?: string } = {},
+): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null }> {
+  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null }>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,
+      expected_target_version: options.expectedTargetVersion,
       experience_evidence: coldEmailExperienceEvidence(profile),
     }),
   });
@@ -1115,7 +1187,7 @@ export async function renovateResume(
   profile: ProfileData,
   opportunityId: string,
   sections: ResumeSectionInput[],
-  options: { locale?: string } = {},
+  options: { locale?: string; expectedTargetVersion?: string } = {},
 ): Promise<RenovateResponse> {
   void track('ai_feature_used', { feature: 'renovate' });
   const body: Record<string, unknown> = {
@@ -1124,6 +1196,7 @@ export async function renovateResume(
     sections,
   };
   if (options.locale) body.locale = options.locale;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<RenovateResponse>('/tailor/renovate', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -1143,7 +1216,12 @@ export async function generateTargetResumeSuggestions(
   if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
     throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
   }
-  const token = await getRevealAccessToken();
+  const token = await writingAccessToken(options.owner, options.signal).catch((error: unknown) => {
+    if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+      throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+    }
+    throw error;
+  });
   if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
     throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
   }
@@ -1165,7 +1243,7 @@ export async function optimizeBullet(
   opportunityId: string,
   currentText: string,
   baseText: string,
-  options: { instruction?: string; locale?: string } = {},
+  options: { instruction?: string; locale?: string; expectedTargetVersion?: string } = {},
 ): Promise<BulletOptimizeResponse> {
   void track('ai_feature_used', { feature: 'bullet_optimize' });
   const body: Record<string, unknown> = {
@@ -1176,6 +1254,7 @@ export async function optimizeBullet(
   };
   if (options.instruction) body.instruction = options.instruction;
   if (options.locale) body.locale = options.locale;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<BulletOptimizeResponse>('/tailor/bullet', {
     method: 'POST',
     body: JSON.stringify(body),
