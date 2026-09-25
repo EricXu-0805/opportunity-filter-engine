@@ -15,7 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
   from: mocks.from, rpc: mocks.rpc,
 }) }));
-import { PROFILE_REFRESH_DEADLINE_MS, useProfileRefresh, type ProfileActionReceipt } from './use-profile-refresh';
+import { PROFILE_REFRESH_DEADLINE_MS, PROFILE_REFRESH_INTERVAL_MS, useProfileRefresh, type ProfileActionReceipt } from './use-profile-refresh';
 import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode, isOwnerTokenValid, PRIVATE_STORAGE_LOCK,
   readUserScopedRaw, syncLocalIdentityOwner } from './identity-owner';
 import { hydrateProfile, readProfileSyncEnvelope, recordProfileIntent, resetProfileDirtyLedger, stageProfilePatch } from './profile-sync';
@@ -74,6 +74,7 @@ beforeEach(async () => {
   advanceOwnerEpoch(null); advanceOwnerEpoch(OWNER); await syncLocalIdentityOwner(OWNER);
   expect(isOwnerTokenValid(captureOwnerToken(), OWNER)).toBe(true);
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+  Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
 
@@ -313,5 +314,177 @@ describe('owner-scoped read-only cloud refresh', () => {
     const { result } = renderHook(() => useProfileRefresh(true)); await drain();
     expect(result.current.status).toBe('local-only'); expect(await refresh(result)).toBe(true);
     expect(mocks.selects).toHaveLength(0); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('continuous foreground profile checks', () => {
+  const interval = PROFILE_REFRESH_INTERVAL_MS;
+  async function tick(milliseconds: number) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(milliseconds); });
+    await drain();
+  }
+  function visibility(value: 'hidden' | 'visible') {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+  }
+  function connectivity(value: boolean) {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value });
+    event(value ? 'online' : 'offline');
+  }
+
+  it('uses one timer from read completion, preserving ready throughout an unchanged automatic check', async () => {
+    const initial = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(initial.promise);
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain();
+    await tick(5000); initial.resolve(row()); await drain();
+    expect(result.current.status).toBe('ready');
+    await tick(interval - 1); expect(mocks.selects).toHaveLength(1);
+    const automatic = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(automatic.promise);
+    await tick(1); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+    event('focus'); event('online'); await drain(); expect(mocks.selects).toHaveLength(2);
+    await tick(5000); expect(result.current.status).toBe('ready');
+    automatic.resolve(row()); await drain();
+    await tick(interval - 1); expect(mocks.selects).toHaveLength(2);
+    await tick(1); expect(mocks.selects).toHaveLength(3); expect(result.current.status).toBe('ready');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(['refresh', 'checkForAction'] as const)('promotes the in-flight automatic read for explicit %s without returning old readiness', async (method) => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    const automatic = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(automatic.promise);
+    await tick(interval); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+    let outcome!: Promise<boolean | ProfileActionReceipt | null>; let settled = false;
+    act(() => { outcome = result.current[method]!(); void outcome.then(() => { settled = true; }); });
+    await drain(); expect(result.current.status).toBe('checking'); expect(settled).toBe(false);
+    const shared = result.current.checkForAction!(); expect(mocks.selects).toHaveLength(2);
+    automatic.resolve(row({ ...BASE, major: 'Latest checked' }, 2)); await drain();
+    expect((await shared)?.profile?.major).toBe('Latest checked'); expect(settled).toBe(true);
+    expect(await outcome).toEqual(method === 'refresh' ? true : await shared);
+    expect(accepted).toHaveBeenCalledTimes(2); expect(result.current.status).toBe('ready');
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(['hidden', 'offline'] as const)('suspends the timer and focus reads while %s, then checks immediately on return', async (mode) => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); await tick(interval - 1);
+    if (mode === 'hidden') visibility('hidden'); else connectivity(false);
+    event('focus'); await tick(interval * 2); expect(mocks.selects).toHaveLength(1);
+    expect(result.current.status).toBe('ready');
+    if (mode === 'hidden') visibility('visible'); else connectivity(true);
+    await drain(); expect(mocks.selects).toHaveLength(2);
+    await tick(interval - 1); expect(mocks.selects).toHaveLength(2);
+    await tick(1); expect(mocks.selects).toHaveLength(3);
+  });
+
+  it.each(['focus', 'visible', 'online'] as const)('keeps an already usable state quiet during a held %s event read', async (trigger) => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain();
+    const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
+    if (trigger === 'visible') { visibility('hidden'); visibility('visible'); }
+    else if (trigger === 'online') { connectivity(false); connectivity(true); }
+    else event('focus');
+    await drain(); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+    held.resolve(row()); await drain(); expect(result.current.status).toBe('ready');
+  });
+
+  it.each(['hidden', 'offline'] as const)('finishes an already active read while %s without scheduling another until resume', async (mode) => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
+    await tick(interval);
+    if (mode === 'hidden') visibility('hidden'); else connectivity(false);
+    expect(mocks.selects[1].signal?.aborted).toBe(false); expect(result.current.status).toBe('ready');
+    held.resolve(row({ ...BASE, major: 'Already requested' }, 2)); await drain();
+    expect(accepted).toHaveBeenCalledTimes(2); expect(mirror().major).toBe('Already requested');
+    await tick(interval * 2); expect(mocks.selects).toHaveLength(2);
+    if (mode === 'hidden') visibility('visible'); else connectivity(true);
+    await drain(); expect(mocks.selects).toHaveLength(3);
+  });
+
+  it('restarts the interval after an explicit read instead of retaining the previous automatic deadline', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); await tick(30_000);
+    expect(await refresh(result)).toBe(true); expect(mocks.selects).toHaveLength(2);
+    await tick(30_000); expect(mocks.selects).toHaveLength(2);
+    await tick(30_000); expect(mocks.selects).toHaveLength(3);
+  });
+
+  it('retires a held automatic read across a same-uid persistent generation change and accepts only the new generation', async () => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    const origin = captureOwnerToken(); const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
+    await tick(interval);
+    const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
+    mocks.read.mockResolvedValue(row({ ...BASE, major: 'New generation' }, 2));
+    await act(async () => {
+      localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+      await syncLocalIdentityOwner(origin.uid!);
+      // Another tab's marker transition delivers a native storage event;
+      // jsdom setItem in this same document does not dispatch one.
+      window.dispatchEvent(new StorageEvent('storage', { key: 'ofe_local_identity_owner' }));
+    }); await drain();
+    expect(captureOwnerToken()).toMatchObject({ uid: origin.uid, epoch: origin.epoch, generation: origin.generation + 1 });
+    expect(mocks.selects[1].signal?.aborted).toBe(true); expect(result.current.status).toBe('ready');
+    held.resolve(row({ ...BASE, major: 'Retired generation' }, 99)); await drain();
+    expect(mirror().major).toBe('New generation'); expect(accepted).toHaveBeenCalledTimes(2);
+    expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ token: captureOwnerToken() }));
+    await tick(interval); expect(mocks.selects).toHaveLength(4); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(['disable', 'unmount'] as const)('removes the completed-read timer on %s', async (mode) => {
+    const { rerender, unmount } = renderHook(({ enabled }) => useProfileRefresh(enabled), { initialProps: { enabled: true } });
+    await drain(); await tick(interval - 1);
+    if (mode === 'disable') rerender({ enabled: false }); else unmount();
+    await tick(interval * 2); event('focus'); event('online'); await drain();
+    expect(mocks.selects).toHaveLength(1); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('retires the previous owner timer and starts the next interval only after the new owner read completes', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); await tick(30_000);
+    const current = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(current.promise);
+    await moveOwner('foreground-owner-b'); expect(mocks.selects).toHaveLength(2);
+    await tick(5000); current.resolve(row({ ...BASE, major: 'Owner B' }, 2)); await drain();
+    await tick(25_000); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+    await tick(35_000); expect(mocks.selects).toHaveLength(3); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('withdraws ready on automatic failure, keeps the mirror, and retries after the next completed-read interval', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain();
+    mocks.read.mockResolvedValueOnce({ data: null, error: { message: 'PRIVATE failure' } });
+    await tick(interval); expect(result.current.status).toBe('failed'); expect(mirror()).toEqual(BASE);
+    mocks.read.mockResolvedValueOnce(row({ ...BASE, major: 'Recovered' }, 2));
+    await tick(interval); expect(result.current.status).toBe('ready'); expect(mirror().major).toBe('Recovered');
+    expect(mocks.selects).toHaveLength(3); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('retains the deadline for background reads and rejects their late content before the next periodic retry', async () => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    const old = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(old.promise);
+    await tick(interval); expect(result.current.status).toBe('ready');
+    await tick(PROFILE_REFRESH_DEADLINE_MS); expect(result.current.status).toBe('failed');
+    expect(mocks.selects[1].signal?.aborted).toBe(true);
+    old.resolve(row({ ...BASE, major: 'Retired automatic row' }, 99)); await drain();
+    expect(accepted).toHaveBeenCalledTimes(1); expect(mirror()).toEqual(BASE);
+    await tick(interval - 1); expect(mocks.selects).toHaveLength(2);
+    await tick(1); expect(mocks.selects).toHaveLength(3); expect(result.current.status).toBe('ready');
+  });
+
+  it('accepts an actual periodic update and deletion without writing or retaining an old profile receipt', async () => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    mocks.read.mockResolvedValueOnce(row({ ...BASE, major: 'Changed remotely' }, 2));
+    await tick(interval); expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ profile: { ...BASE, major: 'Changed remotely' }, revision: 2 }));
+    mocks.read.mockResolvedValueOnce({ data: null, error: null });
+    await tick(interval); expect(result.current.status).toBe('ready');
+    expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ profile: null, source: 'cloud-absent' }));
+    expect(mirror()).toBeNull(); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('preserves unsent journal edits on periodic updates and surfaces staged conflicts without a write', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain();
+    expect(recordProfileIntent({ ...BASE, major: 'Local draft' }, ['major'], captureOwnerToken())).toBe(true);
+    const pending = readOutstandingOps(); mocks.read.mockResolvedValueOnce(row({ ...BASE, grade: 'Senior' }, 2));
+    await tick(interval); expect(mirror()).toMatchObject({ major: 'Local draft', grade: 'Senior' });
+    expect(readOutstandingOps()).toEqual(pending); expect(result.current.status).toBe('ready');
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    await stageProfilePatch({ ...BASE, grade: 'Senior', major: 'Local draft' }, ['major'], captureOwnerToken());
+    mocks.rpc.mockClear(); mocks.read.mockResolvedValueOnce(row({ ...BASE, grade: 'Senior', major: 'Remote conflict' }, 3));
+    await tick(interval); expect(result.current.status).toBe('conflict');
+    const journal = readOutstandingOps(); expect(journal.ok && journal.value.length).toBeGreaterThan(0);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

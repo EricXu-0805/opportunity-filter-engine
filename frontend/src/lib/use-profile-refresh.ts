@@ -21,6 +21,7 @@ export type ProfileRefreshState = {
   checkForAction?: () => Promise<ProfileActionReceipt | null>;
 };
 export const PROFILE_REFRESH_DEADLINE_MS = 15_000;
+export const PROFILE_REFRESH_INTERVAL_MS = 60_000;
 
 function ownerSnapshot(): string {
   const token = captureOwnerToken();
@@ -54,15 +55,45 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
     if (!enabled) { runner.current = null; return; }
     let disposed = false;
     let attempt: Attempt | null = null;
+    let nextRead: ReturnType<typeof setTimeout> | null = null;
+    let status: ProfileRefreshState['status'] = 'checking';
     const current = () => !disposed && ownerSnapshot() === owner;
-    const run = (): Attempt | null => {
-      if (!current()) return null;
-      if (attempt && !attempt.controller.signal.aborted) return attempt;
+    const foreground = () => document.visibilityState === 'visible' && navigator.onLine;
+    const canAutoRead = () => {
+      const token = captureOwnerToken();
+      return current() && foreground() && isOwnerTokenValid(token, token.uid);
+    };
+    const stopTimer = () => {
+      if (nextRead !== null) clearTimeout(nextRead);
+      nextRead = null;
+    };
+    const publish = (next: ProfileRefreshState['status']) => {
+      status = next;
+      setState({ owner, enabled: true, status: next });
+    };
+    const schedule = () => {
+      stopTimer();
+      if (!canAutoRead()) return;
+      nextRead = setTimeout(() => {
+        nextRead = null;
+        void run(false);
+      }, PROFILE_REFRESH_INTERVAL_MS);
+    };
+    // Initial/explicit checks block actions. Automatic checks preserve an
+    // already usable state until their real result changes or rejects it.
+    const run = (blocking = true): Attempt | null => {
+      if (!current() || (!blocking && !canAutoRead())) return null;
+      stopTimer();
+      if (attempt && !attempt.controller.signal.aborted) {
+        // Joining a quiet read must not borrow the previous ready receipt.
+        if (blocking && status !== 'checking') publish('checking');
+        return attempt;
+      }
       const controller = new AbortController();
       const record: Attempt = { controller, promise: Promise.resolve(null), ready: Promise.resolve(false) };
       const checkId = ++checkSequence.current;
       attempt = record;
-      setState({ owner, enabled: true, status: 'checking' });
+      if (blocking || (status !== 'ready' && status !== 'local-only')) publish('checking');
       const timer = setTimeout(() => controller.abort(), PROFILE_REFRESH_DEADLINE_MS);
       record.promise = Promise.resolve().then(async () => {
         try {
@@ -71,11 +102,11 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
           // The coordinator owns the exact original baseline and local mirror.
           const loaded: ProfileHydration = { ...hydrated, profile: migrateProfile(hydrated.profile) };
           if (!current() || attempt !== record || controller.signal.aborted || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return null;
-          const status: ProfileRefreshState['status'] = loaded.quarantineFailed ? 'failed'
+          const nextStatus: ProfileRefreshState['status'] = loaded.quarantineFailed ? 'failed'
             : loaded.conflictKeys.length || loaded.conflicts.length ? 'conflict'
               : loaded.source === 'local-only' ? 'local-only' : 'ready';
-          setState({ owner, enabled: true, status });
-          if (status !== 'ready' && status !== 'local-only') return null;
+          publish(nextStatus);
+          if (nextStatus !== 'ready' && nextStatus !== 'local-only') return null;
           // Freeze an independent copy before a host receives the hydration.
           // The candidate includes local pending edits; a fresh raw/envelope
           // read here could pair a different document with this revision.
@@ -89,30 +120,39 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
           if (!current() || controller.signal.aborted || !isOwnerTokenValid(receipt.owner, receipt.owner.uid)) return null;
           return receipt;
         } catch {
-          if (current() && attempt === record) setState({ owner, enabled: true, status: 'failed' });
+          if (current() && attempt === record) publish('failed');
           return null;
         } finally {
           clearTimeout(timer);
-          if (attempt === record) attempt = null;
+          if (attempt === record) {
+            attempt = null;
+            // No interval overlap or catch-up burst: count from completion.
+            if (current()) schedule();
+          }
         }
       });
       record.ready = record.promise.then((receipt) => receipt !== null);
       return record;
     };
     runner.current = run;
-    const visible = () => { if (document.visibilityState === 'visible') void run(); };
-    const recheck = () => { void run(); };
+    const recheck = () => {
+      if (foreground()) void run(false);
+      else stopTimer();
+    };
     window.addEventListener('focus', recheck);
     window.addEventListener('online', recheck);
-    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('offline', recheck);
+    document.addEventListener('visibilitychange', recheck);
     void run();
     return () => {
       disposed = true;
       if (runner.current === run) runner.current = null;
+      stopTimer();
       attempt?.controller.abort();
       window.removeEventListener('focus', recheck);
       window.removeEventListener('online', recheck);
-      document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('offline', recheck);
+      document.removeEventListener('visibilitychange', recheck);
     };
   }, [enabled, owner]);
 

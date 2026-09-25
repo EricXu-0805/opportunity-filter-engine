@@ -347,6 +347,36 @@ test.describe('Results return context', () => {
     } finally { await owner.http.dispose(); }
   });
 
+  test('foreground polling preserves page two until a silent cloud skill change arrives', async ({ page }) => {
+    await page.clock.install();
+    const net = await installNetwork(page, undefined, true);
+    const owner = await seedSavedProfile(page);
+    try {
+      await onSecondPage(page, net);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      const before = { url: page.url(), count: net.requests.length, scroll: await page.evaluate(() => window.scrollY) };
+      const sameRead = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles');
+      await page.clock.fastForward(60_001);
+      expect(await (await sameRead).json()).toMatchObject([{ revision: 1 }]);
+      // Wait through the real hydration/React commit, not just the HTTP response.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+      await expect(page.locator('[id^="match-card-"]')).toHaveCount(8);
+      expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
+      expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(before.scroll, 0);
+      await commitSavedProfile(owner, { skills: [{ name: 'Python', level: 'experienced', confirmed: true }] });
+      const changedRead = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles');
+      await page.clock.fastForward(60_001);
+      expect(await (await changedRead).json()).toMatchObject([{ revision: 2 }]);
+      await expect.poll(() => net.requests.at(-1)?.profile.hard_skills).toEqual([{ name: 'Python', level: 'experienced', confirmed: true }]);
+      await expect(page.getByText('1 / 2', { exact: true })).toBeVisible();
+      await expect(page.locator('[id^="match-card-"]')).toHaveCount(50);
+      expect(net.requests.length).toBeGreaterThan(before.count); expect(net.requests.at(-1)?.cursor).toBeNull();
+      expectPublicFilters(page.url()); expect(net.expiredRequests).toBe(0);
+      expect(net.writes.filter(write => /profiles|commit_profile_patch_cas/.test(write))).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
   test('a saved profile read failure preserves page two and never becomes a deletion', async ({ page }) => {
     const net = await installNetwork(page, undefined, true);
     const owner = await seedSavedProfile(page);

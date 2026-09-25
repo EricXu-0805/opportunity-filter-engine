@@ -234,7 +234,8 @@ test.describe('Server-only profile refresh', () => {
       await expect(body).toHaveValue(BODY); await expect(subject).toHaveValue(SUBJECT);
       await expect(recipient).toHaveValue(RECIPIENT); await expect(instruction).toHaveValue(UNSENT);
       await expect(page.getByText('LATE PRE-REFRESH AI RESULT', { exact: true })).toHaveCount(0);
-      await expect(page.getByText('Your profile or target is being checked, so this edit was discarded. Your draft is kept.', { exact: true })).toBeVisible();
+      // Automatic reads keep the draft active until changed material is observed.
+      await expect(page.getByText('Your profile or target details changed, so this edit was discarded. Your draft is kept.', { exact: true })).toBeVisible();
       expect(writes).toEqual([]);
     } finally { release(); await other?.close(); await owner.http.dispose(); }
   });
