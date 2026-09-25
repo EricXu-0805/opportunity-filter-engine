@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { createTargetResume, targetResumeContextFromOpportunity, type TargetResumeV1 } from '@/lib/target-resume';
+import { createTargetResume, targetResumeContextFromOpportunity, targetResumeContextSignature, type TargetResumeV1 } from '@/lib/target-resume';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import type { TargetResumeAiRequest, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
@@ -81,9 +81,8 @@ describe('complete live target binding without replacing the saved snapshot', ()
     await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(1));
     const payload = mocked.generate.mock.calls[0][0] as TargetResumeAiRequest;
     const next = clone(target); if (change === 'changed') next.eligibility.citizenship_required = true;
-    // Citizenship is outside the persisted target-resume projection, but must
-    // still retire an in-flight request bound to the complete live target.
-    expect(targetResumeContextFromOpportunity(next)).toEqual(targetResumeContextFromOpportunity(target));
+    // A criteria-only change retires both live work and the saved target binding.
+    expect(JSON.stringify(targetResumeContextFromOpportunity(next)) === JSON.stringify(targetResumeContextFromOpportunity(target))).toBe(change === 'same');
     rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={next} targetRefresh={reader(next)} />);
     const signal = mocked.generate.mock.calls[0][1].signal as AbortSignal;
     expect(signal.aborted).toBe(change === 'changed');
@@ -126,5 +125,45 @@ describe('complete live target binding without replacing the saved snapshot', ()
     expect(screen.getByRole('button', { name: 'Export PDF' })).toBeDisabled();
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Preserve my hand edit');
     expect(mocked.exportFile).not.toHaveBeenCalled(); expect(mocked.save).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('saved target criteria across editor lifetimes', () => {
+  it('keeps a six-field legacy draft editable and exportable, but explains why AI needs a rebuild', async () => {
+    const p = profile(); const current = await createTargetResume(p, targetResumeContextFromOpportunity(target), 'legacy-draft');
+    const { opportunity_id, title, organization, source_url, description, requirements } = current.target_snapshot;
+    const legacy = clone(current);
+    legacy.target_snapshot = { opportunity_id, title, organization, source_url, description, requirements };
+    legacy.base.target_signature = await targetResumeContextSignature(legacy.target_snapshot);
+    mocked.load.mockResolvedValue({ doc: legacy, revision: 7, updated_at: '2026-09-24T00:00:00Z' });
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={target} targetRefresh={reader()} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' });
+    expect(await screen.findByText('This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Generate AI suggestions' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit Full name' }), { target: { value: 'Legacy manual wording 王' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    await waitFor(() => expect(mocked.save).toHaveBeenCalledTimes(1));
+    expect(mocked.save.mock.calls[0][0].target_snapshot).toEqual(legacy.target_snapshot);
+    expect(mocked.save.mock.calls[0][0].base.target_signature).toBe(legacy.base.target_signature);
+    fireEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    await waitFor(() => expect(mocked.download).toHaveBeenCalledTimes(1));
+    expect(mocked.generate).not.toHaveBeenCalled();
+  });
+  it.each(['citizenship', 'deadline', 'application'] as const)('reopens a draft as outdated after only %s changes', async (change) => {
+    const p = profile(); const doc = await createTargetResume(p, targetResumeContextFromOpportunity(target), 'saved-criteria');
+    mocked.load.mockResolvedValue({ doc, revision: 1, updated_at: '2026-09-24T00:00:00Z' });
+    const next = clone(target);
+    if (change === 'citizenship') next.eligibility.citizenship_required = true;
+    if (change === 'deadline') next.deadline = '2026-10-31';
+    if (change === 'application') next.application.requires_cover_letter = 'yes';
+    render(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={next} targetRefresh={reader(next)} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' });
+    expect(await screen.findByText(/This draft was created from different profile or target materials/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Generate AI suggestions' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled();
+    expect(mocked.save).not.toHaveBeenCalled(); expect(mocked.generate).not.toHaveBeenCalled();
   });
 });

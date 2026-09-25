@@ -12,13 +12,14 @@ import { writingTargetKey } from '@/lib/writing-target';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
+import TargetResumeCriteria from './TargetResumeCriteria';
 import TargetResumeExportPanel from './TargetResumeExportPanel';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import { buildResumeMasterPreview, validateResumeMaster } from '@/lib/resume-master';
 import {
   createTargetResume, suggestTargetResumeOrder, targetResumeContextFromOpportunity,
-  targetResumeContextSignature, targetResumeProfileSignature, validateTargetResume,
+  targetResumeContextSignature, targetResumeProfileSignature, validateTargetResume, isCurrentTargetResumeContext,
   type LoadedTargetResume, type TargetResumeLine, type TargetResumeV1,
 } from '@/lib/target-resume';
 import {
@@ -195,8 +196,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const dirty = !!activeSession && isDirty(activeSession);
   const doc = activeSession?.doc ?? null;
   const comparable = profileAvailable && checks?.key === contextKey ? checks : null;
-  const outdated = !!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
-    || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source);
+  const incompleteTarget = !!doc && !isCurrentTargetResumeContext(doc.target_snapshot);
+  const outdated = incompleteTarget || (!!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
+    || doc.base.target_signature !== comparable.target || doc.base.source_signature !== comparable.source));
   const creating = activeSession?.phase === 'creating';
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
@@ -426,12 +428,14 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {activeSession?.error && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
         {doc && <>
           {!comparable && <p role="status" className="mt-3 text-sm text-amber-800">{copy('Current source comparison is unavailable or still loading. This draft keeps its original source snapshots.', '当前来源对比尚未完成或不可用，此稿仍保留原始来源快照。')}</p>}
-          {outdated && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This draft was created from different profile or target materials. Your edits and original source remain intact; they were not rebound to the current profile.', '此稿基于不同版本的资料或目标。编辑与原始来源均已保留，没有改绑到当前资料。')}</p>}
+          {incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.', '旧稿未保存完整机会要求，仍可编辑、保存和导出。请重新创建后，再用 AI 按当前要求修改。')}</p>}
+          {outdated && !incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This draft was created from different profile or target materials. Your edits and original source remain intact; they were not rebound to the current profile.', '此稿基于不同版本的资料或目标。编辑与原始来源均已保留，没有改绑到当前资料。')}</p>}
           <details className="mt-4 rounded-xl border p-3"><summary className="cursor-pointer font-medium">{copy('Target requirements and original materials', '目标要求与原始材料')}</summary>
             <p className="mt-2 font-medium">{doc.target_snapshot.title} · {doc.target_snapshot.organization}</p>
             <p className="mt-2 whitespace-pre-wrap break-words text-sm">{doc.target_snapshot.description}</p>
             <ul className="mt-2 list-inside list-disc text-sm">{doc.target_snapshot.requirements.map((requirement, index) => <li key={index} className="whitespace-pre-wrap break-words">{requirement}</li>)}</ul>
             {doc.target_snapshot.source_url && <p className="mt-2 break-all text-xs text-gray-500">{copy('Source', '来源')}: {doc.target_snapshot.source_url}</p>}
+            <TargetResumeCriteria target={doc.target_snapshot} locale={locale} />
             <details className="mt-3"><summary className="cursor-pointer text-sm">{copy('Complete original résumé text', '原始简历全文')}</summary><pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{doc.base_snapshot.resume_text || copy('No imported résumé text; this draft uses confirmed master fields.', '没有导入的简历原文，此稿使用已确认母版字段。')}</pre></details>
           </details>
         </>}

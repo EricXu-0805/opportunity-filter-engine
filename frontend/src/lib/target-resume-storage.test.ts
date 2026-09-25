@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
+import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, type TargetResumeV1 } from './target-resume';
 const { rpc, from, device } = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), device: vi.fn() }));
@@ -18,10 +19,24 @@ beforeEach(async()=>{
  const chain={select:vi.fn(),eq:vi.fn((k,v)=>{filters.push([k,v]);return chain;}),lt:vi.fn((k,v)=>{filters.push(['lt:'+k,v]);return chain;}),order:vi.fn(()=>chain),maybeSingle:single,limit};
  select=chain.select.mockReturnValue(chain);from.mockReturnValue(chain);
  const master=createEmptyResumeMaster('master');master.basics.name={id:'name',revision:1,status:'confirmed',value:'Alex 王',source:{kind:'manual'}};
- doc=await createTargetResume({institution:'UIUC',college:'Grainger',major:'CS',grade:'Junior',is_international:false,research_interests:'robotics',skills:[],resume_master:master,resume_text:'Source',experience_entries:[]},{opportunity_id:'opp',title:'Lab',organization:'UIUC',description:'robotics',requirements:[],source_url:'https://example.edu/lab'},'target');
+ doc=await createTargetResume({institution:'UIUC',college:'Grainger',major:'CS',grade:'Junior',is_international:false,research_interests:'robotics',skills:[],resume_master:master,resume_text:'Source',experience_entries:[]},{opportunity_id:'opp',title:'Lab',organization:'UIUC',description:'robotics',requirements:[],source_url:'https://example.edu/lab',context_version:2,criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'target');
  single.mockResolvedValue({data:row(),error:null});
 });
 describe('target resume persistence',()=>{
+ it('reads, edits, saves and restores legacy six-key documents without upgrading their source',async()=>{
+  const legacy=JSON.parse(JSON.stringify(legacyGolden.draft)) as TargetResumeV1;
+  const id=legacy.opportunity_id, targetBefore=JSON.stringify(legacy.target_snapshot), signature=legacy.base.target_signature;
+  single.mockResolvedValue({data:row(1,legacy),error:null});
+  const read=await loadTargetResume(id,captureOwnerToken());expect(read?.doc).toEqual(legacy);
+  const historical=await loadTargetResumeVersion(id,1,captureOwnerToken());expect(historical?.doc).toEqual(legacy);
+  const edited=JSON.parse(JSON.stringify(read!.doc)) as TargetResumeV1;
+  edited.document.sections[0].blocks[0].lines[0].text='Manual old source edit 王';
+  rpc.mockImplementation(async(_fn,args)=>({data:{status:'saved',...row(2,args.p_doc)},error:null}));
+  expect((await saveTargetResume(edited,1,captureOwnerToken())).status).toBe('saved');
+  expect(JSON.stringify(rpc.mock.calls[0][1].p_doc.target_snapshot)).toBe(targetBefore);
+  expect(rpc.mock.calls[0][1].p_doc.base.target_signature).toBe(signature);
+  expect(rpc.mock.calls[0][1].p_doc.target_snapshot).not.toHaveProperty('context_version');
+ });
  it('saves only with the captured owner and accepts semantically reordered JSON response',async()=>{
   rpc.mockImplementation(async(_fn,args)=>({data:{status:'saved',...row(1,{...args.p_doc,base:{...args.p_doc.base}})},error:null}));
   expect((await saveTargetResume(doc,0,captureOwnerToken())).status).toBe('saved');

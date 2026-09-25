@@ -1,5 +1,5 @@
 import {
-  validateTargetResume, verifyTargetResumeSignatures, type TargetResumeV1,
+  validateTargetResume, verifyTargetResumeSignatures, isCurrentTargetResumeContext, type TargetResumeV1,
 } from './target-resume';
 import { resumeTextCharacters } from './resume-input';
 import {
@@ -13,7 +13,7 @@ import {
 
 export type TargetResumeAIErrorCode = 'invalid_document' | 'invalid_signature' | 'signature_unavailable'
   | 'invalid_request' | 'invalid_response' | 'invalid_selection' | 'stale_document' | 'stale_context'
-  | 'incomplete_structure' | 'document_too_large';
+  | 'incomplete_structure' | 'document_too_large' | 'legacy_target_context';
 export type TargetResumeAIResult<T> = { ok: true; value: T } | { ok: false; code: TargetResumeAIErrorCode };
 export interface TargetResumeAICurrentContext {
   profile_signature: string; source_signature: string; target_signature: string;
@@ -110,6 +110,7 @@ function skipped(unit: TargetResumeAiUnit, reason: TargetResumeAiReceipt['reason
 }
 function same(left: unknown, right: unknown): boolean { return canonical(left) === canonical(right); }
 function requirePrepared(prepared: PreparedTargetResumeAi): void {
+  if (!isCurrentTargetResumeContext(prepared.draft.target_snapshot)) fail('legacy_target_context');
   if (canonical(prepared.draft) !== prepared.canonical_draft) fail('invalid_request');
   const expected = unitsFor(prepared.draft);
   if (!same(expected.units, prepared.units) || expected.protectedCount !== prepared.protected_unit_count) fail('invalid_request');
@@ -122,6 +123,7 @@ export async function prepareTargetResumeAI(value: unknown): Promise<TargetResum
     const checked = validateTargetResume(value);
     if (!checked.ok) fail(checked.code === 'document_too_large' ? 'document_too_large' : 'invalid_document');
     const draft = checked.value;
+    if (!isCurrentTargetResumeContext(draft.target_snapshot)) fail('legacy_target_context');
     const canonicalDraft = canonical(draft);
     if (!await verifyTargetResumeSignatures(draft)) fail('invalid_signature');
     let documentSignature: string;
@@ -132,7 +134,8 @@ export async function prepareTargetResumeAI(value: unknown): Promise<TargetResum
     const { units, protectedCount } = unitsFor(draft);
     const target = draft.target_snapshot;
     const targetTooLarge = [target.opportunity_id, target.title, target.organization, target.source_url,
-      target.description, ...target.requirements].reduce((sum, field) => sum + resumeTextCharacters(field), 0) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
+      target.description, ...target.requirements].reduce((sum, field) => sum + resumeTextCharacters(field), 0)
+      + resumeTextCharacters(canonical(target.criteria)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
     const batches: string[][] = [];
     const skippedUnits: TargetResumeAiReceipt[] = [];
     let batch: string[] = [];

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash, webcrypto } from 'node:crypto';
-import golden from '../../../tests/fixtures/target-resume-ai-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
+import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, validateTargetResume, type TargetResumeV1 } from './target-resume';
 import type { ExperienceEntry, ProfileData, ResumeFact } from './types';
@@ -13,7 +14,8 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const unwrap = <T,>(v: TargetResumeAIResult<T>): T => { if (!v.ok) throw Error(v.code); return v.value; };
 const lines = (v: TargetResumeV1) => v.document.sections.flatMap(s => s.blocks.flatMap(b => b.lines));
 const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
-const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.', requirements: ['Python', '😀研究'] };
+const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.', requirements: ['Python', '😀研究'], context_version: 2 as const,
+  criteria: { eligibility: {}, timing: {}, application: {}, setting: {}, availability: {}, attribution: {} } };
 async function make(facts: string[] = ['Python'], experiences: string[] = ['Built a Python parser.'], description?: string) {
   const master = createEmptyResumeMaster('master');
   master.basics = { name: fact('name', 'Student'), links: [] };
@@ -82,9 +84,10 @@ describe('whole-document preparation and bounded complete batches', () => {
   });
   it('counts every public target field and marks an oversized target without any provider batch', async () => {
     const overhead = [target.opportunity_id, target.title, target.organization, target.source_url, ...target.requirements].reduce((n, t) => n + Array.from(t).length, 0);
-    const exact = await prep(await make(['Python'], [], 'x'.repeat(24000 - overhead)));
+    const criteriaLength = JSON.stringify(target.criteria).length;
+    const exact = await prep(await make(['Python'], [], 'x'.repeat(24000 - overhead - criteriaLength)));
     expect(exact.batches).toHaveLength(1);
-    const over = await prep(await make(['Python'], [], 'x'.repeat(24001 - overhead)));
+    const over = await prep(await make(['Python'], [], 'x'.repeat(24001 - overhead - criteriaLength)));
     expect(over.batches).toEqual([]); expect(over.skipped.map(r => r.reason_code)).toEqual(['target_too_large']);
   });
   it('ignores object insertion order while binding array order, and clones before the first await', async () => {
@@ -234,4 +237,19 @@ describe('partial completion, explicit continuation and independent application'
     expect(applyTargetResumeAI(p, d, [r], options(p, [choice.unit_id]))).toEqual({ ok: false, code: 'document_too_large' });
     expect(d).toEqual(snapshot);
   });
+});
+
+
+it('rejects a legacy prepared object at response validation, merge and application without relying on prepare', () => {
+  const draft = clone(legacyGolden.draft) as TargetResumeV1;
+  const canonicalDraft = JSON.stringify(draft, (_key, value: unknown) => value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value);
+  const legacy: PreparedTargetResumeAi = { draft, document_signature: legacyGolden.document_signature,
+    canonical_draft: canonicalDraft, units: clone(legacyGolden.units) as PreparedTargetResumeAi['units'],
+    protected_unit_count: legacyGolden.manifest.protected_unit_count, batches: [legacyGolden.manifest.unit_ids], skipped: [] };
+  const oldResponse = response(legacy);
+  expect(validateTargetResumeAIResponse(legacy, expected(oldResponse), oldResponse)).toEqual({ ok: false, code: 'legacy_target_context' });
+  expect(mergeTargetResumeAIResponses(legacy, [oldResponse])).toEqual({ ok: false, code: 'legacy_target_context' });
+  expect(applyTargetResumeAI(legacy, draft, [oldResponse], options(legacy))).toEqual({ ok: false, code: 'legacy_target_context' });
+  expect(draft).toEqual(legacyGolden.draft);
 });

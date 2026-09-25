@@ -22,6 +22,7 @@ from backend.lib.target_resume_ai import (
 )
 from backend.lib.target_resume_ai_schema import FullTargetRequest
 from backend.lib.target_resume_ai_validation import InvalidTargetResume, canonical, fingerprint, validate_document
+from backend.lib.target_resume_context import InvalidTargetContext, public_target_context
 from backend.routes.opportunities import _redact
 
 PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
@@ -48,19 +49,15 @@ router = APIRouter(route_class=PrivateValidationRoute)
 
 
 def authoritative_target(opp):
-    public = _redact(opp)
-    return {"opportunity_id": public["id"], "title": public.get("title", ""),
-            "organization": public.get("organization", ""),
-            "source_url": public.get("source_url") if public.get("source_url") is not None else (public.get("url") or ""),
-            "description": public.get("description_clean", ""),
-            "requirements": [] if public.get("skills_attribution") == "inferred" or (public.get("metadata") or {}).get("skills_attribution") == "inferred"
-            else ((public.get("eligibility") or {}).get("skills_required") or [])}
+    return public_target_context(_redact(opp))
 
 
 @router.post("/tailor/full-target/suggestions")
 async def full_target_suggestions(request: FullTargetRequest):
     try:
         doc = validate_document(request.draft)
+        if doc["target_snapshot"].get("context_version") != 2:
+            raise HTTPException(409, detail={"code": "legacy_target_context"})
         units, protected, selected, processable = prepare_batch(request, doc)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
         raise HTTPException(422, detail={"code": "invalid_full_target_request"}) from None
@@ -72,7 +69,7 @@ async def full_target_suggestions(request: FullTargetRequest):
         current = authoritative_target(opp)
         if fingerprint(current) != doc["base"]["target_signature"] or canonical(current) != canonical(doc["target_snapshot"]):
             raise HTTPException(409, detail={"code": "target_changed"})
-    except (InvalidTargetResume, TypeError, KeyError, ValueError):
+    except (InvalidTargetResume, InvalidTargetContext, TypeError, KeyError, ValueError):
         raise HTTPException(409, detail={"code": "target_changed"}) from None
     messages, reason = batch_preflight(doc, processable, request.locale)
     calls = 0

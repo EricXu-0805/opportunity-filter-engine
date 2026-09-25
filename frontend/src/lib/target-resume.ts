@@ -14,10 +14,50 @@ const EDUCATION_FIELDS = ['school', 'degree', 'field', 'start', 'end'] as const;
 const ACTIVITY_FIELDS = ['title', 'organization', 'location', 'start', 'end', 'url'] as const;
 const PUBLICATION_FIELDS = ['title', 'authors', 'venue', 'date', 'publication_status', 'url', 'doi'] as const;
 
-export interface TargetResumeContext {
+export interface TargetResumeContextV1 {
   opportunity_id: string; title: string; organization: string; source_url: string;
   description: string; requirements: string[];
 }
+export interface TargetResumeCriteriaV2 {
+  eligibility: {
+    preferred_year?: string[] | null; min_gpa_decimal?: string | null; majors?: string[] | null;
+    skills_required?: string[] | null; skills_preferred?: string[] | null;
+    citizenship_required?: boolean | null; international_friendly?: string | null;
+    work_auth_notes?: string | null; first_time_researchers?: boolean | null;
+  };
+  timing: {
+    deadline?: string | null; deadline_is_estimate?: boolean | null; is_rolling?: boolean | null;
+    deadline_note?: string | null; start_date?: string | null; posted_date?: string | null; duration?: string | null;
+  };
+  application: {
+    contact_method?: string | null; application_effort?: string | null; requires_resume?: string | null;
+    requires_cover_letter?: string | null; requires_transcript?: string | null;
+    requires_recommendation?: string | null; application_url?: string | null;
+  };
+  setting: {
+    location?: string | null; remote_option?: string | null; on_campus?: boolean | null;
+    opportunity_type?: string | null; paid?: string | null; compensation_details?: string | null;
+    department?: string | null; lab_or_program?: string | null; pi_name?: string | null;
+  };
+  availability: {
+    record_kind?: string | null; source_type?: string | null; faculty_availability_status?: string | null;
+    target_truth?: { listing_state?: string | null; reference_only?: boolean | null; actionable?: boolean | null;
+      accepting_state?: string | null; reason_code?: string | null } | null;
+  };
+  attribution: {
+    skills_attribution?: 'inferred' | null; majors_attribution?: 'inferred' | null;
+    preferred_year_attribution?: 'inferred' | null; international_attribution?: 'inferred' | null;
+    citizenship_attribution?: 'inferred' | null; paid_attribution?: 'inferred' | null;
+  };
+}
+export interface TargetResumeContextV2 extends TargetResumeContextV1 {
+  context_version: 2;
+  criteria: TargetResumeCriteriaV2;
+}
+/** Legacy six-key sources remain exact for read/edit/save/export. They cannot
+ * be treated as complete current target context or silently upgraded. */
+export type TargetResumeContext = TargetResumeContextV1 | TargetResumeContextV2;
+
 export interface TargetResumeLine {
   id: string;
   role: string;
@@ -135,12 +175,59 @@ async function fingerprint(value: string): Promise<string> {
     return `v1:sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
   } catch { return fail('signature_unavailable'); }
 }
+const TARGET_KEYS = ['opportunity_id', 'title', 'organization', 'source_url', 'description', 'requirements'] as const;
+const TRUTH_FIELDS = { listing_state: 'string', reference_only: 'boolean', actionable: 'boolean',
+  accepting_state: 'string', reason_code: 'string' } as const;
+const CRITERIA_FIELDS = {
+  eligibility: { preferred_year: 'strings', min_gpa_decimal: 'string', majors: 'strings', skills_required: 'strings',
+    skills_preferred: 'strings', citizenship_required: 'boolean', international_friendly: 'string', work_auth_notes: 'string', first_time_researchers: 'boolean' },
+  timing: { deadline: 'string', deadline_is_estimate: 'boolean', is_rolling: 'boolean', deadline_note: 'string',
+    start_date: 'string', posted_date: 'string', duration: 'string' },
+  application: { contact_method: 'string', application_effort: 'string', requires_resume: 'string', requires_cover_letter: 'string',
+    requires_transcript: 'string', requires_recommendation: 'string', application_url: 'string' },
+  setting: { location: 'string', remote_option: 'string', on_campus: 'boolean', opportunity_type: 'string', paid: 'string',
+    compensation_details: 'string', department: 'string', lab_or_program: 'string', pi_name: 'string' },
+  availability: { record_kind: 'string', source_type: 'string', faculty_availability_status: 'string', target_truth: 'truth' },
+  attribution: { skills_attribution: 'attribution', majors_attribution: 'attribution', preferred_year_attribution: 'attribution',
+    international_attribution: 'attribution', citizenship_attribution: 'attribution', paid_attribution: 'attribution' },
+} as const;
+type CriteriaFieldType = 'string' | 'strings' | 'boolean' | 'truth' | 'attribution';
+function criteriaGroup(value: unknown, fields: Readonly<Record<string, CriteriaFieldType>>): void {
+  if (!record(value) || Object.keys(value).some(key => !Object.hasOwn(fields, key))) fail('invalid_target');
+  for (const [key, item] of Object.entries(value)) {
+    if (item === null) continue; // Unknown is explicit; absence is not filled in.
+    switch (fields[key]) {
+      case 'string': string(item, 'invalid_target'); break;
+      case 'boolean': if (typeof item !== 'boolean') fail('invalid_target'); break;
+      case 'strings':
+        if (!Array.isArray(item)) fail('invalid_target');
+        for (const text of item) string(text, 'invalid_target');
+        break;
+      case 'attribution': if (item !== 'inferred') fail('invalid_target'); break;
+      case 'truth': criteriaGroup(item, TRUTH_FIELDS); break;
+    }
+  }
+}
 function targetValid(value: unknown): asserts value is TargetResumeContext {
-  shape(value, ['opportunity_id', 'title', 'organization', 'source_url', 'description', 'requirements'], 'invalid_target');
+  const current = record(value) && Object.hasOwn(value, 'context_version');
+  shape(value, current ? [...TARGET_KEYS, 'context_version', 'criteria'] : TARGET_KEYS, 'invalid_target');
   try { identifier(value.opportunity_id); } catch { fail('invalid_target'); }
   for (const key of ['title', 'organization', 'source_url', 'description']) string(value[key], 'invalid_target');
   if (!Array.isArray(value.requirements)) fail('invalid_target');
   for (const requirement of value.requirements) string(requirement, 'invalid_target');
+  if (current) {
+    if (value.context_version !== 2) fail('invalid_target');
+    shape(value.criteria, Object.keys(CRITERIA_FIELDS), 'invalid_target');
+    for (const [key, fields] of Object.entries(CRITERIA_FIELDS)) criteriaGroup(value.criteria[key], fields);
+  }
+}
+/** Complete schema version, not a claim that each criterion is known, stated,
+ * currently actionable or verified. Those remain independent checks. */
+export function isCurrentTargetResumeContext(value: unknown): value is TargetResumeContextV2 {
+  try {
+    targetValid(value);
+    return 'context_version' in value && value.context_version === 2;
+  } catch { return false; }
 }
 
 export async function targetResumeProfileSignature(profile: ProfileData): Promise<string> {
@@ -152,22 +239,57 @@ export async function targetResumeContextSignature(target: TargetResumeContext):
   return fingerprint(documentJson(target));
 }
 
-/** Deliberate public-field allowlist. No contact reveal, raw scrape, inference
- *  metadata, tracking state or arbitrary opportunity properties enter a draft.
- *  Requirements here are the stated skills list; the complete clean description
- *  remains available for other criteria. Inferred skills are not stated facts. */
-export function targetResumeContextFromOpportunity(opportunity: Opportunity): TargetResumeContext {
-  const target: TargetResumeContext = {
-    opportunity_id: opportunity.id,
-    title: opportunity.title,
-    organization: opportunity.organization,
-    source_url: opportunity.source_url ?? opportunity.url ?? '',
-    description: opportunity.description_clean,
-    requirements: opportunity.skills_attribution === 'inferred' || opportunity.metadata?.skills_attribution === 'inferred'
-      ? [] : [...(opportunity.eligibility?.skills_required ?? [])],
+/** Capture a bounded public-field contract, including its uncertainty and
+ * inference labels. No raw scrape, contact reveal, arbitrary metadata or
+ * volatile verification timestamps enter the persisted résumé source. */
+export function targetResumeContextFromOpportunity(opportunity: Opportunity): TargetResumeContextV2 {
+  const source = opportunity as unknown as Record<string, unknown>;
+  if (!record(source)) fail('invalid_target');
+  const sourceGroup = (key: string): Record<string, unknown> => {
+    if (!Object.hasOwn(source, key)) return {};
+    if (!record(source[key])) fail('invalid_target');
+    return source[key];
+  };
+  const metadata = sourceGroup('metadata');
+  const pick = (row: Record<string, unknown>, fields: Readonly<Record<string, CriteriaFieldType>>) =>
+    Object.fromEntries(Object.keys(fields).filter(key => Object.hasOwn(row, key)).map(key => [key, row[key]]));
+  const eligibility = pick(sourceGroup('eligibility'), CRITERIA_FIELDS.eligibility);
+  // Public data stores min_gpa as either a number or exact source text. Decimal
+  // text gives Python/JS one stable representation without rounding the value.
+  const rawEligibility = sourceGroup('eligibility');
+  delete eligibility.min_gpa_decimal;
+  if (Object.hasOwn(rawEligibility, 'min_gpa')) {
+    const minimum = rawEligibility.min_gpa;
+    if (typeof minimum === 'number') {
+      if (!Number.isFinite(minimum)) fail('invalid_target');
+      eligibility.min_gpa_decimal = JSON.stringify(minimum);
+    } else {
+      if (minimum !== null) string(minimum, 'invalid_target');
+      eligibility.min_gpa_decimal = minimum;
+    }
+  }
+  const timing = pick(source, CRITERIA_FIELDS.timing);
+  delete timing.deadline_note;
+  if (Object.hasOwn(metadata, 'deadline_note')) timing.deadline_note = metadata.deadline_note;
+  const availability = pick(source, CRITERIA_FIELDS.availability);
+  if (Object.hasOwn(availability, 'target_truth') && availability.target_truth !== null) {
+    if (!record(availability.target_truth)) fail('invalid_target');
+    availability.target_truth = pick(availability.target_truth, TRUTH_FIELDS);
+  }
+  const attribution = Object.fromEntries(Object.keys(CRITERIA_FIELDS.attribution).flatMap(key =>
+    Object.hasOwn(source, key) ? [[key, source[key]]] : Object.hasOwn(metadata, key) ? [[key, metadata[key]]] : []));
+  const criteria = { eligibility, timing, application: pick(sourceGroup('application'), CRITERIA_FIELDS.application),
+    setting: pick(source, CRITERIA_FIELDS.setting), availability, attribution };
+  const statedSkills = eligibility.skills_required;
+  if (statedSkills !== undefined && statedSkills !== null && !Array.isArray(statedSkills)) fail('invalid_target');
+  const target = {
+    opportunity_id: opportunity.id, title: opportunity.title, organization: opportunity.organization,
+    source_url: opportunity.source_url ?? opportunity.url ?? '', description: opportunity.description_clean,
+    requirements: attribution.skills_attribution === 'inferred' ? [] : [...(statedSkills ?? [])],
+    context_version: 2, criteria,
   };
   targetValid(target);
-  return JSON.parse(documentJson(target)) as TargetResumeContext;
+  return JSON.parse(documentJson(target)) as TargetResumeContextV2;
 }
 
 function confirmedDocument(snapshot: TargetResumeV1['base_snapshot'], sourceSignature: string): TargetResumeV1['document'] {
@@ -313,6 +435,7 @@ export async function createTargetResume(profile: ProfileData, target: TargetRes
   string(raw, 'invalid_source');
   if (resumeTextCharacters(raw) > MAX_RESUME_TEXT_CHARACTERS) fail('invalid_source');
   targetValid(target);
+  if (!isCurrentTargetResumeContext(target)) fail('invalid_target');
   const targetSnapshot = JSON.parse(documentJson(target)) as TargetResumeContext;
   const [sourceSignature, profileSignature, targetSignature] = await Promise.all([
     sourceDigest(raw), fingerprint(profileJson), targetResumeContextSignature(targetSnapshot),

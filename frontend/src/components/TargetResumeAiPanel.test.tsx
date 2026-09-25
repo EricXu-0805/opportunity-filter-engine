@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import golden from '../../../tests/fixtures/target-resume-ai-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import type { TargetResumeV1 } from '@/lib/target-resume';

@@ -1,4 +1,6 @@
 import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import type { TargetResumeV1 } from '../src/lib/target-resume';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
 import type { ExperienceEntry, Opportunity, ProfileData, ProfileRequest, ResumeSectionInput } from '../src/lib/types';
@@ -459,6 +461,132 @@ test.describe('Writing entry checks use current authoritative targets', () => {
       await expect(dialog.getByRole('button', { name: 'Rebuild from current confirmed master', exact: true })).toBeEnabled();
       await expect(dialog.getByText('Unsaved local edits', { exact: true })).toBeVisible();
       expect(requests).toHaveLength(count); expect(writes).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+});
+
+
+// These round trips use the real browser SDK and loopback CAS store. They do
+// not establish hosted database permissions or real model quality.
+test.describe('Saved opportunity requirements', () => {
+  test.describe.configure({ timeout: 90_000 });
+  const legacyNotice = 'This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.';
+  async function saveDraft(page: Page, revision: number): Promise<{ status: string; revision: number; doc: TargetResumeV1 }> {
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+      && r.request().postDataJSON()?.p_expected_revision === revision);
+    await page.getByRole('button', { name: 'Save target draft', exact: true }).click();
+    const receipt = await (await response).json();
+    expect(receipt.status).toBe('saved'); expect(receipt.revision).toBe(revision + 1);
+    await expect(page.getByText(`Saved version ${revision + 1}`, { exact: true })).toBeVisible();
+    return receipt;
+  }
+  async function newDraft(page: Page) {
+    await enter(page, 'detail');
+    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue(OLD_NAME);
+  }
+  function forbidAI(page: Page) {
+    const requests: string[] = [];
+    return page.route('**/api/tailor/full-target/suggestions', async route => {
+      requests.push(route.request().url());
+      await route.fulfill({ status: 503, json: { detail: { code: 'synthetic_unexpected_ai' } } });
+    }).then(() => requests);
+  }
+  test('criteria-only changes survive close and reopen without replacing the saved draft', async ({ page }, info) => {
+    const owner = await seed(page), writes = profileWrites(page), ai = await forbidAI(page);
+    try {
+      const target = await installControlledWritingTarget(page);
+      target.respond(200, { ...target.base, deadline: '2026-12-15', skills_attribution: 'inferred',
+        eligibility: { ...target.base.eligibility, citizenship_required: false } });
+      await newDraft(page);
+      await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill(MANUAL);
+      const saved = await saveDraft(page, 0);
+      expect(saved.doc.target_snapshot).toMatchObject({ context_version: 2, criteria: { eligibility: {
+        citizenship_required: false,
+      } } });
+      await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
+      target.respond(200, { ...target.base, deadline: '2027-01-31',
+        eligibility: { ...target.base.eligibility, citizenship_required: true },
+        application: { ...target.base.application, requires_transcript: 'yes' } });
+      await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await expect(page.getByText(/This draft was created from different profile or target materials/)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeDisabled();
+      await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue(MANUAL);
+      await page.getByText('Target requirements and original materials', { exact: true }).click();
+      const criteria = page.getByTestId('saved-target-criteria');
+      await expect(criteria).toBeVisible(); await expect(criteria).toContainText('2026-12-15');
+      await expect(criteria).not.toContainText('2027-01-31');
+      await expect(criteria.getByText('Required skills (inferred)', { exact: true })).toHaveCount(1);
+      await expect(criteria.getByRole('region', { name: 'Eligibility', exact: true }).locator('div').filter({
+        has: page.locator('dt').getByText('Citizenship requirement', { exact: true }),
+      }).locator('dd')).toHaveText('No');
+      await expect(criteria.getByRole('region', { name: 'Inference flags', exact: true }).locator('div').filter({
+        has: page.locator('dt').getByText('Skills', { exact: true }),
+      }).locator('dd')).toHaveText('Inferred');
+      // The containing modal scrolls. Screenshot each visible section; a
+      // screenshot of its taller child would include clipped background UI.
+      for (const [name, file] of [['Eligibility', 'eligibility'], ['Dates and duration', 'dates'], ['Inference flags', 'attribution']] as const) {
+        const section = criteria.getByRole('region', { name, exact: true });
+        await section.scrollIntoViewIfNeeded();
+        await section.screenshot({ path: info.outputPath(`saved-${file}.png`) });
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+      await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Further manual edit 王');
+      const again = await saveDraft(page, 1);
+      expect(again.doc.target_snapshot).toEqual(saved.doc.target_snapshot);
+      expect(again.doc.base).toEqual(saved.doc.base);
+      expect(ai).toEqual([]); expect(writes).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+  test('legacy snapshots save and export, then rebuild and restore without silently changing their history', async ({ page }, info) => {
+    const owner = await seed(page), ai = await forbidAI(page);
+    try {
+      await installControlledWritingTarget(page); await newDraft(page);
+      const saved = await saveDraft(page, 0);
+      await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
+      const legacy = structuredClone(saved.doc);
+      const { opportunity_id, title, organization, source_url, description, requirements } = legacy.target_snapshot;
+      legacy.target_snapshot = { opportunity_id, title, organization, source_url, description, requirements };
+      const canonical = JSON.stringify(legacy.target_snapshot, (_key, value: unknown) => value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : value);
+      legacy.base.target_signature = `v1:sha256:${createHash('sha256').update(canonical).digest('hex')}`;
+      const seeded = await owner.http.post(new URL('/rest/v1/rpc/commit_target_resume_cas', STUB).href, {
+        headers: { Authorization: `Bearer ${owner.token}` }, data: { p_expected_owner: owner.uid,
+          p_opportunity_id: TARGET, p_expected_revision: 1, p_doc: legacy },
+      });
+      expect(seeded.status()).toBe(200); expect(await seeded.json()).toMatchObject({ status: 'saved', revision: 2 });
+      await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await expect(page.getByText(legacyNotice, { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeDisabled();
+      await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Legacy hand edit 王');
+      const third = await saveDraft(page, 2);
+      expect(third.doc.target_snapshot).toEqual(legacy.target_snapshot);
+      expect(third.doc.base.target_signature).toBe(legacy.base.target_signature);
+      const file = page.waitForEvent('download');
+      const rendered = page.waitForResponse(r => new URL(r.url()).pathname === '/api/resume/full-target/export');
+      await page.getByRole('button', { name: 'Export PDF', exact: true }).click();
+      const response = await rendered; expect(response.status()).toBe(200);
+      expect(JSON.stringify(response.request().postDataJSON())).not.toContain('target_snapshot');
+      const pdf = await file; await pdf.saveAs(info.outputPath('legacy-retained-draft.pdf'));
+      await page.getByRole('button', { name: 'Rebuild from current confirmed master', exact: true }).click();
+      await page.getByRole('button', { name: 'Create new draft', exact: true }).click();
+      await expect(page.getByText(legacyNotice, { exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeEnabled();
+      const fourth = await saveDraft(page, 3);
+      expect(fourth.doc.target_snapshot).toMatchObject({ context_version: 2 });
+      await page.getByText('Version history', { exact: true }).click();
+      await page.getByRole('button', { name: 'Load latest 20 versions', exact: true }).click();
+      await page.getByRole('button', { name: /^View version 3 ·/ }).click();
+      const restored = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+        && r.request().postDataJSON()?.p_expected_revision === 4);
+      await page.getByRole('button', { name: 'Restore selected version as a new save', exact: true }).click();
+      const fifth = await (await restored).json();
+      expect(fifth).toMatchObject({ status: 'saved', revision: 5, doc: third.doc });
+      await expect(page.getByText(legacyNotice, { exact: true })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue('Legacy hand edit 王');
+      await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeDisabled();
+      expect(ai).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
 });

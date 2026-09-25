@@ -40,8 +40,11 @@ def make_doc():
               "publications": [], "skills": [fact("skill", "Python")], "other_sections": [],
               "section_order": ["basics", "education", "activities", "publications", "skills"], "unmapped_ranges": []}
     snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": master}
-    target = {"opportunity_id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
-              "description": "Research robots 🧪 with Python.", "requirements": ["Python"]}
+    target = route.authoritative_target({
+        "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
+        "description_clean": "Research robots 🧪 with Python.", "eligibility": {"skills_required": ["Python"]},
+        "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True},
+    })
     doc = {"kind": "full_resume", "version": 1, "id": "draft", "opportunity_id": "target",
            "base": {"master_id": "master", "master_revision": 1, "source_signature": signature,
                     "profile_signature": "v1:sha256:" + "a" * 64, "target_signature": fingerprint(target)},

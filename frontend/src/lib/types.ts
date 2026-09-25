@@ -228,6 +228,10 @@ export interface PublicTargetTruth {
 }
 
 export interface OpportunityEligibility {
+  min_gpa?: number | string | null;
+  skills_preferred?: string[] | null;
+  work_auth_notes?: string | null;
+  first_time_researchers?: boolean | null;
   international_friendly: string; // "yes" | "no" | "unknown"
   preferred_year: string[];
   majors: string[];
@@ -240,6 +244,7 @@ export interface OpportunityApplication {
   requires_resume: string;
   requires_recommendation?: string;
   requires_cover_letter?: string;
+  requires_transcript?: string | null;
   contact_method: string;
   application_url?: string | null;
 }

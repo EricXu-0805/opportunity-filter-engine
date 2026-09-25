@@ -11,6 +11,7 @@ import re
 from copy import deepcopy
 
 from backend.lib.target_resume_ai_schema import MAX_DOCUMENT_BYTES, MAX_SAFE_INTEGER
+from backend.lib.target_resume_context import InvalidTargetContext, validate_target_context
 
 DIGEST = re.compile(r"^[0-9a-f]{64}$")
 FINGERPRINT = re.compile(r"^v1:sha256:[0-9a-f]{64}$")
@@ -295,12 +296,10 @@ def validate_document(value):
     if hashlib.sha256(raw.encode("utf-8")).hexdigest() != base["source_signature"]:
         fail("invalid_signature")
     target = doc["target_snapshot"]
-    shape(target, ("opportunity_id", "title", "organization", "source_url", "description", "requirements"))
-    identifier(target["opportunity_id"], 200)
-    for key in ("title", "organization", "source_url", "description"):
-        text(target[key])
-    for requirement in array(target["requirements"], 100000):
-        text(requirement)
+    try:
+        validate_target_context(target)
+    except InvalidTargetContext:
+        fail("invalid_target")
     if target["opportunity_id"] != doc["opportunity_id"] or fingerprint(target) != base["target_signature"]:
         fail("invalid_signature")
     shape(doc["document"], ("sections",))

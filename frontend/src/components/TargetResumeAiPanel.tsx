@@ -99,7 +99,8 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
   const reasonText = (code: string | null) => ({
     unit_too_large: copy('This item is too long for one AI review. Its full text is kept.', '此项超过单次 AI 处理范围，全文仍保留。'),
     context_too_large: copy('This item’s source context is too long. Review it manually.', '此项的来源上下文过长，请手动核对。'),
-    target_too_large: copy('The target description is too long for this AI request.', '目标描述超过本次 AI 处理范围。'),
+    target_too_large: copy('The saved opportunity details exceed this AI request’s limit.', '保存的机会资料超过本次 AI 处理范围。'),
+    legacy_target_context: copy('This older draft is missing saved opportunity requirements. Rebuild before using AI.', '旧稿缺少完整机会要求，请重新创建后再用 AI。'),
     budget_exhausted: copy('The AI allowance is used up. Continue after it becomes available.', 'AI 额度已用完，恢复后可继续。'),
     ungrounded_rewrite: copy('The proposed wording failed the source checks. Your wording is kept.', '建议未通过来源核对，保留现有表述。'),
     missing_result: copy('AI did not return this item. It remains unchanged.', 'AI 未返回此项结果，内容未变。'),
