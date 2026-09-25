@@ -34,6 +34,12 @@ import { ContactEventError, ContactHistoryLoadError, contactRecord, contactTimes
   type ContactEvent, type ContactEventInput, type ContactEventsCursor, type ContactEventsPage,
 } from './contact-ledger';
 
+import { ApplicationEventError, ApplicationHistoryLoadError, APPLICATION_EVENT_UUID,
+  snapshotApplicationEventInput, parseApplicationEvent, applicationEventMatches, snapshotApplicationCursor, applicationEventBefore,
+  type ApplicationEvent, type ApplicationEventInput, type ApplicationEventCursor, type ApplicationEventsPage,
+} from './application-ledger';
+import { readPendingApplicationAttempts } from './application-attempt-storage';
+
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
 export type { OwnerToken } from './identity-owner';
 
@@ -2290,6 +2296,134 @@ export async function getContactEvents(opportunityId: string,
     contactOwner(origin);
     if (error instanceof OwnerMismatchError) throw error;
     throw new ContactHistoryLoadError();
+  }
+}
+
+export interface ConfirmApplicationEventResult {
+  event: ApplicationEvent;
+  interaction: InteractionRecord | null;
+  replayed: boolean;
+}
+function applicationInteraction(value: unknown, owner: string, opportunityId: string, replayed: boolean): InteractionRecord {
+  const statuses = new Set(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+  if (!contactRecord(value) || value.device_id !== owner || value.opportunity_id !== opportunityId || !statuses.has(value.interaction_type as string)
+    || (!replayed && value.interaction_type === 'contacted')
+    || (value.notes !== null && typeof value.notes !== 'string')
+    || (value.remind_at !== null && (typeof value.remind_at !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.remind_at) || contactTimestamp(`${value.remind_at}T00:00:00Z`) === null))
+    || (value.last_contacted_at !== null && contactTimestamp(value.last_contacted_at) === null)
+    || (value.updated_at === null ? !replayed : contactTimestamp(value.updated_at) === null)) throw new ApplicationEventError('invalid_receipt');
+  return { type: value.interaction_type as InteractionType, notes: value.notes as string | undefined ?? undefined,
+    remind_at: value.remind_at as string | undefined ?? undefined, last_contacted_at: value.last_contacted_at as string | undefined ?? undefined,
+    updated_at: value.updated_at as string | undefined ?? undefined };
+}
+async function assertPreparedOrRecordedApplication(origin: OwnerToken, opportunityId: string, snapshot: ApplicationEventInput): Promise<void> {
+  const pending = readPendingApplicationAttempts(origin, opportunityId);
+  if (pending.some(attempt => applicationEventMatches(attempt.input, snapshot))) return;
+  // Another tab may have settled this exact request already. A successful
+  // immutable event lookup permits replay, never a new unprepared insert.
+  const recorded = await getApplicationEvent(opportunityId, snapshot.id, origin);
+  contactOwner(origin);
+  if (!recorded) throw new ApplicationEventError('unavailable');
+  if (!applicationEventMatches(recorded, snapshot)) throw new ApplicationEventError('conflict');
+}
+/** A durably prepared attempt or an exact independently verified existing
+ * event may reach the RPC. Uncertain requests keep their ID and snapshot,
+ * with no fallback to a status-only write or an unprepared new insertion. */
+export async function confirmApplicationEvent(opportunityId: string, input: ApplicationEventInput,
+  token: OwnerToken): Promise<ConfirmApplicationEventResult> {
+  const origin = { ...token }; contactOwner(origin);
+  if (!validContactTarget(opportunityId)) throw new ApplicationEventError('invalid_input');
+  const snapshot = snapshotApplicationEventInput(input);
+  return enqueuePrivateWrite(origin, opportunityId, async () => {
+    try {
+      contactOwner(origin); readPendingApplicationAttempts(origin, opportunityId);
+      const deviceId = await ensureAnonSession();
+      contactOwner(origin);
+      if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+      if (!deviceId) throw new ApplicationEventError('unavailable');
+      await assertPreparedOrRecordedApplication(origin, opportunityId, snapshot);
+      contactOwner(origin);
+      const { data, error } = await supabase.rpc('confirm_application_event', {
+        p_expected_device_id: deviceId, p_event_id: snapshot.id, p_opportunity_id: opportunityId,
+        p_channel: snapshot.channel, p_destination: snapshot.destination, p_actual_submitted_at: snapshot.submittedAt,
+        p_notes: snapshot.notes, p_result_note: snapshot.resultNote, p_next_step: snapshot.nextStep,
+      });
+      contactOwner(origin);
+      if (error) {
+        if (error.code === '23505' && error.message === 'application_event_conflict') throw new ApplicationEventError('conflict');
+        if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
+        if (error.code === '22023' && error.message === 'invalid_application_event') throw new ApplicationEventError('invalid_input');
+        throw new ApplicationEventError('unavailable');
+      }
+      if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ApplicationEventError('invalid_receipt');
+      const event = parseApplicationEvent(data.event, deviceId, opportunityId);
+      if (!applicationEventMatches(event, snapshot) || (data.interaction === null && !data.replayed)) throw new ApplicationEventError('invalid_receipt');
+      const interaction = data.interaction === null ? null : applicationInteraction(data.interaction, deviceId, opportunityId, data.replayed);
+      return { event, interaction, replayed: data.replayed };
+    } catch (error) {
+      contactOwner(origin);
+      if (error instanceof OwnerMismatchError || error instanceof ApplicationEventError) throw error;
+      throw new ApplicationEventError('unavailable');
+    }
+  });
+}
+const APPLICATION_EVENT_COLUMNS = 'event_id, device_id, opportunity_id, channel, destination, actual_submitted_at, notes, result_note, next_step, confirmed_at, confirmation_source';
+/** Successful empty pages are distinct from failed or malformed reads. */
+export async function getApplicationEvents(opportunityId: string,
+  options: { cursor?: ApplicationEventCursor; limit?: number } = {}): Promise<ApplicationEventsPage> {
+  const origin = { ...captureOwnerToken() };
+  try {
+    contactOwner(origin);
+    const limit = options.limit ?? 20;
+    if (!validContactTarget(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApplicationHistoryLoadError();
+    const cursor = options.cursor === undefined ? null : snapshotApplicationCursor(options.cursor);
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ApplicationHistoryLoadError();
+    let query = supabase.from('application_events').select(APPLICATION_EVENT_COLUMNS)
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId)
+      .order('confirmed_at', { ascending: false }).order('event_id', { ascending: false });
+    if (cursor) query = query.or(`confirmed_at.lt.${cursor.confirmedAt},and(confirmed_at.eq.${cursor.confirmedAt},event_id.lt.${cursor.id})`);
+    const { data, error } = await query.limit(limit + 1);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > limit + 1) throw new ApplicationHistoryLoadError();
+    const events = data.map(row => parseApplicationEvent(row, deviceId, opportunityId));
+    if (new Set(events.map(event => event.id)).size !== events.length
+      || events.some((event, index) => (cursor && !applicationEventBefore(event, cursor))
+        || (index > 0 && !applicationEventBefore(event, events[index - 1])))) throw new ApplicationHistoryLoadError();
+    const hasMore = events.length > limit; const page = events.slice(0, limit); const last = page.at(-1);
+    return { events: page, hasMore, nextCursor: hasMore && last ? { confirmedAt: last.confirmedAt, id: last.id } : null };
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ApplicationHistoryLoadError();
+  }
+}
+/** Reconcile an uncertain attempt by its ID; absence is authoritative only
+ * after a successful owner/target-scoped lookup. This never sends or writes. */
+export async function getApplicationEvent(opportunityId: string, id: string,
+  token: OwnerToken = captureOwnerToken()): Promise<ApplicationEvent | null> {
+  const origin = { ...token };
+  try {
+    contactOwner(origin);
+    if (!validContactTarget(opportunityId) || typeof id !== 'string' || !APPLICATION_EVENT_UUID.test(id)) throw new ApplicationHistoryLoadError();
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ApplicationHistoryLoadError();
+    const { data, error } = await supabase.from('application_events').select(APPLICATION_EVENT_COLUMNS)
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId).eq('event_id', id).limit(2);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > 1) throw new ApplicationHistoryLoadError();
+    if (!data.length) return null;
+    const event = parseApplicationEvent(data[0], deviceId, opportunityId);
+    if (event.id !== id) throw new ApplicationHistoryLoadError();
+    return event;
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ApplicationHistoryLoadError();
   }
 }
 

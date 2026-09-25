@@ -1331,7 +1331,10 @@ describe('useOpportunityDetail — status changes are not contact confirmations'
   });
 });
 
-describe('detail contact receipt scopes and pending work', () => {
+describe.each([
+  { kind: 'contact', callback: 'noteContactConfirmed', revision: 'contactHistoryRevision', otherRevision: 'applicationHistoryRevision' },
+  { kind: 'application', callback: 'noteApplicationConfirmed', revision: 'applicationHistoryRevision', otherRevision: 'contactHistoryRevision' },
+] as const)('detail $kind receipt scopes and pending work', ({ callback, revision, otherRevision }) => {
   beforeEach(async () => {
     advanceOwnerEpoch('receipt-A'); await syncLocalIdentityOwner('receipt-A');
     mocks.getAuthState.mockResolvedValue({ session: null, user: { id: 'receipt-A' }, isAnonymous: true, email: null });
@@ -1341,10 +1344,12 @@ describe('detail contact receipt scopes and pending work', () => {
     mocks.getInteractionDetail.mockResolvedValue(record);
     const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
-    const initial = result.current.contactHistoryRevision;
-    act(() => result.current.noteContactConfirmed(record));
-    act(() => result.current.noteContactConfirmed(record));
-    expect(result.current.contactHistoryRevision).toBe(initial + 2);
+    const initial = result.current[revision];
+    const otherInitial = result.current[otherRevision];
+    act(() => result.current[callback](record));
+    act(() => result.current[callback](record));
+    expect(result.current[revision]).toBe(initial + 2);
+    expect(result.current[otherRevision]).toBe(otherInitial);
     expect(result.current.interactionDetail).toEqual(record);
   });
   it.each([null, { type: 'contacted' as const }])('a late hydration cannot replace an authoritative receipt %#', async record => {
@@ -1352,7 +1357,7 @@ describe('detail contact receipt scopes and pending work', () => {
     mocks.getInteractionDetail.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
     const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
     await waitFor(() => expect(result.current.ownerReady).toBe(true));
-    act(() => result.current.noteContactConfirmed(record));
+    act(() => result.current[callback](record));
     await act(async () => { finish({ type: 'replied' }); });
     expect(result.current.interactionDetail).toEqual(record);
     expect(result.current.interactionLoading).toBe(false);
@@ -1365,7 +1370,7 @@ describe('detail contact receipt scopes and pending work', () => {
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
     let saving!: Promise<unknown>;
     act(() => { saving = kind === 'status' ? result.current.handleTrack('interviewing') : result.current.saveDetails({ notes: 'pending note' }); });
-    act(() => result.current.noteContactConfirmed(null));
+    act(() => result.current[callback](null));
     expect(result.current.interactionDetail).toBeNull();
     await act(async () => { finish(); await saving; });
     expect(result.current.interactionDetail).toBeNull();
@@ -1374,21 +1379,21 @@ describe('detail contact receipt scopes and pending work', () => {
   it('rejects a retained target callback after a target change', async () => {
     const { result, rerender } = renderHook(({ id }) => useOpportunityDetail({ id, title: id }), { initialProps: { id: 'opp-A' } });
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
-    const old = result.current.noteContactConfirmed;
+    const old = result.current[callback];
     rerender({ id: 'opp-B' });
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
-    const revision = result.current.contactHistoryRevision;
+    const initialRevision = result.current[revision];
     act(() => old({ type: 'replied' }));
     expect(result.current.interactionDetail).toBeNull();
-    expect(result.current.contactHistoryRevision).toBe(revision);
+    expect(result.current[revision]).toBe(initialRevision);
   });
   it('rejects a retained owner callback even before the parent receives an auth event', async () => {
     const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
-    const old = result.current.noteContactConfirmed; const revision = result.current.contactHistoryRevision;
+    const old = result.current[callback]; const initialRevision = result.current[revision];
     advanceOwnerEpoch('receipt-B'); await syncLocalIdentityOwner('receipt-B');
     act(() => old({ type: 'replied' }));
     expect(result.current.interactionDetail).toBeNull();
-    expect(result.current.contactHistoryRevision).toBe(revision);
+    expect(result.current[revision]).toBe(initialRevision);
   });
 });

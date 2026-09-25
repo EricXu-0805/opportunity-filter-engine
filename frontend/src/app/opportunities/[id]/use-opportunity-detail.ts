@@ -62,6 +62,8 @@ export interface UseOpportunityDetailResult {
   interactionDetail: InteractionRecord | null;
   /** Refresh contact history after every successful receipt, independently of summary dates. */
   contactHistoryRevision: number;
+  applicationHistoryRevision: number;
+  noteApplicationConfirmed: (record: InteractionRecord | null) => void;
   /** Records what the cold-email dialog just confirmed, so this page stops
    *  telling the student they have not tracked anything. */
   noteContactConfirmed: (record: InteractionRecord | null) => void;
@@ -172,6 +174,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   const [interactionDetail, setInteractionDetail] = useState<InteractionRecord | null>(null);
   const [interactionLoading, setInteractionLoading] = useState(true);
   const [contactHistoryRevision, setContactHistoryRevision] = useState(0);
+  const [applicationHistoryRevision, setApplicationHistoryRevision] = useState(0);
   const interactionReadRevisionRef = useRef(0);
   const [interactionError, setInteractionError] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
@@ -278,11 +281,12 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   // summary after deletion. Capturing the view capability also rejects a
   // retained callback after a target switch or before the auth UI catches up.
   const receiptOwner = captureOwnerToken();
-  const noteContactConfirmed = useCallback((record: InteractionRecord | null) => {
+  const noteActionConfirmed = useCallback((kind: 'contact' | 'application', record: InteractionRecord | null) => {
     if (generationRef.current !== identityGeneration || latestOppRef.current.id !== opp.id
       || !receiptOwner.uid || receiptOwner.uid !== ownerScopeKey || !isOwnerTokenValid(receiptOwner, receiptOwner.uid)) return;
     interactionReadRevisionRef.current += 1;
-    setContactHistoryRevision(revision => revision + 1);
+    if (kind === 'contact') setContactHistoryRevision(revision => revision + 1);
+    else setApplicationHistoryRevision(revision => revision + 1);
     setInteractionLoading(false);
     setInteractionError(false);
     if (record === null) {
@@ -298,6 +302,8 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
       setInteractionDetail(record);
     }
   }, [identityGeneration, opp.id, ownerScopeKey, receiptOwner]);
+  const noteContactConfirmed = useCallback((record: InteractionRecord | null) => noteActionConfirmed('contact', record), [noteActionConfirmed]);
+  const noteApplicationConfirmed = useCallback((record: InteractionRecord | null) => noteActionConfirmed('application', record), [noteActionConfirmed]);
 
   // The cold-email follow-up chips write remind_at straight to the row, and the
   // confirm record they arrive after does not carry it. Left unmerged, the
@@ -727,6 +733,8 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     ownerReady,
     interactionDetail,
     contactHistoryRevision,
+    applicationHistoryRevision,
+    noteApplicationConfirmed,
     interaction,
     noteContactConfirmed,
     noteReminderSet,

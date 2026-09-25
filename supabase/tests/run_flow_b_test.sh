@@ -164,4 +164,10 @@ echo "==> run contact_event_ledger_test.sql"
 echo "==> run contact_event_concurrency_test.sh"
 source "$HERE/contact_event_concurrency_test.sh"
 
+echo "==> run application_event_ledger_test.sql"
+"${PSQL[@]}" -f "$HERE/application_event_ledger_test.sql"
+
+echo "==> run application_event_concurrency_test.sh"
+source "$HERE/application_event_concurrency_test.sh"
+
 echo "==> OK"

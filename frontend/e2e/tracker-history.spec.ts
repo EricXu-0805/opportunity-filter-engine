@@ -62,7 +62,7 @@ function writes(page: Page) {
 }
 async function openTimeline(page: Page, status = 'Applied') {
   await expect(page.getByRole('button', { name: status, exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const toggle = page.getByRole('button', { name: /^Contact history, notes & reminders/ });
+  const toggle = page.getByRole('button', { name: /^Records, notes & reminders/ });
   await expect(toggle).toBeVisible();
   if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
   await expect(timeline(page)).toBeVisible();

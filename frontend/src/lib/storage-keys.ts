@@ -18,6 +18,8 @@ export const STORAGE_KEYS = {
   // all; only the merge/claim/settle pass reads across lanes, and that pass
   // runs under an exclusive Web Lock (see profile-journal.ts).
   PROFILE_JOURNAL_PREFIX: 'ofe_profile_journal_v1_',
+  // Frozen application attempts survive uncertain requests and reloads.
+  APPLICATION_ATTEMPT_PREFIX: 'ofe_application_attempt_v1_',
   // _v2: #226 switched the opt-in rerank from the (regressing) embedding
   // blend to the LLM "AI smart match" — pre-#226 caches held embedding-ranked
   // sets. _v3: the publication trust boundary — pre-boundary caches hold

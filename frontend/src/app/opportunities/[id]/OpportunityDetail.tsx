@@ -38,6 +38,7 @@ import { OpportunityHeader } from './OpportunityHeader';
 import { ProfessorFollowToggle } from './ProfessorFollowToggle';
 import { SimilarOpportunities } from './SimilarOpportunities';
 import { TrackerPanel } from './TrackerPanel';
+import ApplicationRecordForm from '@/components/ApplicationRecordForm';
 import { useOpportunityDetail } from './use-opportunity-detail';
 
 const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), { ssr: false });
@@ -88,6 +89,8 @@ export default function OpportunityDetail({
     ownerReady,
     interactionDetail,
     contactHistoryRevision,
+    applicationHistoryRevision,
+    noteApplicationConfirmed,
     noteContactConfirmed,
     noteReminderSet,
     interaction,
@@ -224,6 +227,12 @@ export default function OpportunityDetail({
               suggestionError={suggestionError}
               t={t}
             />
+            <ApplicationRecordForm
+              key={'application:' + identityGeneration + ':' + opp.id}
+              opportunityId={opp.id}
+              ownerReady={ownerReady}
+              onConfirmed={noteApplicationConfirmed}
+            />
             <TrackerPanel
               // Relying on interactionDetail merely passing through null
               // between identities is not a robust guarantee that React
@@ -235,6 +244,7 @@ export default function OpportunityDetail({
               key={`${identityGeneration}:${opp.id}`}
               detail={interactionDetail}
               contactHistoryRevision={contactHistoryRevision}
+              applicationHistoryRevision={applicationHistoryRevision}
               onSave={saveDetails}
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}

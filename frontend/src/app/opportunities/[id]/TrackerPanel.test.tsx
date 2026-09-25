@@ -12,6 +12,12 @@ vi.mock('@/components/AttachmentsPanel', () => ({
   ),
 }));
 
+vi.mock('@/components/ApplicationHistory', () => ({
+  default: ({ opportunityId, refreshKey }: { opportunityId: string; refreshKey?: string }) => (
+    <div data-testid="application-history" data-opp={opportunityId} data-refresh={refreshKey} />
+  ),
+}));
+
 vi.mock('@/components/ContactHistory', () => ({
   default: ({ opportunityId, refreshKey }: { opportunityId: string; refreshKey?: string }) => (
     <div data-testid="contact-history" data-opp={opportunityId} data-refresh={refreshKey} />
@@ -60,6 +66,7 @@ function detail(overrides: Partial<InteractionRecord> = {}): InteractionRecord {
 
 beforeEach(() => {
   vi.useRealTimers();
+  window.history.replaceState(null, '', '/');
 });
 
 afterEach(() => {
@@ -1101,5 +1108,52 @@ describe('TrackerPanel — immutable contact history', () => {
     expect(screen.queryByTestId('contact-history')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { expanded: false }));
     expect(await screen.findByTestId('contact-history')).toBeInTheDocument();
+  });
+});
+
+
+describe('TrackerPanel — application records', () => {
+  it('refreshes applications independently from contacts and preserves unsaved notes', async () => {
+    const props = { detail: detail({ notes: 'Earlier note' }), onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} applicationHistoryRevision={1} contactHistoryRevision={3} />);
+    const history = await screen.findByTestId('application-history');
+    const contact = await screen.findByTestId('contact-history');
+    expect(history).toHaveAttribute('data-opp', OPP_ID);
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'Keep my draft' } });
+    rerender(<TrackerPanel {...props} applicationHistoryRevision={2} contactHistoryRevision={3} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([props.detail.updated_at, 2]));
+    expect(contact).toHaveAttribute('data-refresh', JSON.stringify([props.detail.updated_at, 3]));
+    expect(notes).toHaveValue('Keep my draft');
+    expect(props.onSave).not.toHaveBeenCalled();
+    rerender(<TrackerPanel {...props} detail={null} hasInteraction={false} writeReady={false} reminderEligible={false} applicationHistoryRevision={3} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([null, 3]));
+    expect(notes).toHaveValue('Keep my draft');
+    expect(notes).toBeDisabled();
+  });
+
+  it('does not mount application reads until records are expanded even without a summary', async () => {
+    render(<TrackerPanel detail={null} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction={false} reminderEligible={false} t={tFn} />);
+    expect(screen.queryByTestId('application-history')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(await screen.findByTestId('application-history')).toHaveAttribute('data-refresh', JSON.stringify([null, 0]));
+  });
+
+  it('opens saved records on hash entry without an interaction or note', async () => {
+    window.history.replaceState(null, '', '/opportunities/opp-7#tracker-records');
+    render(<TrackerPanel detail={null} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction={false} reminderEligible={false} t={tFn} />);
+    expect(await screen.findByTestId('application-history')).toBeInTheDocument();
+    expect(document.getElementById('tracker-records')).toContainElement(screen.getByTestId('application-history'));
+    expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
+  });
+
+  it('opens after a same-page records link changes the hash without discarding a notes draft', async () => {
+    render(<TrackerPanel detail={detail({ notes: 'Saved note' })} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Draft note' } });
+    fireEvent.click(screen.getByRole('button', { expanded: true }));
+    expect(screen.queryByTestId('application-history')).not.toBeInTheDocument();
+    act(() => { window.history.replaceState(null, '', '#tracker-records'); window.dispatchEvent(new HashChangeEvent('hashchange')); });
+    expect(await screen.findByTestId('application-history')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue('Draft note');
   });
 });
