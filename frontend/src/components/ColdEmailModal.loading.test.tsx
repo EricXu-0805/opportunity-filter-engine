@@ -11,7 +11,7 @@ vi.mock('@/i18n/client', () => {
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn() }));
 vi.mock('@/lib/api', () => ({ getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), extractResumeBullets: api.extract, getVapidPublicKey: vi.fn() }));
-vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmInteractionContact: vi.fn(), updateInteractionDetails: vi.fn() }));
+vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmContactEvent: vi.fn(), updateInteractionDetails: vi.fn() }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
 import RawColdEmailModal from './ColdEmailModal';
 import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';

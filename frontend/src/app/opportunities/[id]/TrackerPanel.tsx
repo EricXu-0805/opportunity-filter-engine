@@ -10,6 +10,7 @@ import type { TFunc } from './types';
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), { ssr: false });
 const AttachmentsPanel = dynamic(() => import('@/components/AttachmentsPanel'), { ssr: false });
 const StatusTimeline = dynamic(() => import('@/components/StatusTimeline'), { ssr: false });
+const ContactHistory = dynamic(() => import('@/components/ContactHistory'), { ssr: false });
 
 type NotesPatch = { notes?: string | null; remind_at?: string | null };
 
@@ -31,6 +32,7 @@ export function TrackerPanel({
   onSave,
   opportunityId,
   hasInteraction,
+  contactHistoryRevision = 0,
   /** False while the owner/interaction-read state this panel writes
    *  against is not yet trustworthy (owner not primed, read loading/
    *  failed, no status yet, or a status write in flight) — see
@@ -59,6 +61,8 @@ export function TrackerPanel({
   onSave: (patch: NotesPatch) => Promise<SaveDetailsResult>;
   opportunityId: string;
   hasInteraction: boolean;
+  /** A confirmation replay can leave updated_at unchanged while refreshing history. */
+  contactHistoryRevision?: number;
   writeReady?: boolean;
   reminderEligible: boolean;
   t: TFunc;
@@ -345,6 +349,7 @@ export function TrackerPanel({
               fallbackUpdatedAt={detail.updated_at}
             />
           )}
+          <ContactHistory opportunityId={opportunityId} refreshKey={JSON.stringify([detail?.updated_at, contactHistoryRevision])} />
           <div>
             <div role="tablist" aria-label={t('detail.tracker.notesTabsAria')} className="flex items-center gap-1 mb-1.5">
               <button

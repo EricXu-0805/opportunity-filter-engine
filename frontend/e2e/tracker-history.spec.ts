@@ -1,3 +1,4 @@
+import { contactEventReceiptForRequest } from './contact-ledger-receipt';
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Route } from '@playwright/test';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -55,13 +56,13 @@ function writes(page: Page) {
   const values: string[] = [];
   page.on('request', request => {
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method())
-      && /\/(?:profiles|interactions|interaction_status_changes|commit_profile_patch_cas|confirm_interaction_contact|set_interaction_reminder)$/.test(pathOf(request.url()))) values.push(pathOf(request.url()));
+      && /\/(?:profiles|interactions|interaction_status_changes|commit_profile_patch_cas|confirm_interaction_contact|confirm_contact_event|set_interaction_reminder)$/.test(pathOf(request.url()))) values.push(pathOf(request.url()));
   });
   return values;
 }
 async function openTimeline(page: Page, status = 'Applied') {
   await expect(page.getByRole('button', { name: status, exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const toggle = page.getByRole('button', { name: /Notes & reminder|notes or reminder/i });
+  const toggle = page.getByRole('button', { name: /^Contact history, notes & reminders/ });
   await expect(toggle).toBeVisible();
   if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
   await expect(timeline(page)).toBeVisible();
@@ -198,15 +199,14 @@ test.describe('Send-error ownership after a new email background', () => {
         return route.fulfill({ json: { opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
           contact_context_receipt: receipt, variants: [variant], recipient_status: 'revealed', pipeline_version: 'w12.8', corpus_version: 'history-browser' } });
       });
-      await page.route('**/rest/v1/rpc/confirm_interaction_contact', async route => {
+      await page.route('**/rest/v1/rpc/confirm_contact_event', async route => {
         confirms += 1;
         if (confirms === 1) {
           if (late) await held.pending;
           try { await route.fulfill({ status: 500, json: { message: 'controlled old confirmation failure' } }); } finally { settled = true; }
         } else {
           expect(confirms).toBe(2);
-          await route.fulfill({ json: [{ device_id: owner.session.user.id, opportunity_id: TARGET, interaction_type: 'contacted',
-            notes: null, remind_at: null, last_contacted_at: '2026-09-25T08:00:00Z', updated_at: '2026-09-25T08:00:00Z' }] });
+          await route.fulfill({ json: contactEventReceiptForRequest(route.request().postDataJSON(), { confirmedAt: '2026-09-25T08:00:00Z' }) });
         }
       });
       await page.goto(`/opportunities/${TARGET}`); await page.getByRole('button', { name: 'Draft email', exact: true }).click();
@@ -220,12 +220,12 @@ test.describe('Send-error ownership after a new email background', () => {
       await expect(page.getByTestId('cold-email-confirm-sent')).toBeEnabled();
       await expect(page.getByTestId('cold-email-confirm-sent')).toHaveText('Yes — mark as contacted');
       await expect(page.getByText(CONFIRM_FAILED, { exact: true })).toHaveCount(0);
-      expect(confirms).toBe(1); expect(mutations).toEqual(['/rest/v1/rpc/confirm_interaction_contact']);
+      expect(confirms).toBe(1); expect(mutations).toEqual(['/rest/v1/rpc/confirm_contact_event']);
       await page.getByTestId('cold-email-confirm-sent').scrollIntoViewIfNeeded();
       await page.screenshot({ path: info.outputPath(`new-draft-old-confirm-${late ? 'late' : 'early'}-failure.png`) });
       await page.getByTestId('cold-email-confirm-sent').click();
       await expect(page.getByTestId('cold-email-confirm-sent')).toHaveCount(0);
-      expect(confirms).toBe(2); expect(mutations).toEqual(['/rest/v1/rpc/confirm_interaction_contact', '/rest/v1/rpc/confirm_interaction_contact']);
+      expect(confirms).toBe(2); expect(mutations).toEqual(['/rest/v1/rpc/confirm_contact_event', '/rest/v1/rpc/confirm_contact_event']);
     } finally { held.release(); await owner.http.dispose(); }
   });
 });

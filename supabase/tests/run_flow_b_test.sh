@@ -158,4 +158,10 @@ echo "    PASS cas advisory-lock contention"
 echo "==> run ops_and_tickets_test.sql"
 "${PSQL[@]}" -f "$HERE/ops_and_tickets_test.sql"
 
+echo "==> run contact_event_ledger_test.sql"
+"${PSQL[@]}" -f "$HERE/contact_event_ledger_test.sql"
+
+echo "==> run contact_event_concurrency_test.sh"
+source "$HERE/contact_event_concurrency_test.sh"
+
 echo "==> OK"

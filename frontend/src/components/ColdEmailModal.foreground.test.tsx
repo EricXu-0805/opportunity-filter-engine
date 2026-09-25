@@ -48,10 +48,17 @@ function deferred<T>() {
   return { promise, resolve };
 }
 const mirror = () => JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE) ?? 'null');
-// Real promise/React work runs to completion without advancing profile deadlines.
-async function drain() {
+// Native WebCrypto work is not a Promise microtask. Track the real operations
+// so draining React work does not assert before receipt verification finishes.
+// Profile deadlines remain frozen; there is no timeout increase or retry.
+const pendingDigests = new Set<Promise<ArrayBuffer>>();
+let digestGate: Promise<void> | null = null;
+async function drain(waitForDigests = true) {
   for (let pass = 0; pass < 4; pass += 1) {
-    await act(async () => { for (let n = 0; n < 40; n += 1) await Promise.resolve(); });
+    await act(async () => {
+      for (let n = 0; n < 40; n += 1) await Promise.resolve();
+      if (waitForDigests) await Promise.all([...pendingDigests]);
+    });
   }
 }
 function Harness() {
@@ -65,6 +72,15 @@ function Harness() {
 }
 let ownerSequence = 0;
 beforeEach(async () => {
+  pendingDigests.clear(); digestGate = null;
+  const nativeDigest = crypto.subtle.digest.bind(crypto.subtle);
+  vi.spyOn(crypto.subtle, 'digest').mockImplementation((algorithm, data) => {
+    const gate = digestGate;
+    const pending = gate ? gate.then(() => nativeDigest(algorithm, data)) : nativeDigest(algorithm, data);
+    pendingDigests.add(pending);
+    void pending.then(() => pendingDigests.delete(pending), () => pendingDigests.delete(pending));
+    return pending;
+  });
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   resetProfileDirtyLedger(); resetJournalLaneForTests();
   const uid = `foreground-owner-${++ownerSequence}`;
@@ -91,7 +107,7 @@ beforeEach(async () => {
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
-afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.clearAllTimers(); vi.useRealTimers(); });
 async function openEditor() {
   render(<Harness />); await drain();
   expect(screen.getByDisplayValue('Template body')).toBeVisible();
@@ -140,6 +156,26 @@ describe('foreground cloud refresh with the real cold-email editor', () => {
     expect(services.stream).toHaveBeenCalledOnce(); expect(services.generate).not.toHaveBeenCalled();
     expect(services.variants).toHaveBeenCalledOnce(); expect(services.rpc).not.toHaveBeenCalled();
     expect(readProfileSyncEnvelope()?.confirmed?.revision).toBe(1);
+  });
+
+  it('waits for the initial native receipt verification before asserting the template is ready', async () => {
+    const ai = deferred<ColdEmailResponse>(); services.stream.mockReturnValue(ai.promise);
+    const verified = deferred<void>(); digestGate = verified.promise;
+    render(<Harness />);
+    // The full-suite failure occurred inside openEditor, before its first
+    // Template body assertion. This reproduces that synchronization gap:
+    // queued microtasks drain while the initial native receipt is unfinished.
+    await drain(false);
+    expect(services.variants).toHaveBeenCalledOnce();
+    expect(pendingDigests.size).toBe(1);
+    expect(screen.getByTestId('refresh-state')).toHaveTextContent('ready');
+    expect(screen.queryByDisplayValue('Template body')).toBeNull();
+    expect(services.stream).not.toHaveBeenCalled();
+    verified.resolve(); await drain();
+    expect(pendingDigests.size).toBe(0);
+    expect(screen.getByDisplayValue('Template body')).toBeVisible();
+    expect(services.stream).toHaveBeenCalledOnce();
+    expect(services.generate).not.toHaveBeenCalled();
   });
 
   it.each(['changed', 'deleted'] as const)('keeps manual edits and rejects a late refinement when periodic reading discovers profile %s', async (kind) => {

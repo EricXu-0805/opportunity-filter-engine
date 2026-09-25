@@ -44,7 +44,7 @@ function writes(page: Page) {
   const events: string[] = [];
   page.on('request', request => {
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method())
-      && /\/(?:profiles|interactions|commit_profile_patch_cas|confirm_interaction_contact|set_interaction_reminder)$/.test(pathOf(request.url()))) events.push(request.url());
+      && /\/(?:profiles|interactions|commit_profile_patch_cas|(?:confirm_interaction_contact|confirm_contact_event)|set_interaction_reminder)$/.test(pathOf(request.url()))) events.push(request.url());
   });
   return events;
 }

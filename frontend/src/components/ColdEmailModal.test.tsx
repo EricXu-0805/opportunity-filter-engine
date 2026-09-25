@@ -48,7 +48,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
 
 vi.mock('@/lib/supabase', () => ({
   onAuthChange: () => () => {},
-  confirmInteractionContact: vi.fn(),
+  confirmContactEvent: vi.fn(),
   updateInteractionDetails: vi.fn(),
 }));
 

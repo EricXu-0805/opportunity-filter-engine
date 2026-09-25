@@ -28,6 +28,11 @@ import { RELEASE_SCOPE } from './release-scope';
 import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
 import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from './storage-keys';
+import { ContactEventError, ContactHistoryLoadError, contactRecord, contactTimestamp,
+  snapshotContactEventInput, parseContactEvent, contactEventMatches, validContactTarget,
+  snapshotContactCursor, contactEventBefore,
+  type ContactEvent, type ContactEventInput, type ContactEventsCursor, type ContactEventsPage,
+} from './contact-ledger';
 
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
 export type { OwnerToken } from './identity-owner';
@@ -2186,6 +2191,106 @@ export async function confirmInteractionContact(
       updated_at: row.updated_at ?? undefined,
     };
   });
+}
+
+export interface ConfirmContactEventResult {
+  event: ContactEvent;
+  /** A replay after the user removed their tracker entry preserves its absence. */
+  interaction: InteractionRecord | null;
+  replayed: boolean;
+}
+function contactOwner(origin: OwnerToken): void {
+  if (!isOwnerTokenValid(origin, origin.uid)) throw new OwnerMismatchError();
+}
+function contactInteraction(value: unknown, owner: string, opportunityId: string, replayed: boolean): InteractionRecord {
+  const statuses = new Set(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+  if (!contactRecord(value) || value.device_id !== owner || value.opportunity_id !== opportunityId || !statuses.has(value.interaction_type as string)
+    || (value.notes !== null && typeof value.notes !== 'string')
+    || (value.remind_at !== null && (typeof value.remind_at !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.remind_at) || contactTimestamp(`${value.remind_at}T00:00:00Z`) === null))
+    || (value.last_contacted_at === null ? !replayed : contactTimestamp(value.last_contacted_at) === null)
+    || (value.updated_at === null ? !replayed : contactTimestamp(value.updated_at) === null)) {
+    throw new ContactEventError('invalid_receipt');
+  }
+  return { type: value.interaction_type as InteractionType, notes: value.notes as string | undefined ?? undefined,
+    remind_at: value.remind_at as string | undefined ?? undefined,
+    last_contacted_at: value.last_contacted_at as string | undefined ?? undefined, updated_at: value.updated_at as string | undefined ?? undefined };
+}
+/** Saves an exact immutable snapshot and updates the tracker atomically. An
+ * uncertain result is never retried with a new ID or downgraded to the legacy
+ * summary-only RPC. Reusing the same ID with different content is a conflict. */
+export async function confirmContactEvent(opportunityId: string, input: ContactEventInput,
+  token: OwnerToken): Promise<ConfirmContactEventResult> {
+  const origin = { ...token };
+  contactOwner(origin);
+  if (!validContactTarget(opportunityId)) throw new ContactEventError('invalid_input');
+  const snapshot = snapshotContactEventInput(input);
+  return enqueuePrivateWrite(origin, opportunityId, async () => {
+    try {
+      contactOwner(origin);
+      const deviceId = await ensureAnonSession();
+      contactOwner(origin);
+      if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+      if (!deviceId) throw new ContactEventError('unavailable');
+      const { data, error } = await supabase.rpc('confirm_contact_event', {
+        p_expected_device_id: deviceId, p_event_id: snapshot.id, p_opportunity_id: opportunityId,
+        p_recipient: snapshot.recipient, p_subject: snapshot.subject, p_body: snapshot.body,
+        p_materials: snapshot.materialRefs, p_actual_sent_at: snapshot.actualSentAt,
+      });
+      contactOwner(origin);
+      if (error) {
+        if (error.code === '23505' && error.message === 'contact_event_conflict') throw new ContactEventError('conflict');
+        if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
+        if (error.code === '22023' && error.message === 'invalid_contact_event') throw new ContactEventError('invalid_input');
+        throw new ContactEventError('unavailable');
+      }
+      if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ContactEventError('invalid_receipt');
+      const event = parseContactEvent(data.event, deviceId, opportunityId);
+      if (!contactEventMatches(event, snapshot)) throw new ContactEventError('invalid_receipt');
+      if (data.interaction === null && !data.replayed) throw new ContactEventError('invalid_receipt');
+      const interaction = data.interaction === null ? null : contactInteraction(data.interaction, deviceId, opportunityId, data.replayed);
+      return { event, interaction, replayed: data.replayed };
+    } catch (error) {
+      contactOwner(origin);
+      if (error instanceof OwnerMismatchError || error instanceof ContactEventError) throw error;
+      throw new ContactEventError('unavailable');
+    }
+  });
+}
+/** Only successful [] means no recorded events. Page boundaries preserve
+ * PostgreSQL microseconds and the event UUID, including tied timestamps. */
+export async function getContactEvents(opportunityId: string,
+  options: { cursor?: ContactEventsCursor; limit?: number } = {}): Promise<ContactEventsPage> {
+  const origin = { ...captureOwnerToken() };
+  try {
+    contactOwner(origin);
+    const limit = options.limit ?? 20;
+    if (!validContactTarget(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ContactHistoryLoadError();
+    const cursor = options.cursor === undefined ? null : snapshotContactCursor(options.cursor);
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ContactHistoryLoadError();
+    let query = supabase.from('contact_events')
+      .select('event_id, device_id, opportunity_id, recipient, subject, body, materials, actual_sent_at, confirmed_at, confirmation_source')
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId)
+      .order('confirmed_at', { ascending: false }).order('event_id', { ascending: false });
+    if (cursor) query = query.or(`confirmed_at.lt.${cursor.confirmedAt},and(confirmed_at.eq.${cursor.confirmedAt},event_id.lt.${cursor.id})`);
+    const { data, error } = await query.limit(limit + 1);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > limit + 1) throw new ContactHistoryLoadError();
+    const events = data.map(row => parseContactEvent(row, deviceId, opportunityId));
+    if (new Set(events.map(event => event.id)).size !== events.length
+      || events.some((event, index) => (cursor && !contactEventBefore(event, cursor))
+        || (index > 0 && !contactEventBefore(event, events[index - 1])))) throw new ContactHistoryLoadError();
+    const hasMore = events.length > limit;
+    const page = events.slice(0, limit);
+    const last = page.at(-1);
+    return { events: page, hasMore, nextCursor: hasMore && last ? { confirmedAt: last.confirmedAt, id: last.id } : null };
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ContactHistoryLoadError();
+  }
 }
 
 export interface StatusChange {

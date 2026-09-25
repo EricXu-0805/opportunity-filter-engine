@@ -6,6 +6,7 @@ import { isPublicDetail } from '@/lib/public-target-shape';
 import { defaultEmailContactContext, serializeEmailContactContext, emailContactContextSignature, requireEmailContactContextReceipt } from '@/lib/email-contact-context';
 import type { EmailContactContext } from '@/lib/types';
 import EmailContactContextPanel from './EmailContactContextPanel';
+import { createContactEventInput, contactMaterialVersion, ContactEventError } from '@/lib/contact-ledger';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
@@ -34,7 +35,7 @@ import {
   type ColdEmailStage,
 } from '@/lib/api';
 import {
-  confirmInteractionContact,
+  confirmContactEvent,
   onAuthChange,
   updateInteractionDetails,
 } from '@/lib/supabase';
@@ -340,6 +341,7 @@ export default function ColdEmailModal({
   const contactFingerprint = `${effectiveContact.revision}\n${contactSerialized}`;
   const materialFingerprint = `${profileFingerprint}\n${targetFingerprint}\n${contactFingerprint}`;
   const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
+  const draftSourcesRef = useRef<{ profile: string; target: string | null; contact: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [targetVersionError, setTargetVersionError] = useState<TargetVersionFailure | null>(null);
@@ -364,6 +366,7 @@ export default function ColdEmailModal({
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [actualSentAt, setActualSentAt] = useState('');
   // W10b contact bar: why the To field is (or isn't) prefilled. 'sign_in_required'
   // renders the sign-in-to-reveal affordance; 'unavailable' the honest
   // no-verified-address state. Pre-W10b cached responses lack the field —
@@ -412,7 +415,13 @@ export default function ColdEmailModal({
   const copyFailed = copyFailedFor === copyContentKey;
   const [contactedDraftEpoch, setContactedDraftEpoch] = useState<number | null>(null);
   const [confirmedDraftEpoch, setConfirmedDraftEpoch] = useState<number | null>(null);
-  const contactedHere = contacted && contactedForId === opportunityId && contactedDraftEpoch === sendDraftEpoch;
+  const [contactedContentKey, setContactedContentKey] = useState<string | null>(null);
+  const [confirmedContentKey, setConfirmedContentKey] = useState<string | null>(null);
+  const confirmationKey = JSON.stringify([copyContentKey, actualSentAt]);
+  const confirmationKeyRef = useRef(confirmationKey);
+  useLayoutEffect(() => { confirmationKeyRef.current = confirmationKey; }, [confirmationKey]);
+  const contactedHere = contacted && contactedForId === opportunityId && contactedDraftEpoch === sendDraftEpoch
+    && contactedContentKey === copyContentKey;
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
   // The reminders cron has a third filter the reminder controls never checked:
@@ -436,7 +445,8 @@ export default function ColdEmailModal({
   // would have written against them. Stamping the id at creation makes the
   // state unusable for anyone else by construction rather than by timing.
   const [confirmedForId, setConfirmedForId] = useState<string | null>(null);
-  const confirmedHere = sendConfirmed && confirmedForId === opportunityId && confirmedDraftEpoch === sendDraftEpoch;
+  const confirmedHere = sendConfirmed && confirmedForId === opportunityId && confirmedDraftEpoch === sendDraftEpoch
+    && confirmedContentKey === confirmationKey;
   // Identity first, then deliverability. A live record for a different id is
   // still a live record — canDeliverReminder would happily say yes to it.
   const followUpDeliverable = confirmedHere
@@ -448,7 +458,12 @@ export default function ColdEmailModal({
   // not undo a confirmed contact. An owner move must not report the old
   // operation as success for the current account. Errors belong to this session AND
   // draft epoch: rebuilding clears them, and old writers cannot restore them.
-  const [sendError, setSendError] = useState<'confirm' | 'reminder' | 'owner-changed' | null>(null);
+  type SendError = 'confirm' | 'reminder' | 'owner-changed' | 'invalid-contact' | 'contact-conflict';
+  const [sendFailure, setSendFailure] = useState<{ key: string; error: SendError } | null>(null);
+  const sendError = sendFailure?.key === confirmationKey ? sendFailure.error : null;
+  const setSendError = useCallback((error: SendError | null) => {
+    setSendFailure(error ? { key: confirmationKeyRef.current, error } : null);
+  }, []);
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
 
@@ -611,6 +626,7 @@ export default function ColdEmailModal({
         const first = data.variants[0];
         setSubject(first.subject);
         setBody(first.body);
+        draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         if (!keepEditor) setRecipient(first.recipient_email);
         editorUsedRef.current = true;
         setActiveVariant(0);
@@ -627,6 +643,7 @@ export default function ColdEmailModal({
           // receipt to update the parent, without confirming this new draft.
           sendDraftEpochRef.current += 1;
           setSendDraftEpoch(sendDraftEpochRef.current);
+          setActualSentAt('');
           setCopiedFor(null); setCopyFailedFor(null);
           setSendError(null);
         }
@@ -651,7 +668,7 @@ export default function ColdEmailModal({
         else if (!preserveDraft) setLoading(false);
       }
     }
-  }, [requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure]);
+  }, [requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
@@ -679,6 +696,7 @@ export default function ColdEmailModal({
         const { body: next, reply } = applyQuickEdit(body, 'coursework', requestProfile, t);
         draftRevisionRef.current += 1;
         setBody(next);
+        draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         setChatMessages((messages) => [...messages, { role: 'user', content: t('coldEmail.quickActions.coursework') }, { role: 'assistant', content: reply }]);
         return;
       }
@@ -747,6 +765,7 @@ export default function ColdEmailModal({
       confirmInFlightRef.current = false;
       sendDraftEpochRef.current = 0; setSendDraftEpoch(0);
       setContactedDraftEpoch(null); setConfirmedDraftEpoch(null);
+      setContactedContentKey(null); setConfirmedContentKey(null); setActualSentAt('');
       setContacted(false);
       setContactedForId(null);
       setSendConfirmed(false);
@@ -772,6 +791,7 @@ export default function ColdEmailModal({
       setSubject('');
       setBody('');
       setRecipient('');
+      draftSourcesRef.current = null;
       setRecipientStatus('unavailable');
       setGrounding('specific');
       setFreshness('unknown');
@@ -964,6 +984,7 @@ export default function ColdEmailModal({
     setActiveVariant(idx);
     setSubject(v.subject);
     setBody(v.body);
+    draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
     setExperienceUsage(v.experience_usage ?? null);
     // Variants share one server-resolved recipient; when the reveal is locked
     // they carry "" — never wipe an address the user typed themselves.
@@ -1018,6 +1039,7 @@ export default function ColdEmailModal({
         setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
+        draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         setExperienceUsage(v.experience_usage ?? null);
         if (contactIsCurrent) {
           setRecipient((prev) => prev || v.recipient_email);
@@ -1160,6 +1182,7 @@ export default function ColdEmailModal({
       if (!current()) return;
       if (draftRevisionRef.current !== revision) { reply(t('coldEmail.editSuperseded')); return; }
       setBody(result.body);
+      draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
       setExperienceUsage(result.experience_usage ?? null);
       reply(
             result.method === 'llm'
@@ -1204,23 +1227,14 @@ export default function ColdEmailModal({
     setContacted(true);
     setContactedDraftEpoch(sendDraftEpochRef.current);
     setContactedForId(opportunityId);
+    setContactedContentKey(copyContentKeyRef.current);
     // opportunityId is now READ here, so it has to be a dep. An empty array
     // would freeze the stamp at whatever id existed on first mount, and a
     // copy on target B would file itself under target A forever.
   }, [opportunityId]);
 
-  // The user's explicit attestation that the email went out — the ONLY path
-  // that records the contact, and it records it with one atomic call.
-  //
-  // The old flow read the interaction, conditionally inserted 'applied', then
-  // updated the metadata: three round trips a concurrent status change could
-  // interleave with, and it painted `sent` before any of them had landed.
-  // confirmInteractionContact is one INSERT ... ON CONFLICT DO UPDATE
-  // (migration 027) that creates the row as 'contacted' or, when any status
-  // already exists, only refreshes last_contacted_at. That preservation is
-  // why the RETURNED status is read below rather than assumed: a row already
-  // marked rejected or dismissed comes back unchanged, and the reminders cron
-  // selects neither.
+  // An attestation saves one immutable email snapshot. Generating, copying,
+  // and opening an external composer never write an event.
   const confirmSent = useCallback(async () => {
     if (!sourceReadyRef.current || confirmInFlightRef.current) return;
     // Captured at the click, before any await: the capability belongs to the
@@ -1229,6 +1243,7 @@ export default function ColdEmailModal({
     const token = captureOwnerToken();
     const session = sendSessionRef.current;
     const confirmedEpoch = sendDraftEpochRef.current;
+    const confirmedContents = confirmationKeyRef.current;
     const attempt = (confirmAttemptRef.current += 1);
     confirmInFlightRef.current = true;
     setSendError(null);
@@ -1239,9 +1254,30 @@ export default function ColdEmailModal({
       sendSessionRef.current === session && confirmAttemptRef.current === attempt;
     // A real historical write can still update the parent after rebuilding,
     // but its failure must never be attributed to the replacement draft.
-    const sameDraft = () => stillCurrent() && sendDraftEpochRef.current === confirmedEpoch;
+    const sameDraft = () => stillCurrent() && sendDraftEpochRef.current === confirmedEpoch
+      && confirmationKeyRef.current === confirmedContents;
     try {
-      const record = await confirmInteractionContact(opportunityId, token);
+      const sentTime = actualSentAt ? new Date(actualSentAt) : null;
+      if (!recipient.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())
+        || !subject.trim() || !body.trim()
+        || (sentTime && (!Number.isFinite(sentTime.getTime()) || sentTime.getTime() > Date.now()))) {
+        setSendError('invalid-contact'); return;
+      }
+      // These are the source versions used when this text was last generated
+      // or refined. A profile refresh can preserve an older manual draft.
+      const sources = draftSourcesRef.current;
+      const materialRefs = sources ? [
+        { kind: 'profile' as const, version: await contactMaterialVersion(sources.profile) },
+        ...(sources.target ? [{ kind: 'target' as const, version: sources.target }] : []),
+        { kind: 'contact_context' as const, version: await contactMaterialVersion(sources.contact) },
+      ] : [];
+      if (!sameDraft() || !isTokenOwnerStillCurrent(token)) return;
+      const input = await createContactEventInput(token.uid!, opportunityId, {
+        recipient: recipient.trim(), subject, body, actualSentAt: sentTime?.toISOString() ?? null,
+        materialRefs,
+      });
+      if (!sameDraft() || !isTokenOwnerStillCurrent(token)) return;
+      const { interaction: record } = await confirmContactEvent(opportunityId, input, token);
       // The owner check is re-read AFTER the await, against the token captured
       // BEFORE it. Same uid at a new epoch is a different capability.
       if (!stillCurrent()) return;
@@ -1250,22 +1286,25 @@ export default function ColdEmailModal({
         setConfirmedForId(opportunityId);
         setSendConfirmed(true);
         setConfirmedDraftEpoch(confirmedEpoch);
+        setConfirmedContentKey(confirmedContents);
         onContactConfirmed?.(record ?? null);
       }
       else if (sameDraft()) setSendError('owner-changed');
-    } catch {
+    } catch (error) {
       if (!sameDraft()) return;
       // A confirmation whose identity moved cannot establish success for
       // this account. Its old-account write outcome may be unknown; show the
       // identity boundary without painting a U1 outcome into U2's session.
-      setSendError(isTokenOwnerStillCurrent(token) ? 'confirm' : 'owner-changed');
+      setSendError(!isTokenOwnerStillCurrent(token) ? 'owner-changed'
+        : error instanceof ContactEventError && error.code === 'conflict' ? 'contact-conflict'
+          : error instanceof ContactEventError && error.code === 'invalid_input' ? 'invalid-contact' : 'confirm');
     } finally {
       if (stillCurrent()) {
         confirmInFlightRef.current = false;
         setConfirming(false);
       }
     }
-  }, [opportunityId, onContactConfirmed]);
+  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, setSendError]);
 
   // Only asked once a reminder actually exists, so nobody is prompted about
   // notifications for a thing they have not done. 'subscribed' hides the offer;
@@ -1318,6 +1357,7 @@ export default function ColdEmailModal({
     const token = captureOwnerToken();
     const session = sendSessionRef.current;
     const draftEpoch = sendDraftEpochRef.current;
+    const reminderContents = confirmationKeyRef.current;
     // The student's own calendar day, not UTC's. After 7pm in Chicago the UTC
     // date has already rolled over, so "in 1 week" landed on the eighth day —
     // the same arithmetic the tracker's presets had.
@@ -1329,17 +1369,17 @@ export default function ColdEmailModal({
     try {
       await updateInteractionDetails(opportunityId, { remind_at: date }, token);
     } catch {
-      if (stillCurrent() && sendDraftEpochRef.current === draftEpoch) setSendError('reminder');
+      if (stillCurrent() && sendDraftEpochRef.current === draftEpoch && confirmationKeyRef.current === reminderContents) setSendError('reminder');
       return;
     }
     if (stillCurrent()) {
       // Preserve the opportunity-level reminder receipt without clearing a
       // confirmation error belonging to a draft built while this write waited.
-      if (sendDraftEpochRef.current === draftEpoch) setSendError(null);
+      if (sendDraftEpochRef.current === draftEpoch && confirmationKeyRef.current === reminderContents) setSendError(null);
       setFollowUpDate(date);
       onReminderSet?.(date);
     }
-  }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId, onReminderSet]);
+  }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId, onReminderSet, setSendError]);
 
   async function handleCopy() {
     const owner = captureOwnerToken();
@@ -1742,6 +1782,15 @@ export default function ColdEmailModal({
                       className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
+                  <details className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs text-gray-600" data-testid="contact-record-details">
+                    <summary className="cursor-pointer font-semibold text-gray-700">{t('coldEmail.contactRecordTitle')}</summary>
+                    <p className="mt-2 leading-relaxed">{t('coldEmail.contactRecordHint')}</p>
+                    <label className="mt-3 block" htmlFor="cold-email-sent-at">{t('coldEmail.actualSentAt')}</label>
+                    <input id="cold-email-sent-at" type="datetime-local" value={actualSentAt}
+                      onChange={(event) => setActualSentAt(event.target.value)}
+                      className="mt-1 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm" />
+                    <p className="mt-1.5 leading-relaxed">{t('coldEmail.actualSentAtHint')}</p>
+                  </details>
                 </div>
               </div>
 
@@ -1864,15 +1913,18 @@ export default function ColdEmailModal({
                           ? t('coldEmail.confirmRetry')
                           : t('coldEmail.confirmSent')}
                     </button>
-                    {(sendError === 'confirm' || sendError === 'owner-changed') && (
+                    {(sendError === 'confirm' || sendError === 'owner-changed' || sendError === 'invalid-contact' || sendError === 'contact-conflict') && (
                       <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
                         <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                        {t(sendError === 'confirm'
-                          ? 'coldEmail.confirmFailed'
+                        {t(sendError === 'confirm' ? 'coldEmail.confirmFailed'
+                          : sendError === 'invalid-contact' ? 'coldEmail.contactInvalid'
+                          : sendError === 'contact-conflict' ? 'coldEmail.contactConflict'
                           : 'coldEmail.confirmOwnerChanged')}
                       </span>
                     )}
                   </>
+                ) : confirmedStatus === undefined ? (
+                  <span className="text-gray-600">{t('coldEmail.contactRecordedNoStatus')}</span>
                 ) : confirmedStatus === 'dismissed' || confirmedStatus === 'rejected' ? (
                   // The confirm RPC never downgrades a status, so a row the
                   // student had already marked reaches here after a perfectly

@@ -3047,9 +3047,22 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
   });
 
   it('a cloud rejection is reported immediately, with a retry that replays the cleansed snapshot', async () => {
-    // Both requests are HELD, so the test decides when each one answers. No
-    // wait budget is involved: the status is asserted on the turn the
-    // response is released, which is the only turn it can appear on.
+    // Hold the transport response, then await the real coordinator operation
+    // before checking React state. Releasing the transport alone does not
+    // promise that the owner write queue and result handler have finished.
+    const actualSync = await vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync');
+    const stages: ReturnType<typeof actualSync.stageProfilePatch>[] = [];
+    const retries: ReturnType<typeof actualSync.flushPendingProfileWrite>[] = [];
+    syncOverrides.stageProfilePatch = (...args: Parameters<typeof actualSync.stageProfilePatch>) => {
+      const pending = actualSync.stageProfilePatch(...args);
+      stages.push(pending);
+      return pending;
+    };
+    syncOverrides.flushPendingProfileWrite = (...args: Parameters<typeof actualSync.flushPendingProfileWrite>) => {
+      const pending = actualSync.flushPendingProfileWrite(...args);
+      retries.push(pending);
+      return pending;
+    };
     const held: Array<(o: ProfilePatchOutcome) => void> = [];
     commitProfilePatch.mockReset();
     commitProfilePatch.mockImplementation(
@@ -3061,8 +3074,11 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
 
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
     expect(held, 'the removal went out immediately').toHaveLength(1);
+    expect(stages).toHaveLength(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
     await act(async () => {
       held[0]({ status: 'transport-error', message: 'Failed to sync profile: boom' });
+      await expect(stages[0]).resolves.toEqual({ status: 'error', message: 'Failed to sync profile: boom' });
     });
     expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed');
     // The local copy IS clean — only the cloud one is stale.
@@ -3070,14 +3086,16 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
 
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
     expect(held, 'the retry re-sent it').toHaveLength(2);
+    expect(retries).toHaveLength(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
     await act(async () => {
       held[1](await applyIntent(commitProfilePatch.mock.calls[1][0]));
+      await expect(retries[0]).resolves.toMatchObject({ status: 'saved' });
     });
     expect(screen.getByTestId('save-status').textContent).toBe('saved');
     expect(commitProfilePatch.mock.calls).toHaveLength(2);
     expect((commitProfilePatch.mock.calls[1][0].patch as { resume_text?: string }).resume_text).toBe('');
-
-
+    expect(commitProfilePatch.mock.calls[1][0].patch).toEqual(commitProfilePatch.mock.calls[0][0].patch);
   });
 });
 

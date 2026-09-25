@@ -13,7 +13,7 @@ vi.mock('@/lib/api', () => ({
   refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, undefined, (args[4] as { contactContext: EmailContactContext }).contactContext),
   getVapidPublicKey: vi.fn(),
 }));
-vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmInteractionContact: api.contact, updateInteractionDetails: api.reminder }));
+vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmContactEvent: async (...args: unknown[]) => ({ interaction: await api.contact(...args) }), updateInteractionDetails: api.reminder }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
 import ColdEmailModal from './ColdEmailModal';
 
@@ -120,12 +120,12 @@ describe('confirmed contact context and editable email lifetime', () => {
     const onContactConfirmed = vi.fn();
     open(onContactConfirmed); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
-    expect(api.contact).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     if (!held) await waitFor(() => expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull());
     referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
     if (held) await act(async () => old.resolve(record));
     expect(onContactConfirmed).toHaveBeenCalledExactlyOnceWith(record);
-    expect(api.contact).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
     const confirm = await screen.findByTestId('cold-email-confirm-sent'); expect(confirm).toBeEnabled();
     fireEvent.click(confirm); await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(2));
@@ -139,7 +139,7 @@ describe('confirmed contact context and editable email lifetime', () => {
     open(onContactConfirmed); await ready();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
-    expect(api.contact).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     if (timing === 'before') {
       await act(async () => old.reject(new Error('old confirmation failed')));
       expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
@@ -151,7 +151,7 @@ describe('confirmed contact context and editable email lifetime', () => {
     expect(screen.queryByText('coldEmail.confirmFailed')).toBeNull();
     expect(screen.getByTestId('cold-email-confirm-sent')).toHaveTextContent('coldEmail.confirmSent');
     expect(onContactConfirmed).not.toHaveBeenCalled();
-    expect(api.contact).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     expect(api.reminder).not.toHaveBeenCalled();
   });
 
@@ -171,7 +171,7 @@ describe('confirmed contact context and editable email lifetime', () => {
     await waitFor(() => expect(onContactConfirmed).toHaveBeenCalledExactlyOnceWith(record));
     expect(screen.queryByText('coldEmail.confirmFailed')).toBeNull();
     expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
-    expect(api.contact).toHaveBeenCalledTimes(2); expect(api.reminder).not.toHaveBeenCalled();
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(2)); expect(api.reminder).not.toHaveBeenCalled();
   });
 
   it.each(['success', 'failure'] as const)('keeps the new draft confirmation error when an old reminder settles with %s', async outcome => {
@@ -202,7 +202,7 @@ describe('confirmed contact context and editable email lifetime', () => {
     expect(screen.getByText('coldEmail.confirmFailed')).toBeInTheDocument();
     expect(screen.getByTestId('cold-email-confirm-sent')).toHaveTextContent('coldEmail.confirmRetry');
     expect(screen.queryByText('coldEmail.reminderFailed')).toBeNull();
-    expect(api.contact).toHaveBeenCalledTimes(2); expect(api.reminder).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(2)); expect(api.reminder).toHaveBeenCalledTimes(1);
     if (outcome === 'success') expect(onReminderSet).toHaveBeenCalledExactlyOnceWith(date);
     else expect(onReminderSet).not.toHaveBeenCalled();
   });
@@ -315,4 +315,19 @@ describe('confirmed contact context and editable email lifetime', () => {
     expect(screen.getByRole('button', { name: 'Apply background to this draft' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeDisabled(); kept(); expect(api.variants).toHaveBeenCalledTimes(1);
   });
+});
+
+
+it('keeps the original draft source versions after the profile changes, and clears old send time on rebuild', async () => {
+  const view = open(); await ready();
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  const oldVersion = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(profile)))), b => b.toString(16).padStart(2, '0')).join('');
+  view.show({ profile: { ...profile, research_interests: 'changed interest' } });
+  fireEvent.change(screen.getByLabelText('coldEmail.actualSentAt'), { target: { value: '2020-01-02T12:34' } });
+  fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+  fireEvent.click(await screen.findByTestId('cold-email-confirm-sent'));
+  await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
+  expect(api.contact.mock.calls[0][1].materialRefs).toContainEqual({ kind: 'profile', version: oldVersion });
+  regenerate(); await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(screen.getByLabelText('coldEmail.actualSentAt')).toHaveValue(''));
 });

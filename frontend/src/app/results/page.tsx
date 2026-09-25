@@ -1148,7 +1148,7 @@ function ResultsContent() {
           target={currentWritingTarget ?? writingSession.opportunity}
           reminderTarget={writingTargetReady ? currentWritingTarget : undefined}
           onContactConfirmed={(record) => {
-            if (writingTargetReady && record?.type) noteContactConfirmed(writingSession.opportunity.id, record.type);
+            noteContactConfirmed(writingSession.opportunity.id, record?.type ?? null);
           }}
         />
       ) : (

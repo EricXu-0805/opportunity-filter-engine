@@ -323,7 +323,7 @@ test.describe('Results return context', () => {
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
     expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
-    expect(net.writes.filter(write => /commit_profile_patch_cas|interactions|confirm_interaction_contact/.test(write))).toEqual([]);
+    expect(net.writes.filter(write => /commit_profile_patch_cas|interactions|(?:confirm_interaction_contact|confirm_contact_event)/.test(write))).toEqual([]);
   });
 
   test('a saved cloud profile restores page two until a real matching skill change arrives', async ({ page }) => {
@@ -420,7 +420,7 @@ test.describe('Results return context', () => {
       else await page.goBack();
       await expectRestored(page, net, count);
       await expect(card(page).getByText(en.card.viewed, { exact: true })).toBeVisible();
-      expect(net.writes.filter((write) => /interactions|confirm_interaction_contact/.test(write))).toEqual([]);
+      expect(net.writes.filter((write) => /interactions|(?:confirm_interaction_contact|confirm_contact_event)/.test(write))).toEqual([]);
     });
   }
 
@@ -465,7 +465,7 @@ test.describe('Results return context', () => {
     }
     await expect(card(page).getByText(en.card.viewed, { exact: true })).toBeVisible();
     expect(net.requests).toHaveLength(count);
-    expect(net.writes.filter((write) => /interactions|confirm_interaction_contact/.test(write))).toEqual([]);
+    expect(net.writes.filter((write) => /interactions|(?:confirm_interaction_contact|confirm_contact_event)/.test(write))).toEqual([]);
   });
   }
 

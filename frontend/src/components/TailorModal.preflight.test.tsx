@@ -140,11 +140,21 @@ describe('Tailor profile preflight', () => {
   });
   it('a failed read preserves the saved inline rewrite, and subsequent user review cancels a retry', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn().mockResolvedValueOnce(receipt()).mockResolvedValueOnce(null).mockImplementationOnce(() => read.promise);
-    render(<TailorModal {...base} profileRefresh={refresh(check)} />); type(); fireEvent.click(generate()); await drain();
-    fireEvent.click(screen.getByRole('button', { name: 'tailor.editBulletAria' })); fireEvent.change(screen.getByRole('textbox', { name: 'tailor.editBulletAria' }), { target: { value: 'Saved human revision' } });
-    fireEvent.click(screen.getByRole('button', { name: 'tailor.save' })); fireEvent.click(generate()); await drain();
+    render(<TailorModal {...base} profileRefresh={refresh(check)} />); type(); fireEvent.click(generate());
+    // The provenance hashes use native async crypto. A fixed microtask drain
+    // cannot establish that generation produced an editable result.
+    fireEvent.click(await screen.findByRole('button', { name: 'tailor.editBulletAria' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'tailor.editBulletAria' }), { target: { value: 'Saved human revision' } });
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.save' })); fireEvent.click(generate());
+    await screen.findByText(/This action did not run/);
+    expect(check).toHaveBeenCalledTimes(2);
     expect(screen.getByText('Saved human revision')).toBeTruthy(); expect(api.tailor).toHaveBeenCalledOnce();
-    fireEvent.click(generate()); await drain(); fireEvent.click(screen.getByRole('button', { name: 'tailor.rejectBulletAria' })); read.resolve(receipt()); await drain();
+    fireEvent.click(generate());
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(3));
+    expect(screen.getByText('Checking the latest profile for this action…')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.rejectBulletAria' }));
+    read.resolve(receipt()); await drain();
+    expect(generate()).toBeEnabled();
     expect(api.tailor).toHaveBeenCalledOnce(); expect(screen.getByText('Saved human revision')).toBeTruthy();
   });
   it('never rebinds a stored manual draft to a changed résumé just because profile props refreshed', async () => {

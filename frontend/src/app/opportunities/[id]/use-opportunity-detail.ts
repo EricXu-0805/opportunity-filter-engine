@@ -12,7 +12,7 @@ import {
   onAuthChange,
 } from '@/lib/supabase';
 import type { InteractionType, InteractionRecord } from '@/lib/supabase';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
 import { track } from '@/lib/analytics';
 import { suggestReminderForStatusChange, type ReminderSuggestion } from '@/lib/status-suggestions';
 import { canDeliverReminder } from '@/lib/reminders';
@@ -60,6 +60,8 @@ export interface UseOpportunityDetailResult {
    *  switch. See identity-owner.ts's isOwnerTokenValid contract. */
   ownerReady: boolean;
   interactionDetail: InteractionRecord | null;
+  /** Refresh contact history after every successful receipt, independently of summary dates. */
+  contactHistoryRevision: number;
   /** Records what the cold-email dialog just confirmed, so this page stops
    *  telling the student they have not tracked anything. */
   noteContactConfirmed: (record: InteractionRecord | null) => void;
@@ -169,6 +171,8 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   const [ownerReady, setOwnerReady] = useState(false);
   const [interactionDetail, setInteractionDetail] = useState<InteractionRecord | null>(null);
   const [interactionLoading, setInteractionLoading] = useState(true);
+  const [contactHistoryRevision, setContactHistoryRevision] = useState(0);
+  const interactionReadRevisionRef = useRef(0);
   const [interactionError, setInteractionError] = useState(false);
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState(false);
@@ -270,17 +274,30 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     });
   }, [opp.id]);
 
-  // The cold-email dialog writes the contact row itself and re-checks the
-  // token owner after its await, so this only has to stop the page
-  // contradicting it: fetchInteraction runs on mount and on a real identity
-  // change, and closing a modal is neither. Without it the panel says "Pick a
-  // status above first" and disables the notes box for a contact just
-  // recorded. No await here, so there is no generation window to guard: the
-  // dialog's own post-await owner check is what decides whether this fires.
+  // A receipt is authoritative for this owner and target, including an absent
+  // summary after deletion. Capturing the view capability also rejects a
+  // retained callback after a target switch or before the auth UI catches up.
+  const receiptOwner = captureOwnerToken();
   const noteContactConfirmed = useCallback((record: InteractionRecord | null) => {
-    if (!record) return;
-    setInteractionDetail((d) => ({ ...(d ?? {}), ...record }));
-  }, []);
+    if (generationRef.current !== identityGeneration || latestOppRef.current.id !== opp.id
+      || !receiptOwner.uid || receiptOwner.uid !== ownerScopeKey || !isOwnerTokenValid(receiptOwner, receiptOwner.uid)) return;
+    interactionReadRevisionRef.current += 1;
+    setContactHistoryRevision(revision => revision + 1);
+    setInteractionLoading(false);
+    setInteractionError(false);
+    if (record === null) {
+      // A late save that started against a deleted summary must not fabricate
+      // that summary from its old local base. Local note drafts stay in the
+      // existing TrackerPanel instance; no remount or fake timestamp is used.
+      interactionGenerationRef.current += 1;
+      setStatusSaving(false); setStatusError(false);
+      lastFailedTrackRef.current = null;
+      setSuggestion(null); setSuggestionSaving(false); setSuggestionError(false);
+      setInteractionDetail(null);
+    } else {
+      setInteractionDetail(record);
+    }
+  }, [identityGeneration, opp.id, ownerScopeKey, receiptOwner]);
 
   // The cold-email follow-up chips write remind_at straight to the row, and the
   // confirm record they arrive after does not carry it. Left unmerged, the
@@ -302,12 +319,13 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   // "no status" would let handleTrack's upsert overwrite a real
   // replied/interviewing/... row the UI simply failed to load.
   const fetchInteraction = useCallback((interactionGeneration: number) => {
+    const readRevision = interactionReadRevisionRef.current;
     getInteractionDetail(opp.id).then((d) => {
-      if (interactionGenerationRef.current !== interactionGeneration) return;
+      if (interactionGenerationRef.current !== interactionGeneration || interactionReadRevisionRef.current !== readRevision) return;
       setInteractionDetail(d); // explicit, including null — a genuine, confirmed absence
       setInteractionLoading(false);
     }).catch(() => {
-      if (interactionGenerationRef.current !== interactionGeneration) return;
+      if (interactionGenerationRef.current !== interactionGeneration || interactionReadRevisionRef.current !== readRevision) return;
       setInteractionLoading(false);
       setInteractionError(true);
     });
@@ -401,7 +419,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
       generationRef.current++;
       // eslint-disable-next-line react-hooks/exhaustive-deps
       favoriteGenerationRef.current++;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       interactionGenerationRef.current++;
     };
   }, [hydrate]);
@@ -709,6 +726,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     favoriteSaveError,
     ownerReady,
     interactionDetail,
+    contactHistoryRevision,
     interaction,
     noteContactConfirmed,
     noteReminderSet,

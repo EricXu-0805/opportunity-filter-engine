@@ -47,7 +47,7 @@ const getInteractionDetailMock = vi.fn().mockResolvedValue(null);
 const updateInteractionDetailsMock = vi.fn().mockResolvedValue(undefined);
 const confirmContactMock = vi.fn().mockResolvedValue({ type: 'applied' });
 vi.mock('@/lib/supabase', () => ({
-  confirmInteractionContact: (...args: unknown[]) => confirmContactMock(...args),
+  confirmContactEvent: async (...args: unknown[]) => ({ interaction: await confirmContactMock(...args) }),
   trackInteraction: (...args: unknown[]) => trackInteractionMock(...args),
   getInteractionDetail: (...args: unknown[]) => getInteractionDetailMock(...args),
   updateInteractionDetails: (...args: unknown[]) => updateInteractionDetailsMock(...args),
@@ -164,6 +164,7 @@ describe('ColdEmailModal — verified send tracking', () => {
       // modal writes on its own.)
       expect(confirmContactMock).toHaveBeenCalledWith(
         'opp-1',
+        expect.objectContaining({ id: expect.any(String), recipient: expect.any(String), subject: expect.any(String), body: expect.any(String) }),
         expect.objectContaining({ epoch: expect.any(Number), generation: expect.any(Number) }),
       );
     });

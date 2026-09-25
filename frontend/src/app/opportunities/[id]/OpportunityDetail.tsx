@@ -87,6 +87,7 @@ export default function OpportunityDetail({
     favoriteSaveError,
     ownerReady,
     interactionDetail,
+    contactHistoryRevision,
     noteContactConfirmed,
     noteReminderSet,
     interaction,
@@ -233,6 +234,7 @@ export default function OpportunityDetail({
               // explicitly, by construction (same fix as tracker/page.tsx).
               key={`${identityGeneration}:${opp.id}`}
               detail={interactionDetail}
+              contactHistoryRevision={contactHistoryRevision}
               onSave={saveDetails}
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}

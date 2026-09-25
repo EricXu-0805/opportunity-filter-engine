@@ -1,3 +1,4 @@
+import { contactEventReceiptForRequest } from './contact-ledger-receipt';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
@@ -82,11 +83,13 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
     contentType: 'application/json',
     body: '{}',
   }));
-  await page.route('**/rest/v1/**', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: '[]',
-  }));
+  await page.route('**/rest/v1/**', (route) => {
+    if (!['GET', 'HEAD'].includes(route.request().method())
+      && /\/(?:interactions|contact_events|interaction_status_changes|confirm_interaction_contact|confirm_contact_event|set_interaction_reminder)$/.test(new URL(route.request().url()).pathname)) {
+      state.otherWrites.push(`${route.request().method()} ${route.request().url()}`);
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
   await page.route('**/auth/v1/**', (route) => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -99,7 +102,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
     body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), variants: [{ ...VARIANT, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
   }));
 
-  await page.route('**/rest/v1/rpc/confirm_interaction_contact', async (route) => {
+  await page.route('**/rest/v1/rpc/confirm_contact_event', async (route) => {
     state.confirms.push(route.request().postData() ?? '');
     if (opts.hold) {
       parked = route;
@@ -108,15 +111,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([{
-        device_id: DEVICE_ID,
-        opportunity_id: KNOWN_ID,
-        interaction_type: 'contacted',
-        notes: null,
-        remind_at: null,
-        last_contacted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }]),
+      body: JSON.stringify(contactEventReceiptForRequest(route.request().postDataJSON())),
     });
   });
 
@@ -138,15 +133,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
       void r.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{
-          device_id: DEVICE_ID,
-          opportunity_id: KNOWN_ID,
-          interaction_type: 'contacted',
-          notes: null,
-          remind_at: null,
-          last_contacted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }]),
+        body: JSON.stringify(contactEventReceiptForRequest(r.request().postDataJSON())),
       });
     } else {
       void r.fulfill({
@@ -165,7 +152,7 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
  *
  * CI builds the E2E app with NEXT_PUBLIC_SUPABASE_URL empty (see ci.yml), and
  * an unconfigured client never issues a request for a route to intercept —
- * `confirmInteractionContact` fails closed instead. Both configurations are
+ * `confirmContactEvent` fails closed instead. Both configurations are
  * real, so the spec adapts rather than pretending: the rules that hold in both
  * are asserted unconditionally, and only the ones that need a reachable RPC
  * (a SUCCESSFUL confirmation) are gated. The app's own startup warning is the
@@ -207,7 +194,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
 
     await page.getByRole('button', { name: 'Copy' }).click();
 
-    await expect(page.getByText('Did you send the email?')).toBeVisible();
+    await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeVisible();
     expect(net.confirms, 'Copy is not evidence of a send').toHaveLength(0);
     expect(net.otherWrites, 'no tracker write of any kind').toHaveLength(0);
     await expect(remindPrompt(page)).toBeHidden();
@@ -226,7 +213,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
 
     // Parked: nothing has persisted, so nothing may claim it has.
     await expect(remindPrompt(page)).toBeHidden();
-    await expect(page.getByText('Did you send the email?')).toBeVisible();
+    await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeVisible();
 
     net.release('ok');
     await expect(remindPrompt(page)).toBeVisible();
@@ -250,7 +237,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true })).toBeVisible();
     await expect(page.getByText(/nothing was saved to your tracker/)).toHaveCount(0);
     await expect(remindPrompt(page)).toBeHidden();
-    await expect(page.getByText('Did you send the email?')).toBeVisible();
+    await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeVisible();
     await expect(confirmButton(page)).toHaveText('Try again');
 
     await confirmButton(page).click();
@@ -275,7 +262,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     // Whatever the outcome was — confirmed, or a visible failure — none of it
     // may survive the close.
     await expect(
-      supabaseConfigured ? remindPrompt(page) : page.getByText(/nothing was saved to your tracker/),
+      supabaseConfigured ? remindPrompt(page) : page.getByText(en.coldEmail.confirmFailed, { exact: true }),
     ).toBeVisible();
 
     await page.keyboard.press('Escape');
@@ -284,8 +271,8 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     await page.getByRole('button', { name: 'Draft Email' }).click();
     await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible({ timeout: 20_000 });
     await expect(remindPrompt(page), 'the previous confirmation did not survive').toBeHidden();
-    await expect(page.getByText(/nothing was saved to your tracker/), 'nor the previous error').toBeHidden();
-    await expect(page.getByText('Did you send the email?'), 'strip starts hidden').toBeHidden();
+    await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true }), 'nor the previous error').toBeHidden();
+    await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true }), 'strip starts hidden').toBeHidden();
 
     await page.getByRole('button', { name: 'Copy' }).click();
     await expect(confirmButton(page), 'asked again, not shown as already recorded')
@@ -313,7 +300,7 @@ test.describe('Cold Email — a clipboard that refuses', () => {
 
     await expect(page.getByText(/select the text above and copy it manually/)).toBeVisible();
     await expect(page.getByText('Copied'), 'nothing was copied').toBeHidden();
-    await expect(page.getByText('Did you send the email?'), 'no draft in hand').toBeHidden();
+    await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true }), 'no draft in hand').toBeHidden();
     expect(net.confirms).toHaveLength(0);
   });
 });
@@ -359,8 +346,8 @@ test.describe('Cold Email reachable editing workspace', () => {
 
       await page.getByRole('button', { name: 'Copy', exact: true }).click();
       await expect(page.getByTestId('cold-email-footer')).toBeInViewport();
-      await page.getByText('Did you send the email?').scrollIntoViewIfNeeded();
-      await expect(page.getByText('Did you send the email?')).toBeInViewport();
+      await page.getByText(en.coldEmail.sentQuestion, { exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeInViewport();
       expect(net.confirms).toHaveLength(0);
       expect(net.otherWrites).toHaveLength(0);
       expect(await workspace.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
@@ -432,6 +419,12 @@ test.describe('Cold Email short-screen state recovery', () => {
       await page.getByRole('button', { name: copy.copy, exact: true }).click();
       expect(net.confirms).toHaveLength(0);
       expect(net.otherWrites).toHaveLength(0);
+      await confirmButton(page).click();
+      await expect(page.getByText(copy.contactInvalid, { exact: true })).toBeVisible();
+      expect(net.confirms).toHaveLength(0);
+      expect(net.otherWrites).toHaveLength(0);
+      await page.locator('#cold-email-to').fill('student-entered@example.edu');
+      await page.getByRole('button', { name: copy.copy, exact: true }).click();
       await confirmButton(page).click();
       if (supabaseConfigured) {
         await expect.poll(() => net.confirms.length).toBe(1);

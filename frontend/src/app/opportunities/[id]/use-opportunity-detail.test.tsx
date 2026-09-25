@@ -30,7 +30,7 @@ vi.mock('@/lib/analytics', () => ({ track: mocks.track }));
 // real primitives (module-singleton state, harmless to share across tests
 // here since nothing asserts on specific uid/epoch values, only on whether
 // a token was passed through and on real OwnerMismatchError instances).
-import { OwnerMismatchError } from '@/lib/identity-owner';
+import { OwnerMismatchError, advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { useOpportunityDetail, type SaveDetailsResult } from './use-opportunity-detail';
 
 type AuthCb = (state: { session: unknown; user: { id: string } | null; isAnonymous: boolean; email: string | null }) => void;
@@ -1221,6 +1221,10 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
 });
 
 describe('useOpportunityDetail — a confirmed contact reaches the page', () => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('contact-owner'); await syncLocalIdentityOwner('contact-owner');
+    mocks.getAuthState.mockResolvedValue({ session: null, user: { id: 'contact-owner' }, isAnonymous: true, email: null });
+  });
   it('adopts the row the cold-email dialog wrote', async () => {
     // The dialog writes the contact row and owns that write. This page's own
     // read runs on mount and on a real identity change only, and closing a
@@ -1228,7 +1232,7 @@ describe('useOpportunityDetail — a confirmed contact reaches the page', () => 
     // status above first" and kept the notes box disabled for a contact the
     // product had just recorded.
     const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
-    await waitFor(() => expect(result.current.interaction).toBeUndefined());
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
 
     act(() => {
       result.current.noteContactConfirmed({
@@ -1241,12 +1245,17 @@ describe('useOpportunityDetail — a confirmed contact reaches the page', () => 
     expect(result.current.interactionDetail).toMatchObject({ type: 'contacted' });
   });
 
-  it('ignores a confirmation that carried no row', async () => {
+  it('clears an authoritative missing summary and refreshes contact history', async () => {
     const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
-    await waitFor(() => expect(result.current.interaction).toBeUndefined());
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
 
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    act(() => result.current.noteContactConfirmed({ type: 'replied', notes: 'old server row' }));
+    expect(result.current.interaction).toBe('replied');
+    const revision = result.current.contactHistoryRevision;
     act(() => result.current.noteContactConfirmed(null));
-    expect(result.current.interaction).toBeUndefined();
+    expect(result.current.interactionDetail).toBeNull();
+    expect(result.current.contactHistoryRevision).toBe(revision + 1);
   });
 });
 
@@ -1268,6 +1277,10 @@ describe('detail public sharing', () => {
 
 
 describe('useOpportunityDetail — status changes are not contact confirmations', () => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('contact-owner'); await syncLocalIdentityOwner('contact-owner');
+    mocks.getAuthState.mockResolvedValue({ session: null, user: { id: 'contact-owner' }, isAnonymous: true, email: null });
+  });
   const statuses = ['contacted', 'applied', 'replied', 'interviewing', 'rejected', 'dismissed'] as const;
   const contactDate = '2026-08-21T15:30:00.000Z';
 
@@ -1315,5 +1328,67 @@ describe('useOpportunityDetail — status changes are not contact confirmations'
     act(() => result.current.noteContactConfirmed({ type: 'contacted', last_contacted_at: contactDate }));
     await act(async () => { resolveSave(); await saving; });
     expect(result.current.interactionDetail).toEqual({ type: 'replied', last_contacted_at: contactDate });
+  });
+});
+
+describe('detail contact receipt scopes and pending work', () => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('receipt-A'); await syncLocalIdentityOwner('receipt-A');
+    mocks.getAuthState.mockResolvedValue({ session: null, user: { id: 'receipt-A' }, isAnonymous: true, email: null });
+  });
+  it('refreshes history for each unchanged replay without changing timestamps', async () => {
+    const record = { type: 'replied' as const, updated_at: '2026-01-01T00:00:00Z', notes: 'saved' };
+    mocks.getInteractionDetail.mockResolvedValue(record);
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    const initial = result.current.contactHistoryRevision;
+    act(() => result.current.noteContactConfirmed(record));
+    act(() => result.current.noteContactConfirmed(record));
+    expect(result.current.contactHistoryRevision).toBe(initial + 2);
+    expect(result.current.interactionDetail).toEqual(record);
+  });
+  it.each([null, { type: 'contacted' as const }])('a late hydration cannot replace an authoritative receipt %#', async record => {
+    let finish!: (value: { type: string }) => void;
+    mocks.getInteractionDetail.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
+    await waitFor(() => expect(result.current.ownerReady).toBe(true));
+    act(() => result.current.noteContactConfirmed(record));
+    await act(async () => { finish({ type: 'replied' }); });
+    expect(result.current.interactionDetail).toEqual(record);
+    expect(result.current.interactionLoading).toBe(false);
+  });
+  it.each(['status', 'notes'] as const)('a late %s save cannot resurrect an authoritative missing summary', async kind => {
+    mocks.getInteractionDetail.mockResolvedValue({ type: 'replied', notes: 'saved note' });
+    let finish!: () => void;
+    (kind === 'status' ? mocks.trackInteraction : mocks.updateInteractionDetails).mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    let saving!: Promise<unknown>;
+    act(() => { saving = kind === 'status' ? result.current.handleTrack('interviewing') : result.current.saveDetails({ notes: 'pending note' }); });
+    act(() => result.current.noteContactConfirmed(null));
+    expect(result.current.interactionDetail).toBeNull();
+    await act(async () => { finish(); await saving; });
+    expect(result.current.interactionDetail).toBeNull();
+    expect(result.current.statusSaving).toBe(false);
+  });
+  it('rejects a retained target callback after a target change', async () => {
+    const { result, rerender } = renderHook(({ id }) => useOpportunityDetail({ id, title: id }), { initialProps: { id: 'opp-A' } });
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    const old = result.current.noteContactConfirmed;
+    rerender({ id: 'opp-B' });
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    const revision = result.current.contactHistoryRevision;
+    act(() => old({ type: 'replied' }));
+    expect(result.current.interactionDetail).toBeNull();
+    expect(result.current.contactHistoryRevision).toBe(revision);
+  });
+  it('rejects a retained owner callback even before the parent receives an auth event', async () => {
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-A', title: 'A' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    const old = result.current.noteContactConfirmed; const revision = result.current.contactHistoryRevision;
+    advanceOwnerEpoch('receipt-B'); await syncLocalIdentityOwner('receipt-B');
+    act(() => old({ type: 'replied' }));
+    expect(result.current.interactionDetail).toBeNull();
+    expect(result.current.contactHistoryRevision).toBe(revision);
   });
 });

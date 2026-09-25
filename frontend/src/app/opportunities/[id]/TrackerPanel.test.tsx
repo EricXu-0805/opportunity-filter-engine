@@ -12,6 +12,12 @@ vi.mock('@/components/AttachmentsPanel', () => ({
   ),
 }));
 
+vi.mock('@/components/ContactHistory', () => ({
+  default: ({ opportunityId, refreshKey }: { opportunityId: string; refreshKey?: string }) => (
+    <div data-testid="contact-history" data-opp={opportunityId} data-refresh={refreshKey} />
+  ),
+}));
+
 vi.mock('@/components/StatusTimeline', () => ({
   default: ({
     opportunityId,
@@ -1042,4 +1048,58 @@ it('reads status history for a newly selected status even without a row updated_
   const timeline = await screen.findByTestId('status-timeline');
   expect(timeline).toHaveAttribute('data-type', 'replied');
   expect(timeline).not.toHaveAttribute('data-updated');
+});
+
+
+describe('TrackerPanel — immutable contact history', () => {
+  it('forwards a confirmation update and keeps history readable after the current interaction is removed', async () => {
+    const props = { onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} detail={detail({ notes: 'open', updated_at: '2026-09-25T10:00:00Z' })} />);
+    const history = await screen.findByTestId('contact-history');
+    expect(history).toHaveAttribute('data-opp', OPP_ID);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T10:00:00Z', 0]));
+    rerender(<TrackerPanel {...props} detail={detail({ notes: 'open', updated_at: '2026-09-25T11:00:00Z' })} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T11:00:00Z', 0]));
+    rerender(<TrackerPanel {...props} hasInteraction={false} detail={null} />);
+    expect(screen.getByTestId('contact-history')).toBeInTheDocument();
+  });
+
+  it('reads email history even when legacy detail lacks an update timestamp', async () => {
+    render(<TrackerPanel detail={detail({ notes: 'open', updated_at: undefined })} onSave={vi.fn()}
+      opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    expect(await screen.findByTestId('contact-history')).toHaveAttribute('data-refresh', JSON.stringify([null, 0]));
+  });
+
+  it('refreshes history after an unchanged-timestamp replay without replacing a notes draft', async () => {
+    const record = detail({ notes: 'Earlier note', updated_at: '2026-09-25T10:00:00Z' });
+    const props = { detail: record, onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} contactHistoryRevision={3} />);
+    const history = await screen.findByTestId('contact-history');
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'My unsaved note' } });
+    rerender(<TrackerPanel {...props} contactHistoryRevision={4} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T10:00:00Z', 4]));
+    expect(notes).toHaveValue('My unsaved note');
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('keeps a pending note visible but disabled when an authoritative replay removes the summary', async () => {
+    const props = { onSave: vi.fn(), opportunityId: OPP_ID, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} detail={detail({ notes: 'Earlier note' })} hasInteraction writeReady reminderEligible contactHistoryRevision={1} />);
+    const history = await screen.findByTestId('contact-history');
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'My unsaved note' } });
+    rerender(<TrackerPanel {...props} detail={null} hasInteraction={false} writeReady={false} reminderEligible={false} contactHistoryRevision={2} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([null, 2]));
+    expect(notes).toHaveValue('My unsaved note');
+    expect(notes).toBeDisabled();
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch private contact history until the tracker is expanded', async () => {
+    render(<TrackerPanel detail={detail()} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    expect(screen.queryByTestId('contact-history')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(await screen.findByTestId('contact-history')).toBeInTheDocument();
+  });
 });

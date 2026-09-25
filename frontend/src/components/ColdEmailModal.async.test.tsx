@@ -22,7 +22,7 @@ vi.mock('@/lib/api', () => ({
 }));
 vi.mock('@/lib/supabase', () => ({
   onAuthChange: () => () => {},
-  confirmInteractionContact: vi.fn(),
+  confirmContactEvent: vi.fn(),
   updateInteractionDetails: vi.fn(),
 }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));

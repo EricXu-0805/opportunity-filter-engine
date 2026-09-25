@@ -9,7 +9,7 @@ vi.mock('@/i18n/client', () => { const t = (key: string) => key; return { useT: 
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), auth: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/lib/api', () => ({ getEmailVariants: api.variants, generateColdEmailStream: api.stream, generateColdEmail: api.generate,
   refineEmail: api.refine, getVapidPublicKey: vi.fn() }));
-vi.mock('@/lib/supabase', () => ({ onAuthChange: api.auth, confirmInteractionContact: api.confirm, updateInteractionDetails: vi.fn() }));
+vi.mock('@/lib/supabase', () => ({ onAuthChange: api.auth, confirmContactEvent: async (...args: unknown[]) => ({ interaction: await api.confirm(...args) }), updateInteractionDetails: vi.fn() }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
 import ColdEmailModal, { aiCacheEntryIsStale } from './ColdEmailModal';
 const ID = 'receipt-target', B = `wt1:${'b'.repeat(64)}`;
