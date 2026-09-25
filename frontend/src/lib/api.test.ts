@@ -27,6 +27,12 @@ import {
 } from './api';
 import type { ProfileData } from './types';
 
+// These tests cover HTTP contracts; SDK/auth failures have dedicated suites.
+vi.mock('./supabase', () => ({
+  getRevealAccessToken: async () => null,
+  refreshRevealAccessToken: async () => null,
+}));
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {

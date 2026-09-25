@@ -389,17 +389,24 @@ export interface AuthState {
  * render label + click target without re-implementing the same Session
  * → label pipeline in three places.
  */
-export async function getAuthState(): Promise<AuthState> {
+export async function getAuthState(options: { throwOnError?: boolean } = {}): Promise<AuthState> {
   if (typeof window === 'undefined') {
     return { session: null, user: null, isAnonymous: false, email: null };
   }
-  const { data: { session } } = await supabase.auth.getSession();
-  return {
-    session,
-    user: session?.user ?? null,
-    isAnonymous: isAnonymousUser(session),
-    email: session?.user?.email ?? null,
-  };
+  if (options.throwOnError && !SUPABASE_CONFIGURED) throw new Error('Sign-in is unavailable. Please try again later.');
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (options.throwOnError && error) throw new Error('Sign-in check failed');
+    return {
+      session,
+      user: session?.user ?? null,
+      isAnonymous: isAnonymousUser(session),
+      email: session?.user?.email ?? null,
+    };
+  } catch (error) {
+    if (options.throwOnError) throw new Error('Your sign-in could not be checked. Please try again.');
+    throw error;
+  }
 }
 
 /**
@@ -408,13 +415,19 @@ export async function getAuthState(): Promise<AuthState> {
  * can never unlock the reveal (the backend enforces the same), so sending
  * theirs would only buy a wasted GoTrue round-trip.
  */
-export async function getRevealAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+export async function getRevealAccessToken(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  if (!SUPABASE_CONFIGURED) {
+    if (options.throwOnError) throw new Error('Sign-in is unavailable. Please try again later.');
+    return null;
+  }
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (options.throwOnError && error) throw new Error('Sign-in check failed');
     if (!session?.access_token || isAnonymousUser(session)) return null;
     return session.access_token;
   } catch {
+    if (options.throwOnError) throw new Error('Your sign-in could not be checked. Please try again.');
     return null;
   }
 }
@@ -423,17 +436,26 @@ export async function getRevealAccessToken(): Promise<string | null> {
  * W10b degrade-retry: when the backend answers `sign_in_required` to a token
  * we believed valid, refresh the session once and hand back the new token —
  * or null, in which case the UI shows the sign-in affordance instead of an
- * error. Never throws.
+ * error. Strict detail reads opt in to errors so a failed check is not
+ * presented as a confirmed signed-out state. Other callers keep degrading.
  */
-export async function refreshRevealAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+export async function refreshRevealAccessToken(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  if (!SUPABASE_CONFIGURED) {
+    if (options.throwOnError) throw new Error('Sign-in is unavailable. Please try again later.');
+    return null;
+  }
   try {
     const { data, error } = await supabase.auth.refreshSession();
-    if (error) return null;
+    if (error) {
+      if (options.throwOnError) throw new Error('Sign-in refresh failed');
+      return null;
+    }
     const session = data.session;
     if (!session?.access_token || isAnonymousUser(session)) return null;
     return session.access_token;
   } catch {
+    if (options.throwOnError) throw new Error('Your sign-in could not be refreshed. Please try again.');
     return null;
   }
 }

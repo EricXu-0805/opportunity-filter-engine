@@ -291,32 +291,58 @@ async function requestWritingWithAuth<T>(url: string, init: Omit<RequestInit, 'h
   return result;
 }
 
-/**
- * W10b contact reveal: run a request with the signed-in session's token
- * attached, and — when the backend still answers "sign_in_required" for a
- * token we believed valid (stale/expired) — refresh the session ONCE and
- * retry ONCE. The backend degrades a bad token to the anonymous shape rather
- * than a 401, so this never surfaces an auth error to the page; if the retry
- * still comes back locked, the caller renders the sign-in affordance.
- */
+/** One deadline covers session lookup, HTTP bodies, and the one auth refresh. */
+export const CONTACT_REVEAL_TIMEOUT_MS = 30_000;
+
+/** GET-only auth recovery. Transport failures require an explicit user retry. */
 async function requestWithRevealRetry<T>(
   url: string,
   init: Omit<RequestInit, 'headers'>,
   isStaleReveal: (resp: T) => boolean,
 ): Promise<T> {
-  const token = await getRevealAccessToken();
+  const controller = new AbortController();
+  let interruption: ApiError | DOMException | null = null;
+  let rejectInterruption!: (error: ApiError | DOMException) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const interrupt = (error: ApiError | DOMException) => {
+    if (interruption !== null) return;
+    interruption = error;
+    rejectInterruption(error);
+    controller.abort(error);
+  };
+  const assertActive = () => { if (interruption !== null) throw interruption; };
+  const callerSignal = init.signal;
+  const abort = () => interrupt(new DOMException('The request was cancelled.', 'AbortError'));
+  if (callerSignal?.aborted) abort();
+  else callerSignal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => interrupt(new ApiError(
+    408, 'CONTACT_REVEAL_TIMEOUT', 'The contact email could not be loaded. Please try again.', true,
+  )), CONTACT_REVEAL_TIMEOUT_MS);
   const headers = (auth: string | null): Record<string, string> => ({
     'Content-Type': 'application/json',
     ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
   });
-  let resp = await request<T>(url, { ...init, headers: headers(token) });
-  if (token && isStaleReveal(resp)) {
-    const fresh = await refreshRevealAccessToken();
-    if (fresh) {
-      resp = await request<T>(url, { ...init, headers: headers(fresh) });
-    }
+  try {
+    return await Promise.race([interrupted, (async () => {
+      assertActive();
+      const token = await getRevealAccessToken({ throwOnError: true });
+      assertActive();
+      let resp = await request<T>(url, { ...init, signal: controller.signal, headers: headers(token) });
+      assertActive();
+      if (token && isStaleReveal(resp)) {
+        const fresh = await refreshRevealAccessToken({ throwOnError: true });
+        assertActive();
+        if (fresh) {
+          resp = await request<T>(url, { ...init, signal: controller.signal, headers: headers(fresh) });
+          assertActive();
+        }
+      }
+      return resp;
+    })()]);
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abort);
   }
-  return resp;
 }
 
 /**
@@ -713,13 +739,16 @@ export async function getMatchExplanation(
   );
 }
 
-export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
+export async function getOpportunityById(
+  id: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<Record<string, unknown>> {
   // Reveal-aware: a signed-in session gets contact_email back on the detail
   // payload; a stale token refreshes + retries once, then degrades to the
   // anonymous shape (contact_email_status: 'sign_in_required').
   return requestWithRevealRetry<Record<string, unknown>>(
     `/opportunities/${encodeURIComponent(id)}`,
-    {},
+    options,
     (resp) => resp.contact_email_status === 'sign_in_required',
   );
 }

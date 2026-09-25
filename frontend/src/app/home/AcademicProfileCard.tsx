@@ -21,6 +21,7 @@ export function AcademicProfileCard({
   profile,
   update,
   viewSnapshot,
+  identityGeneration = 0,
   t,
 }: {
   profile: ProfileData;
@@ -35,52 +36,11 @@ export function AcademicProfileCard({
    * a school against.
    */
   viewSnapshot: ProfileViewSnapshot | null;
+  /** Resets private picker state without interrupting controlled typing. */
+  identityGeneration?: number;
   t: TFunc;
 }) {
   const locale = useLocale();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [switching, setSwitching] = useState(false);
-  const [switchError, setSwitchError] = useState(false);
-  // Synchronous double-click gate. `switching` is state: two clicks in the
-  // same tick both read the old value and both start a confirm.
-  const switchInFlightRef = useRef(false);
-
-  const openSwitcher = useCallback(() => {
-    setSwitchError(false);
-    setSwitcherOpen(true);
-  }, []);
-
-  // The SAME ordered helper the tour and the confirm gate use: persist the
-  // campus through the profile coordinator (one-key CAS patch), then the
-  // receipt, then the broadcast — and only then close. Writing the receipt
-  // first and leaving the field to the home form's own autosave, as this did
-  // before, means a save that conflicts or fails leaves a "confirmed" receipt
-  // for a campus that never reached the row. The broadcast is what updates
-  // the form on screen, so nothing is set locally here either.
-  const confirmSwitch = useCallback(async (slug: string) => {
-    if (switchInFlightRef.current) return;
-    // The snapshot's own token, not a fresh capture: the card is keyed by
-    // identity like DocumentsCard, but between the switch and the commit that
-    // remounts it this instance is still on screen. Capturing at click time would give a view
-    // that belongs to U1 a currently-valid U2 token, and every preflight below
-    // would wave the resulting patch into U2's row. Acting as the identity the
-    // displayed row was hydrated for means a superseded owner simply fails.
-    //
-    // No accepted view at all means no base to change a school against — say
-    // so instead of inventing one.
-    if (!viewSnapshot) { setSwitchError(true); return; }
-    switchInFlightRef.current = true;
-    setSwitching(true);
-    try {
-      const result = await persistHomeSchool(slug, viewSnapshot, { confirm: true });
-      if (!result.ok) { setSwitchError(true); return; }
-      setSwitchError(false);
-      setSwitcherOpen(false);
-    } finally {
-      switchInFlightRef.current = false;
-      setSwitching(false);
-    }
-  }, [viewSnapshot]);
   const homeSchool = profile.home_school ?? 'uiuc';
   const school = bySlug(homeSchool);
   const schoolName = school ? (locale === 'zh' ? school.nameZh : school.name) : homeSchool;
@@ -186,24 +146,8 @@ export function AcademicProfileCard({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('home.form.institutionLabel')}
-          </label>
-          <div className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-            <span className="text-sm font-medium text-gray-700 truncate">
-              {schoolName}
-            </span>
-            <button
-              type="button"
-              onClick={openSwitcher}
-              className="ml-auto shrink-0 text-[13px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
-            >
-              {t('home.form.changeSchool')}
-            </button>
-          </div>
-        </div>
+        <AcademicSchoolPicker key={identityGeneration} homeSchool={homeSchool}
+          schoolName={schoolName} viewSnapshot={viewSnapshot} t={t} />
 
         <div>
           <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-2">
@@ -294,6 +238,7 @@ export function AcademicProfileCard({
               {t('home.form.additionalMajorsLabel')}
             </label>
             <MajorTags
+              key={identityGeneration}
               selected={profile.additional_majors ?? []}
               options={majors.filter((m) => m !== profile.major)}
               onChange={(v) => update('additional_majors', v)}
@@ -420,12 +365,80 @@ export function AcademicProfileCard({
             {t('home.form.skillsLabel')}
           </label>
           <SkillTags
+            key={identityGeneration}
             selected={profile.skills}
             onChange={(skills) => update('skills', skills)}
           />
         </div>
       </div>
+    </Card>
+  );
+}
 
+function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t }: {
+  homeSchool: string; schoolName: string; viewSnapshot: ProfileViewSnapshot | null; t: TFunc;
+}) {
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState(false);
+  // Synchronous double-click gate. `switching` is state: two clicks in the
+  // same tick both read the old value and both start a confirm.
+  const switchInFlightRef = useRef(false);
+
+  const openSwitcher = useCallback(() => {
+    setSwitchError(false);
+    setSwitcherOpen(true);
+  }, []);
+
+  // The SAME ordered helper the tour and the confirm gate use: persist the
+  // campus through the profile coordinator (one-key CAS patch), then the
+  // receipt, then the broadcast — and only then close. Writing the receipt
+  // first and leaving the field to the home form's own autosave, as this did
+  // before, means a save that conflicts or fails leaves a "confirmed" receipt
+  // for a campus that never reached the row. The broadcast is what updates
+  // the form on screen, so nothing is set locally here either.
+  const confirmSwitch = useCallback(async (slug: string) => {
+    if (switchInFlightRef.current) return;
+    // The snapshot's own token, not a fresh capture: the picker is keyed by
+    // identity, but until the switch commits its old instance is on screen.
+    // Capturing at click time would give a view
+    // that belongs to U1 a currently-valid U2 token, and every preflight below
+    // would wave the resulting patch into U2's row. Acting as the identity the
+    // displayed row was hydrated for means a superseded owner simply fails.
+    //
+    // No accepted view at all means no base to change a school against — say
+    // so instead of inventing one.
+    if (!viewSnapshot) { setSwitchError(true); return; }
+    switchInFlightRef.current = true;
+    setSwitching(true);
+    try {
+      const result = await persistHomeSchool(slug, viewSnapshot, { confirm: true });
+      if (!result.ok) { setSwitchError(true); return; }
+      setSwitchError(false);
+      setSwitcherOpen(false);
+    } finally {
+      switchInFlightRef.current = false;
+      setSwitching(false);
+    }
+  }, [viewSnapshot]);
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {t('home.form.institutionLabel')}
+      </label>
+      <div className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+        <span className="text-sm font-medium text-gray-700 truncate">
+          {schoolName}
+        </span>
+        <button
+          type="button"
+          onClick={openSwitcher}
+          className="ml-auto shrink-0 text-[13px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+        >
+          {t('home.form.changeSchool')}
+        </button>
+      </div>
       {switcherOpen && (
         <UniversitySwitcherModal
           initialSelectedSlug={homeSchool}
@@ -435,6 +448,6 @@ export function AcademicProfileCard({
           onConfirm={(slug) => { void confirmSwitch(slug); }}
         />
       )}
-    </Card>
+    </div>
   );
 }

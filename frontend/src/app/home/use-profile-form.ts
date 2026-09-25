@@ -153,6 +153,9 @@ export interface UseProfileFormResult {
    *  own (the resume uploader's filename + "on file" badge) so the previous
    *  account's state is discarded rather than re-labelled. */
   identityGeneration: number;
+  /** Controlled academic input DOM scope. Initial same-owner observation
+   *  and already-authorized virgin drafts keep focus; account switches reset. */
+  academicIdentityGeneration: number;
   /**
    * The hydration this form is DISPLAYING, as one immutable value: the row,
    * the revision it is, and the identity it was accepted for. Replaced only
@@ -459,6 +462,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // makes a child's in-flight work call the generation it started under.
   const identityGenerationRef = useRef(0);
   const [identityGeneration, setIdentityGeneration] = useState(0);
+  const [academicIdentityGeneration, setAcademicIdentityGeneration] = useState(0);
+  // DOM continuity only; never authorizes a profile read or write.
+  const academicMountOwnerRef = useRef(captureOwnerToken());
 
   // Together these answer one question — could anything on this screen belong
   // to somebody other than the person at the keyboard? It can only be someone
@@ -1839,6 +1845,26 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // leak W-identity-owed pins. A genuine first-visit edit's frozen token
       // names nobody; that is what makes it the visitor's own.
       const virginScreen = !everHadRealUidRef.current && !rowEverAcceptedRef.current;
+      const heldInputOrigin = screenOrigin();
+      const inputOwner = heldInputOrigin?.token ?? academicMountOwnerRef.current;
+      // The first observation still invalidates async work below. Confirming
+      // the same owner need not replace a virgin screen's focused input. This
+      // DOM-only exception crosses neither an epoch/namespace boundary nor an
+      // accepted stored row, and grants no capability to read or write data.
+      const keepInitialInputs = firstObservation && observedOwner.uid === uid
+        && virginScreen && inputOwner.uid === uid && isTokenOwnerStillCurrent(inputOwner)
+        && (!heldInputOrigin || heldInputOrigin.generation === identityGenerationRef.current)
+        && (inputOwner.generation === observedOwner.generation || inputOwner.generation === -1);
+      // A field may gain focus before its first input event. With no edit to
+      // carry, preserve only DOM through this browser's first UID resolution.
+      // Exactly one owner-epoch advance from the mount's null owner proves
+      // there was no intervening account. The ordinary reset/load path still
+      // runs below; this condition neither carries a value nor authorizes it.
+      const mountOwner = academicMountOwnerRef.current;
+      const keepUntouchedInitialInputs = virginScreen && uid !== null && observedOwner.uid === uid
+        && mountOwner.uid === null && observedOwner.epoch === mountOwner.epoch + 1
+        && dirtyKeysRef.current.size === 0 && !weightDirtyRef.current
+        && editOriginRef.current === null && !gapCarriedRef.current;
       // Gap-buffered keystrokes (see gapCarriedRef) carry no origin at all —
       // they were made under nobody by construction, which is exactly the
       // same claim.
@@ -1859,6 +1885,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         && firstEdit.generation === identityGenerationRef.current
         && isOwnerTokenValid(observedOwner, uid)
         && (firstEdit.token.generation === observedOwner.generation || firstEdit.token.generation === -1);
+      // Reuse the existing carry decision; it alone decides which virgin
+      // edits may cross initial identity establishment. Only the controlled
+      // academic inputs retain DOM here; private card UI has its own key.
+      const carryVirginEdits = virginScreen && (editsBelongToNobody || firstOwnerEdits);
       gapCarriedRef.current = false;
       if (uid) everHadRealUidRef.current = true;
       liveIdentityObservedRef.current = true;
@@ -1873,6 +1903,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       ghRequestRef.current += 1;
       const generation = identityGenerationRef.current;
       setIdentityGeneration(generation);
+      if (!keepInitialInputs && !keepUntouchedInitialInputs && !carryVirginEdits) setAcademicIdentityGeneration(generation);
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
@@ -1930,7 +1961,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         loadingOriginRef.current = { token: captureOwnerToken(), generation };
         return;
       }
-      if (virginScreen && (editsBelongToNobody || firstOwnerEdits)) {
+      if (carryVirginEdits) {
         // The browser's FIRST identity landing on a screen that has never
         // shown anyone's row, carrying edits that were made while the browser
         // belonged to nobody. Anonymous sign-in arrives as two observations
@@ -1983,7 +2014,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       if (identityObservationRef.current === observeIdentity) identityObservationRef.current = null;
       unsub();
     };
-  }, [startLoad, resetForPendingLoad, armRetryable, setSaveStatus]);
+  }, [startLoad, resetForPendingLoad, armRetryable, setSaveStatus, screenOrigin]);
 
   useEffect(() => {
     const shareParam = searchParams.get('share');
@@ -3541,6 +3572,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     isValid,
     missingSeekingTypes,
     identityGeneration,
+    academicIdentityGeneration,
     viewSnapshot,
     update,
     handleSubmit,

@@ -60,6 +60,7 @@ function HomePageInner() {
     isValid,
     missingSeekingTypes,
     identityGeneration,
+    academicIdentityGeneration,
     viewSnapshot,
     update,
     handleSubmit,
@@ -83,11 +84,13 @@ function HomePageInner() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7">
-          {/* Keyed by identity like DocumentsCard: the school-switcher modal and
-              its error are this card's own state, and a modal opened under one
-              account must not stay open, pre-selected, for the next. */}
+          {/* Initial identity establishment preserves controlled input focus
+              where the hook already carries the virgin draft. Private card
+              controls reset on every core generation; account switches also
+              remount the entire card. */}
           <AcademicProfileCard
-            key={identityGeneration}
+            key={academicIdentityGeneration}
+            identityGeneration={identityGeneration}
             profile={profile}
             update={update}
             viewSnapshot={profileRefreshStatus === 'ready' ? viewSnapshot : null}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/lib/school-confirmation', () => ({
   persistHomeSchool: vi.fn(async () => ({ ok: true, synced: true, cacheCleared: true })),
@@ -332,5 +332,43 @@ describe('AcademicProfileCard — opportunity-type multi-select', () => {
     fireEvent.click(screen.getByRole('button', { name: labels.internship }));
     expect(screen.getByRole('button', { name: labels.internship })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByText('home.validation.seekingRequired')).not.toBeInTheDocument();
+  });
+});
+
+
+describe('AcademicProfileCard — private controls reset independently of text inputs', () => {
+  it('keeps controlled input DOM but clears pending skill and major searches on generation change', () => {
+    const profile = { ...DEFAULT_PROFILE, home_school: 'unc', major: 'Biology', research_interests: 'Retained draft' };
+    const update = vi.fn();
+    const view = render(<AcademicProfileCard profile={profile} update={update} viewSnapshot={null} identityGeneration={0} t={t} />);
+    const text = view.container.querySelector('#research_interests');
+    fireEvent.change(screen.getByPlaceholderText('skills.searchPlaceholder'), { target: { value: 'Private skill search' } });
+    fireEvent.change(screen.getByPlaceholderText('home.form.additionalMajorsPlaceholder'), { target: { value: 'Private major search' } });
+    view.rerender(<AcademicProfileCard profile={profile} update={update} viewSnapshot={null} identityGeneration={1} t={t} />);
+    expect(view.container.querySelector('#research_interests')).toBe(text);
+    expect(text).toHaveValue('Retained draft');
+    expect(screen.getByPlaceholderText('skills.searchPlaceholder')).toHaveValue('');
+    expect(screen.getByPlaceholderText('home.form.additionalMajorsPlaceholder')).toHaveValue('');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'failure'] as const)('an old school selection %s cannot close or label the new picker', async outcome => {
+    let finish!: (value: Awaited<ReturnType<typeof persistHomeSchool>>) => void;
+    vi.mocked(persistHomeSchool).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const profile = { ...DEFAULT_PROFILE }; const accepted = viewFor(); const update = vi.fn();
+    const view = render(<AcademicProfileCard profile={profile} update={update} viewSnapshot={accepted} identityGeneration={0} t={t} />);
+    const text = view.container.querySelector('#research_interests');
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    fireEvent.click(screen.getByTestId('university-card-ucb'));
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    expect(persistHomeSchool).toHaveBeenCalledTimes(1);
+    view.rerender(<AcademicProfileCard profile={profile} update={update} viewSnapshot={accepted} identityGeneration={1} t={t} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(view.container.querySelector('#research_interests')).toBe(text);
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    await act(async () => finish(outcome === 'success' ? { ok: true, synced: true, cacheCleared: true } : { ok: false, reason: 'conflict' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('switcher-error')).toBeNull();
+    expect(screen.getByText('universitySwitcher.confirm')).not.toBeDisabled();
   });
 });

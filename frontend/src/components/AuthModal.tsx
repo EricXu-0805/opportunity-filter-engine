@@ -136,20 +136,36 @@ const PROVIDER_BTN_CLASS =
   'w-full flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border border-gray-200 bg-white text-[14px] font-medium text-gray-700 leading-snug hover:bg-gray-50 disabled:opacity-60 transition-colors';
 
 export default function AuthModal() {
-  const { open, phase, closeModal, setPhase } = useAuthModal();
+  const { open, phase, reason, closeModal, setPhase } = useAuthModal();
   const { t, locale } = useT();
 
   // Live auth state. We refresh on open and subscribe to onAuthChange
   // while open so that if the user clicks the email link in another
   // tab, the modal pops over to the 'account' phase automatically.
   const [authState, setAuthState] = useState<AuthState | null>(null);
+  const [authReadError, setAuthReadError] = useState(false);
+  const [authReadAttempt, setAuthReadAttempt] = useState(0);
   useEffect(() => {
+    // Closing also clears the snapshot before the next open can render it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset auth when this modal opens/closes or explicitly retries
+    setAuthState(null);
+    setAuthReadError(false);
     if (!open) return;
-    let cancelled = false;
-    getAuthState().then(s => { if (!cancelled) setAuthState(s); });
-    const unsub = onAuthChange(s => { if (!cancelled) setAuthState(s); });
-    return () => { cancelled = true; unsub(); };
-  }, [open]);
+    let active = true;
+    let revision = 0;
+    const initial = revision;
+    const unsub = onAuthChange(state => {
+      revision += 1;
+      if (!active) return;
+      setAuthState(state);
+      setAuthReadError(false);
+    });
+    void getAuthState({ throwOnError: true }).then(
+      state => { if (active && revision === initial) setAuthState(state); },
+      () => { if (active && revision === initial) setAuthReadError(true); },
+    );
+    return () => { active = false; unsub(); };
+  }, [open, authReadAttempt]);
 
   // Resolve `auto` to the right phase based on auth state.
   const resolved: AuthModalPhase = (() => {
@@ -211,11 +227,24 @@ export default function AuthModal() {
     setSubmitting(true);
     setOutcome(null);
     const redirectTo = `${window.location.origin}/auth/callback`;
-    const result = await signInOrLinkEmail(email, redirectTo);
-    setOutcome(result);
-    setSubmitting(false);
-    if (result.ok) setPhase('sent');
-  }, [email, submitting, setPhase]);
+    try {
+      // A forced contact sign-in requests an existing account even before
+      // the modal's auth snapshot settles. For other forced sign-ins, read
+      // the current session so a stale rendered account cannot pick the path.
+      const contactReauth = phase === 'signin' && reason === 'contact-reveal';
+      const current = phase === 'signin' && !contactReauth ? await getAuthState({ throwOnError: true }) : null;
+      const reauthenticate = contactReauth || (!!current?.session && !current.isAnonymous);
+      // The account-link helper no-ops for an already signed-in account.
+      // Only an actual successful link request may show "check your inbox".
+      const result = await (reauthenticate ? signInExistingEmail : signInOrLinkEmail)(email, redirectTo);
+      setOutcome(result);
+      if (result.ok) setPhase('sent');
+    } catch {
+      setOutcome({ ok: false, reason: 'unknown', message: t('auth.modal.signin.sendUnconfirmed') });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [email, submitting, setPhase, phase, reason, t]);
 
   // R67 problem #2: when signInOrLinkEmail returns `email-taken` (because
   // the user typed an email that's already a permanent account), we surface
@@ -307,6 +336,11 @@ export default function AuthModal() {
         >
           <X className="w-4 h-4 text-gray-400" />
         </button>
+
+        {authReadError && <div className="mb-4 pr-6 text-[13px] text-gray-700">
+          <p role="alert" data-testid="auth-state-error">{t('auth.modal.signin.stateReadError')}</p>
+          <button type="button" className="mt-2 min-h-10 rounded-lg border border-gray-300 px-3 py-2 text-[13px] font-medium hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-indigo-500" onClick={() => setAuthReadAttempt(value => value + 1)} data-testid="auth-state-retry">{t('common.tryAgain')}</button>
+        </div>}
 
         {/* ============ signin phase ============ */}
         {resolved === 'signin' && (

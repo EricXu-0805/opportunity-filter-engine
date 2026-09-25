@@ -182,8 +182,9 @@ export default function Header() {
         <div
           id="mobile-nav-panel"
           aria-hidden={!open}
-          className={`lg:hidden overflow-x-hidden transition-[max-height,opacity] duration-300 ease-out ${
-            open ? 'max-h-[min(24rem,calc(100dvh-3rem))] overflow-y-auto opacity-100' : 'max-h-0 overflow-y-hidden opacity-0'
+          hidden={!open}
+          className={`lg:hidden overflow-x-hidden ${
+            open ? 'max-h-[min(24rem,calc(100dvh-3rem))] overflow-y-auto' : 'hidden'
           }`}
         >
           <nav className="flex flex-col pb-3 pt-1 gap-0.5" aria-label={t('nav.mobile')}>
