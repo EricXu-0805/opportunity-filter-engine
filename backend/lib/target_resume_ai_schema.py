@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-PIPELINE_VERSION = "full-target-v1"
+PIPELINE_VERSION = "full-target-v2"
 MAX_DOCUMENT_BYTES = 2 * 1024 * 1024
 MAX_BODY_BYTES = MAX_DOCUMENT_BYTES + 64 * 1024
 MAX_UNITS = 24

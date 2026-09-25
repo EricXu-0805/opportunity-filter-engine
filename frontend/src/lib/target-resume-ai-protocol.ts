@@ -1,7 +1,7 @@
 import type { TargetResumeLine, TargetResumeV1 } from './target-resume';
 
 /** Capacity limits apply to a single call, never to the complete résumé. */
-export const FULL_TARGET_AI_VERSION = 'full-target-v1' as const;
+export const FULL_TARGET_AI_VERSION = 'full-target-v2' as const;
 export const FULL_TARGET_AI_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const FULL_TARGET_AI_MAX_UNITS = 24;
 export const FULL_TARGET_AI_MAX_UNIT_CHARACTERS = 16_000;

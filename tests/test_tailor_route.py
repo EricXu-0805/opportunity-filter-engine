@@ -382,7 +382,7 @@ class TestAntiFabrication:
     def test_valid_tailored_passes_through(
         self, python_profile, real_opp_id, monkeypatch,
     ):
-        """Profile has Python + ML coursework — re-using those terms is OK."""
+        """The current original establishes the work and its quoted evidence."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
             "bullets": [
@@ -391,7 +391,7 @@ class TestAntiFabrication:
                         "Implemented machine learning experiments in Python "
                         "during CS 225 coursework."
                     ),
-                    "source_evidence": "Python (experienced); CS 225",
+                    "source_evidence": "machine learning projects in Python for CS 225",
                 },
             ],
         })
@@ -402,7 +402,7 @@ class TestAntiFabrication:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Worked on Python projects in CS 225"],
+                "original_bullets": ["Implemented machine learning projects in Python for CS 225"],
             },
         )
         assert resp.status_code == 200
@@ -569,7 +569,7 @@ class TestLlmFailureModes:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Did Python projects in CS 225"],
+                "original_bullets": ["Implemented Python machine learning projects for CS 225"],
             },
         )
         assert resp.status_code == 200
@@ -683,8 +683,8 @@ class TestSourceIndex:
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
                 "original_bullets": [
-                    "Did Python coursework in CS 225",
-                    "Worked on Python ML projects",
+                    "Implemented Python ML exercises in CS 225",
+                    "Built Python ML models during coursework",
                 ],
             },
         )
@@ -778,7 +778,7 @@ class TestLocale:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Did Python work in CS 225"],
+                "original_bullets": ["Implemented machine learning projects in Python for CS 225"],
                 "locale": "zh",
             },
         )

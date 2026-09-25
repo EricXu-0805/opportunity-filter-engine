@@ -1,0 +1,31 @@
+# Résumé writing quality: local evidence contract (w13.5)
+
+Scope: `/api/tailor`, `/api/tailor/renovate`, and `/api/tailor/bullet`. This supplements the historical `tailor_boundary_report.md`; that report describes an earlier implementation, not the current storage/export system.
+
+## What changed
+
+The old vocabulary check pooled a student's profile and all submitted bullets. It could accept project A's technology or number in project B, and accept “I led” when the original said “I did not lead.” Controlled provider-free HTTP tests reproduced both errors in the real routes.
+
+Each rewrite now uses the corresponding original bullet as its evidence:
+
+- `/tailor`: the source selected by the existing `source_index` association.
+- `/tailor/renovate`: that foregrounded bullet's `base_text`; another bullet or a profile skill is not evidence of work on this project.
+- `/tailor/bullet`: `base_text` when provided. The editable `current_text` is sent separately to guide phrasing, not to establish additional facts. Older callers that omit the base provide their current bullet as the only source; this is caller-supplied evidence, not independent verification.
+
+`source_evidence` is checked against the same local original. An unrelated or fabricated quote is removed instead of displayed as proof. The known concrete-term/number validator and the same conservative EN/ZH claim locks used by full-target AI apply to these three routes. Missing detail is not filled from the student's skill list, another project or the opportunity's vocabulary.
+
+On rejection, `/tailor` keeps its existing original fallback/partial-suggestion behavior; Renovate leaves the original bullet and its rollback floor intact; single-bullet optimization returns the user's `current_text` unchanged with `changed=false` and a warning. A rejected suggestion does not replace manual edits with the base text. Saving and confirmation flows are unchanged.
+
+## Target relevance and missing information
+
+Single-bullet optimization now receives the detached public target's professor name, organization and description excerpt. The description uses the existing 1,200-character budget and whitespace sanitization; When the clean field is absent, the already-public `description_raw` is allowed as a fallback; no unprojected collector record or contact-reveal payload is read here. The prompt separates target relevance from student evidence and treats these fields as data, not instructions. Existing output/token/time/provider-call budgets are unchanged.
+
+The model should emphasize a supported action, method or result relevant to the public research description. A general skill does not establish its use on this project. When a source lacks personal role, method or a supported outcome, preserve the stated contribution; students can supply and confirm facts through the existing full-résumé supplement flow. This change does not add an automatic question generator or a professor-paper retrieval system.
+
+## Evidence and limits
+
+`tests/test_resume_writing_quality.py` supplies controlled model outputs through the real HTTP handlers. It checks cross-project technology/number leakage; profile-only skill transfer; English and Chinese negation/team/publication upgrades; truthful reordering; local quotations; retained manual wording; and bounded public research context. Existing parser/index/localization positive fixtures now contain the actual actions their generated examples claim. Their positive assertions remain; the old vague source-to-stronger-action pairs are retained as negative cases.
+
+These are bounded regression checks, not semantic entailment. Exact sensitive-clause preservation can reject a valid paraphrase or translation; unlisted action synonyms, generic claims and a mismatched relationship between already-present numbers can still escape token checks. Keeping the original available is safer than silently asserting a stronger contribution. The full-target pipeline already has independent confirmed-entry evidence and uses the same claim locks. The shared helper now separates explicit English/Chinese contrast clauses, so a negative first clause cannot exempt a new affirmative responsibility/publication claim after “but” or “但”. This fix also applies to full-target suggestions and is covered by their existing regressions plus the new paired receipt cases.
+
+No real model output or human résumé review was evaluated here. Naturalness, useful professor/lab alignment, bilingual rewrite quality and follow-up question quality still require fixed real samples with human judgments. Passing these tests does not complete M36/M38–M40 or prove that generated résumés are ready to send.

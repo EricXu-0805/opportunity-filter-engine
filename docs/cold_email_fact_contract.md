@@ -1,6 +1,6 @@
 # Cold Email fact and draft contract
 
-Updated 2026-09-24. Pipeline version: `w12.5`. See also `docs/matching_logic.md`;
+Introduced 2026-09-24; updated 2026-09-25. Pipeline version: `w12.7`. See also `docs/matching_logic.md`;
 Cold Email retains its existing AI pipeline and deterministic fallback, while
 Match remains deterministic by default.
 
@@ -27,6 +27,31 @@ entailment. Reusing an already-supported number for a different metric or
 project is not fully detected. Full per-claim source identity, versioned
 dependencies, and human review of authorized sample emails remain necessary.
 The checks do not prove reply rates or the quality of every provider output.
+
+## Skill claims and research connections (M35/M36 partial)
+
+The `w12.7` rule update removes the deterministic skill-to-task expansion.
+A confirmed PyTorch skill can support its supplied level of familiarity; it
+cannot by itself support "building and training deep learning models". The
+same applies to Python, Linux and other tools. Concrete actions come from the
+student's admitted experience, not a canned list of typical tool applications.
+Templates retain useful skill names/levels and a selected complete experience
+quote; they do not require a metric to make that experience worth mentioning.
+
+Drafting, candidate judging, critique, revision and interactive refinement all
+receive the same connection rule: identify a shared question or method only
+when both briefs support it. Shared words alone are not proof of fit. Where a
+connection is not demonstrated, describe a specific learning interest or ask
+whether the student's preparation could be useful. The placeholder examples
+separate those two cases and make outcomes/numbers optional.
+
+Controlled route tests capture the actual dispatched prompts at all five
+stages, exercise a skill-only PyTorch counterexample, and preserve the stated
+Python/Linux project actions without invented outcomes. This verifies wiring
+and deterministic template behavior, not a model's obedience, semantic
+entailment, naturalness, or reply likelihood. Authorized sample outputs still
+need human review for factual accuracy, specific research connection, natural
+voice and a clear request; M35/M36 are not fully accepted by these tests.
 
 ## Confirmed experience selection (M12/M17 partial)
 
@@ -59,7 +84,7 @@ collection never falls back to those strings or to automatic raw extraction.
 - Selection is English stem/word overlap, not semantic relevance or proof of
   a project/research connection. Full Match/Tailor/Renovate library consumers
   and arbitrary per-claim source binding remain separate work.
-- Generation, variants and refinement report pipeline version `w12.5`.
+- Generation, variants and refinement report pipeline version `w12.7`.
   The modal's existing current-session variants/version/TTL/corpus guards
   prevent old cached drafts from establishing their own current version.
   These controlled tests do not validate real provider quality or reply rates.

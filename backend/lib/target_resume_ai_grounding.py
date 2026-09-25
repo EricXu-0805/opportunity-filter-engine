@@ -31,7 +31,18 @@ def normalized(text):
 
 
 def clauses(text):
-    return [part.strip() for part in re.split(r"(?<!\d)\.(?!\d)|[!?;。！？；\n]+", text) if part.strip()]
+    # A negated first clause must not exempt an affirmative claim after an
+    # explicit contrast: "not accepted, but later accepted" is two claims.
+    # Keep this a bounded EN/ZH rule, not a general semantic parser. Splitting
+    # also permits truthful "did not lead, but reviewed" clauses to reorder.
+    boundaries = (
+        r"(?<!\d)\.(?!\d)|[!?;。！？；\n]+"
+        r"|[，,]?\s*\b(?:but|however|nevertheless)\b\s*[,，]?\s*"
+        # A bare 'yet' can be temporal ('not yet accepted'), not a contrast.
+        r"|[，,]\s*\byet\b\s*[,，]?\s*"
+        r"|[，,]?\s*(?:但是|但|然而|不过|卻|却)\s*[,，]?\s*"
+    )
+    return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
 
 def personal_actions(text):

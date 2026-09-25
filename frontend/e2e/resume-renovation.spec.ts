@@ -530,7 +530,7 @@ test.describe('Complete target résumé', () => {
     const units = aiUnits(request.draft);
     const selected = new Set(request.selected_unit_ids);
     return {
-      version: 1, pipeline_version: 'full-target-v1', request_id: request.request_id,
+      version: 1, pipeline_version: 'full-target-v2', request_id: request.request_id,
       document_id: request.draft.id, opportunity_id: request.draft.opportunity_id,
       document_signature: request.document_signature, base: structuredClone(request.draft.base),
       manifest: { unit_ids: units.map(unit => unit.line.id),

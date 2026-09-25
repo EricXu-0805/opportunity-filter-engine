@@ -37,7 +37,7 @@ function receipt(p: PreparedTargetResumeAi, id: string, status: TargetResumeAiRe
       proposed_text: status === 'suggested' && u.evidence.kind === 'experience' ? 'Built the Python parser with the team.' : null } };
 }
 function response(p: PreparedTargetResumeAi, ids = p.batches[0], request_id = 'request'): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v1', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
+  return { version: 1, pipeline_version: 'full-target-v2', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
     document_signature: p.document_signature, base: clone(p.draft.base), manifest: { unit_ids: p.units.map(u => u.unit_id), protected_unit_count: p.protected_unit_count },
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2, receipts: ids.map(id => receipt(p, id)) };
 }
@@ -148,6 +148,13 @@ describe('strict receipts and target quotation', () => {
   ] as const)('rejects %s atomically', async (_name, mutate) => {
     const p = await prep(); const r = response(p); const request = expected(r); mutate(r);
     expect(validateTargetResumeAIResponse(p, request, r)).toEqual({ ok: false, code: 'invalid_response' });
+  });
+  it('rejects results from the previous writing rules without changing the draft', async () => {
+    const p = await prep(); const before = clone(p.draft); const current = response(p);
+    const old = { ...current, pipeline_version: 'full-target-v1' };
+    expect(validateTargetResumeAIResponse(p, expected(current), old)).toEqual({ ok: false, code: 'invalid_response' });
+    expect(p.draft).toEqual(before);
+    expect(validateTargetResumeAIResponse(p, expected(current), current).ok).toBe(true);
   });
   it('rejects unknown keys, undefined keys, sparse arrays and incorrect expected selection', async () => {
     const p = await prep(); const r = response(p);

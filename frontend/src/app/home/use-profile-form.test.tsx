@@ -3297,65 +3297,115 @@ describe('useProfileForm — the share receipt outlives the draft', () => {
 });
 
 describe('useProfileForm — a save that half-landed is never a dead end', () => {
-  it('local write blocked + cloud rejected: reported as an error, and Retry still finishes the job', async ({ onTestFailed }) => {
+  it('local staging sends no RPC; explicit retries preserve the complete removal bundle through a held cloud failure and success', async ({ onTestFailed }) => {
     let phase = 'setup';
     let statusNode: Element | null = null;
     onTestFailed(() => {
-      // Keep the node reference: onTestFailed can run after cleanup removed
-      // it from document. Report state/counts only, never the résumé body.
-      console.error('[Home half-landed save failure]', JSON.stringify({
+      // State/counts only, never the résumé, experience, or profile body.
+      // Retain the node because this callback can run after cleanup.
+      console.error('[Home removal retry failure]', JSON.stringify({
         phase,
         stageCalls: syncOverrides.stageCalls,
         flushCalls: syncOverrides.flushCalls,
         rpcCalls: commitProfilePatch.mock.calls.length,
         owner: captureOwnerToken(),
         saveStatus: statusNode?.textContent ?? null,
+        serverRevision,
+        requests: commitProfilePatch.mock.calls.map(([intent]) => ({
+          expectedRevision: intent.expectedRevision,
+          keys: Object.keys(intent.patch).sort(),
+          ownerCurrent: isOwnerTokenValid(intent.token, intent.token.uid),
+        })),
       }));
     });
-    let rejectCloud = true;
+    const manual = { id: 'independent-experience', revision: 2, status: 'confirmed',
+      text: 'I assisted with measurements; I did not lead the team.', source: { kind: 'manual' } } as const;
+    const sourced = { id: 'resume-experience', revision: 1, status: 'confirmed', text: 'old text',
+      source: { kind: 'resume', signature: 'a'.repeat(64), quote: 'old text', start: 0, end: 8 } } as const;
+    const master = { ...createEmptyResumeMaster(), id: 'independent-master' };
+    const loaded = { ...DEFAULT_PROFILE, major: 'Computer Engineering', research_interests: 'Keep this independent interest',
+      skills: [{ name: 'Python', level: 'beginner', confirmed: true }],
+      resume_text: 'old text', coursework: ['ECE 220'], experience_entries: [sourced, manual], resume_master: master };
+    const removalPatch = { resume_text: '', coursework: [], experience_entries: [manual], resume_master: master };
+    let releaseFirst!: (outcome: ProfilePatchOutcome) => void;
+    const firstOutcome = new Promise<ProfilePatchOutcome>(resolve => { releaseFirst = resolve; });
+    let releaseRetry!: () => void;
+    const retryAllowed = new Promise<void>(resolve => { releaseRetry = resolve; });
     commitProfilePatch.mockReset();
-    // A cloud write that does not land REPORTS that; commitProfilePatch
-    // turns transport failures into a typed outcome rather than rejecting,
-    // so a mock that rejects would be testing a shape production never
-    // produces.
-    commitProfilePatch.mockImplementation((intent) => (
-      rejectCloud
-        ? Promise.resolve<ProfilePatchOutcome>({ status: 'transport-error', message: 'boom' })
-        : defaultCommit(intent)
-    ));
-    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'old text', coursework: ['ECE 220'] }));
+    commitProfilePatch.mockImplementationOnce(() => firstOutcome)
+      .mockImplementationOnce(async intent => { await retryAllowed; return defaultCommit(intent); });
+    mockLoadProfile = () => Promise.resolve(cloudRow(loaded));
     render(<Suspense fallback={null}><ResumeRemovalHarness /></Suspense>);
     statusNode = document.querySelector('[data-testid="save-status"]');
     phase = 'initial-profile-wait';
     await waitFor(() => expect(screen.getByTestId('resume').textContent).toBe('old text'));
+    const owner = captureOwnerToken();
+    const before = readUserScopedRaw(STORAGE_KEYS.PROFILE);
 
-    // Storage is refusing writes (quota / private mode) — the identity is
-    // unchanged, only the write fails.
-    const setItemSpy = await registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
+    // The local journal cannot stage the removal, so cloud code must not run.
+    const setItemSpy = registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
       throw new Error('QuotaExceededError');
     });
     phase = 'remove-action';
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
-    phase = 'error-status-wait';
+    phase = 'local-error-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('error'));
-    // Still the row as loaded: the removal reached neither the journal nor
-    // the mirror, which is exactly why it is reported as a failure.
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).resume_text).toBe('old text');
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    expect(syncOverrides.stageCalls).toBe(1);
+    expect(serverRevision).toBe(1);
+    expect(serverRow).toEqual(loaded);
+    expect(readUserScopedRaw(STORAGE_KEYS.PROFILE)).toBe(before);
+    expect(screen.getByTestId('resume').textContent).toBe('');
+    expect(screen.getByTestId('coursework').textContent).toBe('');
 
-    // Storage comes back and so does the network: the SAME cleansed
-    // snapshot is replayed, both halves, under the SAME owner.
+    // Restoring local storage alone does not send anything. Retry records the
+    // same four-field source bundle, preserving independent data and ownership.
     setItemSpy.mockRestore();
-    rejectCloud = false;
-    phase = 'retry-action';
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    phase = 'retry-to-held-cas';
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
+    await waitFor(() => expect(commitProfilePatch).toHaveBeenCalledTimes(1));
+    expect(commitProfilePatch.mock.calls[0][0]).toEqual({
+      expectedRevision: 1, patch: removalPatch, token: owner, mutationId: expect.any(String),
+    });
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    expect(serverRow).toEqual(loaded);
+    expect(serverRevision).toBe(1);
+    expect(readProfileSyncEnvelope()).toMatchObject({
+      confirmed: { revision: 1 }, pending: { baseRevision: 1, desiredProfile: removalPatch,
+        dirtyKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] }, tombstone: null,
+    });
 
+    // This time a real CAS attempt reports a typed transport failure. Unlike
+    // the old test, the assertion proves that the cloud boundary was reached.
+    phase = 'release-cloud-failure';
+    await act(async () => { releaseFirst({ status: 'transport-error', message: 'controlled unavailable transport' }); });
+    phase = 'cloud-failed-wait';
+    await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed'));
+    expect(commitProfilePatch).toHaveBeenCalledTimes(1);
+    expect(serverRow).toEqual(loaded);
+    expect(readProfileSyncEnvelope()?.pending?.desiredProfile).toMatchObject(removalPatch);
+
+    phase = 'explicit-second-retry';
+    await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
+    await waitFor(() => expect(commitProfilePatch).toHaveBeenCalledTimes(2));
+    expect(commitProfilePatch.mock.calls[1][0]).toEqual(commitProfilePatch.mock.calls[0][0]);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    expect(serverRevision).toBe(1);
+    phase = 'release-success';
+    await act(async () => { releaseRetry(); });
     phase = 'saved-status-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('saved'));
-    phase = 'stored-result-assertions';
-    const stored = JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!);
-    expect(stored.resume_text).toBe('');
-    expect(stored.coursework).toEqual([]);
-
+    phase = 'confirmed-mirror-assertions';
+    expect(commitProfilePatch).toHaveBeenCalledTimes(2);
+    expect(captureOwnerToken()).toEqual(owner);
+    expect(serverRevision).toBe(2);
+    expect(serverRow).toEqual({ ...loaded, ...removalPatch });
+    expect(JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!)).toEqual(serverRow);
+    expect(readProfileSyncEnvelope()).toMatchObject({
+      confirmed: { revision: 2, profile: serverRow }, pending: null, tombstone: null,
+    });
+    expect(getDirtyProfileKeys(owner, HOME_FORM_WRITER)).toEqual({ ok: true, value: [] });
   });
 
   it('cloud saved but the local mirror did not: says so, and does not claim the cloud failed', async () => {

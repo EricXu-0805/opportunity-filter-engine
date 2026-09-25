@@ -1,6 +1,6 @@
 # Confirmed experience input for Cold Email
 
-Updated 2026-09-24. Email pipeline `w12.5`. This is the bounded confirmed-
+Introduced 2026-09-24; updated 2026-09-25. Email pipeline `w12.7`. This is the bounded confirmed-
 experience consumer for M12/M17, not completion of the full M37 resume library
 or the Match, Tailor and Renovate integrations.
 
@@ -55,7 +55,13 @@ is not an identity token or proof of the student's real-world contribution.
   quote remains unchanged as provenance; the corrected text is the student's
   attestation, not a claim to be a verbatim extraction. Changing a draft or edit
   instruction does not itself confirm new facts or permit attachment/reading
-  claims. Skill-level confirmation is a separate contract.
+  claims. Skill-level confirmation is a separate contract. A skill declaration
+  does not prove a particular completed project or task: templates do not
+  expand tool names into assumed applications. Selected experience text is
+  kept as the supplied source, with or without a measurable outcome. The
+  shared prompt rule distinguishes demonstrated connections from learning
+  interests; deterministic lexical selection does not prove either semantic
+  relevance or provider writing quality.
 - Legacy `resume_bullets` remains parseable within its old wire bound, but never
   supplies experience facts. Nonempty legacy input emits the notice
   `legacy_resume_bullets_unconfirmed`; the request can still generate from

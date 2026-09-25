@@ -65,7 +65,7 @@ def test_every_accepted_receipt_binds_detail_snapshot_and_pipeline(path):
     result = receipt(client.post("/api" + path, json=payload(path, version)), path)
     assert result["opportunity_id"] == "snapshot-target"
     assert result["target_version"] == version
-    assert result["pipeline_version"] == ("w12.6" if path.startswith("/cold") else "w13.4")
+    assert result["pipeline_version"] == (cold_email.COLD_EMAIL_PIPELINE_VERSION if path.startswith("/cold") else tailor.TAILOR_PIPELINE_VERSION)
 
 
 @pytest.mark.parametrize("path", PATHS)
@@ -219,7 +219,7 @@ def test_every_legacy_resume_fallback_and_success_is_stamped(path, mode, monkeyp
     result = receipt(client.post('/api' + path, json=body), path)
     assert result['target_version'] == version
     assert result['opportunity_id'] == 'snapshot-target'
-    assert result['pipeline_version'] == 'w13.4'
+    assert result['pipeline_version'] == tailor.TAILOR_PIPELINE_VERSION
     assert result['generated_at']
     assert 'Kubernetes' not in json.dumps(result.get('sections', result.get('text', '')))
 
@@ -241,7 +241,7 @@ def test_cold_email_fallbacks_and_ai_receipts_stamped(path, mode, monkeypatch):
     result = receipt(client.post('/api' + path, json=body), path)
     assert result['target_version'] == version
     assert result['opportunity_id'] == 'snapshot-target'
-    assert result['pipeline_version'] == 'w12.6'
+    assert result['pipeline_version'] == cold_email.COLD_EMAIL_PIPELINE_VERSION
     assert 'Kubernetes' not in result['body']
     assert result['method'] == ('ai' if mode == 'accepted' else 'template')
 
@@ -261,6 +261,6 @@ def test_refine_fallbacks_and_ai_receipts_stamped(mode, monkeypatch):
     result = receipt(client.post('/api' + path, json=body), path)
     assert result['target_version'] == version
     assert result['opportunity_id'] == 'snapshot-target'
-    assert result['pipeline_version'] == 'w12.6'
+    assert result['pipeline_version'] == cold_email.COLD_EMAIL_PIPELINE_VERSION
     assert 'Kubernetes' not in result['body']
     assert result['method'] == ('llm' if mode == 'accepted' else 'local')

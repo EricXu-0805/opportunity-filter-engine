@@ -45,7 +45,7 @@ const rewrite = 'Reviewed robot trials; did not lead the team.';
 async function response(payload: TargetResumeAiRequest): Promise<TargetResumeAiResponse> {
   const result = await prepareTargetResumeAI(payload.draft); if (!result.ok) throw new Error(result.code);
   const prepared = result.value;
-  return { version: 1, pipeline_version: 'full-target-v1', request_id: payload.request_id, document_id: payload.draft.id,
+  return { version: 1, pipeline_version: 'full-target-v2', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
     manifest: { unit_ids: prepared.units.map((unit) => unit.unit_id), protected_unit_count: prepared.protected_unit_count },
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,

@@ -1192,14 +1192,13 @@ def _build_skills_focus(p: dict) -> str:
     return f"{subject}\n\n{body}"
 
 
-def _skill_claims(names: list[str], levels: dict, applications: dict | None = None) -> str:
-    """A stronger skill never upgrades its beginner neighbours in a list."""
+def _skill_claims(names: list[str], levels: dict) -> str:
+    """State the supplied level, never infer work performed from a tool name."""
     sentences = []
     for seasoned, verb in ((True, "experience with"), (False, "foundational exposure to")):
         group = [s for s in names if (levels.get(s) in ("experienced", "expert")) == seasoned]
-        labels = [f"{s} for {applications[s]}" if applications and s in applications else s for s in group]
-        if labels:
-            joined = ", ".join(labels[:-1]) + f" and {labels[-1]}" if len(labels) > 1 else labels[0]
+        if group:
+            joined = ", ".join(group[:-1]) + f" and {group[-1]}" if len(group) > 1 else group[0]
             sentences.append(f"I have {verb} {joined}.")
     return " ".join(sentences)
 
@@ -1373,32 +1372,13 @@ def _p2_skills_applied(p: dict) -> str:
 
     matching = p["matching_skills"]
 
-    task_keywords = {
-        "Python":     "data processing, analysis, and scripting",
-        "MATLAB":     "data cleaning, visualization, and numerical computation",
-        "R":          "statistical analysis and data visualization",
-        "PyTorch":    "building and training deep learning models",
-        "TensorFlow": "building and training deep learning models",
-        "Java":       "software development and object-oriented design",
-        "C++":        "systems programming and performance-critical applications",
-        "C":          "low-level systems programming",
-        "JavaScript": "web development and interactive applications",
-        "SQL":        "database querying and data management",
-        "React":      "building interactive user interfaces",
-        "OpenCV":     "image processing and computer vision tasks",
-        "pandas":     "data wrangling and analysis",
-        "Git":        "version control and collaborative development",
-        "Linux":      "system administration and command-line tooling",
-        "Docker":     "containerization and reproducible environments",
-        "LaTeX":      "technical writing and documentation",
-    }
-
     top = (matching or skills)[:3]
     # The same standard the AI prompt's hard rules impose: a skill the student
     # marked BEGINNER is never presented as experience — at most foundational
     # exposure. This template is the fallback the fabrication gate degrades
-    # to, so it cannot itself overstate.
-    para = f"\n\n{_skill_claims(top, p['skill_levels'], task_keywords)}"
+    # to, so it cannot itself overstate. A tool name does not prove a
+    # particular use; concrete actions come from _p3_concrete_work evidence.
+    para = f"\n\n{_skill_claims(top, p['skill_levels'])}"
 
     # When `top` is already the matching skills (matching is non-empty), naming
     # them again here just repeats the same list. Keep the relevance emphasis
