@@ -36,6 +36,7 @@
 
 import type { ProfileData, SkillWithLevel } from './types';
 import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
+import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
 import {
@@ -2001,7 +2002,7 @@ export interface ProfileHydration {
  * an unattributable read, Error for a failed one) — a failed read is never
  * turned into "you have no profile".
  */
-export async function hydrateProfile(signal?: AbortSignal): Promise<ProfileHydration> {
+export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileReadObserver): Promise<ProfileHydration> {
   assertProfileReadActive(signal);
   // The network read happens FIRST and unlocked — holding the shared-state
   // lock across it would freeze every other tab for as long as it takes.
@@ -2016,11 +2017,11 @@ export async function hydrateProfile(signal?: AbortSignal): Promise<ProfileHydra
   // it was (see OwnerScopedLoadError), and an abandonment already belongs to
   // nobody. Re-interpreting either here would overwrite what the layer that
   // resolved the identity actually established.
-  const loaded = await awaitProfileRead(signal ? loadProfile(signal) : loadProfile(), signal);
+  const loaded = await awaitProfileRead(signal ? loadProfile(signal, observe) : loadProfile(), signal);
   assertProfileReadActive(signal);
   const token = loaded.token;
   try {
-    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, signal), signal);
+    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, signal, observe), signal);
   } catch (err) {
     assertProfileReadActive(signal);
     // Everything above this line ran with `token` already fixed, so a failure
@@ -2043,6 +2044,7 @@ async function hydrateLoadedProfile(
   token: OwnerToken,
   observedBefore: LoadFence,
   signal?: AbortSignal,
+  observe?: ProfileReadObserver,
 ): Promise<ProfileHydration> {
   assertProfileReadActive(signal);
   // BEFORE ensureScope, which mutates module-global coordinator state — the
@@ -2054,17 +2056,19 @@ async function hydrateLoadedProfile(
   if (!isTokenOwnerStillCurrent(token)) throw new OwnerNotReadyError();
   if (loaded.profile && !isProfileObject(loaded.profile)) throw new ExperienceEvidenceError('invalid_entries');
   ensureScope(token);
+  observe?.('reconcile-wait');
   const reconciled = await withProfileLock(
     token,
     () => {
       // The lock may arrive after the caller's deadline/unmount. Reconciliation
       // below is synchronous: cancellation cannot interleave with its writes.
       assertProfileReadActive(signal);
+      observe?.('reconcile-locked');
       return reconcileLoadedProfile(loaded, token, observedBefore);
     },
   );
   assertProfileReadActive(signal);
-  if (reconciled.ok) return reconciled.value;
+  if (reconciled.ok) { observe?.('reconciled'); return reconciled.value; }
   // SUPERSEDED is not "we could not serialize" — it is "this read belongs to
   // an owner who is gone". Falling through to the snapshot below would read
   // the CURRENT envelope, which is the new owner's, and hand it back paired

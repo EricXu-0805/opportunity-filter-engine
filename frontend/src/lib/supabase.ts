@@ -26,6 +26,7 @@ import {
 } from './identity-owner';
 import { RELEASE_SCOPE } from './release-scope';
 import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
+import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from './storage-keys';
 
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
@@ -158,7 +159,7 @@ function establishLocalOnlyDegrade(reason: string, sinceEpoch?: number): boolean
   return true;
 }
 
-async function ensureAnonSession(): Promise<string | null> {
+async function ensureAnonSession(observe?: ProfileReadObserver): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   if (!SUPABASE_CONFIGURED) {
     // The dummy client points at localhost:54321 — signInAnonymously would
@@ -181,6 +182,7 @@ async function ensureAnonSession(): Promise<string | null> {
   const sinceEpoch = captureOwnerToken().epoch;
   const sinceRevision = getAuthObservationRevision();
   const { data: { session } } = await supabase.auth.getSession();
+  observe?.('session-resolved');
   if (session?.user?.id) {
     // syncLocalIdentityOwner has no epoch awareness of its own — it must
     // only run when this observation is actually accepted, never for a
@@ -198,7 +200,9 @@ async function ensureAnonSession(): Promise<string | null> {
       // "your data is safely synced" while isLocalOwnerReady is still
       // 'blocked' underneath it — a truthfulness bug, not a data-safety
       // one (every actual read/write still re-checks readiness itself).
+      observe?.('owner-sync-wait');
       const synced = await syncLocalIdentityOwner(session.user.id);
+      observe?.('owner-sync-completed');
       setStorageStatus(
         synced ? 'synced' : 'unknown',
         synced ? null : 'local data ownership could not be verified',
@@ -245,7 +249,9 @@ async function ensureAnonSession(): Promise<string | null> {
       getAuthObservationRevision() === sinceRevision
       && advanceOwnerEpochIfUnchanged(data.user?.id ?? null, sinceEpoch)
     ) {
+      observe?.('owner-sync-wait');
       const synced = await syncLocalIdentityOwner(data.user?.id ?? null);
+      observe?.('owner-sync-completed');
       setStorageStatus(
         synced ? 'synced' : 'unknown',
         synced ? null : 'local data ownership could not be verified',
@@ -1332,7 +1338,7 @@ function notReadyFor(candidate: OwnerToken, ensuredId: string | null): Error {
   return new OwnerNotReadyError();
 }
 
-export async function loadProfile(signal?: AbortSignal): Promise<LoadedProfile> {
+export async function loadProfile(signal?: AbortSignal, observe?: ProfileReadObserver): Promise<LoadedProfile> {
   assertProfileReadActive(signal);
   // Dedup key is the pre-ensure "start-attempt" token: concurrent calls
   // captured at (near-)identical moments — including two concurrent
@@ -1346,8 +1352,10 @@ export async function loadProfile(signal?: AbortSignal): Promise<LoadedProfile> 
   if (existing) return existing;
 
   const promise = (async (): Promise<LoadedProfile> => {
-    const id = await awaitProfileRead(ensureAnonSession(), signal);
+    observe?.('session-wait');
+    const id = await awaitProfileRead(ensureAnonSession(observe), signal);
     assertProfileReadActive(signal);
+    observe?.('session-ready');
     let token = startAttempt;
     if (!isOwnerTokenValid(token, id)) {
       if (token.uid !== null) {
@@ -1394,12 +1402,14 @@ export async function loadProfile(signal?: AbortSignal): Promise<LoadedProfile> 
       // the profile row doesn't exist yet — every cold visit produced
       // a console error even though the empty-row case is expected.
       // maybeSingle() returns { data: null, error: null } for missing rows.
+      observe?.('select-started');
       const query = supabase
         .from('profiles')
         .select('profile_data, revision')
         .eq('id', id);
       const result = await awaitProfileRead((signal ? query.abortSignal(signal) : query).maybeSingle(), signal);
       assertProfileReadActive(signal);
+      observe?.('select-completed');
 
       // Re-verify after the SELECT's own await — same reasoning as above: a
       // read we can no longer attribute is an error, not an empty profile.

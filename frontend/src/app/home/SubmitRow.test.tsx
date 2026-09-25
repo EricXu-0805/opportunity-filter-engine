@@ -15,6 +15,7 @@ function renderRow(overrides: Partial<Parameters<typeof SubmitRow>[0]> = {}) {
       hasConflict={false}
       canRetrySync={false}
       onRetrySync={vi.fn()}
+      onRetryProfileLoad={vi.fn()}
       onKeepMyChanges={vi.fn()}
       onUseCloudVersion={vi.fn()}
       onSubmit={vi.fn()}
@@ -42,6 +43,20 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     renderRow({ hydrationState: 'failed' });
     expect(screen.getByTestId('generate-matches')).toBeDisabled();
     expect(screen.getByTestId('hydration-note').textContent).toBe('home.actions.profileLoadFailed');
+  });
+
+  it('retries a failed read independently of saving and matching, with no event argument', () => {
+    const onRetryProfileLoad = vi.fn(), onRetrySync = vi.fn(), onSubmit = vi.fn();
+    renderRow({ hydrationState: 'failed', isValid: false, onRetryProfileLoad, onRetrySync, onSubmit });
+    fireEvent.click(screen.getByRole('button', { name: 'home.actions.retryProfileLoad' }));
+    expect(onRetryProfileLoad.mock.calls).toEqual([[]]);
+    expect(onRetrySync).not.toHaveBeenCalled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it.each(['loading', 'ready'] as const)('does not offer another read while %s', (hydrationState) => {
+    renderRow({ hydrationState });
+    expect(screen.queryByTestId('retry-profile-load')).not.toBeInTheDocument();
   });
 
   it('stays disabled for an incomplete profile even when the row is ready', () => {
