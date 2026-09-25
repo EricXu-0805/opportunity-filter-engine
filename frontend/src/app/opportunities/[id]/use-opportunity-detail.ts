@@ -512,7 +512,8 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
         setInteractionDetail((d) => ({
           ...(d ?? {}),
           type: op.type,
-          last_contacted_at: new Date().toISOString(),
+          // Changing a status does not confirm a send. Keep the contact
+          // date from the saved row or an actual confirmation receipt.
         }));
         // Always an explicit assignment, never a conditional no-op: a
         // status change that produces NO suggestion (suggestReminderForStatusChange

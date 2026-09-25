@@ -3318,6 +3318,11 @@ export const en = {
       },
       timeline: {
         title: 'Status history',
+        loading: 'Loading status history…',
+        empty: 'No status history is available. The time of this status change is unknown.',
+        error: 'Could not load status history.',
+        retry: 'Retry status history',
+        currentStatus: 'Current status',
       },
       suggestions: {
         followUpAfterReply: 'Got a reply — set a follow-up reminder for {date}?',
@@ -3678,7 +3683,7 @@ export const en = {
     sourceStaleTitle: 'We have not re-checked this listing recently',
     sourceStaleBody: 'This record is past our re-verification window, so the role and the address may have changed since we last saw them. Worth a quick look at the department page first.',
     confirming: 'Recording…',
-    confirmFailed: 'Couldn\'t record it — nothing was saved to your tracker.',
+    confirmFailed: 'Could not confirm whether this was saved. Check your tracker before retrying.',
     confirmRetry: 'Try again',
     confirmOwnerChanged: 'Your account changed while this was saving, so nothing was marked for the account you\'re in now.',
     remindPrompt: 'Remind me to follow up:',
@@ -7976,6 +7981,11 @@ export const zh = {
       },
       timeline: {
         title: '状态历史',
+        loading: '正在读取状态历史…',
+        empty: '暂无状态历史记录，无法确认此状态的变更时间。',
+        error: '未能读取状态历史。',
+        retry: '重新读取状态历史',
+        currentStatus: '当前状态',
       },
       suggestions: {
         followUpAfterReply: '收到回复 —— 要在 {date} 设个跟进提醒吗?',
@@ -8311,7 +8321,7 @@ export const zh = {
     sourceStaleTitle: '这条信息我们有段时间没复核了',
     sourceStaleBody: '这条记录已经超过我们的复核周期，职位和邮箱都可能与我们上次看到的不同。发之前顺手去院系页面看一眼比较稳妥。',
     confirming: '正在记录…',
-    confirmFailed: '没能记录成功 — 追踪器里什么都没写入。',
+    confirmFailed: '暂时无法确认是否已保存。请先查看追踪器，再决定是否重试。',
     confirmRetry: '重试',
     confirmOwnerChanged: '保存过程中账号发生了变化，当前账号下没有记录任何东西。',
     remindPrompt: '提醒我跟进：',

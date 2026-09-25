@@ -29,8 +29,8 @@ beforeEach(async () => {
   api.refine.mockReset().mockResolvedValue({ body: 'Refined draft', method: 'llm' });
   api.contact.mockReset(); api.reminder.mockReset();
 });
-function open() {
-  const onClose = vi.fn(); const props = { isOpen: true, onClose, profile, opportunityId: 'A', opportunityTitle: 'Lab', target: emailTarget('A') };
+function open(onContactConfirmed = vi.fn(), reminderTarget?: ReturnType<typeof emailTarget>, onReminderSet = vi.fn()) {
+  const onClose = vi.fn(); const props = { isOpen: true, onClose, profile, opportunityId: 'A', opportunityTitle: 'Lab', target: emailTarget('A'), onContactConfirmed, reminderTarget, onReminderSet };
   const view = render(<ColdEmailModal {...props} />);
   return { ...view, onClose, show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />) };
 }
@@ -58,7 +58,7 @@ function referral() {
   fireEvent.click(screen.getByLabelText('I confirm these referral details are accurate and I may mention this person in the draft.'));
   apply();
 }
-function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
+function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: Error) => void; const promise = new Promise<T>((r, fail) => { resolve = r; reject = fail; }); return { promise, resolve, reject }; }
 
 describe('confirmed contact context and editable email lifetime', () => {
   it('applies referral background without generating or recording contact, then explicitly rebuilds with that context', async () => {
@@ -117,18 +117,188 @@ describe('confirmed contact context and editable email lifetime', () => {
     const old = deferred<{ type: 'contacted'; last_contacted_at: string }>();
     const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
     api.contact.mockResolvedValue(record); if (held) api.contact.mockReturnValueOnce(old.promise);
-    open(); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    const onContactConfirmed = vi.fn();
+    open(onContactConfirmed); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     expect(api.contact).toHaveBeenCalledTimes(1);
     if (!held) await waitFor(() => expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull());
     referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
     if (held) await act(async () => old.resolve(record));
+    expect(onContactConfirmed).toHaveBeenCalledExactlyOnceWith(record);
     expect(api.contact).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
     const confirm = await screen.findByTestId('cold-email-confirm-sent'); expect(confirm).toBeEnabled();
     fireEvent.click(confirm); await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(2));
     expect(api.reminder).not.toHaveBeenCalled();
   });
+  it.each(['before', 'after'] as const)('does not show an old send error on a rebuilt draft when rejection arrives %s rebuilding', async timing => {
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    const old = deferred<never>();
+    const onContactConfirmed = vi.fn();
+    api.contact.mockReturnValueOnce(old.promise);
+    open(onContactConfirmed); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    expect(api.contact).toHaveBeenCalledTimes(1);
+    if (timing === 'before') {
+      await act(async () => old.reject(new Error('old confirmation failed')));
+      expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
+    }
+    referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    if (timing === 'after') await act(async () => old.reject(new Error('old confirmation failed')));
+    await waitFor(() => expect(screen.getByTestId('cold-email-confirm-sent')).toBeEnabled());
+    expect(screen.queryByText('coldEmail.confirmFailed')).toBeNull();
+    expect(screen.getByTestId('cold-email-confirm-sent')).toHaveTextContent('coldEmail.confirmSent');
+    expect(onContactConfirmed).not.toHaveBeenCalled();
+    expect(api.contact).toHaveBeenCalledTimes(1);
+    expect(api.reminder).not.toHaveBeenCalled();
+  });
+
+  it('keeps a genuine same-draft failure retryable and records only the successful retry', async () => {
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
+    api.contact.mockRejectedValueOnce(new Error('confirmation failed')).mockResolvedValueOnce(record);
+    const onContactConfirmed = vi.fn();
+    open(onContactConfirmed); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
+    const retry = screen.getByTestId('cold-email-confirm-sent');
+    expect(retry).toHaveTextContent('coldEmail.confirmRetry'); expect(retry).toBeEnabled();
+    expect(onContactConfirmed).not.toHaveBeenCalled();
+    fireEvent.click(retry);
+    await waitFor(() => expect(onContactConfirmed).toHaveBeenCalledExactlyOnceWith(record));
+    expect(screen.queryByText('coldEmail.confirmFailed')).toBeNull();
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+    expect(api.contact).toHaveBeenCalledTimes(2); expect(api.reminder).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'failure'] as const)('keeps the new draft confirmation error when an old reminder settles with %s', async outcome => {
+    vi.spyOn(window, 'open').mockImplementation(() => null);
+    const oldReminder = deferred<void>();
+    const onReminderSet = vi.fn();
+    const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
+    api.contact.mockResolvedValueOnce(record).mockRejectedValueOnce(new Error('new confirmation failed'));
+    api.reminder.mockReturnValueOnce(oldReminder.promise);
+    const reminderTarget = { ...emailTarget('A'), source_type: 'campus_program', target_truth: {
+      listing_state: 'open' as const, reference_only: false, actionable: true, accepting_state: 'accepting' as const,
+      reason_code: null, verified_at: null, expires_at: null,
+    } };
+    open(vi.fn(), reminderTarget, onReminderSet); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    fireEvent.click(await screen.findByRole('button', { name: 'coldEmail.remind3' }));
+    expect(api.reminder).toHaveBeenCalledTimes(1);
+    const date = api.reminder.mock.calls[0][1].remind_at;
+    referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
+    await act(async () => {
+      if (outcome === 'success') oldReminder.resolve();
+      else oldReminder.reject(new Error('old reminder failed'));
+    });
+    expect(screen.getByText('coldEmail.confirmFailed')).toBeInTheDocument();
+    expect(screen.getByTestId('cold-email-confirm-sent')).toHaveTextContent('coldEmail.confirmRetry');
+    expect(screen.queryByText('coldEmail.reminderFailed')).toBeNull();
+    expect(api.contact).toHaveBeenCalledTimes(2); expect(api.reminder).toHaveBeenCalledTimes(1);
+    if (outcome === 'success') expect(onReminderSet).toHaveBeenCalledExactlyOnceWith(date);
+    else expect(onReminderSet).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'failure'] as const)('clears the old copy %s status after explicitly rebuilding a new draft', async outcome => {
+    const clipboard = deferred<void>();
+    const writeText = vi.fn(() => clipboard.promise);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    open(); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    expect(writeText).toHaveBeenCalledExactlyOnceWith('Subject: Subject first_contact\n\nDraft first_contact');
+    await act(async () => {
+      if (outcome === 'success') clipboard.resolve();
+      else clipboard.reject(new Error('clipboard unavailable'));
+    });
+    if (outcome === 'success') {
+      expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
+      expect(screen.getByTestId('cold-email-confirm-sent')).toBeInTheDocument();
+    } else {
+      expect(screen.getByText('coldEmail.copyFailed')).toBeInTheDocument();
+      expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+    }
+    referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.copied')).toBeNull();
+    expect(screen.queryByText('coldEmail.copyFailed')).toBeNull();
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(api.contact).not.toHaveBeenCalled(); expect(api.reminder).not.toHaveBeenCalled();
+  });
+
+  it.each(['subject', 'body', 'to'] as const)('retires copied feedback after editing the actual %s but not an unsubmitted request', async field => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    open(); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    await screen.findByRole('button', { name: 'coldEmail.copied' });
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'Unsaved request only' } });
+    expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(`coldEmail.${field}`), { target: { value: 'Changed actual field' } });
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.copied')).toBeNull();
+    expect(api.contact).not.toHaveBeenCalled();
+  });
+
+  it('expires the original copy record after editing away and back without clearing a later copy', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    open(); await ready();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' })));
+      expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Temporary body B' } });
+      await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+      fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Draft first_contact' } });
+      expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.copied')).toBeNull();
+
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' })));
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copied' })));
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
+      await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+      expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+      expect(api.contact).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retires copied feedback when refinement actually replaces the body', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    open(); await ready();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    await screen.findByRole('button', { name: 'coldEmail.copied' });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' }));
+    await screen.findByDisplayValue('Refined draft');
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.copied')).toBeNull();
+    expect(api.refine).toHaveBeenCalledTimes(1); expect(api.contact).not.toHaveBeenCalled();
+  });
+
+  it('rejects a pending old clipboard success after automatic AI replaces the body', async () => {
+    const clipboard = deferred<void>(); const ai = deferred<ReturnType<typeof draft>>();
+    api.stream.mockReturnValueOnce(ai.promise);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(() => clipboard.promise) } });
+    open(); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    await act(async () => ai.resolve({ ...draft('AI'), method: 'ai' }));
+    await screen.findByDisplayValue('Draft AI');
+    await act(async () => clipboard.resolve());
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.copied')).toBeNull();
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+    expect(api.contact).not.toHaveBeenCalled();
+  });
+
   it('does not use a delayed clipboard success from the old draft to prompt a send for the new draft', async () => {
     const copied = deferred<void>();
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(() => copied.promise) } });

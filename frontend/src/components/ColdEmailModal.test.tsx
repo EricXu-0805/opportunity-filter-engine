@@ -618,19 +618,29 @@ describe('ColdEmailModal', () => {
 
     it('FE-5: shows a durable "template, not AI" badge when the AI pill falls back', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
-      mockGenerateColdEmail.mockResolvedValue({
+      const fallback = {
         subject: 'T', body: 'Template Body', recipient_email: 'p@x.edu',
         mailto_link: 'mailto:p@x.edu', method: 'template', fallback_reason: 'not_configured',
-      });
+      };
+      let finishAuto!: (response: typeof fallback) => void;
+      const autoResponse = new Promise<typeof fallback>(resolve => { finishAuto = resolve; });
+      mockGenerateColdEmail.mockReturnValueOnce(autoResponse).mockResolvedValue(fallback);
       render(
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
-      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      // An enabled pill before the automatic effect starts is not completion.
+      // Hold that first request, then release its silent template fallback
+      // before exercising the separate explicit request this test is about.
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
+      await act(async () => { finishAuto(fallback); });
       await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
+      expect(screen.getByRole('textbox', { name: 'coldEmail.body' })).toHaveValue(makeVariant().body);
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
-      await waitFor(() =>
-        expect(screen.getByText('coldEmail.templateFallbackBadge')).toBeInTheDocument(),
-      );
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
+      await screen.findByDisplayValue('Template Body');
+      expect(await screen.findByText('coldEmail.templateFallbackBadge')).toBeInTheDocument();
     });
 
     it('FE-5: shows no template badge when the AI draft is genuine', async () => {

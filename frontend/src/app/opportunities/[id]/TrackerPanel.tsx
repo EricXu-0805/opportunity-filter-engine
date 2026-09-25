@@ -338,7 +338,7 @@ export function TrackerPanel({
               </button>
             </p>
           )}
-          {detail?.type && detail?.updated_at && (
+          {detail?.type && (
             <StatusTimeline
               opportunityId={opportunityId}
               fallbackType={detail.type}

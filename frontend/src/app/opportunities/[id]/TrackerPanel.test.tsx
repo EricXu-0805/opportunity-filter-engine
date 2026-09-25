@@ -20,7 +20,7 @@ vi.mock('@/components/StatusTimeline', () => ({
   }: {
     opportunityId: string;
     fallbackType: string;
-    fallbackUpdatedAt: string;
+    fallbackUpdatedAt?: string;
   }) => (
     <div
       data-testid="status-timeline"
@@ -1033,4 +1033,13 @@ describe('TrackerPanel — a reminder is only offered where one would be deliver
     expect(onSave).toHaveBeenCalledWith({ notes: 'my own note' });
     vi.useRealTimers();
   });
+});
+
+
+it('reads status history for a newly selected status even without a row updated_at receipt', async () => {
+  render(<TrackerPanel detail={detail({ type: 'replied', updated_at: undefined, notes: 'open' })}
+    onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+  const timeline = await screen.findByTestId('status-timeline');
+  expect(timeline).toHaveAttribute('data-type', 'replied');
+  expect(timeline).not.toHaveAttribute('data-updated');
 });

@@ -1265,3 +1265,55 @@ describe('detail public sharing', () => {
     else expect(writeText).toHaveBeenCalledWith('http://localhost:3000/opportunities/opp-1');
   });
 });
+
+
+describe('useOpportunityDetail — status changes are not contact confirmations', () => {
+  const statuses = ['contacted', 'applied', 'replied', 'interviewing', 'rejected', 'dismissed'] as const;
+  const contactDate = '2026-08-21T15:30:00.000Z';
+
+  it.each(statuses)('does not invent a contact date when selecting %s', async (status) => {
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    await act(async () => { await result.current.handleTrack(status); });
+    expect(result.current.interaction).toBe(status);
+    expect(result.current.interactionDetail?.last_contacted_at).toBeUndefined();
+    expect(mocks.trackInteraction).toHaveBeenCalledWith('opp-1', status, expect.anything());
+  });
+
+  it.each(statuses)('preserves a confirmed contact date and notes when changing to %s', async (status) => {
+    const initial = { type: status === 'applied' ? 'replied' : 'applied', last_contacted_at: contactDate,
+      notes: 'Keep the reply context', remind_at: '2026-10-01' };
+    mocks.getInteractionDetail.mockResolvedValueOnce(initial);
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    await act(async () => { await result.current.handleTrack(status); });
+    expect(result.current.interactionDetail).toEqual({ ...initial, type: status });
+  });
+
+  it('preserves the actual date through a failed status change and its successful retry', async () => {
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted', last_contacted_at: contactDate });
+    mocks.trackInteraction.mockRejectedValueOnce(new Error('offline'));
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    await act(async () => { await result.current.handleTrack('interviewing'); });
+    expect(result.current.statusError).toBe(true);
+    expect(result.current.interactionDetail).toEqual({ type: 'contacted', last_contacted_at: contactDate });
+    act(() => result.current.retryTrack());
+    await waitFor(() => expect(result.current.statusSaving).toBe(false));
+    expect(result.current.statusError).toBe(false);
+    expect(result.current.interactionDetail).toEqual({ type: 'interviewing', last_contacted_at: contactDate });
+    expect(mocks.trackInteraction).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a real contact receipt that arrives while a status change is pending', async () => {
+    let resolveSave!: () => void;
+    mocks.trackInteraction.mockImplementationOnce(() => new Promise<void>(resolve => { resolveSave = resolve; }));
+    const { result } = renderHook(() => useOpportunityDetail({ id: 'opp-1', title: 'Test' }));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    let saving!: Promise<void>;
+    act(() => { saving = result.current.handleTrack('replied'); });
+    act(() => result.current.noteContactConfirmed({ type: 'contacted', last_contacted_at: contactDate }));
+    await act(async () => { resolveSave(); await saving; });
+    expect(result.current.interactionDetail).toEqual({ type: 'replied', last_contacted_at: contactDate });
+  });
+});

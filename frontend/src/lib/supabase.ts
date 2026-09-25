@@ -2194,29 +2194,44 @@ export interface StatusChange {
   changedAt: string;
 }
 
-export async function getStatusChanges(opportunityId: string): Promise<StatusChange[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const { data, error } = await supabase
-    .from('interaction_status_changes')
-    .select('from_status, to_status, changed_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .order('changed_at', { ascending: true });
-
-  if (error || !data) {
-    if (error && !error.message?.toLowerCase().includes('does not exist')) {
-      console.warn('[ofe] getStatusChanges failed:', error.message);
-    }
-    return [];
+export class StatusHistoryLoadError extends Error {
+  constructor() {
+    super('Status history could not be loaded');
+    this.name = 'StatusHistoryLoadError';
   }
+}
 
-  return data.map((r: { from_status: string | null; to_status: string; changed_at: string }) => ({
-    fromStatus: (r.from_status ?? null) as InteractionType | null,
-    toStatus: r.to_status as InteractionType,
-    changedAt: r.changed_at,
-  }));
+/** A successful [] means no recorded transitions. Missing identity, a failed
+ * read, and malformed data are different outcomes, never an empty history. */
+export async function getStatusChanges(opportunityId: string): Promise<StatusChange[]> {
+  const token = captureOwnerToken();
+  try {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new StatusHistoryLoadError();
+    const { data, error } = await supabase
+      .from('interaction_status_changes')
+      .select('from_status, to_status, changed_at')
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId)
+      .order('changed_at', { ascending: true });
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error || !Array.isArray(data)) throw new StatusHistoryLoadError();
+    const types = new Set<unknown>(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+    if (data.some(row => !row || typeof row !== 'object'
+      || !types.has(row.to_status)
+      || (row.from_status !== null && !types.has(row.from_status))
+      || typeof row.changed_at !== 'string' || !Number.isFinite(Date.parse(row.changed_at)))) {
+      throw new StatusHistoryLoadError();
+    }
+    return data.map(row => ({ fromStatus: row.from_status as InteractionType | null,
+      toStatus: row.to_status as InteractionType, changedAt: row.changed_at }));
+  } catch (error) {
+    if (error instanceof OwnerMismatchError || !isOwnerTokenValid(token, token.uid)) throw new OwnerMismatchError();
+    // Database/auth messages may contain private details; callers receive a
+    // stable safe error and decide how to present their explicit retry.
+    throw new StatusHistoryLoadError();
+  }
 }
 
 export const ATTACHMENTS_BUCKET = 'tracker-attachments';

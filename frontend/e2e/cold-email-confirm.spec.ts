@@ -233,10 +233,10 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     expect(net.confirms, 'exactly one atomic call').toHaveLength(1);
   });
 
-  test('a write that does not land is visible, unconfirmed and retryable', async ({ page }) => {
-    // Holds in BOTH configurations: with Supabase reachable the RPC is failed
-    // on purpose; without it the client fails closed on its own. Either way a
-    // contact that did not persist may not read as recorded.
+  test('an unknown confirmation outcome is visible, unconfirmed and explicitly retryable', async ({ page }) => {
+    // A failed HTTP response does not prove that a write never reached storage.
+    // Report the unknown outcome, keep the draft unconfirmed, and let the user
+    // explicitly retry after checking Tracker; do not assert a nonexistent write.
     const net = await installNetwork(page, { hold: true });
     const { supabaseConfigured } = await openModal(page);
     await page.getByRole('button', { name: 'Copy' }).click();
@@ -247,7 +247,8 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
       net.release('fail');
     }
 
-    await expect(page.getByText(/nothing was saved to your tracker/)).toBeVisible();
+    await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true })).toBeVisible();
+    await expect(page.getByText(/nothing was saved to your tracker/)).toHaveCount(0);
     await expect(remindPrompt(page)).toBeHidden();
     await expect(page.getByText('Did you send the email?')).toBeVisible();
     await expect(confirmButton(page)).toHaveText('Try again');
@@ -256,14 +257,14 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     if (!supabaseConfigured) {
       // The retry runs and fails the same way — the point is that the latch
       // released, not that the second attempt succeeds.
-      await expect(page.getByText(/nothing was saved to your tracker/)).toBeVisible();
+      await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true })).toBeVisible();
       await expect(remindPrompt(page)).toBeHidden();
       return;
     }
     await expect.poll(() => net.confirms.length).toBe(2);
     net.release('ok');
     await expect(remindPrompt(page)).toBeVisible();
-    await expect(page.getByText(/nothing was saved to your tracker/)).toBeHidden();
+    await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true })).toBeHidden();
   });
 
   test('closing and reopening starts a clean, unconfirmed session', async ({ page }) => {

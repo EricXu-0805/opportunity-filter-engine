@@ -389,8 +389,8 @@ export default function ColdEmailModal({
   const experienceReceiptLimited = experienceUsage?.notices.includes('experience_usage_receipt_limit') ?? false;
   const [freshness, setFreshness] =
     useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
-  const [copied, setCopied] = useState(false);
-  const [copyFailed, setCopyFailed] = useState(false);
+  const [copiedFor, setCopiedFor] = useState<{ contents: string } | null>(null);
+  const [copyFailedFor, setCopyFailedFor] = useState<string | null>(null);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
   // evidence the email was sent (the user may close the compose window), so
   // nothing is recorded yet. Only the explicit "I sent it" confirmation below
@@ -403,6 +403,13 @@ export default function ColdEmailModal({
   const [contactedForId, setContactedForId] = useState<string | null>(null);
   const [sendDraftEpoch, setSendDraftEpoch] = useState(0);
   const sendDraftEpochRef = useRef(0);
+  // Clipboard feedback belongs to the exact displayed draft, independently
+  // of whether an edit starts a new send-confirmation epoch.
+  const copyContentKey = JSON.stringify([subject, body, recipient, sendDraftEpoch]);
+  const copyContentKeyRef = useRef(copyContentKey);
+  useLayoutEffect(() => { copyContentKeyRef.current = copyContentKey; }, [copyContentKey]);
+  const copied = copiedFor?.contents === copyContentKey;
+  const copyFailed = copyFailedFor === copyContentKey;
   const [contactedDraftEpoch, setContactedDraftEpoch] = useState<number | null>(null);
   const [confirmedDraftEpoch, setConfirmedDraftEpoch] = useState<number | null>(null);
   const contactedHere = contacted && contactedForId === opportunityId && contactedDraftEpoch === sendDraftEpoch;
@@ -436,10 +443,11 @@ export default function ColdEmailModal({
     && reminderTarget?.id === opportunityId
     && canDeliverReminder(reminderTarget, confirmedStatus);
   const [confirming, setConfirming] = useState(false);
-  // Which persistence failed, so the strip can say the honest thing: a failed
-  // confirmation recorded NOTHING, a failed reminder left a real contact
-  // record in place, and an identity that moved mid-write recorded nothing for
-  // whoever is signed in now. `null` = nothing has failed in this session.
+  // Which persistence outcome could not be confirmed. A rejected response
+  // does not prove that the server wrote nothing; a failed reminder also does
+  // not undo a confirmed contact. An owner move must not report the old
+  // operation as success for the current account. Errors belong to this session AND
+  // draft epoch: rebuilding clears them, and old writers cannot restore them.
   const [sendError, setSendError] = useState<'confirm' | 'reminder' | 'owner-changed' | null>(null);
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
@@ -619,6 +627,8 @@ export default function ColdEmailModal({
           // receipt to update the parent, without confirming this new draft.
           sendDraftEpochRef.current += 1;
           setSendDraftEpoch(sendDraftEpochRef.current);
+          setCopiedFor(null); setCopyFailedFor(null);
+          setSendError(null);
         }
       }
       if (!preserveDraft) setChatMessages([
@@ -767,8 +777,8 @@ export default function ColdEmailModal({
       setFreshness('unknown');
       setExperienceUsage(null);
       setExperienceNeedsReview(false);
-      setCopied(false);
-      setCopyFailed(false);
+      setCopiedFor(null);
+      setCopyFailedFor(null);
       setError(null);
       setTargetVersionError(null);
       setNameRequired(false);
@@ -1227,6 +1237,9 @@ export default function ColdEmailModal({
     // A newer attempt, a target change or a close all retire it.
     const stillCurrent = () =>
       sendSessionRef.current === session && confirmAttemptRef.current === attempt;
+    // A real historical write can still update the parent after rebuilding,
+    // but its failure must never be attributed to the replacement draft.
+    const sameDraft = () => stillCurrent() && sendDraftEpochRef.current === confirmedEpoch;
     try {
       const record = await confirmInteractionContact(opportunityId, token);
       // The owner check is re-read AFTER the await, against the token captured
@@ -1239,12 +1252,12 @@ export default function ColdEmailModal({
         setConfirmedDraftEpoch(confirmedEpoch);
         onContactConfirmed?.(record ?? null);
       }
-      else setSendError('owner-changed');
+      else if (sameDraft()) setSendError('owner-changed');
     } catch {
-      if (!stillCurrent()) return;
-      // A confirmation whose identity moved is neither this account's success
-      // nor its failure: it is void here. Saying so beats a click that appears
-      // to do nothing — while still painting no U1 outcome into U2's session.
+      if (!sameDraft()) return;
+      // A confirmation whose identity moved cannot establish success for
+      // this account. Its old-account write outcome may be unknown; show the
+      // identity boundary without painting a U1 outcome into U2's session.
       setSendError(isTokenOwnerStillCurrent(token) ? 'confirm' : 'owner-changed');
     } finally {
       if (stillCurrent()) {
@@ -1304,6 +1317,7 @@ export default function ColdEmailModal({
     if (!canDeliverReminder(reminderTarget, confirmedStatus)) return;
     const token = captureOwnerToken();
     const session = sendSessionRef.current;
+    const draftEpoch = sendDraftEpochRef.current;
     // The student's own calendar day, not UTC's. After 7pm in Chicago the UTC
     // date has already rolled over, so "in 1 week" landed on the eighth day —
     // the same arithmetic the tracker's presets had.
@@ -1315,11 +1329,13 @@ export default function ColdEmailModal({
     try {
       await updateInteractionDetails(opportunityId, { remind_at: date }, token);
     } catch {
-      if (stillCurrent()) setSendError('reminder');
+      if (stillCurrent() && sendDraftEpochRef.current === draftEpoch) setSendError('reminder');
       return;
     }
     if (stillCurrent()) {
-      setSendError(null);
+      // Preserve the opportunity-level reminder receipt without clearing a
+      // confirmation error belonging to a draft built while this write waited.
+      if (sendDraftEpochRef.current === draftEpoch) setSendError(null);
       setFollowUpDate(date);
       onReminderSet?.(date);
     }
@@ -1330,8 +1346,10 @@ export default function ColdEmailModal({
     const session = sendSessionRef.current;
     const draft = sendDraftEpochRef.current;
     const revision = draftRevisionRef.current;
-    const current = () => sendSessionRef.current === session && sendDraftEpochRef.current === draft
-      && draftRevisionRef.current === revision && isTokenOwnerStillCurrent(owner);
+    const contents = copyContentKey;
+    const sameContents = () => sendSessionRef.current === session && sendDraftEpochRef.current === draft
+      && copyContentKeyRef.current === contents && isTokenOwnerStillCurrent(owner);
+    const current = () => sameContents() && draftRevisionRef.current === revision;
     try {
       await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
     } catch {
@@ -1340,13 +1358,16 @@ export default function ColdEmailModal({
       // nothing may report that it was — and with no draft in hand there is
       // nothing the student could have sent, so the attestation question
       // stays away too.
-      if (current()) setCopyFailed(true);
+      if (current()) setCopyFailedFor(contents);
       return;
     }
     if (!current()) return;
-    setCopyFailed(false);
-    setCopied(true);
-    setTimeout(() => { if (current()) setCopied(false); }, 2000);
+    setCopyFailedFor(null);
+    const feedback = { contents };
+    setCopiedFor(feedback);
+    // Expire this copy even while another body is displayed. An older timer
+    // must never clear the feedback from a newer copy of the same contents.
+    setTimeout(() => setCopiedFor((currentFeedback) => currentFeedback === feedback ? null : currentFeedback), 2000);
     if (sourceReadyRef.current) markContacted();
   }
 
