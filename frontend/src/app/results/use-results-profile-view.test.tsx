@@ -9,7 +9,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 
 let serverRow: Record<string, unknown> | null = null;
 let serverRevision = 0;
@@ -46,7 +46,7 @@ import {
   syncLocalIdentityOwner,
   writeUserScopedRaw,
 } from '@/lib/identity-owner';
-import { hydrateProfile, resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { hydrateProfile, recordProfileIntent, resetProfileDirtyLedger } from '@/lib/profile-sync';
 
 /** Seed a PRIVATE key the way the app writes one. A raw `localStorage.setItem`
  *  targets an unprefixed name that belongs to whoever first claimed this
@@ -56,6 +56,7 @@ function seedPrivate(key: string, value: string): void {
   expect(writeUserScopedRaw(key, value, captureOwnerToken())).toBe(true);
 }
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import type { ProfileData } from '@/lib/types';
 import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
 
 /** A harness that exposes exactly what the page wires up. */
@@ -105,6 +106,31 @@ async function seedAccepted() {
 }
 
 describe('the accepted tuple', () => {
+  it('keeps an accepted hydration candidate including journal edits when its mirror notification follows', async () => {
+    await seedAccepted();
+    expect(recordProfileIntent({ ...serverRow, major: 'Unsent local work' } as ProfileData, ['major'], captureOwnerToken())).toBe(true);
+    serverRow = { ...serverRow, grade: 'Senior' }; serverRevision = 5;
+    const loaded = await hydrateProfile();
+    const { result } = renderHook(() => useAcceptedProfileView());
+    act(() => result.current.acceptHydration(loaded));
+    expect(result.current.accepted.profile?.major).toBe('Unsent local work');
+    expect(result.current.accepted.view?.baseProfile?.major).toBe('CS');
+    expect(result.current.accepted.view?.revision).toBe(5);
+    act(() => result.current.accept()); // the mirror's React effect is later
+    expect(result.current.accepted.profile?.major).toBe('Unsent local work');
+    expect(result.current.accepted.profile?.grade).toBe('Senior');
+    loaded.profile!.major = 'MUTATED caller alias';
+    expect(result.current.accepted.profile?.major).toBe('Unsent local work');
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+  it('does not accept a late hydration from an owner that has retired', async () => {
+    const loaded = await hydrateProfile();
+    const { result } = renderHook(() => useAcceptedProfileView());
+    await act(async () => { advanceOwnerEpoch('results-view-u2'); await syncLocalIdentityOwner('results-view-u2'); });
+    act(() => result.current.acceptHydration(loaded));
+    expect(result.current.accepted).toEqual({ profile: null, view: null });
+  });
+
   it('publishes the rendered document and the snapshot behind it from ONE read', async () => {
     await seedAccepted();
     const onApplied = vi.fn();

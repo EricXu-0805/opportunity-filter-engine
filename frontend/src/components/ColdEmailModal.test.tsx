@@ -45,7 +45,14 @@ vi.mock('@/lib/auth-modal-context', () => ({
   }),
 }));
 
+vi.mock('@/lib/supabase', () => ({
+  onAuthChange: () => () => {},
+  confirmInteractionContact: vi.fn(),
+  updateInteractionDetails: vi.fn(),
+}));
+
 import ColdEmailModal from './ColdEmailModal';
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 import { en, zh } from '@/i18n/dictionaries';
 
@@ -81,7 +88,9 @@ function makeVariant(overrides: Partial<EmailVariant> = {}): EmailVariant {
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 const windowOpenMock = vi.fn();
 
-beforeEach(() => {
+beforeEach(async () => {
+  advanceOwnerEpoch('cold-email-test-owner');
+  await syncLocalIdentityOwner('cold-email-test-owner');
   mockGetVariants.mockReset();
   mockGenerateColdEmail.mockReset();
   // The modal is stream-first with a blocking-route fallback; existing AI

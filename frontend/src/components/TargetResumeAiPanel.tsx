@@ -9,10 +9,17 @@ import {
   type TargetResumeAICurrentContext,
 } from '@/lib/target-resume-ai';
 import type { TargetResumeV1 } from '@/lib/target-resume';
+import type { ProfileData } from '@/lib/types';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import { useProfileAction } from '@/lib/use-profile-action';
 import type { PreparedTargetResumeAi, TargetResumeAiReceipt, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 
 export interface TargetResumeAiPanelProps {
   draft: TargetResumeV1;
+  profile: ProfileData;
+  profileAvailable?: boolean;
+  profileRefresh?: ProfileRefreshState;
+  readiness?: 'ready' | 'waiting' | 'blocked';
   owner: OwnerToken;
   contextKey: string;
   currentContext: TargetResumeAICurrentContext | null;
@@ -25,7 +32,7 @@ const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opa
 const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
-export default function TargetResumeAiPanel({ draft, owner, contextKey, currentContext, enabled, onApply, onDirtyChange }: TargetResumeAiPanelProps) {
+export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange }: TargetResumeAiPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
@@ -49,16 +56,20 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
     const changed = stateRef.current.binding !== binding;
     const disabled = stateRef.current.enabled && !enabled;
     stateRef.current = { binding, enabled, owner, currentContext };
-    if (!changed && !disabled) return;
+    if (!changed && !disabled && profileAvailable) return;
     const hadWork = !!runRef.current || requestRef.current.busy;
     requestRef.current.generation += 1;
     requestRef.current.controller?.abort();
     requestRef.current.busy = false;
-    // External source/document changes retire private, unaccepted suggestions.
-    setBusy(false); setRun(null); runRef.current = null; setSelected(new Set()); setDismissed(new Set()); setOrder(false); setError(null);
+    setBusy(false);
+    // A read/readiness pause retires in-flight requests but keeps validated
+    // receipts on the identical baseline. They remain disabled until ready.
+    if (!changed && profileAvailable) return;
+    // Actual source/document/availability changes invalidate the old advice.
+    setRun(null); runRef.current = null; setSelected(new Set()); setDismissed(new Set()); setOrder(false); setError(null);
     setNotice(appliedKey.current === draftKey ? 'applied' : hadWork ? 'stale' : null);
     appliedKey.current = null;
-  }, [binding, currentContext, draftKey, enabled, owner]);
+  }, [binding, currentContext, draftKey, enabled, owner, profileAvailable]);
 
   useEffect(() => {
     const request = requestRef.current;
@@ -78,8 +89,6 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
   const rewrites = review?.receipts.filter((item) => item.status === 'suggested' && typeof item.suggestion?.proposed_text === 'string'
     && item.suggestion?.proposed_text !== item.before_text && item.evidence.kind === 'experience') ?? [];
   const hasOrderAdvice = review?.receipts.some((item) => item.suggestion && item.suggestion.priority !== 'normal');
-  const dirty = busy || (!!run && (order || hasOrderAdvice || rewrites.some((item) => !dismissed.has(item.unit_id))));
-  useEffect(() => { dirtyCallback.current?.(dirty); }, [dirty]);
   const ready = enabled && !!currentContext && isOwnerTokenValid(owner, owner.uid);
   const live = (generation: number, expected: string) => requestRef.current.generation === generation
     && stateRef.current.binding === expected && stateRef.current.enabled
@@ -157,12 +166,21 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
       if (requestRef.current.generation === generation) { requestRef.current.busy = false; requestRef.current.controller = null; setBusy(false); }
     }
   };
+  const action = useProfileAction<'start' | 'continue'>({
+    isOpen: true, profile, profileAvailable, scopeKey: binding, editRevision: draftKey,
+    refresh: profileRefresh, readiness: readiness ?? (enabled ? 'ready' : 'blocked'),
+    execute: (intent) => { void generate(intent === 'continue'); },
+  });
+  const working = busy || action.busy;
+  const dirty = working || (!!run && (order || hasOrderAdvice || rewrites.some((item) => !dismissed.has(item.unit_id))));
+  useEffect(() => { dirtyCallback.current?.(dirty); }, [dirty]);
   const cancel = () => {
+    action.cancel();
     requestRef.current.generation += 1; requestRef.current.controller?.abort(); requestRef.current.busy = false;
     setBusy(false); setNotice('cancelled');
   };
   const apply = () => {
-    if (!run || !ready || busy || !currentContext) return;
+    if (!run || !ready || working || action.error || !currentContext) return;
     const result = applyTargetResumeAI(run.prepared, draft, run.responses,
       { rewriteUnitIds: [...selected], applyStructure: order, currentContext });
     if (!result.ok) { setError(result.code); return; }
@@ -170,7 +188,7 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
     if (appliedKey.current === draftKey) { setNotice('applied'); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
     onApply(run.prepared.canonical_draft, result.value);
   };
-  const nextPreview = run && ready && currentContext && (selected.size > 0 || order)
+  const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
     ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], applyStructure: order, currentContext }) : null;
   const canContinue = !!run && (review?.coverage.pending || review?.receipts.some((item) => item.status === 'skipped' && !permanent.has(item.reason_code ?? '')));
   const unitLabel = (id: string) => {
@@ -192,10 +210,12 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
     <p className="mt-1 text-sm text-gray-600">{copy('Review suggestions before applying them. Facts stay linked to your confirmed master. Reasons and rejected suggestions are kept only while this workspace is open.', '核对建议后再应用。事实仍关联已确认母版；修改理由和拒绝记录仅在本次打开期间保留。')}</p>
     {!ready && <p className="mt-2 text-sm text-amber-800">{copy('Use a draft based on your current confirmed profile and target to generate AI suggestions.', '请使用基于当前已确认资料及目标的文稿生成 AI 建议。')}</p>}
     <div className="mt-3 flex flex-wrap gap-2">
-      <button type="button" className={button} disabled={!ready || busy} onClick={() => void generate(false)}>{copy('Generate AI suggestions', '生成 AI 建议')}</button>
-      {canContinue && <button type="button" className={button} disabled={!ready || busy} onClick={() => void generate(true)}>{copy('Continue remaining suggestions', '继续处理未完成项')}</button>}
-      {busy && <button type="button" className={button} onClick={cancel}>{copy('Cancel generation', '停止生成')}</button>}
+      <button type="button" className={button} disabled={!ready || working} onClick={() => action.request('start')}>{copy('Generate AI suggestions', '生成 AI 建议')}</button>
+      {canContinue && <button type="button" className={button} disabled={!ready || working} onClick={() => action.request('continue')}>{copy('Continue remaining suggestions', '继续处理未完成项')}</button>}
+      {working && <button type="button" className={button} onClick={cancel}>{copy('Cancel generation', '停止生成')}</button>}
     </div>
+    {action.busy && <p role="status" className="mt-2 text-sm">{copy('Checking current profile before AI review…', 'AI 核对前正在检查最新资料…')}</p>}
+    {action.error && <p role="alert" className="mt-2 text-sm text-amber-800">{action.error === 'changed' ? copy('Your draft, profile or target changed during the check. Review the current materials before trying again.', '核对期间文稿、资料或目标已变更，请核对当前材料后再试。') : copy('Current profile could not be verified. Your draft and completed suggestions are kept.', '未能核对当前资料。文稿及已完成建议保留。')}</p>}
     {busy && <p role="status" className="mt-2 text-sm">{copy('Reviewing your complete materials…', '正在核对完整材料…')}</p>}
     {error && <p role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm">{reasonText(error)}</p>}
     {notice && <p role="status" className="mt-2 text-sm">{notice === 'applied'
@@ -214,12 +234,12 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
           {item.suggestion?.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-1 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{evidence.quote}</blockquote>)}
         </div>)}
       </details>
-      <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={order} disabled={!ready || busy || !review.structureReady}
+      <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={order} disabled={!ready || working || !!action.error || !review.structureReady}
         onChange={(event) => setOrder(event.target.checked)} />{copy('Use suggested section and block order', '使用建议的章节与内容块顺序')}</label>
       {!review.structureReady && <p className="mt-1 text-xs text-gray-500">{copy('Ordering is available after every content item has a usable review.', '所有内容项核对完成后，才能应用整稿排序。')}</p>}
       {rewrites.map((item) => <article key={item.unit_id} className="mt-4 min-w-0 rounded-lg border p-3" aria-label={`AI rewrite ${item.unit_id}`}>
         <label className="flex items-start gap-2 text-sm font-medium"><input type="checkbox" aria-label={`Use rewrite: ${item.unit_id}`}
-          checked={selected.has(item.unit_id)} disabled={!ready || busy || dismissed.has(item.unit_id)} onChange={(event) => setSelected((old) => {
+          checked={selected.has(item.unit_id)} disabled={!ready || working || !!action.error || dismissed.has(item.unit_id)} onChange={(event) => setSelected((old) => {
             const next = new Set(old); if (event.target.checked) next.add(item.unit_id); else next.delete(item.unit_id); return next;
           })} />{unitLabel(item.unit_id)}</label>
         <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
@@ -228,7 +248,7 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
         </div>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{item.suggestion!.reason}</p>
         {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{evidence.quote}</blockquote>)}
-        <button type="button" className={`${button} mt-2`} disabled={busy} aria-label={`Dismiss suggestion: ${item.unit_id}`} onClick={() => {
+        <button type="button" className={`${button} mt-2`} disabled={working} aria-label={`Dismiss suggestion: ${item.unit_id}`} onClick={() => {
           setDismissed((old) => { const next = new Set(old); if (next.has(item.unit_id)) next.delete(item.unit_id); else next.add(item.unit_id); return next; });
           setSelected((old) => { const next = new Set(old); next.delete(item.unit_id); return next; });
         }}>{dismissed.has(item.unit_id) ? copy('Review again', '重新核对') : copy('Reject this wording', '拒绝此表述')}</button>
@@ -236,7 +256,7 @@ export default function TargetResumeAiPanel({ draft, owner, contextKey, currentC
       {nextPreview?.ok && <details className="mt-4"><summary className="cursor-pointer text-sm font-medium">{copy('Preview complete résumé before applying', '应用前对比完整简历')}</summary>
         <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-2">{fullPreview(draft, copy('Before AI changes', '应用前全文'))}{fullPreview(nextPreview.value, copy('After selected AI changes', '应用所选建议后全文'))}</div>
       </details>}
-      <button type="button" className={`${button} mt-4 bg-indigo-600 text-white`} disabled={!ready || busy || (!order && selected.size === 0)} onClick={apply}>{copy('Apply selected suggestions', '应用所选建议')}</button>
+      <button type="button" className={`${button} mt-4 bg-indigo-600 text-white`} disabled={!ready || working || !!action.error || (!order && selected.size === 0)} onClick={apply}>{copy('Apply selected suggestions', '应用所选建议')}</button>
     </>}
   </section>;
 }

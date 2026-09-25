@@ -167,7 +167,12 @@ test.describe('Target-A journey: Match -> Detail -> Shortlist -> reopen -> reloa
     // 3. Shortlist A.
     const star = page.getByRole('button', { name: /Add to favorites/i });
     await star.click();
-    await expect(page.getByRole('button', { name: /Remove from favorites/i })).toBeVisible();
+    const savedStar = page.getByRole('button', { name: /Remove from favorites/i });
+    await expect(savedStar).toBeVisible();
+    // The label changes optimistically. Wait for the real persistence attempt
+    // before a full navigation can abort it and reload an empty shortlist.
+    await expect(savedStar).toBeEnabled();
+    await expect(savedStar).toHaveAttribute('aria-busy', 'false');
 
     // 4. Favorites must keep A's exact identity without carrying the results
     // session's private return query. Match -> Detail above still checks the

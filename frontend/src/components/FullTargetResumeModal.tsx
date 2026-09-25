@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import { useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
@@ -45,10 +46,10 @@ function canonical(value: unknown): string {
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
 
-export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, profileAvailable = true, profileRefresh }: {
+export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
   onCloseRequestChange?: (request: (() => boolean) | null) => void;
-  targetReady?: boolean; profileAvailable?: boolean; profileRefresh?: ProfileRefreshState;
+  targetReady?: boolean; targetChecking?: boolean; profileAvailable?: boolean; profileRefresh?: ProfileRefreshState;
 }) {
   const locale = useLocale();
   const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh);
@@ -248,6 +249,14 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: 'create' }));
     }
   };
+  const createReadiness = !profileAvailable || !ownerReady || activeSession?.saving || activeSession?.reloading || activeSession?.conflict
+    ? 'blocked' : profileRefresh?.status === 'checking' || targetChecking || !comparable
+      ? 'waiting' : !targetReady || !profileRefreshReady(profileRefresh) || !comparable.canCreate ? 'blocked' : 'ready';
+  const createAction = useProfileAction<'create'>({
+    isOpen: isOpen && !!activeSession, profile: acceptedProfile, profileAvailable,
+    scopeKey: `${opportunity.id}:${lifecycle}:${targetKey}`, editRevision: activeSession?.editRevision ?? 0,
+    refresh: profileRefresh, readiness: createReadiness, execute: () => { void create(); },
+  });
   const persist = async (payload: TargetResumeV1) => {
     if (!activeSession || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
     const validation = validateTargetResume(payload);
@@ -375,8 +384,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <p>{leave === 'rebuild'
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
             : copy('You have unsaved edits, suggestions or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑、建议或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
-          <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => setLeave(null)}>{copy('Keep editing', '继续编辑')}</button>
-            <button type="button" className={button} disabled={leave === 'rebuild' && (!sourceReady || !comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') void create(); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
+          <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => { createAction.cancel(); setLeave(null); }}>{copy('Keep editing', '继续编辑')}</button>
+            <button type="button" className={button} disabled={leave === 'rebuild' && (createAction.busy || !sourceReady || !comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') createAction.request('create'); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
         </div>}
       <div className={`min-h-0 overflow-y-auto p-4 sm:p-6 ${supplementOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6' : ''}`}>
         {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
@@ -405,6 +414,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
           <button type="button" className={`${button} mt-2`} onClick={() => setLifecycle((old) => old + 1)}>{copy('Retry reading saved résumé', '重试读取已保存简历')}</button>
         </div>}
+        {createAction.busy && <p role="status" className="mt-3 text-sm">{copy('Checking current profile before creating the draft…', '创建文稿前正在核对最新资料…')}</p>}
+        {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy('Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
         {activeSession?.error && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
         {doc && <>
           {!comparable && <p role="status" className="mt-3 text-sm text-amber-800">{copy('Current source comparison is unavailable or still loading. This draft keeps its original source snapshots.', '当前来源对比尚未完成或不可用，此稿仍保留原始来源快照。')}</p>}
@@ -418,8 +429,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           </details>
         </>}
         {activeSession && activeSession.phase !== 'loading' && activeSession.phase !== 'load-error' && <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!sourceReady || !ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
-            onClick={() => { if (doc) setLeave('rebuild'); else void create(); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
+          <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={createAction.busy || !sourceReady || !ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
+            onClick={() => { if (doc) setLeave('rebuild'); else createAction.request('create'); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
           {profileAvailable && !comparable?.canCreate && ((dirty || supplementDirty)
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
             : <Link href="/#resume-master" className="text-sm text-indigo-700 underline">{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
@@ -442,6 +453,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
+            profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh}
+            readiness={createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
             enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setAiDirty(value); }}

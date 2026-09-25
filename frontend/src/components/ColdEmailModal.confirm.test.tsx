@@ -185,7 +185,8 @@ function expectNoConfirmedUi(when: string): void {
 /** The confirm control, whatever its label currently says. */
 const confirmButton = () => screen.getByTestId('cold-email-confirm-sent');
 
-beforeEach(() => {
+beforeEach(async () => {
+  await becomeOwner('fixture');
   pushStatus = 'default';
   confirmCalls.length = 0;
   updateCalls.length = 0;

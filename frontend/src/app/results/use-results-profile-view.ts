@@ -1,15 +1,19 @@
 'use client';
 
 import { useCallback, useReducer, useRef, useState } from 'react';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw } from '@/lib/identity-owner';
 import {
   commitProfileAction,
+  makeProfileViewSnapshot,
+  type ProfileHydration,
   readProfileView,
   RESULTS_WRITER,
   type ProfileViewSnapshot,
 } from '@/lib/profile-sync';
 import { migrateProfile, type LegacyProfileShape } from './types';
 import type { ProfileData } from '@/lib/types';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { profileActionKey } from '@/lib/use-profile-action';
 
 /** The document this page renders and the snapshot a write from it carries,
  *  accepted together in one step. Kept as one value on purpose: a separately
@@ -27,6 +31,7 @@ export function useAcceptedProfileView(): {
   accepted: AcceptedProfileView;
   /** Re-read storage and publish both halves together. */
   accept: () => void;
+  acceptHydration: (loaded: ProfileHydration) => void;
   /** Publish nothing, synchronously. Call this IN the identity transition,
    *  not from an effect keyed on the generation: an effect runs after paint
    *  and leaves the previous account's document on screen — and its view
@@ -37,7 +42,28 @@ export function useAcceptedProfileView(): {
     (_prev: AcceptedProfileView, next: AcceptedProfileView) => next,
     EMPTY,
   );
+  const hydrated = useRef<{ key: string | null; token: ProfileHydration['token'] } | null>(null);
+  const acceptHydration = useCallback((loaded: ProfileHydration) => {
+    if (loaded.quarantineFailed || loaded.conflictKeys.length || loaded.conflicts.length
+      || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return;
+    const view = loaded.profile ? makeProfileViewSnapshot({ baseProfile: loaded.baseProfile,
+      renderedProfile: loaded.profile, revision: loaded.revision, token: loaded.token,
+      identityGeneration: loaded.token.epoch, source: 'hydration' }) : null;
+    hydrated.current = { key: profileActionKey(loaded.profile), token: loaded.token };
+    dispatch({ profile: view?.renderedProfile ?? null, view });
+  }, []);
   const accept = useCallback(() => {
+    // Hydrate already accepted the candidate AND baseline atomically. Its raw
+    // mirror notification must not replace that candidate with an envelope-only
+    // view that omits not-yet-staged journal edits.
+    const current = hydrated.current;
+    if (current && isOwnerTokenValid(current.token, current.token.uid)) {
+      try {
+        const raw = readUserScopedRaw(STORAGE_KEYS.PROFILE);
+        if (profileActionKey(raw ? JSON.parse(raw) as ProfileData : null) === current.key) return;
+      } catch { /* fall through to the coordinator's safe view */ }
+    }
+    hydrated.current = null;
     // ONE read; both halves come out of it.
     const view = readProfileView(captureOwnerToken());
     dispatch({
@@ -47,8 +73,8 @@ export function useAcceptedProfileView(): {
       view,
     });
   }, []);
-  const clear = useCallback(() => dispatch(EMPTY), []);
-  return { accepted, accept, clear };
+  const clear = useCallback(() => { hydrated.current = null; dispatch(EMPTY); }, []);
+  return { accepted, accept, acceptHydration, clear };
 }
 
 /** A flip that did not take effect, kept WITH the view it was made against.

@@ -158,7 +158,7 @@ vi.mock('./use-results-profile-view', () => ({
   useAcceptedProfileView: () => ({
     accepted: acceptedProfile.cleared
       ? { profile: null, view: null }
-      : { profile: acceptedProfile.current ?? TEST_PROFILE, view: {} },
+      : { profile: acceptedProfile.current ?? TEST_PROFILE, view: { token: captureOwnerToken() } },
     accept: vi.fn(),
     clear: () => { acceptedProfile.cleared = true; },
   }),
@@ -201,7 +201,7 @@ import ResultsPage from './page';
 import { ApiError } from '@/lib/api';
 import { getMatchFeedback, setMatchFeedback } from '@/lib/match-feedback';
 import { getAuthState } from '@/lib/supabase';
-import { OwnerMismatchError } from '@/lib/identity-owner';
+import { OwnerMismatchError, advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode } from '@/lib/identity-owner';
 
 function baseInteractions(overrides: Record<string, unknown> = {}) {
   return {
@@ -228,6 +228,7 @@ function baseInteractions(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  advanceOwnerEpoch(null); expect(enterLocalOnlyMode()).toBe(true);
   lastMatchListProps = null;
   acceptedProfile.current = null;
   acceptedProfile.cleared = false;

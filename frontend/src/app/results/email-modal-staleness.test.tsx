@@ -6,7 +6,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { useLayoutEffect, useState } from 'react';
-import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { resultRequestKey } from '@/lib/result-session';
 import type { Opportunity, ProfileData } from '@/lib/types';
 
 const { getMatchView, generateColdEmail } = vi.hoisted(() => ({
@@ -60,9 +61,16 @@ vi.mock('./use-saved-search-ack', () => ({ useSavedSearchAck: () => {} }));
 // it, and the interesting states here would be unreachable. What is being
 // tested is the page's own guard on the state it holds: an id captured at
 // click time, still held after the results underneath it changed.
-const feed = vi.hoisted(() => ({ current: null as unknown, loading: false, error: null as string | null }));
+const feed = vi.hoisted(() => ({ current: null as unknown, loading: false, error: null as string | null, holdValidation: false }));
 vi.mock('./use-results-data', () => ({
-  useResultsData: () => ({
+  useResultsData: (...args: Parameters<typeof import('./use-results-data').useResultsData>) => {
+    const [profile, semantic, view, page, , , , navigation] = args;
+    useLayoutEffect(() => {
+      if (profile && feed.current && !feed.loading && !feed.error && !feed.holdValidation) {
+        navigation?.onValidated({ requestKey: resultRequestKey(profile, semantic, view), page, cursors: [[1, null]] }, captureOwnerToken());
+      }
+    }, [profile, semantic, view, page, navigation]);
+    return {
     data: feed.current,
     setData: vi.fn(),
     loading: feed.loading,
@@ -72,7 +80,7 @@ vi.mock('./use-results-data', () => ({
     refining: false,
     refined: false,
     refineFailed: false,
-  }),
+  }; },
 }));
 
 const TEST_PROFILE = {
@@ -82,7 +90,7 @@ const TEST_PROFILE = {
 const profileFeed = vi.hoisted(() => ({ current: undefined as ProfileData | null | undefined, present: true, replace: vi.fn() }));
 vi.mock('./use-results-profile-view', () => ({
   useAcceptedProfileView: () => ({
-    accepted: { profile: profileFeed.current === undefined ? TEST_PROFILE : profileFeed.current, view: {} }, accept: vi.fn(), clear: vi.fn(),
+    accepted: { profile: profileFeed.current === undefined ? TEST_PROFILE : profileFeed.current, view: { token: captureOwnerToken() } }, accept: vi.fn(), clear: vi.fn(),
   }),
   useCrossSchoolToggle: () => ({ crossSchool: false, setCrossSchool: vi.fn(), clear: vi.fn() }),
 }));
@@ -263,7 +271,7 @@ beforeEach(async () => {
   modalHistory.real = false; profileFeed.replace.mockReset();
   window.history.replaceState({ __NA: true }, '', '/results');
   captured.draft = null; captured.resume = null;
-  feed.current = null; feed.loading = false; feed.error = null;
+  feed.current = null; feed.loading = false; feed.error = null; feed.holdValidation = false;
   profileFeed.current = undefined; profileFeed.present = true;
   ownerFeed.uid = 'owner-1'; ownerFeed.generation = 1; ownerFeed.ready = true;
   window.localStorage.clear();
@@ -411,6 +419,22 @@ describe('Results keeps writing buffers while current target actions fail closed
   });
 });
 
+
+describe('Results pre-action target binding', () => {
+  it('withdraws the old target before the loading effect when a new profile has not validated a match page', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await openDialogFor('a');
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+    feed.holdValidation = true;
+    profileFeed.current = { ...TEST_PROFILE, major: 'Physics' } as ProfileData;
+    view.rerender(<ResultsPage />);
+    // The old response is deliberately still present and loading is false.
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled();
+    expect(screen.getByTestId('editor-profile')).toHaveTextContent('machine learning');
+    feed.holdValidation = false; view.rerender(<ResultsPage />);
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+  });
+});
 
 describe('Results whole-profile deletion while writing', () => {
   it.each(['email', 'resume'] as const)('exits %s to Home without a delayed modal Back restoring Results', async (kind) => {
