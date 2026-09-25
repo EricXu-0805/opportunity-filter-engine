@@ -129,7 +129,7 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
-          <Link href="/" className="flex items-center gap-2 group shrink-0" onClick={close}>
+          <Link href="/" aria-label={`JoinALab · ${t('auth.callback.goHome')}`} className="flex items-center gap-2 group shrink-0" onClick={close}>
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-white" strokeWidth={2.5} aria-hidden="true" />
             </div>
@@ -138,7 +138,7 @@ export default function Header() {
             </span>
           </Link>
 
-          <nav className="hidden sm:flex items-center gap-0.5 min-w-0" aria-label={t('nav.primary')}>
+          <nav className="hidden lg:flex items-center gap-0.5 min-w-0" aria-label={t('nav.primary')}>
             {NAV_ITEMS.map(({ href: originalHref, labelKey }) => {
               const href = originalHref === '/' && hasMatchCache ? '/results' : originalHref;
               const showBadge = originalHref === '/favorites' && newMatchCount > 0;
@@ -162,7 +162,7 @@ export default function Header() {
             <LanguageSwitcher />
           </nav>
 
-          <div className="flex sm:hidden items-center gap-1">
+          <div className="flex lg:hidden items-center gap-1">
             <AccountMenu />
             <LanguageSwitcher />
             <button
@@ -182,8 +182,8 @@ export default function Header() {
         <div
           id="mobile-nav-panel"
           aria-hidden={!open}
-          className={`sm:hidden overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
-            open ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          className={`lg:hidden overflow-x-hidden transition-[max-height,opacity] duration-300 ease-out ${
+            open ? 'max-h-[min(24rem,calc(100dvh-3rem))] overflow-y-auto opacity-100' : 'max-h-0 overflow-y-hidden opacity-0'
           }`}
         >
           <nav className="flex flex-col pb-3 pt-1 gap-0.5" aria-label={t('nav.mobile')}>
@@ -208,6 +208,25 @@ export default function Header() {
                 </Link>
               );
             })}
+            <a
+              href="#site-feedback"
+              data-testid="mobile-feedback-link"
+              tabIndex={open ? 0 : -1}
+              onClick={(event) => {
+                if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                close();
+                // Use the single footer form without routing away from a draft.
+                // The fragment remains a native fallback if it is not mounted.
+                const trigger = document.getElementById('site-feedback-trigger');
+                if (trigger instanceof HTMLButtonElement) {
+                  event.preventDefault();
+                  trigger.click();
+                }
+              }}
+              className="flex min-h-11 items-center rounded-xl px-3.5 py-2 text-[14px] font-medium text-gray-600 transition-colors hover:bg-black/[0.04] hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              {t('feedback.button')}
+            </a>
             <AccountMenu variant="mobile" onActivate={close} tabIndex={open ? 0 : -1} />
           </nav>
         </div>

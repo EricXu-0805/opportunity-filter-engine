@@ -36,6 +36,7 @@ async function account(): Promise<Owner> {
   } catch (error) { await http.dispose(); throw error; }
 }
 async function seed(page: Page, owner: Owner, locale: 'en' | 'zh' = 'en') {
+  await page.context().addCookies([{ name: STORAGE_KEYS.LOCALE, value: locale, url: `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}` }]);
   await page.addInitScript(({ session, keys, locale }) => {
     if (localStorage.getItem('contact-ledger-seeded')) return;
     localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(keys.LOCALE, locale);

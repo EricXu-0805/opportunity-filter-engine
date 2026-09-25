@@ -89,11 +89,9 @@ function hasContent(draft: FeedbackDraft): boolean {
 // distinguishable while sharing the `ok` discriminant.
 type SendOutcome = FeedbackResult | { ok: false; reason: 'timeout' };
 
-// Always-available floating feedback affordance (bottom-LEFT, below modals at
-// z-50 — bottom-right belongs to the mobile Ask-AI FAB on opportunity pages,
-// which this button used to cover). Writes one TICKET row to Supabase via
-// submitFeedback() under per-user RLS; failures surface inline and never
-// throw. Email is optional (for a reply).
+// One footer disclosure in normal document flow. It never covers page actions
+// or participates in another dialog's focus/scroll handling. Submissions and
+// draft ownership retain the same ticket and retry behavior.
 //
 // W15: the in-progress draft is mirrored to localStorage so a reload or a
 // failed send can't destroy what the user typed, and each composed message
@@ -118,6 +116,9 @@ export default function FeedbackWidget() {
   const [copied, setCopied] = useState(false);
 
   const persistedRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const focusRequestRef = useRef<'form' | 'trigger' | null>(null);
 
   const ownerRef = useRef(owner);
   const sendRevisionRef = useRef(0);
@@ -132,6 +133,7 @@ export default function FeedbackWidget() {
       const changed = !isTokenOwnerStillCurrent(ownerRef.current);
       ownerRef.current = nextOwner;
       if (changed) {
+        focusRequestRef.current = null;
         sendRevisionRef.current += 1;
         persistedRef.current = false;
         setOpen(false);
@@ -156,18 +158,39 @@ export default function FeedbackWidget() {
     };
   }, []);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    focusRequestRef.current = 'trigger';
+    setOpen(false);
+  }, []);
+
+  const reveal = useCallback(() => {
+    if (open) {
+      // A mobile-nav revisit must not reset an in-flight send or its draft.
+      titleRef.current?.focus({ preventScroll: true });
+      titleRef.current?.scrollIntoView?.({ block: 'start' });
+      return;
+    }
+    sendRevisionRef.current += 1;
+    setStatus('idle');
+    setTicket(null);
+    setCopied(false);
+    setEmailError(false);
+    focusRequestRef.current = 'form';
+    setOpen(true);
+  }, [open]);
+
+  useLayoutEffect(() => {
+    const requested = focusRequestRef.current;
+    focusRequestRef.current = null;
+    const target = requested === 'form' && open ? titleRef.current
+      : requested === 'trigger' && !open ? triggerRef.current : null;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView?.({ block: requested === 'form' ? 'start' : 'nearest' });
+  }, [open]);
 
   const patch = useCallback((next: Partial<FeedbackDraft>) => {
     setDraft((cur) => ({ ...cur, ...next }));
   }, [setDraft]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
 
   // Mirror the draft (message + email + category + subject + its token) so a
   // reload, an accidental close, or a failed send doesn't lose it. ONE draft,
@@ -263,28 +286,6 @@ export default function FeedbackWidget() {
     }
   }, [ticket, owner]);
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          sendRevisionRef.current += 1;
-          setStatus('idle');
-          setTicket(null);
-          setCopied(false);
-          setEmailError(false);
-          setOpen(true);
-        }}
-        aria-label={t('feedback.open')}
-        data-testid="feedback-open"
-        className="fixed bottom-4 left-2 sm:left-3 z-40 inline-flex items-center gap-2 rounded-full bg-gray-900 text-white text-[13px] font-medium pl-3 pr-4 py-2.5 shadow-lg hover:bg-gray-800 transition-colors"
-      >
-        <MessageSquarePlus className="w-4 h-4" aria-hidden="true" />
-        <span className="hidden sm:inline">{t('feedback.button')}</span>
-      </button>
-    );
-  }
-
   const errorKey = errorKind === 'no-session'
     ? 'feedback.errorOffline'
     : errorKind === 'timeout'
@@ -292,19 +293,40 @@ export default function FeedbackWidget() {
       : 'feedback.error';
 
   return (
-    <div
-      role="dialog"
-      aria-label={t('feedback.title')}
-      data-testid="feedback-panel"
-      className="fixed bottom-4 left-2 sm:left-3 z-40 w-[calc(100vw-1rem)] max-w-sm rounded-2xl bg-white shadow-2xl border border-black/[0.06] overflow-hidden"
-    >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06]">
-        <p className="text-[14px] font-semibold text-gray-900">{t('feedback.title')}</p>
+    <div id="site-feedback" className="mt-3 flex w-full min-w-0 scroll-mt-20 flex-col items-center"
+      onKeyDown={(event) => {
+        if (!open || event.key !== 'Escape' || event.defaultPrevented || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      }}>
+      <button
+        ref={triggerRef}
+        id="site-feedback-trigger"
+        type="button"
+        onClick={reveal}
+        aria-label={t('feedback.open')}
+        aria-expanded={open}
+        aria-controls="site-feedback-panel"
+        data-testid="feedback-open"
+        className="inline-flex min-h-11 scroll-mt-20 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      >
+        <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+        <span>{t('feedback.button')}</span>
+      </button>
+      {open && <section
+        id="site-feedback-panel"
+        aria-labelledby="site-feedback-title"
+        data-testid="feedback-panel"
+        className="mt-2 w-full min-w-0 max-w-lg rounded-xl border border-gray-200 bg-white text-left"
+      >
+      <div className="flex items-center justify-between gap-2 border-b border-black/[0.06] px-4 py-2">
+        <h2 ref={titleRef} id="site-feedback-title" tabIndex={-1} className="min-w-0 scroll-mt-20 text-[14px] font-semibold text-gray-900 focus:outline-none">{t('feedback.title')}</h2>
         <button
           type="button"
           onClick={close}
           aria-label={t('feedback.close')}
-          className="p-1 -mr-1 text-gray-400 hover:text-gray-700 transition-colors"
+          className="-mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
           <X className="w-4 h-4" />
         </button>
@@ -462,6 +484,7 @@ export default function FeedbackWidget() {
           <p className="text-[11px] text-gray-400 text-center">{t('feedback.draftSaved')}</p>
         </form>
       )}
+      </section>}
     </div>
   );
 }

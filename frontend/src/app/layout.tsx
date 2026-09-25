@@ -134,6 +134,7 @@ export default async function RootLayout({
                     {footerDisclaimer}
                   </p>
                 </div>
+                <FeedbackWidget />
                 <p className="mt-3 text-center text-[11px] text-gray-300">
                   {builtByLabel} ·{' '}
                   <a href="mailto:eric.guoyi.xu@gmail.com" className="hover:text-gray-600 transition-colors">
@@ -142,9 +143,6 @@ export default async function RootLayout({
                 </p>
               </div>
             </footer>
-
-            {/* Floating feedback affordance — always available, bottom-right. */}
-            <FeedbackWidget />
 
             {/* Single modal mount-point. Visible only when openModal()
                 is called from anywhere in the tree. */}

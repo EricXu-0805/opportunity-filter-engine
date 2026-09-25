@@ -47,6 +47,7 @@ async function account(anonymous = false): Promise<Owner> {
   } catch (error) { await http.dispose(); throw error; }
 }
 async function seed(page: Page, owner: Owner, locale: 'en' | 'zh' = 'en') {
+  await page.context().addCookies([{ name: STORAGE_KEYS.LOCALE, value: locale, url: `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}` }]);
   await page.addInitScript(({ session, keys, locale }) => {
     if (localStorage.getItem('material-fixture-seeded')) return;
     localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(keys.LOCALE, locale); localStorage.setItem(keys.ONBOARDING_SEEN, '1'); localStorage.setItem('material-fixture-seeded', '1');
