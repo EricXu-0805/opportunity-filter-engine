@@ -5,6 +5,7 @@ import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type Own
 import { hydrateProfile, makeProfileViewSnapshot, type ProfileHydration } from './profile-sync';
 import type { LoadedProfile } from './supabase';
 import type { ProfileData } from './types';
+import { migrateProfile } from './profile-compat';
 
 /** A read/reconcile receipt, not an assertion of continuously current cloud data. */
 export type ProfileActionReceipt = {
@@ -65,7 +66,10 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
       const timer = setTimeout(() => controller.abort(), PROFILE_REFRESH_DEADLINE_MS);
       record.promise = Promise.resolve().then(async () => {
         try {
-          const loaded = await hydrateProfile(controller.signal);
+          const hydrated = await hydrateProfile(controller.signal);
+          // Every consumer and the action receipt must see the same projection.
+          // The coordinator owns the exact original baseline and local mirror.
+          const loaded: ProfileHydration = { ...hydrated, profile: migrateProfile(hydrated.profile) };
           if (!current() || attempt !== record || controller.signal.aborted || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return null;
           const status: ProfileRefreshState['status'] = loaded.quarantineFailed ? 'failed'
             : loaded.conflictKeys.length || loaded.conflicts.length ? 'conflict'

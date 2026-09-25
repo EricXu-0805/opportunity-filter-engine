@@ -1,6 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, request as apiRequest, type APIRequestContext, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import type { MatchResult, MatchesResponse } from '../src/lib/types';
+import type { MatchResult, MatchesResponse, ProfileData } from '../src/lib/types';
 import type { MatchViewRequestState } from '../src/lib/api';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en } from '../src/i18n/dictionaries';
@@ -17,7 +17,8 @@ const PROFILE = {
   name: 'Return Test Student', institution: 'UIUC',
   college: 'Grainger College of Engineering', major: 'Computer Science',
   grade: 'Sophomore', is_international: false, research_interests: 'machine learning',
-  skills: ['Python'], coursework: ['CS 225'], seeking_type: ['research'],
+  // Preserve legacy string skills: this is a supported pre-CAS profile.
+  skills: ['Python'], coursework: ['CS 225'], seeking_types: ['research'],
 };
 const PUBLIC_FILTERS = { tab: 'all', q: 'Return fixture', paid: 'yes', sort: 'newest' };
 const RESET_NOTICE = 'Your previous results are no longer available. Showing the first page.';
@@ -72,33 +73,49 @@ interface Network {
   expiredRequests: number;
   generation: number;
   owner: string;
+  variantProfiles: Record<string, unknown>[];
 }
 
-async function installNetwork(page: Page, state: Network = { requests: [], writes: [], expiredRequests: 0, generation: 1, owner: OWNER_A }): Promise<Network> {
+async function installNetwork(page: Page, state: Network = { requests: [], writes: [], expiredRequests: 0, generation: 1, owner: OWNER_A, variantProfiles: [] }, realStorage = false): Promise<Network> {
   const cursors = new Map<string, { offset: number; signature: string; generation: number }>();
-  await page.route('**/auth/v1/**', async (route) => {
-    const session = authSession(state.owner);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(route.request().url()).pathname.endsWith('/user') ? session.user : session) });
-  });
-  await page.route('**/rest/v1/**', async (route) => {
-    const request = route.request();
-    if (!['GET', 'HEAD'].includes(request.method())) state.writes.push(`${request.method()} ${new URL(request.url()).pathname} ${request.postData() ?? ''}`);
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-  });
+  if (realStorage) {
+    page.on('request', request => {
+      const path = new URL(request.url()).pathname;
+      if (path.startsWith('/rest/v1/') && !['GET', 'HEAD'].includes(request.method())) {
+        state.writes.push(`${request.method()} ${path} ${request.postData() ?? ''}`);
+      }
+    });
+  } else {
+    await page.route('**/auth/v1/**', async (route) => {
+      const session = authSession(state.owner);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(new URL(route.request().url()).pathname.endsWith('/user') ? session.user : session) });
+    });
+    await page.route('**/rest/v1/**', async (route) => {
+      const request = route.request();
+      if (!['GET', 'HEAD'].includes(request.method())) state.writes.push(`${request.method()} ${new URL(request.url()).pathname} ${request.postData() ?? ''}`);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    });
+  }
   // Opening material editors is allowed; paying a provider or sending email
   // is not part of these navigation tests. Every such request fails locally.
   await page.route('**/api/cold-email**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.route('**/api/tailor**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.route('**/api/resume/**', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
-  await page.route('**/api/cold-email/variants', (route) => route.fulfill({
-    status: 200, contentType: 'application/json', body: JSON.stringify({
-      variants: [{ id: 'return-template', label: 'Template', subject: 'Navigation draft', body: 'Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student', recipient_email: 'professor@example.edu', mailto_link: 'mailto:professor@example.edu' }],
-      recipient_status: 'revealed', lab_type: 'dry',
-    }),
-  }));
+  await page.route('**/api/cold-email/variants', async (route) => {
+    const profile = route.request().postDataJSON().profile as Record<string, unknown>;
+    state.variantProfiles.push(profile);
+    expectResearchPython(profile);
+    await route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify({
+        variants: [{ id: 'return-template', label: 'Template', subject: 'Navigation draft', body: 'Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student', recipient_email: 'professor@example.edu', mailto_link: 'mailto:professor@example.edu' }],
+        recipient_status: 'revealed', lab_type: 'dry',
+      }),
+    });
+  });
   await page.route('**/api/matches/view**', async (route) => {
     const request = route.request().postDataJSON() as ViewRequest;
     state.requests.push(request);
+    expectResearchPython(request.profile);
     expect(request.page_size, 'use the production page size, not an artificially tiny fixture').toBe(50);
     expect(new URL(route.request().url()).searchParams.get('llm')).toBe('false');
     const signature = JSON.stringify({ profile: request.profile, view: request.view });
@@ -143,6 +160,60 @@ async function installNetwork(page: Page, state: Network = { requests: [], write
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) });
   });
   return state;
+}
+
+function expectResearchPython(profile: Record<string, unknown>) {
+  expect(profile.seeking_type, 'stored plural preference reaches the API as research only').toEqual(['research']);
+  expect(profile.hard_skills, 'legacy skills must not become empty objects after hydration').toEqual(
+    expect.arrayContaining([expect.objectContaining({ name: 'Python', level: expect.any(String) })]),
+  );
+  expect((profile.hard_skills as Array<{ name?: unknown; level?: unknown }>).every(skill =>
+    typeof skill.name === 'string' && skill.name.length > 0 && typeof skill.level === 'string'),
+  'every skill sent to matching/writing has a name and level').toBe(true);
+}
+
+const STUB = new URL(`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`);
+interface SavedOwner { http: APIRequestContext; uid: string; token: string; revision: number }
+async function commitSavedProfile(owner: SavedOwner, patch: Partial<ProfileData>) {
+  const response = await owner.http.post(new URL('/rest/v1/rpc/commit_profile_patch_cas', STUB).href, {
+    headers: { Authorization: `Bearer ${owner.token}` },
+    data: { p_expected_device_id: owner.uid, p_expected_revision: owner.revision, p_patch: patch },
+  });
+  expect(response.status()).toBe(200);
+  const receipt = await response.json();
+  expect(receipt).toMatchObject({ status: 'applied', revision: owner.revision + 1, profile: patch });
+  owner.revision = receipt.revision;
+}
+async function seedSavedProfile(page: Page): Promise<SavedOwner> {
+  expect(STUB.hostname).toBe('127.0.0.1');
+  const http = await apiRequest.newContext();
+  try {
+    const signup = await http.post(new URL('/auth/v1/signup', STUB).href, { data: {} });
+    expect(signup.status()).toBe(200);
+    const session = await signup.json();
+    const owner = { http, uid: session.user.id as string, token: session.access_token as string, revision: 0 };
+    await commitSavedProfile(owner, { ...PROFILE, skills: [{ name: 'Python', level: 'beginner' }] });
+    await page.addInitScript(({ session, key }) => {
+      if (!localStorage.getItem('e2e_return_cloud_seeded')) {
+        localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(key, 'en');
+        localStorage.setItem('e2e_return_cloud_seeded', '1');
+      }
+    }, { session, key: STORAGE_KEYS.LOCALE });
+    const read = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles' && response.status() === 200);
+    await page.goto('/');
+    expect(await (await read).json()).toMatchObject([{ revision: 1, profile_data: { name: PROFILE.name } }]);
+    await expect(page.locator('#student_name')).toHaveValue(PROFILE.name);
+    await expect(page.getByRole('button', { name: 'Generate Matches', exact: true })).toBeEnabled();
+    return owner;
+  } catch (error) { await http.dispose(); throw error; }
+}
+async function reconnectForProfileRead(page: Page, status = 200) {
+  const read = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles' && response.status() === status);
+  await page.context().setOffline(true);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
+  await page.context().setOffline(false);
+  await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+  return read;
 }
 
 async function seedProfile(page: Page, blockSessionStorage = false, profile: typeof PROFILE & { resume_text?: string } = PROFILE): Promise<void> {
@@ -199,6 +270,109 @@ async function expectRestored(page: Page, state: Network, requestCount: number) 
 // shape. A change to session serialization should not require updating them.
 test.describe('Results return context', () => {
   test.use({ viewport: { width: 1366, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('a delayed first legacy profile read preserves the current page, request and return session', async ({ page }) => {
+    const net = await installNetwork(page);
+    await seedProfile(page);
+    let started = false;
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/rest/v1/profiles?**', async route => {
+      started = true; await gate;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    }, { times: 1 });
+    try {
+      await onSecondPage(page, net);
+      await expect.poll(() => started).toBe(true);
+      await expect(page.getByTestId('profile-refresh-status')).toContainText('Checking for profile updates');
+      const before = { url: page.url(), count: net.requests.length, request: net.requests.at(-1) };
+      expect(new URL(before.url).searchParams.get('returnSession')).toBeTruthy();
+      expect(before.request?.profile.hard_skills).toEqual([{ name: 'Python', level: 'beginner' }]);
+      const read = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles');
+      release(); expect(await (await read).json()).toEqual([]);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+      await expect(page.locator('[id^="match-card-"]')).toHaveCount(8);
+      await expect(title(page)).toBeInViewport();
+      expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
+      expect(net.requests.at(-1)).toEqual(before.request); expect(net.expiredRequests).toBe(0);
+      expect(net.writes.filter(write => /profiles|commit_profile_patch_cas/.test(write))).toEqual([]);
+      await title(page).click(); await page.getByTestId('return-to-results').click();
+      await expectRestored(page, net, before.count);
+    } finally { release(); }
+  });
+
+  test('a legacy profile passes the writing receipt check and receives an actual email template', async ({ page }) => {
+    const net = await installNetwork(page);
+    await seedProfile(page); await onSecondPage(page, net);
+    const before = { url: page.url(), count: net.requests.length };
+    await card(page).getByRole('button', { name: 'Draft Email', exact: true }).click();
+    const fields = page.getByTestId('cold-email-editor-fields');
+    await expect(fields.locator('input[type="text"]')).toHaveValue('Navigation draft');
+    await expect(fields.locator('textarea')).toHaveValue('Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student');
+    expect(net.variantProfiles.length).toBeGreaterThan(0);
+    for (const profile of net.variantProfiles) {
+      expectResearchPython(profile);
+      expect(profile.hard_skills).toEqual([{ name: 'Python', level: 'beginner' }]);
+    }
+    await expect(page.getByTestId('cold-email-footer')).toBeVisible();
+    await page.getByRole('button', { name: 'Close email editor', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+    expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
+    expect(net.writes.filter(write => /commit_profile_patch_cas|interactions|confirm_interaction_contact/.test(write))).toEqual([]);
+  });
+
+  test('a saved cloud profile restores page two until a real matching skill change arrives', async ({ page }) => {
+    const net = await installNetwork(page, undefined, true);
+    const owner = await seedSavedProfile(page);
+    try {
+      await onSecondPage(page, net);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      const url = page.url(), count = net.requests.length;
+      await page.reload(); await expectRestored(page, net, count);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      expect(page.url()).toBe(url);
+      const beforeChange = net.requests.length;
+      await commitSavedProfile(owner, { skills: [{ name: 'Python', level: 'experienced', confirmed: true }] });
+      const read = await reconnectForProfileRead(page);
+      expect(await read.json()).toMatchObject([{ revision: 2, profile_data: { skills: [{ name: 'Python', level: 'experienced' }] } }]);
+      await expect.poll(() => net.requests.at(-1)?.profile.hard_skills).toEqual([{ name: 'Python', level: 'experienced', confirmed: true }]);
+      await expect(page.getByText('1 / 2', { exact: true })).toBeVisible();
+      await expect(page.locator('[id^="match-card-"]')).toHaveCount(50);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      expect(net.requests.length).toBeGreaterThan(beforeChange); expect(net.requests.at(-1)?.cursor).toBeNull();
+      expect(net.expiredRequests).toBe(0); expectPublicFilters(page.url());
+      expect(net.writes.filter(write => /profiles|commit_profile_patch_cas/.test(write))).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('a saved profile read failure preserves page two and never becomes a deletion', async ({ page }) => {
+    const net = await installNetwork(page, undefined, true);
+    const owner = await seedSavedProfile(page);
+    try {
+      await onSecondPage(page, net);
+      await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+      const before = { url: page.url(), count: net.requests.length,
+        raw: await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.PROFILE) };
+      // Unlike [], an explicit read failure cannot fence a confirmed row as deleted.
+      await page.route('**/rest/v1/profiles?**', route => route.fulfill({ status: 403,
+        contentType: 'application/json', body: JSON.stringify({ message: 'Controlled profile read failure' }) }));
+      await reconnectForProfileRead(page, 403);
+      const notice = page.getByTestId('profile-refresh-status');
+      await expect(notice).toContainText('Could not check for profile updates. Your draft is kept.');
+      await expect(page.getByText('2 / 2', { exact: true })).toBeVisible(); await expect(card(page)).toBeVisible();
+      expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
+      expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEYS.PROFILE)).toBe(before.raw);
+      await page.unroute('**/rest/v1/profiles?**');
+      const read = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles' && response.status() === 200);
+      await notice.getByRole('button', { name: 'Retry', exact: true }).click();
+      expect(await (await read).json()).toMatchObject([{ revision: 1, profile_data: { name: PROFILE.name } }]);
+      await expect(notice).toHaveCount(0); await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+      expect(page.url()).toBe(before.url); expect(net.requests).toHaveLength(before.count);
+      expect(net.writes.filter(write => /profiles|commit_profile_patch_cas/.test(write))).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
 
   for (const back of ['detail button', 'browser back'] as const) {
     test(`page, filters and target position survive ${back}`, async ({ page }) => {

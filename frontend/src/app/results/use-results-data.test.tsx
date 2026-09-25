@@ -6,7 +6,7 @@ import { ApiError, type MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
 import { useResultsSession } from './use-results-session';
-import { readResultSession, resultRequestKey, writeResultSession } from '@/lib/result-session';
+import { RESULT_SESSION_PREFIX, readResultSession, resultRequestKey, writeResultSession } from '@/lib/result-session';
 import MatchCard from '@/components/MatchCard';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
@@ -1154,7 +1154,8 @@ describe('same-session cursor validation', () => {
     }, { initialProps: { ready: false } });
     await waitFor(() => expect(result.current.data.data?.result_set_id).toBe('set-first-fast'));
     expect(result.current.session.sessionId).toBeNull();
-    expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))).toEqual([]);
+    expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))
+      .filter((key) => key?.startsWith(RESULT_SESSION_PREFIX))).toEqual([]);
     rerender({ ready: true });
     await waitFor(() => expect(result.current.session.sessionId).not.toBeNull());
     expect(readResultSession(result.current.session.sessionId)?.page).toBe(1);

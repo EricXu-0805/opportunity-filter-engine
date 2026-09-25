@@ -491,7 +491,7 @@ export default function ColdEmailModal({
     try {
       const data = await getEmailVariants(requestProfile, opportunityId);
       if (!current()) return;
-      if (keepEditor && data.variants.length === 0) throw new Error('empty_variants');
+      if (data.variants.length === 0) throw new Error(t('coldEmail.failedGenerate'));
       if (keepEditor && revision !== draftRevisionRef.current) {
         setProfileRegenerateError('edited');
         return;
@@ -669,7 +669,7 @@ export default function ColdEmailModal({
     autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
-    setLoading(false); setError(null); setNameRequired(false); setExperienceUsage(null);
+    setLoading(!hasDraft); setError(null); setNameRequired(false); setExperienceUsage(null);
     setProfileRegenerating(false); setProfileRegenerateError(null); setProfileChanged(hasDraft);
     if (retiredRefine !== null) setChatMessages((messages) => messages.map((message) =>
       message.requestId === retiredRefine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
@@ -693,11 +693,14 @@ export default function ColdEmailModal({
           message.requestId === retiredRefine ? { ...message, content: t('coldEmail.sourceCheckRetired') } : message));
       }
       refineInFlightRef.current = null; aiInFlightRef.current = false;
-      setLoading(false); setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
+      // A check may retire generation, but it is not a completed first draft.
+      // Only an existing editor is kept visible while its source is checked.
+      setLoading(!editorUsedRef.current && !(subject || body || recipient));
+      setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
     } else if (!profileRefresh?.checkForAction && !wasReady && !variantsReadyRef.current && !profileChanged) {
       void fetchVariantsRef.current(editorUsedRef.current);
     }
-  }, [isOpen, sourceReady, profileChanged, profileRefresh?.checkForAction, t]);
+  }, [isOpen, sourceReady, profileChanged, profileRefresh?.checkForAction, subject, body, recipient, t]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1199,6 +1202,10 @@ export default function ColdEmailModal({
 
   if (!isOpen || retired) return null;
 
+  const hasEditor = variants.length > 0 || profileChanged || !!(subject || body || recipient);
+  const showInitialWait = loading && !error && !nameRequired && !action.error && profileAvailable
+    && (targetReady || targetChecking) && profileRefresh?.status !== 'failed' && profileRefresh?.status !== 'conflict';
+
   return (
     <div
       className="fixed inset-0 z-[55] flex sm:items-center sm:justify-center"
@@ -1250,7 +1257,7 @@ export default function ColdEmailModal({
 
         {/* Loading / Error: each state has the same reachable short-screen
             scroll boundary as the editor. The inner panel grows with text. */}
-        {loading && (
+        {showInitialWait && (
           <div className={styles.statePanel}>
             <div className="min-h-full flex flex-col items-center justify-center px-6 py-10 sm:py-20 gap-4 text-center">
               <Loader2 className="w-8 h-8 shrink-0 text-indigo-500 animate-spin" />
@@ -1292,7 +1299,7 @@ export default function ColdEmailModal({
         )}
 
         {/* Two-panel layout */}
-        {!loading && !error && !nameRequired && (
+        {hasEditor && !loading && !error && !nameRequired && (
           <div className={styles.workspace} data-testid="cold-email-workspace">
             <div className={styles.panels}>
               <div className={`${styles.editorPane} lg:border-r border-gray-100`} data-testid="cold-email-editor">

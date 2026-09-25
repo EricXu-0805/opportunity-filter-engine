@@ -5,12 +5,13 @@ import { captureOwnerToken, isOwnerTokenValid, readUserScopedRaw } from '@/lib/i
 import {
   commitProfileAction,
   makeProfileViewSnapshot,
+  withRenderedProfile,
   type ProfileHydration,
   readProfileView,
   RESULTS_WRITER,
   type ProfileViewSnapshot,
 } from '@/lib/profile-sync';
-import { migrateProfile, type LegacyProfileShape } from './types';
+import { migrateProfile, type LegacyProfileShape } from '@/lib/profile-compat';
 import type { ProfileData } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { profileActionKey } from '@/lib/use-profile-action';
@@ -46,10 +47,11 @@ export function useAcceptedProfileView(): {
   const acceptHydration = useCallback((loaded: ProfileHydration) => {
     if (loaded.quarantineFailed || loaded.conflictKeys.length || loaded.conflicts.length
       || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return;
-    const view = loaded.profile ? makeProfileViewSnapshot({ baseProfile: loaded.baseProfile,
-      renderedProfile: loaded.profile, revision: loaded.revision, token: loaded.token,
+    const profile = migrateProfile(loaded.profile);
+    const view = profile ? makeProfileViewSnapshot({ baseProfile: loaded.baseProfile,
+      renderedProfile: profile, revision: loaded.revision, token: loaded.token,
       identityGeneration: loaded.token.epoch, source: 'hydration' }) : null;
-    hydrated.current = { key: profileActionKey(loaded.profile), token: loaded.token };
+    hydrated.current = { key: profileActionKey(profile), token: loaded.token };
     dispatch({ profile: view?.renderedProfile ?? null, view });
   }, []);
   const accept = useCallback(() => {
@@ -60,18 +62,15 @@ export function useAcceptedProfileView(): {
     if (current && isOwnerTokenValid(current.token, current.token.uid)) {
       try {
         const raw = readUserScopedRaw(STORAGE_KEYS.PROFILE);
-        if (profileActionKey(raw ? JSON.parse(raw) as ProfileData : null) === current.key) return;
+        if (profileActionKey(migrateProfile(raw ? JSON.parse(raw) as LegacyProfileShape : null)) === current.key) return;
       } catch { /* fall through to the coordinator's safe view */ }
     }
     hydrated.current = null;
     // ONE read; both halves come out of it.
     const view = readProfileView(captureOwnerToken());
-    dispatch({
-      profile: view
-        ? migrateProfile(view.renderedProfile as unknown as LegacyProfileShape)
-        : null,
-      view,
-    });
+    const profile = view ? migrateProfile(view.renderedProfile) : null;
+    const projected = view && profile ? withRenderedProfile(view, profile) : null;
+    dispatch({ profile: projected?.renderedProfile ?? null, view: projected });
   }, []);
   const clear = useCallback(() => { hydrated.current = null; dispatch(EMPTY); }, []);
   return { accepted, accept, acceptHydration, clear };

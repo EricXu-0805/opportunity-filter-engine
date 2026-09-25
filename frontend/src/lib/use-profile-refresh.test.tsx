@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useProfileAction, profileActionKey } from './use-profile-action';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileData } from './types';
@@ -76,6 +78,27 @@ beforeEach(async () => {
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe('owner-scoped read-only cloud refresh', () => {
+  it('projects legacy skills identically into the action receipt and accepted render, without changing the CAS baseline', async () => {
+    const legacy = { ...BASE, skills: ['Python'] } as unknown as ProfileData;
+    mocks.read.mockResolvedValue(row(legacy, 7));
+    const accepted = vi.fn(); const execute = vi.fn();
+    const { result } = renderHook(() => {
+      const [profile, setProfile] = useState<ProfileData | null>(null);
+      const refresh = useProfileRefresh(true, (loaded) => { accepted(loaded); setProfile(loaded.profile); });
+      const action = useProfileAction<string>({ isOpen: true, profile, profileAvailable: !!profile, scopeKey: 'legacy-target', editRevision: 0,
+        refresh, readiness: refresh.status === 'checking' ? 'waiting' : refresh.status === 'ready' ? 'ready' : 'blocked', execute });
+      return { profile, refresh, action };
+    });
+    await drain(); expect(result.current.profile?.skills).toEqual([{ name: 'Python', level: 'beginner' }]);
+    act(() => result.current.action.request('generate')); await drain();
+    expect(execute).toHaveBeenCalledExactlyOnceWith('generate'); expect(result.current.action.busy).toBe(false);
+    const value: { receipt: ProfileActionReceipt | null } = { receipt: null };
+    await act(async () => { value.receipt = await result.current.refresh.checkForAction!(); });
+    expect(profileActionKey(value.receipt?.profile ?? null)).toBe(profileActionKey(result.current.profile));
+    expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ baseProfile: legacy, revision: 7, token: captureOwnerToken() }));
+    expect(mirror()?.skills).toEqual(['Python']); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it('returns and accepts the actual reconciled candidate with revision, frozen source and no writes', async () => {
     await hydrateProfile();
     expect(recordProfileIntent({ ...BASE, major: 'Unsent draft' }, ['major'], captureOwnerToken())).toBe(true);

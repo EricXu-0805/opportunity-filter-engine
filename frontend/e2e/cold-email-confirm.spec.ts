@@ -468,3 +468,61 @@ test.describe('Cold Email short-screen state recovery', () => {
     await expect(page.getByRole('button', { name: en.coldEmail.closeAria })).toBeInViewport({ ratio: 1 });
   });
 });
+
+
+test('Cold Email waits for the checked profile and template before exposing draft actions', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  const net = await installNetwork(page);
+  await page.addInitScript(({ key, profile, localeKey }) => {
+    localStorage.setItem(key, JSON.stringify(profile));
+    localStorage.setItem(localeKey, 'en');
+  }, { key: STORAGE_KEYS.PROFILE, profile: PROFILE, localeKey: STORAGE_KEYS.LOCALE });
+  const initialRead = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/profiles');
+  await page.goto(`/opportunities/${KNOWN_ID}`);
+  await initialRead;
+  await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
+  const open = page.getByRole('button', { name: 'Draft email', exact: true });
+  await expect(open).toBeEnabled();
+
+  let releaseProfile!: () => void;
+  let releaseTemplate!: () => void;
+  const profileGate = new Promise<void>(resolve => { releaseProfile = resolve; });
+  const templateGate = new Promise<void>(resolve => { releaseTemplate = resolve; });
+  let profileStarted = false;
+  let templateStarted = false;
+  await page.route('**/rest/v1/profiles?**', async route => {
+    profileStarted = true;
+    await profileGate;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  }, { times: 1 });
+  await page.route('**/api/cold-email/variants', async route => {
+    templateStarted = true;
+    await templateGate;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      variants: [VARIANT], recipient_status: 'revealed', lab_type: 'dry',
+    }) });
+  });
+  try {
+    await open.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect.poll(() => profileStarted).toBe(true);
+    expect(templateStarted).toBe(false);
+    await expect(page.getByTestId('cold-email-footer')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(0);
+    releaseProfile();
+    await expect.poll(() => templateStarted).toBe(true);
+    await expect(page.getByTestId('cold-email-footer')).toHaveCount(0);
+    releaseTemplate();
+    await expect(page.getByTestId('cold-email-editor-fields').locator('input[type="text"]')).toHaveValue(VARIANT.subject);
+    await expect(page.getByTestId('cold-email-editor-fields').locator('textarea')).toHaveValue(VARIANT.body);
+    const footer = page.getByTestId('cold-email-footer');
+    await expect(footer).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeEnabled();
+    await page.screenshot({ path: test.info().outputPath('initial-checked-template-mobile.png') });
+    expect(net.confirms).toHaveLength(0);
+    expect(net.otherWrites).toHaveLength(0);
+  } finally {
+    releaseProfile();
+    releaseTemplate();
+  }
+});
