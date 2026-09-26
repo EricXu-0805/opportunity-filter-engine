@@ -893,3 +893,54 @@ def test_cli_build_validate_apply_round_trip(tmp_path):
         (latest / "data/processed/shards/uw.json").read_text(encoding="utf-8")
     )
     assert saved[0]["title"] == "fresh"
+
+
+def test_publication_lock_is_still_held_during_rollback(tmp_path, monkeypatch):
+    source_a=tmp_path/'source-a'; source_b=tmp_path/'source-b'
+    dest_a=tmp_path/'dest-a'; dest_b=tmp_path/'dest-b'
+    source_a.write_bytes(b'new-a'); source_b.write_bytes(b'new-b')
+    dest_a.write_bytes(b'old-a'); dest_b.write_bytes(b'old-b')
+    lock_dir=tmp_path/'locks'; lock_dir.mkdir()
+    real_replace=refresh_artifact_module.os.replace
+    peer_results=[]
+    def replace(source, destination):
+        if Path(source).suffix=='.tmp' and Path(destination)==dest_b:
+            raise OSError('injected second install failure')
+        if Path(source).suffix=='.backup':
+            # Independent process attempts the same flock, not a mocked guard.
+            peer=subprocess.run([sys.executable,'-c',
+                'import fcntl,sys; f=open(sys.argv[1],"a");\n'
+                'try: fcntl.flock(f, fcntl.LOCK_EX|fcntl.LOCK_NB)\n'
+                'except BlockingIOError: sys.exit(42)\n'
+                'sys.exit(0)',str(lock_dir/'ofe-refresh-artifact.lock')],capture_output=True,check=False)
+            peer_results.append(peer.returncode)
+        return real_replace(source,destination)
+    monkeypatch.setattr(refresh_artifact_module.os,'replace',replace)
+    with pytest.raises(OSError,match='second install'):
+        refresh_artifact_module._install_with_rollback([(source_a,dest_a),(source_b,dest_b)],
+            install_guard=refresh_artifact_module._publication_lock(lock_dir))
+    assert peer_results==[42,42]
+    assert dest_a.read_bytes()==b'old-a' and dest_b.read_bytes()==b'old-b'
+    assert not list(tmp_path.glob('*.backup'))
+
+
+def test_failed_rollback_keeps_original_backup_for_explicit_recovery(tmp_path,monkeypatch):
+    source_a=tmp_path/'source-a'; source_b=tmp_path/'source-b'
+    dest_a=tmp_path/'dest-a'; dest_b=tmp_path/'dest-b'
+    source_a.write_bytes(b'new-a'); source_b.write_bytes(b'new-b')
+    dest_a.write_bytes(b'old-a'); dest_b.write_bytes(b'old-b')
+    real_replace=refresh_artifact_module.os.replace
+    def replace(source,destination):
+        if Path(source).suffix=='.tmp' and Path(destination)==dest_b:
+            raise OSError('injected install failure')
+        if Path(source).suffix=='.backup' and Path(destination)==dest_a:
+            raise OSError('injected rollback failure')
+        return real_replace(source,destination)
+    monkeypatch.setattr(refresh_artifact_module.os,'replace',replace)
+    with pytest.raises(RuntimeError,match='rollback was incomplete') as caught:
+        refresh_artifact_module._install_with_rollback([(source_a,dest_a),(source_b,dest_b)])
+    backups=list(tmp_path.glob('*.backup'))
+    assert len(backups)==1 and backups[0].read_bytes()==b'old-a'
+    assert str(backups[0]) in str(caught.value)
+    assert dest_a.read_bytes()==b'new-a' and dest_b.read_bytes()==b'old-b'
+    assert not list(tmp_path.glob('*.tmp'))

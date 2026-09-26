@@ -93,11 +93,12 @@ def _same_complete_name(a, b):
 
 
 def reviewed_profile_policy(opp):
-    """One existing reviewed Statistics template. No generic .edu fallback.
+    """Reviewed Statistics profile bindings. No generic .edu fallback.
 
-    Evidence: ucb_stat_faculty.STAT_CONFIG and its preserved profile fixture in
-    test_ucb_stat_faculty.PROFILE_WITH_INTERESTS_HTML. This does not claim a new
-    live verification or coverage of other schools/lab website templates.
+    Collector layouts cover the preserved direct-h3 fixture and the current
+    node__content/h1 layout read on 2026-09-26 from the official Peng Ding and
+    Rasmus Nielsen profiles. Other schools and linked lab pages are separate
+    policies; matching this binding is not a fresh observation of every page.
     """
     if type(opp) is not dict:
         return None

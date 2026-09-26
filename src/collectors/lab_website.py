@@ -105,20 +105,47 @@ def _profile_snapshot(opp, policy, page, checked_at):
             or container.select_one('article.node--type-faculty, .related-person, aside') is not None
             or container.find_parent(class_='views-row') is not None):
         return None, 'unsupported_template'
-    identities = container.select(policy['identity'])
-    if len(identities) != 1 or identities[0].parent is not container:
+    # Two explicitly reviewed layouts, never an arbitrary descendant fallback.
+    # The September 2026 site places the identity and source fields inside one
+    # node__content. Keep the historical direct-h3 fixture compatible.
+    wrappers = container.select(':scope > div.node__content')
+    if wrappers:
+        if len(wrappers) != 1 or len(container.select('.node__content')) != 1:
+            return None, 'unsupported_template'
+        content = wrappers[0]
+        identities = content.select(':scope > div.node_top > div.node_top_copy > h1.page--title')
+        selectors = (*policy['research_fields'], 'div.field--name-body')
+    else:
+        content = container
+        identities = container.select(':scope > ' + policy['identity'])
+        selectors = policy['research_fields']
+    all_identities = container.select('h1.page--title, h3.page--title')
+    if len(identities) != 1 or len(all_identities) != 1 or identities[0] is not all_identities[0]:
         return None, 'unsupported_template'
     identity = identities[0].get_text(' ', strip=True)
     if not _same_complete_name(identity, opp['pi_name']):
         return None, 'identity_mismatch'
     sections = []
-    for selector in policy['research_fields']:
-        fields = container.select(':scope > ' + selector)
-        if len(fields) > 1:
+    for selector in selectors:
+        fields = content.select(':scope > ' + selector)
+        # A moved or nested source field may contain a new qualification.
+        # Reject it instead of reading only the remaining familiar fields.
+        if len(fields) > 1 or len(container.select(selector[3:])) != len(fields):
             return None, 'unsupported_template'
         for field in fields:
             if field.select_one('script, style, nav, header, footer, aside, article, .related-person') is not None:
                 return None, 'unsupported_template'
+            # The current profile description is itself a field__item. Keep
+            # its whole value (including biography and limitations), not selected
+            # sentences. An absent heading stays absent in the source quote.
+            if selector == 'div.field--name-body':
+                if 'field__item' not in field.get('class', []) or field.select_one('.field__label, .field__items, .field__item'):
+                    return None, 'unsupported_template'
+                text = field.get_text(' ', strip=True)
+                if not text:
+                    return None, 'unsupported_template'
+                sections.append({'section_id': f's{len(sections) + 1}', 'heading': '', 'text': text})
+                continue
             # Unknown direct text/containers may hold a new qualifier. Do not
             # silently ignore them while another recognized field succeeds.
             for parent, allowed in ((field, {'field__label', 'field__item', 'field__items'}),

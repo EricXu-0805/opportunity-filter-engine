@@ -847,56 +847,62 @@ def _install_with_rollback(
                     "backup": None,
                     "backup_ready": False,
                     "installed": False,
+                    "preserve_backup": False,
                 }
             )
+        # Hold the original publication guard through recovery. Releasing and
+        # reacquiring it would allow another publisher's update to be rolled back.
         with install_guard or nullcontext():
-            if preflight is not None:
-                preflight(operations)
-            for operation in operations:
-                destination = operation["destination"]
-                if not isinstance(destination, Path):
-                    raise TypeError("artifact destination must be a path")
-                operation["backup"] = _backup_destination(destination)
-                operation["backup_ready"] = True
-            for operation in operations:
-                os.replace(operation["staged"], operation["destination"])
-                operation["installed"] = True
-    except BaseException as install_error:
-        rollback_errors: list[str] = []
-        for operation in reversed(operations):
-            destination = operation["destination"]
-            backup = operation["backup"]
-            # Restore every destination whose pre-install state was captured,
-            # not only those whose Python-side "installed" flag was reached.
-            # A cancellation can arrive after os.replace completed but before
-            # the next bytecode marks the operation installed.
-            if operation["backup_ready"]:
-                try:
-                    if isinstance(backup, Path):
-                        os.replace(backup, destination)
-                        # POSIX rename may leave both paths intact when an
-                        # untouched destination and its hardlink share an inode.
-                        backup.unlink(missing_ok=True)
-                        operation["backup"] = None
-                    else:
-                        destination.unlink(missing_ok=True)
-                except OSError as rollback_error:
-                    rollback_errors.append(
-                        f"{destination}: {rollback_error}"
-                    )
-        if rollback_errors:
-            raise RuntimeError(
-                "refresh artifact install failed and rollback was incomplete: "
-                + "; ".join(rollback_errors)
-            ) from install_error
-        raise
+            try:
+                if preflight is not None:
+                    preflight(operations)
+                for operation in operations:
+                    destination = operation["destination"]
+                    if not isinstance(destination, Path):
+                        raise TypeError("artifact destination must be a path")
+                    operation["backup"] = _backup_destination(destination)
+                    operation["backup_ready"] = True
+                for operation in operations:
+                    os.replace(operation["staged"], operation["destination"])
+                    operation["installed"] = True
+            except BaseException as install_error:
+                rollback_errors: list[str] = []
+                # Mark all captured originals before recovery starts, so even a
+                # second interruption cannot make finally erase the only backup.
+                for operation in operations:
+                    operation["preserve_backup"] = operation["backup_ready"]
+                for operation in reversed(operations):
+                    destination = operation["destination"]
+                    backup = operation["backup"]
+                    # A cancellation may arrive after replace but before the
+                    # installed flag. Restore every captured destination.
+                    if operation["backup_ready"]:
+                        try:
+                            if isinstance(backup, Path):
+                                os.replace(backup, destination)
+                                # Same-inode rename can leave the hardlink intact.
+                                backup.unlink(missing_ok=True)
+                                operation["backup"] = None
+                            else:
+                                destination.unlink(missing_ok=True)
+                            operation["preserve_backup"] = False
+                        except OSError as rollback_error:
+                            rollback_errors.append(
+                                f"{destination}: {rollback_error}; recovery backup: {backup}"
+                            )
+                if rollback_errors:
+                    raise RuntimeError(
+                        "refresh artifact install failed and rollback was incomplete: "
+                        + "; ".join(rollback_errors)
+                    ) from install_error
+                raise
     finally:
         for operation in operations:
             staged = operation.get("staged")
             backup = operation.get("backup")
             if isinstance(staged, Path):
                 staged.unlink(missing_ok=True)
-            if isinstance(backup, Path):
+            if isinstance(backup, Path) and not operation.get("preserve_backup"):
                 backup.unlink(missing_ok=True)
 
 

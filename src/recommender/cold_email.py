@@ -6,6 +6,7 @@ from src.evidence import (
     inferred_method,
     is_professor_rank,
 )
+from src.lab_context import lab_context_for, validate_public_lab_context
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
 from src.publication_trust import verified_recent_works
 
@@ -643,7 +644,8 @@ def has_source_backed_target_evidence(
 
     The provider may run only when at least one source-backed, non-generic
     target signal exists: a specific keyword/area/topic/raw research label or
-    a work that passed attribution verification.  ``_professor_anchors`` is a
+    a work that passed attribution verification, or current verified website
+    source text. ``_professor_anchors`` is a
     separate scoring aid and may keep length thresholds; it must never decide
     whether evidence exists.
     """
@@ -666,7 +668,16 @@ def has_source_backed_target_evidence(
     if parts is not None and parts.get("recent_works"):
         # _common_parts populates this only through verified_recent_works.
         return True
-    return bool(verified_recent_works(opportunity))
+    if verified_recent_works(opportunity):
+        return True
+    # Website-only faculty records have no legacy keywords or paper metadata.
+    # Use the same validated source the professor brief receives; a malformed
+    # public projection must never fall back to retained private source data.
+    lab = opportunity.get("lab_context") if "lab_context" in opportunity else lab_context_for(opportunity)
+    if not validate_public_lab_context(lab) or lab["status"] != "available":
+        return False
+    return any(_target_signal_is_specific(section["text"])
+               for page in lab["snapshot"]["pages"] for section in page["sections"])
 
 
 def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
