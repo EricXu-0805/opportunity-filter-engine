@@ -306,7 +306,7 @@ describe('verified paper reading preparation', () => {
   it.each(['name_match', 'pending', ''])('hides unverified titles for %s while letting the user skip', status => {
     const { props } = mount({ opportunity: paperTarget([paperOne], status) });
     expect(paperSelect()).toBeDisabled(); expect(screen.queryByText(/Grounded Models/)).toBeNull();
-    expect(screen.getByText(/No verified papers/)).toBeInTheDocument();
+    expect(screen.getByText(/No papers matched to this researcher/)).toBeInTheDocument();
     expect(props.onApply).not.toHaveBeenCalled(); expect(apply()).toBeDisabled();
   });
   it('retires a removed paper confirmation, preserves other draft answers and requires an explicit skip or new choice', () => {
@@ -498,5 +498,44 @@ describe('pending contact draft restoration', () => {
     render(<EmailContactContextPanel {...props} />);
     expect(screen.getByTestId('email-contact-context-panel')).not.toHaveAttribute('open');
     expect(props.onDraftChange).not.toHaveBeenCalled(); expect(props.onApply).not.toHaveBeenCalled();
+  });
+});
+
+import { researchFixture } from '@/lib/research-context.test-utils';
+import { emailPaperKey, emailPaperOptions } from '@/lib/email-paper-reading';
+
+describe('research snapshot reading confirmation', () => {
+  it('shows actual source/abstract but applying requires an explicit reading confirmation', () => {
+    const research = researchFixture(); const opportunity = { id: 'research-target', research_context: research } as Opportunity;
+    const { props } = mount({ opportunity, targetKey: 'wt1:a' });
+    const option = emailPaperOptions(opportunity)[0];
+    fireEvent.change(screen.getByRole('combobox', { name: 'Paper you looked at (optional)' }), { target: { value: emailPaperKey(option) } });
+    const sourceLink = screen.getByRole('link', { name: research.snapshot!.works[0].title });
+    expect(sourceLink).toHaveAttribute('href', research.snapshot!.works[0].source_url);
+    expect(sourceLink).toHaveTextContent(research.snapshot!.works[0].title);
+    expect(sourceLink).toHaveStyle({ display: 'block', overflowWrap: 'anywhere' });
+    expect(sourceLink).not.toHaveAttribute('aria-label');
+    expect(screen.getByText(research.snapshot!.works[0].abstract!)).toBeInTheDocument();
+    const confirmation = screen.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' });
+    expect(confirmation).not.toBeChecked();
+    fireEvent.change(screen.getByRole('combobox', { name: 'How much did you read?' }), { target: { value: 'full_text' } });
+    fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+    fireEvent.click(confirmation); fireEvent.click(apply());
+    expect(props.onApply).toHaveBeenCalledWith({ version: 1, purpose: 'first_contact', paper_reading: { ...option, level: 'full_text', confirmed: true } });
+  });
+  it('source version changes preserve other pending text and invalidate reading without upgrading a restored selection', () => {
+    const research = researchFixture(); const opportunity = { id: 'research-target', research_context: research } as Opportunity;
+    const selected = emailPaperOptions(opportunity)[0];
+    const { props, rerender } = mount({ opportunity, targetKey: 'wt1:a' });
+    fireEvent.change(availability(), { target: { value: 'I can participate on Tuesdays.' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Paper you looked at (optional)' }), { target: { value: emailPaperKey(selected) } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'How much did you read?' }), { target: { value: 'abstract' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' }));
+    const newer = structuredClone(opportunity); newer.research_context!.snapshot!.snapshot_version = 'rs1:' + 'b'.repeat(64);
+    rerender(<EmailContactContextPanel {...props} opportunity={newer} targetKey="wt1:b" />);
+    expect(availability()).toHaveValue('I can participate on Tuesdays.');
+    expect(screen.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' })).not.toBeChecked();
+    fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText('Previous paper is no longer available')).toBeInTheDocument();
   });
 });

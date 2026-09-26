@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash, webcrypto } from 'node:crypto';
-import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import { createEmptyResumeMaster } from './resume-master';
 import { sourceDigest } from './experience-evidence';
 import { createTargetResume, validateTargetResume, type TargetResumeV1 } from './target-resume';
@@ -17,7 +17,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 const unwrap = <T,>(value: TargetResumePlanResult<T>): T => { if (!value.ok) throw Error(value.code); return value.value; };
 const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
 const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.',
-  requirements: ['Python', '😀研究'], context_version: 2 as const,
+  requirements: ['Python', '😀研究'], context_version: 3 as const, research: { version: 1 as const, status: 'unavailable' as const, snapshot: null },
   criteria: { eligibility: {}, timing: {}, application: {}, setting: {}, availability: {}, attribution: {} } };
 const lines = (draft: TargetResumeV1) => draft.document.sections.flatMap(s => s.blocks.flatMap(b => b.lines));
 const blocks = (draft: TargetResumeV1) => draft.document.sections.flatMap(s => s.blocks);
@@ -34,7 +34,7 @@ async function make(texts = ['Built a Python parser with tests.', 'Analyzed 1000
 }
 const prepare = async (draft?: TargetResumeV1, target_pages: 1 | 2 = 1) => unwrap(await prepareTargetResumePlan(draft ?? await make(), { target_pages }));
 function response(prepared: PreparedTargetResumePlan): TargetResumePlanResponse {
-  return { version: 1, pipeline_version: 'full-target-plan-v1', request_id: 'request', document_id: prepared.draft.id,
+  return { version: 1, pipeline_version: 'full-target-plan-v2', request_id: 'request', document_id: prepared.draft.id,
     opportunity_id: prepared.draft.opportunity_id, document_signature: prepared.document_signature, base: clone(prepared.draft.base),
     options: clone(prepared.options), manifest: clone(prepared.manifest), scope: clone(prepared.scope), method: 'ai', complete: true,
     reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,

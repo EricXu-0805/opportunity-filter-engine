@@ -43,7 +43,7 @@ def test_exact_reading_sentence_and_required_claim_without_level_upgrade(level, 
 @pytest.mark.parametrize("changes", [
     {"confirmed": False}, {"confirmed": 1}, {"confirmed": "true"}, {"confirmed": None},
     {"level": "skimmed"}, {"level": None}, {"source": "verified_author_id"},
-    {"title": ""}, {"title": " padded "}, {"title": "x" * 501}, {"title": "a\nb"},
+    {"title": ""}, {"title": " padded "}, {"title": "x" * 1001}, {"title": "a\nb"},
     {"title": "a\u2028b"}, {"title": "a\x00b"}, {"title": "a\ud800b"},
     {"year": True}, {"year": "2025"}, {"year": 2025.0}, {"year": 999}, {"year": 2101},
 ])

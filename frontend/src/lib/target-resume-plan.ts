@@ -1,3 +1,4 @@
+import { isTargetResumeEvidence } from './target-resume-evidence';
 import { isActiveExperience } from './experience-evidence';
 import { resumeTextCharacters } from './resume-input';
 import {
@@ -168,14 +169,7 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
     || !Array.isArray(value.source_evidence) || !value.source_evidence.length || !Array.isArray(value.rewrites)) fail('invalid_response');
   const target = prepared.draft.target_snapshot;
   for (const item of value.target_evidence) {
-    shape(item, ['field', 'requirement_index', 'start', 'end', 'quote']);
-    let source: string;
-    if (item.field === 'description' && item.requirement_index === null) source = target.description;
-    else if (item.field === 'requirement' && Number.isSafeInteger(item.requirement_index)
-      && (item.requirement_index as number) >= 0 && (item.requirement_index as number) < target.requirements.length) {
-      source = target.requirements[item.requirement_index as number];
-    } else fail('invalid_response');
-    quote(source, item);
+    if (!isTargetResumeEvidence(target, item)) fail('invalid_response');
   }
   const block = prepared.draft.document.sections.find(section => section.id === manifest.section_id)!.blocks.find(block => block.id === manifest.block_id)!;
   const lines = new Map(block.lines.map(line => [line.id, line]));

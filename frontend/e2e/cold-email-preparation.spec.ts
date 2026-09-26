@@ -1,4 +1,6 @@
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type TestInfo } from '@playwright/test';
+import { researchFixture, RESEARCH_TITLE, RESEARCH_ABSTRACT } from './research-fixture';
+import type { ResearchContext } from '../src/lib/research-context';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import type { ContactInstructions } from '../src/lib/contact-instructions';
@@ -49,7 +51,7 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
   const owner = await account(); const checks = audit(page);
   const state = { instructions: { version: 1, status: 'unknown', email_policy: 'unknown', rules: [] } as ContactInstructions,
     version: V1, email: 'lab@example.edu', emailStatus: 'revealed', calls: [] as Call[], detailReads: 0,
-    hold: false, held: false, readingError: false, papers: true, blocked: false };
+    hold: false, held: false, readingError: false, papers: true, blocked: false, research: undefined as ResearchContext | undefined };
   let release!: () => void; const gate = new Promise<void>(r => { release = r; });
   await page.addInitScript(({ session, keys, locale }) => {
     if (!localStorage.getItem('email-preparation-seeded')) { localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(keys.LOCALE, locale); localStorage.setItem(keys.ONBOARDING_SEEN, '1'); localStorage.setItem('email-preparation-seeded', '1'); }
@@ -67,6 +69,7 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
     state.detailReads++; if (state.hold && !route.request().headers().authorization) { state.held = true; await gate; }
     const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200); const value = await response.json();
     value.writing_target_version = state.version; value.contact_instructions = state.instructions;
+    if (state.research) value.research_context = state.research;
     value.metadata.publication_attribution_status = 'verified_author_id'; value.metadata.recent_works = state.papers ? [{ title: PAPER, year: 2025 }] : [];
     if (route.request().headers().authorization) { value.contact_email_status = state.emailStatus; if (state.emailStatus === 'revealed') value.contact_email = state.email; else delete value.contact_email; }
     await route.fulfill({ response, json: value });
@@ -205,5 +208,58 @@ test('native blank popup navigates only to an intercepted local compose response
     expect(await popup.evaluate(() => window.opener === null)).toBe(true); expect(composeIntercepts).toBe(1); expect(f.mutations).toEqual([]);
     await info.attach('native-popup-local-interception', { body: JSON.stringify({ intercepted: composeIntercepts, url: popup.url(), openerNull: true, networkFetch: false }), contentType: 'application/json' });
     await popup.close();
+  } finally { await f.done(); }
+});
+
+for (const status of ['available', 'stale'] as const) test(`research ${status} keeps source text separate from the reading confirmation`, async ({ page }, info) => {
+  const locale = info.project.name === 'mobile-chrome' ? 'zh' : 'en';
+  const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
+  if (locale === 'zh') await page.setViewportSize({ width: 390, height: 844 });
+  const f = await setup(page, info, locale);
+  try {
+    f.state.research = researchFixture(status);
+    // A stale response deliberately carries old legacy metadata as well: UI
+    // must not use it to bypass the stronger research status.
+    await f.open(); await f.ready();
+    const panel = page.getByTestId('email-contact-context-panel'); await panel.locator(':scope > summary').click();
+    const papers = panel.getByLabel(copy('Paper you looked at (optional)', '你看过的论文（选填）'), { exact: true });
+    if (status === 'stale') {
+      await expect(papers).toBeDisabled();
+      await expect(papers.locator('option')).toHaveCount(1);
+      expect(f.state.calls.every(call => !call.contact_context.paper_reading)).toBe(true);
+    } else {
+      await papers.selectOption({ label: RESEARCH_TITLE + ' (2025)' });
+      const sourceLink = panel.getByRole('link', { name: RESEARCH_TITLE, exact: true });
+      await expect(sourceLink).toHaveAttribute('href', 'https://doi.org/10.1234/synthetic-instrument-study');
+      await expect(sourceLink).toHaveText(RESEARCH_TITLE);
+      await expect(sourceLink).toBeVisible();
+      expect(await sourceLink.getAttribute('aria-label')).toBeNull();
+      const titleLayout = await sourceLink.evaluate(link => {
+        const box = link.getBoundingClientRect(); const style = getComputedStyle(link);
+        const range = document.createRange(); range.selectNodeContents(link);
+        return { wraps: style.overflowWrap === 'anywhere', fits: link.scrollWidth <= link.clientWidth + 1,
+          textFits: [...range.getClientRects()].every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1),
+          inViewport: box.left >= 0 && box.right <= innerWidth + 1 };
+      });
+      expect(titleLayout).toEqual({ wraps: true, fits: true, textFits: true, inViewport: true });
+      await panel.getByText(copy('Source abstract', '来源摘要'), { exact: true }).click();
+      await expect(panel).toContainText(RESEARCH_ABSTRACT);
+      const confirm = panel.getByRole('checkbox', { name: copy('I confirm this reading level for the selected paper.', '我确认自己对这篇论文的阅读程度。'), exact: true });
+      await expect(confirm).not.toBeChecked();
+      await panel.getByLabel(copy('How much did you read?', '你读到了哪一步？'), { exact: true }).selectOption('abstract');
+      await expect(confirm).not.toBeChecked();
+      const reading = page.getByTestId('email-paper-reading'); await reading.scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+      await reading.screenshot({ path: info.outputPath(`research-reading-${locale}.png`), animations: 'disabled' });
+      const before = f.state.calls.length;
+      await confirm.check(); await panel.getByRole('button', { name: copy('Apply background to this draft', '将背景应用于草稿'), exact: true }).click();
+      expect(f.state.calls.length).toBe(before);
+      await page.getByRole('button', { name: copy('Regenerate from updated materials', '按最新资料和机会重新生成'), exact: true }).click();
+      await expect.poll(() => f.state.calls.length).toBe(before + 2);
+      expect(f.state.calls.at(-1)?.contact_context.paper_reading).toEqual({ title: RESEARCH_TITLE, year: 2025, level: 'abstract', confirmed: true,
+        work_id: f.state.research.snapshot!.works[0].work_id, snapshot_version: f.state.research.snapshot!.snapshot_version });
+    }
+    expect(f.mutations).toEqual([]);
+    await info.attach('research-reading-requests', { body: JSON.stringify({ status, calls: f.state.calls }, null, 2), contentType: 'application/json' });
   } finally { await f.done(); }
 });

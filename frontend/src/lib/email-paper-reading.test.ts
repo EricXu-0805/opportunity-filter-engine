@@ -35,3 +35,30 @@ describe('verified paper reading options', () => {
     expect(isEmailPaperReadingCurrent({ version: 1, purpose: 'first_contact' }, null)).toBe(true);
   });
 });
+
+import { researchFixture } from './research-context.test-utils';
+
+describe('snapshot-bound paper reading', () => {
+  it('requires work ID and version, preserving same-title distinct works', () => {
+    const research = researchFixture(); const first = research.snapshot!.works[0];
+    research.snapshot!.works.push({ ...first, work_id: 'https://openalex.org/W2' });
+    const opp = { ...target(), research_context: research };
+    const options = emailPaperOptions(opp);
+    expect(options).toHaveLength(2); expect(emailPaperKey(options[0])).not.toBe(emailPaperKey(options[1]));
+    expect(isEmailPaperReadingCurrent(context, opp)).toBe(false);
+    const bound: EmailContactContext = { ...context, paper_reading: { ...options[1], level: 'abstract', confirmed: true } };
+    expect(isEmailPaperReadingCurrent(bound, opp)).toBe(true);
+    research.snapshot!.snapshot_version = 'rs1:' + 'b'.repeat(64);
+    expect(isEmailPaperReadingCurrent(bound, opp)).toBe(false);
+  });
+  it('never revives legacy titles through stale, malformed, or raw snapshots', () => {
+    const research = researchFixture(); research.status = 'stale';
+    expect(emailPaperOptions({ ...target(), research_context: research })).toEqual([]);
+    expect(emailPaperOptions({ ...target(), research_context: { ...research, snapshot: null } })).toEqual([]);
+    const raw = target(); (raw.metadata as unknown as Record<string, unknown>).research_snapshot = null;
+    expect(emailPaperOptions(raw)).toEqual([]);
+  });
+  it('keeps the explicit legacy compatibility when no new source exists', () => {
+    expect(emailPaperOptions({ ...target(), research_context: { version: 1, status: 'unavailable', snapshot: null } })).toEqual([paper]);
+  });
+});

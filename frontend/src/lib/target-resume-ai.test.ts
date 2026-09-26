@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash, webcrypto } from 'node:crypto';
-import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, validateTargetResume, type TargetResumeV1 } from './target-resume';
@@ -14,7 +14,7 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 const unwrap = <T,>(v: TargetResumeAIResult<T>): T => { if (!v.ok) throw Error(v.code); return v.value; };
 const lines = (v: TargetResumeV1) => v.document.sections.flatMap(s => s.blocks.flatMap(b => b.lines));
 const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
-const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.', requirements: ['Python', '😀研究'], context_version: 2 as const,
+const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.', requirements: ['Python', '😀研究'], context_version: 3 as const, research: { version: 1 as const, status: 'unavailable' as const, snapshot: null },
   criteria: { eligibility: {}, timing: {}, application: {}, setting: {}, availability: {}, attribution: {} } };
 async function make(facts: string[] = ['Python'], experiences: string[] = ['Built a Python parser.'], description?: string) {
   const master = createEmptyResumeMaster('master');
@@ -37,7 +37,7 @@ function receipt(p: PreparedTargetResumeAi, id: string, status: TargetResumeAiRe
       proposed_text: status === 'suggested' && u.evidence.kind === 'experience' ? 'Built the Python parser with the team.' : null } };
 }
 function response(p: PreparedTargetResumeAi, ids = p.batches[0], request_id = 'request'): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v2', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
+  return { version: 1, pipeline_version: 'full-target-v3', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
     document_signature: p.document_signature, base: clone(p.draft.base), manifest: { unit_ids: p.units.map(u => u.unit_id), protected_unit_count: p.protected_unit_count },
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2, receipts: ids.map(id => receipt(p, id)) };
 }
@@ -84,7 +84,7 @@ describe('whole-document preparation and bounded complete batches', () => {
   });
   it('counts every public target field and marks an oversized target without any provider batch', async () => {
     const overhead = [target.opportunity_id, target.title, target.organization, target.source_url, ...target.requirements].reduce((n, t) => n + Array.from(t).length, 0);
-    const criteriaLength = JSON.stringify(target.criteria).length;
+    const criteriaLength = JSON.stringify(target.criteria).length + JSON.stringify(target.research).length;
     const exact = await prep(await make(['Python'], [], 'x'.repeat(24000 - overhead - criteriaLength)));
     expect(exact.batches).toHaveLength(1);
     const over = await prep(await make(['Python'], [], 'x'.repeat(24001 - overhead - criteriaLength)));

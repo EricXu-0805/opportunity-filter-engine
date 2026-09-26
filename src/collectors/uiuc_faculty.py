@@ -1268,8 +1268,34 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
                 method = inferred_method(existing, f)
                 if method:
                     stamp_inferred(incoming.setdefault("metadata", {}), f, method)
-    works = (existing.get("metadata") or {}).get("recent_works")
-    if works and not (incoming.get("metadata") or {}).get("recent_works"):
+    prior_metadata = existing.get("metadata") or {}
+    incoming_metadata = incoming.get("metadata") or {}
+    if "research_snapshot" in prior_metadata and "research_snapshot" not in incoming_metadata:
+        # A new snapshot is bound to its actual person, institution and source.
+        # Preserve its original time, including a stale snapshot for display;
+        # never relabel it onto an explicitly changed/revoked author or works.
+        from copy import deepcopy
+
+        from ..research_context import validate_research_snapshot
+
+        if "recent_works" not in incoming_metadata:
+            authority_fields = ("publication_attribution_status", "publication_author_id", "works_gate",
+                                "publication_institution_id")
+            candidate_metadata = {**{k: prior_metadata[k] for k in authority_fields if k in prior_metadata},
+                                  **incoming_metadata}
+            candidate = {**incoming, "metadata": candidate_metadata}
+            snapshot = validate_research_snapshot(prior_metadata["research_snapshot"], candidate)
+            if snapshot is not None and validate_research_snapshot(prior_metadata["research_snapshot"], existing) is not None:
+                md = incoming.setdefault("metadata", {})
+                for key in authority_fields:
+                    if key in candidate_metadata:
+                        md[key] = candidate_metadata[key]
+                md["research_snapshot"] = snapshot
+                md["recent_works"] = [{"title": work["title"], "year": work["year"]} for work in snapshot["works"]]
+                if "research_refresh" not in md and type(prior_metadata.get("research_refresh")) is dict:
+                    md["research_refresh"] = deepcopy(prior_metadata["research_refresh"])
+    works = prior_metadata.get("recent_works")
+    if "research_snapshot" not in prior_metadata and works and not (incoming.get("metadata") or {}).get("recent_works"):
         md = incoming.setdefault("metadata", {})
         md["recent_works"] = works
         # Everything that describes exactly these works travels with them —

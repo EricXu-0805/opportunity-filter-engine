@@ -51,7 +51,7 @@ def endpoint(monkeypatch):
 
 def test_authoritative_context_contains_all_six_new_groups():
     target = route.authoritative_target(opportunity())
-    assert target['context_version'] == 2
+    assert target['context_version'] == 3
     assert set(target['criteria']) == set(GROUPS)
 
 
@@ -168,7 +168,7 @@ def test_null_is_kept_and_missing_is_not_filled(group, key, value):
 
 
 @pytest.mark.parametrize('mutation', [
-    lambda t: t.update(context_version=True), lambda t: t.update(context_version=3),
+    lambda t: t.update(context_version=True), lambda t: t.update(context_version=4),
     lambda t: t.pop('context_version'), lambda t: t.pop('criteria'),
     lambda t: t['criteria'].pop('timing'), lambda t: t['criteria'].update(extra={}),
     lambda t: t['criteria'].update(eligibility=None),
@@ -289,7 +289,7 @@ def test_new_criteria_count_complete_unicode_and_prompt_constraints_are_not_quot
     target = doc['target_snapshot']
     legacy_count = sum(len(target[key]) for key in ('opportunity_id', 'title', 'organization', 'source_url', 'description')) + sum(map(len, target['requirements']))
     criteria_size = len(json.dumps(target['criteria'], ensure_ascii=False, sort_keys=True, separators=(',', ':')))
-    assert engine.target_character_count(target) == legacy_count + criteria_size
+    assert engine.target_character_count(target) == legacy_count + criteria_size + len(json.dumps(target['research'], ensure_ascii=False, sort_keys=True, separators=(',', ':')))
     units = engine.units_for(doc)[0]
     messages, reason = engine.batch_preflight(doc, units[:1], 'zh')
     assert reason is None

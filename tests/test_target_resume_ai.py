@@ -483,13 +483,13 @@ def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypat
     request["include_check_version"] = True
     response = client.post(PATH, json=request)
     assert response.status_code == 200
-    assert response.json()["check_version"] == "target-resume-source-checks-v1"
+    assert response.json()["check_version"] == "target-resume-source-checks-v2"
     assert response.json()["pipeline_version"] != response.json()["check_version"]
     # Available rules do not turn skipped/failed work into a checked rewrite.
     monkeypatch.setattr(route, "is_configured", lambda: False)
     failed = client.post(PATH, json=request)
     assert failed.status_code == 200
-    assert failed.json()["check_version"] == "target-resume-source-checks-v1"
+    assert failed.json()["check_version"] == "target-resume-source-checks-v2"
     assert failed.json()["method"] == "unavailable"
     forged = {**request, "check_version": "target-resume-source-checks-v999"}
     assert client.post(PATH, json=forged).status_code == 422

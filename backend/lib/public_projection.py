@@ -15,6 +15,7 @@ from src.evidence import (
     record_kind,
     target_truth,
 )
+from src.research_context import research_context_for
 
 _EMAIL_IN_TEXT_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\."
@@ -580,6 +581,8 @@ def public_target_truth(canonical_record: dict) -> dict:
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "contact_instruction_sources",
+    "research_snapshot",
+    "research_refresh",
     "is_active",
     "listing_status",
     "urap_status",
@@ -692,6 +695,23 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # (`stanford-f0a974ed2bd2` has one as its TITLE). Canonical does not mean
     # clean; it means authoritative about identity.
     prepared = dict(payload)
+    research = research_context_for(canonical_record)
+    if "research_context" in prepared:
+        # Never accept a caller/corpus-supplied public snapshot.
+        prepared["research_context"] = research
+    if research["status"] == "available":
+        works = research["snapshot"]["works"]
+        if isinstance(prepared.get("recent_works"), list):
+            # Preserve the existing card's bounded two-title shape, never add
+            # abstracts to list payloads or trust a stale legacy title cache.
+            prepared["recent_works"] = [
+                {"title": work["title"][:110], "year": work["year"]}
+                for work in works[:min(2, len(prepared["recent_works"]))]
+            ]
+        if isinstance(prepared.get("metadata"), dict) and "recent_works" in prepared["metadata"]:
+            prepared["metadata"] = {**prepared["metadata"], "recent_works": [
+                {"title": work["title"], "year": work["year"]} for work in works]}
+
     for field in _CANONICAL_IDENTITY_FIELDS:
         if field in canonical_record:
             prepared[field] = canonical_record[field]
@@ -702,6 +722,18 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # result is shared with `payload` — the shallow `dict()` above is only a
     # scaffold for the identity edit and never reaches the caller.
     projected = redact_embedded_emails(sanitize_public_urls(prepared))
+    research_changed = redact_embedded_emails(sanitize_public_urls(research)) != research
+    if research_changed and "research_context" in projected:
+        # A source quote changed by privacy/URL projection cannot keep its source
+        # hash. Preserve the raw private snapshot; do not re-sign edited text.
+        projected["research_context"] = {"version": 1, "status": "unavailable", "snapshot": None}
+    raw_metadata = canonical_record.get("metadata") or {}
+    if isinstance(raw_metadata, dict) and "research_snapshot" in raw_metadata and (
+        research["status"] != "available" or research_changed
+    ):
+        projected.pop("recent_works", None)
+        if isinstance(projected.get("metadata"), dict):
+            projected["metadata"].pop("recent_works", None)
 
     truth = public_target_truth(canonical_record)
     kind = record_kind(canonical_record)

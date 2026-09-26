@@ -83,7 +83,7 @@ def endpoint(monkeypatch):
 def completed(endpoint, response, doc):
     assert response.status_code == 200, response.text
     result = response.json()
-    assert result["pipeline_version"] == "full-target-plan-v1"
+    assert result["pipeline_version"] == "full-target-plan-v2"
     assert result["complete"] is True and result["method"] == "ai" and result["reason_code"] is None
     assert result["logical_calls"] == 1 and result["provider_attempts_upper_bound"] == 2
     assert result["document_signature"] == fingerprint(doc) and result["base"] == doc["base"]
@@ -409,13 +409,13 @@ def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypat
     request["include_check_version"] = True
     response = endpoint.client.post(PATH, json=request)
     assert response.status_code == 200
-    assert response.json()["check_version"] == "target-resume-source-checks-v1"
+    assert response.json()["check_version"] == "target-resume-source-checks-v2"
     assert response.json()["pipeline_version"] != response.json()["check_version"]
     # Available rules do not turn skipped/failed work into a checked rewrite.
     monkeypatch.setattr(route, "is_configured", lambda: False)
     failed = endpoint.client.post(PATH, json=request)
     assert failed.status_code == 200
-    assert failed.json()["check_version"] == "target-resume-source-checks-v1"
+    assert failed.json()["check_version"] == "target-resume-source-checks-v2"
     assert failed.json()["method"] == "unavailable"
     forged = {**request, "check_version": "target-resume-source-checks-v999"}
     assert endpoint.client.post(PATH, json=forged).status_code == 422

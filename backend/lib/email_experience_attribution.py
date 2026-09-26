@@ -34,9 +34,19 @@ _FORMS = {
 }
 _VERBS = {form: lemma for lemma, forms in _FORMS.items() for form in forms}
 _VERB_PATTERN = '(?:' + '|'.join(sorted(_VERBS, key=len, reverse=True)) + ')'
+# B46 resume-only research actions. Default email parsing keeps its original
+# finite vocabulary; these are inflections, not a research/study synonym map.
+_RESUME_RESEARCH_FORMS = {
+    'study': ('study', 'studied', 'studying'),
+    'research': ('research', 'researched', 'researching'),
+    'investigate': ('investigate', 'investigated', 'investigating'),
+}
+_RESUME_VERBS = {**_VERBS, **{form: lemma for lemma, forms in _RESUME_RESEARCH_FORMS.items() for form in forms}}
+_RESUME_VERB_PATTERN = '(?:' + '|'.join(sorted(_RESUME_VERBS, key=len, reverse=True)) + ')'
 _SUBJECT_PATTERN = r"(?:my\s+team|our\s+team|the\s+team|my\s+teammates?|my\s+colleagues?|my\s+supervisor|i|we)\b"
 _SUBJECT = re.compile(_SUBJECT_PATTERN, re.I)
 _ACTION = re.compile(r'^(' + _VERB_PATTERN + r')\b\s*(.*)$', re.I)
+_RESUME_ACTION = re.compile(r'^(' + _RESUME_VERB_PATTERN + r')\b\s*(.*)$', re.I)
 _SENTENCES = re.compile(r'(?<!\d)\.(?!\d)|[!?;\n]+')
 # Resume sentences may end in a course number or metric. A following digit
 # keeps a decimal point intact, including .25; email retains its legacy splitter.
@@ -46,6 +56,7 @@ _COORDINATED = re.compile(
     r'\s*(?:,\s*)?\b(?:and|but|whereas|while|then|however)\s+'
     r'(?=' + _SUBJECT_PATTERN + r'|(?:(?:did|have|not|never|only|personally|successfully|independently|solely|helped|help|assisted)\s+){0,5}' + _VERB_PATTERN + r'\b|(?:would|will|hope|want|plan)\b)', re.I,
 )
+_RESUME_COORDINATED = re.compile(_COORDINATED.pattern.replace(_VERB_PATTERN, _RESUME_VERB_PATTERN), re.I)
 _LABEL = re.compile(r'^(my role|task|method|outcome basis|outcome)\s*:\s*', re.I)
 _PROJECT_LABEL = re.compile(r'^((?:project|study|experiment)\s+[^:;.!?\n]{1,80})\s*:\s*', re.I)
 _PROJECT_PREFIX = re.compile(r'^(?:in|for|on|during)\s+((?:the\s+)?(?:project|study|experiment)\s+[^,;:.!?\n]{1,80}),\s*', re.I)
@@ -105,7 +116,7 @@ def _actor(subject: str) -> str:
     return name  # A colleague's action cannot authenticate my own action.
 
 
-def _action(clause: str):
+def _action(clause: str, resume: bool = False):
     negative = False
     qualifiers = []
     for _ in range(6):
@@ -125,7 +136,7 @@ def _action(clause: str):
             clause = clause[modifier.end():]
         else:
             break
-    action = _ACTION.match(clause)
+    action = (_RESUME_ACTION if resume else _ACTION).match(clause)
     return (action, negative, qualifiers) if action else None
 
 
@@ -153,24 +164,24 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
         # subjects below still win, including team/colleague coordinated clauses.
         carried = 'personal' if label == 'my role' or ((source or allow_subjectless_claims) and label is None) else None
         clauses = []
-        for candidate_clause in _COORDINATED.split(sentence):
+        for candidate_clause in (_RESUME_COORDINATED if allow_subjectless_claims else _COORDINATED).split(sentence):
             # Only an already recognized leading fragment permits this local
             # boundary. Do not split number commas or contextual prefixes such
             # as "With my team, I built". Keep every following subject to check.
-            if allow_subjectless_claims and _action(candidate_clause.strip(' ,\t“”\"')):
+            if allow_subjectless_claims and _action(candidate_clause.strip(' ,\t“”\"'), True):
                 clauses.extend(_RESUME_EXPLICIT_BOUNDARY.split(candidate_clause))
             else:
                 clauses.append(candidate_clause)
         for clause in clauses:
             clause = clause.strip(' ,\t“”\"')
             actor = None
-            parsed = _action(clause) if allow_subjectless_claims and carried else None
+            parsed = _action(clause, True) if allow_subjectless_claims and carried else None
             if parsed:
                 actor = carried
             # A contextual "with my team" is not the subject of "I built".
             # Select the subject that actually has a recognized action.
             for subject in (() if parsed else _SUBJECT.finditer(clause)):
-                candidate = _action(clause[subject.end():].lstrip())
+                candidate = _action(clause[subject.end():].lstrip(), allow_subjectless_claims)
                 if not candidate:
                     continue
                 before = clause[:subject.start()].strip()
@@ -178,7 +189,7 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                     continue
                 actor = _actor(subject[0]); parsed = candidate; break
             if not parsed and carried:
-                actor = carried; parsed = _action(clause)
+                actor = carried; parsed = _action(clause, allow_subjectless_claims)
             if not parsed:
                 carried = None; continue
             action, negative, qualifiers = parsed
@@ -205,9 +216,9 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and not _CARE_QUALIFIER.search(objects):
                 tokens = tokens[:-1]
             if tokens:
-                facts.append(_Fact(actor, _VERBS[action[1].casefold()], tokens, local_scope, negative, tuple(sorted(set(qualifiers))), entry))
+                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], tokens, local_scope, negative, tuple(sorted(set(qualifiers))), entry))
             if tail and _tokens(tail):
-                facts.append(_Fact(actor, _VERBS[action[1].casefold()], _tokens(tail), local_scope, True, tuple(sorted(set(qualifiers))), entry))
+                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], _tokens(tail), local_scope, True, tuple(sorted(set(qualifiers))), entry))
     return facts
 
 
@@ -346,7 +357,8 @@ def experience_attribution_violations(
     ``allow_subjectless_claims`` opts resume output into checking unlabelled
     action fragments such as "Built a parser" as personal claims. It does not
     relabel explicit team actors, infer ownership from Outcome fields, or broaden
-    the finite action vocabulary. Resume mode also preserves established legacy
+    general semantics. Resume mode adds only study/research/investigate inflections
+    and preserves established legacy
     forms: neutral trailing "carefully", exact analyze/tool/sample structure,
     explicit computational-tool placement, CS course context and EEG analysis
     for/of. These finite structures do not permit arbitrary synonyms or word order.

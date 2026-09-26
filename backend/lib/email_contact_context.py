@@ -12,6 +12,7 @@ from copy import deepcopy
 
 from backend.lib.public_projection import redact_embedded_emails
 from backend.lib.publication_attribution import verified_recent_works
+from src.research_context import research_context_for, validate_public_research_context
 
 # Shared with the browser contact-context validator. This is intentionally a
 # bounded exclusion of obvious work/award claims, not a semantic name parser.
@@ -46,6 +47,26 @@ def contact_context_receipt(context: dict | None) -> dict:
             "context_sig": hashlib.sha256(canonical.encode("utf-8")).hexdigest()}
 
 
+def email_research_context(opp: dict) -> dict:
+    """Use validated public material, or derive it from a server-owned raw record."""
+    if "research_context" in opp:
+        value = opp["research_context"]
+        return value if validate_public_research_context(value) else {"version": 1, "status": "unavailable", "snapshot": None}
+    return research_context_for(opp)
+
+
+def email_research_works(opp: dict) -> list[dict]:
+    research = email_research_context(opp)
+    if research["status"] == "available":
+        return research["snapshot"]["works"]
+    if research["status"] == "stale" or "research_snapshot" in (opp.get("metadata") or {}):
+        return []
+    if "research_context" in opp and not validate_public_research_context(opp["research_context"]):
+        return []
+    works = verified_recent_works(opp)
+    return works if isinstance(works, list) else []
+
+
 def validate_paper_reading(context: dict | None, opp: dict) -> None:
     """Bind a schema-validated attestation to this current target, never a user title.
 
@@ -55,7 +76,14 @@ def validate_paper_reading(context: dict | None, opp: dict) -> None:
     reading = (context or {}).get("paper_reading")
     if not reading:
         return
-    works = verified_recent_works(opp)
+    research = email_research_context(opp)
+    works = email_research_works(opp)
+    if research["status"] == "available":
+        if reading.get("snapshot_version") != research["snapshot"]["snapshot_version"] or not reading.get("work_id"):
+            raise ValueError("paper reading snapshot changed")
+        works = [work for work in works if work["work_id"] == reading["work_id"]]
+    elif reading.get("work_id") is not None or reading.get("snapshot_version") is not None:
+        raise ValueError("paper research snapshot unavailable")
     if not isinstance(works, list) or not any(
         isinstance(work, dict)
         and work.get("title") == reading["title"]

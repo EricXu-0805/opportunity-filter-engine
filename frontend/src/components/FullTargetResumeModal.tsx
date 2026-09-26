@@ -1,5 +1,7 @@
 'use client';
 
+import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
+
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
 import Link from 'next/link';
@@ -422,7 +424,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <p className="whitespace-pre-wrap break-words text-xs">{copy('Before', '修改前')}: {value(change.before)}</p>
             <p className="whitespace-pre-wrap break-words text-xs">{copy('After', '修改后')}: {value(change.after)}</p>
             {change.reason && <p className="whitespace-pre-wrap break-words text-sm">{copy('Reason', '理由')}: {change.reason}</p>}
-            {change.target_evidence.map((quote, i) => <p key={`target-${i}`} className="whitespace-pre-wrap break-words text-xs">{copy('Opportunity citation', '机会引用')}: {quote.quote}</p>)}
+            {change.target_evidence.map((quote, i) => <p key={`target-${i}`} className="whitespace-pre-wrap break-words text-xs">{targetResumeEvidenceLabel(quote, locale)}: {quote.quote}</p>)}
             {change.source_evidence.map((quote, i) => <p key={`source-${i}`} className="whitespace-pre-wrap break-words text-xs">{copy('Source citation', '原文引用')}: {quote.quote}</p>)}
             {change.check && <p className="break-words text-xs text-gray-600">{copy('Recorded check version', '记录的检查版本')}: {change.check.version}</p>}
             {!change.check && change.field === 'text' && event.kind !== 'manual' && <p className="text-xs text-gray-600">{copy('Check version unknown.', '检查版本未知。')}</p>}

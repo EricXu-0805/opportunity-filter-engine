@@ -418,6 +418,8 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
     "contact_instruction_sources",
+    "research_snapshot",
+    "research_refresh",
 })
 
 _LIVE_LISTING = {

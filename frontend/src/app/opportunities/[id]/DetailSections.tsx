@@ -12,6 +12,7 @@ import {
   Mail,
   Users,
 } from 'lucide-react';
+import { parseResearchContext } from '@/lib/research-context';
 import type { Opportunity } from '@/lib/types';
 import { facultySafeInternational } from '@/lib/match-utils';
 import {
@@ -264,6 +265,27 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 }
 
 export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
+  const research = parseResearchContext(opp.research_context);
+  if ('research_context' in opp && !research) return null;
+  if (research?.snapshot) {
+    const snapshot = research.snapshot;
+    return <Section title={t('detail.sections.recentWorks')}>
+      <p className="mb-3 text-[12px] text-gray-500" data-testid="research-source-status">
+        {t(research.status === 'stale' ? 'detail.researchSourcesStale' : 'detail.researchSourcesNote')}
+      </p>
+      <p className="mb-3 text-[11px] text-gray-500">{t('detail.researchCheckedAt')} {snapshot.checked_at}</p>
+      <ul className="space-y-4">
+        {snapshot.works.map(work => <li key={work.work_id} className="min-w-0 text-[13px] leading-relaxed">
+          <a href={work.source_url} target="_blank" rel="noopener noreferrer" className="break-words text-indigo-700 hover:underline">{work.title}</a>
+          <span className="ml-2 text-gray-500">({work.year})</span>
+          {work.abstract_status === 'present'
+            ? <details className="mt-2"><summary className="cursor-pointer text-gray-600">{t('detail.researchAbstract')}</summary><p className="mt-2 whitespace-pre-wrap break-words text-gray-600">{work.abstract}</p></details>
+            : <p className="mt-2 text-[12px] text-gray-500">{t('detail.researchAbstractMissing')}</p>}
+        </li>)}
+      </ul>
+    </Section>;
+  }
+  if (opp.metadata && 'research_snapshot' in opp.metadata) return null;
   const works = opp.metadata?.recent_works;
   if (!works?.length) return null;
   // Publication trust boundary: only works with explicitly verified
@@ -292,6 +314,7 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           </li>
         ))}
       </ul>
+      <p className="mt-3 text-[11px] text-gray-500">{t('detail.researchLegacySearchNote')}</p>
       <p className="mt-4 text-[11px] text-gray-400">
         {/* "this professor's record" only when the scraped rank actually is
             professor-like (or unknown — legacy records); a known non-professor

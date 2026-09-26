@@ -2,7 +2,7 @@ import type { EmailContactContext, EmailContactContextReceipt } from './types';
 
 export const EMAIL_CONTACT_CONTEXT_LIMITS = {
   referrerName: 120, referralNote: 1500, previousMessage: 4000,
-  replyText: 2000, availability: 500, paperTitle: 500, total: 9000,
+  replyText: 2000, availability: 500, paperTitle: 1000, total: 9000,
 } as const;
 
 // Mirrors the backend bounded claim exclusion; this is not semantic fact verification.
@@ -120,13 +120,20 @@ export function normalizeEmailContactContext(value?: unknown): EmailContactConte
   }
   if (item.paper_reading != null) {
     const reading = record(item.paper_reading, 'paper_reading');
-    keys(reading, ['title', 'year', 'level', 'confirmed'], 'paper_reading');
+    keys(reading, ['title', 'year', 'level', 'confirmed', 'work_id', 'snapshot_version'], 'paper_reading');
     if (!['title_only', 'abstract', 'full_text'].includes(reading.level as string)) return invalid('paper_reading.level');
     result.paper_reading = {
       title: text(reading.title, EMAIL_CONTACT_CONTEXT_LIMITS.paperTitle, 'paper_reading.title', true),
       level: reading.level as NonNullable<EmailContactContext['paper_reading']>['level'],
       confirmed: confirmed(reading.confirmed, 'paper_reading.confirmed'),
     };
+    if ((reading.work_id != null) !== (reading.snapshot_version != null)) return invalid('paper_reading');
+    if (reading.work_id != null) {
+      if (typeof reading.work_id !== 'string' || !/^https:\/\/openalex\.org\/W[1-9][0-9]*$/.test(reading.work_id)
+        || typeof reading.snapshot_version !== 'string' || !/^rs1:[0-9a-f]{64}$/.test(reading.snapshot_version)) return invalid('paper_reading');
+      result.paper_reading.work_id = reading.work_id;
+      result.paper_reading.snapshot_version = reading.snapshot_version;
+    }
     if (reading.year != null) {
       if (typeof reading.year !== 'number' || !Number.isInteger(reading.year) || reading.year < 1000 || reading.year > 2100) return invalid('paper_reading.year');
       result.paper_reading.year = reading.year;

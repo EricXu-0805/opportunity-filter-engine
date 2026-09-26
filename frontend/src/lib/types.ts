@@ -1,3 +1,5 @@
+import type { ResearchContext } from './research-context';
+
 // ── Filter values shared across surfaces ─────────────────────────────
 /**
  * The deadline facet's accepted values.
@@ -303,6 +305,8 @@ export type FacultyAvailabilityStatus =
   | 'research_inactive';
 
 export interface Opportunity {
+  /** Validated source snapshot; available does not imply an opening or user reading. */
+  research_context?: ResearchContext;
   contact_instructions?: import('./contact-instructions').ContactInstructions;
   /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
   writing_target_version?: string;
@@ -541,6 +545,8 @@ export interface EmailContactContext {
   paper_reading?: {
     title: string;
     year?: number | null;
+    work_id?: string;
+    snapshot_version?: string;
     level: 'title_only' | 'abstract' | 'full_text';
     confirmed: true;
   };

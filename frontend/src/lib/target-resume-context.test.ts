@@ -24,7 +24,7 @@ function opportunity(): Opportunity {
 function oldDoc() { return clone(legacyGolden.draft) as TargetResumeV1; }
 function currentDoc() {
   const doc = oldDoc();
-  doc.target_snapshot = { ...doc.target_snapshot, context_version: 2, criteria: emptyCriteria() };
+  doc.target_snapshot = { ...doc.target_snapshot, context_version: 3, research: { version: 1, status: 'unavailable', snapshot: null }, criteria: emptyCriteria() };
   doc.base.target_signature = fingerprint(doc.target_snapshot);
   return doc;
 }
@@ -44,7 +44,7 @@ describe('versioned persisted target context', () => {
       metadata: { ...opportunity().metadata, deadline_note: 'Applications close October 15.', paid_attribution: 'inferred',
         skills_attribution: 'inferred', majors_attribution: null, private_extra: 'exclude' }, contact_email: 'private@example.test', description_raw: 'raw scrape' };
     const result = targetResumeContextFromOpportunity(input as unknown as Opportunity);
-    expect(result).toMatchObject({ context_version: 2, requirements: [], criteria: {
+    expect(result).toMatchObject({ context_version: 3, research: { version: 1, status: 'unavailable', snapshot: null }, requirements: [], criteria: {
       eligibility: { preferred_year: ['Junior'], majors: ['ECE'], skills_required: ['Python'], international_friendly: 'unknown', citizenship_required: false, skills_preferred: ['C++'], work_auth_notes: 'Check source', first_time_researchers: true, min_gpa_decimal: '3.5' },
       timing: { deadline: input.deadline, deadline_is_estimate: false, is_rolling: true, deadline_note: input.metadata.deadline_note,
         start_date: input.start_date, posted_date: null, duration: input.duration },
@@ -60,7 +60,7 @@ describe('versioned persisted target context', () => {
   });
   it('distinguishes omitted, null, false and empty values without supplying defaults', () => {
     const minimal = { id: 'minimal', title: '', organization: '', description_clean: '' } as Opportunity;
-    expect(targetResumeContextFromOpportunity(minimal)).toEqual({ opportunity_id: 'minimal', title: '', organization: '', source_url: '', description: '', requirements: [], context_version: 2, criteria: emptyCriteria() });
+    expect(targetResumeContextFromOpportunity(minimal)).toEqual({ opportunity_id: 'minimal', title: '', organization: '', source_url: '', description: '', requirements: [], context_version: 3, research: { version: 1, status: 'unavailable', snapshot: null }, criteria: emptyCriteria() });
     const input = { ...minimal, paid: null, on_campus: false, eligibility: { majors: [], citizenship_required: null }, application: { requires_resume: '' } };
     const value = targetResumeContextFromOpportunity(input as unknown as Opportunity);
     expect(value.criteria.eligibility).toEqual({ majors: [], citizenship_required: null });
@@ -101,15 +101,15 @@ describe('versioned persisted target context', () => {
     await expect(createTargetResume({ ...DEFAULT_PROFILE, ...doc.base_snapshot }, doc.target_snapshot)).rejects.toMatchObject({ code: 'invalid_target' });
     expect(canonical(oldDoc())).toBe(before);
   });
-  it('validates and hashes v2 contexts including exact missing/null/array/provenance distinctions', async () => {
+  it('validates and hashes current contexts including exact missing/null/array/provenance distinctions', async () => {
     const doc = currentDoc(); expect(validateTargetResume(doc).ok).toBe(true);
     expect(await verifyTargetResumeSignatures(doc)).toBe(true);
     expect(await targetResumeContextSignature(doc.target_snapshot)).toBe(doc.base.target_signature);
-    const changed = clone(doc); if (!isCurrentTargetResumeContext(changed.target_snapshot)) throw new Error('expected v2');
+    const changed = clone(doc); if (!isCurrentTargetResumeContext(changed.target_snapshot)) throw new Error('expected current context');
     changed.target_snapshot.criteria.eligibility.citizenship_required = null;
     expect(validateTargetResume(changed).ok).toBe(true); expect(await verifyTargetResumeSignatures(changed)).toBe(false);
   });
-  it.each(['criteria-extra', 'group-extra', 'group-missing', 'truth-extra', 'null-group', 'unknown-version'] as const)('rejects malformed v2 without falling back to legacy: %s', (bad) => {
+  it.each(['criteria-extra', 'group-extra', 'group-missing', 'truth-extra', 'null-group', 'unknown-version'] as const)('rejects malformed current contexts without falling back to legacy: %s', (bad) => {
     const doc = currentDoc(); const context = doc.target_snapshot as unknown as Record<string, unknown>;
     const criteria = context.criteria as Record<string, unknown>;
     if (bad === 'criteria-extra') criteria.unrecognized = {};
@@ -117,11 +117,11 @@ describe('versioned persisted target context', () => {
     if (bad === 'group-missing') delete criteria.timing;
     if (bad === 'truth-extra') criteria.availability = { target_truth: { actionable: true, verified_at: 'unrecognized' } };
     if (bad === 'null-group') criteria.setting = null;
-    if (bad === 'unknown-version') context.context_version = 3;
+    if (bad === 'unknown-version') context.context_version = 4;
     expect(isCurrentTargetResumeContext(context)).toBe(false); expect(validateTargetResume(doc).ok).toBe(false);
   });
   it('counts all new criteria against the unchanged AI target budget without truncating the saved source', async () => {
-    const doc = currentDoc(); if (!isCurrentTargetResumeContext(doc.target_snapshot)) throw new Error('expected v2');
+    const doc = currentDoc(); if (!isCurrentTargetResumeContext(doc.target_snapshot)) throw new Error('expected current context');
     doc.target_snapshot.criteria.eligibility.work_auth_notes = '完整来源😀'.repeat(6000);
     doc.base.target_signature = fingerprint(doc.target_snapshot);
     const result = await prepareTargetResumeAI(doc);

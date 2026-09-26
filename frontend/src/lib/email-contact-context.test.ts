@@ -172,7 +172,7 @@ describe('paper reading contact schema', () => {
   });
   it.each([
     { confirmed: false }, { confirmed: 1 }, { confirmed: 'true' }, { confirmed: undefined },
-    { title: '' }, { title: 'x'.repeat(501) }, { title: 'two\nlines' }, { title: 'NUL\0' },
+    { title: '' }, { title: 'x'.repeat(1001) }, { title: 'two\nlines' }, { title: 'NUL\0' },
     { title: 'Lone\ud800' }, { level: 'skimmed' }, { source: 'verified_author_id' },
     { year: '2025' }, { year: true }, { year: 2025.1 }, { year: 999 }, { year: 2101 },
   ])('rejects malformed or unconfirmed reading %#', change => {

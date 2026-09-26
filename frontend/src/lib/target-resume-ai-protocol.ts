@@ -1,7 +1,7 @@
 import type { TargetResumeLine, TargetResumeV1 } from './target-resume';
 
 /** Capacity limits apply to a single call, never to the complete résumé. */
-export const FULL_TARGET_AI_VERSION = 'full-target-v2' as const;
+export const FULL_TARGET_AI_VERSION = 'full-target-v3' as const;
 export const FULL_TARGET_AI_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const FULL_TARGET_AI_MAX_UNITS = 24;
 export const FULL_TARGET_AI_MAX_UNIT_CHARACTERS = 16_000;
@@ -14,13 +14,17 @@ export type TargetResumeAiReasonCode =
   | 'no_change' | 'unit_too_large' | 'context_too_large' | 'target_too_large'
   | 'model_unavailable' | 'invalid_model_response' | 'ungrounded_rewrite'
   | 'missing_result' | 'no_target_evidence' | 'budget_exhausted' | 'timeout';
-export interface TargetResumeAiEvidence {
+export interface TargetResumeLegacyEvidence {
   field: 'description' | 'requirement';
   requirement_index: number | null;
   start: number;
   end: number;
   quote: string;
 }
+export interface TargetResumePaperEvidence {
+  field: 'paper_title' | 'paper_abstract'; paper_index: number; start: number; end: number; quote: string;
+}
+export type TargetResumeAiEvidence = TargetResumeLegacyEvidence | TargetResumePaperEvidence;
 export interface TargetResumeAiUnit {
   unit_id: string;
   section_id: string;

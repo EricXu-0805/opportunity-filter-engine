@@ -1,5 +1,7 @@
 'use client';
 
+import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
 import { ApiError, generateTargetResumeSuggestions } from '@/lib/api';
@@ -256,7 +258,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
           <p className="whitespace-pre-wrap break-words">{run?.prepared.units.find((unit) => unit.unit_id === item.unit_id)?.original}</p>
           <p className="mt-1 text-xs font-medium">{copy('Content priority', '内容优先级')}: {item.suggestion?.priority === 'high' ? copy('High', '高') : item.suggestion?.priority === 'low' ? copy('Low', '低') : copy('Normal', '普通')}</p>
           <p className="mt-1 whitespace-pre-wrap break-words text-gray-600">{item.suggestion?.reason || reasonText(item.reason_code)}</p>
-          {item.suggestion?.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-1 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{evidence.quote}</blockquote>)}
+          {item.suggestion?.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-1 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
         </div>)}
       </details>
       <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={order} disabled={!ready || working || !!action.error || !review.structureReady}
@@ -272,7 +274,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Suggested wording — check the facts', '建议表述——请核对事实')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.suggestion!.proposed_text}</p></div>
         </div>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{item.suggestion!.reason}</p>
-        {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{evidence.quote}</blockquote>)}
+        {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
         <button type="button" className={`${button} mt-2`} disabled={working} aria-label={`Dismiss suggestion: ${item.unit_id}`} onClick={() => {
           setDismissed((old) => { const next = new Set(old); if (next.has(item.unit_id)) next.delete(item.unit_id); else next.add(item.unit_id); return next; });
           setSelected((old) => { const next = new Set(old); next.delete(item.unit_id); return next; });

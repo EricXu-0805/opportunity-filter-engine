@@ -1,9 +1,10 @@
 import { test, expect, request as apiRequest, type Page, type TestInfo } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
+import { researchFixture, RESEARCH_TITLE, RESEARCH_ABSTRACT } from './research-fixture';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { FULL_TARGET_AI_VERSION, type TargetResumeAiRequest, type TargetResumeAiResponse, type TargetResumeAiEvidence } from '../src/lib/target-resume-ai-protocol';
-import type { TargetResumeV1 } from '../src/lib/target-resume';
+import { isCurrentTargetResumeContext, type TargetResumeV1 } from '../src/lib/target-resume';
 import type { ProfileData, ResumeFact, ResumeMasterV1 } from '../src/lib/types';
 import type { TargetResumeExportRequest } from '../src/lib/target-resume-export-protocol';
 
@@ -12,7 +13,10 @@ import type { TargetResumeExportRequest } from '../src/lib/target-resume-export-
 // this fixture must never be described as an end-to-end real-model evaluation.
 const TARGET = 'uiuc-siebel-ugresearch';
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3200)}`;
+const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
+const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);
+const BACKEND = `http://127.0.0.1:${BACKEND_PORT}`;
+const RESEARCH_PROXY = `http://127.0.0.1:${Number(process.env.E2E_RESEARCH_PROXY_PORT ?? BACKEND_PORT + 1)}`;
 const RAW_PRIVATE = 'RAW PRIVATE MASTER — not a visible résumé field';
 const NAME = 'Attribution student 王';
 const MANUAL_NAME = 'Attribution student 王 — explicitly edited by the user';
@@ -44,7 +48,10 @@ function profile(): ProfileData {
   };
 }
 async function account() {
-  expect(STUB).toBe('http://127.0.0.1:54321'); expect(FRONTEND).toBe('http://127.0.0.1:3200');
+  for (const endpoint of [STUB, FRONTEND, BACKEND]) {
+    const url = new URL(endpoint); expect(url.hostname).toBe('127.0.0.1');
+    expect(Number(url.port)).toBeGreaterThanOrEqual(1024); expect(Number(url.port)).toBeLessThanOrEqual(65535);
+  }
   const http = await apiRequest.newContext();
   try {
     const signup = await http.post(`${STUB}/auth/v1/signup`, { data: {} }); expect(signup.status()).toBe(200);
@@ -63,6 +70,10 @@ async function account() {
   } catch (error) { await http.dispose(); throw error; }
 }
 function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
+  if (isCurrentTargetResumeContext(draft.target_snapshot) && draft.target_snapshot.research.status === 'available') {
+    const source = draft.target_snapshot.research.snapshot!.works[0].abstract!;
+    return { field: 'paper_abstract', paper_index: 0, start: 0, end: Array.from(source).length, quote: source };
+  }
   const description = Array.from(draft.target_snapshot.description);
   if (description.length) return { field: 'description', requirement_index: null, start: 0, end: Math.min(description.length, 80), quote: description.slice(0, 80).join('') };
   const index = draft.target_snapshot.requirements.findIndex(value => value.length > 0); expect(index).toBeGreaterThanOrEqual(0);
@@ -73,7 +84,7 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
   const units = lines(request.draft).filter(unit => unit.section.kind !== 'basics');
   const selected = units.filter(unit => request.selected_unit_ids.includes(unit.line.id));
   expect(selected.some(unit => unit.line.evidence.id === 'team-role')).toBe(true);
-  return { version: 1, check_version: 'target-resume-source-checks-v1', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base),
     manifest: { unit_ids: units.map(unit => unit.line.id), protected_unit_count: lines(request.draft).filter(unit => unit.section.kind === 'basics').length },
     method: 'partial', logical_calls: 1, provider_attempts_upper_bound: 2,
@@ -84,7 +95,7 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
     }),
   };
 }
-async function setup(page: Page, info: TestInfo) {
+async function setup(page: Page, info: TestInfo, research?: 'available' | 'stale') {
   const owner = await account(); const zh = info.project.name === 'mobile-chrome';
   const copy = (en: string, cn: string) => zh ? cn : en;
   if (zh) await page.setViewportSize({ width: 390, height: 844 });
@@ -93,7 +104,7 @@ async function setup(page: Page, info: TestInfo) {
     suggestions: [] as TargetResumeAiRequest[], exports: [] as TargetResumeExportRequest[], writes: [] as { path: string; body: Record<string, unknown> }[], reads: [] as string[] };
   await page.context().route('**/*', route => {
     const url = new URL(route.request().url());
-    if (!['http://127.0.0.1:3200', 'http://127.0.0.1:8200', 'http://127.0.0.1:54321'].includes(url.origin)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); }
+    if (![FRONTEND, BACKEND, STUB].includes(url.origin)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); }
     if (/^\/api\/(cold-email|tailor)/.test(url.pathname)) { audit.unexpectedWriting.push(url.pathname); return route.abort('blockedbyclient'); }
     return route.continue();
   });
@@ -119,10 +130,30 @@ async function setup(page: Page, info: TestInfo) {
     expect(request.draft.opportunity_id).toBe(TARGET);
     return route.fulfill({ json: checkedReply(request) });
   });
+  const material = research ? researchFixture(research) : null;
+  if (material) {
+    const health = await owner.http.get(`${RESEARCH_PROXY}/__fixture/health`);
+    expect(health.status()).toBe(200);
+    expect(await health.json()).toEqual({ fixture: 'research-detail-proxy', upstream: BACKEND });
+    const configured = await owner.http.post(`${RESEARCH_PROXY}/__fixture/research/${TARGET}`, { data: { research_context: material } });
+    expect(configured.status()).toBe(200); expect(await configured.json()).toEqual({ research_context: material });
+    // Next SSR reads the runtime fixture proxy. Production browser rewrites
+    // were built for the real local backend,
+    // so route its detail GET to the same controlled response without fetching
+    // an external source or altering production data.
+    await page.route(url => url.pathname === `/api/opportunities/${TARGET}`, async route => {
+      const url = new URL(route.request().url());
+      const response = await route.fetch({ url: `${RESEARCH_PROXY}${url.pathname}${url.search}`, maxRetries: 0 });
+      expect(response.status()).toBe(200);
+      const value = await response.json(); expect(value.research_context).toEqual(material);
+      await route.fulfill({ response });
+    });
+  }
   const modal = page.getByRole('dialog', { name: copy('Target résumé', '目标简历'), exact: true });
   const editor = (id: string) => modal.locator(`textarea[id$="-${id}"]`);
   const open = async () => {
     await page.goto(`/opportunities/${TARGET}`);
+    if (research) await expect(page.getByRole('link', { name: RESEARCH_TITLE, exact: true }).first()).toHaveAttribute('href', 'https://doi.org/10.1234/synthetic-instrument-study');
     await page.getByRole('button', { name: copy('Renovate Resume', '简历翻新'), exact: true }).click();
     await expect(modal).toBeVisible();
     await modal.getByRole('button', { name: copy('Create from confirmed master', '从已确认母版创建'), exact: true }).click();
@@ -139,8 +170,19 @@ async function setup(page: Page, info: TestInfo) {
     return result.doc as TargetResumeV1;
   };
   const done = async () => {
-    await info.attach('attribution-flow-audit', { body: JSON.stringify(audit, null, 2), contentType: 'application/json' });
-    await owner.http.dispose();
+    try {
+      if (material) {
+        const observed = await owner.http.get(`${RESEARCH_PROXY}/__fixture/research/${TARGET}`);
+        expect(observed.status()).toBe(200);
+        const fixture = await observed.json();
+        await info.attach('research-ssr-fixture-audit', { body: JSON.stringify(fixture, null, 2), contentType: 'application/json' });
+        expect(fixture.research_context).toEqual(material);
+      }
+      await info.attach('attribution-flow-audit', { body: JSON.stringify(audit, null, 2), contentType: 'application/json' });
+    } finally {
+      if (material) { const cleared = await owner.http.delete(`${RESEARCH_PROXY}/__fixture/research/${TARGET}`); expect(cleared.status()).toBe(200); }
+      await owner.http.dispose();
+    }
     expect(audit.external).toEqual([]); expect(audit.pageErrors).toEqual([]); expect(audit.unexpectedWriting).toEqual([]); expect(audit.badResponses).toEqual([]);
     for (const write of audit.writes.filter(item => item.path !== '/rest/v1/rpc/commit_target_resume_with_provenance_cas')) {
       expect(write.path).toBe('/rest/v1/analytics_events');
@@ -269,7 +311,7 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
     if (stem === 'restored-baseline') {
       expect(compact(file.text)).not.toContain(compact(MANUAL_NAME));
       for (const proposed of Object.values(PROPOSED)) expect(compact(file.text)).not.toContain(compact(proposed));
-    } else expect(compact(file.text)).toContain(compact(MANUAL_NAME));
+    } else if (stem === 'accepted-current') expect(compact(file.text)).toContain(compact(MANUAL_NAME));
   }
   await info.attach(`${stem}-extracted-content`, { body: JSON.stringify({ expected_texts: texts, pdf: pdf.text, docx: docx.text }, null, 2), contentType: 'application/json' });
 }
@@ -334,5 +376,47 @@ for (const mode of ['single', 'all-valid'] as const) test(`${mode} acceptance ex
     const stored = value[0].profile_data;
     expect(stored.resume_master).toEqual(f.owner.profile.resume_master); expect(stored.experience_entries).toEqual(f.owner.profile.experience_entries); expect(stored.resume_text).toBe(RAW_PRIVATE);
     await exportPanel(page).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`restored-export-${mode}-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+  } finally { await f.done(); }
+});
+
+for (const status of ['available', 'stale'] as const) test(`research ${status} source survives review, acceptance, save and real exports`, async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const f = await setup(page, info, status);
+  try {
+    await f.open(); const baseline = await f.save(0);
+    expect(isCurrentTargetResumeContext(baseline.target_snapshot)).toBe(true);
+    await f.modal.getByText(f.copy('Target requirements and original materials', '目标要求与原始材料'), { exact: true }).click();
+    const research = f.modal.getByTestId('saved-target-research');
+    await expect(research.getByRole('link', { name: RESEARCH_TITLE, exact: true })).toHaveAttribute('href', 'https://doi.org/10.1234/synthetic-instrument-study');
+    await research.getByText(f.copy('Abstract', '摘要'), { exact: true }).click();
+    await expect(research).toContainText(RESEARCH_ABSTRACT);
+    if (status === 'stale') await expect(research).toContainText(f.copy('AI does not use these papers.', 'AI 不使用这些旧论文。'));
+    await research.scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+    await research.screenshot({ path: info.outputPath(`research-${status}-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+    await aiPanel(page).getByRole('button', { name: f.copy('Generate AI suggestions', '生成 AI 建议'), exact: true }).click();
+    const chosen = lines(baseline).find(({ line }) => line.evidence.id === 'readings-role')!.line;
+    await aiPanel(page).getByRole('checkbox', { name: `Use rewrite: ${chosen.id}`, exact: true }).check();
+    if (status === 'available') await expect(aiPanel(page)).toContainText(RESEARCH_ABSTRACT);
+    await aiPanel(page).getByRole('button', { name: f.copy('Apply selected suggestions', '应用所选建议'), exact: true }).click();
+    const accepted = await f.save(1);
+    const p = f.audit.writes.filter(item => item.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as { version: number; events: { changes: { target_evidence: TargetResumeAiEvidence[] }[] }[] };
+    expect(p.version).toBe(2);
+    const quotes = p.events.flatMap(event => event.changes.flatMap(change => change.target_evidence));
+    expect(quotes.some(quote => quote.field === 'paper_abstract')).toBe(status === 'available');
+    expect(accepted.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).some(line => line.text.includes('laser interferometry'))).toBe(false);
+    await expectFiles(page, info, f, accepted, `research-${status}`);
+    await f.editor(chosen.id).fill('Temporary manual wording retained as a separate version.');
+    await f.save(2);
+    await f.modal.locator('summary').filter({ hasText: f.copy('Version history', '版本历史') }).click();
+    await f.modal.getByRole('button', { name: f.copy('Load latest 20 versions', '读取最近 20 个版本'), exact: true }).click();
+    await f.modal.getByRole('button', { name: f.zh ? /^查看版本 2 ·/ : /^View version 2 ·/ }).click();
+    const preview = f.modal.getByRole('region', { name: f.copy('Selected historical version preview', '所选历史版本预览'), exact: true });
+    await expect(preview).toContainText(PROPOSED['readings-role']);
+    const restored = await f.save(3, true);
+    expect(restored).toEqual(accepted);
+    const historyPair = f.audit.writes.filter(item => item.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance;
+    expect(historyPair).toEqual(p);
+    await info.attach('research-provenance-pair', { body: JSON.stringify({ status, provenance: p }, null, 2), contentType: 'application/json' });
   } finally { await f.done(); }
 });

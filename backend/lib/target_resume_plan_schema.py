@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-PIPELINE_VERSION = "full-target-plan-v1"
+PIPELINE_VERSION = "full-target-plan-v2"
 MAX_PROMPT_CHARACTERS = 120000
 MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
 

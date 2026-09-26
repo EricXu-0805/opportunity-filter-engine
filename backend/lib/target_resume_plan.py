@@ -5,14 +5,12 @@ fallback. Original evidence, editable wording and inclusion states are distinct.
 """
 from __future__ import annotations
 
-from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION
-
 import json
 from copy import deepcopy
 
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.target_resume_ai import dispatch, target_character_count, valid_quotes
-from backend.lib.target_resume_ai_grounding import claim_upgrade_detected
+from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, claim_upgrade_detected
 from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_CHARACTERS, MAX_TARGET_CHARACTERS
 from backend.lib.target_resume_ai_validation import (
     InvalidTargetResume,
@@ -23,6 +21,7 @@ from backend.lib.target_resume_ai_validation import (
     shape,
     text,
 )
+from backend.lib.target_resume_context import target_context_for_prompt
 from backend.lib.target_resume_plan_schema import MAX_PROMPT_CHARACTERS, PIPELINE_VERSION
 
 # Re-export the existing dispatch: it rechecks the spend budget at the worker
@@ -37,7 +36,11 @@ Return exactly one item for EVERY block. Choose keep, compress or omit and expla
 considering this target and the requested target_pages. Pages are a goal, not a rendered guarantee.
 Basic contact fields are protected and not supplied. Scope lists material outside this current draft;
 do not claim to have reviewed all uploaded, unconfirmed or unreferenced material.
-Cite a literal target description or requirement and at least one original line in this SAME block.
+Cite a literal target description/requirement or available research paper title/abstract, and at least
+one original line in this SAME block. Paper quotes use exact {field:"paper_title"|"paper_abstract",
+paper_index:0,start:0,end:1,quote:"..."}, without requirement_index. Only available snapshot works
+may support advice; paper_abstract requires abstract_status present. These are retrieved titles and
+abstracts, never full text or proof of student accomplishments, paper reading, or recruiting.
 Use Unicode codepoint offsets, not UTF-16 offsets. Quotes must match exactly and cannot use current text.
 Target criteria constrain advice, not student achievements. Unknown criteria do not establish eligibility.
 For keep/omit return rewrites: []. For compress you may propose shorter experience lines from this block;
@@ -49,7 +52,9 @@ Preserve negation, uncertainty, team versus personal ownership, publication stat
 metric's action, object, project and basis. Retaining original team/negative text cannot excuse adding
 an opposite personal/positive claim. Do not invent new outcomes, quality adjectives or skills.
 Nothing is applied or sent. Users must separately approve selection changes and each rewrite.
-Return JSON only: {"items":[{"section_id":"...","block_id":"...","action":"keep|compress|omit",
+Return JSON only. Every target_evidence item uses exactly one of the two shapes above.
+The description-quote example below illustrates the envelope; paper quotes instead use paper_index
+and omit requirement_index. Response shape: {"items":[{"section_id":"...","block_id":"...","action":"keep|compress|omit",
 "reason":"...","target_evidence":[{"field":"description|requirement","requirement_index":null,
 "start":0,"end":1,"quote":"..."}],"source_evidence":[{"unit_id":"...","start":0,"end":1,"quote":"..."}],
 "rewrites":[{"unit_id":"...","proposed_text":"..."}]}]}. Never return new IDs or extra fields."""
@@ -93,7 +98,7 @@ def plan_preflight(doc, blocks, scope, options, locale):
         return None, "no_plan_items"
     if target_character_count(doc["target_snapshot"]) > MAX_TARGET_CHARACTERS:
         return None, "target_too_large"
-    payload = {"locale": locale, "options": options, "target": doc["target_snapshot"],
+    payload = {"locale": locale, "options": options, "target": target_context_for_prompt(doc["target_snapshot"]),
                "scope": scope, "blocks": blocks}
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": canonical(payload)}]
     if sum(len(message["content"]) for message in messages) > MAX_PROMPT_CHARACTERS:

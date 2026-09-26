@@ -7,7 +7,7 @@ import {
   MAX_TARGET_RESUME_BYTES, createTargetResume, suggestTargetResumeOrder,
   targetResumeContextFromOpportunity, targetResumeContextSignature, targetResumeProfileSignature,
   validateTargetResume, verifyTargetResumeSignatures,
-  type TargetResumeContext, type TargetResumeContextV2, type TargetResumeV1,
+  type TargetResumeContext, type TargetResumeContextV3, type TargetResumeV1,
 } from './target-resume';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -18,8 +18,8 @@ const fact = (id: string, value = id, overrides: Partial<ResumeFact> = {}): Resu
 const entry = (id: string, overrides: Partial<ExperienceEntry> = {}): ExperienceEntry => ({
   id, revision: 1, status: 'confirmed', text: 'Built the project.', source: { kind: 'manual' }, ...overrides,
 });
-const target = (): TargetResumeContextV2 => ({ opportunity_id: 'opp-one', title: 'Robotics research', organization: 'Example University',
-  source_url: 'https://example.test/lab', description: 'Embedded systems project.', requirements: ['Python', 'C++'], context_version: 2,
+const target = (): TargetResumeContextV3 => ({ opportunity_id: 'opp-one', title: 'Robotics research', organization: 'Example University',
+  source_url: 'https://example.test/lab', description: 'Embedded systems project.', requirements: ['Python', 'C++'], context_version: 3, research: { version: 1, status: 'unavailable', snapshot: null },
   criteria: { eligibility: {}, timing: {}, application: {}, setting: {}, availability: {}, attribution: {} } });
 function master(): ResumeMasterV1 {
   const value = createEmptyResumeMaster('master');
@@ -128,7 +128,7 @@ const doc = () => createTargetResume(profile(), target(), 'draft-one');
       eligibility: { skills_required: ['Exact skill'] }, metadata: { skills_attribution: 'inferred' } } as unknown as Opportunity;
     const currentTarget = targetResumeContextFromOpportunity(opportunity);
     expect(currentTarget).toEqual({ opportunity_id: 'o', title: 'Public title', organization: 'Public organization',
-      source_url: 'https://example.test/source', description: 'Public description', requirements: [], context_version: 2,
+      source_url: 'https://example.test/source', description: 'Public description', requirements: [], context_version: 3, research: { version: 1, status: 'unavailable', snapshot: null },
       criteria: { eligibility: { skills_required: ['Exact skill'] }, timing: {}, application: {}, setting: {}, availability: {},
         attribution: { skills_attribution: 'inferred' } } });
     const result = await createTargetResume(p, currentTarget);
@@ -264,9 +264,9 @@ describe('strict source cross-checking and independent draft edits', () => {
 describe('canonical SHA256 fingerprints and asynchronous verification', () => {
   it('uses the native SHA256 result for canonical target JSON, including exact Unicode and order', async () => {
     const t = target();
-    const canonical = JSON.stringify({ context_version: 2, criteria: Object.fromEntries(Object.entries(t.criteria).sort(([a], [b]) => a.localeCompare(b))),
+    const canonical = JSON.stringify({ context_version: 3, criteria: Object.fromEntries(Object.entries(t.criteria).sort(([a], [b]) => a.localeCompare(b))),
       description: t.description, opportunity_id: t.opportunity_id, organization: t.organization,
-      requirements: t.requirements, source_url: t.source_url, title: t.title });
+      requirements: t.requirements, research: { snapshot: null, status: 'unavailable', version: 1 }, source_url: t.source_url, title: t.title });
     expect(await targetResumeContextSignature(t)).toBe(`v1:sha256:${createHash('sha256').update(canonical).digest('hex')}`);
     const reordered = Object.fromEntries(Object.entries(t).reverse()) as unknown as TargetResumeContext;
     expect(await targetResumeContextSignature(reordered)).toBe(await targetResumeContextSignature(t));

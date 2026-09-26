@@ -480,10 +480,23 @@ class EmailAvailabilityContext(_ContactFields):
 
 
 class EmailPaperReadingContext(_ContactFields):
-    title: str = Field(max_length=500)
+    title: str = Field(max_length=1000)
+    work_id: str | None = None
+    snapshot_version: str | None = None
     year: int | None = Field(default=None, ge=1000, le=2100)
     level: Literal["title_only", "abstract", "full_text"]
     confirmed: Literal[True]
+
+    @model_validator(mode="after")
+    def bound_snapshot(self):
+        if (self.work_id is None) != (self.snapshot_version is None):
+            raise ValueError("work ID and snapshot version must be provided together")
+        if self.work_id is not None and (
+            not re.fullmatch(r"https://openalex\.org/W[1-9][0-9]*", self.work_id)
+            or not re.fullmatch(r"rs1:[0-9a-f]{64}", self.snapshot_version or "")
+        ):
+            raise ValueError("invalid research snapshot binding")
+        return self
 
     @field_validator("title")
     @classmethod

@@ -11,7 +11,7 @@ import re
 from backend.lib.email_experience_attribution import experience_attribution_violations
 
 # Bump independently of the wire/pipeline version when source checks change.
-SOURCE_CHECK_VERSION = "target-resume-source-checks-v1"
+SOURCE_CHECK_VERSION = "target-resume-source-checks-v2"
 
 NEGATION = re.compile(r"\b(?:not|never|no|without|only)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未经|仅|只|未|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|接受|录用|发表)", re.I)
 TEAM = re.compile(r"\b(?:team|teammates?|we|our|collaborat\w*)\b|团队|小组|我们|共同|协作|合作", re.I)

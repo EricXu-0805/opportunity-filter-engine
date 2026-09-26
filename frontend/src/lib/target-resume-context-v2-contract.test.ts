@@ -19,6 +19,7 @@ import { loadTargetResume, loadTargetResumeHistory, loadTargetResumeVersion, sav
 const clone = <T,>(value: T): T => structuredClone(value);
 const current = () => clone(golden.draft) as TargetResumeV1;
 const old = () => clone(legacy.draft) as TargetResumeV1;
+function legacyProjection(value: Opportunity) { const { research: _research, ...target } = targetResumeContextFromOpportunity(value); void _research; return { ...target, context_version: 2 as const }; }
 const input = () => clone(golden.public_opportunity) as unknown as Opportunity;
 const UID = '77000000-0000-4000-8000-000000000023';
 const stamp = '2026-09-24T18:00:00.000Z';
@@ -30,30 +31,21 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('independent v2 cross-language golden', () => {
   it('matches exact public context, Unicode budget-independent hashes, full manifest and current manual wording', async () => {
     const source = input(), before = clone(source);
-    expect(targetResumeContextFromOpportunity(source)).toEqual(golden.draft.target_snapshot);
+    expect(legacyProjection(source)).toEqual(golden.draft.target_snapshot);
     expect(source).toEqual(before);
     const checked = validateTargetResume(current());
     expect(checked).toEqual({ ok: true, value: golden.draft });
     expect(await verifyTargetResumeSignatures(current())).toBe(true);
     expect(await targetResumeContextSignature(current().target_snapshot)).toBe(golden.draft.base.target_signature);
     const prepared = await prepareTargetResumeAI(current());
-    expect(prepared.ok).toBe(true);
-    if (!prepared.ok) throw new Error(prepared.code);
-    expect(prepared.value.document_signature).toBe(golden.document_signature);
-    expect(prepared.value.units).toEqual(golden.units);
-    expect(prepared.value.units.map(unit => unit.unit_id)).toEqual(golden.manifest.unit_ids);
-    expect(prepared.value.protected_unit_count).toBe(golden.manifest.protected_unit_count);
-    expect(prepared.value.units.find(unit => unit.unit_id === 'line-6')).toMatchObject({
-      original: 'I did not lead the team. I built a Python parser 😀 with my teammates.',
-      before_text: 'My manual draft edit is not evidence.',
-    });
+    expect(prepared).toEqual({ ok: false, code: 'legacy_target_context' });
     expect(JSON.stringify(current().target_snapshot)).not.toMatch(/excluded@|excluded raw|verified_at|expires_at|confidence_score|private_extra/);
   });
 
   it.each(golden.context_cases)('uses shared ECMAScript numeric/string oracle: $name', async item => {
     const opportunity = input();
     Object.assign(opportunity.eligibility, { min_gpa: JSON.parse(item.input_json) as unknown });
-    const target = targetResumeContextFromOpportunity(opportunity);
+    const target = legacyProjection(opportunity);
     expect(target.criteria.eligibility.min_gpa_decimal).toBe(item.expected_min_gpa_decimal);
     expect(await targetResumeContextSignature(target)).toBe(item.target_signature);
   });

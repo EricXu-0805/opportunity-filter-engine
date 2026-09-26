@@ -13,7 +13,9 @@ import type { TargetResumeExportRequest } from '../src/lib/target-resume-export-
 // this fixture must never be described as an end-to-end real-model evaluation.
 const TARGET = 'uiuc-siebel-ugresearch';
 const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
-const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3200)}`;
+const FRONTEND = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
+const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);
+const BACKEND = `http://127.0.0.1:${BACKEND_PORT}`;
 const RAW_PRIVATE = 'RAW PRIVATE MASTER — not a visible résumé field';
 const NAME = 'Selection student 王';
 const BAD_CLAIM = 'I built a Python parser.';
@@ -43,7 +45,10 @@ function profile(): ProfileData {
   };
 }
 async function account() {
-  expect(STUB).toBe('http://127.0.0.1:54321'); expect(FRONTEND).toBe('http://127.0.0.1:3200');
+  for (const endpoint of [STUB, FRONTEND, BACKEND]) {
+    const url = new URL(endpoint); expect(url.hostname).toBe('127.0.0.1');
+    expect(Number(url.port)).toBeGreaterThanOrEqual(1024); expect(Number(url.port)).toBeLessThanOrEqual(65535);
+  }
   const http = await apiRequest.newContext();
   try {
     const signup = await http.post(`${STUB}/auth/v1/signup`, { data: {} }); expect(signup.status()).toBe(200);
@@ -70,7 +75,7 @@ function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
 }
 function checkedReply(request: TargetResumePlanRequest): TargetResumePlanResponse {
   const blocks = request.draft.document.sections.filter(section => section.kind !== 'basics').flatMap(section => section.blocks.map(block => ({ section, block })));
-  return { version: 1, check_version: 'target-resume-source-checks-v1', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base), options: { ...request.options },
     manifest: blocks.map(({ section, block }) => ({ section_id: section.id, block_id: block.id, line_ids: block.lines.map(line => line.id) })),
     scope: { unreferenced_experience_ids: ['unreferenced'], pending_experience_ids: ['pending'], stale_experience_ids: [], unmapped_range_count: 0 },
@@ -99,7 +104,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
     plans: [] as TargetResumePlanRequest[], exports: [] as TargetResumeExportRequest[], writes: [] as { path: string; body: Record<string, unknown> }[], reads: [] as string[] };
   await page.context().route('**/*', route => {
     const url = new URL(route.request().url());
-    if (!['http://127.0.0.1:3200', 'http://127.0.0.1:8200', 'http://127.0.0.1:54321'].includes(url.origin)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); }
+    if (![FRONTEND, BACKEND, STUB].includes(url.origin)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); }
     if (/^\/api\/(cold-email|tailor)/.test(url.pathname)) { audit.unexpectedWriting.push(url.pathname); return route.abort('blockedbyclient'); }
     return route.continue();
   });
@@ -337,7 +342,7 @@ for (const mode of ['selection-only', 'selection-and-compression'] as const) tes
     expect(appliedChanges.filter(change => change.check !== null)).toHaveLength(mode === 'selection-and-compression' ? 1 : 0);
     for (const change of appliedChanges.filter(change => change.check !== null)) {
       expect(change.line_id).toBe(shortened.line.id);
-      expect(change.check!.version).toBe('target-resume-source-checks-v1');
+      expect(change.check!.version).toBe('target-resume-source-checks-v2');
     }
     expect(appliedChanges.some(change => change.line_id === teamUnit.line.id)).toBe(false);
 
@@ -411,7 +416,7 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     await f.save(1);
     const records = f.modal.locator('details').filter({ has: page.locator('summary').getByText(f.copy('Change records', '修改记录'), { exact: true }) });
     await records.locator('summary').click();
-    await expect(records).toContainText('target-resume-source-checks-v1');
+    await expect(records).toContainText('target-resume-source-checks-v2');
     await expect(records).toContainText('Synthetic selection advice');
     await records.scrollIntoViewIfNeeded();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
@@ -464,13 +469,13 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     await f.save(5, true);
     const restored = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as typeof recorded;
     expect(restored.events).toHaveLength(1); expect(restored.events[0].kind).toBe('plan');
-    expect(restored.events[0].changes[0].check).toMatchObject({ version: 'target-resume-source-checks-v1' });
+    expect(restored.events[0].changes[0].check).toMatchObject({ version: 'target-resume-source-checks-v2' });
     expect(secondErrors).toEqual([]);
     await info.attach('provenance-conflict-and-restore', { body: JSON.stringify({ recorded, conflict, back, restored }, null, 2), contentType: 'application/json' });
     if (!await records.evaluate(node => (node as HTMLDetailsElement).open)) await records.locator('summary').click();
     await records.evaluate(node => node.scrollIntoView({ block: 'center' }));
-    await expect(records.getByText('Recorded check version: target-resume-source-checks-v1', { exact: true }).or(records.getByText('记录的检查版本: target-resume-source-checks-v1', { exact: true }))).toBeVisible();
-    await expect(records).toContainText('target-resume-source-checks-v1');
+    await expect(records.getByText('Recorded check version: target-resume-source-checks-v2', { exact: true }).or(records.getByText('记录的检查版本: target-resume-source-checks-v2', { exact: true }))).toBeVisible();
+    await expect(records).toContainText('target-resume-source-checks-v2');
     await expect(records).not.toContainText('Manual wording B.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
     await records.screenshot({ path: info.outputPath(`provenance-history-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });

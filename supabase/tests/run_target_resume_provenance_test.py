@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run B45 migrations and CAS checks in a new socket-only PostgreSQL cluster.
+"""Run provenance migrations and CAS checks in a new socket-only PostgreSQL cluster.
 
 Uses real application migrations with test-only Auth/Storage platform stubs.
 Never connects to an existing database, Supabase project or provider. Logs and
@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 MIGRATION = '20260926093008_target_resume_provenance_cas.sql'
+RESEARCH_MIGRATION = '20260926100530_target_resume_research_provenance_v2.sql'
 
 
 def clean_environment():
@@ -28,6 +29,7 @@ def clean_environment():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence-dir', type=Path, required=True)
+    parser.add_argument('--research-context', action='store_true', help='Also apply and verify V2 research provenance')
     parser.add_argument('--pg-bin', type=Path, default=Path('/opt/homebrew/opt/postgresql@16/bin'))
     args = parser.parse_args()
     args.evidence_dir.mkdir(parents=True, exist_ok=False)
@@ -37,6 +39,8 @@ def main():
                'phases': [], 'source_hashes': {}}
     sources = [ROOT / 'supabase/migrations' / MIGRATION, HERE / 'target_resume_provenance_fixtures.sql',
                HERE / 'target_resume_provenance_test.sql', HERE / 'target_resume_provenance_security_test.sql', Path(__file__)]
+    if args.research_context:
+        sources += [ROOT / 'supabase/migrations' / RESEARCH_MIGRATION, HERE / 'target_resume_research_provenance_test.sql']
     summary['source_hashes'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
 
     def report():
@@ -135,7 +139,7 @@ def main():
             run('platform-stubs', sql=(HERE / '_stubs.sql').read_text())
             migrations = []
             for path in sorted((ROOT / 'supabase/migrations').glob('*.sql')):
-                if path.name == MIGRATION or path.name.startswith('004_'):
+                if path.name >= MIGRATION or path.name.startswith('004_'):
                     continue
                 if path.name == '20260925052636_legacy_renovation_cas_rpc.sql':
                     migrations.append((HERE / 'legacy_renovation_seed.sql').read_text())
@@ -165,6 +169,31 @@ END $$;
 DROP TABLE public.b45_before_current,public.b45_before_history;
 """
             run('verify-existing-versions', sql=upgrade, expected=1)
+            if args.research_context:
+                prior = (HERE / 'target_resume_provenance_fixtures.sql').read_text() + """
+SELECT set_config('test.uid','45000000-0000-4000-8000-000000000999',false);
+SELECT public.commit_target_resume_with_provenance_cas('45000000-0000-4000-8000-000000000999','known',0,
+ pg_temp.prov_doc('known','v1 unchanged'),pg_temp.prov(pg_temp.prov_doc('known','v1 unchanged'),'original-record'));
+CREATE TABLE public.b46_before_current AS SELECT * FROM public.target_resumes;
+CREATE TABLE public.b46_before_history AS SELECT * FROM public.target_resume_versions;
+"""
+                run('research-seed-existing-pairs', sql=prior)
+                run('research-same-database-migration', sql=(ROOT / 'supabase/migrations' / RESEARCH_MIGRATION).read_text())
+                preserved = """
+DO $$ BEGIN
+ IF EXISTS((SELECT to_jsonb(t) FROM public.target_resumes t) EXCEPT (SELECT to_jsonb(t) FROM public.b46_before_current t))
+ OR EXISTS((SELECT to_jsonb(t) FROM public.b46_before_current t) EXCEPT (SELECT to_jsonb(t) FROM public.target_resumes t))
+ OR EXISTS((SELECT to_jsonb(t) FROM public.target_resume_versions t) EXCEPT (SELECT to_jsonb(t) FROM public.b46_before_history t))
+ OR EXISTS((SELECT to_jsonb(t) FROM public.b46_before_history t) EXCEPT (SELECT to_jsonb(t) FROM public.target_resume_versions t))
+ THEN RAISE EXCEPTION 'research migration changed existing document, provenance or history'; END IF;
+ RAISE WARNING 'PASS research migration preserves exact old document/provenance/revision/timestamp pairs';
+END $$;
+DROP TABLE public.b46_before_current,public.b46_before_history;
+"""
+                run('research-verify-existing-pairs', sql=preserved, expected=1)
+                research_test = 'BEGIN;\n' + (HERE / 'target_resume_research_provenance_test.sql').read_text() + '\nROLLBACK;'
+                research_test = research_test.replace('\\i :fixture_path', '\\i ' + shlex.quote(str(HERE / 'target_resume_provenance_fixtures.sql')))
+                run('research-provenance-behavior', sql=research_test, expected=8)
             run('legacy-after', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=7)
             script = 'set -euo pipefail\nPSQL=(' + ' '.join(shlex.quote(x) for x in psql) + ')\nWORK=' + shlex.quote(str(work)) + '\nSOCK=' + shlex.quote(str(sock)) + '\n'
             script += (HERE / 'target_resume_concurrency_test.sh').read_text()

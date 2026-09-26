@@ -1,3 +1,4 @@
+import { isTargetResumeEvidence } from './target-resume-evidence';
 import {
   validateTargetResume, verifyTargetResumeSignatures, isCurrentTargetResumeContext, type TargetResumeV1,
 } from './target-resume';
@@ -135,7 +136,7 @@ export async function prepareTargetResumeAI(value: unknown): Promise<TargetResum
     const target = draft.target_snapshot;
     const targetTooLarge = [target.opportunity_id, target.title, target.organization, target.source_url,
       target.description, ...target.requirements].reduce((sum, field) => sum + resumeTextCharacters(field), 0)
-      + resumeTextCharacters(canonical(target.criteria)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
+      + resumeTextCharacters(canonical(target.criteria)) + resumeTextCharacters(canonical(target.research)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
     const batches: string[][] = [];
     const skippedUnits: TargetResumeAiReceipt[] = [];
     let batch: string[] = [];
@@ -165,18 +166,7 @@ const REASONS = new Set(['no_change', 'unit_too_large', 'context_too_large', 'ta
   'no_target_evidence', 'budget_exhausted', 'timeout']);
 const PRIORITIES = new Set(['high', 'normal', 'low']);
 function evidenceQuote(draft: TargetResumeV1, value: unknown): void {
-  shape(value, ['field', 'requirement_index', 'start', 'end', 'quote']);
-  text(value.quote);
-  let source: string;
-  if (value.field === 'description' && value.requirement_index === null) source = draft.target_snapshot.description;
-  else if (value.field === 'requirement' && Number.isSafeInteger(value.requirement_index)
-    && (value.requirement_index as number) >= 0 && (value.requirement_index as number) < draft.target_snapshot.requirements.length) {
-    source = draft.target_snapshot.requirements[value.requirement_index as number];
-  } else fail('invalid_response');
-  if (!Number.isSafeInteger(value.start) || !Number.isSafeInteger(value.end)
-    || (value.start as number) < 0 || (value.end as number) <= (value.start as number)
-    || (value.end as number) > resumeTextCharacters(source) || !value.quote.trim()
-    || Array.from(source).slice(value.start as number, value.end as number).join('') !== value.quote) fail('invalid_response');
+  if (!isTargetResumeEvidence(draft.target_snapshot, value)) fail('invalid_response');
 }
 function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiUnit, value: unknown): TargetResumeAiReceipt {
   shape(value, ['unit_id', 'section_id', 'block_id', 'evidence', 'before_text', 'status', 'reason_code', 'suggestion']);

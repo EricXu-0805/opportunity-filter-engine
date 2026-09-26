@@ -1,5 +1,7 @@
 'use client';
 
+import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
 import { ApiError, generateTargetResumePlan } from '@/lib/api';
@@ -210,7 +212,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
           <p className="mt-2 whitespace-pre-wrap break-words text-sm">{item.reason}</p>
           <div className="mt-2 space-y-2 text-sm">
             <p className="font-medium">{copy('Opportunity evidence', '机会依据')}</p>
-            {item.target_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{evidence.quote}</blockquote>)}
+            {item.target_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
             <p className="font-medium">{copy('Source evidence', '原文依据')}</p>
             {item.source_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-gray-200 pl-2">{evidence.quote}</blockquote>)}
           </div>

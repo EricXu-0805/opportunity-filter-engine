@@ -5,6 +5,7 @@ import type { EmailContactContext, Opportunity } from '@/lib/types';
 import { emailPaperKey, emailPaperOptions, type EmailPaperOption } from '@/lib/email-paper-reading';
 import { parseEmailContactDraftSnapshot, type EmailContactDraftSnapshot, type EmailContactDraftFields, type EmailContactDraftConfirmations } from '@/lib/email-contact-draft';
 import { defaultEmailContactContext, normalizeEmailContactContext, serializeEmailContactContext } from '@/lib/email-contact-context';
+import { parseResearchContext } from '@/lib/research-context';
 import styles from './EmailContactContextPanel.module.css';
 
 export interface EmailContactContextPanelProps {
@@ -170,6 +171,8 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
   }, [paperSourceKey, hasPaper, onDraftChange]);
   const fields = state.fields;
   const selectedPaper = papers.find(paper => emailPaperKey(paper) === fields.paperKey);
+  const research = parseResearchContext(opportunity?.research_context);
+  const selectedWork = research?.status === 'available' ? research.snapshot?.works.find(work => work.work_id === selectedPaper?.work_id) : undefined;
   const prepared = prepare(fields, state.confirmed, papers);
   const blocked = prepared.error === 'blocked';
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
@@ -288,8 +291,22 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
             {papers.map(paper => <option key={emailPaperKey(paper)} value={emailPaperKey(paper)}>{paper.title}{paper.year != null ? ` (${paper.year})` : ''}</option>)}
           </select>
           <p className={styles.help}>{papers.length
-            ? copy('Choose from papers attributed to this researcher. Confirm only what you actually read; this does not claim understanding or expertise.', '只能选择已核实归属该研究者的论文。按实际阅读程度确认，不据此宣称理解或掌握。')
-            : copy('No verified papers are available for this target. You can continue without a reading claim.', '当前目标没有可选的已核实论文。可以继续，不写阅读声明。')}</p>
+            ? copy('Choose from papers attributed to this researcher. Confirm only what you actually read; this does not claim understanding or expertise.', '只能选择已核对作者归属的论文资料。按实际阅读程度确认，不据此宣称理解或掌握。')
+            : copy('No papers matched to this researcher are available. You can continue without a reading claim.', '当前没有可选的已核对作者归属的论文资料。可以继续，不写阅读声明。')}</p>
+          {research?.status === 'stale' && <p role="status" data-testid="email-research-stale" className={styles.help}>
+            {copy('Research sources are out of date and are not used for writing. You can continue without a paper claim.', '研究资料已过期，暂不用于写作。可以继续，不写论文声明。')}
+          </p>}
+          {research?.status === 'stale' && <details className={styles.help}><summary>{copy('View previous sources', '查看此前来源')}</summary>
+            {research.snapshot!.works.map(work => <p key={work.work_id}><a href={work.source_url} target="_blank" rel="noopener noreferrer">{work.title}</a></p>)}
+          </details>}
+          {selectedWork && <div className={styles.help} data-testid="email-paper-source">
+            <a href={selectedWork.source_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', overflowWrap: 'anywhere' }}>{selectedWork.title}</a>
+            <p>{copy('Metadata checked: ', '资料核对时间：')}{research!.snapshot!.checked_at}</p>
+            {selectedWork.abstract_status === 'present'
+              ? <details><summary>{copy('Source abstract', '来源摘要')}</summary><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{selectedWork.abstract}</p></details>
+              : <p>{copy('No usable abstract is stored. Read the source before confirming your reading level.', '暂无可用摘要。请阅读来源后按实际情况确认。')}</p>}
+            <p>{copy('Opening this source does not confirm reading. You may confirm full text you read elsewhere.', '打开来源不会自动确认阅读。若你在别处读过全文，可以按实际情况确认。')}</p>
+          </div>}
           {fields.paperKey && <>
             <label htmlFor={id + '-readingLevel'}>{copy('How much did you read?', '你读到了哪一步？')}</label>
             <select id={id + '-readingLevel'} value={fields.readingLevel} onChange={event => update('readingLevel', event.target.value as Fields['readingLevel'])}>

@@ -33,6 +33,7 @@ from backend.lib.blocking import (
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_opportunity_detail import project_public_detail
 from backend.lib.public_projection import (
     project_public_opportunity_payload,
     redact_embedded_emails,
@@ -428,11 +429,9 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     top = results[:min(top_k, len(results))]
     cand: list[tuple[str, str]] = []
     for r in top:
-        # Match AI is release-hidden, but its future provider boundary must not
-        # receive an address copied into scraped title/keywords/metadata.
-        o = _public_match_payload(
-            opportunities_by_id.get(r.opportunity_id, {})
-        )
+        # Hidden match AI uses the same current source/identity/privacy gate
+        # as detail and writing. A stale new snapshot cannot revive old titles.
+        o = project_public_detail(opportunities_by_id.get(r.opportunity_id, {}))
         md = o.get("metadata") or {}
         # Publication trust boundary: only verified-attribution works may act
         # as a match signal or appear in the model's reason line. Unverified /

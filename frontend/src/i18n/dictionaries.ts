@@ -3228,6 +3228,12 @@ export const en = {
       similar: 'Similar opportunities',
       contact: 'Contact',
     },
+    researchSourcesNote: 'Paper metadata matched to this researcher. This does not confirm an opening or that you have read the paper.',
+    researchSourcesStale: 'These research sources are out of date and are not used for new writing. You can still view them.',
+    researchCheckedAt: 'Metadata checked:',
+    researchAbstract: 'Source abstract',
+    researchAbstractMissing: 'No usable abstract is stored.',
+    researchLegacySearchNote: 'These links search Google Scholar by title. They are not stored paper sources or evidence that you have read them.',
     recentWorksNote: 'From this professor’s public publication record — skim one before you reach out.',
     // Rank-neutral variant when metadata.faculty_title is a known
     // non-professor rank ("Senior Lecturer") — no "professor" framing.
@@ -8097,6 +8103,12 @@ export const zh = {
       similar: '相似机会',
       contact: '联系方式',
     },
+    researchSourcesNote: '已核对作者归属的论文资料，不代表有空缺或你已读过论文。',
+    researchSourcesStale: '研究资料已过期，暂不用于新写作。仍可查看此前来源。',
+    researchCheckedAt: '资料核对时间：',
+    researchAbstract: '来源摘要',
+    researchAbstractMissing: '暂无可用摘要。',
+    researchLegacySearchNote: '这些链接按标题搜索 Google Scholar，并非已保存的论文来源，也不代表你已阅读。',
     recentWorksNote: '来自这位教授的公开发表记录 —— 联系前先翻一篇,套磁信会具体得多。',
     // metadata.faculty_title 为已知非教授职称（如"高级讲师"）时的中性表述
     // —— 不使用"教授"框架。
