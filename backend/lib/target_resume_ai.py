@@ -7,7 +7,7 @@ from copy import deepcopy
 from backend.lib import llm_budget
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.llm import chat_completion, model_for
-from backend.lib.target_resume_ai_grounding import claim_upgrade_detected
+from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, claim_upgrade_detected
 from backend.lib.target_resume_ai_schema import (
     MAX_EXPERIENCE_CHARACTERS,
     MAX_ORIGINAL_CHARACTERS,
@@ -88,6 +88,9 @@ def receipt(unit, code=None, suggestion=None):
 def response_envelope(request, doc, units, protected, receipts, logical_calls):
     useful = sum(row["suggestion"] is not None for row in receipts)
     return {"version": 1, "pipeline_version": PIPELINE_VERSION, "request_id": request.request_id,
+            # Opt-in preserves the exact response shape for older clients. This
+            # identifies rule scope, not a signed proof or semantic truth claim.
+            **({"check_version": SOURCE_CHECK_VERSION} if request.include_check_version else {}),
             "document_id": doc["id"], "opportunity_id": doc["opportunity_id"],
             "document_signature": request.document_signature, "base": deepcopy(doc["base"]),
             "manifest": {"unit_ids": [unit["unit_id"] for unit in units], "protected_unit_count": protected},

@@ -3,6 +3,7 @@ import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
@@ -211,5 +212,26 @@ describe('authority rejection after partial AI results', () => {
     expect(mocked.generate).toHaveBeenCalledTimes(3); expect(mocked.generate.mock.calls[2][0].selected_unit_ids).toEqual([retryId]);
     expect(screen.getByRole('checkbox', { name: /Use rewrite:/ })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); expect(p.onApply).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('accepted wording operation records', () => {
+  it.each([undefined, 'target-resume-source-checks-v1'])('captures only accepted wording and the returned check version %s', async checkVersion => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(checkVersion ? { check_version: checkVersion } : {}) }));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(p.onApply).not.toHaveBeenCalled();
+    const unit = prepared.units.find(item => item.evidence.kind === 'experience')!;
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    const record = appendTargetResumeProvenance(null, p.draft, next, action)!;
+    expect(record.events).toHaveLength(1); expect(record.events[0].kind).toBe('ai_rewrite');
+    expect(record.events[0].changes).toHaveLength(1);
+    const change = record.events[0].changes[0];
+    expect(change.line_id).toBe(unit.unit_id); expect(change.before).toBe(unit.before_text); expect(change.after).toBe(rewrite);
+    expect(change.reason).toBe('The opportunity explicitly mentions Python.'); expect(change.source_evidence[0].quote).toBe(unit.original);
+    expect(change.check?.version ?? null).toBe(checkVersion ?? null);
+    if (checkVersion) expect(change.check).toMatchObject({ request_id: mocked.generate.mock.calls[0][0].request_id, original: unit.original, evidence: unit.evidence });
   });
 });

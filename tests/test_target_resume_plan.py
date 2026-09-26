@@ -398,3 +398,26 @@ def test_provider_empty_or_malformed_output_is_not_a_complete_plan(endpoint, mon
     monkeypatch.setattr(ai, "chat_completion", model)
     unavailable(endpoint.submit(endpoint.doc()), "model_unavailable" if not raw else "invalid_model_response")
     assert len(endpoint.calls) == 1
+
+
+def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypatch):
+    doc = endpoint.doc()
+    request = payload(doc)
+    legacy = endpoint.client.post(PATH, json=request)
+    assert legacy.status_code == 200
+    assert "check_version" not in legacy.json()
+    request["include_check_version"] = True
+    response = endpoint.client.post(PATH, json=request)
+    assert response.status_code == 200
+    assert response.json()["check_version"] == "target-resume-source-checks-v1"
+    assert response.json()["pipeline_version"] != response.json()["check_version"]
+    # Available rules do not turn skipped/failed work into a checked rewrite.
+    monkeypatch.setattr(route, "is_configured", lambda: False)
+    failed = endpoint.client.post(PATH, json=request)
+    assert failed.status_code == 200
+    assert failed.json()["check_version"] == "target-resume-source-checks-v1"
+    assert failed.json()["method"] == "unavailable"
+    forged = {**request, "check_version": "target-resume-source-checks-v999"}
+    assert endpoint.client.post(PATH, json=forged).status_code == 422
+    for value in ("true", 1, None):
+        assert endpoint.client.post(PATH, json={**request, "include_check_version": value}).status_code == 422

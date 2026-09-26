@@ -1,3 +1,4 @@
+import { validateTargetResumeProvenance, type TargetResumeProvenance } from './target-resume-provenance';
 import { getDeviceId, supabase } from './supabase';
 import { isOwnerTokenValid, type OwnerToken } from './identity-owner';
 import {
@@ -52,9 +53,15 @@ async function loaded(value: unknown, opportunityId: string, token: OwnerToken):
   owner(token);
   const meta = summary(value);
   const doc = snapshot((value as Record<string, unknown>).doc);
+  const provenance = provenanceSnapshot((value as Record<string, unknown>).provenance ?? null, doc);
   if (doc.opportunity_id !== opportunityId || !await verifyTargetResumeSignatures(doc)) throw new TargetResumeReadError('invalid');
   owner(token);
-  return { ...meta, doc };
+  return { ...meta, doc, provenance };
+}
+function provenanceSnapshot(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | null {
+  const checked = validateTargetResumeProvenance(value, doc);
+  if (!checked.ok) throw new TargetResumeReadError('invalid');
+  return checked.value;
 }
 function errorFor(error: unknown, token: OwnerToken): TargetResumeReadError {
   try { owner(token); } catch (failure) { return failure as TargetResumeReadError; }
@@ -70,7 +77,7 @@ function canonical(value: unknown): string {
 export async function loadTargetResume(opportunityId: string, token: OwnerToken): Promise<LoadedTargetResume | null> {
   try {
     targetId(opportunityId); await ready(token);
-    const { data, error } = await supabase.from('target_resumes').select('revision,doc,updated_at')
+    const { data, error } = await supabase.from('target_resumes').select('revision,doc,updated_at,provenance')
       .eq('owner_id', token.uid).eq('opportunity_id', opportunityId).maybeSingle();
     owner(token);
     if (error) throw new TargetResumeReadError('failed');
@@ -103,7 +110,7 @@ export async function loadTargetResumeVersion(opportunityId: string, revision: n
     targetId(opportunityId);
     if (!positive(revision)) throw new TargetResumeReadError('invalid');
     await ready(token);
-    const { data, error } = await supabase.from('target_resume_versions').select('revision,doc,updated_at')
+    const { data, error } = await supabase.from('target_resume_versions').select('revision,doc,updated_at,provenance')
       .eq('owner_id', token.uid).eq('opportunity_id', opportunityId).eq('revision', revision).maybeSingle();
     owner(token);
     if (error) throw new TargetResumeReadError('failed');
@@ -115,19 +122,20 @@ export async function loadTargetResumeVersion(opportunityId: string, revision: n
 }
 
 /** One RPC atomically commits current + history. Restore uses this same CAS. */
-export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: number, token: OwnerToken): Promise<TargetResumeSaveResult> {
+export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: number, token: OwnerToken, provenance: TargetResumeProvenance | null = null): Promise<TargetResumeSaveResult> {
   try {
     owner(token);
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) return { status: 'failed' };
     const copy = snapshot(doc);
+    const provenanceCopy = provenanceSnapshot(provenance, copy);
     targetId(copy.opportunity_id);
     const verified = await verifyTargetResumeSignatures(copy);
     owner(token);
     if (!verified) return { status: 'failed' };
     await ready(token);
-    const { data, error } = await supabase.rpc('commit_target_resume_cas', {
+    const { data, error } = await supabase.rpc('commit_target_resume_with_provenance_cas', {
       p_expected_owner: token.uid, p_opportunity_id: copy.opportunity_id,
-      p_expected_revision: expectedRevision, p_doc: copy,
+      p_expected_revision: expectedRevision, p_doc: copy, p_provenance: provenanceCopy,
     });
     owner(token);
     if (error || !object(data)) return { status: 'failed' };
@@ -135,7 +143,7 @@ export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: nu
     if (!['saved', 'unchanged', 'conflict'].includes(String(data.status))) return { status: 'failed' };
     const value = await loaded(data, copy.opportunity_id, token);
     if (data.status === 'conflict') return { status: 'conflict', current: value };
-    if (canonical(value.doc) !== canonical(copy)
+    if (canonical(value.doc) !== canonical(copy) || canonical(value.provenance) !== canonical(provenanceCopy)
       || (data.status === 'saved' && value.revision !== expectedRevision + 1)
       || (data.status === 'unchanged' && value.revision !== expectedRevision && value.revision !== expectedRevision + 1)) return { status: 'failed' };
     return { status: data.status as 'saved' | 'unchanged', value };

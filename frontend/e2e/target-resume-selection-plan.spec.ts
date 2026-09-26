@@ -70,7 +70,7 @@ function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
 }
 function checkedReply(request: TargetResumePlanRequest): TargetResumePlanResponse {
   const blocks = request.draft.document.sections.filter(section => section.kind !== 'basics').flatMap(section => section.blocks.map(block => ({ section, block })));
-  return { version: 1, pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { version: 1, check_version: 'target-resume-source-checks-v1', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base), options: { ...request.options },
     manifest: blocks.map(({ section, block }) => ({ section_id: section.id, block_id: block.id, line_ids: block.lines.map(line => line.id) })),
     scope: { unreferenced_experience_ids: ['unreferenced'], pending_experience_ids: ['pending'], stale_experience_ids: [], unmapped_range_count: 0 },
@@ -138,7 +138,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
   const save = async (revision: number, restore = false) => {
     const label = restore ? copy('Restore selected version as a new save', '将所选版本另存为新版本') : copy('Save target draft', '保存目标文稿');
     const button = modal.getByRole('button', { name: label, exact: true }); await expect(button).toBeEnabled();
-    const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+    const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas'
       && response.request().postDataJSON().p_expected_revision === revision);
     await button.click(); const response = await pending; expect(response.status()).toBe(200);
     const result = await response.json(); expect(result).toMatchObject({ status: 'saved', revision: revision + 1 });
@@ -149,7 +149,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
     await info.attach('selection-plan-flow-audit', { body: JSON.stringify(audit, null, 2), contentType: 'application/json' });
     await owner.http.dispose();
     expect(audit.external).toEqual([]); expect(audit.pageErrors).toEqual([]); expect(audit.unexpectedWriting).toEqual([]); expect(audit.badResponses).toEqual(denial ? [{ path: '/api/tailor/full-target/selection-plan', status: denial.status }] : []);
-    for (const write of audit.writes.filter(item => item.path !== '/rest/v1/rpc/commit_target_resume_cas')) {
+    for (const write of audit.writes.filter(item => item.path !== '/rest/v1/rpc/commit_target_resume_with_provenance_cas')) {
       expect(write.path).toBe('/rest/v1/analytics_events');
       expect(write.body).toEqual({ device_id: owner.session.user.id, event: 'match_opened', props: { opportunity_id: TARGET } });
     }
@@ -260,6 +260,8 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
   for (const request of requests) {
     expect(request.projection.sections.flatMap(section => section.blocks.flatMap(block => block.lines.map(line => line.text)))).toEqual(texts);
     expect(JSON.stringify(request)).not.toContain(RAW_PRIVATE);
+    expect(JSON.stringify(request)).not.toContain('provenance');
+    expect(JSON.stringify(request)).not.toContain('target-resume-source-checks-v');
     expect(JSON.stringify(request)).not.toContain(BAD_CLAIM);
   }
   for (const file of [pdf, docx]) {
@@ -268,6 +270,8 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
       const found = normalized.indexOf(compact(value), offset); expect(found, `${stem}: file preserves current line and order`).toBeGreaterThanOrEqual(offset);
       offset = found + compact(value).length;
     }
+    expect(file.text).not.toContain('target-resume-source-checks-v');
+    expect(file.text).not.toContain('Synthetic selection advice');
     expect(file.text).not.toContain(RAW_PRIVATE); expect(file.text).not.toContain(BAD_CLAIM);
     if (stem === 'accepted-current') {
       expect(compact(file.text)).not.toContain(compact(ORIGINAL['readings-role']));
@@ -325,16 +329,29 @@ for (const mode of ['selection-only', 'selection-and-compression'] as const) tes
       await expect(f.editor(line.id)).toHaveValue(line.text);
     }
     const accepted = await f.save(2); expect(accepted).toEqual(expected);
+    const provenanceWrites = f.audit.writes.filter(write => write.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
+    const appliedProvenance = provenanceWrites.at(-1)!.body.p_provenance as { events: { kind: string; changes: { field: string; line_id: string | null; check: { version: string } | null }[] }[] };
+    expect(appliedProvenance.events.some(event => event.kind === 'manual')).toBe(true);
+    const appliedChanges = appliedProvenance.events.filter(event => event.kind === 'plan').flatMap(event => event.changes);
+    expect(appliedChanges.some(change => change.field === 'included')).toBe(true);
+    expect(appliedChanges.filter(change => change.check !== null)).toHaveLength(mode === 'selection-and-compression' ? 1 : 0);
+    for (const change of appliedChanges.filter(change => change.check !== null)) {
+      expect(change.line_id).toBe(shortened.line.id);
+      expect(change.check!.version).toBe('target-resume-source-checks-v1');
+    }
+    expect(appliedChanges.some(change => change.line_id === teamUnit.line.id)).toBe(false);
+
     expect(accepted.base_snapshot).toEqual(baseline.base_snapshot);
     await expectFiles(page, info, f, expected, 'accepted-current');
     await f.modal.locator('summary').filter({ hasText: f.copy('Version history', '版本历史') }).click();
     await f.modal.getByRole('button', { name: f.copy('Load latest 20 versions', '读取最近 20 个版本'), exact: true }).click();
     await f.modal.getByRole('button', { name: f.zh ? /^查看版本 1 ·/ : /^View version 1 ·/ }).click();
     const restored = await f.save(3, true); expect(restored).toEqual(initial);
+    expect(f.audit.writes.filter(write => write.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas').at(-1)!.body.p_provenance).toBeNull();
     for (const { line } of lines(initial)) await expect(f.editor(line.id)).toHaveValue(line.text);
     await expectFiles(page, info, f, initial, 'restored-baseline');
     expect(f.audit.plans).toHaveLength(1);
-    const targetWrites = f.audit.writes.filter(item => item.path === '/rest/v1/rpc/commit_target_resume_cas');
+    const targetWrites = f.audit.writes.filter(item => item.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
     expect(targetWrites.map(item => item.body.p_expected_revision)).toEqual([0, 1, 2, 3]);
     const currentProfile = await f.owner.http.get(`${STUB}/rest/v1/profiles?id=eq.${f.owner.session.user.id}&select=*`, { headers: { Authorization: `Bearer ${f.owner.session.access_token}` } });
     expect(currentProfile.status()).toBe(200);
@@ -376,7 +393,86 @@ test('an authoritative target refusal retires an earlier selected plan without c
     await expect(panel.getByRole('button', { name: f.copy('Apply selected content choices', '应用所选安排'), exact: true })).toBeDisabled();
     expect(f.audit.plans).toHaveLength(3);
     expect(f.audit.plans.every(plan => JSON.stringify(plan.draft) === JSON.stringify(baseline))).toBe(true);
-    expect(f.audit.writes.filter(write => write.path === '/rest/v1/rpc/commit_target_resume_cas')).toHaveLength(1);
+    expect(f.audit.writes.filter(write => write.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas')).toHaveLength(1);
     await panel.scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`refusal-recovered-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
   } finally { await f.done(); }
+});
+
+test('provenance stays paired through in-flight edits, two-window conflict and history restore', async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const f = await setup(page, info), panel = planPanel(page, f.zh);
+  let other: Page | undefined;
+  try {
+    await f.open(); const initial = await f.save(0);
+    const unit = lines(initial).find(({ line }) => line.evidence.id === 'calibration-role')!;
+    await panel.getByRole('button', { name: f.copy('Generate content plan', '生成选材建议'), exact: true }).click();
+    await panel.getByRole('checkbox', { name: `Use shorter wording: ${unit.line.id}`, exact: true }).check();
+    await panel.getByRole('button', { name: f.copy('Apply selected content choices', '应用所选安排'), exact: true }).click();
+    await f.save(1);
+    const records = f.modal.locator('details').filter({ has: page.locator('summary').getByText(f.copy('Change records', '修改记录'), { exact: true }) });
+    await records.locator('summary').click();
+    await expect(records).toContainText('target-resume-source-checks-v1');
+    await expect(records).toContainText('Synthetic selection advice');
+    await records.scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+    await records.screenshot({ path: info.outputPath(`provenance-accepted-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+    // A second real page opens the same stored revision before the first saves again.
+    other = await page.context().newPage();
+    const secondErrors: string[] = []; other.on('pageerror', error => secondErrors.push(error.message));
+    await other.route('**/auth/v1/user', route => route.fulfill({ json: f.owner.session.user }));
+    await other.route('**/auth/v1/token?grant_type=refresh_token', route => route.fulfill({ json: f.owner.session }));
+    await other.goto(`/opportunities/${TARGET}`);
+    await other.getByRole('button', { name: f.copy('Renovate Resume', '简历翻新'), exact: true }).click();
+    const secondModal = other.getByRole('dialog', { name: f.copy('Target résumé', '目标简历'), exact: true });
+    const secondEditor = secondModal.locator(`textarea[id$="-${unit.line.id}"]`);
+    await expect(secondEditor).toHaveValue(SHORTER);
+    await f.editor(unit.line.id).fill('Manual wording A.');
+    let release!: () => void; let dispatched!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const entered = new Promise<void>(resolve => { dispatched = resolve; });
+    const savePattern = '**/rest/v1/rpc/commit_target_resume_with_provenance_cas';
+    await page.route(savePattern, async route => { dispatched(); await held; await route.continue(); }, { times: 1 });
+    const responsePending = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
+    await f.modal.getByRole('button', { name: f.copy('Save target draft', '保存目标文稿'), exact: true }).click();
+    await entered;
+    await f.editor(unit.line.id).fill('Manual wording B.');
+    release(); const saved = await (await responsePending).json();
+    expect(saved).toMatchObject({ status: 'saved', revision: 3 });
+    expect(lines(saved.doc).find(({ line }) => line.id === unit.line.id)!.line.text).toBe('Manual wording A.');
+    await expect(f.editor(unit.line.id)).toHaveValue('Manual wording B.');
+    await expect(f.modal.getByText(f.copy('Unsaved local edits', '本地编辑尚未保存'), { exact: true })).toBeVisible();
+    await f.save(3);
+    const latestWrite = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!;
+    const recorded = latestWrite.body.p_provenance as { events: { kind: string; changes: { field: string; line_id: string; before: string; after: string; check: unknown }[] }[] };
+    const latest = recorded.events.flatMap(event => event.changes.map(change => ({ kind: event.kind, ...change }))).filter(change => change.line_id === unit.line.id && change.field === 'text').at(-1)!;
+    expect(latest).toMatchObject({ kind: 'manual', before: SHORTER, after: 'Manual wording B.', check: null });
+    await secondEditor.fill('Stale second-window wording.');
+    const conflictPending = other.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
+    await secondModal.getByRole('button', { name: f.copy('Save target draft', '保存目标文稿'), exact: true }).click();
+    const conflict = await (await conflictPending).json(); expect(conflict).toMatchObject({ status: 'conflict', revision: 4 });
+    expect(conflict.provenance).toEqual(recorded);
+    await expect(secondEditor).toHaveValue('Stale second-window wording.');
+    await secondModal.getByRole('button', { name: f.copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本'), exact: true }).click();
+    await expect(secondEditor).toHaveValue('Manual wording B.');
+    // Editing back to an earlier AI string remains a manual event.
+    await f.editor(unit.line.id).fill(SHORTER); await f.save(4);
+    const back = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as typeof recorded;
+    expect(back.events.at(-1)).toMatchObject({ kind: 'manual', changes: [{ field: 'text', before: SHORTER, after: SHORTER, check: null }] });
+    await f.modal.locator('summary').filter({ hasText: f.copy('Version history', '版本历史') }).click();
+    await f.modal.getByRole('button', { name: f.copy('Load latest 20 versions', '读取最近 20 个版本'), exact: true }).click();
+    await f.modal.getByRole('button', { name: f.zh ? /^查看版本 2 ·/ : /^View version 2 ·/ }).click();
+    await f.save(5, true);
+    const restored = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as typeof recorded;
+    expect(restored.events).toHaveLength(1); expect(restored.events[0].kind).toBe('plan');
+    expect(restored.events[0].changes[0].check).toMatchObject({ version: 'target-resume-source-checks-v1' });
+    expect(secondErrors).toEqual([]);
+    await info.attach('provenance-conflict-and-restore', { body: JSON.stringify({ recorded, conflict, back, restored }, null, 2), contentType: 'application/json' });
+    if (!await records.evaluate(node => (node as HTMLDetailsElement).open)) await records.locator('summary').click();
+    await records.evaluate(node => node.scrollIntoView({ block: 'center' }));
+    await expect(records.getByText('Recorded check version: target-resume-source-checks-v1', { exact: true }).or(records.getByText('记录的检查版本: target-resume-source-checks-v1', { exact: true }))).toBeVisible();
+    await expect(records).toContainText('target-resume-source-checks-v1');
+    await expect(records).not.toContainText('Manual wording B.');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+    await records.screenshot({ path: info.outputPath(`provenance-history-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+  } finally { await other?.close(); await f.done(); }
 });

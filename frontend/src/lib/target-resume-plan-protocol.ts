@@ -41,6 +41,8 @@ export type TargetResumePlanReason = 'context_too_large' | 'target_too_large'
   | 'no_plan_items' | 'budget_exhausted' | 'model_unavailable' | 'timeout'
   | 'invalid_model_response' | 'no_target_evidence' | 'no_source_evidence';
 export interface TargetResumePlanResponse {
+  /** Absent in older responses; never infer it from pipeline_version. */
+  check_version?: string | null;
   version: 1; pipeline_version: typeof TARGET_RESUME_PLAN_VERSION;
   request_id: string; document_id: string; opportunity_id: string;
   document_signature: string; base: TargetResumeV1['base'];

@@ -22,7 +22,7 @@ const old = () => clone(legacy.draft) as TargetResumeV1;
 const input = () => clone(golden.public_opportunity) as unknown as Opportunity;
 const UID = '77000000-0000-4000-8000-000000000023';
 const stamp = '2026-09-24T18:00:00.000Z';
-const row = (doc: TargetResumeV1, revision: number) => ({ revision, doc, updated_at: stamp });
+const row = (doc: TargetResumeV1, revision: number) => ({ revision, doc, updated_at: stamp, provenance: null });
 
 beforeEach(() => { vi.stubGlobal('crypto', webcrypto); rpc.mockReset(); from.mockReset(); device.mockReset(); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -129,8 +129,8 @@ describe('v1/v2 current and history compatibility at mocked SDK boundary', () =>
     const doc = kind === 'current' ? current() : old(), before = clone(doc), token = captureOwnerToken();
     rpc.mockImplementation(async (_name, args) => ({ data: { status: 'saved', ...row(clone(args.p_doc), 8) }, error: null }));
     expect(await saveTargetResume(doc, 7, token)).toEqual({ status: 'saved', value: row(before, 8) });
-    expect(rpc).toHaveBeenCalledWith('commit_target_resume_cas', { p_expected_owner: UID,
-      p_opportunity_id: doc.opportunity_id, p_expected_revision: 7, p_doc: before });
+    expect(rpc).toHaveBeenCalledWith('commit_target_resume_with_provenance_cas', { p_expected_owner: UID,
+      p_opportunity_id: doc.opportunity_id, p_expected_revision: 7, p_doc: before, p_provenance: null });
     single.mockResolvedValue({ data: row(before, 8), error: null });
     expect(await loadTargetResume(doc.opportunity_id, token)).toEqual(row(before, 8));
     expect(filters).toContainEqual(['owner_id', UID]);

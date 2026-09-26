@@ -8,6 +8,7 @@ import {
   applyTargetResumeAI, mergeTargetResumeAIResponses, prepareTargetResumeAI, validateTargetResumeAIResponse,
   type TargetResumeAICurrentContext,
 } from '@/lib/target-resume-ai';
+import type { TargetResumeProvenanceAction, TargetResumeProvenanceAnnotation } from '@/lib/target-resume-provenance';
 import type { TargetResumeV1 } from '@/lib/target-resume';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
@@ -27,7 +28,7 @@ export interface TargetResumeAiPanelProps {
   contextKey: string;
   currentContext: TargetResumeAICurrentContext | null;
   enabled: boolean;
-  onApply: (expectedCanonical: string, next: TargetResumeV1) => void;
+  onApply: (expectedCanonical: string, next: TargetResumeV1, action: TargetResumeProvenanceAction) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onAuthorityRefusal?: (code: string) => void;
 }
@@ -197,7 +198,20 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
     if (appliedKey.current === draftKey) { setNotice('applied'); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
-    onApply(run.prepared.canonical_draft, result.value);
+    const annotations: TargetResumeProvenanceAnnotation[] = [];
+    for (const unitId of selected) {
+      // Match the accepted unit to its successful response, not the last batch.
+      const response = run.responses.find(item => item.receipts.some(receipt => receipt.unit_id === unitId && receipt.status === 'suggested'));
+      const receipt = response?.receipts.find(item => item.unit_id === unitId && item.status === 'suggested');
+      const unit = run.prepared.units.find(item => item.unit_id === unitId);
+      if (!response || !receipt?.suggestion || !unit) { setError('invalid_response'); return; }
+      annotations.push({ section_id: unit.section_id, block_id: unit.block_id, line_id: unitId, field: 'text',
+        reason: receipt.suggestion.reason, target_evidence: receipt.suggestion.target_evidence,
+        source_evidence: unit.original.trim() ? [{ unit_id: unitId, start: 0, end: Array.from(unit.original).length, quote: unit.original }] : [],
+        check: response.check_version ? { version: response.check_version, pipeline_version: response.pipeline_version,
+          request_id: response.request_id, document_signature: response.document_signature, original: unit.original, evidence: unit.evidence } : null });
+    }
+    onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
     ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], applyStructure: order, currentContext }) : null;
@@ -218,7 +232,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
 
   return <section aria-label="AI adaptation suggestions" className="my-5 min-w-0 rounded-xl border border-indigo-200 p-4">
     <h3 className="font-semibold">{copy('AI adaptation', 'AI 定向调整')}</h3>
-    <p className="mt-1 text-sm text-gray-600">{copy('Review suggestions before applying them. Facts stay linked to your confirmed master. Reasons and rejected suggestions are kept only while this workspace is open.', '核对建议后再应用。事实仍关联已确认母版；修改理由和拒绝记录仅在本次打开期间保留。')}</p>
+    <p className="mt-1 text-sm text-gray-600">{copy('Review suggestions before applying them. Facts stay linked to your confirmed master. Reasons for applied changes are saved with the draft. Unapplied advice stays only in this workspace.', '核对建议后再应用。事实仍关联已确认母版；已应用修改的理由随文稿保存；未应用建议仅在当前工作区保留。')}</p>
     {!ready && <p className="mt-2 text-sm text-amber-800">{copy('Use a draft based on your current confirmed profile and target to generate AI suggestions.', '请使用基于当前已确认资料及目标的文稿生成 AI 建议。')}</p>}
     <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" className={button} disabled={!ready || working} onClick={() => action.request('start')}>{copy('Generate AI suggestions', '生成 AI 建议')}</button>

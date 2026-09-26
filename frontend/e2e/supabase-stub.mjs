@@ -274,7 +274,10 @@ const rpcs = {
   },
   // Independent full-document CAS. Real RLS/merge/rollback is proven in SQL;
   // the stub reproduces only this wire contract for local browser tests.
-  commit_target_resume_cas(body, uid) {
+  commit_target_resume_with_provenance_cas(body, uid) {
+    return rpcs.commit_target_resume_cas(body, uid, true);
+  },
+  commit_target_resume_cas(body, uid, withProvenance = false) {
     const { p_expected_owner: owner, p_opportunity_id: opp, p_expected_revision: expected, p_doc: doc } = body;
     if (!uid || owner !== uid) return { status: 403, body: { code: '42501', message: 'identity_changed' } };
     if (!Number.isSafeInteger(expected) || expected < 0 || typeof opp !== 'string' || !opp.trim()
@@ -284,15 +287,23 @@ const rpcs = {
       return { status: 400, body: { code: '22023', message: 'invalid_target_resume' } };
     }
     if (rowsOf('merged_devices').some(row => row.source_device_id === uid)) return { status: 200, body: { status: 'missing' } };
+    const provenance = withProvenance ? body.p_provenance ?? null : null;
+    if (provenance !== null && (provenance.version !== 1 || provenance.document_id !== doc.id
+      || provenance.opportunity_id !== opp || canonicalJSON(provenance.base) !== canonicalJSON(doc.base)
+      || !Array.isArray(provenance.events) || provenance.events.length > 512
+      || Buffer.byteLength(JSON.stringify(provenance), 'utf8') > 262144)) {
+      return { status: 400, body: { code: '22023', message: 'invalid_target_resume_provenance' } };
+    }
     const current = rowsOf('target_resumes');
     const row = current.find(r => r.owner_id === uid && r.opportunity_id === opp);
     if (!row && expected !== 0) return { status: 200, body: { status: 'missing' } };
-    const response = (status, value) => ({ status: 200, body: { status, revision: value.revision, doc: value.doc, updated_at: value.updated_at } });
-    if (row && canonicalJSON(row.doc) === canonicalJSON(doc) && [expected, expected + 1].includes(row.revision)) return response('unchanged', row);
+    const response = (status, value) => ({ status: 200, body: { status, revision: value.revision, doc: value.doc, ...(withProvenance ? { provenance: value.provenance ?? null } : {}), updated_at: value.updated_at } });
+    if (row && canonicalJSON(row.doc) === canonicalJSON(doc)
+      && (!withProvenance || canonicalJSON(row.provenance ?? null) === canonicalJSON(provenance)) && [expected, expected + 1].includes(row.revision)) return response('unchanged', row);
     if (row && row.revision !== expected) return response('conflict', row);
     if (row && row.revision >= Number.MAX_SAFE_INTEGER) return { status: 400, body: { code: '22023', message: 'revision_limit' } };
     const next = { owner_id: uid, opportunity_id: opp, revision: (row?.revision ?? 0) + 1,
-      doc: structuredClone(doc), updated_at: new Date().toISOString() };
+      doc: structuredClone(doc), provenance: structuredClone(provenance), updated_at: new Date().toISOString() };
     if (row) Object.assign(row, next); else current.push(next);
     rowsOf('target_resume_versions').push(structuredClone(next));
     return response('saved', next);

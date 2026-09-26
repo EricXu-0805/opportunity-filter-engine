@@ -73,7 +73,7 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
   const units = lines(request.draft).filter(unit => unit.section.kind !== 'basics');
   const selected = units.filter(unit => request.selected_unit_ids.includes(unit.line.id));
   expect(selected.some(unit => unit.line.evidence.id === 'team-role')).toBe(true);
-  return { version: 1, pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { version: 1, check_version: 'target-resume-source-checks-v1', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base),
     manifest: { unit_ids: units.map(unit => unit.line.id), protected_unit_count: lines(request.draft).filter(unit => unit.section.kind === 'basics').length },
     method: 'partial', logical_calls: 1, provider_attempts_upper_bound: 2,
@@ -131,7 +131,7 @@ async function setup(page: Page, info: TestInfo) {
   const save = async (revision: number, restore = false) => {
     const label = restore ? copy('Restore selected version as a new save', '将所选版本另存为新版本') : copy('Save target draft', '保存目标文稿');
     const button = modal.getByRole('button', { name: label, exact: true }); await expect(button).toBeEnabled();
-    const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+    const pending = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas'
       && response.request().postDataJSON().p_expected_revision === revision);
     await button.click(); const response = await pending; expect(response.status()).toBe(200);
     const result = await response.json(); expect(result).toMatchObject({ status: 'saved', revision: revision + 1 });
@@ -142,7 +142,7 @@ async function setup(page: Page, info: TestInfo) {
     await info.attach('attribution-flow-audit', { body: JSON.stringify(audit, null, 2), contentType: 'application/json' });
     await owner.http.dispose();
     expect(audit.external).toEqual([]); expect(audit.pageErrors).toEqual([]); expect(audit.unexpectedWriting).toEqual([]); expect(audit.badResponses).toEqual([]);
-    for (const write of audit.writes.filter(item => item.path !== '/rest/v1/rpc/commit_target_resume_cas')) {
+    for (const write of audit.writes.filter(item => item.path !== '/rest/v1/rpc/commit_target_resume_with_provenance_cas')) {
       expect(write.path).toBe('/rest/v1/analytics_events');
       expect(write.body).toEqual({ device_id: owner.session.user.id, event: 'match_opened', props: { opportunity_id: TARGET } });
     }
@@ -253,6 +253,8 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
   for (const request of requests) {
     expect(request.projection.sections.flatMap(section => section.blocks.flatMap(block => block.lines.map(line => line.text)))).toEqual(texts);
     expect(JSON.stringify(request)).not.toContain(RAW_PRIVATE);
+    expect(JSON.stringify(request)).not.toContain('provenance');
+    expect(JSON.stringify(request)).not.toContain('target-resume-source-checks-v');
     expect(JSON.stringify(request)).not.toContain(BAD_CLAIM);
   }
   for (const file of [pdf, docx]) {
@@ -261,6 +263,8 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
       const found = normalized.indexOf(compact(value), offset); expect(found, `${stem}: file preserves current line and order`).toBeGreaterThanOrEqual(offset);
       offset = found + compact(value).length;
     }
+    expect(file.text).not.toContain('target-resume-source-checks-v');
+    expect(file.text).not.toContain('Synthetic selection advice');
     expect(file.text).not.toContain(RAW_PRIVATE); expect(file.text).not.toContain(BAD_CLAIM);
     if (stem === 'restored-baseline') {
       expect(compact(file.text)).not.toContain(compact(MANUAL_NAME));
@@ -321,7 +325,7 @@ for (const mode of ['single', 'all-valid'] as const) test(`${mode} acceptance ex
     for (const { line } of lines(baseline)) await expect(f.editor(line.id)).toHaveValue(line.text);
     await expectFiles(page, info, f, baseline, 'restored-baseline');
     expect(f.audit.suggestions).toHaveLength(1);
-    const targetWrites = f.audit.writes.filter(item => item.path === '/rest/v1/rpc/commit_target_resume_cas');
+    const targetWrites = f.audit.writes.filter(item => item.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
     expect(targetWrites).toHaveLength(3); expect(targetWrites.map(item => item.body.p_expected_revision)).toEqual([0, 1, 2]);
     const currentProfile = await f.owner.http.get(`${STUB}/rest/v1/profiles?id=eq.${f.owner.session.user.id}&select=*`, { headers: { Authorization: `Bearer ${f.owner.session.access_token}` } });
     expect(currentProfile.status()).toBe(200);

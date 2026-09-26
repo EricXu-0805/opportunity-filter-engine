@@ -21,6 +21,7 @@ class FullTargetRequest(BaseModel):
     version: Literal[1]
     request_id: str = Field(min_length=1, max_length=80)
     locale: Literal["en", "zh"]
+    include_check_version: bool = False
     draft: dict[str, Any]
     document_signature: str = Field(pattern=r"^v1:sha256:[0-9a-f]{64}$")
     selected_unit_ids: list[str] = Field(min_length=1, max_length=MAX_UNITS)

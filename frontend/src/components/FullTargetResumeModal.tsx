@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { useLocale } from '@/i18n/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { appendTargetResumeProvenance, type TargetResumeProvenance } from '@/lib/target-resume-provenance';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
@@ -34,9 +35,9 @@ import {
 type Scope = { active: boolean; owner: OwnerToken; targetId: string; context: string; creation: number; historyRequest: number; historyGeneration: number; historyListRequest: number };
 type Session = {
   scope: Scope; phase: 'loading' | 'load-error' | 'idle' | 'creating' | 'doc';
-  doc: TargetResumeV1 | null; revision: number; savedJson: string | null; editRevision: number;
+  doc: TargetResumeV1 | null; provenance: TargetResumeProvenance | null; provenanceError: boolean; revision: number; savedJson: string | null; editRevision: number;
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
@@ -48,7 +49,8 @@ function canonical(value: unknown): string {
     ? item : Object.fromEntries(Object.entries(item as Record<string, unknown>).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)));
 }
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
-const isDirty = (session: Session) => !!session.doc && canonical(session.doc) !== session.savedJson;
+const bundleKey = (doc: TargetResumeV1, provenance: TargetResumeProvenance | null | undefined) => canonical({ doc, provenance: provenance ?? null });
+const isDirty = (session: Session) => !!session.doc && (session.provenanceError || bundleKey(session.doc, session.provenance) !== session.savedJson);
 
 export default function FullTargetResumeModal({ isOpen, onClose, profile, opportunity, onOpenLegacy, onCloseRequestChange, targetReady = true, targetChecking = false, profileAvailable = true, profileRefresh, targetRefresh, targetMembershipReady }: {
   isOpen: boolean; onClose: () => void; profile: ProfileData; opportunity: Opportunity; onOpenLegacy?: () => void;
@@ -155,7 +157,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     // Pending plans belong to the document workspace being replaced.
     setPlanDirty(false);
     // Opening/retrying/target replacement defines a new private document scope.
-    setSession({ scope, phase: 'loading', doc: null, revision: 0, savedJson: null, editRevision: 0,
+    setSession({ scope, phase: 'loading', doc: null, provenance: null, provenanceError: false, revision: 0, savedJson: null, editRevision: 0,
       saving: false, reloading: false, conflict: null, error: null, history: null, historyBusy: false,
       historyError: false, historyHasMore: false, selectedRevision: null, selectedVersion: null, versionBusy: false, versionError: false });
     setLeave(null);
@@ -171,7 +173,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     });
     void loadTargetResume(opportunity.id, scope.owner).then((loaded) => {
       update(scope, (old) => loaded === null ? { ...old, phase: 'idle' }
-        : { ...old, phase: 'doc', doc: clone(loaded.doc), revision: loaded.revision, savedJson: canonical(loaded.doc) });
+        : { ...old, phase: 'doc', doc: clone(loaded.doc), provenance: clone(loaded.provenance ?? null), provenanceError: false, revision: loaded.revision, savedJson: bundleKey(loaded.doc, loaded.provenance) });
     }).catch(() => update(scope, (old) => ({ ...old, phase: 'load-error' })));
     return () => { scope.active = false; unsubscribe(); };
     // Content-only changes preserve local work and retire creation below.
@@ -249,12 +251,19 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', keydown); previousFocus?.focus(); };
   }, [isOpen]);
 
-  const edit = (change: (draft: TargetResumeV1) => void) => {
+  const edit = (change: (draft: TargetResumeV1) => void, kind: 'manual' | 'target_order' = 'manual') => {
     if (!activeSession || !canEdit) return;
     update(activeSession.scope, (old) => {
       if (!old.doc) return old;
       const next = clone(old.doc); change(next);
-      return { ...old, doc: next, editRevision: old.editRevision + 1, error: null };
+      if (canonical(old.doc) === canonical(next)) return old;
+      try {
+        const provenance = old.provenanceError ? old.provenance : appendTargetResumeProvenance(old.provenance, old.doc, next, { kind });
+        return { ...old, doc: next, provenance, editRevision: old.editRevision + 1, error: null };
+      } catch {
+        // Preserve every keystroke even when its record exceeds capacity.
+        return { ...old, doc: next, provenanceError: true, editRevision: old.editRevision + 1, error: null };
+      }
     });
   };
   const create = async () => {
@@ -269,7 +278,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     try {
       const next = await createTargetResume(profileSnapshot, targetSnapshot, activeSession.doc?.id);
       if (!current(scope) || scope.creation !== creation) return;
-      update(scope, (old) => ({ ...old, phase: 'doc', doc: next, editRevision: old.editRevision + 1, error: null }));
+      update(scope, (old) => ({ ...old, phase: 'doc', doc: next, provenance: null, provenanceError: false, editRevision: old.editRevision + 1, error: null }));
     } catch {
       if (current(scope) && scope.creation === creation) update(scope, (old) => ({ ...old, phase: old.doc ? 'doc' : 'idle', error: 'create' }));
     }
@@ -282,23 +291,26 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     scopeKey: `${opportunity.id}:${lifecycle}:${liveTargetKey}`, editRevision: activeSession?.editRevision ?? 0,
     refresh: profileRefresh, target: opportunity, targetRefresh, readiness: createReadiness, execute: () => { void create(); },
   });
-  const persist = async (payload: TargetResumeV1) => {
-    if (!activeSession || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
+  const persist = async (payload: TargetResumeV1, provenance: TargetResumeProvenance | null) => {
+    if (!activeSession || activeSession.provenanceError || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
     const validation = validateTargetResume(payload);
     if (!validation.ok) { update(activeSession.scope, (old) => ({ ...old, error: 'invalid' })); return; }
     const { revision, editRevision } = activeSession;
     const scope = scopeRef.current;
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     const snapshot = clone(validation.value);
+    const provenanceSnapshot = clone(provenance);
     update(scope, (old) => ({ ...old, saving: true, error: null }));
     try {
-      const result = await saveTargetResume(snapshot, revision, scope.owner);
+      const result = await saveTargetResume(snapshot, revision, scope.owner, provenanceSnapshot);
       if (!current(scope)) return;
       if (result.status === 'saved' || result.status === 'unchanged') {
         scope.historyGeneration += 1; scope.historyRequest += 1; setLeave(null);
         update(scope, (old) => ({ ...old,
         doc: old.editRevision === editRevision ? clone(result.value.doc) : old.doc,
-        phase: 'doc', revision: result.value.revision, savedJson: canonical(result.value.doc), saving: false,
+        provenance: old.editRevision === editRevision ? clone(result.value.provenance ?? null) : old.provenance,
+        provenanceError: old.editRevision === editRevision ? false : old.provenanceError,
+        phase: 'doc', revision: result.value.revision, savedJson: bundleKey(result.value.doc, result.value.provenance), saving: false,
         conflict: null, error: null, history: null, historyBusy: false, historyHasMore: false, versionBusy: false,
         selectedVersion: null, selectedRevision: null }));
       } else if (result.status === 'conflict') update(scope, (old) => ({ ...old, saving: false, conflict: result.current }));
@@ -316,8 +328,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       if (!loaded) { update(scope, (old) => ({ ...old, reloading: false, error: 'missing' })); return; }
       if (!current(scope)) return;
       scope.historyGeneration += 1; scope.historyRequest += 1;
-      update(scope, (old) => ({ ...old, phase: 'doc', doc: clone(loaded.doc), revision: loaded.revision,
-        savedJson: canonical(loaded.doc), editRevision: old.editRevision + 1, conflict: null, reloading: false,
+      update(scope, (old) => ({ ...old, phase: 'doc', doc: clone(loaded.doc), provenance: clone(loaded.provenance ?? null), provenanceError: false, revision: loaded.revision,
+        savedJson: bundleKey(loaded.doc, loaded.provenance), editRevision: old.editRevision + 1, conflict: null, reloading: false,
         selectedVersion: null, selectedRevision: null, history: null, historyBusy: false, historyHasMore: false, versionBusy: false }));
     } catch { update(scope, (old) => ({ ...old, reloading: false, error: 'reload' })); }
   };
@@ -380,7 +392,46 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       </dl>)}
     </div>)}
   </section>;
+  const recordKind = (kind: string, field: string) => kind === 'manual' ? copy('Manual edit', '手动修改')
+    : kind === 'target_order' ? copy('Order suggested from the target', '按目标建议排序')
+      : field === 'order' ? copy('Accepted AI order', '采用 AI 排序')
+        : kind === 'plan' && field === 'included' ? copy('Accepted content choice', '采用选材安排')
+          : kind === 'plan' ? copy('Accepted whole-draft compression', '采用整稿压缩') : copy('Accepted AI rewrite', '采用 AI 改写');
+  const lineRecords = new Map<string, { kind: string; change: TargetResumeProvenance['events'][number]['changes'][number] }>();
+  if (!activeSession?.provenanceError) for (const event of activeSession?.provenance?.events ?? []) {
+    for (const change of event.changes) if (change.field === 'text' && change.line_id) lineRecords.set(change.line_id, { kind: event.kind, change });
+  }
+  const renderProvenance = (draft: TargetResumeV1, provenance: TargetResumeProvenance | null | undefined, title: string) => <details className="my-4 min-w-0 rounded-xl border p-3">
+    <summary className="cursor-pointer font-medium">{title}</summary>
+    <p className="mt-2 text-xs text-gray-600">{copy('Change records are for review. They do not certify factual accuracy.', '修改记录用于回看，不代表事实已审核。')}</p>
+    {!provenance ? <p className="mt-2 text-sm">{copy('Change source unknown. This version has no saved operation record.', '来源未知：此版本没有保存修改记录。')}</p>
+      : <ol className="mt-3 max-h-96 space-y-3 overflow-auto">{[...provenance.events].reverse().map(event => <li key={event.id} className="min-w-0 rounded-lg bg-gray-50 p-3">
+        {event.changes.map((change, index) => {
+          const section = draft.document.sections.find(item => item.id === change.section_id);
+          const block = section?.blocks.find(item => item.id === change.block_id);
+          const line = block?.lines.find(item => item.id === change.line_id);
+          const location = line ? label(line) : block?.lines.find(item => item.role === 'title')?.text || (section ? sectionTitle(section) : copy('Whole draft', '全文'));
+          const orderItems = block ? block.lines.map(item => ({ id: item.id, name: label(item) }))
+            : section ? section.blocks.map((item, i) => ({ id: item.id, name: item.lines.find(line => line.role === 'title')?.text || `${copy('Content block', '内容块')} ${i + 1}` }))
+              : draft.document.sections.map(item => ({ id: item.id, name: sectionTitle(item) }));
+          const orderNames = new Map(orderItems.map((item, i) => [item.id, orderItems.filter(other => other.name === item.name).length > 1 ? `${item.name} (${i + 1})` : item.name]));
+          const value = (item: typeof change.before) => typeof item === 'boolean' ? item ? copy('Included', '选用') : copy('Not selected', '暂不选用')
+            : Array.isArray(item) ? item.map(id => orderNames.get(id) ?? copy('Unavailable item', '无法读取的条目')).join(' → ') : item;
+          return <div key={index} className="min-w-0 space-y-2 border-b py-2 last:border-0">
+            <p className="text-sm font-medium">{recordKind(event.kind, change.field)} · {location}</p>
+            <p className="whitespace-pre-wrap break-words text-xs">{copy('Before', '修改前')}: {value(change.before)}</p>
+            <p className="whitespace-pre-wrap break-words text-xs">{copy('After', '修改后')}: {value(change.after)}</p>
+            {change.reason && <p className="whitespace-pre-wrap break-words text-sm">{copy('Reason', '理由')}: {change.reason}</p>}
+            {change.target_evidence.map((quote, i) => <p key={`target-${i}`} className="whitespace-pre-wrap break-words text-xs">{copy('Opportunity citation', '机会引用')}: {quote.quote}</p>)}
+            {change.source_evidence.map((quote, i) => <p key={`source-${i}`} className="whitespace-pre-wrap break-words text-xs">{copy('Source citation', '原文引用')}: {quote.quote}</p>)}
+            {change.check && <p className="break-words text-xs text-gray-600">{copy('Recorded check version', '记录的检查版本')}: {change.check.version}</p>}
+            {!change.check && change.field === 'text' && event.kind !== 'manual' && <p className="text-xs text-gray-600">{copy('Check version unknown.', '检查版本未知。')}</p>}
+          </div>;
+        })}
+      </li>)}</ol>}
+  </details>;
   const errors = {
+    provenance: copy('The suggestion was not applied because its change record could not be saved. Your existing draft and records are kept; you can still edit and save them.', '建议未应用：修改记录无法保存。原有文稿和记录均保留，仍可编辑和保存。'),
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
     invalid: copy('This draft cannot be saved yet. Check its structure and size limits. Your complete input is still here.', '此文稿暂不能保存，请检查结构与篇幅限制。输入全文仍保留。'),
@@ -465,16 +516,21 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {doc && activeSession && <>
           <div className="my-4 flex flex-wrap items-center gap-3">
             <button type="button" className={button} disabled={!canEdit} onClick={() => {
-              try { const ordered = suggestTargetResumeOrder(doc); edit((next) => { next.document = ordered.document; }); }
+              try { const ordered = suggestTargetResumeOrder(doc); edit((next) => { next.document = ordered.document; }, 'target_order'); }
               catch { update(activeSession.scope, (old) => ({ ...old, error: 'invalid' })); }
             }}>{copy('Suggest order of whole blocks', '建议完整内容块的顺序')}</button>
-            <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict} onClick={() => void persist(doc)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
+            <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.provenanceError || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict} onClick={() => void persist(doc, activeSession.provenance)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
             <p role="status" className="text-sm text-gray-600">{activeSession.saving ? copy('Waiting for the cloud save result.', '正在等待云端保存结果。') : dirty ? copy('Unsaved local edits', '本地编辑尚未保存') : `${copy('Saved version', '已保存版本')} ${activeSession.revision}`}</p>
           </div>
+          {activeSession.provenanceError && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
+            <p>{copy('Your full draft is kept, but its change record could not be recorded. Saving and AI changes are paused. You can export the draft, or discard local changes and load the saved version.', '全文仍保留，但本次修改记录无法保存。保存和 AI 修改已暂停。可先导出，或放弃本地修改并载入已保存版本。')}</p>
+            <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local changes and reload saved version', '放弃本地修改并重新载入已保存版本')}</button>
+          </div>}
           {activeSession.conflict && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
             <p>{copy('A newer server version exists. Your local edits are preserved and have not overwritten it. Loading the server version will discard your local edits.', '服务器已有更新版本。本地编辑仍保留，未覆盖服务器；载入服务器版本会放弃本地编辑。')}</p>
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>
           </div>}
+          {!activeSession.provenanceError && renderProvenance(doc, activeSession.provenance, copy('Change records', '修改记录'))}
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
             unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
@@ -482,35 +538,41 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <TargetResumePlanPanel key={`plan:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
-            readiness={authorityBlocked ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
+            readiness={authorityBlocked || activeSession.provenanceError ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
-            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setPlanDirty(value); }}
             onAuthorityRefusal={(code) => reportAuthorityRefusal(activeSession.scope, contextKey, code)}
-            onApply={(expectedCanonical, next) => {
-              if (authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+            onApply={(expectedCanonical, next, action) => {
+              if (activeSession.provenanceError || !action || authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
               const checked = validateTargetResume(next);
               if (!checked.ok) return;
               update(activeSession.scope, (old) => {
-                if (!old.doc || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
-                return { ...old, doc: clone(checked.value), editRevision: old.editRevision + 1, error: null };
+                if (!old.doc || old.provenanceError || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
+                try {
+                  const provenance = appendTargetResumeProvenance(old.provenance, old.doc, checked.value, action);
+                  return { ...old, doc: clone(checked.value), provenance, editRevision: old.editRevision + 1, error: null };
+                } catch { return { ...old, error: 'provenance' }; }
               });
             }} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
-            readiness={authorityBlocked ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
+            readiness={authorityBlocked || activeSession.provenanceError ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
-            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setAiDirty(value); }}
             onAuthorityRefusal={(code) => reportAuthorityRefusal(activeSession.scope, contextKey, code)}
-            onApply={(expectedCanonical, next) => {
-              if (authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+            onApply={(expectedCanonical, next, action) => {
+              if (activeSession.provenanceError || !action || authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
               const checked = validateTargetResume(next);
               if (!checked.ok) return;
               update(activeSession.scope, (old) => {
-                if (!old.doc || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
-                return { ...old, doc: clone(checked.value), editRevision: old.editRevision + 1, error: null };
+                if (!old.doc || old.provenanceError || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
+                try {
+                  const provenance = appendTargetResumeProvenance(old.provenance, old.doc, checked.value, action);
+                  return { ...old, doc: clone(checked.value), provenance, editRevision: old.editRevision + 1, error: null };
+                } catch { return { ...old, error: 'provenance' }; }
               });
             }} />
           <div className="space-y-4">
@@ -526,6 +588,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                 </div>
                 {block.lines.map((line, lineIndex) => {
                   const inputId = `${domId}-${line.id}`;
+                  const record = lineRecords.get(line.id);
                   return <div key={line.id} className="mt-3 min-w-0 rounded-xl border bg-white p-3">
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={line.included} onChange={(event) => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].included = event.target.checked; })} />{copy('Include field', '选用字段')}: {label(line)}</label>
                     <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
@@ -534,6 +597,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                         onChange={(event) => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = event.target.value; })} /></div>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">{line.text === line.original ? copy('Kept exactly from the confirmed source.', '与已确认来源完全一致。') : copy('Edited from the confirmed source. Check the original and target requirements; this wording has not been fully fact-checked.', '已修改。请对照原文和目标要求核对；此表述尚未完成事实核查。')}</p>
+                    {record && <p className="mt-2 text-xs text-gray-600">{recordKind(record.kind, 'text')}. {record.kind === 'manual'
+                      ? copy('Earlier AI checks do not cover this manual wording.', '之前的 AI 检查不适用于当前手改表述。')
+                      : record.change.check ? `${copy('Recorded check version', '记录的检查版本')}: ${record.change.check.version}` : copy('Check version unknown.', '检查版本未知。')}</p>}
                     <button type="button" className={`${button} mt-2`} disabled={!canEdit || line.text === line.original} aria-label={`${copy('Restore original', '恢复原文')} ${label(line)}`}
                       onClick={() => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = line.original; })}>{copy('Restore original', '恢复原文')}</button>
                   </div>;
@@ -554,9 +620,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             {activeSession.versionError && <p role="alert" className="mt-2 text-sm text-red-700">{copy('The selected version could not be read. Select it again to retry; your current draft is unchanged.', '无法读取所选版本，可再次选择重试，当前文稿未变。')}</p>}
             {activeSession.selectedVersion && <div className="mt-4">
               {renderPreview(activeSession.selectedVersion.doc, copy('Selected historical version preview', '所选历史版本预览'))}
+              {renderProvenance(activeSession.selectedVersion.doc, activeSession.selectedVersion.provenance, copy('Historical change records', '历史修改记录'))}
               <p className="mt-2 text-sm text-amber-800">{copy('Restoring replaces the current working draft, including unsaved edits, after the new save succeeds.', '恢复成功保存为新版本后，会替换当前工作稿，包括未保存编辑。')}</p>
-              <button type="button" className={`${button} mt-2`} disabled={!ownerReady || activeSession.saving || activeSession.reloading || !!activeSession.conflict || creating}
-                onClick={() => void persist(activeSession.selectedVersion!.doc)}>{copy('Restore selected version as a new save', '将所选版本另存为新版本')}</button>
+              <button type="button" className={`${button} mt-2`} disabled={!ownerReady || activeSession.provenanceError || activeSession.saving || activeSession.reloading || !!activeSession.conflict || creating}
+                onClick={() => void persist(activeSession.selectedVersion!.doc, activeSession.selectedVersion!.provenance ?? null)}>{copy('Restore selected version as a new save', '将所选版本另存为新版本')}</button>
             </div>}
           </details>
         </>}

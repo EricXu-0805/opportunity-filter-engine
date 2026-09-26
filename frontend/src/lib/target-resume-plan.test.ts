@@ -303,3 +303,21 @@ describe('explicit independent choices and stale-plan fences', () => {
     expect(applyTargetResumePlan(prepared, prepared.draft, result, base)).toEqual({ ok: false, code: 'invalid_response' });
   });
 });
+
+
+describe('negotiated source-check rule metadata', () => {
+  it('keeps legacy metadata unknown and preserves the reported rule without upgrading it', async () => {
+    const p = await prepare(); const r = response(p);
+    const old = unwrap(validateTargetResumePlanResponse(p, request(r), r));
+    expect(Object.hasOwn(old, 'check_version')).toBe(false);
+    for (const version of [null, 'target-resume-source-checks-v1', 'target-resume-source-checks-v42']) {
+      r.check_version = version;
+      expect(unwrap(validateTargetResumePlanResponse(p, request(r), r)).check_version).toBe(version);
+    }
+  });
+  it.each(['', 'full-target-v2', 'target-resume-source-checks-v0', true, 123, { verified: true }])('rejects malformed rule metadata %j', async value => {
+    const p = await prepare(); const r = response(p);
+    Object.assign(r, { check_version: value });
+    expect(validateTargetResumePlanResponse(p, request(r), r)).toEqual({ ok: false, code: 'invalid_response' });
+  });
+});

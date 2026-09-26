@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appendTargetResumeProvenance, type TargetResumeProvenance, type TargetResumeProvenanceAction } from '@/lib/target-resume-provenance';
 import * as contract from '@/lib/target-resume';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
@@ -30,6 +31,7 @@ vi.mock('./ResumeSupplementPanel', () => ({ default: (props: ResumeSupplementPan
     <button onClick={props.onOpenProfile}>Review master from supplement</button></div>;
 } }));
 
+// Lifecycle tests use explicit manual mock actions; real panel receipt capture is tested separately.
 const ai = vi.hoisted(() => ({ props: null as TargetResumeAiPanelProps | null }));
 vi.mock('./TargetResumeAiPanel', () => ({ default: (props: TargetResumeAiPanelProps) => {
   ai.props = props;
@@ -123,7 +125,7 @@ describe('full target résumé modal', () => {
     expect(input).toHaveFocus(); expect(input).toHaveValue('Alex 王 - edited in full');
     const pending = deferred<TargetResumeSaveResult>(); storage.save.mockReturnValueOnce(pending.promise);
     fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
-    expect(storage.save).toHaveBeenCalledWith(expect.anything(), 0, captureOwnerToken());
+    expect(storage.save).toHaveBeenCalledWith(expect.anything(), 0, captureOwnerToken(), expect.anything());
     const submitted = clone(storage.save.mock.calls[0][0]) as TargetResumeV1;
     await user.click(input); await user.type(input, ' plus later');
     await act(async () => pending.resolve({ status: 'saved', value: loaded(submitted, 1) }));
@@ -302,7 +304,7 @@ describe('full target résumé modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restore selected version as a new save' }));
     await screen.findByText('Saved version 4');
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Version two hand edit');
-    expect(storage.save.mock.calls[0]).toEqual([oldTwo.doc, 3, captureOwnerToken()]);
+    expect(storage.save.mock.calls[0]).toEqual([oldTwo.doc, 3, captureOwnerToken(), null]);
     expect(oldTwo.revision).toBe(2); expect(oldTwo.doc.document.sections[0].blocks[0].lines[0].text).toBe('Version two hand edit');
   });
   it('retires pending history metadata after saving and a selected old body when rebuilding', async () => {
@@ -450,7 +452,7 @@ describe('full target AI integration', () => {
   it('applies against the exact current draft locally and saves only on an explicit save', async () => {
     await createUI(); const before = ai.props!.draft; const prepared = await prepareTargetResumeAI(before); if (!prepared.ok) throw new Error(prepared.code);
     const next = clone(before); next.document.sections.flatMap((s) => s.blocks.flatMap((b) => b.lines)).find((line) => line.evidence.kind === 'experience')!.text = 'Reviewed robot trials; did not lead the team.';
-    act(() => ai.props!.onApply(prepared.value.canonical_draft, next));
+    act(() => ai.props!.onApply(prepared.value.canonical_draft, next, { kind: 'manual' }));
     expect(preview().getByText('Reviewed robot trials; did not lead the team.')).toBeVisible();
     expect(storage.save).not.toHaveBeenCalled();
     storage.save.mockImplementationOnce(async (draft: TargetResumeV1) => ({ status: 'saved', value: loaded(draft, 1) }));
@@ -460,7 +462,7 @@ describe('full target AI integration', () => {
   it('refuses an old apply callback after later manual edits', async () => {
     await createUI(); const old = ai.props!; const prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
     editName('Keep my later edit'); const next = withName(old.draft, 'Stale change');
-    act(() => old.onApply(prepared.value.canonical_draft, next));
+    act(() => old.onApply(prepared.value.canonical_draft, next, { kind: 'manual' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep my later edit');
     expect(storage.save).not.toHaveBeenCalled();
   });
@@ -481,7 +483,7 @@ describe('profile refresh preserves the full target document', () => {
     renderState('failed'); fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(refresh).toHaveBeenCalledTimes(1);
     renderState('ready');
     const prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
-    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late AI overwrite')));
+    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late AI overwrite'), { kind: 'manual' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('My uncommitted name');
     expect(screen.getByRole('checkbox', { name: 'Include field: Degree' })).not.toBeChecked();
     expect(ai.props!.draft.base).toEqual(base);
@@ -549,7 +551,7 @@ it('keeps an independent target draft when its profile disappears, without treat
   expect(screen.getByText(/Exports this retained draft without restoring your profile/)).toBeVisible();
   expect(storage.save).not.toHaveBeenCalled();
   const prepared = await prepareTargetResumeAI(oldAi.draft); if (!prepared.ok) throw new Error(prepared.code);
-  act(() => oldAi.onApply(prepared.value.canonical_draft, withName(oldAi.draft, 'Late deleted profile AI')));
+  act(() => oldAi.onApply(prepared.value.canonical_draft, withName(oldAi.draft, 'Late deleted profile AI'), { kind: 'manual' }));
   expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Keep this independently edited résumé');
   fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
   await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1));
@@ -648,17 +650,17 @@ describe('whole draft content plan integration', () => {
     await screen.findByRole('textbox', { name: 'Edit Full name' }); await waitFor(() => expect(plan.props?.enabled).toBe(true));
     const oldAI = ai.props!, oldPlan = plan.props!, prepared = await prepareTargetResumeAI(oldPlan.draft); if (!prepared.ok) throw new Error(prepared.code);
     const next = clone(oldPlan.draft); next.document.sections.find(section => section.kind === 'activities')!.blocks[0].included = false;
-    act(() => oldPlan.onApply(prepared.value.canonical_draft, next));
+    act(() => oldPlan.onApply(prepared.value.canonical_draft, next, { kind: 'manual' }));
     expect(preview().queryByText('Art project')).toBeNull(); expect(screen.getByText('Unsaved local edits')).toBeVisible();
     expect(plan.props!.draft.base_snapshot).toEqual(doc.base_snapshot); expect(storage.save).not.toHaveBeenCalled();
-    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(doc, 'Late stale AI name')));
+    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(doc, 'Late stale AI name'), { kind: 'manual' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
   });
   it('rejects an old plan apply after explicit user editing', async () => {
     await createUI(); await waitFor(() => expect(plan.props?.enabled).toBe(true));
     const old = plan.props!, prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
     editName('Current hand edit');
-    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late plan text')));
+    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late plan text'), { kind: 'manual' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Current hand edit'); expect(storage.save).not.toHaveBeenCalled();
   });
 });
@@ -668,9 +670,9 @@ describe('plan and wording baselines remain separate', () => {
   it('rejects the old content plan after a wording edit is applied on the same original baseline', async () => {
     await createUI(); await waitFor(() => expect(plan.props?.enabled).toBe(true));
     const oldPlan = plan.props!, oldAI = ai.props!, prepared = await prepareTargetResumeAI(oldPlan.draft); if (!prepared.ok) throw new Error(prepared.code);
-    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Accepted current edit')));
+    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Accepted current edit'), { kind: 'manual' }));
     const latePlan = clone(oldPlan.draft); latePlan.document.sections.find(section => section.kind === 'activities')!.blocks[0].included = false;
-    act(() => oldPlan.onApply(prepared.value.canonical_draft, latePlan));
+    act(() => oldPlan.onApply(prepared.value.canonical_draft, latePlan, { kind: 'manual' }));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Accepted current edit');
     expect(preview().getByText('Art project')).toBeVisible(); expect(storage.save).not.toHaveBeenCalled();
   });
@@ -686,8 +688,8 @@ describe('shared target authority refusal', () => {
     act(() => {
       (source === 'plan' ? oldPlan : oldAI).onAuthorityRefusal?.('target_changed');
       // Both callbacks run before React can render the disabled props.
-      oldPlan.onApply(prepared.value.canonical_draft, withName(oldPlan.draft, 'Unsafe late plan'));
-      oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Unsafe late wording'));
+      oldPlan.onApply(prepared.value.canonical_draft, withName(oldPlan.draft, 'Unsafe late plan'), { kind: 'manual' });
+      oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Unsafe late wording'), { kind: 'manual' });
     });
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
     expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
@@ -707,7 +709,7 @@ describe('shared target authority refusal', () => {
     await screen.findByRole('textbox', { name: 'Edit Full name' }); await waitFor(() => expect(plan.props?.enabled && ai.props?.enabled).toBe(true));
     expect(screen.queryByText(/Both AI tools are paused/)).toBeNull();
     // The previous workspace cannot re-block the fresh one or apply its draft.
-    act(() => { oldPlan.onAuthorityRefusal?.('target_changed'); oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Old workspace')); });
+    act(() => { oldPlan.onAuthorityRefusal?.('target_changed'); oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Old workspace'), { kind: 'manual' }); });
     expect(plan.props!.enabled).toBe(true); expect(ai.props!.enabled).toBe(true); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
   });
   it('removes the refusal marker on a real target change but still requires a draft based on the new target', async () => {
@@ -718,5 +720,92 @@ describe('shared target authority refusal', () => {
     await waitFor(() => expect(screen.queryByText(/Both AI tools are paused/)).toBeNull());
     expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+  });
+});
+
+describe('saved operation records', () => {
+  const experienceLine = (doc: TargetResumeV1) => doc.document.sections.flatMap(s => s.blocks.flatMap(b => b.lines)).find(l => l.role === 'experience')!;
+  const recordLoaded = (doc: TargetResumeV1, provenance: TargetResumeProvenance | null, revision = 1): LoadedTargetResume => ({ ...loaded(doc, revision), provenance });
+  async function checkedEdit(doc: TargetResumeV1, version = 'target-resume-source-checks-v1') {
+    const prepared = await prepareTargetResumeAI(doc); if (!prepared.ok) throw new Error(prepared.code);
+    const unit = prepared.value.units.find(item => item.evidence.kind === 'experience')!;
+    const next = clone(doc); experienceLine(next).text = 'Measured robot trials without leading the team.';
+    const action: TargetResumeProvenanceAction = { kind: 'ai_rewrite', annotations: [{ section_id: unit.section_id, block_id: unit.block_id, line_id: unit.unit_id, field: 'text', reason: 'Keep the stated contribution.', target_evidence: [], source_evidence: [],
+      check: { version, pipeline_version: 'full-target-v2', request_id: 'controlled-request', document_signature: prepared.value.document_signature, original: unit.original, evidence: unit.evidence } }] };
+    return { next, action, canonical: prepared.value.canonical_draft, provenance: appendTargetResumeProvenance(null, doc, next, action)! };
+  }
+  const saveEcho = () => storage.save.mockImplementationOnce(async (doc: TargetResumeV1, revision: number, _owner: unknown, provenance: TargetResumeProvenance | null) => ({ status: 'saved', value: recordLoaded(doc, provenance, revision + 1) }));
+  it('shows legacy unknown and keeps a manual marker when text returns to the original', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
+    fireEvent.click(screen.getByText('Change records')); expect(screen.getByText(/Change source unknown/)).toBeVisible();
+    editName('Changed once'); editName('Alex 王'); expect(screen.getByText('Unsaved local edits')).toBeVisible();
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    const record = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(record.events).toHaveLength(1); expect(record.events[0].kind).toBe('manual');
+    expect(record.events[0].changes[0]).toMatchObject({ before: 'Alex 王', after: 'Alex 王', check: null });
+  });
+  it('shows an accepted check version and a later manual marker even after returning to the AI text', async () => {
+    const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    act(() => ai.props!.onApply(edit.canonical, edit.next, edit.action));
+    fireEvent.click(screen.getByText('Change records')); expect(screen.getByText('Reason: Keep the stated contribution.')).toBeVisible();
+    expect(screen.getAllByText(/Recorded check version: target-resume-source-checks-v1/)).not.toHaveLength(0);
+    const input = screen.getByRole('textbox', { name: 'Edit Experience detail' });
+    fireEvent.change(input, { target: { value: 'Manual wording' } }); fireEvent.change(input, { target: { value: experienceLine(edit.next).text } });
+    expect(screen.getByText(/Manual edit\. Earlier AI checks do not cover this manual wording/)).toBeVisible();
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    const record = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(record.events.map(item => item.kind)).toEqual(['ai_rewrite', 'manual']);
+    expect(record.events[0].changes[0].check?.version).toBe('target-resume-source-checks-v1'); expect(record.events[1].changes[0].check).toBeNull();
+  });
+  it('keeps submitted and later manual records apart while saving', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
+    editName('Submitted name'); const pending = deferred<TargetResumeSaveResult>(); storage.save.mockReturnValueOnce(pending.promise); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    const submitted = clone(storage.save.mock.calls[0][0]) as TargetResumeV1, record = clone(storage.save.mock.calls[0][3]) as TargetResumeProvenance;
+    editName('Later local name'); await act(async () => pending.resolve({ status: 'saved', value: recordLoaded(submitted, record, 2) }));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Later local name'); expect(screen.getByText('Unsaved local edits')).toBeVisible(); expect(record.events[0].changes[0].after).toBe('Submitted name');
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); expect(storage.save.mock.calls[1][1]).toBe(2); expect(storage.save.mock.calls[1][3].events[0].changes[0].after).toBe('Later local name');
+  });
+  it.each([true, false])('restores historical metadata unchanged, present=%s', async present => {
+    const p = profile(), original = await docFor(p), edit = await checkedEdit(original, 'older-checks-v0'), record = present ? edit.provenance : null;
+    storage.load.mockResolvedValue(loaded(original, 4)); storage.history.mockResolvedValue([{ revision: 2, updated_at: 'old' }]); storage.version.mockResolvedValue(recordLoaded(edit.next, record, 2)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' }); editName('Before restore'); historyOpen();
+    fireEvent.click(screen.getByRole('button', { name: 'Load latest 20 versions' })); await screen.findByRole('button', { name: 'View version 2 · old' }); fireEvent.click(screen.getByRole('button', { name: 'View version 2 · old' })); await screen.findByRole('region', { name: 'Selected historical version preview' });
+    fireEvent.click(screen.getByText('Historical change records')); expect(screen.getByText(present ? 'Recorded check version: older-checks-v0' : 'Change source unknown. This version has no saved operation record.')).toBeVisible();
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Restore selected version as a new save' })); await screen.findByText('Saved version 5');
+    expect(storage.save.mock.calls[0][3]).toEqual(record); expect(storage.save.mock.calls[0][0]).toEqual(edit.next); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+  });
+  it('preserves oversized manual input and blocks saving and AI until explicit reload', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    const huge = 'x'.repeat(270_000); editName(huge); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue(huge);
+    expect(screen.getByText(/full draft is kept, but its change record/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Save target draft' })).toBeDisabled(); expect(ai.props?.enabled).toBe(false); expect(plan.props?.enabled).toBe(false);
+    expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled(); expect(screen.getByRole('button', { name: 'Export Word' })).toBeEnabled();
+    editName('Short but still unrecorded'); expect(screen.getByRole('button', { name: 'Save target draft' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard local changes and reload saved version' })); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王'); expect(screen.queryByText(/full draft is kept, but its change record/)).toBeNull(); expect(storage.save).not.toHaveBeenCalled();
+  });
+  it.each(['ai', 'plan'] as const)('keeps the valid current draft saveable when a %s acceptance record exceeds capacity', async panel => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true));
+    editName('My existing manual name'); const edit = await checkedEdit(ai.props!.draft); edit.action.annotations![0].reason = 'r'.repeat(270_000);
+    if (panel === 'plan') edit.action.kind = 'plan';
+    act(() => (panel === 'plan' ? plan.props! : ai.props!).onApply(edit.canonical, edit.next, edit.action));
+    expect(screen.getByText(/suggestion was not applied because its change record/)).toBeVisible(); expect(screen.queryByText(/full draft is kept, but its change record/)).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('My existing manual name'); expect(screen.getByRole('textbox', { name: 'Edit Experience detail' })).toHaveValue(experienceLine(doc).text);
+    expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled(); expect(ai.props?.enabled).toBe(true); expect(plan.props?.enabled).toBe(true);
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    expect((storage.save.mock.calls[0][3] as TargetResumeProvenance).events.map(item => item.kind)).toEqual(['manual']);
+  });
+  it('shows readable order names and records deterministic order separately from AI checks', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Suggest order of whole blocks' })); fireEvent.click(screen.getByText('Change records'));
+    const details = screen.getByText('Change records').closest('details')!;
+    expect(within(details).getByText('Before: Art project → Python robotics project')).toBeVisible(); expect(within(details).getByText('After: Python robotics project → Art project')).toBeVisible();
+    expect(details.textContent).not.toContain('robotics → art'); expect(details.textContent).not.toContain('Recorded check version');
+    saveEcho(); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    const record = storage.save.mock.calls[0][3] as TargetResumeProvenance;
+    expect(record.events[0].kind).toBe('target_order'); expect(record.events[0].changes.every(change => change.field === 'order' && change.check === null)).toBe(true);
+  });
+  it('refuses AI content without operation metadata', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true)); const prepared = await prepareTargetResumeAI(doc); if (!prepared.ok) throw new Error(prepared.code);
+    act(() => ai.props!.onApply(prepared.value.canonical_draft, withName(doc, 'Unrecorded overwrite'), undefined as unknown as TargetResumeProvenanceAction));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王'); expect(screen.getByText('Saved version 1')).toBeVisible();
   });
 });

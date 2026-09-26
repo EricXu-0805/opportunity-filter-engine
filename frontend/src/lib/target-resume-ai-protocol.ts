@@ -57,6 +57,8 @@ export interface TargetResumeAiRequest {
   selected_unit_ids: string[];
 }
 export interface TargetResumeAiResponse {
+  /** Absent in older responses; never infer it from pipeline_version. */
+  check_version?: string | null;
   version: 1;
   pipeline_version: typeof FULL_TARGET_AI_VERSION;
   request_id: string;

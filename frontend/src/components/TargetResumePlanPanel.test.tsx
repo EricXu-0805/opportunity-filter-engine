@@ -3,6 +3,7 @@ import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v2-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumePlan, measureTargetResumeLength } from '@/lib/target-resume-plan';
 import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
@@ -213,5 +214,28 @@ describe('whole draft content planning', () => {
     expect(mocked.generate.mock.calls[0][0]).toMatchObject({ locale: 'zh', options: { target_pages: 2 } });
     expect(screen.getByText(/实际页数请查看导出文件/)).toBeVisible(); expect(p.onDirtyChange).toHaveBeenLastCalledWith(true);
     fireEvent.click(screen.getByRole('button', { name: '放弃本次安排' })); expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+});
+
+
+describe('accepted content-plan operation records', () => {
+  it('records only selected omission and compression, with a check only for rewritten text', async () => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), check_version: 'target-resume-source-checks-v1' }));
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    expect(p.onApply).not.toHaveBeenCalled(); select('publication-one'); selectRewrite(); apply();
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    const records = appendTargetResumeProvenance(null, p.draft, next, action)!;
+    expect(records.events).toHaveLength(1); expect(records.events[0].kind).toBe('plan');
+    const changes = records.events[0].changes; expect(changes).toHaveLength(2);
+    const inclusion = changes.find(item => item.field === 'included')!, text = changes.find(item => item.field === 'text')!;
+    expect(inclusion.block_id).toBe('publication-one'); expect(inclusion.check).toBeNull(); expect(inclusion.after).toBe(false);
+    expect(text.line_id).toBe('line-6'); expect(text.after).toBe(shorter); expect(text.check?.version).toBe('target-resume-source-checks-v1');
+    expect(text.reason).toContain('mentions Python'); expect(text.target_evidence[0].quote).toBe('Python'); expect(text.source_evidence).not.toHaveLength(0);
+    expect(changes.some(item => item.block_id === 'education-one')).toBe(false);
+  });
+  it('does not create a record for an accepted choice that changes nothing', async () => {
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('project-one'); apply();
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next).toEqual(p.draft); expect(appendTargetResumeProvenance(null, p.draft, next, action)).toBeNull();
   });
 });

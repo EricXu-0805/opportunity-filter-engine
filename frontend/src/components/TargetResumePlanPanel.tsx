@@ -7,6 +7,7 @@ import { isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner
 import { useProfileAction } from '@/lib/use-profile-action';
 import { applyTargetResumePlan, measureTargetResumeLength, prepareTargetResumePlan, validateTargetResumePlanResponse } from '@/lib/target-resume-plan';
 import type { PreparedTargetResumePlan, TargetResumePlanRequest, TargetResumePlanResponse } from '@/lib/target-resume-plan-protocol';
+import type { TargetResumeProvenanceAnnotation } from '@/lib/target-resume-provenance';
 import type { TargetResumeV1 } from '@/lib/target-resume';
 import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 
@@ -135,7 +136,22 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
     if (appliedKey.current === draftKey) { setNotice('applied'); setReview(null); reviewRef.current = null; setSelections(new Set()); setRewrites(new Set()); }
-    onApply(review.prepared.canonical_draft, result.value);
+    const annotations: TargetResumeProvenanceAnnotation[] = [];
+    for (const item of review.response.items) {
+      if (selections.has(item.block_id)) annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: null,
+        field: 'included', reason: item.reason, target_evidence: item.target_evidence, source_evidence: item.source_evidence, check: null });
+      for (const rewrite of item.rewrites) {
+        if (!rewrites.has(rewrite.unit_id) || rewrite.status !== 'suggested') continue;
+        const line = review.prepared.draft.document.sections.find(section => section.id === item.section_id)?.blocks
+          .find(block => block.id === item.block_id)?.lines.find(line => line.id === rewrite.unit_id);
+        if (!line) { setError('invalid_response'); return; }
+        annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: line.id, field: 'text',
+          reason: item.reason, target_evidence: item.target_evidence, source_evidence: item.source_evidence,
+          check: review.response.check_version ? { version: review.response.check_version, pipeline_version: review.response.pipeline_version,
+            request_id: review.response.request_id, document_signature: review.response.document_signature, original: line.original, evidence: line.evidence } : null });
+      }
+    }
+    onApply(review.prepared.canonical_draft, result.value, { kind: 'plan', annotations });
   };
   const sectionTitle = (section: TargetResumeV1['document']['sections'][number]) => section.heading || ({
     basics: copy('Contact', '基本信息'), education: copy('Education', '教育'), activities: copy('Experience and projects', '经历与项目'),
@@ -152,7 +168,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
   </section>;
   return <section aria-label={copy('Résumé content plan', '简历选材')} className="my-5 min-w-0 rounded-xl border border-indigo-200 p-4">
     <h3 className="font-semibold">{copy('Résumé content plan', '简历选材')}</h3>
-    <p className="mt-1 text-sm text-gray-600">{copy('Review what to keep, shorten or leave out of this draft. Content choices and shorter wording need separate approval. Plan reasons stay only while this workspace is open.', '核对本稿哪些内容保留、压缩或暂不选用。选材安排与短稿分开确认；理由只在本次打开期间保留。')}</p>
+    <p className="mt-1 text-sm text-gray-600">{copy('Review what to keep, shorten or leave out of this draft. Content choices and shorter wording need separate approval. Reasons for applied changes are saved with the draft. Unapplied advice stays only in this workspace.', '核对本稿哪些内容保留、压缩或暂不选用。选材安排与短稿分开确认；已应用修改的理由随文稿保存；未应用建议仅在当前工作区保留。')}</p>
     <div className="mt-3 flex flex-wrap items-center gap-3">
       <label className="text-sm">{copy('Length target', '篇幅目标')}<select aria-label={copy('Length target', '篇幅目标')} className={`${button} ml-2`} value={pages} disabled={!isOwnerTokenValid(owner, owner.uid)}
         onChange={event => setPages(event.target.value === '2' ? 2 : 1)}><option value="1">{copy('1 page', '1 页')}</option><option value="2">{copy('2 pages', '2 页')}</option></select></label>

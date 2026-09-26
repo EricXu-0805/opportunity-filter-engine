@@ -227,8 +227,11 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     const serialized = canonical(response);
     if (new TextEncoder().encode(serialized).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) fail('invalid_response');
     const value: unknown = JSON.parse(serialized);
+    const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts']);
+      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys]);
+    if (checkKeys.length && value.check_version !== null
+      && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
     if (value.version !== 1 || value.pipeline_version !== FULL_TARGET_AI_VERSION || value.request_id !== expected.request_id
       || value.document_id !== prepared.draft.id || value.opportunity_id !== prepared.draft.opportunity_id
       || value.document_signature !== prepared.document_signature || !same(value.base, prepared.draft.base)

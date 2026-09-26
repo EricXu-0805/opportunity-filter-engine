@@ -5,6 +5,8 @@ fallback. Original evidence, editable wording and inclusion states are distinct.
 """
 from __future__ import annotations
 
+from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION
+
 import json
 from copy import deepcopy
 
@@ -182,6 +184,9 @@ def parse_plan_output(raw, blocks, target):
 def plan_response(request, doc, manifest, scope, items, reason, calls):
     complete = reason is None and bool(items) and len(items) == len(manifest)
     return {"version": 1, "pipeline_version": PIPELINE_VERSION, "request_id": request.request_id,
+            # Opt-in preserves the exact response shape for older clients. This
+            # identifies rule scope, not a signed proof or semantic truth claim.
+            **({"check_version": SOURCE_CHECK_VERSION} if request.include_check_version else {}),
             "document_id": doc["id"], "opportunity_id": doc["opportunity_id"],
             "document_signature": request.document_signature, "base": deepcopy(doc["base"]),
             "options": request.options.model_dump(), "manifest": deepcopy(manifest), "scope": deepcopy(scope),

@@ -25,7 +25,7 @@ describe('whole résumé content plan transport', () => {
     payload.draft.base_snapshot.resume_text = 'changed while auth is pending'; payload.options.target_pages = 2; pending.resolve('synthetic-test-token'); await promise;
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0]; expect(url).toBe('/api/tailor/full-target/selection-plan');
-    expect(JSON.parse(init.body)).toEqual(expected); expect(init).toMatchObject({ method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer synthetic-test-token' } });
+    expect(JSON.parse(init.body)).toEqual({ ...expected, include_check_version: true }); expect(init).toMatchObject({ method: 'POST', cache: 'no-store', headers: { Authorization: 'Bearer synthetic-test-token' } });
   });
   it('does not send a private draft if the owner switches while auth is pending', async () => {
     const pending = deferred<string>(); auth.token.mockReturnValueOnce(pending.promise);

@@ -1266,7 +1266,7 @@ export async function generateTargetResumeSuggestions(
   payload: TargetResumeAiRequest,
   options: { owner: OwnerToken; signal?: AbortSignal },
 ): Promise<TargetResumeAiResponse> {
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify({ ...payload, include_check_version: true });
   if (new TextEncoder().encode(body).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) {
     throw new ApiError(413, 'FULL_TARGET_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
   }
@@ -1295,7 +1295,7 @@ export async function generateTargetResumePlan(
   payload: TargetResumePlanRequest,
   options: { owner: OwnerToken; signal?: AbortSignal },
 ): Promise<TargetResumePlanResponse> {
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify({ ...payload, include_check_version: true });
   if (new TextEncoder().encode(body).byteLength > TARGET_RESUME_PLAN_MAX_BODY_BYTES) {
     throw new ApiError(413, 'TARGET_RESUME_PLAN_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
   }

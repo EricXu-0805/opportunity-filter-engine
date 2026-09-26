@@ -472,3 +472,26 @@ def test_whole_block_context_is_sent_once_for_many_selected_lines():
     assert all("block_context" not in unit for unit in model_input["units"])
     assert len(model_input["units"]) == 11
     assert sum(len(message["content"]) for message in messages) < 60000
+
+
+def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypatch):
+    client, doc, _, calls = endpoint
+    request = payload(doc)
+    legacy = client.post(PATH, json=request)
+    assert legacy.status_code == 200
+    assert "check_version" not in legacy.json()
+    request["include_check_version"] = True
+    response = client.post(PATH, json=request)
+    assert response.status_code == 200
+    assert response.json()["check_version"] == "target-resume-source-checks-v1"
+    assert response.json()["pipeline_version"] != response.json()["check_version"]
+    # Available rules do not turn skipped/failed work into a checked rewrite.
+    monkeypatch.setattr(route, "is_configured", lambda: False)
+    failed = client.post(PATH, json=request)
+    assert failed.status_code == 200
+    assert failed.json()["check_version"] == "target-resume-source-checks-v1"
+    assert failed.json()["method"] == "unavailable"
+    forged = {**request, "check_version": "target-resume-source-checks-v999"}
+    assert client.post(PATH, json=forged).status_code == 422
+    for value in ("true", 1, None):
+        assert client.post(PATH, json={**request, "include_check_version": value}).status_code == 422

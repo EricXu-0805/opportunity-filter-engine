@@ -1,3 +1,4 @@
+import type { TargetResumeProvenance } from './target-resume-provenance';
 import type {
   ExperienceEntry, Opportunity, ProfileData, ResumeExperienceRef, ResumeFact,
   ResumeMasterSectionKind, ResumeMasterV1,
@@ -81,7 +82,7 @@ export interface TargetResumeV1 {
   target_snapshot: TargetResumeContext;
   document: { sections: TargetResumeSection[] };
 }
-export interface LoadedTargetResume { revision: number; doc: TargetResumeV1; updated_at: string }
+export interface LoadedTargetResume { revision: number; doc: TargetResumeV1; updated_at: string; provenance?: TargetResumeProvenance | null }
 export type TargetResumeSaveResult =
   | { status: 'saved' | 'unchanged'; value: LoadedTargetResume }
   | { status: 'conflict'; current: LoadedTargetResume }
