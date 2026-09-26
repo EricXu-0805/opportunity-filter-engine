@@ -14,7 +14,8 @@ import { defaultEmailContactContext, serializeEmailContactContext, emailContactC
 import type { EmailContactContext } from '@/lib/types';
 import EmailContactContextPanel from './EmailContactContextPanel';
 import type { EmailContactDraftSnapshot } from '@/lib/email-contact-draft';
-import type { ColdEmailDraftPayload, ColdEmailDraftSources } from '@/lib/cold-email-draft';
+import { COLD_EMAIL_DRAFT_LIMITS, type ColdEmailDraftPayload, type ColdEmailDraftSources, type ColdEmailDraftVersion } from '@/lib/cold-email-draft';
+import EmailVersionHistory from './EmailVersionHistory';
 import { useColdEmailDraftPersistence } from '@/lib/use-cold-email-draft';
 import { createContactEventInput, contactMaterialVersion, ContactEventError } from '@/lib/contact-ledger';
 
@@ -405,11 +406,25 @@ export default function ColdEmailModal({
   const materialFingerprint = `${profileFingerprint}\n${targetFingerprint}\n${contactFingerprint}`;
   const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
   const draftSourcesRef = useRef<{ profile: string; target: string | null; contact: string } | null>(null);
+  const draftPayloadRef = useRef<ColdEmailDraftPayload>(null!);
+  const userActionRevisionRef = useRef(0);
+  const versionSaveBaseRef = useRef<{ edit: number; draft: number; material: string } | null>(null);
   const draftPersistence = useColdEmailDraftPersistence();
   const { open: openPersistedDraft, persist: persistDraft, flush: flushDraft, clear: clearPersistedDraft,
-    detach: detachDraft, abandon: abandonDraft, markUnsaved: markDraftUnsaved } = draftPersistence;
+    detach: detachDraft, abandon: abandonDraft, markUnsaved: markDraftUnsaved, commit: commitDraft } = draftPersistence;
   const [draftResetKey, setDraftResetKey] = useState(0);
   const [draftRestored, setDraftRestored] = useState(false);
+  const [metadataRefreshing, setMetadataRefreshing] = useState(false);
+  const metadataRefreshingRef = useRef(false);
+  const [savedVersions, setSavedVersions] = useState<ColdEmailDraftVersion[]>([]);
+  const [versionBusy, setVersionBusy] = useState(false);
+  const versionBusyRef = useRef(false);
+  const versionActionRef = useRef(0);
+  const versionPendingRef = useRef<Promise<void> | null>(null);
+  const [versionError, setVersionError] = useState<string | null>(null);
+  const [versionCompare, setVersionCompare] = useState<{ version: ColdEmailDraftVersion; base: EmailEditBase } | null>(null);
+  const [sourceReview, setSourceReview] = useState<'pending' | 'matched' | 'changed' | 'unknown'>('pending');
+  const changeDraftRef = useRef<(next: Partial<ColdEmailDraftPayload>, reason: ColdEmailDraftVersion['reason'], current: () => boolean, apply: () => void) => Promise<boolean>>(async () => false);
   const [draftClosing, setDraftClosing] = useState(false);
   const [persistenceSession, setPersistenceSession] = useState(0);
   const persistenceSessionRef = useRef(0);
@@ -552,6 +567,7 @@ export default function ColdEmailModal({
 
   const bodyInputRef = useRef<HTMLTextAreaElement>(null);
   const [invalidSelection, setInvalidSelection] = useState(false);
+  const [scopeNeedsChoice, setScopeNeedsChoice] = useState(false);
   const [selection, setSelection] = useState<{ body: string; range: EmailTextSelection } | null>(null);
   const [editProposal, setEditProposal] = useState<EmailEditProposal | null>(null);
   const proposalRef = useRef<EmailEditProposal | null>(null);
@@ -559,7 +575,7 @@ export default function ColdEmailModal({
   const undoRef = useRef<EmailEditUndo | null>(null);
   const clearEmailRevisions = useCallback(() => {
     proposalRef.current = null; undoRef.current = null;
-    setEditProposal(null); setEditUndo(null); setSelection(null); setInvalidSelection(false);
+    setEditProposal(null); setEditUndo(null); setSelection(null); setInvalidSelection(false); setScopeNeedsChoice(false);
   }, []);
   const discardProposal = () => { proposalRef.current = null; setEditProposal(null); };
 
@@ -588,7 +604,7 @@ export default function ColdEmailModal({
     if (composeRef.current && composeRef.current.key !== composeKey) cancelCompose();
   }, [composeKey, cancelCompose]);
   useEffect(() => () => cancelCompose(), [cancelCompose]);
-  const noteUserEdit = () => { discardProposal(); cancelCompose(); setUserEditRevision((value) => value + 1); };
+  const noteUserEdit = () => { userActionRevisionRef.current += 1; discardProposal(); cancelCompose(); setUserEditRevision((value) => value + 1); };
   const [refining, setRefining] = useState(false);
   const [retired, setRetired] = useState(false);
   const [profileChanged, setProfileChanged] = useState(false);
@@ -666,7 +682,8 @@ export default function ColdEmailModal({
     if (undoRef.current && (!editBaseCurrent(undoRef.current.base) || contextDirty)) {
       undoRef.current = null; setEditUndo(null);
     }
-    if (selection && selection.body !== body) setSelection(null);
+    if (selection && selection.body !== body) { setSelection(null); setScopeNeedsChoice(true); }
+    if (versionCompare && !editBaseCurrent(versionCompare.base)) setVersionCompare(null);
   });
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
@@ -684,8 +701,12 @@ export default function ColdEmailModal({
     onClose();
   }, [onClose, cancelCompose]);
   const pauseWritingForNavigation = useCallback(() => {
-    // Retire providers at the click, before storage can wait for another tab.
-    clearEmailRevisions();
+    // Save the scope before retiring in-flight capabilities. A navigation attempt
+    // must not silently turn a selected request into a whole-body request.
+    persistCurrentRef.current();
+    versionActionRef.current += 1; versionBusyRef.current = false; setVersionBusy(false);
+    proposalRef.current = null; undoRef.current = null;
+    setEditProposal(null); setEditUndo(null); setVersionCompare(null);
     supplementScopeRef.current = null;
     setSupplementSession(null);
     composeActionCancelRef.current();
@@ -697,7 +718,7 @@ export default function ColdEmailModal({
     setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
     if (refine !== null) setChatMessages(messages => messages.map(message =>
       message.requestId === refine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
-  }, [cancelCompose, t, clearEmailRevisions]);
+  }, [cancelCompose, t]);
   const closeDraft = useCallback(() => {
     pauseWritingForNavigation();
     persistCurrentRef.current();
@@ -705,7 +726,7 @@ export default function ColdEmailModal({
     const revision = draftRevisionRef.current;
     const session = sendSessionRef.current;
     setDraftClosing(true);
-    void flushDraft().then(saved => {
+    void Promise.resolve(versionPendingRef.current).then(() => flushDraft()).then(saved => {
       if (session !== sendSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
       setDraftClosing(false);
       if (saved && revision === draftRevisionRef.current) finishClose();
@@ -723,7 +744,7 @@ export default function ColdEmailModal({
     const session = sendSessionRef.current;
     const revision = draftRevisionRef.current;
     setDraftClosing(true);
-    void flushDraft().then(saved => {
+    void Promise.resolve(versionPendingRef.current).then(() => flushDraft()).then(saved => {
       if (session !== sendSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
       setDraftClosing(false);
       if (saved && revision === draftRevisionRef.current && anchor.isConnected) {
@@ -798,6 +819,12 @@ export default function ColdEmailModal({
         setProfileRegenerateError('edited');
         return;
       }
+      if (keepEditor) {
+        const first = data.variants[0];
+        if (!await changeDraftRef.current({ subject: first.subject, body: first.body, selectedStyle: data.recommended_style ?? draftPayloadRef.current.selectedStyle },
+          'regenerated', () => current() && revision === draftRevisionRef.current, () => {})) return;
+        if (!current() || revision !== draftRevisionRef.current) return;
+      }
       variantsReadyRef.current = true;
       setTargetVersionError(null);
       setVariants(data.variants);
@@ -863,6 +890,7 @@ export default function ColdEmailModal({
       }
     } finally {
       if (current()) {
+        if (preserveDraft || keepEditor) { metadataRefreshingRef.current = false; setMetadataRefreshing(false); }
         if (keepEditor) setProfileRegenerating(false);
         else if (!preserveDraft) setLoading(false);
       }
@@ -891,7 +919,7 @@ export default function ColdEmailModal({
       // A source change keeps the existing manual draft. Its user must choose
       // to rebuild it before new generation or refinement can use that draft.
       if (profileChangedRef.current || profileChanged || profileRegenerating) return;
-      if (intent.kind === 'accept-edit') { acceptEdit(intent.id); return; }
+      if (intent.kind === 'accept-edit') { void acceptEdit(intent.id); return; }
       if (intent.kind === 'ai') {
         if (intent.selectExisting && aiVariant) selectVariant(variants.length);
         else void generateAi(intent.style);
@@ -970,10 +998,13 @@ export default function ColdEmailModal({
         const value = stored.draft;
         autoFiredRef.current = true; editorUsedRef.current = true;
         contextEditedRef.current = true;
-        setDraftRestored(true); setLoading(false);
+        setDraftRestored(true); setLoading(false); metadataRefreshingRef.current = true; setMetadataRefreshing(true);
         setSubject(value.subject); setBody(value.body);
         setRecipient(value.manualRecipient ?? ''); recipientEditedRef.current = value.manualRecipient !== undefined;
         setSelectedStyle(value.selectedStyle); setChatInput(value.pendingEdit); setActiveVariant(-1);
+        setSavedVersions(value.history); setSourceReview('pending');
+        setScopeNeedsChoice(value.editScope === 'reselect');
+        setSelection(typeof value.editScope === 'object' ? { body: value.body, range: value.editScope } : null);
         setContactState({ id: opportunityId, value: value.context, revision: 1, dirty: value.pendingPanel?.pending ?? false });
         contextDirtyRef.current = value.pendingPanel?.pending ?? false;
         setPendingPanel(value.pendingPanel ?? null); setPanelSavable(true);
@@ -982,12 +1013,14 @@ export default function ColdEmailModal({
       } else { void fetchVariantsRef.current(); }
     }
     return () => {
-      clearEmailRevisions();
+      versionActionRef.current += 1;
       // Persist the last rendered editing snapshot before teardown resets it.
       persistCurrentRef.current();
+      clearEmailRevisions(); setSavedVersions([]); setVersionCompare(null); setVersionError(null);
+      setVersionBusy(false); versionBusyRef.current = false; setSourceReview('pending');
       persistenceSessionRef.current += 1;
       detachDraft();
-      setDraftRestored(false); setDraftClosing(false); setPendingPanel(null); setPanelSavable(true);
+      setDraftRestored(false); setDraftClosing(false); metadataRefreshingRef.current = false; setMetadataRefreshing(false); setPendingPanel(null); setPanelSavable(true);
       setRestoredSources(null); setSourceSignatures(null);
       cancelCompose();
       autoFiredRef.current = false;
@@ -1072,20 +1105,22 @@ export default function ColdEmailModal({
   }, [isOpen, originKey]);
 
   useEffect(() => {
-    if (!isOpen || !sourceReady || !restoredSources) return;
+    if (!isOpen || !restoredSources) return;
+    if (!sourceReady) return;
     const owner = captureOwnerToken(); let live = true;
     void Promise.all([emailDraftDigest(profileFingerprint), emailDraftDigest(contactSerialized)]).then(([profile_sig, contact_sig]) => {
       if (!live || !isOwnerTokenValid(owner, owner.uid)) return;
       const unchanged = restoredSources.profile_sig === profile_sig && restoredSources.contact_sig === contact_sig
         && !!expectedTargetVersion && restoredSources.target_version === expectedTargetVersion;
       profileChangedRef.current = !unchanged; setProfileChanged(!unchanged);
+      setSourceReview(unchanged ? 'matched' : restoredSources.profile_sig && restoredSources.contact_sig && restoredSources.target_version ? 'changed' : 'unknown');
       if (unchanged) {
         // Reattach only after comparing the saved original binding to fresh materials.
         draftSourcesRef.current = { profile: profileFingerprint, target: expectedTargetVersion, contact: contactSerialized };
         setOriginKey(JSON.stringify(draftSourcesRef.current));
         setSourceSignatures({ key: JSON.stringify(draftSourcesRef.current), value: restoredSources });
       }
-    }).catch(() => { /* Keep unknown provenance; do not certify the restored text. */ });
+    }).catch(() => { if (live) setSourceReview('unknown'); });
     return () => { live = false; };
   }, [isOpen, sourceReady, restoredSources, profileFingerprint, contactSerialized, expectedTargetVersion]);
 
@@ -1106,13 +1141,109 @@ export default function ColdEmailModal({
   }, [markDraftUnsaved, opportunityId]);
   const draftPayload: ColdEmailDraftPayload = {
     subject, body, selectedStyle, pendingEdit: chatInput, context: requestContactContext,
+    history: savedVersions, editScope: scopeNeedsChoice || invalidSelection ? 'reselect' : selection?.body === body ? selection.range : 'full',
     pendingPanel,
     sources: originKey && sourceSignatures?.key === originKey ? sourceSignatures.value : restoredSources ?? NO_DRAFT_SOURCES,
   };
   const draftPayloadKey = JSON.stringify(draftPayload);
+  useLayoutEffect(() => { draftPayloadRef.current = recipientEditedRef.current ? { ...draftPayload, manualRecipient: recipient } : draftPayload; });
+  useLayoutEffect(() => {
+    changeDraftRef.current = async (next, reason, valid, apply) => {
+      if (versionBusyRef.current || !panelSavable || !valid()) return false;
+      const before = JSON.parse(JSON.stringify(draftPayloadRef.current)) as ColdEmailDraftPayload;
+      const base = captureEditBase(); const editEpoch = userActionRevisionRef.current;
+      const saveBase = { edit: editEpoch, draft: base.revision, material: base.material }; versionSaveBaseRef.current = saveBase;
+      const operation = ++versionActionRef.current;
+      const current = () => operation === versionActionRef.current && valid() && editBaseCurrent(base)
+        && userActionRevisionRef.current === editEpoch;
+      versionBusyRef.current = true; setVersionBusy(true); setVersionError(null);
+      let settle!: () => void; const pending = new Promise<void>(resolve => { settle = resolve; }); versionPendingRef.current = pending;
+      try {
+        if (before.history.length >= COLD_EMAIL_DRAFT_LIMITS.historyItems) {
+          setVersionError(locale === 'zh' ? '已保存 10 个版本。请先删除不需要的旧版；当前稿未替换。' : 'There are 10 saved versions. Delete an unwanted version first. Your current draft is unchanged.');
+          return false;
+        }
+        let previousSources = before.sources;
+        if (originKey) {
+          const origin = JSON.parse(originKey) as { profile: string; contact: string; target: string | null };
+          const [profile_sig, contact_sig] = await Promise.all([emailDraftDigest(origin.profile), emailDraftDigest(origin.contact)]);
+          previousSources = { profile_sig, contact_sig, target_version: origin.target };
+        }
+        const sources = next.sources ?? { profile_sig: await emailDraftDigest(profileFingerprint),
+          contact_sig: await emailDraftDigest(contactSerialized), target_version: expectedTargetVersion };
+        if (!current()) return false;
+        const variant = allVariants[activeVariant];
+        const saved: ColdEmailDraftVersion = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), reason,
+          subject: before.subject, body: before.body, selectedStyle: before.selectedStyle, sources: previousSources,
+          origin: activeVariant < 0 || (variant && (variant.body !== before.body || variant.subject !== before.subject))
+            ? 'manual' : variant?.method === 'ai' ? 'ai' : variant ? 'template' : 'unknown', variantId: variant?.id ?? null };
+        const candidate: ColdEmailDraftPayload = { ...before, ...next, sources, history: [...before.history, saved], editScope: next.editScope ?? 'full' };
+        if (JSON.stringify(candidate).length > COLD_EMAIL_DRAFT_LIMITS.total) {
+          setVersionError(locale === 'zh' ? '版本内容已超过本地保存容量。请删除不需要的旧版；当前稿未替换。' : 'The versions exceed local storage capacity. Delete an unwanted version first. Your current draft is unchanged.');
+          return false;
+        }
+        if (!await commitDraft(candidate, current) || !current()) {
+          if (editBaseCurrent(base)) setVersionError(locale === 'zh' ? '版本未能保存，当前稿未替换。请检查保存状态后重试。' : 'The version could not be saved, so your draft was not replaced. Check the save status and try again.');
+          return false;
+        }
+        setSavedVersions(candidate.history); apply(); return true;
+      } catch {
+        if (current()) setVersionError(locale === 'zh' ? '版本未能保存，当前稿未替换。请重试。' : 'The version could not be saved. Your draft is unchanged. Please try again.');
+        return false;
+      } finally {
+        if (versionSaveBaseRef.current === saveBase) versionSaveBaseRef.current = null;
+        settle(); if (versionPendingRef.current === pending) versionPendingRef.current = null;
+        if (operation === versionActionRef.current) { versionBusyRef.current = false; setVersionBusy(false); }
+      }
+    };
+  });
+
+  async function deleteSavedVersion(id: string) {
+    if (versionBusyRef.current || !savedVersions.some(v => v.id === id)) return;
+    if (!window.confirm(locale === 'zh' ? '删除这个历史版本？当前草稿会保留。' : 'Delete this saved version? Your current draft is kept.')) return;
+    const base = captureEditBase(); const editEpoch = userActionRevisionRef.current;
+    const saveBase = { edit: editEpoch, draft: base.revision, material: base.material }; versionSaveBaseRef.current = saveBase;
+    const operation = ++versionActionRef.current;
+    const current = () => operation === versionActionRef.current && editBaseCurrent(base) && userActionRevisionRef.current === editEpoch;
+    const candidate = { ...draftPayloadRef.current, history: savedVersions.filter(v => v.id !== id) };
+    versionBusyRef.current = true; setVersionBusy(true); setVersionError(null);
+    let settle!: () => void; const pending = new Promise<void>(resolve => { settle = resolve; }); versionPendingRef.current = pending;
+    try {
+      if (await commitDraft(candidate, current) && current()) { setSavedVersions(candidate.history); setVersionCompare(null); }
+      else if (current()) setVersionError(locale === 'zh' ? '删除未保存，旧版仍保留。请重试。' : 'Deletion was not saved. The version is kept. Please try again.');
+    } finally { if (versionSaveBaseRef.current === saveBase) versionSaveBaseRef.current = null; settle(); if (versionPendingRef.current === pending) versionPendingRef.current = null; if (operation === versionActionRef.current) { versionBusyRef.current = false; setVersionBusy(false); } }
+  }
+
+  async function restoreSavedVersion() {
+    const comparison = versionCompare;
+    if (!comparison || !editBaseCurrent(comparison.base) || !savedVersions.some(v => v.id === comparison.version.id)) return;
+    const version = comparison.version;
+    const scope = draftPayloadRef.current.editScope === 'full' ? 'full' : 'reselect';
+    await changeDraftRef.current({ subject: version.subject, body: version.body, selectedStyle: version.selectedStyle, sources: version.sources, editScope: scope }, 'restored',
+      () => editBaseCurrent(comparison.base) && savedVersions.some(v => v.id === version.id), () => {
+        clearEmailRevisions(); action.cancel(); cancelCompose();
+        aiRequestRef.current += 1; variantRequestRef.current += 1; refineInFlightRef.current = null; aiInFlightRef.current = false;
+        setAiLoading(false); setAiStage(null); setRefining(false); autoFiredRef.current = true;
+        draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
+        setSubject(version.subject); setBody(version.body); setSelectedStyle(version.selectedStyle); setActiveVariant(-1);
+        setScopeNeedsChoice(scope === 'reselect'); setVersionCompare(null);
+        draftSourcesRef.current = null; setOriginKey(null); setRestoredSources(version.sources); setSourceReview('pending');
+        setDraftRestored(true); metadataRefreshingRef.current = true; setMetadataRefreshing(true); restoredMetadataRef.current = false;
+        profileChangedRef.current = true; setProfileChanged(true); setExperienceUsage(null);
+        setSubjectFormatConfirmation(null); setActualSentAt(''); setCopiedFor(null); setCopyFailedFor(null); setSendError(null);
+        sendDraftEpochRef.current += 1; setSendDraftEpoch(sendDraftEpochRef.current);
+        setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已恢复旧版；替换前的稿件也已保存。' : 'Version restored. The draft it replaced was also saved.' }]);
+      });
+  }
+
   useLayoutEffect(() => {
     const current = () => {
       if (!isOpen || persistenceSession !== persistenceSessionRef.current || !panelSavable) return;
+      // Derived source hashes/panel receipts can settle during a checkpoint.
+      // They are included in that atomic snapshot, not a competing user edit.
+      const checkpoint = versionSaveBaseRef.current;
+      if (versionBusyRef.current && checkpoint?.edit === userActionRevisionRef.current
+        && checkpoint.draft === draftRevisionRef.current && checkpoint.material === editLiveRef.current.material) return;
       if (!(subject || body || recipientEditedRef.current || chatInput || contextEditedRef.current || pendingPanel?.pending)) return;
       const payload = JSON.parse(draftPayloadKey) as ColdEmailDraftPayload;
       if (recipientEditedRef.current) payload.manualRecipient = recipient;
@@ -1120,7 +1251,7 @@ export default function ColdEmailModal({
     };
     persistCurrentRef.current = current;
     current();
-  }, [isOpen, persistenceSession, panelSavable, subject, body, recipient, chatInput, pendingPanel, draftPayloadKey, persistDraft]);
+  }, [isOpen, persistenceSession, panelSavable, subject, body, recipient, chatInput, pendingPanel, draftPayloadKey, persistDraft, versionBusy]);
   useEffect(() => {
     if (!isOpen || !['saving', 'failed', 'conflict'].includes(draftPersistence.status)) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -1308,9 +1439,11 @@ export default function ColdEmailModal({
     return unsubscribe;
   }, [contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
 
-  function selectVariant(idx: number) {
+  async function selectVariant(idx: number) {
     const v = allVariants[idx];
     if (!sourceReadyRef.current || contextDirtyRef.current || targetVersionError || profileChanged || profileRegenerating || !v) return;
+    const base = captureEditBase();
+    await changeDraftRef.current({ subject: v.subject, body: v.body }, 'variant', () => editBaseCurrent(base), () => {
     draftRevisionRef.current += 1;
     noteUserEdit();
     clearEmailRevisions();
@@ -1328,6 +1461,7 @@ export default function ColdEmailModal({
       ...prev,
       { role: 'assistant', content: t('coldEmail.switched', { label: v.label }) },
     ]);
+    });
   }
 
   // Generate (or re-generate) the AI draft in a given voice. Used by the
@@ -1346,9 +1480,9 @@ export default function ColdEmailModal({
     const revision = draftRevisionRef.current;
     const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
-    setSelectedStyle(style);
+    if (auto) setSelectedStyle(style);
 
-    const applyResponse = (
+    const applyResponse = async (
       resp: ColdEmailResponse,
       select: boolean,
       contactIsCurrent = true,
@@ -1365,6 +1499,9 @@ export default function ColdEmailModal({
         fallback_reason: resp.fallback_reason,
         experience_usage: resp.experience_usage,
       };
+      if (select && !auto && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style }, 'regenerated',
+        () => current() && draftRevisionRef.current === revision, () => {})) return false;
+      if (!current() || (select && draftRevisionRef.current !== revision)) return false;
       setAiVariant(v);
       if (contactIsCurrent) {
         setRecipientStatus(statusOf(resp.recipient_status, resp.recipient_email));
@@ -1372,7 +1509,7 @@ export default function ColdEmailModal({
       if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
       if (select) {
         clearEmailRevisions();
-        setActiveVariant(aiIdx);
+        setSelectedStyle(style); setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
@@ -1383,6 +1520,7 @@ export default function ColdEmailModal({
           setRecipient((prev) => prev || v.recipient_email);
         }
       }
+      return true;
     };
 
     // W12 draft freshness: a cached AI draft is only re-served while young
@@ -1396,7 +1534,7 @@ export default function ColdEmailModal({
         // Cache only the AI writing value. Recipient truth was refreshed by
         // getEmailVariants for the current auth session and must never be
         // overwritten by a reveal cached before logout/token expiry.
-        applyResponse(cached.response, true, false);
+        if (!await applyResponse(cached.response, true, false)) return;
         setChatMessages((prev) => [...prev, { role: 'assistant', content: t('coldEmail.aiGenerated') }]);
         return;
       }
@@ -1446,7 +1584,7 @@ export default function ColdEmailModal({
         if (resp.corpus_version) corpusVersionRef.current = resp.corpus_version;
       }
       if (auto && resp.method !== 'ai') return; // silent — the user never asked
-      applyResponse(resp, draftRevisionRef.current === revision);
+      if (!await applyResponse(resp, draftRevisionRef.current === revision)) return;
       setChatMessages((prev) => [
         ...prev,
         {
@@ -1483,13 +1621,26 @@ export default function ColdEmailModal({
   }, [sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
 
   function handleAiPillClick() {
-    if (aiLoading || action.busy) return;
+    if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
     action.request({ kind: 'ai', style: selectedStyle, selectExisting: true });
   }
 
   function handleToneClick(style: EmailStyle) {
-    if (aiLoading || action.busy) return;
+    if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
     action.request({ kind: 'ai', style });
+  }
+
+  function refineLimitMessage(field: string, max: number): string {
+    const label = locale === 'zh' ? ({ current_body: '正文', instruction: '修改要求', subject: '主题' } as Record<string, string>)[field]
+      : ({ current_body: 'Body', instruction: 'Request', subject: 'Subject' } as Record<string, string>)[field];
+    return locale === 'zh' ? `${label}超过精修上限（${max.toLocaleString()} 个文本单位，部分 emoji 占两个）。请缩短后再试；全文和要求已保留，未截断。`
+      : `${label} exceeds the editing limit (${max.toLocaleString()} text units; some emoji count as two). Shorten it and try again. Your complete draft and request are kept, with no truncation.`;
+  }
+  function checkRefineLimits(edit: EmailEditRequest, instruction: string): boolean {
+    const over = ([["current_body", edit.base.body, 5000], ["instruction", instruction, 500], ["subject", edit.base.subject, 2000]] as const).find(([, value, limit]) => value.length > limit);
+    if (!over) return true;
+    setChatMessages(messages => [...messages, { role: 'assistant', content: refineLimitMessage(over[0], over[2]) }]);
+    return false;
   }
 
   // A suggestion is inert until an explicit accept passes fresh source checks.
@@ -1497,6 +1648,7 @@ export default function ColdEmailModal({
     if (!editBaseCurrent(edit.base) || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
+    if (!checkRefineLimits(edit, instruction)) return;
     discardProposal();
     // Retire automatic generation without pretending the user edited the body.
     // Starting or failing another request must leave the last accepted undo intact.
@@ -1513,7 +1665,7 @@ export default function ColdEmailModal({
     try {
       const result = await refineEmail(edit.base.body, instruction, requestProfile, opportunityId, {
         expectedTargetVersion, contactContext: requestContactContext,
-        ...(edit.selection ? { selection: edit.selection, subject: edit.base.subject } : {}),
+        subject: edit.base.subject, ...(edit.selection ? { selection: edit.selection } : {}),
       });
       if (!current()) return;
       if (!editBaseCurrent(edit.base)) { reply(t('coldEmail.editSuperseded')); return; }
@@ -1572,18 +1724,27 @@ export default function ColdEmailModal({
         const failure = targetVersionFailure(error);
         if (readingChanged(error)) { reportReadingChange(); reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.'); }
         else if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
-        else reply(t('coldEmail.editFailed'));
+        else {
+          const detail = error && typeof error === 'object' && 'detail' in error ? error.detail : null;
+          if (detail && typeof detail === 'object' && 'code' in detail && detail.code === 'EMAIL_REFINE_LIMIT'
+            && 'field' in detail && ['current_body', 'instruction', 'subject'].includes(String(detail.field))
+            && 'max_utf16' in detail && Number.isSafeInteger(detail.max_utf16)) reply(refineLimitMessage(String(detail.field), Number(detail.max_utf16)));
+          else reply(t('coldEmail.editFailed'));
+        }
       }
     } finally {
       if (current()) { refineInFlightRef.current = null; setRefining(false); }
     }
   }
 
-  function acceptEdit(id: number) {
+  async function acceptEdit(id: number) {
     const proposal = proposalRef.current;
     if (!proposal || proposal.id !== id || !editBaseCurrent(proposal.base) || !sourceReadyRef.current
       || contextDirtyRef.current || profileChangedRef.current || targetVersionError) return;
-    // Consume before setting state; a repeated click cannot apply it twice.
+    const pendingEdit = proposal.instruction && chatInput.trim() === proposal.instruction ? '' : chatInput;
+    await changeDraftRef.current({ body: proposal.afterBody, pendingEdit }, 'accepted_edit',
+      () => proposalRef.current === proposal && editBaseCurrent(proposal.base) && sourceReadyRef.current && !contextDirtyRef.current, () => {
+    // Consume after durable save; a repeated click cannot apply it twice.
     proposalRef.current = null; setEditProposal(null); setSelection(null);
     cancelCompose();
     const revision = ++draftRevisionRef.current;
@@ -1598,23 +1759,29 @@ export default function ColdEmailModal({
     setExperienceUsage(proposal.usage);
     if (proposal.instruction && chatInput.trim() === proposal.instruction) setChatInput('');
     setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已应用建议，可撤销本次修改。' : 'Suggestion applied. You can undo this edit.' }]);
+    });
   }
 
-  function undoEdit() {
+  async function undoEdit() {
     const undo = undoRef.current;
     if (!undo || !editBaseCurrent(undo.base) || contextDirtyRef.current) return;
+    const sources = undo.sources ? { profile_sig: await emailDraftDigest(undo.sources.profile),
+      target_version: undo.sources.target, contact_sig: await emailDraftDigest(undo.sources.contact) } : undo.restored ?? NO_DRAFT_SOURCES;
+    if (!editBaseCurrent(undo.base)) return;
+    await changeDraftRef.current({ body: undo.beforeBody, sources }, 'undo', () => undoRef.current === undo && editBaseCurrent(undo.base), () => {
     clearEmailRevisions(); cancelCompose(); action.cancel();
     draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
     setBody(undo.beforeBody); setExperienceUsage(undo.usage);
     draftSourcesRef.current = undo.sources; setOriginKey(undo.origin); setRestoredSources(undo.restored);
     setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已撤销刚才接受的修改。' : 'Undid the last accepted edit.' }]);
+    });
   }
 
   function currentEdit(): EmailEditRequest {
     return { base: captureEditBase(), selection: selection?.body === body ? selection.range : null };
   }
   function handleQuickAction(key: QuickActionKey) {
-    if (invalidSelection || !sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
     if (key === 'coursework') {
       if (selection?.body === body) return;
       action.request({ kind: 'coursework', edit: currentEdit() }); return;
@@ -1623,7 +1790,7 @@ export default function ColdEmailModal({
   }
   function handleChatSubmit() {
     const msg = chatInput.trim();
-    if (invalidSelection || !sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
     // Keep the request through provider failure, rejection and close/reopen.
     action.request({ kind: 'refine', instruction: msg, typed: true, edit: currentEdit() });
   }
@@ -1941,7 +2108,7 @@ export default function ColdEmailModal({
           : draftPersistence.status === 'failed' ? (locale === 'zh' ? '草稿未能保存。当前内容仍保留，请先复制；重新打开可能只显示上次保存的内容。' : 'Could not save this draft. Your text is kept. Copy it before leaving; reopening may show the last saved version.')
           : (locale === 'zh' ? '草稿只保存在此浏览器。' : 'Drafts are saved only on this browser.')}
         <button type="button" data-testid="cold-email-draft-clear" className="ml-3 underline disabled:opacity-50"
-          disabled={draftClosing || ['saving', 'failed', 'conflict'].includes(draftPersistence.status)} onClick={() => void clearSavedDraft()}>
+          disabled={versionBusy || draftClosing || ['saving', 'conflict'].includes(draftPersistence.status)} onClick={() => void clearSavedDraft()}>
           {locale === 'zh' ? '删除草稿并重写' : 'Delete draft and start again'}
         </button>
         {draftPersistence.status === 'failed' && <button type="button" data-testid="cold-email-draft-retry"
@@ -1954,6 +2121,8 @@ export default function ColdEmailModal({
           {locale === 'zh' ? '不保存并关闭' : 'Close without saving'}
         </button>}
       </div>
+      {metadataRefreshing && sourceReady && !profileChanged && <p role="status" className="shrink-0 px-5 py-2 text-xs text-gray-600">{locale === 'zh' ? '正在核对邮件信息，原稿仍保留。' : 'Checking email details. Your draft is kept.'}</p>}
+      {versionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{versionError}</div>}
       {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
         {locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿和请求仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿和请求仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft and request are kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft and request are kept. Review your profile and try again.')}
         {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
@@ -2021,14 +2190,14 @@ export default function ColdEmailModal({
             <div className={styles.panels}>
               <div className={`${styles.editorPane} lg:border-r border-gray-100`} data-testid="cold-email-editor">
                 {profileChanged && <div role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  <p>{contextChanged ? (locale === 'zh' ? '联系背景已更改。先确认背景，再生成新稿；当前草稿仍保留。' : 'Contact background changed. Confirm it, then generate a new draft. Your current draft is kept.') : t('coldEmail.profileChanged')}</p>
+                  <p>{contextChanged ? (locale === 'zh' ? '联系背景已更改。先确认背景，再生成新稿；当前草稿仍保留。' : 'Contact background changed. Confirm it, then generate a new draft. Your current draft is kept.') : draftRestored && (!sourceReady || sourceReview === 'pending') ? (locale === 'zh' ? '尚未核对原稿所用资料。草稿仍保留，联网后会重新核对。' : 'The sources for this draft have not been checked yet. Your draft is kept; they will be checked when online.') : draftRestored && sourceReview === 'unknown' ? (locale === 'zh' ? '无法确认这份旧稿所用的资料。草稿仍保留；请核对后再生成新稿。' : 'The sources for this saved draft could not be confirmed. Your draft is kept; review them before generating a new draft.') : t('coldEmail.profileChanged')}</p>
                   {profileRegenerateError && <p role="alert" className="mt-2">{t(profileRegenerateError === 'edited'
                     ? 'coldEmail.editSuperseded' : profileRegenerateError === 'name-required'
                       ? 'coldEmail.nameRequiredBody' : 'coldEmail.profileRegenerateFailed')}</p>}
                   {profileRegenerateError === 'name-required' && <Link href="/" onClick={leaveForProfile}
                     className="mt-1 inline-block font-medium underline">{t('coldEmail.nameRequiredCta')}</Link>}
                   <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium disabled:opacity-50"
-                    disabled={contextDirty || !sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
+                    disabled={versionBusy || contextDirty || !sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
                     {profileRegenerating ? t('coldEmail.generating') : t('coldEmail.regenerateFromProfile')}
                   </button>
                 </div>}
@@ -2038,7 +2207,7 @@ export default function ColdEmailModal({
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => selectVariant(i)}
+                      disabled={versionBusy} onClick={() => void selectVariant(i)}
                       className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 ${
                         activeVariant === i
                           ? 'bg-indigo-600 text-white'
@@ -2051,7 +2220,7 @@ export default function ColdEmailModal({
                   <button
                     type="button"
                     onClick={handleAiPillClick}
-                    disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
+                    disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                     title={t('coldEmail.aiVariantTitle')}
                     className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                       activeVariant === variants.length && aiVariant
@@ -2082,7 +2251,7 @@ export default function ColdEmailModal({
                         key={s}
                         type="button"
                         onClick={() => handleToneClick(s)}
-                        disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
+                        disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                           isActive
                             ? 'bg-indigo-600 text-white shadow-sm'
@@ -2278,7 +2447,7 @@ export default function ColdEmailModal({
                       )}
                     </div>
                     {editUndo && <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                      <button type="button" onClick={undoEdit} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-800 hover:bg-gray-50">
+                      <button type="button" disabled={versionBusy} onClick={() => void undoEdit()} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-800 hover:bg-gray-50">
                         {locale === 'zh' ? '撤销上次接受的修改' : 'Undo last accepted edit'}
                       </button>
                       <span>{locale === 'zh' ? '仅在本次编辑中保留；手改后不再撤销。' : 'Available in this editing session, until a manual edit.'}</span>
@@ -2289,15 +2458,21 @@ export default function ColdEmailModal({
                       onSelect={(event) => {
                         const field = event.currentTarget;
                         const range = captureTextareaSelection(body, field.value, field.selectionStart, field.selectionEnd);
-                        setInvalidSelection(field.selectionStart !== field.selectionEnd && !range);
-                        setSelection(range ? { body, range } : null);
+                        if (range) { userActionRevisionRef.current += 1; setSelection({ body, range }); setInvalidSelection(false); setScopeNeedsChoice(false); }
+                        else if (field.selectionStart !== field.selectionEnd) { userActionRevisionRef.current += 1; setSelection(null); setInvalidSelection(true); setScopeNeedsChoice(true); }
                       }}
                       value={body}
-                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setBody(e.target.value); }}
+                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit();
+                        if (selection || invalidSelection) { setSelection(null); setScopeNeedsChoice(true); }
+                        setBody(e.target.value); }}
                       rows={12}
                       className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
+                  <EmailVersionHistory locale={locale} versions={savedVersions} busy={versionBusy} error={versionError}
+                    comparison={versionCompare ? { version: versionCompare.version, subject: versionCompare.base.subject, body: versionCompare.base.body } : null}
+                    onCompare={version => { setVersionError(null); setVersionCompare({ version, base: captureEditBase() }); }}
+                    onRestore={() => void restoreSavedVersion()} onCancel={() => setVersionCompare(null)} onDelete={id => void deleteSavedVersion(id)} />
                   <details className="rounded-xl border border-gray-200 px-3.5 py-3 text-xs text-gray-600" data-testid="contact-record-details">
                     <summary className="cursor-pointer font-semibold text-gray-700">{t('coldEmail.contactRecordTitle')}</summary>
                     <p className="mt-2 leading-relaxed">{t('coldEmail.contactRecordHint')}</p>
@@ -2365,7 +2540,7 @@ export default function ColdEmailModal({
                         ? editProposal.afterBody.slice(editProposal.selection.start_utf16, editProposal.afterBody.length - (editProposal.base.body.length - editProposal.selection.end_utf16)) || (locale === 'zh' ? '（删除所选内容）' : '(Delete selected text)')
                         : editProposal.afterBody}</p></div>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={!sourceReady || action.busy || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
+                      <button type="button" disabled={versionBusy || !sourceReady || action.busy || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
                         className="rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-40">{locale === 'zh' ? '接受建议' : 'Accept suggestion'}</button>
                       <button type="button" onClick={() => { action.cancel(); discardProposal(); }} className="rounded-lg border border-gray-300 px-3 py-2 text-gray-800">{locale === 'zh' ? '拒绝建议' : 'Reject suggestion'}</button>
                     </div>
@@ -2373,9 +2548,12 @@ export default function ColdEmailModal({
                 </div>
 
                 <div className="px-4 py-2 text-xs text-gray-600" role="status">
-                  {invalidSelection ? (locale === 'zh' ? '这段选区无法准确定位，请重新选择。' : 'This selection cannot be located precisely. Select the passage again.') : selection?.body === body ? <>
+                  {invalidSelection || scopeNeedsChoice ? <>
+                    <span data-testid="cold-email-edit-scope-review">{locale === 'zh' ? '请重新选择要修改的段落，或明确改为整封。原稿和要求仍保留。' : 'Select the passage again, or explicitly use the full body. Your draft and request are kept.'}</span>
+                    <button type="button" onClick={() => { userActionRevisionRef.current += 1; setSelection(null); setInvalidSelection(false); setScopeNeedsChoice(false); }} className="ml-2 underline text-indigo-700">{locale === 'zh' ? '改为整封' : 'Use full body'}</button>
+                  </> : selection?.body === body ? <>
                     <span>{locale === 'zh' ? '本次只修改选中的内容；加入课程需切回整封。' : 'This request edits only the selected text. Use full body to add coursework.'}</span>
-                    <button type="button" onClick={() => { setSelection(null); setInvalidSelection(false); }} className="ml-2 rounded underline underline-offset-2 text-indigo-700">{locale === 'zh' ? '改为整封' : 'Use full body'}</button>
+                    <button type="button" onClick={() => { userActionRevisionRef.current += 1; setSelection(null); setInvalidSelection(false); setScopeNeedsChoice(false); }} className="ml-2 rounded underline underline-offset-2 text-indigo-700">{locale === 'zh' ? '改为整封' : 'Use full body'}</button>
                   </> : (locale === 'zh' ? '修改整封正文；在正文中选中一段可只改该段。' : 'Edit the full body, or select a passage in the body to edit only that passage.')}
                 </div>
                 {/* Quick actions */}
@@ -2386,7 +2564,7 @@ export default function ColdEmailModal({
                         key={key}
                         type="button"
                         onClick={() => handleQuickAction(key)}
-                        disabled={invalidSelection || (key === 'coursework' && selection?.body === body) || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
+                        disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || (key === 'coursework' && selection?.body === body) || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {t(`coldEmail.quickActions.${key}`)}
@@ -2412,7 +2590,7 @@ export default function ColdEmailModal({
                     <button
                       type="submit"
                       aria-label={t('coldEmail.submitRequest')}
-                      disabled={invalidSelection || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
+                      disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />

@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import os
 import sys
+from types import SimpleNamespace
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -256,3 +259,50 @@ class TestOneAttemptIsOneBilledRequest:
 
         assert seen, "the client was never constructed"
         assert seen[0]["max_retries"] == 0
+
+
+class TestCompleteTextRequirement:
+    @pytest.mark.parametrize("reason", ["length", "content_filter", "tool_calls", "function_call", "unknown", None, "missing"])
+    def test_incomplete_text_is_discarded_without_a_second_paid_request(self, monkeypatch, reason):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        calls, spends = [], []
+        choice = SimpleNamespace(message=_Msg("A plausible but incomplete draft"))
+        if reason != "missing":
+            choice.finish_reason = reason
+
+        def create(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(choices=[choice])
+
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(create))
+        monkeypatch.setattr(llm.llm_budget, "spend", lambda: spends.append(True))
+        monkeypatch.setattr(llm.time, "sleep", lambda *_: pytest.fail("Incomplete output must not retry"))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) is None
+        assert len(calls) == len(spends) == 1
+        assert "require_complete" not in calls[0]
+
+    @pytest.mark.parametrize("reason", ["stop", "length", "missing"])
+    def test_default_contract_keeps_returning_existing_provider_text(self, monkeypatch, reason):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        choice = SimpleNamespace(message=_Msg(" retained "))
+        if reason != "missing":
+            choice.finish_reason = reason
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(lambda **_: SimpleNamespace(choices=[choice])))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}]) == "retained"
+
+    def test_confirmed_stop_returns_the_text(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        choice = SimpleNamespace(message=_Msg(" complete "), finish_reason="stop")
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(lambda **_: SimpleNamespace(choices=[choice])))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) == "complete"
+
+    def test_empty_choices_do_not_trigger_a_second_paid_request(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        calls = []
+        def create(**_kwargs):
+            calls.append(True)
+            return SimpleNamespace(choices=[])
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(create))
+        monkeypatch.setattr(llm.time, "sleep", lambda *_: pytest.fail("Empty output must not retry"))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) is None
+        assert len(calls) == 1

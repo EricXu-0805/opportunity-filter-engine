@@ -143,6 +143,7 @@ describe('cold email draft lifetime', () => {
       fireEvent.click(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' }));
       await waitFor(() => expect(screen.queryByText('coldEmail.profileChanged')).toBeNull());
     }
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeEnabled());
     requestEdit();
     expect(api.refine).toHaveBeenCalledTimes(2);
     await act(async () => { first.resolve({ body: 'Old edit', method: 'llm' }); });
@@ -488,6 +489,7 @@ describe('confirmed experience draft inputs', () => {
     await ready();
     expect(screen.getByText('coldEmail.experienceBudgetNote')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Template B' }));
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B'));
     expect(screen.queryByText('coldEmail.experienceBudgetNote')).toBeNull();
     expect(screen.queryByRole('link', { name: 'coldEmail.experienceReviewCta' })).toBeNull();
     expect(screen.getByText(entry.text)).toBeInTheDocument();
@@ -650,6 +652,7 @@ describe('confirmed experience draft inputs', () => {
     expect(screen.getByText(one.text)).toBeInTheDocument();
     expect(screen.queryByText(two.text)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Template B' }));
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B'));
     expect(screen.getByText(two.text)).toBeInTheDocument();
     expect(screen.queryByText(one.text)).toBeNull();
     requestEdit();

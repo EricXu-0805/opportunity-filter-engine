@@ -18,9 +18,23 @@ it('registers both private namespaces and persists metadata only before returnin
   if (entry.status === 'present') { expect(entry.value).not.toContain('%PDF'); expect(entry.value.length).toBeLessThan(1500); }
   expect(Object.isFrozen(attempt.input)).toBe(true);
 });
-it('serializes competing tabs, reusing exact IDs and original filename for the same bytes', async () => {
-  const [a, b] = await Promise.all([prepare(), prepare(file('renamed.pdf'))]);
-  expect(a.attempt.input).toEqual(b.attempt.input); expect(b.reused).toBe(true);
+it.each(['natural', 'second-first'] as const)('serializes competing tabs (%s), reusing exact IDs and the winning filename', async order => {
+  const files = [file(), file('renamed.pdf')];
+  const bytes = await files[0].arrayBuffer(); const gate = deferred<ArrayBuffer>();
+  if (order === 'second-first') Object.defineProperty(files[0], 'arrayBuffer', { value: () => gate.promise });
+  const writes = vi.spyOn(localStorage, 'setItem');
+  const pending = files.map(selected => prepare(selected));
+  // Reading and hashing happen before the lock. Invocation order does not
+  // determine which tab first establishes the immutable attempt metadata.
+  if (order === 'second-first') { try { await pending[1]; } finally { gate.resolve(bytes); } }
+  const [a, b] = await Promise.all(pending);
+  expect(a.attempt.input).toEqual(b.attempt.input);
+  expect([a.reused, b.reused].sort()).toEqual([false, true]);
+  const winner = a.reused ? 1 : 0;
+  if (order === 'second-first') expect(winner).toBe(1);
+  expect(a.attempt.input.filename).toBe(files[winner].name);
+  expect(readPendingApplicationMaterialAttempts(captureOwnerToken(), scope)).toEqual([a.attempt]);
+  expect(writes.mock.calls.filter(([name]) => name.includes(STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX))).toHaveLength(1);
 });
 it('keeps a different unresolved file and scope separate', async () => {
   const a = await prepare();

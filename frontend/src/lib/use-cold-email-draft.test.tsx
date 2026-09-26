@@ -11,7 +11,7 @@ let target = 0;
 const originalLocks = navigator.locks;
 function payload(body = 'Current exact text'): ColdEmailDraftPayload {
   return { subject: 'Subject', body, pendingEdit: '', selectedStyle: 'professional', context: { version: 1, purpose: 'first_contact' },
-    sources: { profile_sig: null, target_version: null, contact_sig: null } };
+    sources: { profile_sig: null, target_version: null, contact_sig: null }, history: [], editScope: 'full' };
 }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 function locks(gate?: Promise<void>) {
@@ -193,4 +193,123 @@ it('a completed clear retires the old editing session so a late persist cannot r
   await persist(hook); expect(readColdEmailDraft(captureOwnerToken(), hook.id).status).toBe('missing');
   act(() => { hook.result.current.open(hook.id); }); await persist(hook, payload('new deliberate editor'));
   expect(await flush(hook)).toBe(true);
+});
+
+function candidate(body = 'Accepted suggestion'): ColdEmailDraftPayload {
+  return { ...payload(body), history: [{ id: crypto.randomUUID(), createdAt: '2026-09-26T12:00:00.000Z', reason: 'accepted_edit',
+    subject: 'Original subject', body: 'Original body', sources: { profile_sig: 'a'.repeat(64), target_version: 'wt1:old', contact_sig: null },
+    origin: 'manual', variantId: null, selectedStyle: 'professional' }] };
+}
+async function commit(hook: ReturnType<typeof mount>, value: ColdEmailDraftPayload, current?: () => boolean) {
+  let ok = false; await act(async () => { ok = await hook.result.current.commit(value, current); }); return ok;
+}
+it('commits current text plus history only after durable CAS, copying the candidate before awaiting', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const value = candidate(); const expected = structuredClone(value); const gate = deferred<void>(); locks(gate.promise);
+  let pending!: Promise<boolean>; act(() => { pending = hook.result.current.commit(value); }); await drain();
+  expect(hook.result.current.status).toBe('saving'); expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before);
+  value.history[0].body = 'mutated by caller'; value.body = 'mutated body';
+  await act(async () => { gate.resolve(); expect(await pending).toBe(true); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: expected });
+  hook.unmount(); expect(mount(hook.id).opened.draft).toEqual(expected);
+});
+it('flushes preceding autosaves before committing the complete version package', async () => {
+  const gate = deferred<void>(); locks(gate.promise); const hook = mount();
+  act(() => hook.result.current.persist(payload('already typed')));
+  let pending!: Promise<boolean>; const next = candidate(); act(() => { pending = hook.result.current.commit(next); });
+  await act(async () => { gate.resolve(); expect(await pending).toBe(true); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: next });
+});
+it('quota failure keeps both the durable original and recovery payload; retry never adopts the candidate', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const failure = failWrites(); expect(await commit(hook, candidate())).toBe(false);
+  expect(hook.result.current.status).toBe('failed'); expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before);
+  hook.unmount(); failure.mockRestore(); const next = mount(hook.id);
+  expect(next.opened.draft).toEqual(payload('original'));
+  expect(await retry(next)).toBe(true);
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: payload('original') });
+});
+it.each(['quota', 'too_large'] as const)('a failed %s candidate does not make the existing draft undeletable', async mode => {
+  const hook = mount(); await persist(hook, payload('original')); const value = candidate();
+  const failure = mode === 'quota' ? failWrites() : null;
+  if (mode === 'too_large') value.history = Array.from({ length: 11 }, () => candidate().history[0]);
+  expect(await commit(hook, value)).toBe(false); failure?.mockRestore();
+  await act(async () => { expect(await hook.result.current.clear()).toBe(true); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id).status).toBe('missing');
+});
+it('a new manual edit after a failed candidate saves only that edit with the original history', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const failure = failWrites();
+  expect(await commit(hook, candidate())).toBe(false); failure.mockRestore();
+  await persist(hook, payload('new manual edit'));
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: { body: 'new manual edit', history: [] } });
+  expect(hook.result.current.status).toBe('saved');
+});
+it('edit-away-back during the lock cancels an accepted candidate even when final text matches', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const gate = deferred<void>(); locks(gate.promise);
+  let pending!: Promise<boolean>; act(() => { pending = hook.result.current.commit(candidate()); }); await drain();
+  act(() => { hook.result.current.persist(payload('temporary edit')); hook.result.current.persist(payload('original')); });
+  await act(async () => { gate.resolve(); expect(await pending).toBe(false); }); await drain();
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: payload('original') });
+  expect(await flush(hook)).toBe(true);
+});
+it('scope or request changes during the lock cancel the old candidate and preserve the new edit intent', async () => {
+  const hook = mount(); await persist(hook, payload('repeat repeat')); const gate = deferred<void>(); locks(gate.promise);
+  let pending!: Promise<boolean>; act(() => { pending = hook.result.current.commit(candidate()); }); await drain();
+  const latest = { ...payload('repeat repeat'), pendingEdit: 'only the second one', editScope: { start_utf16: 7, end_utf16: 13, text: 'repeat' } };
+  act(() => hook.result.current.persist(latest));
+  await act(async () => { gate.resolve(); expect(await pending).toBe(false); }); await drain();
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: latest });
+});
+it('rechecks the parent lifecycle predicate inside the lock rather than only before waiting', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const gate = deferred<void>(); locks(gate.promise); let current = true;
+  let pending!: Promise<boolean>; act(() => { pending = hook.result.current.commit(candidate(), () => current); }); await drain();
+  current = false; await act(async () => { gate.resolve(); expect(await pending).toBe(false); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before); expect(await flush(hook)).toBe(true);
+});
+it('detach then reopen the same session cancels its old candidate without needing a parent predicate', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const gate = deferred<void>(); locks(gate.promise); let pending!: Promise<boolean>;
+  act(() => { pending = hook.result.current.commit(candidate()); }); await drain();
+  act(() => { hook.result.current.detach(); hook.result.current.open(hook.id); });
+  await act(async () => { gate.resolve(); expect(await pending).toBe(false); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before); expect(await flush(hook)).toBe(true);
+});
+it('target change while a candidate waits keeps the old saved draft and the new target edit', async () => {
+  const hook = mount(); await persist(hook, payload('original')); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const gate = deferred<void>(); locks(gate.promise); let pending!: Promise<boolean>;
+  act(() => { pending = hook.result.current.commit(candidate()); }); await drain();
+  const other = `other-${hook.id}`; act(() => { hook.result.current.open(other); hook.result.current.persist(payload('new target')); });
+  await act(async () => { gate.resolve(); expect(await pending).toBe(false); }); await drain();
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before);
+  expect(readColdEmailDraft(captureOwnerToken(), other)).toMatchObject({ draft: payload('new target') });
+});
+it('logout while a candidate waits blocks its write and prevents recovery under a different owner', async () => {
+  const hook = mount(); await persist(hook, payload('private original'));
+  const gate = deferred<void>(); locks(gate.promise); let pending!: Promise<boolean>;
+  act(() => { pending = hook.result.current.commit(candidate('private candidate')); }); await drain();
+  act(() => advanceOwnerEpoch(null));
+  await act(async () => { gate.resolve(); expect(await pending).toBe(false); }); await owner(B);
+  let restored!: ReturnType<typeof hook.result.current.open>; act(() => { restored = hook.result.current.open(hook.id); });
+  expect(restored).toEqual({ draft: null, restored: false });
+});
+it('a candidate cannot rebase over another tab and retry retains this editor rather than the rejected version', async () => {
+  const hook = mount(); await persist(hook, payload('local')); const base = readColdEmailDraft(captureOwnerToken(), hook.id);
+  const winner = candidate('other tab'); await saveColdEmailDraft(captureOwnerToken(), hook.id, base.revision, winner);
+  expect(await commit(hook, candidate('rejected suggestion'))).toBe(false); expect(hook.result.current.status).toBe('conflict');
+  expect(await retry(hook)).toBe(false); expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: winner });
+  hook.unmount(); expect(mount(hook.id).opened.draft).toEqual(payload('local'));
+});
+it('rejects overlapping commits and a close flush while the first candidate is still unresolved', async () => {
+  const hook = mount(); await persist(hook); const first = candidate('first accepted'); const gate = deferred<void>(); locks(gate.promise);
+  let pending!: Promise<boolean>; act(() => { pending = hook.result.current.commit(first); }); await drain();
+  expect(await commit(hook, candidate('second'))).toBe(false); expect(await flush(hook)).toBe(false);
+  await act(async () => { gate.resolve(); expect(await pending).toBe(true); });
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: first });
+});
+it('blocked current input cannot be bypassed by committing a smaller candidate', async () => {
+  const hook = mount(); await persist(hook); const before = readColdEmailDraft(captureOwnerToken(), hook.id);
+  act(() => hook.result.current.markUnsaved('invalid_panel'));
+  expect(await commit(hook, candidate())).toBe(false); expect(hook.result.current.issue).toBe('invalid_panel');
+  expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toEqual(before);
 });

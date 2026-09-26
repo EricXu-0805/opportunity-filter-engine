@@ -2,7 +2,7 @@ import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLD_EMAIL_DRAFT_LIMITS, COLD_EMAIL_DRAFT_LOCK_TIMEOUT_MS, createColdEmailDraftWriter,
   deleteColdEmailDraft, readColdEmailDraft, saveColdEmailDraft, snapshotColdEmailDraft,
-  type ColdEmailDraftPayload } from './cold-email-draft';
+  type ColdEmailDraftPayload, type ColdEmailDraftVersion } from './cold-email-draft';
 import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode, PRIVATE_STORAGE_LOCK,
   readUserScopedEntry, syncLocalIdentityOwner, USER_SCOPED_PREFIXES, writeUserScopedRaw } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
@@ -10,7 +10,7 @@ const A = 'draft-owner-a', B = 'draft-owner-b', O = 'opportunity/α:1';
 const originalLocks = navigator.locks;
 function payload(body = '  Exact original text.\n第二行😀  '): ColdEmailDraftPayload {
   return { subject: ' Subject ', body, manualRecipient: ' unfinished@ ', selectedStyle: 'professional', pendingEdit: '\nMake it warmer ',
-    context: { version: 1, purpose: 'first_contact' }, sources: { profile_sig: null, target_version: null, contact_sig: null } };
+    context: { version: 1, purpose: 'first_contact' }, sources: { profile_sig: null, target_version: null, contact_sig: null }, history: [], editScope: 'full' };
 }
 const key = (uid: string | null = A, id = O) => STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX + encodeURIComponent(JSON.stringify([uid, id]));
 async function owner(uid: string) { advanceOwnerEpoch(uid); expect(await syncLocalIdentityOwner(uid)).toBe(true); }
@@ -219,4 +219,111 @@ it('rejects invalid or over-limit panel snapshots while retaining their prior ba
     confirmed: { referral: false, sent: false, availability: false, paper: false }, pending: true, expanded: true };
   await expect(saveColdEmailDraft(captureOwnerToken(), O, saved.revision, value)).rejects.toMatchObject({ code: 'invalid_draft' });
   expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ draft: payload() });
+});
+
+function version(body = 'Version A\r\n中文😀', overrides: Partial<ColdEmailDraftVersion> = {}): ColdEmailDraftVersion {
+  return { id: crypto.randomUUID(), createdAt: '2026-09-26T12:00:00.000Z', reason: 'accepted_edit',
+    subject: 'Old subject', body, sources: { profile_sig: 'a'.repeat(64), target_version: 'wt1:old', contact_sig: null },
+    origin: 'manual', variantId: null, selectedStyle: 'warm', ...overrides };
+}
+function rawStored() {
+  const result = readUserScopedEntry(key()); if (result.status !== 'present') throw new Error('missing raw');
+  return result.value;
+}
+it.each(['', '  ', 'Unfinished request'])('reads strict v1 without rewriting and migrates pending request %j safely', async pendingEdit => {
+  const token = captureOwnerToken(); const { history: _history, editScope: _scope, ...old } = payload();
+  old.pendingEdit = pendingEdit;
+  const revision = crypto.randomUUID(); const raw = JSON.stringify({ version: 1, ownerId: A, opportunityId: O, revision, draft: old });
+  expect(writeUserScopedRaw(key(), raw, token)).toBe(true);
+  const expected = { ...old, history: [], editScope: pendingEdit.trim() ? 'reselect' : 'full' };
+  expect(readColdEmailDraft(token, O)).toEqual({ status: 'present', revision, draft: expected });
+  expect(rawStored()).toBe(raw);
+  await save(expected as ColdEmailDraftPayload, revision);
+  expect(JSON.parse(rawStored()).version).toBe(2);
+});
+it('keeps v1 tombstone revisions and rejects v1 unknown fields or unknown schemas', async () => {
+  const token = captureOwnerToken(); const revision = crypto.randomUUID();
+  const envelope = { version: 1, ownerId: A, opportunityId: O, revision, draft: null as unknown };
+  expect(writeUserScopedRaw(key(), JSON.stringify(envelope), token)).toBe(true);
+  expect(readColdEmailDraft(token, O)).toEqual({ status: 'missing', revision });
+  for (const invalid of [{ ...envelope, version: 99 }, { ...envelope, draft: payload() }]) {
+    const raw = JSON.stringify(invalid); expect(writeUserScopedRaw(key(), raw, token)).toBe(true);
+    expect(() => readColdEmailDraft(token, O)).toThrow(expect.objectContaining({ code: 'invalid_draft' }));
+    await expect(saveColdEmailDraft(token, O, revision, payload())).rejects.toMatchObject({ code: 'invalid_draft' });
+    expect(rawStored()).toBe(raw);
+  }
+});
+it('writes all versions and the active selection as one v2 snapshot with independent copies', async () => {
+  const body = 'repeat😀\r\nrepeat😀'; const value = payload(body);
+  value.history = [version(), version('Second', { reason: 'variant', selectedStyle: 'lively', origin: 'template', variantId: 'short' })];
+  value.editScope = { start_utf16: 10, end_utf16: body.length, text: 'repeat😀' };
+  const expected = structuredClone(value); const gate = deferred<void>();
+  Object.defineProperty(navigator, 'locks', { configurable: true, value: { request: async (_n: string, _o: unknown, fn: () => unknown) => { await gate.promise; return fn(); } } });
+  const pending = saveColdEmailDraft(captureOwnerToken(), O, null, value);
+  value.history[0].body = 'caller changed'; value.history[0].sources.target_version = 'other'; value.history.push(version()); value.editScope.text = 'changed';
+  gate.resolve(); expect((await pending).status).toBe('saved');
+  expect(JSON.parse(rawStored())).toMatchObject({ version: 2, draft: expected });
+  const read = readColdEmailDraft(captureOwnerToken(), O); if (read.status !== 'present') throw new Error();
+  read.draft.history[0].sources.profile_sig = null;
+  expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ draft: expected });
+});
+it.each([
+  { start_utf16: 1, end_utf16: 2, text: '😀' },
+  { start_utf16: 0, end_utf16: 2, text: 'different' },
+  { start_utf16: 0, end_utf16: 100, text: '😀' },
+  { start_utf16: 0, end_utf16: 0, text: '' },
+  { start_utf16: 0.5, end_utf16: 2, text: '😀' },
+])('preserves invalid or stale selection as reselect, never whole-email scope: %j', selection => {
+  expect(snapshotColdEmailDraft({ ...payload('😀 repeat repeat'), editScope: selection }).editScope).toBe('reselect');
+});
+it('requires explicit history/scope in v2 so an old caller cannot silently clear existing versions', async () => {
+  const value = { ...payload(), history: [version()] }; const saved = await save(value); const before = rawStored();
+  const { history: _history, editScope: _scope, ...oldCaller } = value;
+  await expect(saveColdEmailDraft(captureOwnerToken(), O, saved.revision, oldCaller as ColdEmailDraftPayload)).rejects.toMatchObject({ code: 'invalid_draft' });
+  expect(rawStored()).toBe(before);
+});
+it('rejects duplicate ids, malformed history and privileged state instead of hiding it in versions', () => {
+  const a = version();
+  for (const history of [[a, { ...a, id: a.id.toUpperCase() }], [{ ...a, recipient: 'trusted@example.invalid' }],
+    [{ ...a, context: payload().context }], [{ ...a, experienceUsage: [] }], [{ ...a, createdAt: 'yesterday' }],
+    [{ ...a, selectedStyle: 'unknown' }], [{ ...a, sources: { ...a.sources, profile_sig: 'raw résumé' } }]]) {
+    expect(() => snapshotColdEmailDraft({ ...payload(), history })).toThrow(expect.objectContaining({ code: 'invalid_draft' }));
+  }
+});
+it('bounds history count and the complete active-plus-history package without evicting anything', async () => {
+  const value = { ...payload(), history: Array.from({ length: COLD_EMAIL_DRAFT_LIMITS.historyItems }, () => version()) };
+  const saved = await save(value); const before = rawStored();
+  await expect(saveColdEmailDraft(captureOwnerToken(), O, saved.revision, { ...value, history: [...value.history, version()] })).rejects.toMatchObject({ code: 'too_large' });
+  await expect(saveColdEmailDraft(captureOwnerToken(), O, saved.revision, {
+    ...value, body: 'c'.repeat(100000), history: [version('a'.repeat(100000)), version('b'.repeat(100000))],
+  })).rejects.toMatchObject({ code: 'too_large' });
+  expect(rawStored()).toBe(before); expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ draft: value });
+});
+it('rejects sparse, accessor, extra-property or cyclic history arrays without executing getters', () => {
+  const getter = vi.fn(() => version()); const accessors: unknown[] = [];
+  Object.defineProperty(accessors, '0', { enumerable: true, get: getter });
+  const extra = [version()]; Object.defineProperty(extra, 'hidden', { value: true });
+  const cyclic: unknown[] = []; cyclic.push(cyclic);
+  for (const history of [Array(1), accessors, extra, cyclic]) expect(() => snapshotColdEmailDraft({ ...payload(), history })).toThrow();
+  expect(getter).not.toHaveBeenCalled();
+});
+it('deleting a single stable version is whole-package CAS and stale deletion cannot discard a newer version', async () => {
+  const a = version('A'), b = version('B'); const first = await save({ ...payload('current'), history: [a, b] });
+  const token = captureOwnerToken(); const winner = { ...payload('new current'), history: [a, b, version('C')] };
+  await save(winner, first.revision);
+  expect((await saveColdEmailDraft(token, O, first.revision, { ...payload('current'), history: [b] })).status).toBe('conflict');
+  expect(readColdEmailDraft(token, O)).toMatchObject({ draft: winner });
+  const latest = readColdEmailDraft(token, O);
+  await save({ ...winner, history: winner.history.filter(item => item.id !== a.id) }, latest.revision);
+  expect(readColdEmailDraft(token, O)).toMatchObject({ draft: { body: 'new current', history: [b, winner.history[2]] } });
+});
+it('checks candidate freshness inside the lock and preserves a usable writer after cancellation', async () => {
+  const first = await save(); const writer = createColdEmailDraftWriter(captureOwnerToken(), O, first.revision);
+  const gate = deferred<void>(); Object.defineProperty(navigator, 'locks', { configurable: true, value: {
+    request: async (_n: string, _o: unknown, fn: () => unknown) => { await gate.promise; return fn(); },
+  } });
+  let current = true; const pending = writer.commit({ ...payload('candidate'), history: [version()] }, () => current);
+  current = false; gate.resolve(); await expect(pending).rejects.toMatchObject({ code: 'draft_changed' });
+  expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ revision: first.revision, draft: payload() });
+  expect((await writer.delete()).status).toBe('deleted');
 });

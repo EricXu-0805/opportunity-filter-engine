@@ -53,7 +53,7 @@ describe('ColdEmail authoritative target receipt', () => {
     await screen.findByDisplayValue('Verified refinement');
     expect(api.variants).toHaveBeenCalledWith(profile, ID, undefined, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } });
     expect(api.stream).toHaveBeenCalledWith(profile, ID, { engine: 'ai', style: 'professional', expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
-    expect(api.refine).toHaveBeenCalledWith('Template body', expect.any(String), profile, ID, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } });
+    expect(api.refine).toHaveBeenCalledWith('Template body', expect.any(String), profile, ID, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Template subject' });
   });
   it.each([{ target_version: undefined }, { target_version: B }, { opportunity_id: 'another-target' }])('rejects mismatched initial variants before editor/contact state: %j', async mismatch => {
     api.variants.mockResolvedValue({ ...templates, ...mismatch }); render(<ColdEmailModal {...props} />); await drain();

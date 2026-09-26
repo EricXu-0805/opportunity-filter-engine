@@ -232,6 +232,7 @@ def chat_completion(
     model: Optional[str] = None,
     provider_id: Optional[str] = None,
     safe_error_logging: bool = False,
+    require_complete: bool = False,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
@@ -243,7 +244,12 @@ def chat_completion(
     when:
       * no (matching) provider env var is set,
       * the ``openai`` SDK isn't importable,
-      * the upstream call raises for any reason.
+      * the upstream call raises for any reason,
+      * ``require_complete`` is true and the provider does not report ``stop``.
+
+    The opt-in completion check discards truncated/filtered/tool responses
+    immediately, without a second billed request. ``stop`` is a transport
+    completion signal, not evidence of factual or semantic correctness.
 
     Callers should treat ``None`` as "fall back to local template" — never
     surface as a 5xx to the user. The provider chain is order-dependent;
@@ -293,6 +299,10 @@ def chat_completion(
                 # Count per issued attempt, including failed/retried requests.
                 llm_budget.spend()
                 resp = client.chat.completions.create(**call_kwargs)
+                if require_complete:
+                    choices = getattr(resp, "choices", None)
+                    if not choices or getattr(choices[0], "finish_reason", None) != "stop":
+                        return None
                 text = (resp.choices[0].message.content or "").strip()
                 return text or None
         except Exception as exc:

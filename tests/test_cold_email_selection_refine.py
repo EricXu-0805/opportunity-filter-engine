@@ -352,8 +352,10 @@ def test_whole_body_schema_and_response_remain_compatible(environment, monkeypat
     assert response.json()["body"] == body(NEW).replace("Dear Pat Lee,\n\n", "Dear Pat Lee,\n", 1)
     assert response.json()["method"] == "llm"
     assert "scope" not in response.json() and "proposal" not in response.json()
-    legacy = ce.EmailRefineRequest(current_body="x" * 6000, instruction="y" * 600, opportunity_id=OPP["id"])
-    assert len(legacy.current_body) == 5000 and len(legacy.instruction) == 500
+    # B42: legacy shape/response stay compatible, but oversized text is now
+    # rejected explicitly instead of silently changing the requested draft.
+    with pytest.raises(ValidationError):
+        ce.EmailRefineRequest(current_body="x" * 6000, instruction="y" * 600, opportunity_id=OPP["id"])
 
 
 def test_schema_retains_exact_limit_text_and_rejects_selection_alias_or_unsafe_unicode():

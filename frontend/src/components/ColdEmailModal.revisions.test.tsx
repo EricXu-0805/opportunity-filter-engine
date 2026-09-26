@@ -68,7 +68,7 @@ describe('email suggestions and undo', () => {
     const button = accept(); fireEvent.click(button); fireEvent.click(button);
     const changed = ORIGINAL.slice(0, start) + '精修😀\nnew line' + ORIGINAL.slice(end);
     await waitFor(() => expect(bodyField()).toHaveValue(changed)); expect(api.refine).toHaveBeenCalledOnce(); expect(input()).toHaveValue('');
-    expect(undo()).toBeVisible(); fireEvent.click(undo()!); expect(bodyField()).toHaveValue(ORIGINAL); expect(undo()).toBeNull(); expect(api.confirm).not.toHaveBeenCalled();
+    expect(undo()).toBeVisible(); fireEvent.click(undo()!); await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL)); expect(undo()).toBeNull(); expect(api.confirm).not.toHaveBeenCalled();
   });
   it('rejects a suggestion without changing the draft or losing its instruction', async () => {
     await open(); select(); submit(); await proposed(); fireEvent.click(screen.getByRole('button', { name: 'Reject suggestion' }));
@@ -77,7 +77,7 @@ describe('email suggestions and undo', () => {
   it('previews whole-body refinement and supports undo there too', async () => {
     await open(); submit(); await proposed(); expect(bodyField()).toHaveValue(ORIGINAL);
     expect(api.refine.mock.calls[0][4]).not.toHaveProperty('selection'); await apply(); expect(bodyField()).toHaveValue('Revised full body');
-    fireEvent.click(undo()!); expect(bodyField()).toHaveValue(ORIGINAL);
+    fireEvent.click(undo()!); await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL));
   });
   it('supports deleting a selected passage', async () => {
     api.refine.mockImplementation((body, _i, _p, _id, opts) => selectionReply(body, opts.selection, ''));
@@ -129,7 +129,10 @@ describe('email suggestions and undo', () => {
     if (change === 'profile') view.show({ profile: { ...profile, research_interests: 'new interests' } });
     if (change === 'target') view.show({ target: { ...emailTarget('A'), description_clean: 'Different project' } });
     if (change === 'close') { view.show({ isOpen: false }); view.show({}); }
-    if (change === 'variant') fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    if (change === 'variant') {
+      fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+      await waitFor(() => expect(bodyField()).toHaveValue('Other variant'));
+    }
     if (change === 'context') {
       fireEvent.click(screen.getByTestId('email-contact-context-panel').querySelector('summary')!);
       fireEvent.change(screen.getByLabelText('Contact purpose'), { target: { value: 'referral' } });
@@ -160,7 +163,7 @@ describe('email suggestions and undo', () => {
     if (outcome === 'failure') await screen.findByText('coldEmail.editFailed');
     else if (outcome === 'unchanged') await screen.findByText('The body is unchanged. Your request is kept.');
     else { await proposed(); fireEvent.click(screen.getByRole('button', { name: 'Reject suggestion' })); }
-    expect(undo()).toBeVisible(); fireEvent.click(undo()!); expect(bodyField()).toHaveValue(ORIGINAL);
+    expect(undo()).toBeVisible(); fireEvent.click(undo()!); await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL));
   });
   it('disables whole-body coursework insertion while a passage is selected', async () => {
     await open({ profile: { ...profile, coursework: ['CS 225'] } }); select();

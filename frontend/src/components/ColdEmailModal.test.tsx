@@ -290,7 +290,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue('SUBJ-A')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Casual'));
-      expect(screen.getByDisplayValue('SUBJ-B')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByDisplayValue('SUBJ-B')).toBeInTheDocument());
       expect(screen.getByDisplayValue('BODY-B')).toBeInTheDocument();
     });
   });
@@ -615,11 +615,13 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       await waitFor(() => expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Template A'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Template A' })).toBeEnabled());
+      fireEvent.click(screen.getByRole('button', { name: 'Template A' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue(makeVariant().body));
       await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1);
-      expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument());
     });
 
     it('FE-5: shows a durable "template, not AI" badge when the AI pill falls back', async () => {
@@ -921,7 +923,7 @@ describe('ColdEmailModal', () => {
         'Make it more formal and professional',
         makeProfile(),
         'opp',
-        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Interested in research with you' },
       );
       expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('I would greatly appreciate to chat.');
       expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would love to chat.\n\nBest regards,\nAlex');
@@ -1062,7 +1064,7 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
-        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Interested in research with you' },
       );
       expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined body.');
       expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');

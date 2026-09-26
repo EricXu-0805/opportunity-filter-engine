@@ -1,3 +1,4 @@
+import { captureValidSelection, type EmailTextSelection } from './email-revision';
 import { normalizeEmailContactContext } from './email-contact-context';
 import { parseEmailContactDraftSnapshot, type EmailContactDraftSnapshot } from './email-contact-draft';
 import { isOwnerTokenValid, isTokenOwnerStillCurrent, PRIVATE_STORAGE_LOCK, readUserScopedEntry,
@@ -8,13 +9,26 @@ import type { EmailContactContext, EmailStyle } from './types';
 /** UTF-16 units; failures preserve the old value, never truncate user text. */
 export const COLD_EMAIL_DRAFT_LIMITS = {
   subject: 2000, body: 100000, manualRecipient: 2000, pendingEdit: 16000,
-  targetVersion: 4096, opportunityId: 1000, total: 262144,
+  targetVersion: 4096, opportunityId: 1000, historyItems: 10, total: 262144,
 } as const;
 export const COLD_EMAIL_DRAFT_LOCK_TIMEOUT_MS = 5000;
 export interface ColdEmailDraftSources {
   profile_sig: string | null;
   target_version: string | null;
   contact_sig: string | null;
+}
+export type ColdEmailEditScope = 'full' | 'reselect' | EmailTextSelection;
+/** Text-only versions do not restore applied context, recipient trust or send state. */
+export interface ColdEmailDraftVersion {
+  id: string;
+  createdAt: string;
+  reason: 'accepted_edit' | 'regenerated' | 'restored' | 'undo' | 'variant';
+  subject: string;
+  body: string;
+  sources: ColdEmailDraftSources;
+  origin: 'manual' | 'ai' | 'template' | 'unknown';
+  variantId: string | null;
+  selectedStyle: EmailStyle;
 }
 export interface ColdEmailDraftPayload {
   subject: string;
@@ -26,6 +40,8 @@ export interface ColdEmailDraftPayload {
   context: EmailContactContext;
   pendingPanel?: EmailContactDraftSnapshot | null;
   sources: ColdEmailDraftSources;
+  history: ColdEmailDraftVersion[];
+  editScope: ColdEmailEditScope;
 }
 export type ColdEmailDraftReadResult =
   | { status: 'present'; revision: string; draft: ColdEmailDraftPayload }
@@ -34,7 +50,7 @@ export type ColdEmailDraftWriteResult =
   | { status: 'saved' | 'deleted'; revision: string }
   | { status: 'conflict'; current: ColdEmailDraftReadResult };
 export type ColdEmailDraftErrorCode = 'owner_changed' | 'storage_unavailable' | 'invalid_draft'
-  | 'too_large' | 'lock_timeout' | 'writer_closed';
+  | 'too_large' | 'lock_timeout' | 'writer_closed' | 'draft_changed';
 export class ColdEmailDraftError extends Error {
   constructor(readonly code: ColdEmailDraftErrorCode) {
     super('The email draft could not be safely saved. Your current text is kept.');
@@ -72,6 +88,19 @@ function snapshotJson(value: unknown): unknown {
     }
     if (item === null || typeof item === 'boolean') return item;
     if (typeof item === 'number' && Number.isFinite(item)) return item;
+    if (Array.isArray(item)) {
+      if (seen.has(item) || Object.getPrototypeOf(item) !== Array.prototype) fail('invalid_draft');
+      if (item.length > COLD_EMAIL_DRAFT_LIMITS.historyItems) fail('too_large');
+      // Sparse arrays, accessors and extra properties would be lost by JSON.
+      if (Reflect.ownKeys(item).length !== item.length + 1) fail('invalid_draft');
+      seen.add(item); const out: unknown[] = [];
+      for (let index = 0; index < item.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(item, String(index));
+        if (!descriptor?.enumerable || !Object.hasOwn(descriptor, 'value')) fail('invalid_draft');
+        out.push(walk(descriptor.value, depth + 1));
+      }
+      seen.delete(item); return out;
+    }
     if (!record(item) || seen.has(item)) fail('invalid_draft');
     const proto = Object.getPrototypeOf(item);
     if (proto !== Object.prototype && proto !== null) fail('invalid_draft');
@@ -88,26 +117,62 @@ function snapshotJson(value: unknown): unknown {
   if (JSON.stringify(result).length > COLD_EMAIL_DRAFT_LIMITS.total) fail('too_large');
   return result;
 }
-/** Takes an immutable-in-time copy before any lock/digest can yield. */
-export function snapshotColdEmailDraft(value: unknown): ColdEmailDraftPayload {
-  const item = snapshotJson(value);
-  if (!record(item) || !exact(item, ['subject', 'body', 'selectedStyle', 'pendingEdit', 'context', 'sources'], ['manualRecipient', 'pendingPanel'])
-    || !text(item.subject, COLD_EMAIL_DRAFT_LIMITS.subject) || !text(item.body, COLD_EMAIL_DRAFT_LIMITS.body)
-    || !text(item.pendingEdit, COLD_EMAIL_DRAFT_LIMITS.pendingEdit)
-    || !['professional', 'warm', 'friendly', 'lively'].includes(item.selectedStyle as string)
-    || (Object.hasOwn(item, 'manualRecipient') && !text(item.manualRecipient, COLD_EMAIL_DRAFT_LIMITS.manualRecipient))
-    || !record(item.sources) || !exact(item.sources, ['profile_sig', 'target_version', 'contact_sig'])) fail('invalid_draft');
+function validSources(value: unknown): value is ColdEmailDraftSources {
+  if (!record(value) || !exact(value, ['profile_sig', 'target_version', 'contact_sig'])) return false;
   for (const key of ['profile_sig', 'contact_sig']) {
-    if (item.sources[key] !== null && (typeof item.sources[key] !== 'string' || !DIGEST.test(item.sources[key]))) fail('invalid_draft');
+    if (value[key] !== null && (typeof value[key] !== 'string' || !DIGEST.test(value[key]))) return false;
   }
-  if (item.sources.target_version !== null && (!text(item.sources.target_version, COLD_EMAIL_DRAFT_LIMITS.targetVersion)
-    || !item.sources.target_version.trim())) fail('invalid_draft');
+  return value.target_version === null || (text(value.target_version, COLD_EMAIL_DRAFT_LIMITS.targetVersion)
+    && !!value.target_version.trim());
+}
+function validStyle(value: unknown): value is EmailStyle {
+  return typeof value === 'string' && ['professional', 'warm', 'friendly', 'lively'].includes(value);
+}
+function parsePayload(value: unknown, version: 1 | 2): ColdEmailDraftPayload {
+  const item = snapshotJson(value);
+  const required = ['subject', 'body', 'selectedStyle', 'pendingEdit', 'context', 'sources'];
+  if (version === 2) required.push('history', 'editScope');
+  if (!record(item) || !exact(item, required, ['manualRecipient', 'pendingPanel'])
+    || !text(item.subject, COLD_EMAIL_DRAFT_LIMITS.subject) || !text(item.body, COLD_EMAIL_DRAFT_LIMITS.body)
+    || !text(item.pendingEdit, COLD_EMAIL_DRAFT_LIMITS.pendingEdit) || !validStyle(item.selectedStyle)
+    || (Object.hasOwn(item, 'manualRecipient') && !text(item.manualRecipient, COLD_EMAIL_DRAFT_LIMITS.manualRecipient))
+    || !validSources(item.sources)) fail('invalid_draft');
   if (!record(item.context)) fail('invalid_draft');
   // Validate the standard applied-context contract, but preserve its exact text.
   try { normalizeEmailContactContext(item.context); } catch { fail('invalid_draft'); }
   if (item.pendingPanel !== undefined && item.pendingPanel !== null && !parseEmailContactDraftSnapshot(item.pendingPanel)) fail('invalid_draft');
+  if (version === 1) {
+    // A legacy request did not record its range; never infer a whole-email edit.
+    item.history = []; item.editScope = item.pendingEdit.trim() ? 'reselect' : 'full';
+  } else {
+    if (!Array.isArray(item.history)) fail('invalid_draft');
+    const ids = new Set<string>();
+    for (const entry of item.history) {
+      if (!record(entry) || !exact(entry, ['id', 'createdAt', 'reason', 'subject', 'body', 'sources', 'origin', 'variantId', 'selectedStyle'])
+        || typeof entry.id !== 'string' || !UUID.test(entry.id) || ids.has(entry.id.toLowerCase())
+        || typeof entry.createdAt !== 'string' || !Number.isFinite(Date.parse(entry.createdAt))
+        || new Date(entry.createdAt).toISOString() !== entry.createdAt
+        || !['accepted_edit', 'regenerated', 'restored', 'undo', 'variant'].includes(entry.reason as string)
+        || !text(entry.subject, COLD_EMAIL_DRAFT_LIMITS.subject) || !text(entry.body, COLD_EMAIL_DRAFT_LIMITS.body)
+        || !validSources(entry.sources) || !validStyle(entry.selectedStyle)
+        || !['manual', 'ai', 'template', 'unknown'].includes(entry.origin as string)
+        || (entry.variantId !== null && (!text(entry.variantId, COLD_EMAIL_DRAFT_LIMITS.opportunityId) || !entry.variantId.trim()))) fail('invalid_draft');
+      ids.add(entry.id.toLowerCase());
+    }
+    if (item.editScope !== 'full' && item.editScope !== 'reselect') {
+      const selection = item.editScope;
+      if (!record(selection) || !exact(selection, ['start_utf16', 'end_utf16', 'text'])
+        || typeof selection.start_utf16 !== 'number' || typeof selection.end_utf16 !== 'number'
+        || !text(selection.text, COLD_EMAIL_DRAFT_LIMITS.body)) fail('invalid_draft');
+      const current = captureValidSelection(item.body, selection.start_utf16, selection.end_utf16);
+      if (!current || current.text !== selection.text) item.editScope = 'reselect';
+    }
+  }
   return item as unknown as ColdEmailDraftPayload;
 }
+/** Takes an immutable-in-time copy before any lock/digest can yield. V2 callers
+ * must carry their history explicitly; omitted fields must never erase versions. */
+export function snapshotColdEmailDraft(value: unknown): ColdEmailDraftPayload { return parsePayload(value, 2); }
 function scope(owner: OwnerToken, opportunityId: string): string {
   if (!text(opportunityId, COLD_EMAIL_DRAFT_LIMITS.opportunityId) || !opportunityId.trim()
     || (owner.uid !== null && (!text(owner.uid, 1000) || !owner.uid.trim()))
@@ -136,11 +201,11 @@ export function readColdEmailDraft(owner: OwnerToken, opportunityId: string): Co
     if (error instanceof ColdEmailDraftError) throw error;
     fail('invalid_draft');
   }
-  if (!record(item) || !exact(item, ['version', 'ownerId', 'opportunityId', 'revision', 'draft']) || item.version !== 1
+  if (!record(item) || !exact(item, ['version', 'ownerId', 'opportunityId', 'revision', 'draft']) || (item.version !== 1 && item.version !== 2)
     || item.ownerId !== origin.uid || item.opportunityId !== opportunityId
     || typeof item.revision !== 'string' || !UUID.test(item.revision)) fail('invalid_draft');
   if (item.draft === null) return { status: 'missing', revision: item.revision };
-  const draft = snapshotColdEmailDraft(item.draft);
+  const draft = parsePayload(item.draft, item.version);
   if (draft.pendingPanel && draft.pendingPanel.opportunityId !== opportunityId) fail('invalid_draft');
   return { status: 'present', revision: item.revision, draft };
 }
@@ -164,19 +229,21 @@ async function locked<T>(owner: OwnerToken, fn: () => T): Promise<T> {
   } finally { clearTimeout(timer); }
 }
 async function mutate(owner: OwnerToken, opportunityId: string, expectedRevision: string | null,
-  draft: ColdEmailDraftPayload | null): Promise<ColdEmailDraftWriteResult> {
+  draft: ColdEmailDraftPayload | null, isCurrent?: () => boolean): Promise<ColdEmailDraftWriteResult> {
   const origin = { ...owner }; const key = scope(origin, opportunityId);
   if (expectedRevision !== null && !UUID.test(expectedRevision)) fail('invalid_draft');
   const copy = draft === null ? null : snapshotColdEmailDraft(draft);
   if (copy?.pendingPanel && copy.pendingPanel.opportunityId !== opportunityId) fail('invalid_draft');
   return locked(origin, () => {
+    if (isCurrent && !isCurrent()) fail('draft_changed');
     const previous = readColdEmailDraft(origin, opportunityId);
     if (previous.revision !== expectedRevision) return { status: 'conflict', current: previous };
     let revision: string;
     try { revision = crypto.randomUUID(); } catch { fail('storage_unavailable'); }
     if (!UUID.test(revision) || revision === previous.revision) fail('storage_unavailable');
-    const raw = JSON.stringify({ version: 1, ownerId: origin.uid, opportunityId, revision, draft: copy });
+    const raw = JSON.stringify({ version: 2, ownerId: origin.uid, opportunityId, revision, draft: copy });
     if (raw.length > COLD_EMAIL_DRAFT_LIMITS.total) fail('too_large');
+    if (isCurrent && !isCurrent()) fail('draft_changed');
     if (!writeUserScopedRaw(key, raw, origin)) fail('storage_unavailable');
     // Identity gateway verifies exact durable readback. A delete is a retained
     // CAS tombstone: neither a stale save nor stale delete can resurrect/erase a newer draft.
@@ -196,7 +263,7 @@ export function createColdEmailDraftWriter(owner: OwnerToken, opportunityId: str
   let revision = initialRevision; let pending = 0; let closing = false;
   let failure: unknown; let last: ColdEmailDraftWriteResult | null = null;
   let tail: Promise<void> = Promise.resolve();
-  function queue(value: ColdEmailDraftPayload | null): Promise<ColdEmailDraftWriteResult> {
+  function queue(value: ColdEmailDraftPayload | null, isCurrent?: () => boolean, candidate = false): Promise<ColdEmailDraftWriteResult> {
     if (closing) {
       const rejected = Promise.reject<ColdEmailDraftWriteResult>(new ColdEmailDraftError('writer_closed'));
       void rejected.catch(() => undefined); return rejected;
@@ -205,22 +272,25 @@ export function createColdEmailDraftWriter(owner: OwnerToken, opportunityId: str
     try {
       copy = value === null ? null : snapshotColdEmailDraft(value);
     } catch (error) {
-      failure = error; const rejected = Promise.reject<ColdEmailDraftWriteResult>(error); void rejected.catch(() => undefined); return rejected;
+      if (!candidate) failure = error; const rejected = Promise.reject<ColdEmailDraftWriteResult>(error); void rejected.catch(() => undefined); return rejected;
     }
     if (value === null) closing = true;
     pending += 1;
     const result = tail.then(async () => {
       if (failure) throw failure;
       if (last?.status === 'conflict') return last;
-      const written = await mutate(origin, opportunityId, revision, copy);
+      const written = await mutate(origin, opportunityId, revision, copy, isCurrent);
       last = written; if (written.status !== 'conflict') revision = written.revision;
       return written;
     });
-    tail = result.then(() => { pending -= 1; }, error => { pending -= 1; failure = error; });
+    tail = result.then(() => { pending -= 1; }, error => { pending -= 1; if (!candidate) failure = error; });
     return result;
   }
   return {
     save: (draft: ColdEmailDraftPayload) => queue(draft),
+    // A declined/failed proposal is not an editor snapshot. Do not poison the
+    // writer or replay it on flush/retry; successful CAS still advances its base.
+    commit: (draft: ColdEmailDraftPayload, isCurrent: () => boolean) => queue(draft, isCurrent, true),
     delete: () => queue(null),
     hasPending: () => pending > 0,
     flush: async (): Promise<ColdEmailDraftWriteResult | null> => {

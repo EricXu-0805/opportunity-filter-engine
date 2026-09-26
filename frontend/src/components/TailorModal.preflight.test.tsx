@@ -54,10 +54,13 @@ describe('Tailor profile preflight', () => {
     view.rerender(<TailorModal {...props} profile={fresh} />); await drain();
     expect(api.tailor).not.toHaveBeenCalled();
     expect(textarea()).toHaveValue('My unchanged manual bullet');
-    fireEvent.click(screen.getByRole('button', { name: 'tailor.reviewDraft' })); await drain();
-    fireEvent.click(generate()); await drain();
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.reviewDraft' }));
+    await waitFor(() => expect(generate()).toBeEnabled());
+    fireEvent.click(generate());
+    // Rule binding and draft comparison await native SHA work, which a fixed
+    // number of Promise turns does not exhaust. Await the actual dispatch.
+    await waitFor(() => expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }));
     expect(check).toHaveBeenCalledTimes(3); // initial action, explicit review, then generation
-    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
   });
   it('extracts the latest complete résumé only after its receipt is rendered', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };

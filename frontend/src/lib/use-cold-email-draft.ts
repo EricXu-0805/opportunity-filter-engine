@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange, type OwnerToken } from './identity-owner';
-import { createColdEmailDraftWriter, readColdEmailDraft, type ColdEmailDraftPayload, type ColdEmailDraftWriteResult } from './cold-email-draft';
+import { createColdEmailDraftWriter, readColdEmailDraft, snapshotColdEmailDraft, type ColdEmailDraftPayload, type ColdEmailDraftWriteResult } from './cold-email-draft';
 
 type Status = 'idle' | 'saving' | 'saved' | 'failed' | 'conflict';
 type Writer = ReturnType<typeof createColdEmailDraftWriter>;
@@ -13,6 +13,7 @@ type Session = {
   payload: ColdEmailDraftPayload | null; serialized: string | null;
   status: Status; issue: string | null; sequence: number; listeners: Set<() => void>;
   retired: boolean; blockedInput: boolean; clearing: boolean; retrying: Promise<boolean> | null;
+  committing: boolean; candidateFailure: boolean;
 };
 // Only unfinished/failed work survives SPA unmount. Durable success is reread
 // from storage. Retired owner sessions and abandoned editors never re-enter.
@@ -45,6 +46,7 @@ function received(session: Session, writer: Writer, sequence: number, result: Co
   // must not overwrite the status of a newer edit or failed panel snapshot.
   if (result.status !== 'conflict') session.revision = result.revision;
   if (sequence !== session.sequence) return;
+  session.candidateFailure = false;
   session.status = result.status === 'conflict' ? 'conflict' : 'saved';
   session.issue = result.status === 'conflict' ? 'conflict' : null;
   publish(session);
@@ -52,19 +54,20 @@ function received(session: Session, writer: Writer, sequence: number, result: Co
 function rejected(session: Session, writer: Writer, sequence: number, error: unknown) {
   if (!usable(session) || session.writer !== writer) { forget(session); return; }
   if (sequence !== session.sequence) return;
-  session.status = 'failed'; session.issue = issue(error); publish(session);
+  session.candidateFailure = false; session.status = 'failed'; session.issue = issue(error); publish(session);
 }
 function save(session: Session) {
   const writer = session.writer; const payload = session.payload;
   if (!writer || !payload || !usable(session)) return;
   const sequence = ++session.sequence;
-  session.status = 'saving'; session.issue = null; publish(session);
+  session.candidateFailure = false; session.status = 'saving'; session.issue = null; publish(session);
   void writer.save(payload).then(result => received(session, writer, sequence, result), error => rejected(session, writer, sequence, error));
 }
 
 /** Owner-bound editing lifetime. Restoring text does not restore send attestations. */
 export function useColdEmailDraftPersistence() {
   const active = useRef<Session | null>(null);
+  const activation = useRef(0);
   const [view, setView] = useState<{ status: Status; issue: string | null }>({ status: 'idle', issue: null });
   const update = useCallback(() => {
     const session = active.current;
@@ -74,6 +77,7 @@ export function useColdEmailDraftPersistence() {
     } else if (usable(session)) setView({ status: session.status, issue: session.issue });
   }, []);
   const detach = useCallback(() => {
+    activation.current += 1;
     active.current?.listeners.delete(update);
     active.current = null;
   }, [update]);
@@ -92,7 +96,7 @@ export function useColdEmailDraftPersistence() {
     if (session && !usable(session)) { forget(session); session = undefined; }
     if (!session) {
       session = { key, owner, id, writer: null, revision: undefined, payload: null, serialized: null,
-        status: 'idle', issue: null, sequence: 0, listeners: new Set(), retired: false, blockedInput: false, clearing: false, retrying: null };
+        status: 'idle', issue: null, sequence: 0, listeners: new Set(), retired: false, blockedInput: false, clearing: false, retrying: null, committing: false, candidateFailure: false };
       try {
         const stored = readColdEmailDraft(owner, id);
         session.revision = stored.revision; session.writer = createColdEmailDraftWriter(owner, id, stored.revision);
@@ -112,7 +116,7 @@ export function useColdEmailDraftPersistence() {
     if (!session || !usable(session)) return;
     let serialized: string;
     try { serialized = JSON.stringify(payload); } catch {
-      session.sequence += 1; session.blockedInput = true; session.status = 'failed'; session.issue = 'invalid_draft'; publish(session); return;
+      session.sequence += 1; session.candidateFailure = false; session.blockedInput = true; session.status = 'failed'; session.issue = 'invalid_draft'; publish(session); return;
     }
     const changed = serialized !== session.serialized;
     const wasBlocked = session.blockedInput;
@@ -122,6 +126,7 @@ export function useColdEmailDraftPersistence() {
     // and fails visibly; no truncation, discarded text, or automatic retry.
     session.payload = JSON.parse(serialized) as ColdEmailDraftPayload; session.serialized = serialized;
     session.sequence += 1;
+    if (session.candidateFailure) { session.candidateFailure = false; session.status = 'saved'; session.issue = null; }
     if (session.clearing || !session.writer || session.status === 'failed' || session.status === 'conflict') {
       session.status = session.status === 'conflict' ? 'conflict' : 'failed';
       session.issue ??= 'storage_unavailable'; publish(session); return;
@@ -132,12 +137,12 @@ export function useColdEmailDraftPersistence() {
   const markUnsaved = useCallback((reason: string) => {
     const session = active.current;
     if (!session || !usable(session)) return;
-    session.sequence += 1; session.blockedInput = true;
+    session.sequence += 1; session.candidateFailure = false; session.blockedInput = true;
     session.status = 'failed'; session.issue = reason; publish(session);
   }, []);
   const flush = useCallback(async (): Promise<boolean> => {
     const session = active.current;
-    if (!session || !usable(session) || session.clearing) return false;
+    if (!session || !usable(session) || session.clearing || session.committing) return false;
     if (!session.writer) return session.payload === null && session.status === 'idle';
     const sequence = session.sequence; const writer = session.writer;
     try { await writer.flush(); } catch (error) {
@@ -149,7 +154,7 @@ export function useColdEmailDraftPersistence() {
   }, []);
   const retry = useCallback((): Promise<boolean> => {
     const session = active.current;
-    if (!session || !usable(session) || session.clearing || session.blockedInput) return Promise.resolve(false);
+    if (!session || !usable(session) || session.clearing || session.committing || session.blockedInput) return Promise.resolve(false);
     if (session.retrying) return session.retrying;
     const run = async () => {
       const previous = session.writer;
@@ -179,11 +184,68 @@ export function useColdEmailDraftPersistence() {
     session.retrying = run().finally(() => { session.retrying = null; });
     return session.retrying;
   }, []);
+  const commit = useCallback(async (payload: ColdEmailDraftPayload, isCurrent?: () => boolean): Promise<boolean> => {
+    const session = active.current;
+    if (!session || !usable(session) || !session.writer || session.clearing || session.committing
+      || session.retrying || session.blockedInput || session.status === 'conflict'
+      || (session.status === 'failed' && !session.candidateFailure)) return false;
+    const writer = session.writer; const sequence = session.sequence; const opened = activation.current;
+    const current = () => {
+      if (active.current !== session || activation.current !== opened || !usable(session) || session.writer !== writer
+        || session.sequence !== sequence || session.clearing || session.blockedInput) return false;
+      try { return !isCurrent || isCurrent(); } catch { return false; }
+    };
+    if (!current()) return false;
+    let candidate: ColdEmailDraftPayload;
+    try { candidate = snapshotColdEmailDraft(payload); } catch (error) {
+      // This candidate was never the editor. Keep its real recovery payload and
+      // do not enqueue this failure for retry or poison its existing writer.
+      session.sequence += 1; session.candidateFailure = true;
+      session.status = 'failed'; session.issue = issue(error); publish(session); return false;
+    }
+    session.committing = true;
+    try {
+      // Earlier autosaves establish the exact revision. Later edits invalidate
+      // this candidate by sequence, including an edit away and back to the same text.
+      await writer.flush();
+      if (!current() || (session.status === 'failed' && !session.candidateFailure)) return false;
+      session.candidateFailure = false; session.status = 'saving'; session.issue = null; publish(session);
+      const result = await writer.commit(candidate, current);
+      if (!usable(session) || session.writer !== writer) return false;
+      if (result.status !== 'conflict') session.revision = result.revision;
+      if (sequence !== session.sequence) return false;
+      if (result.status === 'conflict') {
+        session.status = 'conflict'; session.issue = 'conflict'; publish(session); return false;
+      }
+      // A closure after the synchronous write may prevent UI application, but
+      // the explicitly accepted version is already durable and may be restored.
+      session.payload = candidate; session.serialized = JSON.stringify(candidate);
+      session.status = 'saved'; session.issue = null; publish(session);
+      return current();
+    } catch (error) {
+      if (usable(session) && session.writer === writer && sequence === session.sequence) {
+        if (issue(error) === 'draft_changed') {
+          session.status = session.payload ? 'saved' : 'idle'; session.issue = null;
+        } else {
+          session.candidateFailure = true; session.status = 'failed'; session.issue = issue(error);
+        }
+        publish(session);
+      }
+      return false;
+    } finally { session.committing = false; }
+  }, []);
   const clear = useCallback(async (): Promise<boolean> => {
     const session = active.current;
-    if (!session || !session.writer || !usable(session) || session.clearing) return false;
+    if (!session || !session.writer || !usable(session) || session.clearing || session.committing) return false;
     // A new edit during flush cancels the delete, rather than deleting unseen work.
-    if (!await flush() || active.current !== session || !usable(session) || session.clearing) return false;
+    const beforeFlush = session.sequence;
+    let ready = false;
+    if (session.candidateFailure && !session.blockedInput) {
+      // An oversized/quota-failed proposal did not replace the current draft.
+      // It must not trap the user in an undeletable editor.
+      try { await session.writer.flush(); ready = beforeFlush === session.sequence && session.candidateFailure; } catch { ready = false; }
+    } else ready = await flush();
+    if (!ready || active.current !== session || !usable(session) || session.clearing || session.committing) return false;
     const writer = session.writer; const sequence = ++session.sequence;
     session.clearing = true; session.status = 'saving'; session.issue = null; publish(session);
     try {
@@ -210,5 +272,5 @@ export function useColdEmailDraftPersistence() {
     const session = active.current; if (session) retire(session);
     detach(); setView({ status: 'idle', issue: null });
   }, [detach]);
-  return { open, persist, flush, clear, detach, abandon, retry, markUnsaved, status: view.status, issue: view.issue };
+  return { open, persist, flush, clear, detach, abandon, retry, commit, markUnsaved, status: view.status, issue: view.issue };
 }
