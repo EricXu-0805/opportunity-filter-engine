@@ -267,7 +267,7 @@ class TestRenovate:
         ]}]})
         # Rewrite stays within the student's material (Python, machine learning, CS 225).
         rewrite = json.dumps({"bullets": [{
-            "text": "Built machine learning experiments in Python during CS 225 coursework",
+            "text": "Implemented machine learning experiments in Python for CS 225.",
             "source_evidence": "machine learning experiments in Python for CS 225",
         }]})
         monkeypatch.setattr(
@@ -542,7 +542,7 @@ class TestRenovate:
         ]}]})
         rewrite = json.dumps({"bullets": [
             {"text": "", "source_evidence": ""},  # slot for s1b1: no rewrite
-            {"text": "Wrote clear documentation for a class project", "source_evidence": "x"},
+            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
         ]})
         monkeypatch.setattr(
             tailor_module, "chat_completion",
@@ -600,7 +600,7 @@ class TestOptimizeBullet:
     def test_grounded_rewrite_changes(self, python_profile, real_opp_id, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
-            "text": "Built machine learning models in Python for a research project",
+            "text": "Implemented machine learning experiments in Python.",
             "source_evidence": "machine learning experiments in Python",
         })
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
@@ -641,14 +641,14 @@ class TestOptimizeBullet:
         base floor, so it passes the gate."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
-            "text": "Analyzed fMRI datasets in Python for the lab's imaging study",
-            "source_evidence": "fMRI data analysis in Python",
+            "text": "Analyzed fMRI datasets in Python.",
+            "source_evidence": "fMRI datasets in Python",
         })
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
         resp = client.post("/api/tailor/bullet", json=self._payload(
             python_profile, real_opp_id,
-            current_text="Performed data analysis in Python for an imaging study",
-            base_text="Performed fMRI data analysis in Python",
+            current_text="Analyzed datasets in Python",
+            base_text="Analyzed fMRI datasets in Python",
         ))
         assert resp.status_code == 200
         body = resp.json()

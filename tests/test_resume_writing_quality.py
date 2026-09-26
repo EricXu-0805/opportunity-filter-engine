@@ -92,6 +92,18 @@ def assert_rejected(path, result, original, *, current=None):
     ("The paper was submitted for review, not accepted.", "The paper was submitted for review, not accepted, but it was later accepted."),
     ("我没有主导项目。", "我没有主导项目，但后来我主导了项目。"),
     ("论文已投稿，尚未录用。", "论文已投稿，尚未录用，但后来已录用。"),
+    ("My team built a Python parser. I wrote parser tests.", "I built a Python parser and wrote parser tests. My team built a Python parser."),
+    ("I improved parser throughput by 45% and reduced parser latency by 12%.", "I improved parser throughput by 12% and reduced parser latency by 45%."),
+    ("I built a Python parser. I did not build the compiler.", "I built a compiler. I did not build the compiler."),
+    ("My team built a Python parser. Wrote parser tests.", "Built a Python parser and wrote parser tests. My team built a Python parser."),
+    ("Improved parser throughput by 45% and reduced parser latency by 12%.", "Improved parser throughput by 12% and reduced parser latency by 45%."),
+    ("Built a Python parser. Did not build the compiler.", "Built a compiler. Did not build the compiler."),
+    # Historical “grounded” fixtures must not authenticate new work or quality.
+    ("Implemented machine learning experiments in Python", "Built machine learning models in Python for a research project"),
+    ("Performed fMRI data analysis in Python", "Analyzed fMRI datasets in Python for the lab's imaging study"),
+    ("Implemented machine learning projects in Python for CS 225", "Implemented machine learning experiments in Python during CS 225 coursework."),
+    ("Implemented Python ML exercises in CS 225", "Implemented Python ML in CS 225"),
+    ("Wrote documentation for a class project", "Wrote clear documentation for a class project"),
 ])
 def test_roles_negation_and_publication_cannot_be_upgraded(endpoint, monkeypatch, path, original, proposed):
     result, _ = write(endpoint, monkeypatch, path, original, proposed)

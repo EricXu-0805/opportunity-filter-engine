@@ -388,8 +388,8 @@ class TestAntiFabrication:
             "bullets": [
                 {
                     "text": (
-                        "Implemented machine learning experiments in Python "
-                        "during CS 225 coursework."
+                        "Implemented machine learning projects in Python "
+                        "for CS 225."
                     ),
                     "source_evidence": "machine learning projects in Python for CS 225",
                 },
@@ -671,7 +671,7 @@ class TestSourceIndex:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
             "bullets": [
-                {"text": "Implemented Python ML in CS 225", "source_evidence": "Python"},
+                {"text": "Implemented Python ML exercises in CS 225.", "source_evidence": "Python"},
                 {"text": "Built ML models with Python during coursework", "source_evidence": "Python"},
             ],
         })

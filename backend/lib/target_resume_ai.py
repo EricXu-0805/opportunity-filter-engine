@@ -37,6 +37,9 @@ rewrite or return null to keep it. The experience's original is the ONLY evidenc
 technologies, quantities and responsibilities. Block context identifies where it belongs; it cannot
 prove achievements absent from this original. Never transfer facts from another unit. Preserve negation,
 uncertainty, team versus personal attribution, publication status, dates and responsibility level.
+Keep each quantity attached to its original action, object, project and measurement basis.
+A team result does not establish a personal contribution; retaining the team sentence does not
+justify adding a personal claim. Do not exchange metrics within the same experience.
 Do not infer skills from the target, change protected facts, or turn desired work into past experience.
 The target's criteria capture published constraints, not verified student facts or quote sources.
 Missing, null or unknown values do not establish eligibility or absence of a restriction. Preserve

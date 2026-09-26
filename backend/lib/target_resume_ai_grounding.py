@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 
+from backend.lib.email_experience_attribution import experience_attribution_violations
+
 NEGATION = re.compile(r"\b(?:not|never|no|without|only)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未经|仅|只|未|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|接受|录用|发表)", re.I)
 TEAM = re.compile(r"\b(?:team|teammates?|we|our|collaborat\w*)\b|团队|小组|我们|共同|协作|合作", re.I)
 PUBLICATION = re.compile(r"\b(?:submitted|submission|under review|accepted|acceptance|published|publication|preprint|rejected|withdrawn)\b|投稿|提交|审稿|评审|录用|发表|出版|预印本|拒稿|撤稿", re.I)
@@ -74,4 +76,10 @@ def claim_upgrade_detected(proposed, original):
             return True
     if personal_actions(proposed) - personal_actions(original):
         return True
-    return bool(publication_stages(proposed) - publication_stages(original))
+    if publication_stages(proposed) - publication_stages(original):
+        return True
+    # Compare only this original entry. A shared keyword or number in another
+    # project, the target, or editable wording cannot establish who did what.
+    # Resume bullets commonly omit "I"; opt into that finite English grammar
+    # without changing the email checker's default treatment of fragments.
+    return bool(experience_attribution_violations(proposed, [original], allow_subjectless_claims=True))
