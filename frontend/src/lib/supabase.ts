@@ -25,6 +25,7 @@ import {
   type OwnerToken,
 } from './identity-owner';
 import { RELEASE_SCOPE } from './release-scope';
+import { runAttachmentRequest, assertAttachmentOwner, AttachmentRequestError, type AttachmentRequestOptions, type AttachmentRequestContext } from './attachment-request';
 import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
 import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from './storage-keys';
@@ -2528,93 +2529,102 @@ export type AttachmentUploadResult =
   | { ok: true; name: string }
   | { ok: false; reason: 'too_large' | 'wrong_type' | 'duplicate' | 'unauthenticated' | 'unknown'; message?: string };
 
+async function attachmentOwner(token: OwnerToken, request: AttachmentRequestContext): Promise<string> {
+  // Reading files must not create an account or silently substitute a later one.
+  const auth = await request.wait(getAuthState({ throwOnError: true }));
+  const uid = auth.user?.id ?? null;
+  assertAttachmentOwner(token, uid);
+  return uid;
+}
+
+function checkAttachmentError(error: { statusCode?: string | number } | null): void {
+  if (error) throw new AttachmentRequestError(String(error.statusCode) === '401' ? 'unauthenticated' : 'unavailable');
+}
+
 export async function uploadAttachment(
   opportunityId: string,
   file: File,
   token: OwnerToken,
+  options: AttachmentRequestOptions = {},
 ): Promise<AttachmentUploadResult> {
   if (file.size > ATTACHMENTS_MAX_BYTES) return { ok: false, reason: 'too_large' };
   if (!ATTACHMENTS_ALLOWED_MIME.has(file.type)) return { ok: false, reason: 'wrong_type' };
-
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (!deviceId) return { ok: false, reason: 'unauthenticated' };
-
-  const safeName = sanitizeFilename(file.name);
-  const path = attachmentPath(deviceId, opportunityId, safeName);
-
-  const { error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: false });
-
-  if (error) {
-    const msg = error.message || '';
-    if (/exists|duplicate/i.test(msg)) return { ok: false, reason: 'duplicate', message: msg };
-    return { ok: false, reason: 'unknown', message: msg };
-  }
-  return { ok: true, name: safeName };
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const safeName = sanitizeFilename(file.name);
+    const path = attachmentPath(deviceId, opportunityId, safeName);
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false }));
+    assertAttachmentOwner(token, deviceId);
+    if (error && /exists|duplicate/i.test(error.message || '')) return { ok: false, reason: 'duplicate' };
+    checkAttachmentError(error);
+    if (!data || data.path !== path || typeof data.id !== 'string' || !data.id) {
+      throw new AttachmentRequestError('unavailable');
+    }
+    return { ok: true, name: safeName };
+  });
 }
 
-export async function listAttachments(opportunityId: string): Promise<Attachment[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const prefix = `${deviceId}/${opportunityId}`;
-  const { data, error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .list(prefix, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-
-  if (error || !data) {
-    if (error) console.warn('[ofe] listAttachments failed:', error.message);
-    return [];
-  }
-
-  return data
-    .filter((item) => item.name && !item.name.endsWith('/'))
-    .map((item) => {
+export async function listAttachments(opportunityId: string, token = captureOwnerToken(),
+  options: AttachmentRequestOptions = {}): Promise<Attachment[]> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .list(`${deviceId}/${opportunityId}`, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }, { signal: request.signal }));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    if (!Array.isArray(data)) throw new AttachmentRequestError('unavailable');
+    return data.filter(item => {
+      if (!item || typeof item.name !== 'string') throw new AttachmentRequestError('unavailable');
+      // Storage lists virtual directories too; they have neither id nor metadata.
+      return item.name && !item.name.endsWith('/') && item.name !== '.emptyFolderPlaceholder'
+        && !(item.id === null && item.metadata === null);
+    }).map(item => {
       const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
-      return {
-        name: item.name,
-        sizeBytes: meta.size ?? 0,
-        mimeType: meta.mimetype ?? 'application/octet-stream',
-        createdAt: item.created_at ?? item.updated_at ?? new Date().toISOString(),
-      };
+      if (item.name.includes('/') || item.name.includes('\\')
+        || (meta.size !== undefined && (!Number.isFinite(meta.size) || meta.size < 0))) {
+        throw new AttachmentRequestError('unavailable');
+      }
+      return { name: item.name, sizeBytes: meta.size ?? 0,
+        mimeType: typeof meta.mimetype === 'string' ? meta.mimetype : 'application/octet-stream',
+        createdAt: item.created_at ?? item.updated_at ?? '' };
     });
+  });
 }
 
-export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken): Promise<boolean> {
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (!deviceId) return false;
-
-  const { error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .remove([attachmentPath(deviceId, opportunityId, filename)]);
-
-  if (error) {
-    console.warn('[ofe] deleteAttachment failed:', error.message);
-    return false;
-  }
-  return true;
+export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken,
+  options: AttachmentRequestOptions = {}): Promise<boolean> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const path = attachmentPath(deviceId, opportunityId, filename);
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET).remove([path]));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    // An empty response can be an RLS refusal. It is not a deletion receipt.
+    if (!Array.isArray(data) || !data.some(item => item.name === path)) throw new AttachmentRequestError('unavailable');
+    return true;
+  });
 }
 
-export async function getAttachmentSignedUrl(
-  opportunityId: string,
-  filename: string,
-  expiresInSeconds = 300,
-): Promise<string | null> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return null;
-
-  const { data, error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds);
-
-  if (error || !data) {
-    if (error) console.warn('[ofe] getAttachmentSignedUrl failed:', error.message);
-    return null;
-  }
-  return data.signedUrl;
+export async function getAttachmentSignedUrl(opportunityId: string, filename: string, expiresInSeconds = 300,
+  token = captureOwnerToken(), options: AttachmentRequestOptions = {}): Promise<string | null> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    if (!data || typeof data.signedUrl !== 'string') throw new AttachmentRequestError('unavailable');
+    const url = new URL(data.signedUrl);
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) {
+      throw new AttachmentRequestError('unavailable');
+    }
+    return url.href;
+  });
 }
 
 // ── Resume renovation persistence ──────────────────────────────────────

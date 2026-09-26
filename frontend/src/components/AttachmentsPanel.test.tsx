@@ -1,5 +1,7 @@
+import { StrictMode } from 'react';
+import { AttachmentRequestError } from '@/lib/attachment-request';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Attachment, AttachmentUploadResult } from '@/lib/supabase';
 
 vi.mock('@/i18n/client', () => ({
@@ -18,6 +20,7 @@ const mockDelete = vi.fn<(oppId: string, name: string) => Promise<boolean>>();
 const mockSigned = vi.fn<(oppId: string, name: string) => Promise<string | null>>();
 
 vi.mock('@/lib/supabase', () => ({
+  onAuthChange: () => () => {},
   ATTACHMENTS_MAX_BYTES: 5 * 1024 * 1024,
   ATTACHMENTS_ALLOWED_MIME: new Set([
     'application/pdf',
@@ -203,7 +206,7 @@ describe('AttachmentsPanel — upload error paths', () => {
     { reason: 'wrong_type', needle: /detail.attachments.errWrongType/ },
     { reason: 'duplicate', needle: /detail.attachments.errDuplicate\{name=foo.pdf\}/ },
     { reason: 'unauthenticated', needle: /detail.attachments.errUnauth/ },
-    { reason: 'unknown', msg: 'oops', needle: /detail.attachments.errUpload\{msg=oops\}/ },
+    { reason: 'unknown', msg: 'oops', needle: /detail.attachments.uploadUnknown/ },
   ];
 
   for (const { reason, msg, needle } of cases) {
@@ -240,7 +243,7 @@ describe('AttachmentsPanel — the upload is bound to the account that picked th
     expect(isLocalOwnerReady(uid)).toBe(true);
   }
 
-  it('a refusal for the SAME account is an upload failure the student sees, and the button comes back', async () => {
+  it('a refusal for the SAME account requires checking the list before another upload', async () => {
     await claimOwner('11111111-1111-4111-8111-111111111111');
     mockUpload.mockRejectedValue(new OwnerMismatchError());
     render(<AttachmentsPanel opportunityId={OPP_ID} />);
@@ -249,8 +252,8 @@ describe('AttachmentsPanel — the upload is bound to the account that picked th
     const input = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [fileFromMime('mine.pdf', 'application/pdf')] } });
 
-    await waitFor(() => expect(screen.getByText(/detail.attachments.errUnauth/)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).not.toBeDisabled();
+    await waitFor(() => expect(screen.getByText(/detail.attachments.uploadUnknown/)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).toBeDisabled();
     expect(mockList).toHaveBeenCalledTimes(1);
   });
 
@@ -265,9 +268,8 @@ describe('AttachmentsPanel — the upload is bound to the account that picked th
     fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria\{name=u1.pdf\}/ }));
     await waitFor(() => expect(mockSigned).toHaveBeenCalled());
 
-    await claimOwner('22222222-2222-4222-8222-222222222222');
-    resolveUrl('https://signed.example/u1');
-    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => { await claimOwner('22222222-2222-4222-8222-222222222222'); });
+    await act(async () => { resolveUrl('https://signed.example/u1'); });
 
     expect(openSpy).not.toHaveBeenCalled();
   });
@@ -283,11 +285,13 @@ describe('AttachmentsPanel — the upload is bound to the account that picked th
     fireEvent.change(input, { target: { files: [fileFromMime('u1.pdf', 'application/pdf')] } });
     await waitFor(() => expect(screen.getByRole('button', { name: /detail.attachments.uploading/ })).toBeDisabled());
 
-    await claimOwner('22222222-2222-4222-8222-222222222222');
-    resolveUpload({ ok: true, name: 'u1.pdf' });
-    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => { await claimOwner('22222222-2222-4222-8222-222222222222'); });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).not.toBeDisabled());
+    const readsAfterSwitch = mockList.mock.calls.length;
+    expect(readsAfterSwitch).toBeGreaterThan(1);
+    await act(async () => { resolveUpload({ ok: true, name: 'u1.pdf' }); });
 
-    expect(mockList).toHaveBeenCalledTimes(1);
+    expect(mockList).toHaveBeenCalledTimes(readsAfterSwitch);
     expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).not.toBeDisabled();
   });
 });
@@ -331,12 +335,13 @@ describe('AttachmentsPanel — open / signed URL', () => {
 });
 
 describe('AttachmentsPanel — delete', () => {
-  it('clicking delete calls deleteAttachment with (oppId, name) and removes the row optimistically on success', async () => {
+  it('confirmed delete removes the row and refreshes its list', async () => {
     mockList.mockResolvedValue([
       makeAttachment({ name: 'gone.pdf' }),
       makeAttachment({ name: 'stays.pdf' }),
     ]);
     mockDelete.mockResolvedValue(true);
+    mockList.mockResolvedValueOnce([makeAttachment({ name: 'gone.pdf' }), makeAttachment({ name: 'stays.pdf' })]).mockResolvedValue([makeAttachment({ name: 'stays.pdf' })]);
 
     render(<AttachmentsPanel opportunityId={OPP_ID} />);
     await waitFor(() => expect(screen.getByText('gone.pdf')).toBeInTheDocument());
@@ -362,8 +367,159 @@ describe('AttachmentsPanel — delete', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText(/detail.attachments.errDelete\{name=oops.pdf\}/)).toBeInTheDocument(),
+      expect(screen.getByText(/detail.attachments.deleteUnknown/)).toBeInTheDocument(),
     );
     expect(screen.getByText('oops.pdf')).toBeInTheDocument();
   });
+});
+
+
+describe('AttachmentsPanel — honest reads and recovery', () => {
+  function upload(name = 'resume.pdf') {
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [fileFromMime(name, 'application/pdf')] } });
+  }
+  it('a rejected list is not empty and retry only reads', async () => {
+    mockList.mockRejectedValueOnce(new Error('private SDK detail')).mockResolvedValueOnce([makeAttachment()]);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    expect(await screen.findByTestId('tracker-attachments-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('tracker-attachments-empty')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).toBeDisabled();
+    expect(screen.queryByText('private SDK detail')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'detail.attachments.retryList' }));
+    expect(await screen.findByText('resume.pdf')).toBeInTheDocument();
+    expect(mockList).toHaveBeenCalledTimes(2); expect(mockUpload).not.toHaveBeenCalled(); expect(mockDelete).not.toHaveBeenCalled();
+  });
+  it('signed out is distinct from failure and Check again recovers', async () => {
+    mockList.mockRejectedValueOnce(new AttachmentRequestError('unauthenticated')).mockResolvedValueOnce([]);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    expect(await screen.findByTestId('tracker-attachments-signed-out')).toBeInTheDocument();
+    expect(screen.queryByTestId('tracker-attachments-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('tracker-attachments-empty')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'detail.attachments.checkAgain' }));
+    expect(await screen.findByTestId('tracker-attachments-empty')).toBeInTheDocument();
+  });
+  it.each(['upload', 'delete'] as const)('confirmed %s plus failed refresh preserves both facts, retry never repeats the write', async kind => {
+    mockList.mockResolvedValueOnce([makeAttachment()]).mockRejectedValueOnce(new Error('list offline')).mockResolvedValueOnce(kind === 'upload' ? [makeAttachment()] : []);
+    mockUpload.mockResolvedValue({ ok: true, name: 'resume.pdf' }); mockDelete.mockResolvedValue(true);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    if (kind === 'upload') upload(); else fireEvent.click(screen.getByRole('button', { name: /detail.attachments.deleteAria/ }));
+    expect(await screen.findByTestId('tracker-attachments-error')).toBeInTheDocument();
+    expect(screen.getByTestId('tracker-attachments-notice')).toHaveTextContent(kind === 'upload' ? 'detail.attachments.uploaded' : 'detail.attachments.deleted');
+    expect(screen.getByRole('button', { name: 'detail.attachments.addButton' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'detail.attachments.retryList' }));
+    await waitFor(() => expect(screen.queryByTestId('tracker-attachments-error')).not.toBeInTheDocument());
+    expect(kind === 'upload' ? mockUpload : mockDelete).toHaveBeenCalledTimes(1);
+    expect(kind === 'upload' ? mockDelete : mockUpload).not.toHaveBeenCalled();
+  });
+  it.each(['upload', 'delete'] as const)('uncertain %s outcome says check list, not success, and requires read recovery', async kind => {
+    mockList.mockResolvedValue([makeAttachment()]);
+    mockUpload.mockRejectedValue(new AttachmentRequestError('timeout')); mockDelete.mockRejectedValue(new Error('offline secret'));
+    render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    if (kind === 'upload') upload(); else fireEvent.click(screen.getByRole('button', { name: /detail.attachments.deleteAria/ }));
+    expect(await screen.findByText(new RegExp(`detail.attachments.${kind}Unknown`))).toBeInTheDocument();
+    expect(screen.queryByTestId('tracker-attachments-notice')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'detail.attachments.retryList' }));
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+    expect(kind === 'upload' ? mockUpload : mockDelete).toHaveBeenCalledTimes(1);
+  });
+  it('a delayed list for the previous opportunity cannot replace the new list', async () => {
+    let complete!: (value: Attachment[]) => void;
+    mockList.mockReturnValueOnce(new Promise(resolve => { complete = resolve; })).mockResolvedValue([makeAttachment({ name: 'new-target.pdf' })]);
+    const view = render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    view.rerender(<AttachmentsPanel opportunityId="different-target" />);
+    await screen.findByText('new-target.pdf');
+    await act(async () => { complete([makeAttachment({ name: 'old-target.pdf' })]); });
+    expect(screen.queryByText('old-target.pdf')).not.toBeInTheDocument();
+  });
+  it('a signed URL for the previous opportunity is not opened after navigation', async () => {
+    let complete!: (value: string) => void;
+    mockList.mockResolvedValue([makeAttachment()]); mockSigned.mockReturnValue(new Promise(resolve => { complete = resolve; }));
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const view = render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria/ }));
+    view.rerender(<AttachmentsPanel opportunityId="other" />);
+    await act(async () => { complete('https://signed.example/old'); }); expect(open).not.toHaveBeenCalled();
+  });
+  it('duplicate mutation clicks issue one request and lock file actions until completion', async () => {
+    let complete!: (value: boolean) => void;
+    mockList.mockResolvedValue([makeAttachment()]); mockDelete.mockReturnValue(new Promise(resolve => { complete = resolve; }));
+    render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    const button = screen.getByRole('button', { name: /detail.attachments.deleteAria/ });
+    fireEvent.click(button); fireEvent.click(button); expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: /detail.attachments.openAria/ })).toBeDisabled();
+    await act(async () => { complete(true); });
+  });
+  it('unmount observes late open rejection without opening a window', async () => {
+    let fail!: (error: Error) => void;
+    mockList.mockResolvedValue([makeAttachment()]); mockSigned.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const view = render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria/ })); view.unmount();
+    await act(async () => { fail(new Error('late')); }); expect(open).not.toHaveBeenCalled();
+  });
+  it('StrictMode first read cannot overwrite its replacement', async () => {
+    let complete!: (value: Attachment[]) => void;
+    mockList.mockReturnValueOnce(new Promise(resolve => { complete = resolve; })).mockResolvedValue([makeAttachment({ name: 'current.pdf' })]);
+    render(<StrictMode><AttachmentsPanel opportunityId={OPP_ID} /></StrictMode>); await screen.findByText('current.pdf');
+    await act(async () => { complete([makeAttachment({ name: 'obsolete.pdf' })]); });
+    expect(screen.queryByText('obsolete.pdf')).not.toBeInTheDocument();
+  });
+});
+
+
+describe('AttachmentsPanel — account and request replacement', () => {
+  async function claim(uid: string | null) {
+    advanceOwnerEpoch(uid); await syncLocalIdentityOwner(uid);
+  }
+  it('account switch hides the old list immediately and drops its late read', async () => {
+    await claim('11111111-1111-4111-8111-111111111111');
+    let complete!: (files: Attachment[]) => void;
+    mockList.mockReturnValueOnce(new Promise(resolve => { complete = resolve; })).mockResolvedValue([makeAttachment({ name: 'new-owner.pdf' })]);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await act(async () => { await claim('22222222-2222-4222-8222-222222222222'); });
+    await screen.findByText('new-owner.pdf');
+    await act(async () => { complete([makeAttachment({ name: 'old-owner.pdf' })]); });
+    expect(screen.queryByText('old-owner.pdf')).not.toBeInTheDocument();
+  });
+  it('logout clears visible files before an unresolved new read', async () => {
+    await claim('11111111-1111-4111-8111-111111111111');
+    mockList.mockResolvedValueOnce([makeAttachment({ name: 'private.pdf' })]).mockReturnValue(new Promise(() => {}));
+    render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('private.pdf');
+    await act(async () => { await claim(null); });
+    expect(screen.queryByText('private.pdf')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tracker-attachments-loading')).toBeInTheDocument();
+  });
+  it('retry replaces the button with loading and cannot issue duplicate reads', async () => {
+    mockList.mockRejectedValueOnce(new Error('offline')).mockReturnValue(new Promise(() => {}));
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    const retry = await screen.findByRole('button', { name: 'detail.attachments.retryList' });
+    fireEvent.click(retry); fireEvent.click(retry);
+    expect(mockList).toHaveBeenCalledTimes(2); expect(screen.getByTestId('tracker-attachments-loading')).toBeInTheDocument();
+    expect(mockUpload).not.toHaveBeenCalled(); expect(mockDelete).not.toHaveBeenCalled();
+  });
+  it('open failure is visible and allows an explicit new open', async () => {
+    mockList.mockResolvedValue([makeAttachment()]); mockSigned.mockRejectedValueOnce(new Error('private failure')).mockResolvedValueOnce('https://signed.example/file');
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria/ }));
+    await screen.findByText(/detail.attachments.errOpen/); expect(open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.openAria/ }));
+    await waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+  });
+});
+
+
+it('old rendered controls cannot borrow the new owner token before React redraws', async () => {
+  advanceOwnerEpoch('11111111-1111-4111-8111-111111111111');
+  await syncLocalIdentityOwner('11111111-1111-4111-8111-111111111111');
+  mockList.mockResolvedValue([makeAttachment()]);
+  render(<AttachmentsPanel opportunityId={OPP_ID} />); await screen.findByText('resume.pdf');
+  const open = screen.getByRole('button', { name: /detail.attachments.openAria/ });
+  const remove = screen.getByRole('button', { name: /detail.attachments.deleteAria/ });
+  await act(async () => {
+    advanceOwnerEpoch('22222222-2222-4222-8222-222222222222');
+    open.click(); remove.click();
+    await syncLocalIdentityOwner('22222222-2222-4222-8222-222222222222');
+  });
+  expect(mockSigned).not.toHaveBeenCalled(); expect(mockDelete).not.toHaveBeenCalled();
 });
