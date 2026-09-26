@@ -21,7 +21,10 @@ _PROF_PREFIX = "Research with Prof. "
 
 def stated_rank(opp: dict) -> str:
     """The record's stated academic rank, '' when unknown."""
-    rank = (opp.get("metadata") or {}).get("faculty_title")
+    metadata = opp.get("metadata")
+    # A malformed legacy row can carry metadata as a string; that is an
+    # unknown rank, not a crash on the detail route.
+    rank = metadata.get("faculty_title") if isinstance(metadata, dict) else None
     return rank.strip() if isinstance(rank, str) else ""
 
 

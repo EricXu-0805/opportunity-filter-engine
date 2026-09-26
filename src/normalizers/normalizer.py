@@ -8,6 +8,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Optional
 
+from src.evidence import stamp_inferred
+
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
     """Convert a raw opportunity dict into the standardized schema.
@@ -89,6 +91,16 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     # Compute application effort
     normalized["application"]["application_effort"] = _compute_effort(normalized["application"])
 
+    # Every eligibility list above is a keyword-bank scan of the description,
+    # not a list the source published. Stamp them so no consumer reads a
+    # scanned "Python" as a hard requirement (M03).
+    elig = normalized["eligibility"]
+    for field in ("skills_required", "skills_preferred", "majors"):
+        if elig[field]:
+            stamp_inferred(normalized["metadata"], f"eligibility.{field}", "rule:normalizer_keyword_bank")
+    if elig["preferred_year"] != ["unknown"]:
+        stamp_inferred(normalized["metadata"], "eligibility.preferred_year", "rule:normalizer_keyword_bank")
+
     return normalized
 
 
@@ -169,14 +181,19 @@ def _extract_skills(text: str, required: bool = True) -> list[str]:
     return found
 
 
-def _check_citizenship(text: str) -> bool:
+def _check_citizenship(text: str) -> Optional[bool]:
+    """True when the text states a citizenship/authorization rule, else None.
+
+    Never False: a description that does not mention citizenship has not said
+    there is no requirement (M03 — unknown must not collapse to false).
+    """
     citizenship_phrases = [
         "u.s. citizen", "us citizen", "united states citizen",
         "permanent resident", "authorized to work in the u.s.",
         "must be a citizen", "citizenship required",
     ]
     text_lower = text.lower()
-    return any(phrase in text_lower for phrase in citizenship_phrases)
+    return True if any(phrase in text_lower for phrase in citizenship_phrases) else None
 
 
 def _check_keyword(text: str, keywords: list[str]) -> str:

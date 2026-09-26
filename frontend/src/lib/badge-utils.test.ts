@@ -45,7 +45,7 @@ describe('a card hedges exactly what the detail page hedges', () => {
       label: 'badges.fundingMentioned', variant: 'gray',
     });
     expect(getPaidBadge('stipend', t, 'inferred')).toEqual({
-      label: 'badges.fundingMentioned', variant: 'gray',
+      label: 'badges.payUnconfirmed', variant: 'gray',
     });
   });
 

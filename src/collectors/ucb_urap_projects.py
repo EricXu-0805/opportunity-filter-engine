@@ -344,7 +344,8 @@ def normalize_project(raw: dict, past: bool = False) -> dict:
             "majors": [],
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": False,
+            # Unknown, not False: the page states no citizenship rule (M03).
+            "citizenship_required": None,
             # URAP admits only Berkeley-matriculated students; openness to this
             # product's (non-Berkeley) users is therefore not "yes".
             "international_friendly": "unknown",

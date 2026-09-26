@@ -287,13 +287,17 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                   <span className="truncate max-w-[180px] sm:max-w-none">{opp.organization}</span>
                 </span>
               )}
-              {opp.location && (
+              {/* A listing located only by its host school's city shows no
+                  pin: the school's location is not where the work happens. */}
+              {opp.location && (isFaculty || opp.location_attribution !== 'institution') && (
                 <span className="inline-flex items-center gap-1 min-w-0">
                   <MapPin className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate max-w-[160px] sm:max-w-none">
                     {isFaculty
                       ? t('card.facultyAffiliationLocation', { location: opp.location })
-                      : opp.location}
+                      : opp.location_attribution === 'inferred'
+                        ? t('detail.locationInferred', { location: opp.location })
+                        : opp.location}
                   </span>
                 </span>
               )}
