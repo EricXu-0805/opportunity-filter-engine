@@ -1,4 +1,4 @@
-import { test, expect, request as apiRequest, type APIRequestContext, type Page, type TestInfo } from '@playwright/test';
+import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type Route, type TestInfo } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
 import { contactReceiptForRequest } from './email-contact-receipt';
@@ -38,8 +38,11 @@ async function setup(page: Page, info: TestInfo) {
   const owner = await account(), owners = [owner]; const locale = info.project.name === 'mobile-chrome' ? 'zh' : 'en';
   const copy = (locale === 'zh' ? zh : en).coldEmail;
   if (locale === 'zh') await page.setViewportSize({ width: 320, height: 640 });
-  const state = { owner, version: V1, calls: [] as string[], mutations: [] as string[], detailReads: 0, review: false };
-  const audit = { pageErrors: [] as string[], console: [] as string[], unexpected5xx: [] as string[], external: [] as string[], storageFailureInjected: false };
+  const state = { owner, version: V1, calls: [] as string[], mutations: [] as string[], detailReads: 0, review: false, offline: false };
+  const audit = { pageErrors: [] as string[], console: [] as string[], unexpected5xx: [] as string[], external: [] as string[], storageFailureInjected: false, offlineSimulation: false, networkFailures: [] as { path: string; error: string | null; injected: string | null }[] };
+  const injectedFailures = new WeakMap<Request, string>();
+  const abortOffline = (route: Route) => { injectedFailures.set(route.request(), 'controlled_offline'); return route.abort('internetdisconnected'); };
+  page.on('requestfailed', request => audit.networkFailures.push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText ?? null, injected: injectedFailures.get(request) ?? null }));
   page.on('pageerror', error => audit.pageErrors.push(error.message));
   page.on('console', entry => { if (entry.type() === 'error') audit.console.push(entry.text()); });
   page.on('response', response => { if (response.status() >= 500) audit.unexpected5xx.push(`${response.status()} ${response.url()}`); });
@@ -47,6 +50,7 @@ async function setup(page: Page, info: TestInfo) {
   await page.context().route('**/*', route => {
     const url = new URL(route.request().url());
     if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) { audit.external.push(url.origin); return route.abort('blockedbyclient'); }
+    if (state.offline) return abortOffline(route);
     return route.continue();
   });
   await page.context().addCookies([{ name: STORAGE_KEYS.LOCALE, value: locale, url: `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}` }]);
@@ -59,21 +63,22 @@ async function setup(page: Page, info: TestInfo) {
     (window as unknown as { __recoveryCompose: typeof compose }).__recoveryCompose = compose;
     window.open = (() => { compose.opens++; const popup = { closed: false, opener: null, location: { href: 'about:blank' }, close() { popup.closed = true; } }; return popup as unknown as Window; });
   }, { session: owner.session, keys: STORAGE_KEYS, locale });
-  await page.route('**/auth/v1/user', route => route.fulfill({ json: state.owner.session.user }));
+  await page.route('**/auth/v1/user', route => state.offline ? abortOffline(route) : route.fulfill({ json: state.owner.session.user }));
   await page.route('**/auth/v1/token?grant_type=refresh_token', route => {
+    if (state.offline) return abortOffline(route);
     const match = owners.find(item => item.session.refresh_token === route.request().postDataJSON().refresh_token);
     expect(match, 'The SDK must refresh the account owning this token').toBeTruthy();
     return route.fulfill({ json: match!.session });
   });
   await page.route(`**/api/opportunities/${ID}**`, async route => {
-    state.detailReads++; const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200);
+    state.detailReads++; if (state.offline) return abortOffline(route); const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200);
     const value = await response.json(); value.writing_target_version = state.version;
     value.contact_instructions = { version: 1, status: 'unknown', email_policy: 'unknown', rules: [] };
     if (route.request().headers().authorization) { value.contact_email_status = 'revealed'; value.contact_email = 'lab@example.edu'; }
     await route.fulfill({ response, json: value });
   });
   await page.route('**/api/cold-email**', async route => {
-    const path = new URL(route.request().url()).pathname, payload = route.request().postDataJSON(); state.calls.push(path);
+    const path = new URL(route.request().url()).pathname, payload = route.request().postDataJSON(); state.calls.push(path); if (state.offline) return abortOffline(route);
     expect(payload.opportunity_id).toBe(ID); expect(payload.expected_target_version).toBe(state.version);
     const draft = { opportunity_id: ID, target_version: payload.expected_target_version, contact_context_receipt: contactReceiptForRequest(payload),
       subject: 'Original subject', body: BODY, recipient_email: 'lab@example.edu', recipient_status: 'revealed', mailto_link: '', method: 'template', pipeline_version: 'b40-controlled', corpus_version: 'b40-controlled',
@@ -206,4 +211,51 @@ test('the real profile review link flushes the draft and browser Back recovers i
     expect(f.state.calls.filter(path => path.endsWith('/stream'))).toHaveLength(streams);
     await page.locator('#cold-email-body').scrollIntoViewIfNeeded(); await proof(page, info, 'review-link-return-' + f.locale + '.png');
   } finally { await f.done(); }
+});
+
+
+test('offline edits save locally and survive same-page reopen before source recheck', async ({ page, context }, info) => {
+  const f = await setup(page, info);
+  const offlineBody = EDIT.body + '\nAdded without a network connection.';
+  const offlineRequest = 'Keep this unsent edit request written while offline 王';
+  const assertLocalText = async () => {
+    await expect(page.locator('#cold-email-subject')).toHaveValue(EDIT.subject);
+    await expect(page.locator('#cold-email-body')).toHaveValue(offlineBody);
+    await expect(page.locator('#cold-email-to')).toHaveValue(EDIT.to);
+    await expect(page.getByRole('textbox', { name: f.copy.requestLabel, exact: true })).toHaveValue(offlineRequest);
+    const stored = await page.evaluate(({ prefix, id, uid }) => {
+      const records = Object.keys(localStorage).filter(key => key.includes(prefix)).map(key => JSON.parse(localStorage.getItem(key)!))
+        .filter(record => record.ownerId === uid && record.opportunityId === id && record.draft);
+      return { count: records.length, body: records[0]?.draft.body, request: records[0]?.draft.pendingEdit };
+    }, { prefix: STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX, id: ID, uid: f.state.owner.session.user.id });
+    expect(stored).toEqual({ count: 1, body: offlineBody, request: offlineRequest });
+  };
+  try {
+    await f.open(); await f.ready(); await f.edit(); await f.saved();
+    const writingCalls = f.state.calls.length, streams = f.state.calls.filter(path => path.endsWith('/stream')).length;
+    f.audit.offlineSimulation = true; f.state.offline = true; await context.setOffline(true);
+    expect(await page.evaluate(() => navigator.onLine)).toBe(false);
+    await page.locator('#cold-email-body').fill(offlineBody);
+    await page.getByRole('textbox', { name: f.copy.requestLabel, exact: true }).fill(offlineRequest);
+    await f.saved(); await assertLocalText(); await f.close();
+    // Keep the loaded application alive. Offline site loading/reload is not promised.
+    await f.open(false); await assertLocalText();
+    await expect(page.getByTestId('writing-target-status')).toBeVisible();
+    expect(f.state.calls).toHaveLength(writingCalls);
+    // The source hooks intentionally pause while navigator.onLine is false.
+    // Reopening retains a checking state without attempting a network read.
+    await expect(page.getByTestId('writing-target-status')).toContainText(f.locale === 'zh' ? '正在核对' : 'Checking current opportunity');
+    await expect(page.getByRole('button', { name: 'Gmail', exact: true })).toBeDisabled();
+    expect(f.state.calls).toHaveLength(writingCalls);
+    await page.locator('#cold-email-body').scrollIntoViewIfNeeded(); await proof(page, info, 'offline-kept-' + f.locale + '.png');
+    const reads = f.state.detailReads;
+    f.state.offline = false; await context.setOffline(false);
+    // The online event performs the source recheck itself; it must not regenerate the editor.
+    await expect.poll(() => f.state.detailReads).toBeGreaterThan(reads);
+    await expect(page.getByTestId('writing-target-status')).toHaveCount(0);
+    await f.saved(); await assertLocalText();
+    expect(f.state.calls.filter(path => path.endsWith('/stream'))).toHaveLength(streams);
+    expect(f.state.calls.some(path => path.endsWith('/refine'))).toBe(false);
+    await page.locator('#cold-email-body').scrollIntoViewIfNeeded(); await proof(page, info, 'online-rechecked-' + f.locale + '.png');
+  } finally { f.state.offline = false; await context.setOffline(false); await f.done(); }
 });
