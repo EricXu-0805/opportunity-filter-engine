@@ -505,7 +505,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # authenticated tier is also token-varied, which no shared cache
             # keys on.
             or path == "/api/ready"
-            or path.rstrip("/") in {"/api/tailor/full-target/suggestions", "/api/resume/full-target/export"}
+            or path.rstrip("/") in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan", "/api/resume/full-target/export"}
         ):
             # Admin responses can contain student email addresses, feedback
             # text, order rows, and internal notes. The X-Admin-Token custom
@@ -530,6 +530,7 @@ def _release_feature_for_path(path: str) -> ReleaseFeature | None:
         "/api/tailor/renovate",
         "/api/tailor/bullet",
         "/api/tailor/full-target/suggestions",
+        "/api/tailor/full-target/selection-plan",
         "/api/resume/full-target/export",
     }:
         return "resume_renovate"
@@ -674,7 +675,7 @@ class RequestBodyLimitMiddleware:
             return
 
         path = scope.get("path", "").rstrip("/")
-        if path == "/api/tailor/full-target/suggestions":
+        if path in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan"}:
             max_bytes = self.full_target_max_bytes
         elif path == "/api/resume/full-target/export":
             max_bytes = self.export_max_bytes

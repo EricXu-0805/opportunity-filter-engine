@@ -26,6 +26,7 @@ import { normalizeEmailContactContext } from './email-contact-context';
 import { COLD_EMAIL_STREAM_TIMEOUT_MS, ColdEmailStreamError } from './cold-email-stream';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type OwnerToken } from './identity-owner';
 import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
+import { TARGET_RESUME_PLAN_MAX_BODY_BYTES, type TargetResumePlanRequest, type TargetResumePlanResponse } from './target-resume-plan-protocol';
 import { bySlug } from './schools';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
@@ -1282,6 +1283,35 @@ export async function generateTargetResumeSuggestions(
     throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
   }
   return request<TargetResumeAiResponse>('/tailor/full-target/suggestions', {
+    method: 'POST', body, signal: options.signal, cache: 'no-store',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    retries: 0,
+  });
+}
+
+/** One complete-document selection plan. Freeze the body before auth;
+ * a cancelled or stale owner must never dispatch private material. */
+export async function generateTargetResumePlan(
+  payload: TargetResumePlanRequest,
+  options: { owner: OwnerToken; signal?: AbortSignal },
+): Promise<TargetResumePlanResponse> {
+  const body = JSON.stringify(payload);
+  if (new TextEncoder().encode(body).byteLength > TARGET_RESUME_PLAN_MAX_BODY_BYTES) {
+    throw new ApiError(413, 'TARGET_RESUME_PLAN_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
+  }
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  const token = await writingAccessToken(options.owner, options.signal).catch((error: unknown) => {
+    if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+      throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+    }
+    throw error;
+  });
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  return request<TargetResumePlanResponse>('/tailor/full-target/selection-plan', {
     method: 'POST', body, signal: options.signal, cache: 'no-store',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     retries: 0,

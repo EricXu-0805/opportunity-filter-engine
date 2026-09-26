@@ -12,6 +12,7 @@ import { writingTargetKey } from '@/lib/writing-target';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
+import TargetResumePlanPanel from './TargetResumePlanPanel';
 import TargetResumeCriteria from './TargetResumeCriteria';
 import TargetResumeExportPanel from './TargetResumeExportPanel';
 import type { Opportunity, ProfileData } from '@/lib/types';
@@ -85,6 +86,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [supplementMounted, setSupplementMounted] = useState(false);
   const [supplementDirty, setSupplementDirty] = useState(false);
   const [aiDirty, setAiDirty] = useState(false);
+  const [planDirty, setPlanDirty] = useState(false);
+  const authorityRef = useRef<{ owner: string; context: string; code: string } | null>(null);
+  const [authorityRefusal, setAuthorityRefusal] = useState<typeof authorityRef.current>(null);
   const supplementInputRef = useRef<string | null>(null);
   const incomingProfileRef = useRef(incomingProfileKey);
   const routerRef = useRef(router);
@@ -134,7 +138,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!isOpen) {
       // Closing the whole workspace retires its private answer buffer.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSupplementDirty(false); setAiDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
       return;
     }
@@ -145,9 +149,11 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     // A target-document read retry does not discard independent answers.
     if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
       || previous.owner.epoch !== scope.owner.epoch || previous.owner.generation !== scope.owner.generation) {
-      setSupplementDirty(false); setAiDirty(false); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
     }
+    // Pending plans belong to the document workspace being replaced.
+    setPlanDirty(false);
     // Opening/retrying/target replacement defines a new private document scope.
     setSession({ scope, phase: 'loading', doc: null, revision: 0, savedJson: null, editRevision: 0,
       saving: false, reloading: false, conflict: null, error: null, history: null, historyBusy: false,
@@ -176,6 +182,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const scope = scopeRef.current;
     if (!isOpen || !scope?.active || scope.context === contextKey) return;
     scope.context = contextKey; scope.creation += 1;
+    authorityRef.current = null; setAuthorityRefusal(null);
     update(scope, (old) => ({ ...old, phase: old.phase === 'creating' ? old.doc ? 'doc' : 'idle' : old.phase,
       error: old.phase === 'creating' ? 'context' : old.error }));
   }, [isOpen, contextKey, update]);
@@ -194,6 +201,15 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     && isTokenOwnerStillCurrent(session.scope.owner) ? session : null;
   const ownerReady = !!activeSession && isOwnerTokenValid(activeSession.scope.owner, activeSession.scope.owner.uid);
   const dirty = !!activeSession && isDirty(activeSession);
+  const authorityOwner = (scope: Scope) => `${scope.owner.uid}:${scope.owner.epoch}:${scope.owner.generation}`;
+  const authorityBlocked = !!activeSession && authorityRefusal?.owner === authorityOwner(activeSession.scope) && authorityRefusal.context === contextKey;
+  const authorityRefused = (scope: Scope, context: string) => authorityRef.current?.owner === authorityOwner(scope) && authorityRef.current.context === context;
+  const reportAuthorityRefusal = (scope: Scope, context: string, code: string) => {
+    if (!current(scope) || scope.context !== context) return;
+    const refusal = { owner: authorityOwner(scope), context, code };
+    authorityRef.current = refusal; setAuthorityRefusal(refusal);
+  };
+
   const doc = activeSession?.doc ?? null;
   const comparable = profileAvailable && checks?.key === contextKey ? checks : null;
   const incompleteTarget = !!doc && !isCurrentTargetResumeContext(doc.target_snapshot);
@@ -203,9 +219,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (supplementDirty || aiDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
+    if (supplementDirty || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
-  }, [session, supplementDirty, aiDirty, exit]);
+  }, [session, supplementDirty, aiDirty, planDirty, exit]);
 
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
@@ -462,15 +478,34 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
           <TargetResumeExportPanel key={`export:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
             unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
+          {authorityBlocked && <p role="alert" className="my-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This opportunity could not be used for AI adaptation. Both AI tools are paused for these materials. Your draft can still be edited, saved and exported. Close and reopen to check the current opportunity.', '当前机会无法用于 AI 调整，本次材料的选材和改写均已暂停。文稿仍可手改、保存和导出，请关闭后重新打开，核对最新机会。')}</p>}
+          <TargetResumePlanPanel key={`plan:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
+            draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
+            profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
+            readiness={authorityBlocked ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
+            currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked}
+            onDirtyChange={(value) => { if (current(activeSession.scope)) setPlanDirty(value); }}
+            onAuthorityRefusal={(code) => reportAuthorityRefusal(activeSession.scope, contextKey, code)}
+            onApply={(expectedCanonical, next) => {
+              if (authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+              const checked = validateTargetResume(next);
+              if (!checked.ok) return;
+              update(activeSession.scope, (old) => {
+                if (!old.doc || canonical(old.doc) !== expectedCanonical || old.scope.context !== contextKey) return old;
+                return { ...old, doc: clone(checked.value), editRevision: old.editRevision + 1, error: null };
+              });
+            }} />
           <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
-            readiness={createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
+            readiness={authorityBlocked ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
             currentContext={comparable ? { profile_signature: comparable.profile, source_signature: comparable.source, target_signature: comparable.target } : null}
-            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setAiDirty(value); }}
+            onAuthorityRefusal={(code) => reportAuthorityRefusal(activeSession.scope, contextKey, code)}
             onApply={(expectedCanonical, next) => {
-              if (!sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
+              if (authorityRefused(activeSession.scope, contextKey) || !sourceReady || activeSession.scope.creation !== acceptedCreation || !canEdit || !comparable || outdated || activeSession.conflict || !current(activeSession.scope)) return;
               const checked = validateTargetResume(next);
               if (!checked.ok) return;
               update(activeSession.scope, (old) => {

@@ -29,13 +29,15 @@ export interface TargetResumeAiPanelProps {
   enabled: boolean;
   onApply: (expectedCanonical: string, next: TargetResumeV1) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  onAuthorityRefusal?: (code: string) => void;
 }
 type Run = { prepared: PreparedTargetResumeAi; responses: TargetResumeAiResponse[] };
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
+const authorityRefusals = new Set(['target_changed', 'target_not_found', 'TARGET_NOT_ACTIONABLE', 'legacy_target_context']);
 const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
-export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange }: TargetResumeAiPanelProps) {
+export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumeAiPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
@@ -114,6 +116,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
     timeout: copy('AI did not finish in time. Your draft is kept.', 'AI 未及时完成，原稿保留。'),
     target_changed: copy('The opportunity changed. Reopen its details and rebuild from the current target.', '机会内容已变更，请重新打开详情，再基于最新目标建稿。'),
     target_not_found: copy('This opportunity is no longer available for AI adaptation.', '此机会目前无法用于 AI 适配。'),
+    TARGET_NOT_ACTIONABLE: copy('This opportunity is currently unavailable for résumé adaptation. Earlier suggestions were cleared; your draft is kept.', '此机会目前不能用于简历调整，旧建议已作废，文稿保留。'),
     document_too_large: copy('The complete draft exceeds the request limit. Its content is kept.', '完整文稿超过请求容量，内容仍保留。'),
     invalid_full_target_request: copy('The full draft could not be verified. Review your source materials before trying again.', '无法核对完整文稿，请检查来源材料后重试。'),
   } as Record<string, string>)[code ?? ''] ?? copy('This request did not finish. Your complete draft is kept.', '本次处理未完成，完整原稿保留。');
@@ -162,10 +165,14 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
         }
       }
     } catch (caught) {
-      if (live(generation, expected)) setError(caught instanceof ApiError && caught.status === 429 ? 'budget_exhausted'
+      if (!live(generation, expected)) return;
+      if (caught instanceof ApiError && authorityRefusals.has(caught.code)) {
+        runRef.current = null; setRun(null); setSelected(new Set()); setDismissed(new Set()); setOrder(false); appliedKey.current = null;
+        setError(caught.code); onAuthorityRefusal?.(caught.code);
+      } else setError(caught instanceof ApiError && caught.status === 429 ? 'budget_exhausted'
         : caught instanceof ApiError && (caught.code === 'REQUEST_TIMEOUT' || caught.status === 504) ? 'timeout'
-        : caught instanceof ApiError && ['target_changed', 'target_not_found', 'invalid_full_target_request'].includes(caught.code) ? caught.code
-          : caught instanceof ApiError && caught.status === 413 ? 'document_too_large' : 'model_unavailable');
+          : caught instanceof ApiError && caught.code === 'invalid_full_target_request' ? caught.code
+            : caught instanceof ApiError && caught.status === 413 ? 'document_too_large' : 'model_unavailable');
     } finally {
       if (requestRef.current.generation === generation) { requestRef.current.busy = false; requestRef.current.controller = null; setBusy(false); }
     }
@@ -184,7 +191,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
     setBusy(false); setNotice('cancelled');
   };
   const apply = () => {
-    if (!run || !ready || working || action.error || !currentContext) return;
+    if (!run || runRef.current !== run || !ready || working || action.error || !currentContext) return;
     const result = applyTargetResumeAI(run.prepared, draft, run.responses,
       { rewriteUnitIds: [...selected], applyStructure: order, currentContext });
     if (!result.ok) { setError(result.code); return; }

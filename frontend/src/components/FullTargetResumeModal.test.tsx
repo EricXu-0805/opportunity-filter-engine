@@ -9,6 +9,7 @@ import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
+import type { TargetResumePlanPanelProps } from './TargetResumePlanPanel';
 import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
 import type { Opportunity, ProfileData, ResumeFact } from '@/lib/types';
 import type { LoadedTargetResume, TargetResumeSaveResult, TargetResumeV1 } from '@/lib/target-resume';
@@ -33,6 +34,12 @@ const ai = vi.hoisted(() => ({ props: null as TargetResumeAiPanelProps | null })
 vi.mock('./TargetResumeAiPanel', () => ({ default: (props: TargetResumeAiPanelProps) => {
   ai.props = props;
   return <button onClick={() => props.onDirtyChange?.(true)}>AI suggestions awaiting review</button>;
+} }));
+
+const plan = vi.hoisted(() => ({ props: null as TargetResumePlanPanelProps | null }));
+vi.mock('./TargetResumePlanPanel', () => ({ default: (props: TargetResumePlanPanelProps) => {
+  plan.props = props;
+  return <button onClick={() => props.onDirtyChange?.(true)}>Content plan awaiting review</button>;
 } }));
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -73,7 +80,7 @@ beforeEach(async () => {
   vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch('target-resume-owner-a'); await syncLocalIdentityOwner('target-resume-owner-a');
   await waitFor(() => expect(isLocalOwnerReady('target-resume-owner-a')).toBe(true));
-  ai.props = null; supplement.props = null; supplement.push.mockReset();
+  ai.props = null; plan.props = null; supplement.props = null; supplement.push.mockReset();
   storage.load.mockReset().mockResolvedValue(null); storage.save.mockReset().mockResolvedValue({ status: 'failed' });
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
@@ -622,5 +629,94 @@ describe('full résumé creation action checks', () => {
     fireEvent.click(button); await screen.findByText(/Current profile could not be verified/); expect(build).not.toHaveBeenCalled();
     checkForAction.mockResolvedValue({ ...receipt(p), source: 'cloud-absent', profile: null });
     fireEvent.click(button); await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2)); expect(build).not.toHaveBeenCalled(); expect(storage.save).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('whole draft content plan integration', () => {
+  it('includes a pending content plan in the close warning even when the current draft is saved', async () => {
+    const p = profile(), doc = await docFor(p), onClose = vi.fn(); storage.load.mockResolvedValue(loaded(doc));
+    renderModal(p, opportunity, { onClose }); await screen.findByRole('textbox', { name: 'Edit Full name' });
+    fireEvent.click(screen.getByRole('button', { name: 'Content plan awaiting review' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+    expect(screen.getByText(/unsaved edits, suggestions or answers/)).toBeVisible(); expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' })); expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+  });
+  it('applies plan changes locally and rejects a competing stale AI apply, preserving the original snapshot', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); await waitFor(() => expect(plan.props?.enabled).toBe(true));
+    const oldAI = ai.props!, oldPlan = plan.props!, prepared = await prepareTargetResumeAI(oldPlan.draft); if (!prepared.ok) throw new Error(prepared.code);
+    const next = clone(oldPlan.draft); next.document.sections.find(section => section.kind === 'activities')!.blocks[0].included = false;
+    act(() => oldPlan.onApply(prepared.value.canonical_draft, next));
+    expect(preview().queryByText('Art project')).toBeNull(); expect(screen.getByText('Unsaved local edits')).toBeVisible();
+    expect(plan.props!.draft.base_snapshot).toEqual(doc.base_snapshot); expect(storage.save).not.toHaveBeenCalled();
+    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(doc, 'Late stale AI name')));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+  });
+  it('rejects an old plan apply after explicit user editing', async () => {
+    await createUI(); await waitFor(() => expect(plan.props?.enabled).toBe(true));
+    const old = plan.props!, prepared = await prepareTargetResumeAI(old.draft); if (!prepared.ok) throw new Error(prepared.code);
+    editName('Current hand edit');
+    act(() => old.onApply(prepared.value.canonical_draft, withName(old.draft, 'Late plan text')));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Current hand edit'); expect(storage.save).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('plan and wording baselines remain separate', () => {
+  it('rejects the old content plan after a wording edit is applied on the same original baseline', async () => {
+    await createUI(); await waitFor(() => expect(plan.props?.enabled).toBe(true));
+    const oldPlan = plan.props!, oldAI = ai.props!, prepared = await prepareTargetResumeAI(oldPlan.draft); if (!prepared.ok) throw new Error(prepared.code);
+    act(() => oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Accepted current edit')));
+    const latePlan = clone(oldPlan.draft); latePlan.document.sections.find(section => section.kind === 'activities')!.blocks[0].included = false;
+    act(() => oldPlan.onApply(prepared.value.canonical_draft, latePlan));
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Accepted current edit');
+    expect(preview().getByText('Art project')).toBeVisible(); expect(storage.save).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('shared target authority refusal', () => {
+  it.each(['plan', 'wording'] as const)('blocks both AI tools immediately after a %s refusal without blocking manual/save/export', async source => {
+    const p = profile(), doc = await docFor(p), onClose = vi.fn(); storage.load.mockResolvedValue(loaded(doc));
+    const view = renderModal(p, opportunity, { onClose }); await screen.findByRole('textbox', { name: 'Edit Full name' });
+    await waitFor(() => expect(plan.props?.enabled && ai.props?.enabled).toBe(true));
+    const oldPlan = plan.props!, oldAI = ai.props!, prepared = await prepareTargetResumeAI(oldPlan.draft); if (!prepared.ok) throw new Error(prepared.code);
+    act(() => {
+      (source === 'plan' ? oldPlan : oldAI).onAuthorityRefusal?.('target_changed');
+      // Both callbacks run before React can render the disabled props.
+      oldPlan.onApply(prepared.value.canonical_draft, withName(oldPlan.draft, 'Unsafe late plan'));
+      oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Unsafe late wording'));
+    });
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+    expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
+    expect(screen.getByText(/Both AI tools are paused/)).toBeVisible();
+    const refresh = vi.fn().mockResolvedValue(true);
+    view.rerender(<FullTargetResumeModal isOpen onClose={onClose} profile={p} opportunity={opportunity} profileRefresh={{ status: 'checking', refresh }} />);
+    view.rerender(<FullTargetResumeModal isOpen onClose={onClose} profile={p} opportunity={opportunity} profileRefresh={{ status: 'ready', refresh }} />);
+    expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
+    editName('Preserved manual draft');
+    storage.save.mockImplementationOnce(async (draft: TargetResumeV1) => ({ status: 'saved', value: loaded(draft, 2) }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' })); await screen.findByText('Saved version 2');
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Preserved manual draft');
+    expect(screen.getByRole('button', { name: 'Export PDF' })).toBeEnabled(); expect(screen.getByRole('button', { name: 'Export Word' })).toBeEnabled();
+    expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
+    view.rerender(<FullTargetResumeModal isOpen={false} onClose={onClose} profile={p} opportunity={opportunity} />);
+    view.rerender(<FullTargetResumeModal isOpen onClose={onClose} profile={p} opportunity={opportunity} />);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); await waitFor(() => expect(plan.props?.enabled && ai.props?.enabled).toBe(true));
+    expect(screen.queryByText(/Both AI tools are paused/)).toBeNull();
+    // The previous workspace cannot re-block the fresh one or apply its draft.
+    act(() => { oldPlan.onAuthorityRefusal?.('target_changed'); oldAI.onApply(prepared.value.canonical_draft, withName(oldAI.draft, 'Old workspace')); });
+    expect(plan.props!.enabled).toBe(true); expect(ai.props!.enabled).toBe(true); expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
+  });
+  it('removes the refusal marker on a real target change but still requires a draft based on the new target', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); const view = renderModal(p);
+    await screen.findByRole('textbox', { name: 'Edit Full name' }); await waitFor(() => expect(plan.props?.enabled).toBe(true));
+    act(() => plan.props!.onAuthorityRefusal?.('TARGET_NOT_ACTIONABLE')); expect(screen.getByText(/Both AI tools are paused/)).toBeVisible();
+    view.rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={{ ...opportunity, description_clean: 'Current new research requirements.' }} />);
+    await waitFor(() => expect(screen.queryByText(/Both AI tools are paused/)).toBeNull());
+    expect(plan.props!.enabled).toBe(false); expect(ai.props!.enabled).toBe(false);
+    expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王');
   });
 });
