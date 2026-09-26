@@ -479,12 +479,34 @@ class EmailAvailabilityContext(_ContactFields):
         return value
 
 
+class EmailPaperReadingContext(_ContactFields):
+    title: str = Field(max_length=500)
+    year: int | None = Field(default=None, ge=1000, le=2100)
+    level: Literal["title_only", "abstract", "full_text"]
+    confirmed: Literal[True]
+
+    @field_validator("title")
+    @classmethod
+    def single_line_title(cls, value):
+        if any(character in value for character in "\r\n\u2028\u2029"):
+            raise ValueError("paper title must be a single line")
+        return value
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit reading confirmation required")
+        return value
+
+
 class EmailContactContext(_ContactFields):
     version: Literal[1]
     purpose: Literal["first_contact", "referral", "follow_up"]
     referral: EmailReferralContext | None = None
     follow_up: EmailFollowUpContext | None = None
     availability: EmailAvailabilityContext | None = None
+    paper_reading: EmailPaperReadingContext | None = None
 
     @field_validator("version", mode="before")
     @classmethod

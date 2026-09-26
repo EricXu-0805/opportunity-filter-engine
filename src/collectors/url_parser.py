@@ -32,6 +32,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from ..contact_instructions import SOURCE_KEY, source_from_html
 from .base import RawOpportunity
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
     — parse_url_llm needs both the parsed V1 fields and the raw text, and would
     otherwise round-trip to the same URL twice.
     """
+    fetched_here = html is None
     if html is None:
         resp = _safe_fetch(url)
         if resp is None:
@@ -92,6 +94,7 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
     organization = _domain_to_org(domain)
 
     deadline = _extract_deadline(soup.get_text())
+    contact_source = source_from_html(soup, source_url=url) if fetched_here else None
 
     return RawOpportunity(
         source="url_parser",
@@ -104,6 +107,7 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
         location=None,
         extra_fields={
             "domain": domain,
+            **({SOURCE_KEY: [contact_source]} if contact_source else {}),
             "needs_manual_review": True,
         },
     )
@@ -247,6 +251,12 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     base = parse_url(url, html=raw_text)
     if base is None:
         return None
+
+    # Only this server fetch authorizes a source snapshot; parse_url(html=...)
+    # by itself is an unverified parsing helper, not a network receipt.
+    contact_source = source_from_html(raw_text, source_url=url)
+    if contact_source:
+        base.extra_fields[SOURCE_KEY] = [contact_source]
 
     body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
     enriched = _run_llm_extraction(

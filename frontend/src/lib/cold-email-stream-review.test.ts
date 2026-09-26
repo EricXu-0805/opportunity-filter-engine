@@ -67,13 +67,17 @@ describe('independent cold email stream boundaries', () => {
     expect(result).toMatchObject(payload); expect(networkSignal?.aborted).toBe(false); expect(response.cancel).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
   });
   it.each([
-    ['WRITING_TARGET_CHANGED', 'WRITING_TARGET_CHANGED'],
-    ['OTHER_CONFLICT', 'http_error'],
-  ])('only preserves the approved conflict code %s', async (code, expected) => {
+    [409, 'WRITING_TARGET_CHANGED', 'WRITING_TARGET_CHANGED'],
+    [409, 'EMAIL_CONTACT_INSTRUCTIONS', 'EMAIL_CONTACT_INSTRUCTIONS'],
+    [422, 'EMAIL_READING_CHANGED', 'EMAIL_READING_CHANGED'],
+    [422, 'EMAIL_CONTACT_INSTRUCTIONS', 'http_error'],
+    [409, 'EMAIL_READING_CHANGED', 'http_error'],
+    [409, 'OTHER_CONFLICT', 'http_error'],
+  ])('preserves only approved status/code pairs %s %s', async (status, code, expected) => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: { code, message: 'PRIVATE provider message' } }),
-      { status: 409, headers: { 'content-type': 'application/json' } }));
+      { status, headers: { 'content-type': 'application/json' } }));
     const error = await generateColdEmailStream(profile, 'target-a').catch(value => value);
-    expect(error).toMatchObject({ code: expected, status: 409 });
+    expect(error).toMatchObject({ code: expected, status });
     expect(String(error)).not.toContain('PRIVATE'); expect(canFallbackColdEmailStream(error)).toBe(false);
     expect(fetchMock).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
   });

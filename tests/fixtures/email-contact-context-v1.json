@@ -126,6 +126,51 @@
       },
       "canonical": "{\"availability\":{\"confirmed\":true,\"text\":\"I will write after having read your paper.\"},\"purpose\":\"first_contact\",\"version\":1}",
       "context_sig": "bc770377f0946778b766f56348a2696ee08e15ca8e2f5f1c11a76747a5f9d239"
+    },
+    {
+      "id": "paper-title_only",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": null,
+          "level": "title_only",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"title_only\",\"title\":\"Grounded Models 研究 🧪\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "2f8d77569baa9f091dc78d19b782d60715e6bdd3ef68fb7fe14e2dce48aecc29"
+    },
+    {
+      "id": "paper-abstract",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": 2025,
+          "level": "abstract",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"abstract\",\"title\":\"Grounded Models 研究 🧪\",\"year\":2025},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "84da386985f3818bfad96ead3ccc2627d5c9765c64a20784c07eae7cf87bc4c1"
+    },
+    {
+      "id": "paper-full_text",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": 2025,
+          "level": "full_text",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"full_text\",\"title\":\"Grounded Models 研究 🧪\",\"year\":2025},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "d613bb33f1847857df48bc4873cf3d4494a57d1d9a1cf200e16b4416ac7344aa"
     }
   ],
   "invalid": [

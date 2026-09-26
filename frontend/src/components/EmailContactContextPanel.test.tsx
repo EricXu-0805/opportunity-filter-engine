@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { EmailContactContext } from '@/lib/types';
+import type { EmailContactContext, Opportunity } from '@/lib/types';
 import EmailContactContextPanel, { type EmailContactContextPanelProps } from './EmailContactContextPanel';
 
 function mount(overrides: Partial<EmailContactContextPanelProps> = {}) {
@@ -256,4 +256,110 @@ describe('email contact context panel', () => {
     expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
     expect(screen.getByRole('alert')).toHaveTextContent('invalid');
   });
+});
+
+
+const paperOne = { title: 'Grounded Models 研究 🧪', year: 2025 };
+const paperTwo = { title: 'Second study', year: 2024 };
+const paperTarget = (papers: unknown[] = [paperOne, paperTwo], status = 'verified_author_id') => ({ id: 'paper-target', metadata: { recent_works: papers, publication_attribution_status: status } } as Opportunity);
+const paperSelect = () => screen.getByRole('combobox', { name: 'Paper you looked at (optional)' });
+const readingSelect = () => screen.getByRole('combobox', { name: 'How much did you read?' });
+const readingConfirm = () => screen.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' });
+function selectReading(level = 'abstract') {
+  fireEvent.change(paperSelect(), { target: { value: JSON.stringify([paperOne.title, paperOne.year]) } });
+  fireEvent.change(readingSelect(), { target: { value: level } });
+}
+
+describe('verified paper reading preparation', () => {
+  it.each(['title_only', 'abstract', 'full_text'])('requires a selected verified paper, explicit %s level and confirmation', level => {
+    const { props } = mount({ opportunity: paperTarget() });
+    expect(paperSelect()).toHaveValue('');
+    expect(screen.queryByRole('combobox', { name: 'How much did you read?' })).toBeNull();
+    fireEvent.change(paperSelect(), { target: { value: JSON.stringify([paperOne.title, paperOne.year]) } });
+    fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('reading level');
+    fireEvent.change(readingSelect(), { target: { value: level } });
+    fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+    fireEvent.click(readingConfirm()); fireEvent.click(apply());
+    expect(props.onApply).toHaveBeenCalledExactlyOnceWith({ version: 1, purpose: 'first_contact', paper_reading: { ...paperOne, level, confirmed: true } });
+    expect(screen.getByText(/does not claim understanding/)).toBeInTheDocument();
+  });
+  it('never lets a user type or add an arbitrary professor publication', () => {
+    mount({ opportunity: paperTarget() });
+    expect(within(paperSelect()).getAllByRole('option').map(o => o.textContent)).toEqual(['Skip paper reading', 'Grounded Models 研究 🧪 (2025)', 'Second study (2024)']);
+    expect(screen.queryByRole('textbox', { name: /paper/i })).toBeNull();
+  });
+  it('invalidates reading confirmation on paper, level, or other background edits', () => {
+    mount({ opportunity: paperTarget() }); selectReading(); fireEvent.click(readingConfirm());
+    fireEvent.change(readingSelect(), { target: { value: 'full_text' } }); expect(readingConfirm()).not.toBeChecked();
+    fireEvent.click(readingConfirm());
+    fireEvent.change(paperSelect(), { target: { value: JSON.stringify([paperTwo.title, paperTwo.year]) } }); expect(readingConfirm()).not.toBeChecked();
+    fireEvent.click(readingConfirm());
+    fireEvent.change(availability(), { target: { value: 'Tuesday afternoons' } }); expect(readingConfirm()).not.toBeChecked();
+  });
+  it('supports skipping after a reading claim without keeping that claim in the applied context', () => {
+    const { props } = mount({ opportunity: paperTarget() }); selectReading(); fireEvent.click(readingConfirm()); fireEvent.click(apply());
+    fireEvent.click(screen.getByRole('button', { name: 'Skip paper reading' })); fireEvent.click(apply());
+    expect(props.onApply).toHaveBeenLastCalledWith({ version: 1, purpose: 'first_contact' });
+  });
+  it.each(['name_match', 'pending', ''])('hides unverified titles for %s while letting the user skip', status => {
+    const { props } = mount({ opportunity: paperTarget([paperOne], status) });
+    expect(paperSelect()).toBeDisabled(); expect(screen.queryByText(/Grounded Models/)).toBeNull();
+    expect(screen.getByText(/No verified papers/)).toBeInTheDocument();
+    expect(props.onApply).not.toHaveBeenCalled(); expect(apply()).toBeDisabled();
+  });
+  it('retires a removed paper confirmation, preserves other draft answers and requires an explicit skip or new choice', () => {
+    const { props, rerender } = mount({ opportunity: paperTarget(), targetKey: 'version-1' });
+    selectReading(); fireEvent.change(availability(), { target: { value: 'My original Tuesday availability.' } });
+    fireEvent.click(readingConfirm()); fireEvent.click(availabilityConfirm()); fireEvent.click(apply());
+    const before = vi.mocked(props.onDraftChange).mock.calls.length;
+    rerender(<EmailContactContextPanel {...props} opportunity={paperTarget([paperTwo])} targetKey="version-2" />);
+    expect(props.onDraftChange).toHaveBeenCalledTimes(before + 1);
+    expect(readingConfirm()).not.toBeChecked(); expect(availability()).toHaveValue('My original Tuesday availability.');
+    fireEvent.click(readingConfirm()); fireEvent.click(apply());
+    expect(props.onApply).toHaveBeenCalledTimes(1); expect(screen.getByRole('alert')).toHaveTextContent('current verified paper');
+    fireEvent.click(screen.getByRole('button', { name: 'Skip paper reading' })); fireEvent.click(availabilityConfirm()); fireEvent.click(apply());
+    expect(props.onApply).toHaveBeenLastCalledWith({ version: 1, purpose: 'first_contact', availability: { text: 'My original Tuesday availability.', confirmed: true } });
+  });
+  it('requires re-confirmation even when a changed target version retains the same paper', () => {
+    const context: EmailContactContext = { version: 1, purpose: 'first_contact', paper_reading: { ...paperOne, level: 'title_only', confirmed: true } };
+    const { props, rerender } = mount({ context, opportunity: paperTarget(), targetKey: 'version-1' });
+    expect(apply()).toBeDisabled();
+    rerender(<EmailContactContextPanel {...props} targetKey="version-2" />);
+    expect(readingConfirm()).not.toBeChecked(); expect(props.onDraftChange).toHaveBeenCalledExactlyOnceWith();
+    fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+    fireEvent.click(readingConfirm()); fireEvent.click(apply()); expect(props.onApply).toHaveBeenCalledExactlyOnceWith(context);
+  });
+  it('adopts a simultaneously changed accepted context without losing its text and still revokes stale reading confirmation', () => {
+    const { props, rerender } = mount({ opportunity: paperTarget(), targetKey: 'version-1' });
+    const context: EmailContactContext = { version: 1, purpose: 'first_contact', availability: { text: 'Current accepted text', confirmed: true }, paper_reading: { ...paperOne, level: 'abstract', confirmed: true } };
+    rerender(<EmailContactContextPanel {...props} context={context} targetKey="version-2" />);
+    expect(availability()).toHaveValue('Current accepted text'); expect(readingConfirm()).not.toBeChecked();
+    expect(props.onDraftChange).toHaveBeenCalledTimes(1);
+  });
+  it('clears paper selection on a new owner session and renders the same choices in Chinese', () => {
+    const { props, rerender } = mount({ opportunity: paperTarget() }); selectReading(); fireEvent.click(readingConfirm());
+    rerender(<EmailContactContextPanel {...props} resetKey="owner-b:new" language="zh" />);
+    const panel = screen.getByTestId('email-contact-context-panel'); fireEvent.click(within(panel).getByText('联系目的与背景'));
+    const select = screen.getByRole('combobox', { name: '你看过的论文（选填）' }); expect(select).toHaveValue('');
+    fireEvent.change(select, { target: { value: JSON.stringify([paperOne.title, paperOne.year]) } });
+    expect(screen.getByRole('combobox', { name: '你读到了哪一步？' })).toHaveValue('');
+    expect(screen.getByRole('option', { name: '只看过标题' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '我确认自己对这篇论文的阅读程度。' })).not.toBeChecked();
+  });
+});
+
+
+it('opens and revokes only reading confirmation on a server review request, retaining every other answer', () => {
+  const context: EmailContactContext = { version: 1, purpose: 'first_contact', paper_reading: { ...paperOne, level: 'abstract', confirmed: true }, availability: { text: 'Five hours per week', confirmed: true } };
+  const { props, rerender } = mount({ context, opportunity: paperTarget(), reviewRequested: 0 });
+  const panel = screen.getByTestId('email-contact-context-panel') as HTMLDetailsElement;
+  fireEvent.click(within(panel).getByText('Contact purpose and background'));
+  rerender(<EmailContactContextPanel {...props} reviewRequested={1} />);
+  expect(panel.open).toBe(true); expect(readingConfirm()).not.toBeChecked();
+  expect(availability()).toHaveValue('Five hours per week'); expect(availabilityConfirm()).toBeChecked();
+  expect(readingSelect()).toHaveValue('abstract'); expect(paperSelect()).not.toHaveValue('');
+  expect(props.onDraftChange).not.toHaveBeenCalled(); expect(props.onApply).not.toHaveBeenCalled();
+  fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
+  fireEvent.click(readingConfirm()); fireEvent.click(apply()); expect(props.onApply).toHaveBeenCalledExactlyOnceWith(context);
 });

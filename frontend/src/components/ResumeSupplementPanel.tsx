@@ -10,6 +10,7 @@ import { useResumeSupplement } from './use-resume-supplement';
 export interface ResumeSupplementPanelProps {
   owner: OwnerToken;
   targetKey: string;
+  purpose?: 'resume' | 'cold_email';
   profileAvailable?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
   onAcceptedProfile?: (view: ProfileViewSnapshot, againstView: ProfileViewSnapshot) => void;
@@ -26,7 +27,7 @@ export default function ResumeSupplementPanel(props: ResumeSupplementPanelProps)
   return <SupplementSession key={ownerKey} {...props} />;
 }
 
-function SupplementSession({ owner, targetKey, profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile }: ResumeSupplementPanelProps) {
+function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile }: ResumeSupplementPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const id = useId();
@@ -108,7 +109,7 @@ function SupplementSession({ owner, targetKey, profileAvailable = true, onDirtyC
     recorded: copy('Recorded on this device; cloud saving is not confirmed. Retry the same submission.', '已在本机记录，云端保存尚未确认。请重试这次提交。'),
     conflict: copy('Another edit needs your attention. Your answers are kept. Review your profile, then check it again here.', '另一处资料修改需要处理。答案仍保留，请先核对个人资料，再回来重新检查。'),
     'save-error': copy('This information was not saved. Your answers are kept; retry when ready.', '补充信息尚未保存，答案仍保留，可以重试。'),
-    saved: copy('Added to your master résumé. The current target draft is unchanged. Rebuild it only when you choose.', '已加入简历母版，当前目标稿保持原样。需要时再明确选择重新创建。'),
+    saved: purpose === 'cold_email' ? copy('Saved to your profile and master résumé. Your current email is kept. Generate a new draft when ready.', '已保存到个人资料和简历母版。当前邮件仍保留，需要时再生成新稿。') : copy('Added to your master résumé. The current target draft is unchanged. Rebuild it only when you choose.', '已加入简历母版，当前目标稿保持原样。需要时再明确选择重新创建。'),
     retired: copy('This session changed. Reopen the workspace to continue.', '当前会话已变化，请重新打开工作区。'),
   };
   const noMaster = !!view && !master;
@@ -117,6 +118,7 @@ function SupplementSession({ owner, targetKey, profileAvailable = true, onDirtyC
   return <section aria-labelledby={`${id}-title`} className="min-w-0 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4" data-testid="resume-supplement-panel">
     <h3 id={`${id}-title`} className="font-semibold">{copy('Add experience details', '补充经历信息')}</h3>
     <p className="mt-2 text-sm text-gray-600">{copy('Answer what you know, choose what to include, then confirm it is accurate. Numbers and outcomes are optional. Nothing is inferred or added automatically.', '填写你知道的内容，选择要纳入的部分，再确认属实。不必写数字或结果，也不会自动推测或补写。')}</p>
+    {purpose === 'cold_email' && <p className="mt-2 text-sm text-gray-600">{copy('Describe your own contribution, separately from the team’s result. Keep your original wording; you can skip any question. Only selected, confirmed answers are saved for email and résumé drafts.', '把你本人做的部分与团队结果分开写。保留你的原话，可以跳过任何问题；只保存你勾选并确认的内容，供邮件和简历使用。')}</p>}
     {messages[controller.phase] && <p role={['load-error', 'conflict', 'save-error'].includes(controller.phase) ? 'alert' : 'status'} className="mt-3 whitespace-pre-wrap text-sm text-indigo-900">{messages[controller.phase]}</p>}
     {localError && <p role="alert" className="mt-3 text-sm text-red-700">{copy('That action could not finish. Your answers are kept; please retry.', '操作未能完成，答案仍保留，请重试。')}</p>}
     {(noMaster || noActivities) && <p className="mt-3 text-sm text-amber-900">{noMaster ? copy('Create your master résumé before adding details here.', '请先建立简历母版，再在这里补充。') : copy('Add a project or experience to your master résumé first.', '请先在简历母版中添加一项项目或经历。')}</p>}

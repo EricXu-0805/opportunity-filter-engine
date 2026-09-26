@@ -579,6 +579,7 @@ def public_target_truth(canonical_record: dict) -> dict:
 # envelope the moment a record is closed-but-active — which is the exact shape
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
+    "contact_instruction_sources",
     "is_active",
     "listing_status",
     "urap_status",

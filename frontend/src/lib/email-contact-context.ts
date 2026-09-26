@@ -2,7 +2,7 @@ import type { EmailContactContext, EmailContactContextReceipt } from './types';
 
 export const EMAIL_CONTACT_CONTEXT_LIMITS = {
   referrerName: 120, referralNote: 1500, previousMessage: 4000,
-  replyText: 2000, availability: 500, total: 9000,
+  replyText: 2000, availability: 500, paperTitle: 500, total: 9000,
 } as const;
 
 // Mirrors the backend bounded claim exclusion; this is not semantic fact verification.
@@ -80,7 +80,7 @@ export function defaultEmailContactContext(): EmailContactContext { return { ver
 export function normalizeEmailContactContext(value?: unknown): EmailContactContext {
   if (value == null) return defaultEmailContactContext();
   const item = record(value, 'context');
-  keys(item, ['version', 'purpose', 'referral', 'follow_up', 'availability'], 'context');
+  keys(item, ['version', 'purpose', 'referral', 'follow_up', 'availability', 'paper_reading'], 'context');
   if (item.version !== 1 || !['first_contact', 'referral', 'follow_up'].includes(item.purpose as string)) return invalid('context');
   const result: EmailContactContext = { version: 1, purpose: item.purpose as EmailContactContext['purpose'] };
   if (item.purpose === 'referral') {
@@ -117,6 +117,20 @@ export function normalizeEmailContactContext(value?: unknown): EmailContactConte
     keys(availability, ['text', 'confirmed'], 'availability');
     result.availability = { text: text(availability.text, EMAIL_CONTACT_CONTEXT_LIMITS.availability, 'availability.text'), confirmed: confirmed(availability.confirmed, 'availability.confirmed') };
     if (CONTACT_WORK_CLAIM.test(result.availability.text) || containsUnsupportedActionClaim(result.availability.text)) return invalid('availability.text');
+  }
+  if (item.paper_reading != null) {
+    const reading = record(item.paper_reading, 'paper_reading');
+    keys(reading, ['title', 'year', 'level', 'confirmed'], 'paper_reading');
+    if (!['title_only', 'abstract', 'full_text'].includes(reading.level as string)) return invalid('paper_reading.level');
+    result.paper_reading = {
+      title: text(reading.title, EMAIL_CONTACT_CONTEXT_LIMITS.paperTitle, 'paper_reading.title', true),
+      level: reading.level as NonNullable<EmailContactContext['paper_reading']>['level'],
+      confirmed: confirmed(reading.confirmed, 'paper_reading.confirmed'),
+    };
+    if (reading.year != null) {
+      if (typeof reading.year !== 'number' || !Number.isInteger(reading.year) || reading.year < 1000 || reading.year > 2100) return invalid('paper_reading.year');
+      result.paper_reading.year = reading.year;
+    }
   }
   if ([...canonical(result)].length > EMAIL_CONTACT_CONTEXT_LIMITS.total) throw new EmailContactContextError('CONTACT_CONTEXT_TOO_LARGE');
   return result;

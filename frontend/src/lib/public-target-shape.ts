@@ -1,5 +1,6 @@
 import { opportunityRecordKind } from './record-kind';
 import { isWritingTargetVersion } from './writing-target-version';
+import { isContactInstructions } from './contact-instructions';
 import type { Opportunity } from './types';
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -22,7 +23,8 @@ export function isPublicDetail(value: unknown, id: string): value is Opportunity
     || !strings(value.keywords) || !record(value.metadata)
     || !record(value.eligibility) || !record(value.application)) return false;
   if ('contact_email' in value || 'pi_email' in value || value.contact_email_status === 'revealed') return false;
-  if (!optional(value, 'writing_target_version', isWritingTargetVersion)) return false;
+  if (!optional(value, 'writing_target_version', isWritingTargetVersion)
+    || !optional(value, 'contact_instructions', isContactInstructions)) return false;
   if (!optional(value, 'source_type', nullableString)
     || !optional(value, 'record_kind', item => typeof item === 'string' && ['listing', 'faculty_contact', 'unknown'].includes(item))) return false;
   const unreviewed = value.record_kind === 'unknown'

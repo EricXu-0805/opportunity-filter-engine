@@ -38,19 +38,23 @@ _READING = re.compile(
 )
 
 
-def unsupported_action_claims(text: str) -> list[str]:
+def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | None = None) -> list[str]:
     """Reject positive attachment/completed-reading claims, never an offer.
 
-    There is no attachment or reader-confirmation field in the request schema.
-    Neither the draft, instruction, source metadata nor an uploaded resume can
-    supply such a field. The checked reading objects are scholarly works, not
+    Attachment claims remain unsupported. A server-rendered, target-validated
+    reading sentence may be supplied separately; only its exact single occurrence
+    is exempt from the reading check, never from attachment checks. The checked reading objects are scholarly works, not
     ordinary descriptions or future plans to read them.
     """
     findings: set[str] = set()
+    reading_text = text
+    if confirmed_reading_sentence and text.count(confirmed_reading_sentence) == 1:
+        reading_text = text.replace(confirmed_reading_sentence, "", 1)
     for clause in _CLAUSES.split(text):
         attached = _ATTACHMENT.search(clause)
         if attached and not re.search(r"\b(?:no|not|without)\s+(?:(?:a|any|my|the)\s+)?$", clause[:attached.start()], re.I):
             findings.add("unsupported attachment claim")
+    for clause in _CLAUSES.split(reading_text):
         read = _READING.search(clause)
         if read:
             prefix = clause[:read.start()].lower()

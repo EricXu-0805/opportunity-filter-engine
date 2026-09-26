@@ -866,6 +866,7 @@ def _contact_template(email: str, p: dict) -> str:
     """Use only route-admitted contact sentences; old internal callers stay first-contact."""
     opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
     availability = p.get("contact_availability") or ""
+    reading = p.get("contact_paper_reading") or ""
     method = p.get("contact_method")
     application_line = (
         "Your posting directs formal applications through "
@@ -882,13 +883,13 @@ def _contact_template(email: str, p: dict) -> str:
             if p.get("is_faculty") else
             "Could you let me know the best next step for this opportunity?"
         )
-        paragraphs = [_greeting(p), opening, application_line, availability, ask]
+        paragraphs = [_greeting(p), opening, reading, application_line, availability, ask]
         return subject + "\n\n" + "\n\n".join(x for x in paragraphs if x) + _closing(p)
     subject, body = email.split("\n\n", 1)
     if opening:
         greeting, rest = body.split("\n\n", 1)
         body = f"{greeting}\n\n{opening}\n\n{rest}"
-    additions = "\n\n".join(x for x in (application_line, availability) if x)
+    additions = "\n\n".join(x for x in (reading, application_line, availability) if x)
     if additions:
         body = body.replace("\n\nBest regards,", f"\n\n{additions}\n\nBest regards,", 1)
     return f"{subject}\n\n{body}"

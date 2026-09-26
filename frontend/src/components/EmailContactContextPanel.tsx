@@ -1,12 +1,18 @@
 'use client';
 
-import { useId, useState } from 'react';
-import type { EmailContactContext } from '@/lib/types';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import type { EmailContactContext, Opportunity } from '@/lib/types';
+import { emailPaperKey, emailPaperOptions, type EmailPaperOption, type EmailPaperReading } from '@/lib/email-paper-reading';
 import { defaultEmailContactContext, normalizeEmailContactContext, serializeEmailContactContext } from '@/lib/email-contact-context';
 import styles from './EmailContactContextPanel.module.css';
 
 export interface EmailContactContextPanelProps {
   context?: EmailContactContext;
+  opportunity?: Opportunity | null;
+  /** Current writing target version/fingerprint. Changes require a fresh reading confirmation. */
+  targetKey?: string;
+  /** Increase after a server rejection; preserve answers and ask for a fresh confirmation. */
+  reviewRequested?: number;
   onDraftChange: () => void;
   onApply: (context: EmailContactContext) => void;
   /** Change for a new owner/open/target session, not an ordinary render. */
@@ -26,19 +32,23 @@ type Fields = {
   replyStatus: ReplyStatus;
   replyText: string;
   availability: string;
+  paperKey: string;
+  readingLevel: EmailPaperReading['level'] | '';
 };
-type Confirmations = { referral: boolean; sent: boolean; availability: boolean };
-type PanelError = 'required' | 'confirmation' | 'invalid' | 'blocked' | 'apply';
+type Confirmations = { referral: boolean; sent: boolean; availability: boolean; paper: boolean };
+type PanelError = 'required' | 'confirmation' | 'invalid' | 'blocked' | 'apply' | 'paper';
 type Supplied = { value: EmailContactContext; key: string; valid: boolean };
 type State = {
   sourceKey: string;
+  paperSourceKey: string;
+  reviewRequested: number;
   fields: Fields;
   confirmed: Confirmations;
   dirty: boolean;
   appliedKey: string | null;
   error: PanelError | null;
 };
-const unconfirmed = (): Confirmations => ({ referral: false, sent: false, availability: false });
+const unconfirmed = (): Confirmations => ({ referral: false, sent: false, availability: false, paper: false });
 
 function supplied(value: EmailContactContext | undefined): Supplied {
   try {
@@ -49,10 +59,12 @@ function supplied(value: EmailContactContext | undefined): Supplied {
   }
 }
 
-function fromSupplied(source: Supplied): State {
+function fromSupplied(source: Supplied, paperSourceKey: string, reviewRequested: number): State {
   const value = source.value;
   return {
     sourceKey: source.key,
+    paperSourceKey,
+    reviewRequested,
     fields: {
       purpose: value.purpose,
       referrerName: value.referral?.referrer_name ?? '',
@@ -62,11 +74,14 @@ function fromSupplied(source: Supplied): State {
       replyStatus: value.follow_up?.reply_status ?? 'unknown',
       replyText: value.follow_up?.reply_text ?? '',
       availability: value.availability?.text ?? '',
+      paperKey: value.paper_reading ? emailPaperKey(value.paper_reading) : '',
+      readingLevel: value.paper_reading?.level ?? '',
     },
     confirmed: {
       referral: value.referral?.confirmed === true,
       sent: value.follow_up?.sent_confirmed === true,
       availability: value.availability?.confirmed === true,
+      paper: value.paper_reading?.confirmed === true,
     },
     dirty: !source.valid,
     appliedKey: source.valid ? source.key : null,
@@ -74,14 +89,17 @@ function fromSupplied(source: Supplied): State {
   };
 }
 
-function prepare(fields: Fields, confirmed: Confirmations):
+function prepare(fields: Fields, confirmed: Confirmations, papers: EmailPaperOption[]):
   { value: EmailContactContext; key: string; error: null } | { error: PanelError } {
+  const selectedPaper = papers.find(paper => emailPaperKey(paper) === fields.paperKey);
+  if (fields.paperKey && (!selectedPaper || !fields.readingLevel)) return { error: 'paper' };
   if (fields.purpose === 'follow_up' && ['declined', 'do_not_contact'].includes(fields.replyStatus)) return { error: 'blocked' };
   if (fields.purpose === 'referral' && (!fields.referrerName.trim() || !fields.referralNote.trim())) return { error: 'required' };
   if (fields.purpose === 'follow_up' && (!fields.previousMessage.trim() || (fields.replyStatus === 'received' && !fields.replyText.trim()))) return { error: 'required' };
   if ((fields.purpose === 'referral' && !confirmed.referral)
     || (fields.purpose === 'follow_up' && !confirmed.sent)
-    || (fields.availability.trim() && !confirmed.availability)) return { error: 'confirmation' };
+    || (fields.availability.trim() && !confirmed.availability)
+    || (fields.paperKey && !confirmed.paper)) return { error: 'confirmation' };
   const candidate = {
     version: 1,
     purpose: fields.purpose,
@@ -95,6 +113,7 @@ function prepare(fields: Fields, confirmed: Confirmations):
       ...(fields.replyStatus === 'received' ? { reply_text: fields.replyText } : {}),
     } } : {}),
     ...(fields.availability.trim() ? { availability: { text: fields.availability, confirmed: true } } : {}),
+    ...(selectedPaper ? { paper_reading: { ...selectedPaper, level: fields.readingLevel, confirmed: true } } : {}),
   };
   try {
     const value = normalizeEmailContactContext(candidate);
@@ -110,35 +129,53 @@ export default function EmailContactContextPanel(props: EmailContactContextPanel
   return <ContextSession key={props.resetKey} {...props} />;
 }
 
-function ContextSession({ context, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
+function ContextSession({ context, opportunity, targetKey, reviewRequested = 0, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
   const copy = (en: string, zh: string) => language === 'zh' ? zh : en;
   const id = useId();
   const source = supplied(context);
-  const [state, setState] = useState(() => fromSupplied(source));
+  const papers = emailPaperOptions(opportunity);
+  const paperSourceKey = JSON.stringify([opportunity?.id ?? null, targetKey ?? null, papers]);
+  const previousPaperSource = useRef(paperSourceKey);
+  const [state, setState] = useState(() => fromSupplied(source, paperSourceKey, reviewRequested));
   const [expanded, setExpanded] = useState(() => source.value.purpose !== 'first_contact');
   // Adopt an external accepted context only when it cannot erase unfinished
   // answers. A real owner/target reset uses the keyed session above.
-  if (state.sourceKey !== source.key) {
-    setState(!state.dirty || state.appliedKey === source.key
-      ? fromSupplied(source)
-      : { ...state, sourceKey: source.key, appliedKey: null });
+  if (state.sourceKey !== source.key || state.paperSourceKey !== paperSourceKey || state.reviewRequested !== reviewRequested) {
+    const adopted = state.sourceKey !== source.key
+      ? (!state.dirty || state.appliedKey === source.key ? fromSupplied(source, paperSourceKey, reviewRequested) : { ...state, sourceKey: source.key, appliedKey: null })
+      : state;
+    const reviewing = state.reviewRequested !== reviewRequested;
+    if (reviewing) setExpanded(true);
+    setState({ ...adopted, paperSourceKey, reviewRequested,
+      ...((state.paperSourceKey !== paperSourceKey || reviewing) && adopted.fields.paperKey
+        ? { confirmed: { ...adopted.confirmed, paper: false }, dirty: true, appliedKey: null, error: null } : {}),
+    });
   }
+  const hasPaper = !!state.fields.paperKey;
+  useLayoutEffect(() => {
+    if (previousPaperSource.current !== paperSourceKey) {
+      previousPaperSource.current = paperSourceKey;
+      if (hasPaper) onDraftChange();
+    }
+  }, [paperSourceKey, hasPaper, onDraftChange]);
   const fields = state.fields;
-  const prepared = prepare(fields, state.confirmed);
+  const selectedPaper = papers.find(paper => emailPaperKey(paper) === fields.paperKey);
+  const prepared = prepare(fields, state.confirmed, papers);
   const blocked = prepared.error === 'blocked';
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
   const error = state.error ?? (blocked ? 'blocked' : null);
   const errors: Record<PanelError, string> = {
     required: copy('Fill in the required details, or choose First contact. Your answers are kept.', '请补齐必要信息，或选择“首次联系”。已填内容会保留。'),
-    confirmation: copy('Confirm the details you want to use. Optional availability can be cleared or skipped.', '请确认要使用的信息。可清空或跳过选填的可投入时间。'),
+    confirmation: copy('Confirm the details you want to use. Optional details can be cleared or skipped.', '请确认要使用的信息。选填内容可清空或跳过。'),
     invalid: copy('Some details are invalid or too long. Check the date and character counts. Your full text is kept.', '部分信息格式不正确或过长，请检查日期和字数。完整输入仍保留。'),
     blocked: copy('Do not prepare a follow-up after a refusal or a request not to contact them. Your current email and answers are kept.', '对方已拒绝或要求不再联系时，不准备跟进邮件。当前邮件和填写内容仍保留。'),
+    paper: copy('Choose a current verified paper and your reading level, or skip paper reading.', '请选择当前已核实的论文和阅读程度，或跳过论文阅读。'),
     apply: copy('The background could not be applied. Your answers are kept; please try again.', '背景信息未能应用，填写内容仍保留，请重试。'),
   };
   const update = <K extends keyof Fields>(key: K, value: Fields[K]) => {
     if (disabled) return;
     onDraftChange();
-    setState(previous => ({ ...previous, fields: { ...previous.fields, [key]: value },
+    setState(previous => ({ ...previous, fields: { ...previous.fields, [key]: value, ...(key === 'paperKey' ? { readingLevel: '' as const } : {}) },
       confirmed: unconfirmed(), dirty: true, appliedKey: null, error: null }));
   };
   const confirm = (key: keyof Confirmations, value: boolean) => {
@@ -149,7 +186,7 @@ function ContextSession({ context, onDraftChange, onApply, disabled = false, lan
   };
   const apply = () => {
     if (disabled || applied) return;
-    const result = prepare(fields, state.confirmed);
+    const result = prepare(fields, state.confirmed, papers);
     if (result.error !== null) { setState(previous => ({ ...previous, error: result.error })); return; }
     try {
       onApply(result.value);
@@ -223,6 +260,31 @@ function ContextSession({ context, onDraftChange, onApply, disabled = false, lan
             <span>{copy('I confirm I actually sent this email to this target and these details are accurate. This does not record a new send.', '我确认这封邮件确实已发给当前目标，且这些信息属实。这不会记录一次新的发送。')}</span>
           </label>
         </>}
+        <div className={styles.field} data-testid="email-paper-reading">
+          <label htmlFor={id + '-paper'}>{copy('Paper you looked at (optional)', '你看过的论文（选填）')}</label>
+          <select id={id + '-paper'} value={fields.paperKey} disabled={!papers.length && !fields.paperKey}
+            onChange={event => update('paperKey', event.target.value)}>
+            <option value="">{copy('Skip paper reading', '跳过论文阅读')}</option>
+            {fields.paperKey && !selectedPaper && <option value={fields.paperKey} disabled>{copy('Previous paper is no longer available', '之前选择的论文已不可用')}</option>}
+            {papers.map(paper => <option key={emailPaperKey(paper)} value={emailPaperKey(paper)}>{paper.title}{paper.year != null ? ` (${paper.year})` : ''}</option>)}
+          </select>
+          <p className={styles.help}>{papers.length
+            ? copy('Choose from papers attributed to this researcher. Confirm only what you actually read; this does not claim understanding or expertise.', '只能选择已核实归属该研究者的论文。按实际阅读程度确认，不据此宣称理解或掌握。')
+            : copy('No verified papers are available for this target. You can continue without a reading claim.', '当前目标没有可选的已核实论文。可以继续，不写阅读声明。')}</p>
+          {fields.paperKey && <>
+            <label htmlFor={id + '-readingLevel'}>{copy('How much did you read?', '你读到了哪一步？')}</label>
+            <select id={id + '-readingLevel'} value={fields.readingLevel} onChange={event => update('readingLevel', event.target.value as Fields['readingLevel'])}>
+              <option value="">{copy('Choose reading level', '选择阅读程度')}</option>
+              <option value="title_only">{copy('Title only', '只看过标题')}</option>
+              <option value="abstract">{copy('Abstract', '读过摘要')}</option>
+              <option value="full_text">{copy('Full text', '读过全文')}</option>
+            </select>
+            <label className={styles.checkbox}><input type="checkbox" checked={state.confirmed.paper} onChange={event => confirm('paper', event.target.checked)} />
+              <span>{copy('I confirm this reading level for the selected paper.', '我确认自己对这篇论文的阅读程度。')}</span>
+            </label>
+            <button type="button" className={styles.secondary} onClick={() => update('paperKey', '')}>{copy('Skip paper reading', '跳过论文阅读')}</button>
+          </>}
+        </div>
         {textArea('availability', copy('When could you participate? (optional)', '可投入的时间（选填）'), 500)}
         <p className={styles.help}>{copy('You may skip this. Unanswered details are omitted, not guessed.', '可以跳过。未回答的信息会省略，不会推测补写。')}</p>
         {fields.availability.length > 0 && <>

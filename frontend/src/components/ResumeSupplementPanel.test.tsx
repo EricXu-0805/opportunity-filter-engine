@@ -269,3 +269,27 @@ describe('resume supplement panel', () => {
   });
 
 });
+
+
+describe('cold email contribution reuse', () => {
+  it('uses the same confirmed supplement controller and keeps contribution wording separate from the team outcome', async () => {
+    mount({ purpose: 'cold_email' });
+    expect(screen.getByText(/Describe your own contribution, separately from the team/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
+    const role = '  I wrote the parser tests. My teammate designed the model; I did not.  ';
+    fireEvent.change(screen.getByRole('textbox', { name: 'What did you personally do?' }), { target: { value: role } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'What was the outcome, if known?' }), { target: { value: 'The team released a prototype; I did not measure improvement.' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include my role' }));
+    fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const [draft] = vi.mocked(current().confirm).mock.calls[0];
+    expect(draft.selected).toEqual(['personalRole']); expect(draft.answers.personalRole).toBe(role);
+    expect(draft.answers.task).toBe('');
+  });
+  it.each(['en', 'zh'])('explains successful saving without claiming the current email was rewritten (%s)', locale => {
+    mocked.locale = locale;
+    mocked.controller = controller({ phase: 'saved' });
+    mount({ purpose: 'cold_email' });
+    expect(screen.getByText(locale === 'en' ? /Saved to your profile and master résumé. Your current email is kept/ : /已保存到个人资料和简历母版。当前邮件仍保留/)).toBeInTheDocument();
+  });
+});

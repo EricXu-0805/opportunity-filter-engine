@@ -1,6 +1,12 @@
 'use client';
 
 import { canFallbackColdEmailStream } from '@/lib/cold-email-stream';
+import ResumeSupplementPanel from './ResumeSupplementPanel';
+import { isEmailPaperReadingCurrent } from '@/lib/email-paper-reading';
+import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import ContactInstructionsPanel from './ContactInstructionsPanel';
+import { contactEmailBlock, contactInstructionCopy } from '@/lib/contact-instructions';
+import { verifyComposeRecipient } from '@/lib/email-compose';
 import { writingTargetVersion } from '@/lib/writing-target-version';
 import { isPublicDetail } from '@/lib/public-target-shape';
 import { defaultEmailContactContext, serializeEmailContactContext, emailContactContextSignature, requireEmailContactContextReceipt } from '@/lib/email-contact-context';
@@ -10,7 +16,7 @@ import { createContactEventInput, contactMaterialVersion, ContactEventError } fr
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
 import { getPushStatus, isPushSupported, subscribeToPush } from '@/lib/push';
 import { getVapidPublicKey } from '@/lib/api';
@@ -46,11 +52,19 @@ import type { Opportunity, ProfileData, EmailVariant, LabType, EmailStyle, ColdE
 import { useT } from '@/i18n/client';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
-import { useProfileAction } from '@/lib/use-profile-action';
+import { profileActionKey, useProfileAction } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
 import styles from './ColdEmailModal.module.css';
+
+type ComposeProvider = 'default' | 'gmail' | 'outlook';
+type ComposeFailure = 'popup' | 'unavailable' | 'recipient';
+type PendingCompose = {
+  id: number; popup: Window; owner: ReturnType<typeof captureOwnerToken>;
+  key: string; provider: ComposeProvider; phase: 'sources' | 'recipient';
+  controller: AbortController; deadline: ReturnType<typeof setTimeout>;
+};
 
 const AI_VARIANT_ID = 'ai';
 // W12: a cached AI draft is re-served for at most this long — beyond it the
@@ -78,10 +92,13 @@ export function aiCacheEntryIsStale(
     entry.response.corpus_version !== currentCorpusVersion
   );
 }
+function readingChanged(error: unknown): boolean {
+  return !!error && typeof error === 'object' && 'code' in error && error.code === 'EMAIL_READING_CHANGED';
+}
 type TargetVersionFailure = 'unavailable' | 'changed';
 function targetVersionFailure(error: unknown): TargetVersionFailure | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
-  return error.code === 'WRITING_TARGET_CHANGED' ? 'changed'
+  return error.code === 'WRITING_TARGET_CHANGED' || error.code === 'EMAIL_CONTACT_INSTRUCTIONS' ? 'changed'
     : error.code === 'INVALID_WRITING_TARGET_RECEIPT' ? 'unavailable' : null;
 }
 function requireTargetReceipt(response: unknown, id: string, version: string) {
@@ -289,7 +306,7 @@ function applyQuickEdit(
 export default function ColdEmailModal({
   isOpen,
   onClose,
-  profile,
+  profile: incomingProfile,
   opportunityId,
   opportunityTitle,
   opportunitySchool,
@@ -305,6 +322,21 @@ export default function ColdEmailModal({
   targetMembershipReady,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
+  const incomingProfileKey = profileActionKey(incomingProfile);
+  const [supplementProfile, setSupplementProfile] = useState<{ view: ProfileViewSnapshot; inputKey: string | null; targetId: string } | null>(null);
+  const profile = profileAvailable && supplementProfile && supplementProfile.inputKey === incomingProfileKey
+    && supplementProfile.targetId === opportunityId && isOwnerTokenValid(supplementProfile.view.token, supplementProfile.view.token.uid)
+    ? supplementProfile.view.renderedProfile : incomingProfile;
+  const [supplementSession, setSupplementSession] = useState<{ owner: ReturnType<typeof captureOwnerToken>; targetId: string; inputKey: string | null } | null>(null);
+  const supplementScopeRef = useRef(supplementSession);
+  const supplementInputRef = useRef({ key: incomingProfileKey, available: profileAvailable && isOpen, targetId: opportunityId });
+  useLayoutEffect(() => {
+    if (!profileAvailable || supplementInputRef.current.key !== incomingProfileKey) setSupplementProfile(null);
+    supplementScopeRef.current = supplementSession;
+    supplementInputRef.current = { key: incomingProfileKey, available: profileAvailable && isOpen, targetId: opportunityId };
+  }, [supplementSession, incomingProfileKey, profileAvailable, isOpen, opportunityId]);
+
+  const contactPolicyBlock = contactEmailBlock(target);
   const expectedTargetVersion = isPublicDetail(target, opportunityId) ? writingTargetVersion(target) : null;
   const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
   const sourceReadyRef = useRef(sourceReady);
@@ -331,6 +363,7 @@ export default function ColdEmailModal({
   if (contactState.id !== opportunityId) setContactState(effectiveContact);
   const contactSerialized = serializeEmailContactContext(effectiveContact.value);
   const requestContactContext = useMemo(() => JSON.parse(contactSerialized) as EmailContactContext, [contactSerialized]);
+  const paperReadingCurrent = isEmailPaperReadingCurrent(requestContactContext, target);
   const contextDirty = effectiveContact.dirty;
   const contextDirtyRef = useRef(contextDirty);
   useLayoutEffect(() => { contextDirtyRef.current = contextDirty; }, [contextDirty]);
@@ -338,6 +371,13 @@ export default function ColdEmailModal({
   // may generate, including when the first response has not arrived yet.
   const contextEditedRef = useRef(false);
   const [contextChanged, setContextChanged] = useState(false);
+  const [readingReview, setReadingReview] = useState(0);
+  const [readingReviewRequired, setReadingReviewRequired] = useState(false);
+  const retireContactDraftRef = useRef<() => void>(() => {});
+  const reportReadingChange = useCallback(() => {
+    retireContactDraftRef.current();
+    setReadingReviewRequired(true); setReadingReview(value => value + 1);
+  }, []);
   const contactFingerprint = `${effectiveContact.revision}\n${contactSerialized}`;
   const materialFingerprint = `${profileFingerprint}\n${targetFingerprint}\n${contactFingerprint}`;
   const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
@@ -364,8 +404,13 @@ export default function ColdEmailModal({
   const [recommendedStyle, setRecommendedStyle] = useState<EmailStyle | null>(null);
 
   const [subject, setSubject] = useState('');
+  const [subjectFormatConfirmation, setSubjectFormatConfirmation] = useState<{ subject: string; version: string } | null>(null);
+  const subjectFormatConfirmed = !!subjectFormatConfirmation && subjectFormatConfirmation.subject === subject
+    && subjectFormatConfirmation.version === expectedTargetVersion;
+  if (subjectFormatConfirmation && !subjectFormatConfirmed) setSubjectFormatConfirmation(null);
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
+  const recipientEditedRef = useRef(false);
   const [actualSentAt, setActualSentAt] = useState('');
   // W10b contact bar: why the To field is (or isn't) prefilled. 'sign_in_required'
   // renders the sign-in-to-reveal affordance; 'unavailable' the honest
@@ -470,7 +515,29 @@ export default function ColdEmailModal({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [userEditRevision, setUserEditRevision] = useState(0);
-  const noteUserEdit = () => setUserEditRevision((value) => value + 1);
+  const [composeBusy, setComposeBusy] = useState(false);
+  const [composeFailure, setComposeFailure] = useState<ComposeFailure | null>(null);
+  const composeRef = useRef<PendingCompose | null>(null);
+  const composeSequence = useRef(0);
+  const composeActionCancelRef = useRef<() => void>(() => {});
+  const composeKey = JSON.stringify([opportunityId, materialFingerprint, copyContentKey, userEditRevision]);
+  const composeKeyRef = useRef(composeKey);
+  const cancelCompose = useCallback((failure: ComposeFailure | null = null) => {
+    const pending = composeRef.current;
+    if (pending) {
+      composeRef.current = null;
+      clearTimeout(pending.deadline); pending.controller.abort();
+      composeActionCancelRef.current();
+      try { pending.popup.close(); } catch { /* Already closed or inaccessible. */ }
+    }
+    setComposeBusy(false); setComposeFailure(failure);
+  }, []);
+  useLayoutEffect(() => {
+    composeKeyRef.current = composeKey;
+    if (composeRef.current && composeRef.current.key !== composeKey) cancelCompose();
+  }, [composeKey, cancelCompose]);
+  useEffect(() => () => cancelCompose(), [cancelCompose]);
+  const noteUserEdit = () => { cancelCompose(); setUserEditRevision((value) => value + 1); };
   const [refining, setRefining] = useState(false);
   const [retired, setRetired] = useState(false);
   const [profileChanged, setProfileChanged] = useState(false);
@@ -535,10 +602,11 @@ export default function ColdEmailModal({
 
   const closeDraft = useCallback(() => {
     // End the session at the click/escape, even if the parent closes later.
+    cancelCompose();
     sendSessionRef.current += 1;
     setRetired(true);
     onClose();
-  }, [onClose]);
+  }, [onClose, cancelCompose]);
 
   // The epoch changes synchronously, before a parent's new profile reaches
   // this dialog. End the old draft session instead of generating with that
@@ -576,6 +644,8 @@ export default function ColdEmailModal({
 
   const fetchVariants = useCallback(async (preserveDraft = false, keepEditor = false) => {
     if (!sourceReadyRef.current || contextDirtyRef.current) return;
+    if (contactPolicyBlock) { setError(contactInstructionCopy[locale][contactPolicyBlock]); setLoading(false); return; }
+    if (!paperReadingCurrent) { setError(locale === 'zh' ? '已确认的论文不再属于当前资料，请重新核对阅读信息。' : 'The confirmed paper is no longer in the current source. Review your reading details.'); setLoading(false); return; }
     const sessionCurrent = captureDraftSession();
     const request = ++variantRequestRef.current;
     const current = () => sessionCurrent() && request === variantRequestRef.current;
@@ -654,7 +724,8 @@ export default function ColdEmailModal({
     } catch (err) {
       if (!current()) return;
       const targetFailure = targetVersionFailure(err);
-      if (targetFailure) { reportTargetVersionFailure(targetFailure); }
+      if (readingChanged(err)) { reportReadingChange(); }
+      else if (targetFailure) { reportTargetVersionFailure(targetFailure); }
       else if (keepEditor) {
         setProfileRegenerateError(isStudentNameRequiredError(err) ? 'name-required' : 'failed');
       } else if (isStudentNameRequiredError(err)) {
@@ -668,12 +739,13 @@ export default function ColdEmailModal({
         else if (!preserveDraft) setLoading(false);
       }
     }
-  }, [requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, setSendError]);
+  }, [contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
     | { kind: 'refine'; instruction: string; typed?: boolean; label?: string }
-    | { kind: 'coursework' };
+    | { kind: 'coursework' }
+    | { kind: 'compose'; id: number };
   const action = useProfileAction<WritingIntent>({
     isOpen: isOpen && !retired, profile: requestProfile, profileAvailable,
     scopeKey: `${opportunityId}\n${targetFingerprint}\n${contactFingerprint}`, editRevision: userEditRevision, refresh: profileRefresh, target, targetRefresh,
@@ -681,6 +753,9 @@ export default function ColdEmailModal({
       : profileAvailable && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
     execute: (intent) => {
       if (contextDirtyRef.current) return;
+      if (intent.kind === 'compose') { void finishCompose(intent.id); return; }
+      if (contactPolicyBlock) { setError(contactInstructionCopy[locale][contactPolicyBlock]); setLoading(false); return; }
+      if (!paperReadingCurrent) return;
       if (intent.kind === 'variants') { targetCheckOnlyRef.current = false; void fetchVariants(intent.preserveDraft, intent.keepEditor); return; }
       if (intent.kind !== 'coursework' && !expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
       if (intent.kind !== 'coursework' && targetVersionError) return;
@@ -705,7 +780,12 @@ export default function ColdEmailModal({
       void runRefine(intent.instruction);
     },
   });
+  useLayoutEffect(() => { composeActionCancelRef.current = action.cancel; }, [action.cancel]);
+  useEffect(() => {
+    if (!action.busy && composeRef.current?.phase === 'sources') cancelCompose(action.error ? 'unavailable' : null);
+  }, [action.busy, action.error, cancelCompose]);
   const retireContactDraft = () => {
+    cancelCompose();
     action.cancel();
     contextDirtyRef.current = true;
     contextEditedRef.current = true;
@@ -723,7 +803,9 @@ export default function ColdEmailModal({
     setProfileRegenerating(false); setProfileChanged(true); setContextChanged(true);
     setContactState(previous => ({ ...previous, dirty: true, revision: previous.revision + 1 }));
   };
+  useLayoutEffect(() => { retireContactDraftRef.current = retireContactDraft; });
   const applyContactContext = (value: EmailContactContext) => {
+    setReadingReviewRequired(false);
     action.cancel();
     contextDirtyRef.current = false;
     setContactState(previous => ({ id: opportunityId, value, dirty: false, revision: previous.revision + 1 }));
@@ -746,8 +828,12 @@ export default function ColdEmailModal({
     sessionProfileRef.current = materialFingerprint;
     if (isOpen) void fetchVariantsRef.current();
     return () => {
+      cancelCompose();
       autoFiredRef.current = false;
       contextDirtyRef.current = false; contextEditedRef.current = false;
+      supplementScopeRef.current = null;
+      setSupplementSession(null); setSupplementProfile(null);
+      setReadingReview(0); setReadingReviewRequired(false);
       setContactState({ id: opportunityId, value: defaultEmailContactContext(), revision: 0, dirty: false });
       setContextChanged(false);
       targetCheckOnlyRef.current = false;
@@ -788,9 +874,9 @@ export default function ColdEmailModal({
       setSelectedStyle('professional');
       setRecommendedStyle(null);
       editorUsedRef.current = false;
-      setSubject('');
+      setSubject(''); setSubjectFormatConfirmation(null);
       setBody('');
-      setRecipient('');
+      setRecipient(''); recipientEditedRef.current = false;
       draftSourcesRef.current = null;
       setRecipientStatus('unavailable');
       setGrounding('specific');
@@ -968,13 +1054,14 @@ export default function ColdEmailModal({
           if (email) setRecipient((prev) => prev || email);
         } catch (error) {
           const failure = targetVersionFailure(error);
-          if (current() && failure) reportTargetVersionFailure(failure);
+          if (current() && readingChanged(error)) reportReadingChange();
+          else if (current() && failure) reportTargetVersionFailure(failure);
           // Other reveal failures keep the existing sign-in affordance.
         }
       })();
     });
     return unsubscribe;
-  }, [contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure]);
+  }, [contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
 
   function selectVariant(idx: number) {
     const v = allVariants[idx];
@@ -1002,7 +1089,7 @@ export default function ColdEmailModal({
   // silent), it never clobbers a draft the user has meanwhile edited or
   // switched away from, and it seeds/serves the per-open cache.
   const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
-    if (!sourceReadyRef.current || contextDirtyRef.current || profileChanged || profileRegenerating || !variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
+    if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || !variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
     const sessionCurrent = captureDraftSession();
@@ -1118,7 +1205,8 @@ export default function ColdEmailModal({
       ]);
     } catch (error) {
       const failure = targetVersionFailure(error);
-      if (current() && failure) reportTargetVersionFailure(failure);
+      if (current() && readingChanged(error)) reportReadingChange();
+          else if (current() && failure) reportTargetVersionFailure(failure);
       else if (current() && !auto) {
         setChatMessages((prev) => [
           ...prev,
@@ -1132,7 +1220,7 @@ export default function ColdEmailModal({
         setAiStage(null);
       }
     }
-  }, [profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure]);
+  }, [contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -1158,7 +1246,7 @@ export default function ColdEmailModal({
   // (which grounds the result and degrades to its deterministic EDIT_OPS when
   // no LLM is configured), then replaces the placeholder with the outcome.
   async function runRefine(instruction: string) {
-    if (!sourceReadyRef.current || contextDirtyRef.current || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
     const sessionCurrent = captureDraftSession();
@@ -1196,7 +1284,11 @@ export default function ColdEmailModal({
     } catch (error) {
       if (current()) {
         const failure = targetVersionFailure(error);
-        if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
+        if (readingChanged(error)) {
+          reportReadingChange();
+          reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.');
+        }
+        else if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
         else reply(t('coldEmail.editFailed'));
       }
     } finally {
@@ -1411,6 +1503,54 @@ export default function ColdEmailModal({
     if (sourceReadyRef.current) markContacted();
   }
 
+  function startCompose(provider: ComposeProvider) {
+    if (!sourceReadyRef.current || action.busy || composeRef.current || contextDirtyRef.current
+      || !paperReadingCurrent || profileChangedRef.current || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed })
+      || !recipient.trim() || !subject.trim() || !body.trim()) return;
+    // Reserve only an empty window during the user's click. Navigating after
+    // the bounded source checks must not depend on surviving user activation.
+    let popup: Window | null = null;
+    try { popup = window.open('about:blank', '_blank'); if (popup) popup.opener = null; }
+    catch { try { popup?.close(); } catch { /* Inaccessible window. */ } popup = null; }
+    if (!popup) { setComposeFailure('popup'); return; }
+    const id = ++composeSequence.current;
+    const controller = new AbortController();
+    const pending: PendingCompose = { id, popup, owner: captureOwnerToken(), key: composeKeyRef.current,
+      provider, phase: 'sources', controller, deadline: setTimeout(() => {
+        if (composeRef.current?.id === id) cancelCompose('unavailable');
+      }, 30_000) };
+    composeRef.current = pending; setComposeBusy(true); setComposeFailure(null);
+    action.request({ kind: 'compose', id });
+  }
+
+  async function finishCompose(id: number) {
+    const pending = composeRef.current;
+    if (!pending || pending.id !== id) return;
+    const current = () => composeRef.current === pending && pending.key === composeKeyRef.current
+      && isTokenOwnerStillCurrent(pending.owner) && !pending.controller.signal.aborted;
+    if (!current() || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
+      || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed }) || !expectedTargetVersion) {
+      cancelCompose(); return;
+    }
+    pending.phase = 'recipient';
+    try {
+      if (!recipientEditedRef.current) {
+        await verifyComposeRecipient(opportunityId, expectedTargetVersion, recipient.trim(), pending.controller.signal);
+      }
+      if (!current()) return;
+      if (pending.popup.closed) { cancelCompose(); return; }
+      pending.popup.location.href = getMailtoLink(pending.provider);
+      composeRef.current = null; clearTimeout(pending.deadline);
+      setComposeBusy(false); setComposeFailure(null);
+      // Opening a composer is not a send. Only the existing explicit historical
+      // attestation can create a contact record.
+      markContacted();
+    } catch (error) {
+      if (!current()) return;
+      cancelCompose(error instanceof Error && error.message === 'recipient_changed' ? 'recipient' : 'unavailable');
+    }
+  }
+
   function getMailtoLink(provider: 'default' | 'gmail' | 'outlook' = 'default'): string {
     const to = encodeURIComponent(recipient || '');
     const subj = encodeURIComponent(subject);
@@ -1463,6 +1603,16 @@ export default function ColdEmailModal({
           </button>
         </div>
 
+        <details className="shrink-0 max-h-[30dvh] overflow-y-auto border-b border-gray-100 px-4 py-2" open={!!contactPolicyBlock}>
+          <summary className="cursor-pointer text-sm font-medium text-gray-700">{contactInstructionCopy[locale].title}</summary>
+          <ContactInstructionsPanel target={target} subject={subject} subjectFormatConfirmed={subjectFormatConfirmed}
+            onConfirmSubjectFormat={(confirmed) => {
+              cancelCompose();
+              setSubjectFormatConfirmation(confirmed && expectedTargetVersion ? { subject, version: expectedTargetVersion } : null);
+            }} onUseSubject={(value) => {
+            editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setSubject(value);
+          }} />
+        </details>
         <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => {
           if (editorUsedRef.current && !window.confirm(locale === 'zh'
             ? '离开会丢弃未保存的邮件草稿。确定去核对资料？'
@@ -1475,6 +1625,7 @@ export default function ColdEmailModal({
           onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
       </div>}
 
+        {readingReviewRequired && <div role="alert" data-testid="cold-email-reading-changed" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{locale === 'zh' ? '论文资料已变化。当前邮件保留，请在“联系目的与背景”中重新确认阅读信息或跳过。' : 'The paper information changed. Your email is kept. Review or skip the reading details in Contact purpose and background.'}</div>}
         {targetVersionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
           <p>{t(targetVersionError === 'changed' ? 'coldEmail.targetVersionChanged' : 'coldEmail.targetVersionUnavailable')}</p>
           <button type="button" disabled={action.busy || profileRegenerating || !targetRefresh || targetRefresh.status === 'checking'}
@@ -1565,7 +1716,7 @@ export default function ColdEmailModal({
                   <button
                     type="button"
                     onClick={handleAiPillClick}
-                    disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
+                    disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                     title={t('coldEmail.aiVariantTitle')}
                     className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                       activeVariant === variants.length && aiVariant
@@ -1596,7 +1747,7 @@ export default function ColdEmailModal({
                         key={s}
                         type="button"
                         onClick={() => handleToneClick(s)}
-                        disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
+                        disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                           isActive
                             ? 'bg-indigo-600 text-white shadow-sm'
@@ -1619,8 +1770,25 @@ export default function ColdEmailModal({
                 </div>
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
-                  <EmailContactContextPanel context={requestContactContext} resetKey={`${opportunityId}:${isOpen}`}
+                  <EmailContactContextPanel opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}`}
                     language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />
+                  <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement"
+                    onToggle={(event) => { if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-800">{locale === 'zh' ? '补充本人贡献（可跳过）' : 'Add your personal contribution (optional)'}</summary>
+                    {supplementSession && supplementSession.targetId === opportunityId && <div className="mt-3">
+                      <ResumeSupplementPanel owner={supplementSession.owner} targetKey={targetFingerprint} purpose="cold_email" profileAvailable={profileAvailable}
+                        onAcceptedProfile={(view, againstView) => {
+                          const current = supplementInputRef.current, scope = supplementScopeRef.current;
+                          if (!current.available || scope !== supplementSession || current.targetId !== scope.targetId
+                            || !isTokenOwnerStillCurrent(scope.owner) || !isOwnerTokenValid(view.token, view.token.uid)
+                            || !isOwnerTokenValid(againstView.token, againstView.token.uid)
+                            || [view.token, againstView.token].some(token => token.uid !== scope.owner.uid || token.epoch !== scope.owner.epoch || token.generation !== scope.owner.generation)) return;
+                          if (scope.inputKey === current.key || profileActionKey(againstView.renderedProfile) === current.key) {
+                            setSupplementProfile({ view, inputKey: current.key, targetId: scope.targetId });
+                          }
+                        }} />
+                    </div>}
+                  </details>
                   <section className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600" data-testid="cold-email-experience">
                     <details>
                       <summary className="cursor-pointer font-semibold text-gray-800">{t('coldEmail.experienceTitle')}</summary>
@@ -1659,7 +1827,7 @@ export default function ColdEmailModal({
                       id="cold-email-to"
                       type="email"
                       value={recipient}
-                      onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setRecipient(e.target.value); }}
+                      onChange={(e) => { recipientEditedRef.current = true; editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setRecipient(e.target.value); }}
                       placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full min-w-0 px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
@@ -1850,7 +2018,7 @@ export default function ColdEmailModal({
                         key={key}
                         type="button"
                         onClick={() => handleQuickAction(key)}
-                        disabled={!sourceReady || action.busy || profileChanged || profileRegenerating || refining}
+                        disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {t(`coldEmail.quickActions.${key}`)}
@@ -1876,7 +2044,7 @@ export default function ColdEmailModal({
                     <button
                       type="submit"
                       aria-label={t('coldEmail.submitRequest')}
-                      disabled={!sourceReady || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
+                      disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />
@@ -2003,6 +2171,12 @@ export default function ColdEmailModal({
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0" data-testid="cold-email-footer">
+              {(composeBusy || composeFailure) && <p role="status" data-testid="cold-email-compose-status" className="w-full text-xs text-amber-900">
+                {composeBusy ? (locale === 'zh' ? '正在核对资料、机会和收件人…' : 'Checking your profile, opportunity and recipient…')
+                  : composeFailure === 'popup' ? (locale === 'zh' ? '浏览器阻止了新窗口。请允许弹窗后重试；邮件尚未打开。' : 'The browser blocked the new window. Allow popups and try again; no email was opened.')
+                  : composeFailure === 'recipient' ? (locale === 'zh' ? '官网收件地址已改变或无法确认。草稿仍保留，请核对收件人后重试。' : 'The source email address changed or could not be verified. Your draft is kept; review the recipient before trying again.')
+                  : (locale === 'zh' ? '本次核对未完成，邮件尚未打开。草稿仍保留，请重试。' : 'The check did not finish, so no email was opened. Your draft is kept; try again.')}
+              </p>}
               {copyFailed && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600" role="status">
                   <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -2031,8 +2205,8 @@ export default function ColdEmailModal({
               >
                 <button
                   type="button"
-                  disabled={!sourceReady || !recipient.trim()}
-                  onClick={() => { if (!sourceReadyRef.current) return; window.open(getMailtoLink('default'), '_blank'); markContacted(); }}
+                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  onClick={() => startCompose('default')}
                   className="col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -2041,8 +2215,8 @@ export default function ColdEmailModal({
                 <div className="hidden w-px bg-indigo-400 sm:block" />
                 <button
                   type="button"
-                  disabled={!sourceReady || !recipient.trim()}
-                  onClick={() => { if (!sourceReadyRef.current) return; window.open(getMailtoLink('gmail'), '_blank'); markContacted(); }}
+                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  onClick={() => startCompose('gmail')}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openGmailTitle')}
                 >
@@ -2050,8 +2224,8 @@ export default function ColdEmailModal({
                 </button>
                 <button
                   type="button"
-                  disabled={!sourceReady || !recipient.trim()}
-                  onClick={() => { if (!sourceReadyRef.current) return; window.open(getMailtoLink('outlook'), '_blank'); markContacted(); }}
+                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  onClick={() => startCompose('outlook')}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openOutlookTitle')}
                 >

@@ -978,16 +978,19 @@ export async function generateColdEmailStream(
       });
       if (interruption) { cancelBody(response.body); active(); }
       if (!response.ok) {
-        // Read only the one actionable conflict code, within the existing deadline.
+        // Read only recognized source/context conflicts, within the existing deadline.
         // Upstream messages and unknown conflict codes never reach the editor.
-        if (response.status === 409 && response.headers?.get('content-type')?.includes('application/json')) {
+        if ((response.status === 409 || response.status === 422) && response.headers?.get('content-type')?.includes('application/json')) {
           const failure: unknown = await response.json().catch(() => null);
           active();
           if (failure && typeof failure === 'object' && 'detail' in failure) {
             const detail = (failure as { detail: unknown }).detail;
-            if (detail && typeof detail === 'object' && 'code' in detail
-              && detail.code === 'WRITING_TARGET_CHANGED') {
-              throw new ColdEmailStreamError('WRITING_TARGET_CHANGED', 409);
+            if (detail && typeof detail === 'object' && 'code' in detail) {
+              const code = detail.code;
+              if ((response.status === 409 && (code === 'WRITING_TARGET_CHANGED' || code === 'EMAIL_CONTACT_INSTRUCTIONS'))
+                || (response.status === 422 && code === 'EMAIL_READING_CHANGED')) {
+                throw new ColdEmailStreamError(code, response.status);
+              }
             }
           }
         }

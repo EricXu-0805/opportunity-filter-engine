@@ -21,6 +21,8 @@ import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { opportunityRecordKind } from '@/lib/match-utils';
 import { canDeliverReminder } from '@/lib/reminders';
 import { targetPosture } from '@/lib/target-truth';
+import { contactEmailBlock } from '@/lib/contact-instructions';
+import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
@@ -124,6 +126,7 @@ export default function OpportunityDetail({
   const { profile, acceptHydration } = useCheckedWritingProfile(rawProfile, writingScope);
   const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
   const actionable = targetPosture(opp) === 'actionable';
+  const emailAllowed = actionable && !contactEmailBlock(opp);
   // Only an editor opened while actionable may retain its draft after the
   // target closes. Target readiness, separate from profile availability, stops actions.
   const emailProfile = useRetainedWritingProfile(actionable ? profile : null, emailModalOpen, writingScope);
@@ -173,7 +176,7 @@ export default function OpportunityDetail({
               // from the accessibility tree and the tab order entirely. A
               // disabled button is still announced, still focusable, and still
               // says the action exists.
-              onOpenEmailModal={profile && actionable ? () => setEmailModalOpen(true) : undefined}
+              onOpenEmailModal={profile && emailAllowed ? () => setEmailModalOpen(true) : undefined}
               onOpenTailorModal={profile && actionable ? () => setTailorOpen(true) : undefined}
               tailorDisabled={!ownerReady}
               onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && profile && actionable
@@ -283,11 +286,12 @@ export default function OpportunityDetail({
               prompts, not terms of an offer, so a live profile keeps them. */}
           {showsProfileOrOffer && <EligibilitySection opp={opp} t={t} />}
           {showsProfileOrOffer && <ApplicationSection opp={opp} t={t} />}
+          {showsProfileOrOffer && <div className="mb-4"><ContactInstructionsPanel target={opp} /></div>}
           {/* Revealing a contact is a direct action, not a display detail: it
               re-fetches the record to obtain the address, can raise the sign-in
               modal, and ends in a mailto. None of that belongs on a target the
               server would refuse to draft an email about. */}
-          {actionable && <ContactRevealSection opp={opp} t={t} />}
+          {emailAllowed && <ContactRevealSection opp={opp} t={t} />}
           {/* Placed after the address, where the size of the job becomes
               concrete. Bound to this record, because the work being asked for
               is: read this lab, tailor to this lab, write to this person. */}

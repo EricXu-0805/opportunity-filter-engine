@@ -23,6 +23,7 @@ from bs4 import BeautifulSoup
 
 from src.normalizers.deadlines import normalize_deadline, to_legacy
 
+from ..contact_instructions import SOURCE_KEY, retained_sources, source_from_html
 from ..evidence import INFERRED_FIELDS_KEY
 from .base import BaseCollector, RawOpportunity
 
@@ -105,6 +106,11 @@ class UIUCSROCollector(BaseCollector):
             })
             resp.raise_for_status()
             detail = self._parse_detail_page(resp.text)
+            contact_source = source_from_html(resp.text, source_url=opp.url)
+            # Replace a prior snapshot only after this detail fetch succeeds.
+            opp.extra_fields.pop(SOURCE_KEY, None)
+            if contact_source:
+                opp.extra_fields[SOURCE_KEY] = [contact_source]
 
             if detail.get("description"):
                 opp.description_raw = detail["description"]
@@ -526,6 +532,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "keywords": [a.strip() for a in research_area.split(",") if a.strip()],
         "metadata": {
             "confidence_score": confidence,
+            **({SOURCE_KEY: retained_sources(extra[SOURCE_KEY])} if extra.get(SOURCE_KEY) else {}),
             "last_verified": now,
             "first_seen_at": now,
             "last_seen_at": now,

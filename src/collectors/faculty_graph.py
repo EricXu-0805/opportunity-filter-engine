@@ -72,6 +72,7 @@ from src.normalizers.deactivate_stale_faculty import (
     identity_key,
 )
 
+from ..contact_instructions import SOURCE_KEY, retained_sources, source_from_html
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
@@ -561,6 +562,16 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # a successful individual-page fetch). Absent hints — every legacy record,
     # every path that doesn't tag — produce the exact historical metadata;
     # provenance never gates whether an email is kept.
+    contact_sources = retained_sources(person.get("_contact_instruction_sources"))
+    if contact_sources:
+        original_name = " ".join((person.get("name") or "").casefold().split())
+        for source in contact_sources:
+            if isinstance(source, dict) and isinstance(source.get("identity_name"), str):
+                if " ".join(source["identity_name"].casefold().split()) == original_name:
+                    # Follow this record's existing credential/pronoun cleanup,
+                    # never rebind another person's retained snapshot.
+                    source["identity_name"] = name
+        metadata[SOURCE_KEY] = contact_sources
     scope = person.get("_verification_scope")
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
@@ -2023,11 +2034,17 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         want_title = bool(enr.get("title_selector"))
         if not (want_research or want_email or want_title):
             continue
-        pos, research, items, email, fetched = _enrich_profile(
+        enrichment = _enrich_profile(
             target,
             enr,
             expected_name=p.get("name"),
         )
+        pos, research, items, email, fetched = enrichment
+        if fetched:
+            sources = retained_sources(getattr(enrichment, "contact_instruction_sources", []))
+            for source in sources:
+                source["record_source_url"] = p.get("url") or target
+            p["_contact_instruction_sources"] = sources
         if fetched:
             p["_verification_scope"] = "profile"
         if items and want_research:
@@ -2051,6 +2068,15 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     if lr:
         people = [p for p in people if _passes_ladder(p.get("title") or "", lr)]
     return people
+
+
+class _ProfileEnrichment(tuple):
+    """Keep the historical five-item result while carrying verified HTML evidence."""
+
+    def __new__(cls, values, contact_instruction_sources):
+        result = super().__new__(cls, values)
+        result.contact_instruction_sources = contact_instruction_sources
+        return result
 
 
 def _enrich_profile(
@@ -2194,7 +2220,11 @@ def _enrich_profile(
         # support address or generic page heading from a login/WAF response can
         # contaminate the professor record even if it no longer advances TTL.
         return ("", "", [], None, False)
-    return (pos, kw, items, email, profile_verified)
+    contact_source = source_from_html(soup, source_url=url, identity_name=expected_name)
+    return _ProfileEnrichment(
+        (pos, kw, items, email, profile_verified),
+        [contact_source] if contact_source else [],
+    )
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -2298,12 +2328,16 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
             continue
         fetched = False
         email_from_profile = False
+        contact_sources = []
         if enrich:
-            pos, extra_kw, extra_items, extra_email, fetched = _enrich_profile(
+            enrichment = _enrich_profile(
                 url,
                 enrich,
                 expected_name=name,
             )
+            pos, extra_kw, extra_items, extra_email, fetched = enrichment
+            if fetched:
+                contact_sources = retained_sources(getattr(enrichment, "contact_instruction_sources", []))
             if pos:
                 title = pos
             if enrich.get("require_professor") and pos and not re.search(r"profess", pos, re.I):
@@ -2319,6 +2353,7 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                        keywords=list(dict.fromkeys(keywords)))
         if fetched:
             spec["_verification_scope"] = "profile"
+            spec["_contact_instruction_sources"] = contact_sources
         if email_from_profile:
             spec["_email_source"] = "profile_page"
         specs.append(spec)

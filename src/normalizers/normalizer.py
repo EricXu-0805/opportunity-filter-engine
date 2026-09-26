@@ -8,6 +8,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Optional
 
+from ..contact_instructions import SOURCE_KEY, retained_sources
+
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
     """Convert a raw opportunity dict into the standardized schema.
@@ -22,6 +24,8 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     defaults = source_defaults or {}
     desc = raw.get("description_raw", "")
     title = raw.get("title", "")
+    extra = raw.get("extra_fields")
+    contact_sources = retained_sources(extra.get(SOURCE_KEY)) if isinstance(extra, dict) else []
 
     normalized = {
         "id": raw.get("id") or str(uuid.uuid4()),
@@ -83,6 +87,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
             "is_active": True,
             "manually_reviewed": False,
             "notes": "",
+            **({SOURCE_KEY: contact_sources} if contact_sources else {}),
         },
     }
 

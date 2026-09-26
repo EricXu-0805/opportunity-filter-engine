@@ -13,6 +13,7 @@ from copy import deepcopy
 from backend.lib.position_truth import displayed_title
 from backend.lib.public_projection import project_public_opportunity_payload
 from backend.lib.publication_attribution import works_are_verified
+from src.contact_instructions import contact_instructions_for
 from src.evidence import faculty_safe_public_record
 
 REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
@@ -23,8 +24,11 @@ _NON_VERSIONED_FIELDS = {"writing_target_version", "contact_email_status"} | RED
 
 
 def project_public_detail(opp: dict) -> dict:
+    requirements = contact_instructions_for(opp)
     opp = faculty_safe_public_record(deepcopy(opp))
     out = {k: v for k, v in opp.items() if k not in _NON_VERSIONED_FIELDS}
+    # Recompute from current source snapshots, never trust a cached public policy.
+    out["contact_instructions"] = requirements
     # Position truthfulness (W11): strip an unsupported "Prof." honorific
     # baked into legacy titles when the record's own stated rank contradicts
     # it. Copy-on-write on the fresh dict; the corpus object is untouched.

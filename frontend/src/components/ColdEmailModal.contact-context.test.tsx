@@ -6,6 +6,8 @@ import { emailTarget, emailReceipt } from './ColdEmailModal.test-fixtures';
 
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), contact: vi.fn(), reminder: vi.fn() }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, undefined, (args[3] as { contactContext: EmailContactContext }).contactContext),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, undefined, (args[2] as { contactContext: EmailContactContext }).contactContext),
@@ -23,6 +25,7 @@ const draft = (purpose: string) => ({ id: 'template', label: 'Template', subject
   recipient_email: 'lab@example.edu', mailto_link: '', method: 'template' });
 let owner = 0;
 beforeEach(async () => {
+  vi.spyOn(window, 'open').mockImplementation(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() }) as unknown as Window);
   const uid = `context-owner-${++owner}`; advanceOwnerEpoch(uid); await syncLocalIdentityOwner(uid);
   api.variants.mockReset().mockImplementation((_p, _id, _unused, opts) => ({ variants: [draft(opts.contactContext.purpose)] }));
   api.stream.mockReset().mockResolvedValue(draft('fallback'));
@@ -113,12 +116,11 @@ describe('confirmed contact context and editable email lifetime', () => {
     await screen.findByDisplayValue('Draft first_contact'); expand(); expect(screen.queryByDisplayValue('Dr. Chen')).toBeNull();
   });
   it.each([false, true])('allows a new send confirmation after rebuilding; an earlier held receipt cannot confirm the new draft (held=%s)', async held => {
-    vi.spyOn(window, 'open').mockImplementation(() => null);
     const old = deferred<{ type: 'contacted'; last_contacted_at: string }>();
     const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
     api.contact.mockResolvedValue(record); if (held) api.contact.mockReturnValueOnce(old.promise);
     const onContactConfirmed = vi.fn();
-    open(onContactConfirmed); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    open(onContactConfirmed); await ready(); await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     if (!held) await waitFor(() => expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull());
@@ -126,18 +128,17 @@ describe('confirmed contact context and editable email lifetime', () => {
     if (held) await act(async () => old.resolve(record));
     expect(onContactConfirmed).toHaveBeenCalledExactlyOnceWith(record);
     await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     const confirm = await screen.findByTestId('cold-email-confirm-sent'); expect(confirm).toBeEnabled();
     fireEvent.click(confirm); await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(2));
     expect(api.reminder).not.toHaveBeenCalled();
   });
   it.each(['before', 'after'] as const)('does not show an old send error on a rebuilt draft when rejection arrives %s rebuilding', async timing => {
-    vi.spyOn(window, 'open').mockImplementation(() => null);
     const old = deferred<never>();
     const onContactConfirmed = vi.fn();
     api.contact.mockReturnValueOnce(old.promise);
     open(onContactConfirmed); await ready();
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     await waitFor(() => expect(api.contact).toHaveBeenCalledTimes(1));
     if (timing === 'before') {
@@ -145,7 +146,7 @@ describe('confirmed contact context and editable email lifetime', () => {
       expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
     }
     referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     if (timing === 'after') await act(async () => old.reject(new Error('old confirmation failed')));
     await waitFor(() => expect(screen.getByTestId('cold-email-confirm-sent')).toBeEnabled());
     expect(screen.queryByText('coldEmail.confirmFailed')).toBeNull();
@@ -156,12 +157,11 @@ describe('confirmed contact context and editable email lifetime', () => {
   });
 
   it('keeps a genuine same-draft failure retryable and records only the successful retry', async () => {
-    vi.spyOn(window, 'open').mockImplementation(() => null);
     const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
     api.contact.mockRejectedValueOnce(new Error('confirmation failed')).mockResolvedValueOnce(record);
     const onContactConfirmed = vi.fn();
     open(onContactConfirmed); await ready();
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
     const retry = screen.getByTestId('cold-email-confirm-sent');
@@ -175,7 +175,6 @@ describe('confirmed contact context and editable email lifetime', () => {
   });
 
   it.each(['success', 'failure'] as const)('keeps the new draft confirmation error when an old reminder settles with %s', async outcome => {
-    vi.spyOn(window, 'open').mockImplementation(() => null);
     const oldReminder = deferred<void>();
     const onReminderSet = vi.fn();
     const record = { type: 'contacted' as const, last_contacted_at: '2026-09-25T08:00:00Z' };
@@ -186,13 +185,13 @@ describe('confirmed contact context and editable email lifetime', () => {
       reason_code: null, verified_at: null, expires_at: null,
     } };
     open(vi.fn(), reminderTarget, onReminderSet); await ready();
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     fireEvent.click(await screen.findByRole('button', { name: 'coldEmail.remind3' }));
     expect(api.reminder).toHaveBeenCalledTimes(1);
     const date = api.reminder.mock.calls[0][1].remind_at;
     referral(); regenerate(); await screen.findByDisplayValue('Draft referral');
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.gmail' })); });
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     expect(await screen.findByText('coldEmail.confirmFailed')).toBeInTheDocument();
     await act(async () => {

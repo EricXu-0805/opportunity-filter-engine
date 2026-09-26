@@ -17,6 +17,7 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 // `detail.source`, so no assertion in this file could tell them apart.
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
+    locale: 'en',
     t: (key: string, params?: Record<string, unknown>) =>
       params ? `${key}:${Object.values(params).join('|')}` : key,
   }),

@@ -303,6 +303,7 @@ export type FacultyAvailabilityStatus =
   | 'research_inactive';
 
 export interface Opportunity {
+  contact_instructions?: import('./contact-instructions').ContactInstructions;
   /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
   writing_target_version?: string;
   id: string;
@@ -536,6 +537,13 @@ export interface EmailContactContext {
     reply_text?: string;
   };
   availability?: { text: string; confirmed: true };
+  /** User attestation only; the server checks the current target's verified publication list. */
+  paper_reading?: {
+    title: string;
+    year?: number | null;
+    level: 'title_only' | 'abstract' | 'full_text';
+    confirmed: true;
+  };
 }
 
 export interface EmailContactContextReceipt {

@@ -162,3 +162,29 @@ describe('shared backend contact-context fixture', () => {
     expect(serializeEmailContactContext(normalized)).not.toContain('\ufeff');
   });
 });
+
+
+describe('paper reading contact schema', () => {
+  const reading = { title: 'Grounded Models 研究 🧪', year: 2025, level: 'abstract', confirmed: true };
+  const base = { version: 1, purpose: 'first_contact' };
+  it.each(['title_only', 'abstract', 'full_text'])('preserves explicitly confirmed %s without upgrading it', level => {
+    expect(normalizeEmailContactContext({ ...base, paper_reading: { ...reading, level } }).paper_reading).toEqual({ ...reading, level });
+  });
+  it.each([
+    { confirmed: false }, { confirmed: 1 }, { confirmed: 'true' }, { confirmed: undefined },
+    { title: '' }, { title: 'x'.repeat(501) }, { title: 'two\nlines' }, { title: 'NUL\0' },
+    { title: 'Lone\ud800' }, { level: 'skimmed' }, { source: 'verified_author_id' },
+    { year: '2025' }, { year: true }, { year: 2025.1 }, { year: 999 }, { year: 2101 },
+  ])('rejects malformed or unconfirmed reading %#', change => {
+    expect(() => normalizeEmailContactContext({ ...base, paper_reading: { ...reading, ...change } })).toThrow();
+  });
+  it('omits null year and null reading without inventing a publication date', () => {
+    expect(normalizeEmailContactContext({ ...base, paper_reading: { ...reading, year: null } }).paper_reading).not.toHaveProperty('year');
+    expect(normalizeEmailContactContext({ ...base, paper_reading: null })).toEqual(base);
+  });
+  it('binds the reading level in the canonical receipt', async () => {
+    const a = await emailContactContextSignature({ ...base, paper_reading: reading });
+    const b = await emailContactContextSignature({ ...base, paper_reading: { ...reading, level: 'full_text' } });
+    expect(a).not.toBe(b);
+  });
+});

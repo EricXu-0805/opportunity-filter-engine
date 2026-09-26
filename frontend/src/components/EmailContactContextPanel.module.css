@@ -45,7 +45,7 @@
   font-size: 0.875rem;
 }
 .field label { font-weight: 500; }
-.field :is(input, select, textarea) {
+.field :is(input:not([type="checkbox"]), select, textarea) {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
@@ -79,7 +79,7 @@
   font-size: 0.8125rem;
   line-height: 1.5;
 }
-.checkbox input { flex: none; margin-top: 0.25rem; }
+.checkbox input { flex: none; width: 1rem; height: 1rem; margin-top: 0.25rem; }
 .checkbox span { min-width: 0; overflow-wrap: anywhere; }
 .apply, .secondary {
   justify-self: start;

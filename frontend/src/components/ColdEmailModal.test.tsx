@@ -23,6 +23,8 @@ const mockGenerateColdEmail = vi.fn();
 const mockGenerateColdEmailStream = vi.fn();
 const mockRefineEmail = vi.fn();
 const mockExtractResumeBullets = vi.fn();
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: (...args: unknown[]) => emailReceipt(mockGenerateColdEmail(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
@@ -109,7 +111,7 @@ beforeEach(async () => {
     method: 'heuristic',
   });
   writeTextMock.mockReset().mockResolvedValue(undefined);
-  windowOpenMock.mockReset();
+  windowOpenMock.mockReset().mockImplementation(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() }));
 
   /* A chat update must never scroll a field or any ancestor into view. */
   Element.prototype.scrollIntoView = vi.fn();
@@ -401,7 +403,9 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.gmail'));
       expect(windowOpenMock).toHaveBeenCalledTimes(1);
-      const url = windowOpenMock.mock.calls[0][0] as string;
+      await waitFor(() => expect(windowOpenMock.mock.results[0].value.location.href).toContain('mail.google.com'));
+      expect(windowOpenMock.mock.calls[0][0]).toBe('about:blank');
+      const url = windowOpenMock.mock.results[0].value.location.href as string;
       expect(url).toContain('mail.google.com');
       expect(url).toContain('to=p%40x.edu');
     });
@@ -423,8 +427,10 @@ describe('ColdEmailModal', () => {
       const edited = 'p@x.edu?cc=evil@x.com&bcc=e2@x.com';
       fireEvent.change(screen.getByDisplayValue('p@x.edu'), { target: { value: edited } });
       fireEvent.click(screen.getByText('coldEmail.gmail'));
+      await waitFor(() => expect(windowOpenMock.mock.results[0].value.location.href).toContain('mail.google.com'));
       fireEvent.click(screen.getByText('coldEmail.outlook'));
-      const [gmailUrl, outlookUrl] = windowOpenMock.mock.calls.map((c) => c[0] as string);
+      await waitFor(() => expect(windowOpenMock.mock.results[1].value.location.href).toContain('outlook.office365.com'));
+      const [gmailUrl, outlookUrl] = windowOpenMock.mock.results.map((result) => result.value.location.href as string);
       for (const url of [gmailUrl, outlookUrl]) {
         expect(url).toContain(`to=${encodeURIComponent(edited)}`);
         // raw ?/&/@ must not leak extra query params into the compose URL

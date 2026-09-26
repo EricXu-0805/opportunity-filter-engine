@@ -23,6 +23,8 @@ vi.mock('@/i18n/client', () => {
 });
 
 const mockGetVariants = vi.fn();
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn(),
@@ -97,7 +99,7 @@ beforeEach(async () => {
     configurable: true,
     writable: true,
   });
-  vi.stubGlobal('open', vi.fn());
+  vi.stubGlobal('open', vi.fn(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() })));
 });
 
 afterEach(() => {

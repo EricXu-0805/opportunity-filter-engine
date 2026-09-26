@@ -7,7 +7,7 @@ import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
-  return { useT: () => ({ t }), useLocale: () => 'en' };
+  return { useT: () => ({ t, locale: 'en' }), useLocale: () => 'en' };
 });
 const api = vi.hoisted(() => ({
   variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn(),
