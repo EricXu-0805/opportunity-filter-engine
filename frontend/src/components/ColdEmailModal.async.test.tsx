@@ -58,6 +58,16 @@ function openModal(initialProfile = profile) {
     show: (next: Partial<Parameters<typeof ColdEmailModal>[0]>) => view.rerender(<ColdEmailModal {...props} {...next} />),
   };
 }
+async function generateRestoredDraft() {
+  await act(async () => {});
+  const rebuild = screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' });
+  if (rebuild) fireEvent.click(rebuild);
+  else {
+    const ai = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
+    await waitFor(() => expect(ai).toBeEnabled());
+    fireEvent.click(ai);
+  }
+}
 async function ready() {
   await screen.findByDisplayValue('Draft A');
   await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
@@ -223,7 +233,7 @@ describe('cold email draft lifetime', () => {
     await ready();
     requestEdit();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.closeAria' }));
-    expect(view.onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(view.onClose).toHaveBeenCalledTimes(1));
     await act(async () => { edit.resolve({ body: 'Closed session result', method: 'llm' }); });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByDisplayValue('Closed session result')).toBeNull();
@@ -269,7 +279,7 @@ describe('cold email pipeline cache compatibility', () => {
     { cached: 'pipeline-one', current: undefined, reuse: false, label: 'missing current version' },
     { cached: undefined, current: undefined, reuse: false, label: 'both versions missing' },
     { cached: ' ', current: ' ', reuse: false, label: 'blank versions' },
-  ])('$label: reuses only a compatible draft after reopening', async ({ cached, current, reuse }) => {
+  ])('$label: keeps the saved editor without automatic generation after reopening', async ({ cached, current }) => {
     api.variants
       .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: cached, corpus_version: 'same-corpus' })
       .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: current, corpus_version: 'same-corpus' });
@@ -280,9 +290,9 @@ describe('cold email pipeline cache compatibility', () => {
     await screen.findByDisplayValue('First AI draft');
     view.show({ isOpen: false });
     view.show({ isOpen: true });
-    await screen.findByDisplayValue(reuse ? 'First AI draft' : 'Regenerated AI draft');
-    expect(api.variants).toHaveBeenCalledTimes(2);
-    expect(api.stream).toHaveBeenCalledTimes(reuse ? 1 : 2);
+    await screen.findByDisplayValue('First AI draft');
+    await act(async () => {});
+    expect(api.stream).toHaveBeenCalledTimes(1);
     expect(api.generate).not.toHaveBeenCalled();
   });
 
@@ -298,8 +308,9 @@ describe('cold email pipeline cache compatibility', () => {
     await screen.findByDisplayValue('Old pipeline draft');
     view.show({ isOpen: false });
     view.show({ isOpen: true });
+    await generateRestoredDraft();
     await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
-    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My own rewritten draft' } });
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'My own rewritten draft' } });
     await act(async () => {
       replacement.resolve({ ...aiDraft('New pipeline response'), pipeline_version: 'pipeline-two' });
     });
@@ -359,7 +370,9 @@ describe('cold email pipeline cache compatibility', () => {
     expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
     view.show({ opportunityId: 'A' });
     await screen.findByDisplayValue('Cached target A draft');
-    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']);
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+    await generateRestoredDraft();
+    await waitFor(() => expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']));
     await act(async () => {
       otherTarget.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
     });
@@ -532,6 +545,8 @@ describe('confirmed experience draft inputs', () => {
     expect(screen.queryByDisplayValue('Withdrawn late evidence')).toBeNull();
     view.show({ isOpen: false, profile: input });
     view.show({ profile: input });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    await generateRestoredDraft();
     await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
     expect(screen.queryByDisplayValue('Withdrawn late evidence')).toBeNull();
   });
@@ -589,6 +604,8 @@ describe('confirmed experience draft inputs', () => {
     if (change === 'revision') entry.revision += 1;
     if (change === 'source' && entry.source.kind === 'resume') entry.source.signature = '2'.repeat(64);
     view.show({ profile: input });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    await generateRestoredDraft();
     await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
     expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Cached old materials')).toBeNull();

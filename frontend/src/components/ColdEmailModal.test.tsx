@@ -310,7 +310,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       fireEvent.click(screen.getByLabelText('coldEmail.closeAria'));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('calls onClose when the backdrop is clicked', async () => {
@@ -329,7 +329,7 @@ describe('ColdEmailModal', () => {
       const backdrop = container.querySelector('div[aria-hidden="true"].bg-gray-900\\/60');
       expect(backdrop).not.toBeNull();
       fireEvent.click(backdrop!);
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('calls onClose when Escape is pressed', async () => {
@@ -346,7 +346,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       fireEvent.keyDown(document, { key: 'Escape' });
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('exposes role=dialog with aria-modal and a labelled title', () => {

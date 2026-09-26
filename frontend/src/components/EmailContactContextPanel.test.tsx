@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { EmailContactContext, Opportunity } from '@/lib/types';
+import { EMAIL_CONTACT_DRAFT_MAX_LENGTH, type EmailContactDraftSnapshot } from '@/lib/email-contact-draft';
 import EmailContactContextPanel, { type EmailContactContextPanelProps } from './EmailContactContextPanel';
 
 function mount(overrides: Partial<EmailContactContextPanelProps> = {}) {
@@ -362,4 +363,140 @@ it('opens and revokes only reading confirmation on a server review request, reta
   expect(props.onDraftChange).not.toHaveBeenCalled(); expect(props.onApply).not.toHaveBeenCalled();
   fireEvent.click(apply()); expect(props.onApply).not.toHaveBeenCalled();
   fireEvent.click(readingConfirm()); fireEvent.click(apply()); expect(props.onApply).toHaveBeenCalledExactlyOnceWith(context);
+});
+
+
+describe('pending contact draft restoration', () => {
+  const snapshotSpy = () => vi.fn<(snapshot: EmailContactDraftSnapshot | null) => void>();
+  const lastSnapshot = (spy: ReturnType<typeof snapshotSpy>) => spy.mock.calls.at(-1)![0]!;
+
+  it('restores partial raw text after unmount without applying it or inventing a confirmation', () => {
+    const snapshots = snapshotSpy();
+    const first = mount({ onDraftSnapshotChange: snapshots });
+    fireEvent.change(purpose(), { target: { value: 'referral' } });
+    fireEvent.change(referralName(), { target: { value: '  Unfinished name  ' } });
+    const saved = lastSnapshot(snapshots);
+    expect(saved.fields.referrerName).toBe('  Unfinished name  ');
+    expect(saved.confirmed.referral).toBe(false); expect(saved.pending).toBe(true);
+    first.unmount();
+    const restored = mount({ initialDraft: saved, resetKey: 'owner-a:target-a:open-2' });
+    expect(referralName()).toHaveValue('  Unfinished name  '); expect(referralNote()).toHaveValue('');
+    expect(referralConfirm()).not.toBeChecked(); expect(restored.props.onApply).not.toHaveBeenCalled();
+    expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
+    fireEvent.click(apply()); expect(restored.props.onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('required details');
+  });
+
+  it('restores checked but unapplied answers as pending and applies only on an explicit click', () => {
+    const snapshots = snapshotSpy();
+    const first = mount({ onDraftSnapshotChange: snapshots }); referral();
+    fireEvent.click(referralConfirm());
+    const saved = lastSnapshot(snapshots); expect(saved.confirmed.referral).toBe(true); expect(saved.pending).toBe(true);
+    first.unmount();
+    const restored = mount({ initialDraft: saved, onDraftSnapshotChange: snapshots });
+    expect(referralConfirm()).toBeChecked(); expect(apply()).not.toBeDisabled();
+    expect(restored.props.onApply).not.toHaveBeenCalled(); expect(lastSnapshot(snapshots).pending).toBe(true);
+    fireEvent.click(apply());
+    expect(restored.props.onApply).toHaveBeenCalledTimes(1); expect(lastSnapshot(snapshots).pending).toBe(false);
+  });
+
+  it('preserves malformed dates, over-limit original text, blocked status and inactive answers across reopening', () => {
+    const snapshots = snapshotSpy(); const first = mount({ onDraftSnapshotChange: snapshots });
+    const long = '研究😀'.repeat(600) + '\nTAIL';
+    referral('Inactive referrer', long); followUp();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Date sent (optional, YYYY-MM-DD)' }), { target: { value: '20-??' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Reply status' }), { target: { value: 'declined' } });
+    fireEvent.click(sentConfirm()); const saved = lastSnapshot(snapshots); first.unmount();
+    const restored = mount({ initialDraft: saved });
+    expect(screen.getByRole('textbox', { name: 'Date sent (optional, YYYY-MM-DD)' })).toHaveValue('20-??');
+    expect(screen.getByRole('combobox', { name: 'Reply status' })).toHaveValue('declined');
+    expect(sentConfirm()).toBeChecked(); expect(apply()).toBeDisabled(); expect(restored.props.onApply).not.toHaveBeenCalled();
+    fireEvent.change(purpose(), { target: { value: 'referral' } });
+    expect(referralName()).toHaveValue('Inactive referrer'); expect(referralNote()).toHaveValue(long);
+    expect(referralConfirm()).not.toBeChecked();
+  });
+
+  it('ignores later initialDraft prop changes while keeping typing, focus and checkbox state in the current session', () => {
+    const snapshots = snapshotSpy(); const view = mount({ onDraftSnapshotChange: snapshots });
+    referral('Saved name', 'Saved note'); const old = lastSnapshot(snapshots);
+    referralName().focus(); fireEvent.change(referralName(), { target: { value: 'Current typed name' } });
+    fireEvent.click(referralConfirm()); const field = referralName(); field.focus();
+    view.rerender(<EmailContactContextPanel {...view.props} initialDraft={old} language="zh" />);
+    expect(screen.getByRole('textbox', { name: '谁介绍你联系？（必填）' })).toBe(field);
+    expect(field).toHaveFocus(); expect(field).toHaveValue('Current typed name');
+    expect(screen.getByRole('checkbox', { name: '我确认这些介绍信息属实，且可以在草稿中提及此人。' })).toBeChecked();
+    expect(view.props.onApply).not.toHaveBeenCalled();
+  });
+
+  it('rejects a snapshot belonging to another opportunity instead of showing its private fields', () => {
+    const snapshots = snapshotSpy(); const first = mount({ opportunity: paperTarget(), onDraftSnapshotChange: snapshots });
+    referral('Private other target name', 'Private other target note'); const saved = lastSnapshot(snapshots); first.unmount();
+    const restored = mount({ opportunity: { id: 'different-target' } as Opportunity, initialDraft: saved });
+    expect(purpose()).toHaveValue('first_contact');
+    fireEvent.change(purpose(), { target: { value: 'referral' } });
+    expect(referralName()).toHaveValue(''); expect(referralNote()).toHaveValue('');
+    expect(restored.props.onApply).not.toHaveBeenCalled();
+  });
+
+  it.each(['version', 'paper', 'attribution'])('revokes restored reading confirmation after a %s change and keeps every answer', change => {
+    const snapshots = snapshotSpy(); const first = mount({ opportunity: paperTarget(), targetKey: 'v1', onDraftSnapshotChange: snapshots });
+    selectReading('full_text'); fireEvent.change(availability(), { target: { value: 'Only Tuesday afternoons.' } });
+    fireEvent.click(readingConfirm()); fireEvent.click(availabilityConfirm()); const saved = lastSnapshot(snapshots); first.unmount();
+    const restored = mount({ initialDraft: saved, onDraftSnapshotChange: snapshots,
+      opportunity: change === 'paper' ? paperTarget([paperTwo]) : change === 'attribution' ? paperTarget([paperOne], 'pending') : paperTarget(),
+      targetKey: change === 'version' ? 'v2' : 'v1' });
+    expect(readingConfirm()).not.toBeChecked(); expect(readingSelect()).toHaveValue('full_text');
+    expect(paperSelect()).toHaveValue(saved.fields.paperKey); expect(availability()).toHaveValue('Only Tuesday afternoons.');
+    expect(availabilityConfirm()).toBeChecked(); expect(lastSnapshot(snapshots).confirmed.paper).toBe(false);
+    expect(lastSnapshot(snapshots).pending).toBe(true); expect(restored.props.onApply).not.toHaveBeenCalled();
+    fireEvent.click(apply()); expect(restored.props.onApply).not.toHaveBeenCalled();
+  });
+
+  it('does not trust a stored applied marker when the separately accepted context is different', () => {
+    const snapshots = snapshotSpy(); const first = mount({ onDraftSnapshotChange: snapshots });
+    referral(); fireEvent.click(referralConfirm()); fireEvent.click(apply());
+    const saved = lastSnapshot(snapshots); const accepted = vi.mocked(first.props.onApply).mock.calls[0][0];
+    expect(saved.pending).toBe(false); first.unmount();
+    const mismatched = mount({ initialDraft: saved });
+    expect(apply()).not.toBeDisabled(); expect(mismatched.props.onApply).not.toHaveBeenCalled(); mismatched.unmount();
+    const matched = mount({ initialDraft: saved, context: accepted });
+    expect(apply()).toBeDisabled(); expect(matched.props.onApply).not.toHaveBeenCalled();
+  });
+
+  it('notifies edits, confirmations, failed and successful apply, source invalidation and server review with independent snapshots', () => {
+    const snapshots = snapshotSpy(); const view = mount({ opportunity: paperTarget(), targetKey: 'v1', onDraftSnapshotChange: snapshots });
+    const before = snapshots.mock.calls.length;
+    selectReading(); expect(snapshots.mock.calls.length).toBe(before + 2);
+    fireEvent.click(apply()); expect(snapshots.mock.calls.length).toBe(before + 3);
+    fireEvent.click(readingConfirm()); expect(lastSnapshot(snapshots).confirmed.paper).toBe(true);
+    const retained = lastSnapshot(snapshots); fireEvent.click(apply()); expect(lastSnapshot(snapshots).pending).toBe(false);
+    view.rerender(<EmailContactContextPanel {...view.props} targetKey="v2" />);
+    expect(lastSnapshot(snapshots).confirmed.paper).toBe(false); expect(retained.confirmed.paper).toBe(true);
+    fireEvent.click(readingConfirm());
+    view.rerender(<EmailContactContextPanel {...view.props} targetKey="v2" reviewRequested={1} />);
+    expect(lastSnapshot(snapshots).confirmed.paper).toBe(false); expect(lastSnapshot(snapshots).pending).toBe(true);
+  });
+
+  it('reports an unsavable draft without clipping live input and can save again after the user shortens it', () => {
+    const snapshots = snapshotSpy(); const view = mount({ onDraftSnapshotChange: snapshots });
+    const long = 'x'.repeat(EMAIL_CONTACT_DRAFT_MAX_LENGTH) + 'TAIL'; referral('Pat', long);
+    expect(lastSnapshot(snapshots)).toBeNull(); expect(referralNote()).toHaveValue(long);
+    fireEvent.click(referralConfirm()); fireEvent.click(apply());
+    expect(referralNote()).toHaveValue(long); expect(view.props.onApply).not.toHaveBeenCalled();
+    expect(lastSnapshot(snapshots)).toBeNull();
+    fireEvent.change(referralNote(), { target: { value: 'Shortened by the user.' } });
+    expect(lastSnapshot(snapshots).fields.referralNote).toBe('Shortened by the user.');
+    expect(lastSnapshot(snapshots).confirmed.referral).toBe(false);
+  });
+
+  it('restores collapsed state and reports a toggle without marking the background itself dirty', () => {
+    const snapshots = snapshotSpy(); const first = mount({ onDraftSnapshotChange: snapshots });
+    fireEvent.click(screen.getByText('Contact purpose and background'));
+    fireEvent(screen.getByTestId('email-contact-context-panel'), new Event('toggle'));
+    const saved = lastSnapshot(snapshots); expect(saved.expanded).toBe(false); expect(saved.pending).toBe(false);
+    first.unmount(); const props = { ...first.props, initialDraft: saved, onDraftSnapshotChange: snapshots };
+    render(<EmailContactContextPanel {...props} />);
+    expect(screen.getByTestId('email-contact-context-panel')).not.toHaveAttribute('open');
+    expect(props.onDraftChange).not.toHaveBeenCalled(); expect(props.onApply).not.toHaveBeenCalled();
+  });
 });

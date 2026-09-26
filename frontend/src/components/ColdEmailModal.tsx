@@ -12,9 +12,12 @@ import { isPublicDetail } from '@/lib/public-target-shape';
 import { defaultEmailContactContext, serializeEmailContactContext, emailContactContextSignature, requireEmailContactContextReceipt } from '@/lib/email-contact-context';
 import type { EmailContactContext } from '@/lib/types';
 import EmailContactContextPanel from './EmailContactContextPanel';
+import type { EmailContactDraftSnapshot } from '@/lib/email-contact-draft';
+import type { ColdEmailDraftPayload, ColdEmailDraftSources } from '@/lib/cold-email-draft';
+import { useColdEmailDraftPersistence } from '@/lib/use-cold-email-draft';
 import { createContactEventInput, contactMaterialVersion, ContactEventError } from '@/lib/contact-ledger';
 
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
@@ -67,6 +70,11 @@ type PendingCompose = {
 };
 
 const AI_VARIANT_ID = 'ai';
+const NO_DRAFT_SOURCES: ColdEmailDraftSources = { profile_sig: null, target_version: null, contact_sig: null };
+async function emailDraftDigest(value: string): Promise<string> {
+  const result = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(result), byte => byte.toString(16).padStart(2, '0')).join('');
+}
 // W12: a cached AI draft is re-served for at most this long — beyond it the
 // professor record may have moved (email nulled, works revoked) and the
 // draft must regenerate from the live corpus.
@@ -382,6 +390,21 @@ export default function ColdEmailModal({
   const materialFingerprint = `${profileFingerprint}\n${targetFingerprint}\n${contactFingerprint}`;
   const requestProfile = useMemo(() => JSON.parse(profileFingerprint) as ProfileData, [profileFingerprint]);
   const draftSourcesRef = useRef<{ profile: string; target: string | null; contact: string } | null>(null);
+  const draftPersistence = useColdEmailDraftPersistence();
+  const { open: openPersistedDraft, persist: persistDraft, flush: flushDraft, clear: clearPersistedDraft,
+    detach: detachDraft, abandon: abandonDraft, markUnsaved: markDraftUnsaved } = draftPersistence;
+  const [draftResetKey, setDraftResetKey] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftClosing, setDraftClosing] = useState(false);
+  const [persistenceSession, setPersistenceSession] = useState(0);
+  const persistenceSessionRef = useRef(0);
+  const [pendingPanel, setPendingPanel] = useState<EmailContactDraftSnapshot | null>(null);
+  const [panelSavable, setPanelSavable] = useState(true);
+  const [restoredSources, setRestoredSources] = useState<ColdEmailDraftSources | null>(null);
+  const [originKey, setOriginKey] = useState<string | null>(null);
+  const [sourceSignatures, setSourceSignatures] = useState<{ key: string; value: ColdEmailDraftSources } | null>(null);
+  const persistCurrentRef = useRef<() => void>(() => {});
+  const readyNavigationRef = useRef<HTMLAnchorElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [targetVersionError, setTargetVersionError] = useState<TargetVersionFailure | null>(null);
@@ -600,13 +623,60 @@ export default function ColdEmailModal({
     return () => sourceReadyRef.current && !contextDirtyRef.current && sendSessionRef.current === session && profileSessionRef.current === materials && isTokenOwnerStillCurrent(owner);
   }, []);
 
-  const closeDraft = useCallback(() => {
-    // End the session at the click/escape, even if the parent closes later.
+  const finishClose = useCallback(() => {
     cancelCompose();
     sendSessionRef.current += 1;
     setRetired(true);
     onClose();
   }, [onClose, cancelCompose]);
+  const pauseWritingForNavigation = useCallback(() => {
+    // Retire providers at the click, before storage can wait for another tab.
+    supplementScopeRef.current = null;
+    setSupplementSession(null);
+    composeActionCancelRef.current();
+    cancelCompose();
+    profileSessionRef.current += 1;
+    variantRequestRef.current += 1; aiRequestRef.current += 1;
+    aiInFlightRef.current = false;
+    const refine = refineInFlightRef.current; refineInFlightRef.current = null;
+    setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
+    if (refine !== null) setChatMessages(messages => messages.map(message =>
+      message.requestId === refine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
+  }, [cancelCompose, t]);
+  const closeDraft = useCallback(() => {
+    pauseWritingForNavigation();
+    persistCurrentRef.current();
+    const owner = captureOwnerToken();
+    const revision = draftRevisionRef.current;
+    const session = sendSessionRef.current;
+    setDraftClosing(true);
+    void flushDraft().then(saved => {
+      if (session !== sendSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
+      setDraftClosing(false);
+      if (saved && revision === draftRevisionRef.current) finishClose();
+    });
+  }, [flushDraft, finishClose, pauseWritingForNavigation]);
+  const leaveForProfile = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    const anchor = event.currentTarget;
+    if (readyNavigationRef.current === anchor) {
+      readyNavigationRef.current = null; finishClose(); return true;
+    }
+    event.preventDefault();
+    pauseWritingForNavigation();
+    persistCurrentRef.current();
+    const owner = captureOwnerToken();
+    const session = sendSessionRef.current;
+    const revision = draftRevisionRef.current;
+    setDraftClosing(true);
+    void flushDraft().then(saved => {
+      if (session !== sendSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
+      setDraftClosing(false);
+      if (saved && revision === draftRevisionRef.current && anchor.isConnected) {
+        readyNavigationRef.current = anchor; anchor.click();
+      }
+    });
+    return false;
+  }, [flushDraft, finishClose, pauseWritingForNavigation]);
 
   // The epoch changes synchronously, before a parent's new profile reaches
   // this dialog. End the old draft session instead of generating with that
@@ -618,10 +688,10 @@ export default function ColdEmailModal({
       sendSessionRef.current += 1;
       aiCacheRef.current.clear();
       if (isOpen) {
-        closeDraft();
+        abandonDraft(); finishClose();
       }
     });
-  }, [isOpen, closeDraft]);
+  }, [isOpen, finishClose, abandonDraft]);
 
   useLayoutEffect(() => { aiCacheRef.current.clear(); }, [materialFingerprint]);
 
@@ -697,6 +767,8 @@ export default function ColdEmailModal({
         setSubject(first.subject);
         setBody(first.body);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+        setOriginKey(JSON.stringify(draftSourcesRef.current));
+        setRestoredSources(null);
         if (!keepEditor) setRecipient(first.recipient_email);
         editorUsedRef.current = true;
         setActiveVariant(0);
@@ -718,6 +790,7 @@ export default function ColdEmailModal({
           setSendError(null);
         }
       }
+      if (preserveDraft && !recipientEditedRef.current) setRecipient(data.variants[0]?.recipient_email ?? '');
       if (!preserveDraft) setChatMessages([
         { role: 'assistant', content: t('coldEmail.generated', { count: data.variants.length }) },
       ]);
@@ -772,6 +845,8 @@ export default function ColdEmailModal({
         draftRevisionRef.current += 1;
         setBody(next);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+        setOriginKey(JSON.stringify(draftSourcesRef.current));
+        setRestoredSources(null);
         setChatMessages((messages) => [...messages, { role: 'user', content: t('coldEmail.quickActions.coursework') }, { role: 'assistant', content: reply }]);
         return;
       }
@@ -826,8 +901,33 @@ export default function ColdEmailModal({
        residue from the previous session. */
     setRetired(false);
     sessionProfileRef.current = materialFingerprint;
-    if (isOpen) void fetchVariantsRef.current();
+    persistenceSessionRef.current += 1;
+    const nextSession = persistenceSessionRef.current;
+    if (isOpen) {
+      const stored = openPersistedDraft(opportunityId);
+      setPersistenceSession(nextSession);
+      if (stored.draft) {
+        const value = stored.draft;
+        autoFiredRef.current = true; editorUsedRef.current = true;
+        contextEditedRef.current = true;
+        setDraftRestored(true); setLoading(false);
+        setSubject(value.subject); setBody(value.body);
+        setRecipient(value.manualRecipient ?? ''); recipientEditedRef.current = value.manualRecipient !== undefined;
+        setSelectedStyle(value.selectedStyle); setChatInput(value.pendingEdit); setActiveVariant(-1);
+        setContactState({ id: opportunityId, value: value.context, revision: 1, dirty: value.pendingPanel?.pending ?? false });
+        contextDirtyRef.current = value.pendingPanel?.pending ?? false;
+        setPendingPanel(value.pendingPanel ?? null); setPanelSavable(true);
+        setRestoredSources(value.sources);
+        profileChangedRef.current = true; setProfileChanged(true);
+      } else { void fetchVariantsRef.current(); }
+    }
     return () => {
+      // Persist the last rendered editing snapshot before teardown resets it.
+      persistCurrentRef.current();
+      persistenceSessionRef.current += 1;
+      detachDraft();
+      setDraftRestored(false); setDraftClosing(false); setPendingPanel(null); setPanelSavable(true);
+      setRestoredSources(null); setSourceSignatures(null);
       cancelCompose();
       autoFiredRef.current = false;
       contextDirtyRef.current = false; contextEditedRef.current = false;
@@ -877,7 +977,7 @@ export default function ColdEmailModal({
       setSubject(''); setSubjectFormatConfirmation(null);
       setBody('');
       setRecipient(''); recipientEditedRef.current = false;
-      draftSourcesRef.current = null;
+      draftSourcesRef.current = null; setOriginKey(null);
       setRecipientStatus('unavailable');
       setGrounding('specific');
       setFreshness('unknown');
@@ -897,7 +997,91 @@ export default function ColdEmailModal({
     // Full reset belongs only to the open/target lifetime. The latest callback
     // is read through a layout-updated ref; material changes are handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, opportunityId]);
+  }, [isOpen, opportunityId, draftResetKey]);
+
+  useEffect(() => {
+    if (!isOpen || !originKey) return;
+    const origin = JSON.parse(originKey) as { profile: string; target: string | null; contact: string };
+    const owner = captureOwnerToken(); let live = true;
+    void Promise.all([emailDraftDigest(origin.profile), emailDraftDigest(origin.contact)]).then(([profile_sig, contact_sig]) => {
+      if (live && isOwnerTokenValid(owner, owner.uid)) setSourceSignatures({ key: originKey,
+        value: { profile_sig, target_version: origin.target, contact_sig } });
+    }).catch(() => { /* Text still saves with an explicitly unknown source binding. */ });
+    return () => { live = false; };
+  }, [isOpen, originKey]);
+
+  useEffect(() => {
+    if (!isOpen || !sourceReady || !restoredSources) return;
+    const owner = captureOwnerToken(); let live = true;
+    void Promise.all([emailDraftDigest(profileFingerprint), emailDraftDigest(contactSerialized)]).then(([profile_sig, contact_sig]) => {
+      if (!live || !isOwnerTokenValid(owner, owner.uid)) return;
+      const unchanged = restoredSources.profile_sig === profile_sig && restoredSources.contact_sig === contact_sig
+        && !!expectedTargetVersion && restoredSources.target_version === expectedTargetVersion;
+      profileChangedRef.current = !unchanged; setProfileChanged(!unchanged);
+      if (unchanged) {
+        // Reattach only after comparing the saved original binding to fresh materials.
+        draftSourcesRef.current = { profile: profileFingerprint, target: expectedTargetVersion, contact: contactSerialized };
+        setOriginKey(JSON.stringify(draftSourcesRef.current));
+        setSourceSignatures({ key: JSON.stringify(draftSourcesRef.current), value: restoredSources });
+      }
+    }).catch(() => { /* Keep unknown provenance; do not certify the restored text. */ });
+    return () => { live = false; };
+  }, [isOpen, sourceReady, restoredSources, profileFingerprint, contactSerialized, expectedTargetVersion]);
+
+  const restoredMetadataRef = useRef(false);
+  useEffect(() => {
+    if (!draftRestored) { restoredMetadataRef.current = false; return; }
+    if (!isOpen || !sourceReady || contextDirty || profileChanged || !paperReadingCurrent || restoredMetadataRef.current) return;
+    restoredMetadataRef.current = true;
+    // Refresh verified recipient/metadata only; keep the editor and suppress automatic AI.
+    void fetchVariantsRef.current(true);
+  }, [draftRestored, isOpen, sourceReady, contextDirty, profileChanged, paperReadingCurrent]);
+
+  const panelSnapshotChanged = useCallback((snapshot: EmailContactDraftSnapshot | null) => {
+    setPanelSavable(snapshot !== null);
+    if (snapshot?.pending && !contextDirtyRef.current) retireContactDraftRef.current();
+    if (snapshot) setPendingPanel({ ...snapshot, opportunityId });
+    else markDraftUnsaved('too_large');
+  }, [markDraftUnsaved, opportunityId]);
+  const draftPayload: ColdEmailDraftPayload = {
+    subject, body, selectedStyle, pendingEdit: chatInput, context: requestContactContext,
+    pendingPanel,
+    sources: originKey && sourceSignatures?.key === originKey ? sourceSignatures.value : restoredSources ?? NO_DRAFT_SOURCES,
+  };
+  const draftPayloadKey = JSON.stringify(draftPayload);
+  useLayoutEffect(() => {
+    const current = () => {
+      if (!isOpen || persistenceSession !== persistenceSessionRef.current || !panelSavable) return;
+      if (!(subject || body || recipientEditedRef.current || chatInput || contextEditedRef.current || pendingPanel?.pending)) return;
+      const payload = JSON.parse(draftPayloadKey) as ColdEmailDraftPayload;
+      if (recipientEditedRef.current) payload.manualRecipient = recipient;
+      persistDraft(payload);
+    };
+    persistCurrentRef.current = current;
+    current();
+  }, [isOpen, persistenceSession, panelSavable, subject, body, recipient, chatInput, pendingPanel, draftPayloadKey, persistDraft]);
+  useEffect(() => {
+    if (!isOpen || !['saving', 'failed', 'conflict'].includes(draftPersistence.status)) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isOpen, draftPersistence.status]);
+  async function clearSavedDraft() {
+    if (!window.confirm(locale === 'zh' ? '删除这份草稿并重新开始？' : 'Delete this draft and start again?')) return;
+    const owner = captureOwnerToken();
+    const session = sendSessionRef.current;
+    const persistence = persistenceSessionRef.current;
+    persistCurrentRef.current();
+    if (!await clearPersistedDraft() || session !== sendSessionRef.current
+      || persistence !== persistenceSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
+    // Retire the old snapshot before reset cleanup can enqueue it again.
+    persistenceSessionRef.current += 1;
+    persistCurrentRef.current = () => {};
+    detachDraft();
+    // Reset invalidates old provider callbacks before a deliberate new draft starts.
+    sendSessionRef.current += 1;
+    setDraftResetKey(value => value + 1);
+  }
 
   useLayoutEffect(() => {
     if (!isOpen || sessionProfileRef.current === materialFingerprint) return;
@@ -1072,6 +1256,8 @@ export default function ColdEmailModal({
     setSubject(v.subject);
     setBody(v.body);
     draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+    setOriginKey(JSON.stringify(draftSourcesRef.current));
+    setRestoredSources(null);
     setExperienceUsage(v.experience_usage ?? null);
     // Variants share one server-resolved recipient; when the reveal is locked
     // they carry "" — never wipe an address the user typed themselves.
@@ -1127,6 +1313,8 @@ export default function ColdEmailModal({
         setSubject(v.subject);
         setBody(v.body);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+        setOriginKey(JSON.stringify(draftSourcesRef.current));
+        setRestoredSources(null);
         setExperienceUsage(v.experience_usage ?? null);
         if (contactIsCurrent) {
           setRecipient((prev) => prev || v.recipient_email);
@@ -1271,6 +1459,8 @@ export default function ColdEmailModal({
       if (draftRevisionRef.current !== revision) { reply(t('coldEmail.editSuperseded')); return; }
       setBody(result.body);
       draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+      setOriginKey(JSON.stringify(draftSourcesRef.current));
+      setRestoredSources(null);
       setExperienceUsage(result.experience_usage ?? null);
       reply(
             result.method === 'llm'
@@ -1362,7 +1552,11 @@ export default function ColdEmailModal({
         { kind: 'profile' as const, version: await contactMaterialVersion(sources.profile) },
         ...(sources.target ? [{ kind: 'target' as const, version: sources.target }] : []),
         { kind: 'contact_context' as const, version: await contactMaterialVersion(sources.contact) },
-      ] : [];
+      ] : [
+        ...(restoredSources?.profile_sig ? [{ kind: 'profile' as const, version: restoredSources.profile_sig }] : []),
+        ...(restoredSources?.target_version ? [{ kind: 'target' as const, version: restoredSources.target_version }] : []),
+        ...(restoredSources?.contact_sig ? [{ kind: 'contact_context' as const, version: restoredSources.contact_sig }] : []),
+      ];
       if (!sameDraft() || !isTokenOwnerStillCurrent(token)) return;
       const input = await createContactEventInput(token.uid!, opportunityId, {
         recipient: recipient.trim(), subject, body, actualSentAt: sentTime?.toISOString() ?? null,
@@ -1396,7 +1590,7 @@ export default function ColdEmailModal({
         setConfirming(false);
       }
     }
-  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, setSendError]);
+  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, restoredSources, setSendError]);
 
   // Only asked once a reminder actually exists, so nobody is prompted about
   // notifications for a thing they have not done. 'subscribed' hides the offer;
@@ -1613,12 +1807,28 @@ export default function ColdEmailModal({
             editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setSubject(value);
           }} />
         </details>
-        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={() => {
-          if (editorUsedRef.current && !window.confirm(locale === 'zh'
-            ? '离开会丢弃未保存的邮件草稿。确定去核对资料？'
-            : 'Leaving discards this unsaved email draft. Go to your profile?')) return false;
-          closeDraft(); return true;
-        }} />
+        <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={leaveForProfile} />
+      <div data-testid="cold-email-draft-status" role={draftPersistence.status === 'failed' || draftPersistence.status === 'conflict' ? 'alert' : 'status'}
+        className="shrink-0 border-b border-gray-100 px-5 py-2 text-xs text-gray-600">
+        {draftPersistence.status === 'saving' ? (locale === 'zh' ? '正在保存到此浏览器…' : 'Saving on this browser…')
+          : draftPersistence.status === 'saved' ? (locale === 'zh' ? (draftRestored ? '已恢复草稿，已保存在此浏览器。' : '已保存在此浏览器。') : (draftRestored ? 'Restored draft. Saved on this browser.' : 'Saved on this browser.'))
+          : draftPersistence.status === 'conflict' ? (locale === 'zh' ? '另一窗口修改了草稿。当前内容仍保留，尚未保存；请先复制。' : 'Another window changed the saved draft. Your current text is kept but not saved. Copy it before leaving.')
+          : draftPersistence.status === 'failed' ? (locale === 'zh' ? '草稿未能保存。当前内容仍保留，请先复制；重新打开可能只显示上次保存的内容。' : 'Could not save this draft. Your text is kept. Copy it before leaving; reopening may show the last saved version.')
+          : (locale === 'zh' ? '草稿只保存在此浏览器。' : 'Drafts are saved only on this browser.')}
+        <button type="button" data-testid="cold-email-draft-clear" className="ml-3 underline disabled:opacity-50"
+          disabled={draftClosing || ['saving', 'failed', 'conflict'].includes(draftPersistence.status)} onClick={() => void clearSavedDraft()}>
+          {locale === 'zh' ? '删除草稿并重写' : 'Delete draft and start again'}
+        </button>
+        {draftPersistence.status === 'failed' && <button type="button" data-testid="cold-email-draft-retry"
+          disabled={!panelSavable || draftClosing} className="ml-3 underline disabled:opacity-50"
+          onClick={() => { persistCurrentRef.current(); void draftPersistence.retry(); }}>
+          {locale === 'zh' ? '重试保存' : 'Retry saving'}
+        </button>}
+        {(draftPersistence.status === 'failed' || draftPersistence.status === 'conflict') && <button type="button" className="ml-3 underline"
+          onClick={() => { if (window.confirm(locale === 'zh' ? '当前修改未保存。仍然关闭？' : 'Your latest changes are not saved. Close anyway?')) { abandonDraft(); finishClose(); } }}>
+          {locale === 'zh' ? '不保存并关闭' : 'Close without saving'}
+        </button>}
+      </div>
       {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
         {locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿和请求仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿和请求仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft and request are kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft and request are kept. Review your profile and try again.')}
         {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
@@ -1657,7 +1867,7 @@ export default function ColdEmailModal({
               <p className="text-sm text-gray-500 max-w-md">{t('coldEmail.nameRequiredBody')}</p>
               <Link
                 href="/"
-                onClick={closeDraft}
+                onClick={leaveForProfile}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
               >
                 {t('coldEmail.nameRequiredCta')}
@@ -1671,7 +1881,7 @@ export default function ColdEmailModal({
               <AlertCircle className="w-8 h-8 shrink-0 text-red-500" />
               <p className="text-sm text-red-600 break-words max-w-full">{error}</p>
               {experienceNeedsReview && (
-                <Link href="/#experience-library" onClick={closeDraft} className="text-sm font-medium text-indigo-600 underline">
+                <Link href="/#experience-library" onClick={leaveForProfile} className="text-sm font-medium text-indigo-600 underline">
                   {t('coldEmail.experienceReviewCta')}
                 </Link>
               )}
@@ -1690,7 +1900,7 @@ export default function ColdEmailModal({
                   {profileRegenerateError && <p role="alert" className="mt-2">{t(profileRegenerateError === 'edited'
                     ? 'coldEmail.editSuperseded' : profileRegenerateError === 'name-required'
                       ? 'coldEmail.nameRequiredBody' : 'coldEmail.profileRegenerateFailed')}</p>}
-                  {profileRegenerateError === 'name-required' && <Link href="/" onClick={closeDraft}
+                  {profileRegenerateError === 'name-required' && <Link href="/" onClick={leaveForProfile}
                     className="mt-1 inline-block font-medium underline">{t('coldEmail.nameRequiredCta')}</Link>}
                   <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium disabled:opacity-50"
                     disabled={contextDirty || !sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
@@ -1770,7 +1980,7 @@ export default function ColdEmailModal({
                 </div>
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
-                  <EmailContactContextPanel opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}`}
+                  <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
                     language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />
                   <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement"
                     onToggle={(event) => { if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
@@ -1813,7 +2023,7 @@ export default function ColdEmailModal({
                       <div className="mt-2 border-t border-gray-200 pt-2" data-testid="cold-email-experience-review">
                         {experienceBudgetOmission && <p>{t('coldEmail.experienceBudgetNote')}</p>}
                         {(experienceNeedsReview || experienceUsage?.needs_review) && <p>{t('coldEmail.experienceReviewNeeded')}</p>}
-                        <Link href="/#experience-library" onClick={closeDraft} className="mt-1 inline-block font-medium text-indigo-600 underline">
+                        <Link href="/#experience-library" onClick={leaveForProfile} className="mt-1 inline-block font-medium text-indigo-600 underline">
                           {t('coldEmail.experienceReviewCta')}
                         </Link>
                       </div>

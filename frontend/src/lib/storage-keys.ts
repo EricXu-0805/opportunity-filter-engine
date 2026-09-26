@@ -55,6 +55,7 @@ export const STORAGE_KEYS = {
   // written beside the data (never wrapped around it) — see identity-owner.ts.
   LOCAL_IDENTITY_OWNER: 'ofe_local_identity_owner',
   TAILOR_DRAFT_PREFIX: 'ofe_tailor_draft_',
+  COLD_EMAIL_DRAFT_PREFIX: 'ofe_cold_email_draft_v1_',
   ANCHOR_3FAV_DISMISSED: 'ofe_anchor_3fav_dismissed',
   JUST_SIGNED_OUT: 'ofe_just_signed_out',
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',

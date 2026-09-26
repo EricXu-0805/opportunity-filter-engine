@@ -2,12 +2,17 @@
 
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { EmailContactContext, Opportunity } from '@/lib/types';
-import { emailPaperKey, emailPaperOptions, type EmailPaperOption, type EmailPaperReading } from '@/lib/email-paper-reading';
+import { emailPaperKey, emailPaperOptions, type EmailPaperOption } from '@/lib/email-paper-reading';
+import { parseEmailContactDraftSnapshot, type EmailContactDraftSnapshot, type EmailContactDraftFields, type EmailContactDraftConfirmations } from '@/lib/email-contact-draft';
 import { defaultEmailContactContext, normalizeEmailContactContext, serializeEmailContactContext } from '@/lib/email-contact-context';
 import styles from './EmailContactContextPanel.module.css';
 
 export interface EmailContactContextPanelProps {
   context?: EmailContactContext;
+  /** Read once for this keyed session; never applied automatically. */
+  initialDraft?: EmailContactDraftSnapshot | null;
+  /** Null means the current full draft exceeds the storage contract. Input stays intact. */
+  onDraftSnapshotChange?: (snapshot: EmailContactDraftSnapshot | null) => void;
   opportunity?: Opportunity | null;
   /** Current writing target version/fingerprint. Changes require a fresh reading confirmation. */
   targetKey?: string;
@@ -22,20 +27,9 @@ export interface EmailContactContextPanelProps {
 }
 
 type Purpose = EmailContactContext['purpose'];
-type ReplyStatus = 'unknown' | 'no_reply' | 'received' | 'declined' | 'do_not_contact';
-type Fields = {
-  purpose: Purpose;
-  referrerName: string;
-  referralNote: string;
-  previousMessage: string;
-  sentOn: string;
-  replyStatus: ReplyStatus;
-  replyText: string;
-  availability: string;
-  paperKey: string;
-  readingLevel: EmailPaperReading['level'] | '';
-};
-type Confirmations = { referral: boolean; sent: boolean; availability: boolean; paper: boolean };
+type Fields = EmailContactDraftFields;
+type Confirmations = EmailContactDraftConfirmations;
+type ReplyStatus = Fields['replyStatus'];
 type PanelError = 'required' | 'confirmation' | 'invalid' | 'blocked' | 'apply' | 'paper';
 type Supplied = { value: EmailContactContext; key: string; valid: boolean };
 type State = {
@@ -45,6 +39,7 @@ type State = {
   fields: Fields;
   confirmed: Confirmations;
   dirty: boolean;
+  expanded: boolean;
   appliedKey: string | null;
   error: PanelError | null;
 };
@@ -84,6 +79,7 @@ function fromSupplied(source: Supplied, paperSourceKey: string, reviewRequested:
       paper: value.paper_reading?.confirmed === true,
     },
     dirty: !source.valid,
+    expanded: value.purpose !== 'first_contact',
     appliedKey: source.valid ? source.key : null,
     error: source.valid ? null : 'invalid',
   };
@@ -123,30 +119,44 @@ function prepare(fields: Fields, confirmed: Confirmations, papers: EmailPaperOpt
   }
 }
 
+function fromInitialDraft(source: Supplied, paperSourceKey: string, reviewRequested: number,
+  papers: EmailPaperOption[], opportunityId: string | null, initialDraft: unknown): State {
+  const fallback = fromSupplied(source, paperSourceKey, reviewRequested);
+  const draft = parseEmailContactDraftSnapshot(initialDraft);
+  if (!draft || draft.opportunityId !== opportunityId) return fallback;
+  const staleReading = !!draft.fields.paperKey && draft.paperSourceKey !== paperSourceKey;
+  const confirmed = { ...draft.confirmed, ...(staleReading ? { paper: false } : {}) };
+  const prepared = prepare(draft.fields, confirmed, papers);
+  // A stored "applied" marker is not authority: the current accepted context
+  // must independently agree. Pending edits never become accepted on restore.
+  const applied = !draft.pending && !staleReading && source.valid
+    && prepared.error === null && prepared.key === source.key;
+  return { ...fallback, fields: draft.fields, confirmed, expanded: draft.expanded,
+    dirty: !applied, appliedKey: applied ? source.key : null, error: null };
+}
+
 /** Context confirmation is local preparation only. This component cannot send,
  * generate, save a profile, or record a contacted/reminder event. */
 export default function EmailContactContextPanel(props: EmailContactContextPanelProps) {
   return <ContextSession key={props.resetKey} {...props} />;
 }
 
-function ContextSession({ context, opportunity, targetKey, reviewRequested = 0, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
+function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportunity, targetKey, reviewRequested = 0, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
   const copy = (en: string, zh: string) => language === 'zh' ? zh : en;
   const id = useId();
   const source = supplied(context);
   const papers = emailPaperOptions(opportunity);
   const paperSourceKey = JSON.stringify([opportunity?.id ?? null, targetKey ?? null, papers]);
   const previousPaperSource = useRef(paperSourceKey);
-  const [state, setState] = useState(() => fromSupplied(source, paperSourceKey, reviewRequested));
-  const [expanded, setExpanded] = useState(() => source.value.purpose !== 'first_contact');
+  const [state, setState] = useState(() => fromInitialDraft(source, paperSourceKey, reviewRequested, papers, opportunity?.id ?? null, initialDraft));
   // Adopt an external accepted context only when it cannot erase unfinished
   // answers. A real owner/target reset uses the keyed session above.
   if (state.sourceKey !== source.key || state.paperSourceKey !== paperSourceKey || state.reviewRequested !== reviewRequested) {
     const adopted = state.sourceKey !== source.key
-      ? (!state.dirty || state.appliedKey === source.key ? fromSupplied(source, paperSourceKey, reviewRequested) : { ...state, sourceKey: source.key, appliedKey: null })
+      ? (!state.dirty || state.appliedKey === source.key ? { ...fromSupplied(source, paperSourceKey, reviewRequested), expanded: state.expanded } : { ...state, sourceKey: source.key, appliedKey: null })
       : state;
     const reviewing = state.reviewRequested !== reviewRequested;
-    if (reviewing) setExpanded(true);
-    setState({ ...adopted, paperSourceKey, reviewRequested,
+    setState({ ...adopted, paperSourceKey, reviewRequested, ...(reviewing ? { expanded: true } : {}),
       ...((state.paperSourceKey !== paperSourceKey || reviewing) && adopted.fields.paperKey
         ? { confirmed: { ...adopted.confirmed, paper: false }, dirty: true, appliedKey: null, error: null } : {}),
     });
@@ -163,6 +173,12 @@ function ContextSession({ context, opportunity, targetKey, reviewRequested = 0, 
   const prepared = prepare(fields, state.confirmed, papers);
   const blocked = prepared.error === 'blocked';
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
+  useLayoutEffect(() => {
+    onDraftSnapshotChange?.(parseEmailContactDraftSnapshot({
+      version: 1, opportunityId: opportunity?.id ?? null, paperSourceKey: state.paperSourceKey,
+      fields: state.fields, confirmed: state.confirmed, pending: !applied, expanded: state.expanded,
+    }));
+  }, [state, applied, opportunity?.id, onDraftSnapshotChange]);
   const error = state.error ?? (blocked ? 'blocked' : null);
   const errors: Record<PanelError, string> = {
     required: copy('Fill in the required details, or choose First contact. Your answers are kept.', '请补齐必要信息，或选择“首次联系”。已填内容会保留。'),
@@ -206,7 +222,10 @@ function ContextSession({ context, opportunity, targetKey, reviewRequested = 0, 
         onChange={event => update(key, event.target.value)} />
       <div id={id + '-' + key + '-count'}>{count(fields[key], max)}</div>
     </div>;
-  return <details className={styles.panel} open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}
+  return <details className={styles.panel} open={state.expanded} onToggle={event => {
+    const expanded = event.currentTarget.open;
+    setState(previous => previous.expanded === expanded ? previous : { ...previous, expanded });
+  }}
     data-testid="email-contact-context-panel">
     <summary className={styles.summary}>
       <span>{copy('Contact purpose and background', '联系目的与背景')}</span>

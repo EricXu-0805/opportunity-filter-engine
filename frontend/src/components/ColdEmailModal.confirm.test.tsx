@@ -1196,7 +1196,11 @@ describe('M45 immutable email confirmation snapshot', () => {
     expect(confirmContactMock.mock.calls[0][1].id).toMatch(/^[0-9a-f-]{36}$/);
     expect(confirmContactMock.mock.calls[1][1].id).toBe(confirmContactMock.mock.calls[0][1].id);
     await rejectConfirm(1); view.unmount();
-    renderModal(); await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    renderModal(); await openedOn('opp-A');
+    // Recovery never stores a server-revealed address. The same draft is
+    // confirmable only after its recipient has been freshly revealed again.
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.to')).toHaveValue('prof@illinois.edu'));
+    await reachConfirmStrip(); fireEvent.click(confirmButton());
     await until(() => confirmCalls.length === 3, 'reopened retry');
     expect(confirmContactMock.mock.calls[2][1].id).toBe(confirmContactMock.mock.calls[0][1].id);
   });

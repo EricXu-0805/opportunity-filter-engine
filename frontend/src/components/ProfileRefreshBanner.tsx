@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { MouseEvent } from 'react';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 
@@ -11,7 +12,7 @@ export function profileRefreshReady(refresh?: ProfileRefreshState): boolean {
 /** Refreshing never owns the editor buffer. It only suspends derived actions. */
 export default function ProfileRefreshBanner({ refresh, targetRefresh, targetReady = true, profileAvailable = true, locale = 'en', onBeforeReview }: {
   refresh?: ProfileRefreshState; targetRefresh?: WritingTargetState; targetReady?: boolean; profileAvailable?: boolean; locale?: 'en' | 'zh';
-  onBeforeReview?: () => boolean;
+  onBeforeReview?: (event: MouseEvent<HTMLAnchorElement>) => boolean;
 }) {
   if (profileAvailable && targetReady && (!refresh || refresh.status === 'ready') && (!targetRefresh || targetRefresh.status === 'ready')) return null;
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
@@ -50,6 +51,6 @@ export default function ProfileRefreshBanner({ refresh, targetRefresh, targetRea
       {targetStatus !== 'checking' && <button type="button" className="mt-1 font-semibold underline" onClick={() => { void targetRefresh?.refresh(); }}>{copy('Check opportunity again', '重新核对机会')}</button>}
     </div>}
     {status === 'failed' && <button type="button" className="mt-1 font-semibold underline" onClick={() => { void refresh?.refresh(); }}>{copy('Retry', '重试')}</button>}
-    {status === 'conflict' && <Link className="mt-1 inline-block font-semibold underline" href="/" onClick={(event) => { if (onBeforeReview && !onBeforeReview()) event.preventDefault(); }}>{copy('Review profile', '核对资料')}</Link>}
+    {status === 'conflict' && <Link className="mt-1 inline-block font-semibold underline" href="/" onClick={(event) => { if (onBeforeReview && !onBeforeReview(event)) event.preventDefault(); }}>{copy('Review profile', '核对资料')}</Link>}
   </div>;
 }

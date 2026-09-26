@@ -50,6 +50,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
 // Per-opportunity keys discovered by localStorage key scan.
 export const USER_SCOPED_PREFIXES: readonly string[] = [
   STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // resume-tailor drafts — user-written content
+  STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX, // unsent email text and context; no send receipts
   // One lane per tab holding that tab's unsent profile edit operations, plus
   // the shared settled/claim lane. Same data as PROFILE/PROFILE_SYNC — an
   // operation staged by one account must never be replayed under another's.

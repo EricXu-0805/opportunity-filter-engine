@@ -63,7 +63,12 @@ describe('ColdEmail authoritative target receipt', () => {
     const view = await open(); expect(screen.queryByDisplayValue('WRONG TARGET')).toBeNull();
     expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible();
     view.rerender(<ColdEmailModal {...props} isOpen={false} />); api.stream.mockResolvedValue({ ...result, body: 'Current AI' });
-    view.rerender(<ColdEmailModal {...props} />); await screen.findByDisplayValue('Current AI');
+    view.rerender(<ColdEmailModal {...props} />); await screen.findByDisplayValue('Template body');
+    await act(async () => {});
+    const rebuild = screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' });
+    const ai = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
+    await waitFor(() => expect(rebuild ?? ai).toBeEnabled()); fireEvent.click(rebuild ?? ai);
+    await screen.findByDisplayValue('Current AI');
     expect(api.stream.mock.calls.length).toBeGreaterThan(1);
   });
   it.each([{ target_version: undefined }, { target_version: B }, { opportunity_id: 'another-target' }])('preserves every edited field on an invalid refine receipt: %j', async mismatch => {

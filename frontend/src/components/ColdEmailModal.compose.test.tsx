@@ -88,7 +88,7 @@ describe('new composer source checks', () => {
   it('closes on dialog retirement and ignores a delayed recipient check', async () => {
     const view = await harness(); const held = deferred<void>(); api.recipient.mockReturnValue(held.promise); fireEvent.click(button());
     await waitFor(() => expect(api.recipient).toHaveBeenCalledOnce()); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.closeAria' }));
-    await act(async () => held.resolve()); expect(view.window.close).toHaveBeenCalledOnce(); expect(view.window.location.href).toBe('about:blank'); expect(view.close).toHaveBeenCalledOnce();
+    await act(async () => held.resolve()); expect(view.window.close).toHaveBeenCalledOnce(); expect(view.window.location.href).toBe('about:blank'); await waitFor(() => expect(view.close).toHaveBeenCalledOnce());
   });
   it('reports popup blocking before any new reads or attestation', async () => {
     const view = await harness(); view.open.mockReturnValue(null); fireEvent.click(button());

@@ -134,7 +134,7 @@ describe('Tailor profile preflight', () => {
   it('does not revive a late network result when an unavailable source comes back unchanged', async () => {
     const pending = deferred<TailorResponse>(); api.tailor.mockReturnValueOnce(pending.promise);
     const props = { ...base, profileRefresh: refresh(async () => receipt()) }; const view = render(<TailorModal {...props} />);
-    type(); fireEvent.click(generate()); await drain(); expect(api.tailor).toHaveBeenCalledOnce();
+    type(); fireEvent.click(generate()); await waitFor(() => expect(api.tailor).toHaveBeenCalledOnce());
     view.rerender(<TailorModal {...props} profileAvailable={false} />); view.rerender(<TailorModal {...props} />);
     pending.resolve(response); await drain(); expect(screen.queryByText('tailor.methodAi')).toBeNull(); expect(textarea()).toHaveValue('My unchanged manual bullet');
   });

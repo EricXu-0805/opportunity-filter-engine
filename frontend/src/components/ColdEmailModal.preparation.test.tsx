@@ -94,7 +94,7 @@ describe('source instructions and personal preparation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' }));
     await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2)); expect(api.variants.mock.calls[1][0].research_interests).toBe(newer.research_interests);
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.closeAria' })); act(() => callback(snapshot(profile), snapshot(newer)));
-    expect(screen.queryByRole('dialog')).toBeNull(); expect(api.variants).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull()); expect(api.variants).toHaveBeenCalledTimes(2);
   });
   it('does not reactivate an accepted contribution overlay after a profile disappears and returns', async () => {
     const view = mount(); await ready(); await supplement();
