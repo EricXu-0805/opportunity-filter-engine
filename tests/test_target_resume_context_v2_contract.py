@@ -28,6 +28,7 @@ def test_exact_public_projection_and_whole_document_match_node_oracles():
     before = deepcopy(public)
     target = public_target_context(public)
     target.pop('research')
+    target.pop('lab')
     target['context_version'] = 2
     assert target == GOLDEN['draft']['target_snapshot']
     assert public == before
@@ -48,6 +49,7 @@ def test_numeric_gpa_uses_ecmascript_scalar_and_preserves_original_strings(case)
     public['eligibility']['min_gpa'] = json.loads(case['input_json'])
     target = public_target_context(public)
     target.pop('research')
+    target.pop('lab')
     target['context_version'] = 2
     assert target['criteria']['eligibility']['min_gpa_decimal'] == case['expected_min_gpa_decimal']
     assert fingerprint(target) == case['target_signature']

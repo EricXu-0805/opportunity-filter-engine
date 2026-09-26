@@ -26,6 +26,8 @@ PAPER = {'field': 'paper_title', 'paper_index': 0, 'start': 0, 'end': 6, 'quote'
 def test_shared_v3_golden_complete_projection_signature_and_budget():
     public = deepcopy(GOLDEN['public_opportunity'])
     target = public_target_context(public)
+    target.pop('lab')
+    target['context_version'] = 3
     assert target == GOLDEN['draft']['target_snapshot']
     assert fingerprint(target) == GOLDEN['draft']['base']['target_signature']
     assert target_context_character_count(target) == GOLDEN['target_character_count']
@@ -189,6 +191,7 @@ def test_old_v2_document_is_readable_but_not_upgraded_for_provider(endpoint, pat
     client, opp, state = endpoint
     doc = document(opp)
     doc['target_snapshot'].pop('research')
+    doc['target_snapshot'].pop('lab')
     doc['target_snapshot']['context_version'] = 2
     doc['base']['target_signature'] = fingerprint(doc['target_snapshot'])
     assert validate_document(doc) == doc

@@ -58,7 +58,7 @@ def authoritative_target(opp):
 async def full_target_suggestions(request: FullTargetRequest):
     try:
         doc = validate_document(request.draft)
-        if doc["target_snapshot"].get("context_version") != 3:
+        if doc["target_snapshot"].get("context_version") != 4:
             raise HTTPException(409, detail={"code": "legacy_target_context"})
         units, protected, selected, processable = prepare_batch(request, doc)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
@@ -100,7 +100,7 @@ async def full_target_suggestions(request: FullTargetRequest):
 async def full_target_selection_plan(request: FullTargetPlanRequest):
     try:
         doc = validate_document(request.draft)
-        if doc["target_snapshot"].get("context_version") != 3:
+        if doc["target_snapshot"].get("context_version") != 4:
             raise HTTPException(409, detail={"code": "legacy_target_context"})
         blocks, manifest, scope = target_resume_plan.prepare_plan(request, doc)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):

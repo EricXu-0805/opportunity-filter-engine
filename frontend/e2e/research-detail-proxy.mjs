@@ -24,38 +24,40 @@ async function body(req, limit) {
   return Buffer.concat(chunks);
 }
 export function createResearchDetailProxy(upstream = 'http://127.0.0.1:8200') {
-  const base = loopback(upstream); let material = null; let reads = [];
+  const base = loopback(upstream); const materials = { research_context: null, lab_context: null }; const reads = { research_context: [], lab_context: [] };
   return createServer(async (req, res) => {
     try {
       if (!req.url?.startsWith('/') || req.url.startsWith('//')) return send(res, 400, { error: 'relative_path_required' });
       const url = new URL(req.url, 'http://127.0.0.1');
       if (url.pathname === '/__fixture/health') return send(res, 200, { fixture: 'research-detail-proxy', upstream: base });
-      if (url.pathname === `/__fixture/research/${TARGET}`) {
-        if (req.method === 'DELETE') { material = null; reads = []; return send(res, 200, { cleared: true }); }
-        if (req.method === 'GET') return send(res, 200, { research_context: material, detail_reads: reads });
+      const fixtureKey = url.pathname === `/__fixture/research/${TARGET}` ? 'research_context'
+        : url.pathname === `/__fixture/lab/${TARGET}` ? 'lab_context' : null;
+      if (fixtureKey) {
+        if (req.method === 'DELETE') { materials[fixtureKey] = null; reads[fixtureKey] = []; return send(res, 200, { cleared: true }); }
+        if (req.method === 'GET') return send(res, 200, { [fixtureKey]: materials[fixtureKey], detail_reads: reads[fixtureKey] });
         if (req.method !== 'POST') return send(res, 405, { error: 'method_not_allowed' });
-        const input = JSON.parse((await body(req, 65536)).toString('utf8'));
-        if (!input || Object.keys(input).join() !== 'research_context') return send(res, 400, { error: 'fixture_shape' });
-        const value = input.research_context; const snapshot = value?.snapshot;
+        const input = JSON.parse((await body(req, 262144)).toString('utf8'));
+        if (!input || Object.keys(input).join() !== fixtureKey) return send(res, 400, { error: 'fixture_shape' });
+        const value = input[fixtureKey]; const snapshot = value?.snapshot;
         if (value?.version !== 1 || !['available', 'stale'].includes(value.status) || !snapshot) return send(res, 400, { error: 'fixture_shape' });
         const { snapshot_version, ...stored } = snapshot;
-        if (snapshot_version !== 'rs1:' + sha(stored)) return send(res, 400, { error: 'fixture_hash' });
-        material = structuredClone(value); reads = []; return send(res, 200, { research_context: material });
+        if (snapshot_version !== (fixtureKey === 'lab_context' ? 'ls1:' : 'rs1:') + sha(stored)) return send(res, 400, { error: 'fixture_hash' });
+        materials[fixtureKey] = structuredClone(value); reads[fixtureKey] = []; return send(res, 200, { [fixtureKey]: materials[fixtureKey] });
       }
       if (url.pathname.startsWith('/__fixture/')) return send(res, 404, { error: 'unknown_fixture' });
       const headers = { ...req.headers, host: new URL(base).host, 'accept-encoding': 'identity' };
       delete headers.connection;
-      const currentMaterial = material;
+      const currentMaterials = structuredClone(materials);
       await new Promise((resolve, reject) => {
         const forwarded = httpRequest(base + url.pathname + url.search, { method: req.method, headers }, response => {
           void (async () => {
-            if (currentMaterial && req.method === 'GET' && url.pathname === `/api/opportunities/${TARGET}` && response.statusCode === 200) {
+            if (Object.values(currentMaterials).some(Boolean) && req.method === 'GET' && url.pathname === `/api/opportunities/${TARGET}` && response.statusCode === 200) {
               const value = JSON.parse((await body(response, 3 * 1024 * 1024)).toString('utf8'));
               if (value.id !== TARGET) { send(res, 502, { error: 'unexpected_fixture_target' }); return; }
-              value.research_context = structuredClone(currentMaterial);
+              for (const [key, value_] of Object.entries(currentMaterials)) if (value_) value[key] = value_;
               const target = Object.fromEntries(Object.entries(value).filter(([key]) => !['writing_target_version', 'contact_email_status', 'contact_email', 'pi_email', 'professor_id'].includes(key)));
               value.writing_target_version = 'wt1:' + sha(target);
-              reads.push({ method: req.method, path: url.pathname, status: currentMaterial.status, snapshot_version: currentMaterial.snapshot.snapshot_version });
+              for (const [key, material] of Object.entries(currentMaterials)) if (material) reads[key].push({ method: req.method, path: url.pathname, status: material.status, snapshot_version: material.snapshot.snapshot_version });
               send(res, 200, value); return;
             }
             // Transparent streaming preserves large PDF uploads, SSE, exact

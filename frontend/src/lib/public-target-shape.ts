@@ -1,3 +1,4 @@
+import { isLabContext } from './lab-context';
 import { isResearchContext } from './research-context';
 import { opportunityRecordKind } from './record-kind';
 import { isWritingTargetVersion } from './writing-target-version';
@@ -26,7 +27,8 @@ export function isPublicDetail(value: unknown, id: string): value is Opportunity
   if ('contact_email' in value || 'pi_email' in value || value.contact_email_status === 'revealed') return false;
   if (!optional(value, 'writing_target_version', isWritingTargetVersion)
     || !optional(value, 'contact_instructions', isContactInstructions)
-    || !optional(value, 'research_context', isResearchContext)) return false;
+    || !optional(value, 'research_context', isResearchContext)
+    || !optional(value, 'lab_context', isLabContext)) return false;
   if (!optional(value, 'source_type', nullableString)
     || !optional(value, 'record_kind', item => typeof item === 'string' && ['listing', 'faculty_contact', 'unknown'].includes(item))) return false;
   const unreviewed = value.record_kind === 'unknown'

@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
@@ -19,7 +19,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 let prepared: PreparedTargetResumeAi;
 const rewrite = 'I built a Python parser 😀 with my teammates. I did not lead the team.';
 function response(payload: TargetResumeAiRequest, structureOnly = false): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v3', request_id: payload.request_id, document_id: payload.draft.id,
+  return { version: 1, pipeline_version: 'full-target-v4', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
     manifest: { unit_ids: prepared.units.map(unit => unit.unit_id), protected_unit_count: prepared.protected_unit_count }, method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
     receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => ({

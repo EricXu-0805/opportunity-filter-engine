@@ -27,7 +27,7 @@ export interface TargetResumeProvenanceEvent {
 }
 /** Locally supplied operation records. They are not authenticated server receipts. */
 export interface TargetResumeProvenance {
-  version: 1 | 2; document_id: string; opportunity_id: string;
+  version: 1 | 2 | 3; document_id: string; opportunity_id: string;
   base: TargetResumeV1['base']; events: TargetResumeProvenanceEvent[];
 }
 export interface TargetResumeProvenanceAction {
@@ -119,14 +119,14 @@ function range(source: string, evidence: Record<string, unknown>): void {
     || Array.from(source).slice(evidence.start as number, evidence.end as number).join('') !== evidence.quote
     || (evidence.end as number) > Array.from(source).length) fail();
 }
-function metadata(value: Record<string, unknown>, doc: TargetResumeV1, p: TargetResumeProvenancePath, kind: TargetResumeProvenanceKind, version: 1 | 2): void {
+function metadata(value: Record<string, unknown>, doc: TargetResumeV1, p: TargetResumeProvenancePath, kind: TargetResumeProvenanceKind, version: 1 | 2 | 3): void {
   const { section, block, line } = location(doc, p);
   if (value.reason !== null) text(value.reason);
   if (!Array.isArray(value.target_evidence) || !Array.isArray(value.source_evidence)) fail();
   if ((kind === 'manual' || kind === 'target_order')
     && (value.reason !== null || value.target_evidence.length || value.source_evidence.length || value.check !== null)) fail();
   for (const e of value.target_evidence) {
-    if (!isTargetResumeEvidence(doc.target_snapshot, e, version === 2)) fail();
+    if (!isTargetResumeEvidence(doc.target_snapshot, e, version >= 2, version === 3)) fail();
   }
   for (const e of value.source_evidence) {
     shape(e, ['unit_id', 'start', 'end', 'quote']); id(e.unit_id);
@@ -167,7 +167,7 @@ function parse(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | nu
   if (new TextEncoder().encode(serialized).byteLength > TARGET_RESUME_PROVENANCE_MAX_BYTES) fail('too_large');
   const copy: unknown = JSON.parse(serialized);
   shape(copy, ['version', 'document_id', 'opportunity_id', 'base', 'events']);
-  if (![1, 2].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
+  if (![1, 2, 3].includes(copy.version as number) || (copy.version === 2 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 3)) || (copy.version === 3 && (!('context_version' in doc.target_snapshot) || doc.target_snapshot.context_version !== 4)) || copy.document_id !== doc.id || copy.opportunity_id !== doc.opportunity_id || !same(copy.base, doc.base)) fail();
   if (!Array.isArray(copy.events) || !copy.events.length) fail();
   if (copy.events.length > TARGET_RESUME_PROVENANCE_MAX_EVENTS) fail('too_large');
   const ids = new Set<string>();
@@ -182,7 +182,7 @@ function parse(value: unknown, doc: TargetResumeV1): TargetResumeProvenance | nu
       shape(raw, [...PATH_KEYS, 'before', 'after', ...META_KEYS]);
       const p = path(raw); const key = pathKey(p); if (paths.has(key)) fail(); paths.add(key);
       const change = raw as unknown as TargetResumeProvenanceChange;
-      metadata(raw, replay, p, event.kind as TargetResumeProvenanceKind, copy.version as 1 | 2); values(change, replay);
+      metadata(raw, replay, p, event.kind as TargetResumeProvenanceKind, copy.version as 1 | 2 | 3); values(change, replay);
       if (!same(read(replay, p), change.after)) fail();
       if (event.kind !== 'manual' && same(change.before, change.after)) fail();
       write(replay, p, change.before);
@@ -202,7 +202,7 @@ export function appendTargetResumeProvenance(previous: TargetResumeProvenance | 
   const old = document(before); const next = document(after); const prior = parse(previous, old);
   if (!KINDS.includes(action.kind)) fail();
   if (!same({ ...old, document: null }, { ...next, document: null })) fail();
-  const version = 'context_version' in next.target_snapshot && next.target_snapshot.context_version === 3 ? 2 : 1;
+  const version = 'context_version' in next.target_snapshot ? next.target_snapshot.context_version === 4 ? 3 : next.target_snapshot.context_version === 3 ? 2 : 1 : 1;
   const annotations = new Map<string, TargetResumeProvenanceAnnotation>();
   for (const annotation of action.annotations ?? []) {
     shape(annotation, [...PATH_KEYS, ...META_KEYS]); const p = path(annotation);

@@ -20,7 +20,7 @@ beforeEach(async()=>{
  const chain={select:vi.fn(),eq:vi.fn((k,v)=>{filters.push([k,v]);return chain;}),lt:vi.fn((k,v)=>{filters.push(['lt:'+k,v]);return chain;}),order:vi.fn(()=>chain),maybeSingle:single,limit};
  select=chain.select.mockReturnValue(chain);from.mockReturnValue(chain);
  const master=createEmptyResumeMaster('master');master.basics.name={id:'name',revision:1,status:'confirmed',value:'Alex 王',source:{kind:'manual'}};
- doc=await createTargetResume({institution:'UIUC',college:'Grainger',major:'CS',grade:'Junior',is_international:false,research_interests:'robotics',skills:[],resume_master:master,resume_text:'Source',experience_entries:[]},{opportunity_id:'opp',title:'Lab',organization:'UIUC',description:'robotics',requirements:[],source_url:'https://example.edu/lab',context_version:3,research:{version:1,status:'unavailable',snapshot:null},criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'target');
+ doc=await createTargetResume({institution:'UIUC',college:'Grainger',major:'CS',grade:'Junior',is_international:false,research_interests:'robotics',skills:[],resume_master:master,resume_text:'Source',experience_entries:[]},{opportunity_id:'opp',title:'Lab',organization:'UIUC',description:'robotics',requirements:[],source_url:'https://example.edu/lab',context_version:4,lab:{version:1,status:'unavailable',snapshot:null},research:{version:1,status:'unavailable',snapshot:null},criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'target');
  single.mockResolvedValue({data:row(),error:null});
 });
 describe('target resume persistence',()=>{

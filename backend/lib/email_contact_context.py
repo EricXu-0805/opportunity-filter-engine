@@ -12,6 +12,7 @@ from copy import deepcopy
 
 from backend.lib.public_projection import redact_embedded_emails
 from backend.lib.publication_attribution import verified_recent_works
+from src.lab_context import lab_context_for, validate_public_lab_context
 from src.research_context import research_context_for, validate_public_research_context
 
 # Shared with the browser contact-context validator. This is intentionally a
@@ -45,6 +46,44 @@ def contact_context_receipt(context: dict | None) -> dict:
     canonical = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return {"version": 1, "purpose": normalized["purpose"],
             "context_sig": hashlib.sha256(canonical.encode("utf-8")).hexdigest()}
+
+
+def email_lab_context(opp: dict) -> dict:
+    """Official website material is target evidence, never a reading attestation."""
+    if "lab_context" in opp:
+        value = opp["lab_context"]
+        return value if validate_public_lab_context(value) else {"version": 1, "status": "unavailable", "snapshot": None}
+    return lab_context_for(opp)
+
+
+def unsupported_website_reading_claims(text: str) -> list[str]:
+    """Bounded English completed-reading patterns; no website reading input exists.
+
+    Looking up a page on the server or displaying it cannot authorize a claim
+    that the student read it. Future/conditional plans are not completed acts.
+    Require a target qualifier: an unrelated course/project page is not this
+    source. This is deliberately not an exhaustive language classifier.
+    """
+    pattern = re.compile(
+        r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already)\s+)?"
+        r"(?:read|reviewed|studied|visited|explored|browsed)|"
+        r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?"
+        r"(?:read|reading|reviewed|reviewing|visited|visiting|explored|exploring))\s+"
+        r"(?:through\s+)?(?:your\s+(?:(?:official|faculty|lab|laboratory|research|group)(?:['’]s)?\s+){0,3}"
+        r"|(?:the|this)\s+(?:(?:official|faculty|lab|laboratory|research|group)(?:['’]s)?\s+){1,3})"
+        r"(?:website|web\s*page|pages?|profile|site)\b", re.I,
+    )
+    for clause in re.split(r"[.!?;\n]+", text):
+        for match in pattern.finditer(clause):
+            prefix = clause[:match.start()]
+            if re.search(r"\b(?:if|when|once|unless)\s*$", prefix, re.I):
+                continue
+            if re.search(r"\bi\s+(?:will|would|can|could|plan\s+to|hope\s+to)\b", prefix, re.I):
+                continue
+            if re.match(r"after\b", match.group(), re.I) and re.search(r"\bi\s+(?:will|plan\s+to)\b", clause[match.end():], re.I):
+                continue
+            return ["unsupported completed website-reading claim"]
+    return []
 
 
 def email_research_context(opp: dict) -> dict:

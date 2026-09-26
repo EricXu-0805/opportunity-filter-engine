@@ -49,10 +49,11 @@ The target's criteria capture published constraints, not verified student facts 
 Missing, null or unknown values do not establish eligibility or absence of a restriction. Preserve
 inferred attribution and deadline estimates; is_rolling alone does not prove rolling admissions.
 Criteria may constrain advice but are never valid target_evidence fields. Quote only description
-or a requirement or available paper title/abstract as defined above; never turn target material into student achievements.
-Return JSON only. Each target_evidence item uses exactly one of the two shapes described above.
+or a requirement or available paper title/abstract or official lab section as defined here; never turn target material into student achievements.
+Available official website sections may also be quoted using exact {field:"lab_heading"|"lab_text",page_index:0,section_index:0,start:0,end:1,quote:"..."}, with neither paper_index nor requirement_index. Use the selected section heading or text exactly. Stale/unavailable lab material cannot support advice. Website facts establish target relevance only, never student skills, equipment use, results, authorship, paper reading or recruitment.
+Return JSON only. Each target_evidence item uses exactly one of the three shapes described above.
 The following description-quote example illustrates the response envelope; paper quotes must use
-paper_index instead of requirement_index. Response shape {"units":[{"unit_id":"...","priority":"high|normal|low",
+paper_index instead of requirement_index; website quotes use page_index and section_index. Response shape {"units":[{"unit_id":"...","priority":"high|normal|low",
 "reason":"...","target_evidence":[{"field":"description|requirement","requirement_index":null,
 "start":0,"end":1,"quote":"..."}],"proposed_text":null}]}. Never return protected fields or new IDs."""
 
@@ -106,7 +107,7 @@ def response_envelope(request, doc, units, protected, receipts, logical_calls):
 
 
 def prepare_batch(request, doc):
-    if doc["target_snapshot"].get("context_version") != 3:
+    if doc["target_snapshot"].get("context_version") != 4:
         fail("legacy_target_context")
     if fingerprint(doc) != request.document_signature:
         fail("document_signature_mismatch")
@@ -136,11 +137,12 @@ def valid_quotes(value, target):
     for quote in value:
         try:
             paper = quote.get("field") in ("paper_title", "paper_abstract") if type(quote) is dict else False
-            shape(quote, ("field", "paper_index" if paper else "requirement_index", "start", "end", "quote"))
+            lab = quote.get("field") in ("lab_heading", "lab_text") if type(quote) is dict else False
+            shape(quote, ("field", *(("page_index", "section_index") if lab else ("paper_index" if paper else "requirement_index",)), "start", "end", "quote"))
             text(quote["quote"], nonblank=True)
             if paper:
                 research = target.get("research", {})
-                if target.get("context_version") != 3 or research.get("status") != "available":
+                if target.get("context_version") not in (3, 4) or research.get("status") != "available":
                     return False
                 works = research["snapshot"]["works"]
                 index = quote["paper_index"]
@@ -150,6 +152,19 @@ def valid_quotes(value, target):
                 if quote["field"] == "paper_abstract" and work["abstract_status"] != "present":
                     return False
                 source = work["title"] if quote["field"] == "paper_title" else work["abstract"]
+            elif lab:
+                context = target.get("lab", {})
+                if target.get("context_version") != 4 or context.get("status") != "available":
+                    return False
+                pages = context["snapshot"]["pages"]
+                index, section_index = quote["page_index"], quote["section_index"]
+                if type(index) is not int or not 0 <= index < len(pages):
+                    return False
+                sections = pages[index]["sections"]
+                if type(section_index) is not int or not 0 <= section_index < len(sections):
+                    return False
+                section = sections[section_index]
+                source = section["heading"] if quote["field"] == "lab_heading" else section["text"]
             elif quote["field"] == "description" and quote["requirement_index"] is None:
                 source = target["description"]
             elif quote["field"] == "requirement" and type(quote["requirement_index"]) is int and 0 <= quote["requirement_index"] < len(target["requirements"]):

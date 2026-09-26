@@ -1,0 +1,11 @@
+.sources { min-width: 0; margin-block: 1rem; padding: 1rem; border: 1px solid #dbe2ec; border-radius: 12px; background: #f8fafc; color: #334155; overflow-wrap: anywhere; }
+.sources h4 { margin: 0 0 .5rem; font-weight: 600; }
+.note, .checked { margin: .4rem 0; font-size: .875rem; line-height: 1.5; }
+.checked { color: #64748b; }
+.page { margin-top: .75rem; }
+.page summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
+.page a { display: inline-block; margin-block: .5rem; color: #4338ca; text-decoration: underline; }
+.page a:focus-visible, .page summary:focus-visible { outline: 2px solid #4338ca; outline-offset: 3px; }
+.excerpt { padding-block: .5rem; border-top: 1px solid #e2e8f0; }
+.excerpt h5 { margin: 0 0 .4rem; font-size: .875rem; font-weight: 600; }
+.excerpt p { margin: 0; white-space: pre-wrap; font-size: .875rem; line-height: 1.65; }

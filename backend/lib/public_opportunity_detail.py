@@ -15,6 +15,7 @@ from backend.lib.public_projection import project_public_opportunity_payload
 from backend.lib.publication_attribution import works_are_verified
 from src.contact_instructions import contact_instructions_for
 from src.evidence import faculty_safe_public_record
+from src.lab_context import lab_context_for
 from src.research_context import research_context_for
 
 REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
@@ -27,6 +28,7 @@ _NON_VERSIONED_FIELDS = {"writing_target_version", "contact_email_status"} | RED
 def project_public_detail(opp: dict) -> dict:
     requirements = contact_instructions_for(opp)
     research = research_context_for(opp)
+    lab = lab_context_for(opp)
     raw_metadata = opp.get("metadata")
     has_research_snapshot = isinstance(raw_metadata, dict) and "research_snapshot" in raw_metadata
     opp = faculty_safe_public_record(deepcopy(opp))
@@ -34,9 +36,12 @@ def project_public_detail(opp: dict) -> dict:
     # Recompute from current source snapshots, never trust a cached public policy.
     out["contact_instructions"] = requirements
     out["research_context"] = research
+    out["lab_context"] = lab
     metadata = dict(out["metadata"]) if isinstance(out.get("metadata"), dict) else {}
     metadata.pop("research_snapshot", None)
     metadata.pop("research_refresh", None)
+    metadata.pop("lab_snapshot", None)
+    metadata.pop("lab_refresh", None)
     if has_research_snapshot:
         if research["status"] == "available":
             metadata["recent_works"] = [

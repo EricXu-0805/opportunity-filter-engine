@@ -1,6 +1,8 @@
 import { test, expect, request as apiRequest, type APIRequestContext, type Page, type Request, type TestInfo } from '@playwright/test';
 import { researchFixture, RESEARCH_TITLE, RESEARCH_ABSTRACT } from './research-fixture';
 import type { ResearchContext } from '../src/lib/research-context';
+import type { LabContext } from '../src/lib/lab-context';
+import labGolden from '../../tests/fixtures/lab-context-v1-golden.json';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { contactReceiptForRequest } from './email-contact-receipt';
 import type { ContactInstructions } from '../src/lib/contact-instructions';
@@ -51,7 +53,7 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
   const owner = await account(); const checks = audit(page);
   const state = { instructions: { version: 1, status: 'unknown', email_policy: 'unknown', rules: [] } as ContactInstructions,
     version: V1, email: 'lab@example.edu', emailStatus: 'revealed', calls: [] as Call[], detailReads: 0,
-    hold: false, held: false, readingError: false, papers: true, blocked: false, research: undefined as ResearchContext | undefined };
+    hold: false, held: false, readingError: false, papers: true, blocked: false, research: undefined as ResearchContext | undefined, lab: undefined as LabContext | undefined };
   let release!: () => void; const gate = new Promise<void>(r => { release = r; });
   await page.addInitScript(({ session, keys, locale }) => {
     if (!localStorage.getItem('email-preparation-seeded')) { localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(keys.LOCALE, locale); localStorage.setItem(keys.ONBOARDING_SEEN, '1'); localStorage.setItem('email-preparation-seeded', '1'); }
@@ -70,6 +72,7 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
     const response = await route.fetch({ maxRetries: 0 }); expect(response.status()).toBe(200); const value = await response.json();
     value.writing_target_version = state.version; value.contact_instructions = state.instructions;
     if (state.research) value.research_context = state.research;
+    if (state.lab) value.lab_context = state.lab;
     value.metadata.publication_attribution_status = 'verified_author_id'; value.metadata.recent_works = state.papers ? [{ title: PAPER, year: 2025 }] : [];
     if (route.request().headers().authorization) { value.contact_email_status = state.emailStatus; if (state.emailStatus === 'revealed') value.contact_email = state.email; else delete value.contact_email; }
     await route.fulfill({ response, json: value });
@@ -261,5 +264,66 @@ for (const status of ['available', 'stale'] as const) test(`research ${status} k
     }
     expect(f.mutations).toEqual([]);
     await info.attach('research-reading-requests', { body: JSON.stringify({ status, calls: f.state.calls }, null, 2), contentType: 'application/json' });
+  } finally { await f.done(); }
+});
+
+
+for (const status of ['available', 'stale'] as const) test(`website lab ${status} stays separate from reading and restored draft authority`, async ({ page }, info) => {
+  const locale = info.project.name === 'mobile-chrome' ? 'zh' : 'en';
+  const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
+  if (locale === 'zh') await page.setViewportSize({ width: 390, height: 844 });
+  const f = await setup(page, info, locale);
+  await page.route('**/*', route => {
+    const url = new URL(route.request().url());
+    return /^https?:$/.test(url.protocol) && !['127.0.0.1', 'localhost'].includes(url.hostname)
+      ? route.abort('blockedbyclient') : route.fallback();
+  });
+  try {
+    f.state.lab = structuredClone(labGolden) as LabContext; f.state.lab.status = status;
+    f.state.research = researchFixture('available');
+    await f.open(); await f.ready();
+    const panel = page.getByTestId('email-contact-context-panel'); await panel.locator(':scope > summary').click();
+    const sources = panel.getByRole('region', { name: copy('Faculty and lab website sources', '教授与实验室官网资料'), exact: true });
+    await expect(sources).toBeVisible();
+    if (status === 'stale') await expect(sources).toContainText(copy('These sources are out of date', '资料已过期'));
+    const papers = panel.getByLabel(copy('Paper you looked at (optional)', '你看过的论文（选填）'), { exact: true });
+    await papers.selectOption({ label: RESEARCH_TITLE + ' (2025)' });
+    await panel.getByLabel(copy('How much did you read?', '你读到了哪一步？'), { exact: true }).selectOption('abstract');
+    const confirm = panel.getByRole('checkbox', { name: copy('I confirm this reading level for the selected paper.', '我确认自己对这篇论文的阅读程度。'), exact: true });
+    const before = f.state.calls.length;
+    await sources.locator('summary').click();
+    const snapshot = f.state.lab.snapshot!;
+    for (const section of snapshot.pages[0].sections) await expect(sources).toContainText(section.text);
+    await expect(sources.getByRole('link', { name: copy('Open source page', '打开原始页面'), exact: true })).toHaveAttribute('href', snapshot.pages[0].source_url);
+    await expect(confirm).not.toBeChecked(); expect(f.state.calls.length).toBe(before);
+    expect(f.state.calls.every(call => !call.contact_context.paper_reading)).toBe(true);
+    await sources.scrollIntoViewIfNeeded(); await screenProof(page, info, `website-lab-${status}-${locale}.png`);
+    const geometry = await sources.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return { fits: element.scrollWidth <= element.clientWidth + 2, inViewport: box.left >= 0 && box.right <= innerWidth + 2 };
+    });
+    expect(geometry).toEqual({ fits: true, inViewport: true });
+    await confirm.check(); await panel.getByRole('button', { name: copy('Apply background to this draft', '将背景应用于草稿'), exact: true }).click();
+    expect(f.state.calls.length).toBe(before);
+    await page.getByRole('button', { name: copy('Regenerate from updated materials', '按最新资料和机会重新生成'), exact: true }).click();
+    await expect.poll(() => f.state.calls.length).toBe(before + 2);
+    const manual = 'Handwritten draft stays complete. 官网更新不改我的原稿。🧪';
+    await page.locator('#cold-email-body').fill(manual);
+    await expect(page.getByTestId('cold-email-draft-status')).toContainText(copy('Saved on this browser', '已保存'));
+    await page.getByRole('button', { name: copy('Close email editor', '关闭邮件编辑器'), exact: true }).click();
+    await expect(page.locator('#cold-email-body')).toHaveCount(0);
+    const callsBeforeReopen = f.state.calls.length;
+    if (status === 'available') {
+      f.state.lab.snapshot!.pages[0].sections[0].text += ' Updated source.';
+      f.state.lab.snapshot!.snapshot_version = 'ls1:' + 'c'.repeat(64);
+    } else f.state.lab = { version: 1, status: 'unavailable', snapshot: null };
+    f.state.version = V2;
+    await f.open(); await expect(page.locator('#cold-email-body')).toHaveValue(manual);
+    const restoredPanel = page.getByTestId('email-contact-context-panel');
+    if (await restoredPanel.getAttribute('open') === null) await restoredPanel.locator(':scope > summary').click();
+    await expect(restoredPanel.getByRole('checkbox', { name: copy('I confirm this reading level for the selected paper.', '我确认自己对这篇论文的阅读程度。'), exact: true })).not.toBeChecked();
+    await expect(composer(page)).toBeDisabled(); expect(await windows(page)).toEqual([]);
+    expect(f.state.calls.length).toBe(callsBeforeReopen); expect(f.mutations).toEqual([]);
+    await info.attach('website-lab-source-and-request-audit', { body: JSON.stringify({ status, source: snapshot, calls: f.state.calls, geometry, manualRetained: true }, null, 2), contentType: 'application/json' });
   } finally { await f.done(); }
 });

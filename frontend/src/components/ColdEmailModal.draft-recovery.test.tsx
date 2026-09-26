@@ -26,6 +26,8 @@ vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: v
 vi.mock('@/i18n/client', () => { const t = (key: string) => key; return { useT: () => ({ t, locale: 'en' }) }; });
 vi.mock('./ResumeSupplementPanel', () => ({ default: () => <div /> }));
 import ColdEmailModal from './ColdEmailModal';
+import labGolden from '../../../tests/fixtures/lab-context-v1-golden.json';
+import type { LabContext } from '@/lib/lab-context';
 
 const profile: ProfileData = { name: 'Alex', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
   is_international: false, research_interests: 'sensors', skills: [], coursework: [] };
@@ -139,6 +141,26 @@ describe('persistent cold-email draft recovery', () => {
     expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
     expect(button('regenerateFromProfile')).toBeDisabled(); expect(button('gmail')).toBeDisabled();
     fireEvent.click(button('regenerateFromProfile')); expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+  });
+
+  it('keeps saved manual text after website content changes, without restoring source or sending authority', async () => {
+    const lab = structuredClone(labGolden) as LabContext;
+    const siteTarget: Opportunity = { ...target, lab_context: lab };
+    const view = mount({ target: siteTarget }); await ready(); edit(); await close(view);
+    const old = readColdEmailDraft(captureOwnerToken(), target.id); clearCalls();
+    const changed = structuredClone(siteTarget);
+    changed.lab_context!.snapshot!.pages[0].sections[0].text += ' Changed official source.';
+    changed.lab_context!.snapshot!.snapshot_version = 'ls1:' + 'c'.repeat(64);
+    changed.writing_target_version = 'wt1:' + 'c'.repeat(64);
+    mount({ target: changed }); await restored();
+    expect(button('gmail')).toBeDisabled(); expect(api.recipient).not.toHaveBeenCalled();
+    expect(api.confirm).not.toHaveBeenCalled(); expect(window.open).not.toHaveBeenCalled();
+    const current = readColdEmailDraft(captureOwnerToken(), target.id);
+    expect(old.status).toBe('present'); expect(current.status).toBe('present');
+    if (old.status === 'present' && current.status === 'present') {
+      expect(current.draft.sources).toEqual(old.draft.sources);
+      expect(current.draft.context.paper_reading).toBeUndefined();
+    }
   });
 
   for (const changed of ['profile', 'target'] as const) {

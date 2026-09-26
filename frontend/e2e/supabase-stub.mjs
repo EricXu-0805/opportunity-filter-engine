@@ -28,6 +28,7 @@
  */
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { validStubTargetResumeProvenance } from './target-resume-provenance-stub.mjs';
 
 const PORT = Number(process.env.E2E_SUPABASE_PORT ?? 54321);
 
@@ -288,11 +289,7 @@ const rpcs = {
     }
     if (rowsOf('merged_devices').some(row => row.source_device_id === uid)) return { status: 200, body: { status: 'missing' } };
     const provenance = withProvenance ? body.p_provenance ?? null : null;
-    if (provenance !== null && (![1, 2].includes(provenance.version)
-      || (provenance.version === 2 && doc.target_snapshot.context_version !== 3) || provenance.document_id !== doc.id
-      || provenance.opportunity_id !== opp || canonicalJSON(provenance.base) !== canonicalJSON(doc.base)
-      || !Array.isArray(provenance.events) || provenance.events.length > 512
-      || Buffer.byteLength(JSON.stringify(provenance), 'utf8') > 262144)) {
+    if (!validStubTargetResumeProvenance(doc, provenance)) {
       return { status: 400, body: { code: '22023', message: 'invalid_target_resume_provenance' } };
     }
     const current = rowsOf('target_resumes');

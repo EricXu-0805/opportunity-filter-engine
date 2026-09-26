@@ -24,7 +24,7 @@ beforeEach(async()=>{
  const entries:ExperienceEntry[]=['Built a Python parser with tests.','Analyzed 10000 samples with Python.'].map((text,i)=>({id:'exp-'+i,revision:1,status:'confirmed',text,source:{kind:'manual'}}));
  master.activities=entries.map(e=>({id:'block-'+e.id,kind:'project',title:fact('title-'+e.id,'Project '+e.id),details:[{id:e.id,revision:1}]}));
  doc=await createTargetResume({institution:'UIUC',college:'Engineering',major:'CS',grade:'Junior',is_international:false,research_interests:'',skills:[],resume_text:'',experience_entries:entries,resume_master:master},
- {opportunity_id:'opp',title:'Lab',organization:'UIUC',source_url:'',description:'😀研究 Python',requirements:['Python'],context_version:3,research:{version:1,status:'unavailable',snapshot:null},criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'draft');
+ {opportunity_id:'opp',title:'Lab',organization:'UIUC',source_url:'',description:'😀研究 Python',requirements:['Python'],context_version:4,lab:{version:1,status:'unavailable',snapshot:null},research:{version:1,status:'unavailable',snapshot:null},criteria:{eligibility:{},timing:{},application:{},setting:{},availability:{},attribution:{}}},'draft');
 });
 describe('bounded provenance records',()=>{
  it('keeps legacy unknown null without inventing an operation or check',()=>{

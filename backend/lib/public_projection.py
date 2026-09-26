@@ -15,6 +15,7 @@ from src.evidence import (
     record_kind,
     target_truth,
 )
+from src.lab_context import lab_context_for
 from src.research_context import research_context_for
 
 _EMAIL_IN_TEXT_RE = re.compile(
@@ -583,6 +584,8 @@ _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "contact_instruction_sources",
     "research_snapshot",
     "research_refresh",
+    "lab_snapshot",
+    "lab_refresh",
     "is_active",
     "listing_status",
     "urap_status",
@@ -696,6 +699,9 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # clean; it means authoritative about identity.
     prepared = dict(payload)
     research = research_context_for(canonical_record)
+    lab = lab_context_for(canonical_record)
+    if "lab_context" in prepared:
+        prepared["lab_context"] = lab
     if "research_context" in prepared:
         # Never accept a caller/corpus-supplied public snapshot.
         prepared["research_context"] = research
@@ -723,6 +729,9 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # scaffold for the identity edit and never reaches the caller.
     projected = redact_embedded_emails(sanitize_public_urls(prepared))
     research_changed = redact_embedded_emails(sanitize_public_urls(research)) != research
+    if "lab_context" in projected and redact_embedded_emails(sanitize_public_urls(lab)) != lab:
+        # Do not re-sign source text changed by privacy/URL filtering.
+        projected["lab_context"] = {"version": 1, "status": "unavailable", "snapshot": None}
     if research_changed and "research_context" in projected:
         # A source quote changed by privacy/URL projection cannot keep its source
         # hash. Preserve the raw private snapshot; do not re-sign edited text.

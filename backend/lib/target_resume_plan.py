@@ -36,7 +36,7 @@ Return exactly one item for EVERY block. Choose keep, compress or omit and expla
 considering this target and the requested target_pages. Pages are a goal, not a rendered guarantee.
 Basic contact fields are protected and not supplied. Scope lists material outside this current draft;
 do not claim to have reviewed all uploaded, unconfirmed or unreferenced material.
-Cite a literal target description/requirement or available research paper title/abstract, and at least
+Cite a literal target description/requirement, available research paper title/abstract, or official lab section, and at least
 one original line in this SAME block. Paper quotes use exact {field:"paper_title"|"paper_abstract",
 paper_index:0,start:0,end:1,quote:"..."}, without requirement_index. Only available snapshot works
 may support advice; paper_abstract requires abstract_status present. These are retrieved titles and
@@ -52,9 +52,10 @@ Preserve negation, uncertainty, team versus personal ownership, publication stat
 metric's action, object, project and basis. Retaining original team/negative text cannot excuse adding
 an opposite personal/positive claim. Do not invent new outcomes, quality adjectives or skills.
 Nothing is applied or sent. Users must separately approve selection changes and each rewrite.
-Return JSON only. Every target_evidence item uses exactly one of the two shapes above.
+Available official website sections may also be quoted using exact {field:"lab_heading"|"lab_text",page_index:0,section_index:0,start:0,end:1,quote:"..."}, with neither paper_index nor requirement_index. Use the selected section heading or text exactly. Stale/unavailable lab material cannot support advice. Website facts establish target relevance only, never student skills, equipment use, results, authorship, paper reading or recruitment.
+Return JSON only. Every target_evidence item uses exactly one of the three shapes above.
 The description-quote example below illustrates the envelope; paper quotes instead use paper_index
-and omit requirement_index. Response shape: {"items":[{"section_id":"...","block_id":"...","action":"keep|compress|omit",
+and omit requirement_index; website quotes use page_index and section_index. Response shape: {"items":[{"section_id":"...","block_id":"...","action":"keep|compress|omit",
 "reason":"...","target_evidence":[{"field":"description|requirement","requirement_index":null,
 "start":0,"end":1,"quote":"..."}],"source_evidence":[{"unit_id":"...","start":0,"end":1,"quote":"..."}],
 "rewrites":[{"unit_id":"...","proposed_text":"..."}]}]}. Never return new IDs or extra fields."""

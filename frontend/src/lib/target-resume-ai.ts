@@ -136,7 +136,7 @@ export async function prepareTargetResumeAI(value: unknown): Promise<TargetResum
     const target = draft.target_snapshot;
     const targetTooLarge = [target.opportunity_id, target.title, target.organization, target.source_url,
       target.description, ...target.requirements].reduce((sum, field) => sum + resumeTextCharacters(field), 0)
-      + resumeTextCharacters(canonical(target.criteria)) + resumeTextCharacters(canonical(target.research)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
+      + resumeTextCharacters(canonical(target.criteria)) + resumeTextCharacters(canonical(target.research)) + resumeTextCharacters(canonical(target.lab)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
     const batches: string[][] = [];
     const skippedUnits: TargetResumeAiReceipt[] = [];
     let batch: string[] = [];

@@ -19,7 +19,7 @@ import { loadTargetResume, loadTargetResumeHistory, loadTargetResumeVersion, sav
 const clone = <T,>(value: T): T => structuredClone(value);
 const current = () => clone(golden.draft) as TargetResumeV1;
 const old = () => clone(legacy.draft) as TargetResumeV1;
-function legacyProjection(value: Opportunity) { const { research: _research, ...target } = targetResumeContextFromOpportunity(value); void _research; return { ...target, context_version: 2 as const }; }
+function legacyProjection(value: Opportunity) { const { research: _research, lab: _lab, ...target } = targetResumeContextFromOpportunity(value); void _research; void _lab; return { ...target, context_version: 2 as const }; }
 const input = () => clone(golden.public_opportunity) as unknown as Opportunity;
 const UID = '77000000-0000-4000-8000-000000000023';
 const stamp = '2026-09-24T18:00:00.000Z';

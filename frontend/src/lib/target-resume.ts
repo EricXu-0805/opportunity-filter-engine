@@ -1,3 +1,4 @@
+import { isLabContext, type LabContext } from './lab-context';
 import { isResearchContext, type ResearchContext } from './research-context';
 import type { TargetResumeProvenance } from './target-resume-provenance';
 import type {
@@ -61,7 +62,10 @@ export interface TargetResumeContextV2 extends TargetResumeContextV1 {
 export interface TargetResumeContextV3 extends TargetResumeContextV1 {
   context_version: 3; criteria: TargetResumeCriteriaV2; research: ResearchContext;
 }
-export type TargetResumeContext = TargetResumeContextV1 | TargetResumeContextV2 | TargetResumeContextV3;
+export interface TargetResumeContextV4 extends TargetResumeContextV1 {
+  context_version: 4; criteria: TargetResumeCriteriaV2; research: ResearchContext; lab: LabContext;
+}
+export type TargetResumeContext = TargetResumeContextV1 | TargetResumeContextV2 | TargetResumeContextV3 | TargetResumeContextV4;
 
 export interface TargetResumeLine {
   id: string;
@@ -215,29 +219,30 @@ function criteriaGroup(value: unknown, fields: Readonly<Record<string, CriteriaF
 }
 function targetValid(value: unknown): asserts value is TargetResumeContext {
   const current = record(value) && Object.hasOwn(value, 'context_version');
-  shape(value, current ? [...TARGET_KEYS, 'context_version', 'criteria', ...(value.context_version === 3 ? ['research'] : [])] : TARGET_KEYS, 'invalid_target');
+  shape(value, current ? [...TARGET_KEYS, 'context_version', 'criteria', ...([3, 4].includes(value.context_version as number) ? ['research'] : []), ...(value.context_version === 4 ? ['lab'] : [])] : TARGET_KEYS, 'invalid_target');
   try { identifier(value.opportunity_id); } catch { fail('invalid_target'); }
   for (const key of ['title', 'organization', 'source_url', 'description']) string(value[key], 'invalid_target');
   if (!Array.isArray(value.requirements)) fail('invalid_target');
   for (const requirement of value.requirements) string(requirement, 'invalid_target');
   if (current) {
-    if (value.context_version !== 2 && value.context_version !== 3) fail('invalid_target');
-    if (value.context_version === 3 && !isResearchContext(value.research)) fail('invalid_target');
+    if (value.context_version !== 2 && value.context_version !== 3 && value.context_version !== 4) fail('invalid_target');
+    if ((value.context_version === 3 || value.context_version === 4) && !isResearchContext(value.research)) fail('invalid_target');
+    if (value.context_version === 4 && !isLabContext(value.lab)) fail('invalid_target');
     shape(value.criteria, Object.keys(CRITERIA_FIELDS), 'invalid_target');
     for (const [key, fields] of Object.entries(CRITERIA_FIELDS)) criteriaGroup(value.criteria[key], fields);
   }
 }
 /** Complete schema version, not a claim that each criterion is known, stated,
  * currently actionable or verified. Those remain independent checks. */
-export function hasTargetResumeCriteria(value: unknown): value is TargetResumeContextV2 | TargetResumeContextV3 {
+export function hasTargetResumeCriteria(value: unknown): value is TargetResumeContextV2 | TargetResumeContextV3 | TargetResumeContextV4 {
   try {
     targetValid(value);
-    return 'context_version' in value && (value.context_version === 2 || value.context_version === 3);
+    return 'context_version' in value && (value.context_version === 2 || value.context_version === 3 || value.context_version === 4);
   } catch { return false; }
 }
 
-export function isCurrentTargetResumeContext(value: unknown): value is TargetResumeContextV3 {
-  return hasTargetResumeCriteria(value) && value.context_version === 3;
+export function isCurrentTargetResumeContext(value: unknown): value is TargetResumeContextV4 {
+  return hasTargetResumeCriteria(value) && value.context_version === 4;
 }
 
 export async function targetResumeProfileSignature(profile: ProfileData): Promise<string> {
@@ -253,7 +258,7 @@ export async function targetResumeContextSignature(target: TargetResumeContext):
  * inference labels. No raw scrape, contact reveal, arbitrary metadata or
  * operational refresh metadata enter the persisted résumé source. Research
  * snapshot check time and status are source material and remain signed. */
-export function targetResumeContextFromOpportunity(opportunity: Opportunity): TargetResumeContextV3 {
+export function targetResumeContextFromOpportunity(opportunity: Opportunity): TargetResumeContextV4 {
   const source = opportunity as unknown as Record<string, unknown>;
   if (!record(source)) fail('invalid_target');
   const sourceGroup = (key: string): Record<string, unknown> => {
@@ -297,10 +302,10 @@ export function targetResumeContextFromOpportunity(opportunity: Opportunity): Ta
     opportunity_id: opportunity.id, title: opportunity.title, organization: opportunity.organization,
     source_url: opportunity.source_url ?? opportunity.url ?? '', description: opportunity.description_clean,
     requirements: attribution.skills_attribution === 'inferred' ? [] : [...(statedSkills ?? [])],
-    context_version: 3, criteria, research: Object.hasOwn(opportunity, 'research_context') ? opportunity.research_context : { version: 1, status: 'unavailable', snapshot: null },
+    context_version: 4, criteria, lab: Object.hasOwn(opportunity, 'lab_context') ? opportunity.lab_context : { version: 1, status: 'unavailable', snapshot: null }, research: Object.hasOwn(opportunity, 'research_context') ? opportunity.research_context : { version: 1, status: 'unavailable', snapshot: null },
   };
   targetValid(target);
-  return JSON.parse(documentJson(target)) as TargetResumeContextV3;
+  return JSON.parse(documentJson(target)) as TargetResumeContextV4;
 }
 
 function confirmedDocument(snapshot: TargetResumeV1['base_snapshot'], sourceSignature: string): TargetResumeV1['document'] {

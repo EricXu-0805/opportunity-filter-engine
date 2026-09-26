@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
+import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumePlan, measureTargetResumeLength } from '@/lib/target-resume-plan';
@@ -20,7 +20,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 const shorter = 'I did not lead the team.';
 async function response(payload: TargetResumePlanRequest): Promise<TargetResumePlanResponse> {
   const p = await prepareTargetResumePlan(payload.draft, payload.options); if (!p.ok) throw new Error(p.code);
-  return { version: 1, pipeline_version: 'full-target-plan-v2', request_id: payload.request_id, document_id: payload.draft.id,
+  return { version: 1, pipeline_version: 'full-target-plan-v3', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base), options: payload.options,
     manifest: p.value.manifest, scope: p.value.scope, method: 'ai', complete: true, reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
     items: p.value.manifest.map(item => {

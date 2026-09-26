@@ -1,7 +1,7 @@
 import type { TargetResumeV1 } from './target-resume';
 import type { TargetResumeAiEvidence } from './target-resume-ai-protocol';
 
-export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v2' as const;
+export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v3' as const;
 export const TARGET_RESUME_PLAN_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const TARGET_RESUME_PLAN_MAX_PROMPT_CHARACTERS = 120_000;
 export interface TargetResumePlanOptions { target_pages: 1 | 2 }

@@ -539,3 +539,51 @@ describe('research snapshot reading confirmation', () => {
     expect(screen.getByText('Previous paper is no longer available')).toBeInTheDocument();
   });
 });
+
+
+import labGolden from '../../../tests/fixtures/lab-context-v1-golden.json';
+import type { LabContext } from '@/lib/lab-context';
+const labFixture = () => structuredClone(labGolden) as LabContext;
+
+describe('official website sources remain separate from confirmed background', () => {
+  it('shows complete source text without adding a paper option or applying background', () => {
+    const lab = labFixture(); const opportunity = { id: 'site-target', lab_context: lab } as Opportunity;
+    const { props } = mount({ opportunity, targetKey: 'wt1:site-a' });
+    const sources = screen.getByRole('region', { name: 'Faculty and lab website sources' });
+    fireEvent.click(within(sources).getByText('Faculty profile: ' + lab.snapshot!.pages[0].page_title));
+    for (const section of lab.snapshot!.pages[0].sections) expect(within(sources).getByText(section.text, { normalizer: value => value })).toBeVisible();
+    expect(within(sources).getByRole('link', { name: 'Open source page' })).toHaveAttribute('href', lab.snapshot!.pages[0].source_url);
+    expect(screen.getByRole('combobox', { name: 'Paper you looked at (optional)' })).toBeDisabled();
+    expect(screen.queryByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' })).not.toBeInTheDocument();
+    expect(props.onDraftChange).not.toHaveBeenCalled(); expect(props.onApply).not.toHaveBeenCalled();
+    expect(apply()).toBeDisabled();
+  });
+
+  it('viewing a website alongside a paper never confirms reading; a changed website invalidates prior confirmation', () => {
+    const lab = labFixture(); const opportunity = { id: 'site-target', lab_context: lab, research_context: researchFixture() } as Opportunity;
+    const { props, rerender } = mount({ opportunity, targetKey: 'wt1:site-a' });
+    const option = emailPaperOptions(opportunity)[0];
+    fireEvent.change(screen.getByRole('combobox', { name: 'Paper you looked at (optional)' }), { target: { value: emailPaperKey(option) } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'How much did you read?' }), { target: { value: 'abstract' } });
+    const checkbox = screen.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' });
+    const count = vi.mocked(props.onDraftChange).mock.calls.length;
+    fireEvent.click(screen.getByText('Faculty profile: ' + lab.snapshot!.pages[0].page_title));
+    expect(checkbox).not.toBeChecked(); expect(props.onDraftChange).toHaveBeenCalledTimes(count);
+    fireEvent.click(checkbox); fireEvent.click(apply()); expect(props.onApply).toHaveBeenCalledOnce();
+    const next = structuredClone(opportunity); next.lab_context!.snapshot!.pages[0].sections[0].text += ' Updated source.';
+    next.lab_context!.snapshot!.snapshot_version = 'ls1:' + 'e'.repeat(64);
+    rerender(<EmailContactContextPanel {...props} opportunity={next} targetKey="wt1:site-b" />);
+    expect(checkbox).not.toBeChecked(); expect(screen.getByRole('combobox', { name: 'How much did you read?' })).toHaveValue('abstract');
+    fireEvent.click(apply()); expect(props.onApply).toHaveBeenCalledOnce();
+  });
+
+  it('stale website text stays viewable but cannot become a paper or a reading declaration', () => {
+    const lab = labFixture(); lab.status = 'stale';
+    const { props } = mount({ opportunity: { id: 'site-target', lab_context: lab } as Opportunity });
+    expect(screen.getByText(/These sources are out of date and excluded from new suggestions/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Faculty profile: ' + lab.snapshot!.pages[0].page_title));
+    expect(screen.getByText(lab.snapshot!.pages[0].sections[0].text, { normalizer: value => value })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Paper you looked at (optional)' })).toBeDisabled();
+    expect(props.onApply).not.toHaveBeenCalled(); expect(props.onDraftChange).not.toHaveBeenCalled();
+  });
+});

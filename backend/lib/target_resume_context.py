@@ -11,6 +11,7 @@ from copy import deepcopy
 
 import rfc8785
 
+from src.lab_context import validate_public_lab_context
 from src.research_context import validate_public_research_context
 
 LEGACY_FIELDS = ('opportunity_id', 'title', 'organization', 'source_url', 'description', 'requirements')
@@ -83,12 +84,14 @@ def _fields(value, schema):
 
 
 def validate_target_context(value):
-    """Accept exact legacy, v2 or v3 shape without defaulting/mutating."""
+    """Accept exact legacy, v2, v3 or v4 shape without defaulting/mutating."""
     if type(value) is not dict:
         invalid()
     extra = {'context_version', 'criteria'} if 'context_version' in value else set()
-    if value.get('context_version') == 3:
+    if value.get('context_version') in (3, 4):
         extra.add('research')
+    if value.get('context_version') == 4:
+        extra.add('lab')
     if set(value) != set(LEGACY_FIELDS) | extra:
         invalid()
     for key in LEGACY_FIELDS[:-1]:
@@ -100,9 +103,11 @@ def validate_target_context(value):
     for item in value['requirements']:
         _text(item)
     if extra:
-        if type(value['context_version']) is not int or value['context_version'] not in (2, 3):
+        if type(value['context_version']) is not int or value['context_version'] not in (2, 3, 4):
             invalid()
-        if value['context_version'] == 3 and not validate_public_research_context(value['research']):
+        if value['context_version'] in (3, 4) and not validate_public_research_context(value['research']):
+            invalid()
+        if value['context_version'] == 4 and not validate_public_lab_context(value['lab']):
             invalid()
         criteria = value['criteria']
         if type(criteria) is not dict or set(criteria) != set(CRITERIA_FIELDS):
@@ -165,7 +170,8 @@ def public_target_context(public):
         'source_url': public.get('source_url') if public.get('source_url') is not None else (public.get('url') or ''),
         'description': public.get('description_clean', ''),
         'requirements': [] if inferred else deepcopy(eligibility.get('skills_required') or []),
-        'context_version': 3, 'criteria': criteria,
+        'context_version': 4, 'criteria': criteria,
+        'lab': deepcopy(public.get('lab_context', {'version': 1, 'status': 'unavailable', 'snapshot': None})),
         'research': deepcopy(public.get('research_context', {'version': 1, 'status': 'unavailable', 'snapshot': None})),
     }
     validate_target_context(target)
@@ -175,16 +181,20 @@ def public_target_context(public):
 def target_context_character_count(target):
     """Legacy value budget plus complete canonical criteria/research, Unicode codepoints."""
     count = sum(len(target[key]) for key in LEGACY_FIELDS[:-1]) + sum(map(len, target['requirements']))
-    if target.get('context_version') in (2, 3):
+    if target.get('context_version') in (2, 3, 4):
         count += len(json.dumps(target['criteria'], ensure_ascii=False, sort_keys=True, separators=(',', ':')))
-    if target.get('context_version') == 3:
+    if target.get('context_version') in (3, 4):
         count += len(json.dumps(target['research'], ensure_ascii=False, sort_keys=True, separators=(',', ':')))
+    if target.get('context_version') == 4:
+        count += len(json.dumps(target['lab'], ensure_ascii=False, sort_keys=True, separators=(',', ':')))
     return count
 
 
 def target_context_for_prompt(target):
     """Keep the signed snapshot intact; stale research is display-only."""
     result = deepcopy(target)
-    if result.get('context_version') == 3 and result['research']['status'] != 'available':
+    if result.get('context_version') in (3, 4) and result['research']['status'] != 'available':
         result['research']['snapshot'] = None
+    if result.get('context_version') == 4 and result['lab']['status'] != 'available':
+        result['lab']['snapshot'] = None
     return result

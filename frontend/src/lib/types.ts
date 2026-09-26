@@ -307,6 +307,7 @@ export type FacultyAvailabilityStatus =
 export interface Opportunity {
   /** Validated source snapshot; available does not imply an opening or user reading. */
   research_context?: ResearchContext;
+  lab_context?: import('./lab-context').LabContext;
   contact_instructions?: import('./contact-instructions').ContactInstructions;
   /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
   writing_target_version?: string;

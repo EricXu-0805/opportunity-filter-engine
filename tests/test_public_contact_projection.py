@@ -420,6 +420,8 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "contact_instruction_sources",
     "research_snapshot",
     "research_refresh",
+    "lab_snapshot",
+    "lab_refresh",
 })
 
 _LIVE_LISTING = {

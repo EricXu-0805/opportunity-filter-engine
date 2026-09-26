@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 MIGRATION = '20260926093008_target_resume_provenance_cas.sql'
+LAB_MIGRATION = '20260926113133_target_resume_lab_provenance_v3.sql'
 RESEARCH_MIGRATION = '20260926100530_target_resume_research_provenance_v2.sql'
 
 
@@ -30,8 +31,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence-dir', type=Path, required=True)
     parser.add_argument('--research-context', action='store_true', help='Also apply and verify V2 research provenance')
+    parser.add_argument('--lab-context', action='store_true', help='Also apply and verify V3 lab provenance (includes research migration)')
     parser.add_argument('--pg-bin', type=Path, default=Path('/opt/homebrew/opt/postgresql@16/bin'))
     args = parser.parse_args()
+    args.research_context = args.research_context or args.lab_context
     args.evidence_dir.mkdir(parents=True, exist_ok=False)
     env = clean_environment()
     env['PATH'] = str(args.pg_bin) + os.pathsep + env.get('PATH', '')
@@ -41,6 +44,8 @@ def main():
                HERE / 'target_resume_provenance_test.sql', HERE / 'target_resume_provenance_security_test.sql', Path(__file__)]
     if args.research_context:
         sources += [ROOT / 'supabase/migrations' / RESEARCH_MIGRATION, HERE / 'target_resume_research_provenance_test.sql']
+    if args.lab_context:
+        sources += [ROOT / 'supabase/migrations' / LAB_MIGRATION, HERE / 'target_resume_lab_provenance_test.sql']
     summary['source_hashes'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
 
     def report():
@@ -194,6 +199,28 @@ DROP TABLE public.b46_before_current,public.b46_before_history;
                 research_test = 'BEGIN;\n' + (HERE / 'target_resume_research_provenance_test.sql').read_text() + '\nROLLBACK;'
                 research_test = research_test.replace('\\i :fixture_path', '\\i ' + shlex.quote(str(HERE / 'target_resume_provenance_fixtures.sql')))
                 run('research-provenance-behavior', sql=research_test, expected=8)
+            if args.lab_context:
+                research_seed = (HERE / 'target_resume_provenance_fixtures.sql').read_text() + """
+SELECT set_config('test.uid','45000000-0000-4000-8000-000000000999',false);
+DO $$ DECLARE d jsonb; p jsonb; saved jsonb; BEGIN
+ d := jsonb_set(pg_temp.prov_doc('known-research','saved paper'),'{target_snapshot}','{"context_version":3}'::jsonb);
+ p := jsonb_set(pg_temp.prov(d,'old-research'),'{version}','2'::jsonb);
+ p := jsonb_set(p,'{events,0,kind}','"ai_rewrite"'::jsonb);
+ p := jsonb_set(p,'{events,0,changes,0,target_evidence}',
+   '[{"field":"paper_title","paper_index":0,"start":0,"end":2,"quote":"论文"}]'::jsonb);
+ saved := public.commit_target_resume_with_provenance_cas('45000000-0000-4000-8000-000000000999','known-research',0,d,p);
+ PERFORM pg_temp.require(saved->>'status'='saved' AND saved->'provenance'=p,'persist historical research pair before lab migration');
+END $$;
+CREATE TABLE public.b48_before_current AS SELECT * FROM public.target_resumes;
+CREATE TABLE public.b48_before_history AS SELECT * FROM public.target_resume_versions;
+"""
+                run('lab-seed-existing-pairs', sql=research_seed)
+                run('lab-same-database-migration', sql=(ROOT / 'supabase/migrations' / LAB_MIGRATION).read_text())
+                run('lab-verify-existing-pairs', sql=preserved.replace('b46_', 'b48_').replace('research', 'lab'), expected=1)
+                run('research-provenance-after-lab', sql=research_test, expected=8)
+                lab_test = 'BEGIN;\n' + (HERE / 'target_resume_lab_provenance_test.sql').read_text() + '\nROLLBACK;'
+                lab_test = lab_test.replace('\\i :fixture_path', '\\i ' + shlex.quote(str(HERE / 'target_resume_provenance_fixtures.sql')))
+                run('lab-provenance-behavior', sql=lab_test, expected=9)
             run('legacy-after', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=7)
             script = 'set -euo pipefail\nPSQL=(' + ' '.join(shlex.quote(x) for x in psql) + ')\nWORK=' + shlex.quote(str(work)) + '\nSOCK=' + shlex.quote(str(sock)) + '\n'
             script += (HERE / 'target_resume_concurrency_test.sh').read_text()

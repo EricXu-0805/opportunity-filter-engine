@@ -29,6 +29,8 @@ cryptography==50.0.0
 # Data collection (used by scrapers + GitHub Action refresh-data.yml)
 feedparser==6.0.12
 requests==2.33.0
+# Shared website-source URL validation uses IDNA roundtrip directly.
+idna==3.20
 beautifulsoup4==4.14.3
 lxml==6.1.0
 # Deadline normalization (src/normalizers/deadlines.py). dateutil's

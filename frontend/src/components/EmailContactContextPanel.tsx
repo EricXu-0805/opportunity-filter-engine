@@ -6,6 +6,7 @@ import { emailPaperKey, emailPaperOptions, type EmailPaperOption } from '@/lib/e
 import { parseEmailContactDraftSnapshot, type EmailContactDraftSnapshot, type EmailContactDraftFields, type EmailContactDraftConfirmations } from '@/lib/email-contact-draft';
 import { defaultEmailContactContext, normalizeEmailContactContext, serializeEmailContactContext } from '@/lib/email-contact-context';
 import { parseResearchContext } from '@/lib/research-context';
+import OfficialLabSources from './OfficialLabSources';
 import styles from './EmailContactContextPanel.module.css';
 
 export interface EmailContactContextPanelProps {
@@ -236,6 +237,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
     </summary>
     <div className={styles.content}>
       <p className={styles.help}>{copy('Use only details you know are accurate. Applying background prepares this draft; it does not generate or send an email, or mark anyone as contacted.', '只填写你确认属实的信息。应用背景仅用于准备这份草稿，不会生成或发送邮件，也不会标记已联系。')}</p>
+      <OfficialLabSources context={opportunity?.lab_context} zh={language === 'zh'} />
       <fieldset disabled={disabled} className={styles.fields}>
         <legend className={styles.visuallyHidden}>{copy('Background details', '背景信息')}</legend>
         <div className={styles.field}>

@@ -1,3 +1,4 @@
+import OfficialLabSources from './OfficialLabSources';
 import { hasTargetResumeCriteria, type TargetResumeContext } from '@/lib/target-resume';
 
 type Labels = Record<string, readonly [string, string]>;
@@ -62,7 +63,7 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
     <p className="text-xs text-gray-600">{language
       ? '建稿时保存的公开资料。推断值和预计日期仍需核实，缺少标记不代表已确认。'
       : 'Public details saved with this draft. Inferred values and estimated dates still need checking; an absent flag does not mean confirmed.'}</p>
-    {target.context_version === 3 && <section data-testid="saved-target-research" className="min-w-0 rounded-lg bg-gray-50 p-3">
+    {(target.context_version === 3 || target.context_version === 4) && <section data-testid="saved-target-research" className="min-w-0 rounded-lg bg-gray-50 p-3">
       <h3 className="text-sm font-medium">{language ? '建稿时的研究资料' : 'Research saved with this draft'}</h3>
       <p className="mt-1 text-xs text-gray-600">{target.research.status === 'available'
         ? (language ? '论文标题与摘要已核对作者归属，用于判断研究相关性；不代表教授正在招人，也不是你的成果。' : 'Paper titles and abstracts with checked author attribution, for research relevance; they do not establish recruiting or your accomplishments.')
@@ -77,6 +78,7 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
         </li>)}</ul>
       </>}
     </section>}
+    {target.context_version === 4 && <OfficialLabSources context={target.lab} zh={!!language} />}
     {Object.entries(target.criteria).map(([group, data]) => {
       const rows = Object.entries(data).flatMap<[string, unknown]>(([key, value]) => key === 'target_truth' && value && typeof value === 'object'
         ? Object.entries(value) : [[key, value]]);

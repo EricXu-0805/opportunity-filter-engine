@@ -19,14 +19,14 @@ describe('V3 shared research context contract',()=>{
  it('matches cross-language signed complete snapshot and whole document without mutating public data',async()=>{
   expect(parseResearchContext(golden.draft.target_snapshot.research)).not.toBeNull();
   const input=clone(golden.public_opportunity) as unknown as Opportunity;const before=clone(input);
-  expect(targetResumeContextFromOpportunity(input)).toEqual(golden.draft.target_snapshot);expect(input).toEqual(before);
+  const { lab: _lab, ...projected } = targetResumeContextFromOpportunity(input); void _lab;
+  expect({ ...projected, context_version: 3 }).toEqual(golden.draft.target_snapshot);expect(input).toEqual(before);
   expect(validateTargetResume(doc())).toEqual({ok:true,value:golden.draft});
   expect(await targetResumeContextSignature(target())).toBe(golden.draft.base.target_signature);
   expect(await verifyTargetResumeSignatures(doc())).toBe(true);
-  const prepared=await prepareTargetResumeAI(doc());expect(prepared.ok).toBe(true);
-  if(prepared.ok){expect(prepared.value.document_signature).toBe(golden.document_signature);expect(prepared.value.units).toEqual(golden.units);}
+  expect(await prepareTargetResumeAI(doc())).toEqual({ok:false,code:'legacy_target_context'});
  });
- it('keeps V2 signatures, criteria display and export valid while requiring V3 for new AI',async()=>{
+ it('keeps V2 signatures, criteria display and export valid while requiring V4 for new AI',async()=>{
   const legacy=clone(v2.draft) as TargetResumeV1;expect(hasTargetResumeCriteria(legacy.target_snapshot)).toBe(true);
   expect(validateTargetResume(legacy).ok).toBe(true);expect(await verifyTargetResumeSignatures(legacy)).toBe(true);
   expect(await prepareTargetResumeAI(legacy)).toEqual({ok:false,code:'legacy_target_context'});

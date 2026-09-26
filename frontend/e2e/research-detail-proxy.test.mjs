@@ -51,3 +51,25 @@ test('unregistered traffic streams large request bytes and never follows an exte
     assert.equal(redirect.status, 307); assert.equal(redirect.headers.get('location'), 'https://example.invalid/no-fetch');
   } finally { await stop(proxy); await stop(upstream); }
 });
+test('website source revisions share SSR/client bytes without replacing independent research', async () => {
+  const original = { id: 'uiuc-siebel-ugresearch', research_context: { version: 1, status: 'unavailable', snapshot: null } };
+  const upstream = createServer((_req,res) => { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify(original)); });
+  const up = await start(upstream); const proxy = createResearchDetailProxy(up); const base = await start(proxy);
+  const control = base + '/__fixture/lab/uiuc-siebel-ugresearch';
+  try {
+    let previousVersion;
+    for (const text of ['Whole paragraph 😀\nSecond paragraph.', 'Changed source; previous document keeps old source.']) {
+      const snapshot = { version: 1, pages: [{ sections: [{ text }] }] };
+      const value = { version: 1, status: 'available', snapshot: { ...snapshot, snapshot_version: 'ls1:' + createHash('sha256').update(canonical(snapshot)).digest('hex') } };
+      assert.equal((await fetch(control,{method:'POST',body:JSON.stringify({lab_context:value})})).status,200);
+      const ssr = await (await fetch(base + '/api/opportunities/uiuc-siebel-ugresearch?_release_scope=fixture')).json();
+      const browser = await (await fetch(base + '/api/opportunities/uiuc-siebel-ugresearch')).json();
+      assert.deepEqual(ssr,browser); assert.deepEqual(ssr.lab_context,value); assert.deepEqual(ssr.research_context,original.research_context);
+      assert.notEqual(ssr.writing_target_version,previousVersion); previousVersion=ssr.writing_target_version;
+      const bad=structuredClone(value);bad.snapshot.snapshot_version='ls1:'+'f'.repeat(64);
+      assert.equal((await fetch(control,{method:'POST',body:JSON.stringify({lab_context:bad})})).status,400);
+      assert.deepEqual((await(await fetch(control)).json()).lab_context,value);
+    }
+    await fetch(control,{method:'DELETE'});assert.deepEqual(await(await fetch(base+'/api/opportunities/uiuc-siebel-ugresearch')).json(),original);
+  } finally { await stop(proxy);await stop(upstream); }
+});
