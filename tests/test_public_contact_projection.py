@@ -402,7 +402,7 @@ _SEVEN_TRUTH_KEYS = {
     "accepting_state", "reason_code", "verified_at", "expires_at",
 }
 
-# Written out, not imported. These are the ten internal paths that must never
+# Written out, not imported. These are the internal paths that must never
 # reach a browser; the test below asserts production still equals this set, so
 # a key added or removed there is a deliberate edit here rather than a silent
 # narrowing of what is being checked.
@@ -417,6 +417,7 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "faculty_availability_scan_version",
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
+    "contact_instruction_sources",
 })
 
 _LIVE_LISTING = {

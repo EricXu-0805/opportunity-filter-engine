@@ -81,21 +81,24 @@ class TestColdEmailPolish:
         assert "Python" in matched and "C++" in matched
         assert "machine learning" in matched  # multi-word substring still matches
 
-    def test_concise_verb_agreement_singular(self):
+    def test_concise_single_skill_keeps_level_without_claiming_relevance(self):
         body = _build_concise(_parts(matching=["Python"]))
-        assert "which is relevant" in body
+        assert "foundational exposure to Python" in body
+        assert "which is relevant" not in body
         assert "which are relevant" not in body
 
-    def test_concise_verb_agreement_plural(self):
+    def test_concise_multiple_skills_keep_levels_without_claiming_relevance(self):
         body = _build_concise(_parts(matching=["Python", "C++"]))
-        assert "which are relevant" in body
+        assert "foundational exposure to Python and C++" in body
+        assert "which are relevant" not in body
 
     def test_skills_paragraph_does_not_repeat_the_same_list_twice(self):
         p = _parts(matching=["Python", "C++"])
         para = _p2_skills_applied(p)
         # The "In particular, my background in Python, C++ ..." re-list is gone.
         assert "In particular, my background in" not in para
-        assert "directly apply to the work described in your posting" in para
+        assert para.count("Python") == para.count("C++") == 1
+        assert "directly apply" not in para
 
 _LAB = "Prof. Jane Doe's Research Group"
 
@@ -121,9 +124,10 @@ class TestP1ResearchHookCE1:
         assert "resonates with my interest" not in h
         assert "your work on molecular biology" not in h
 
-    def test_specific_area_keeps_the_alignment_hook(self):
+    def test_specific_area_and_student_interest_remain_separate(self):
         h = _hook(research_area="computer vision", lab=_LAB, interests="deep learning")
-        assert "aligns closely with my interest" in h
+        assert "I am interested in deep learning." in h
+        assert "align" not in h
         assert "computer vision" in h
 
 
@@ -148,20 +152,22 @@ class TestP1ResearchHookCE7:
         assert "your work on environmental economics" in h
         assert "would like to learn more" in h
 
-    def test_token_overlap_keeps_the_claim(self):
+    def test_token_overlap_does_not_prove_a_connection(self):
         h = _hook(research_area="machine learning for healthcare", lab=_LAB,
                   interests="machine learning")
-        assert "aligns closely with my interest in machine learning" in h
+        assert "I am interested in machine learning." in h
+        assert "machine learning for healthcare" in h
+        assert "align" not in h
 
     def test_no_topic_signal_keeps_the_lab_hook(self):
         h = _hook(lab=_LAB, interests="machine learning")
         assert _LAB in h
-        assert "student interested in machine learning" in h
+        assert "I am interested in machine learning." in h
         assert "closely related" not in h
 
     def test_no_topic_signal_never_claims_a_cross_domain_relationship(self):
         h = _hook(lab="Smith Chemistry Lab", interests="medieval poetry")
-        assert "student interested in medieval poetry" in h
+        assert "I am interested in medieval poetry." in h
         assert "closely related" not in h
         assert "align" not in h
 
@@ -551,7 +557,7 @@ class TestFacultyContactProfileTruth:
         }
         for variant in variants:
             text = variant["text"].lower()
-            assert "your research" in text
+            assert "your research" in text or "your work on computer vision" in text
             assert "current or upcoming research openings" in text
             for forbidden in (
                 "directly applicable to this position",
@@ -2822,7 +2828,7 @@ class TestBusinessFacultyGetNoLabType:
         for assumed in ("GitHub", "IRB", "PCR", "bench", "coding challenge", "Zotero"):
             assert assumed not in tone, assumed
         assert "your lab" not in _ask_for_lab_type(None)
-        assert "your research" in _ask_for_lab_type(None)
+        assert "first step" in _ask_for_lab_type(None)
         # the other three are untouched
         assert "GitHub" in _lab_type_tone("dry")
         assert "IRB" in _lab_type_tone("humanities")
