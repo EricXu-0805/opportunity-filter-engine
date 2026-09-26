@@ -662,7 +662,99 @@ describe('cold-email endpoints', () => {
     expect(body.instruction).toBe('make warmer');
     expect(body.opportunity_id).toBe('opp-1');
     expect(body.profile.school).toBe('UIUC');
+    expect(body).not.toHaveProperty('selection');
+    expect(body).not.toHaveProperty('subject');
+    expect(body.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
+
+  describe('refineEmail selected-text HTTP contract', () => {
+    const targetVersion = `wt1:${'a'.repeat(64)}`;
+    const contactContext = { version: 1, purpose: 'first_contact' } as const;
+    const receipts = { opportunity_id: 'opp-1', target_version: targetVersion,
+      contact_context_receipt: { version: 1, purpose: 'first_contact', context_sig: 'b'.repeat(64) },
+      experience_usage: { version: 1, eligible_count: 1, selected: [{ id: 'role', revision: 2, excerpt: 'I wrote parser tests.', source: { kind: 'manual' } }],
+        excluded: [], needs_review: false, notices: [] } };
+    const repeated = '本人贡献😀\nI wrote parser tests.';
+    const prefix = 'Dear Pat Lee,\r\n\r\n' + repeated + '\r\n\r\n';
+    const currentBody = prefix + repeated + '\r\n\r\nBest,\r\nAlex';
+    const selection = { start_utf16: prefix.length, end_utf16: prefix.length + repeated.length, text: repeated };
+
+    it('sends the exact second UTF-16 range, complete body, subject and confirmed evidence envelope without trimming', async () => {
+      const entry = { id: 'role', revision: 2, status: 'confirmed', source: { kind: 'manual' }, text: 'I wrote parser tests.' } as const;
+      const profile = makeProfile({ resume_text: '原简历😀\r\nFull source tail.  ', experience_entries: [entry] });
+      const subject = '  Research inquiry 王😀\n完整主题  ', instruction = '  Keep my own role.\n保留团队归属。  ';
+      const response = { ...receipts, scope: 'selection', outcome: 'proposal', method: 'llm',
+        proposal: { start_utf16: selection.start_utf16, end_utf16: selection.end_utf16,
+          original_text: repeated, replacement: '本人写测试😀\nI wrote parser tests.', base_body_sha256: 'c'.repeat(64) } };
+      fetchMock.mockResolvedValue(okJson(response));
+      const result = await refineEmail(currentBody, instruction, profile, 'opp-1', {
+        selection, subject, expectedTargetVersion: targetVersion, contactContext,
+      });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/cold-email/refine');
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.method).toBe('POST');
+      const body = JSON.parse(init.body as string);
+      expect(body.current_body).toBe(currentBody);
+      expect(body.selection).toEqual(selection);
+      expect(body.selection.start_utf16).toBeGreaterThan(currentBody.indexOf(repeated));
+      expect(body.subject).toBe(subject);
+      expect(body.instruction).toBe(instruction);
+      expect(body.expected_target_version).toBe(targetVersion);
+      expect(body.contact_context).toEqual(contactContext);
+      expect(body.experience_evidence).toEqual({ version: 1, resume_text: profile.resume_text, entries: [entry] });
+      expect(body.profile.school).toBe('UIUC');
+      expect(result).toEqual(response);
+    });
+
+    it.each(['provider_unavailable', 'invalid_output', 'fabrication', 'unchanged'] as const)(
+      'preserves a no_change %s response and receipts without inventing a body or retrying', async reason => {
+        const response = { ...receipts, scope: 'selection', outcome: 'no_change', method: 'none', reason };
+        fetchMock.mockResolvedValue(okJson(response));
+        const result = await refineEmail(currentBody, 'Revise this passage', makeProfile(), 'opp-1', { selection });
+        expect(result).toEqual(response);
+        expect(result).not.toHaveProperty('body');
+        expect(result).not.toHaveProperty('proposal');
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).subject).toBe('');
+        expect(fetchMock).toHaveBeenCalledOnce();
+      },
+    );
+
+    it('does not add selection-only subject to legacy whole-body requests and preserves legacy receipts', async () => {
+      const response = { ...receipts, body: 'Legacy revised body.', method: 'local' };
+      fetchMock.mockResolvedValue(okJson(response));
+      expect(await refineEmail(currentBody, 'Make it shorter', undefined, 'opp-1', {
+        subject: 'Not a selection request', expectedTargetVersion: targetVersion, contactContext,
+      })).toEqual(response);
+      const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(sent).not.toHaveProperty('selection');
+      expect(sent).not.toHaveProperty('subject');
+      expect(sent.current_body).toBe(currentBody);
+      expect(sent.profile).toBeNull();
+      expect(sent.expected_target_version).toBe(targetVersion);
+      expect(sent.contact_context).toEqual(contactContext);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('keeps an empty replacement proposal intact for explicit selected-text deletion', async () => {
+      const response = { ...receipts, scope: 'selection', outcome: 'proposal', method: 'llm',
+        proposal: { start_utf16: selection.start_utf16, end_utf16: selection.end_utf16,
+          original_text: repeated, replacement: '', base_body_sha256: 'c'.repeat(64) } };
+      fetchMock.mockResolvedValue(okJson(response));
+      expect(await refineEmail(currentBody, 'Delete this selected passage', makeProfile(), 'opp-1', { selection })).toEqual(response);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('surfaces HTTP 422 after exactly one selected-text request without whole-body replay', async () => {
+      fetchMock.mockResolvedValue(badResponse(422, JSON.stringify({ detail: [{ type: 'value_error', loc: ['body', 'selection'], msg: 'Invalid selection' }] })));
+      await expect(refineEmail(currentBody, 'Revise this passage', makeProfile(), 'opp-1', { selection }))
+        .rejects.toMatchObject({ status: 422 });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).selection).toEqual(selection);
+    });
+  });
+
 });
 
 describe('github + stats', () => {

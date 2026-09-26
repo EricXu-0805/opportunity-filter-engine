@@ -667,7 +667,7 @@ describe('OpportunityDetail shared profile refresh wiring', () => {
     const emailMount = email.dataset.mountId;
     const resumeMount = resume.dataset.mountId;
     expect(refreshHook.enabled).toBe(true);
-    for (const status of ['checking', 'failed', 'conflict', 'local-only', 'ready'] as const) {
+    for (const status of ['checking', 'failed', 'conflict', 'local-only', 'ready', 'offline'] as const) {
       refreshHook.current = { status, refresh };
       rerender(<OpportunityDetail opp={opp} />);
       expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);

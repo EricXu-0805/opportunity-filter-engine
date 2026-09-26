@@ -16,12 +16,23 @@ export type ProfileActionReceipt = {
   profile: ProfileData | null;
 };
 export type ProfileRefreshState = {
-  status: 'checking' | 'ready' | 'failed' | 'local-only' | 'conflict';
+  status: 'checking' | 'ready' | 'failed' | 'local-only' | 'conflict' | 'offline';
   refresh: () => Promise<boolean>;
   checkForAction?: () => Promise<ProfileActionReceipt | null>;
 };
 export const PROFILE_REFRESH_DEADLINE_MS = 15_000;
 export const PROFILE_REFRESH_INTERVAL_MS = 60_000;
+
+// Browser-reported offline is a hard pause; online still requires a fresh read.
+function connectionSnapshot(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+function subscribeConnection(changed: () => void): () => void {
+  window.addEventListener('online', changed);
+  window.addEventListener('offline', changed);
+  return () => { window.removeEventListener('online', changed); window.removeEventListener('offline', changed); };
+}
+const serverConnection = () => true;
 
 function ownerSnapshot(): string {
   const token = captureOwnerToken();
@@ -42,6 +53,7 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
   useLayoutEffect(() => { acceptedRef.current = onAccepted; }, [onAccepted]);
   const checkSequence = useRef(0);
   const owner = useSyncExternalStore(subscribeOwner, ownerSnapshot, serverOwner);
+  const connected = useSyncExternalStore(subscribeConnection, connectionSnapshot, serverConnection);
   const [state, setState] = useState<{ owner: string; enabled: boolean; status: ProfileRefreshState['status'] }>({ owner, enabled, status: 'checking' });
   // A new enabled period is unverified even before its passive effect runs.
   // Otherwise consumers could observe the previous period's ready receipt.
@@ -58,7 +70,7 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
     let nextRead: ReturnType<typeof setTimeout> | null = null;
     let status: ProfileRefreshState['status'] = 'checking';
     const current = () => !disposed && ownerSnapshot() === owner;
-    const foreground = () => document.visibilityState === 'visible' && navigator.onLine;
+    const foreground = () => document.visibilityState === 'visible' && connectionSnapshot();
     const canAutoRead = () => {
       const token = captureOwnerToken();
       return current() && foreground() && isOwnerTokenValid(token, token.uid);
@@ -71,6 +83,14 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
       status = next;
       setState({ owner, enabled: true, status: next });
     };
+    const pauseOffline = () => {
+      stopTimer();
+      // Retire before aborting: a cancelled read must not replace offline with
+      // failed or accept a late hydration/mirror result after reconnection.
+      const previous = attempt; attempt = null;
+      previous?.controller.abort();
+      if (current()) publish('offline');
+    };
     const schedule = () => {
       stopTimer();
       if (!canAutoRead()) return;
@@ -82,7 +102,9 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
     // Initial/explicit checks block actions. Automatic checks preserve an
     // already usable state until their real result changes or rejects it.
     const run = (blocking = true): Attempt | null => {
-      if (!current() || (!blocking && !canAutoRead())) return null;
+      if (!current()) return null;
+      if (!connectionSnapshot()) { pauseOffline(); return null; }
+      if (!blocking && !canAutoRead()) return null;
       stopTimer();
       if (attempt && !attempt.controller.signal.aborted) {
         // Joining a quiet read must not borrow the previous ready receipt.
@@ -101,7 +123,7 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
           // Every consumer and the action receipt must see the same projection.
           // The coordinator owns the exact original baseline and local mirror.
           const loaded: ProfileHydration = { ...hydrated, profile: migrateProfile(hydrated.profile) };
-          if (!current() || attempt !== record || controller.signal.aborted || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return null;
+          if (!current() || !connectionSnapshot() || attempt !== record || controller.signal.aborted || !isOwnerTokenValid(loaded.token, loaded.token.uid)) return null;
           const nextStatus: ProfileRefreshState['status'] = loaded.quarantineFailed ? 'failed'
             : loaded.conflictKeys.length || loaded.conflicts.length ? 'conflict'
               : loaded.source === 'local-only' ? 'local-only' : 'ready';
@@ -117,7 +139,7 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
             owner: Object.freeze({ ...loaded.token }), revision: loaded.revision,
             source: loaded.source, profile: view?.renderedProfile ?? null });
           acceptedRef.current?.(loaded);
-          if (!current() || controller.signal.aborted || !isOwnerTokenValid(receipt.owner, receipt.owner.uid)) return null;
+          if (!current() || !connectionSnapshot() || controller.signal.aborted || !isOwnerTokenValid(receipt.owner, receipt.owner.uid)) return null;
           return receipt;
         } catch {
           if (current() && attempt === record) publish('failed');
@@ -136,7 +158,10 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
     };
     runner.current = run;
     const recheck = () => {
-      if (foreground()) void run(false);
+      if (!connectionSnapshot()) { pauseOffline(); return; }
+      // Reconnection is not evidence that the previous source is current.
+      if (status === 'offline') publish('checking');
+      if (foreground()) void run(status === 'checking');
       else stopTimer();
     };
     window.addEventListener('focus', recheck);
@@ -156,5 +181,6 @@ export function useProfileRefresh(enabled: boolean, onAccepted?: (loaded: Profil
     };
   }, [enabled, owner]);
 
-  return { status: enabled && state.enabled === enabled && state.owner === owner ? state.status : 'checking', refresh, checkForAction };
+  return { status: enabled && !connected ? 'offline'
+    : enabled && state.enabled === enabled && state.owner === owner ? state.status : 'checking', refresh, checkForAction };
 }

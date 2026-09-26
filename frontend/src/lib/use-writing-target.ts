@@ -8,7 +8,7 @@ import type { Opportunity } from './types';
 
 export type TargetActionReceipt = { checkId: number; owner: OwnerToken; target: Opportunity; key: string };
 export type WritingTargetState = {
-  status: 'checking' | 'ready' | 'missing' | 'blocked' | 'failed';
+  status: 'checking' | 'ready' | 'missing' | 'blocked' | 'failed' | 'offline';
   target: Opportunity | null;
   reason: string | null;
   refresh: () => Promise<boolean>;
@@ -21,6 +21,17 @@ type View = Pick<WritingTargetState, 'status' | 'target' | 'reason'> & { key: st
 type Attempt = { controller: AbortController; promise: Promise<TargetActionReceipt | null>; ready: Promise<boolean>; cancel: () => void };
 type Lifecycle = { active: boolean; cancel: (() => void) | null };
 const initialView = (): View => ({ status: 'checking', target: null, reason: null, key: null });
+// Browser-reported offline is a hard pause; online still requires a fresh read.
+function connectionSnapshot(): boolean {
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+function subscribeConnection(changed: () => void): () => void {
+  window.addEventListener('online', changed);
+  window.addEventListener('offline', changed);
+  return () => { window.removeEventListener('online', changed); window.removeEventListener('offline', changed); };
+}
+const serverConnection = () => true;
+
 function ownerSnapshot(): string {
   const token = captureOwnerToken();
   return JSON.stringify([token.uid, token.epoch, token.generation, isOwnerTokenValid(token, token.uid)]);
@@ -50,6 +61,7 @@ function failure(error: unknown): { status: 'failed' | 'missing'; reason: string
  * target for displaying the draft; status always withdraws action authority. */
 export function useWritingTarget(enabled: boolean, opportunityId: string): WritingTargetState {
   const owner = useSyncExternalStore(subscribeOwner, ownerSnapshot, () => 'server');
+  const connected = useSyncExternalStore(subscribeConnection, connectionSnapshot, serverConnection);
   const scopeKey = JSON.stringify([enabled, opportunityId, owner]);
   const [state, setState] = useState<{ scope: string; view: View }>({ scope: scopeKey, view: initialView() });
   // A render in a new open/owner/target scope cannot expose previous readiness,
@@ -76,7 +88,7 @@ export function useWritingTarget(enabled: boolean, opportunityId: string): Writi
     let nextRead: ReturnType<typeof setTimeout> | null = null;
     let view = initialView();
     const current = () => !disposed && scope.active && ownerSnapshot() === owner;
-    const foreground = () => document.visibilityState === 'visible' && navigator.onLine;
+    const foreground = () => document.visibilityState === 'visible' && connectionSnapshot();
     const authorized = () => {
       const token = captureOwnerToken();
       return current() && isOwnerTokenValid(token, token.uid);
@@ -87,13 +99,21 @@ export function useWritingTarget(enabled: boolean, opportunityId: string): Writi
       view = { ...view, ...patch };
       setState({ scope: scopeKey, view });
     };
+    const pauseOffline = () => {
+      stopTimer();
+      const previous = attempt; attempt = null;
+      previous?.cancel();
+      publish({ status: 'offline', reason: null });
+    };
     const schedule = () => {
       stopTimer();
       if (!authorized() || !foreground()) return;
       nextRead = setTimeout(() => { nextRead = null; void run(false); }, WRITING_TARGET_INTERVAL_MS);
     };
     const run = (blocking = true): Attempt | null => {
-      if (!authorized() || (!blocking && !foreground())) return null;
+      if (!authorized()) return null;
+      if (!connectionSnapshot()) { pauseOffline(); return null; }
+      if (!blocking && !foreground()) return null;
       stopTimer();
       if (attempt) {
         if (blocking && view.status !== 'checking') publish({ status: 'checking', reason: null });
@@ -108,7 +128,7 @@ export function useWritingTarget(enabled: boolean, opportunityId: string): Writi
       const record: Attempt = { controller, promise: Promise.resolve(null), ready: Promise.resolve(false), cancel };
       attempt = record;
       if (blocking || view.status !== 'ready') publish({ status: 'checking', reason: null });
-      const accepts = () => current() && attempt === record && !controller.signal.aborted && isOwnerTokenValid(capturedOwner, capturedOwner.uid);
+      const accepts = () => current() && connectionSnapshot() && attempt === record && !controller.signal.aborted && isOwnerTokenValid(capturedOwner, capturedOwner.uid);
       const work = Promise.resolve().then(async (): Promise<TargetActionReceipt | null> => {
         if (!accepts()) return null;
         try {
@@ -147,7 +167,11 @@ export function useWritingTarget(enabled: boolean, opportunityId: string): Writi
       return record;
     };
     runner.current = run;
-    const recheck = () => { if (foreground()) void run(false); else stopTimer(); };
+    const recheck = () => {
+      if (!connectionSnapshot()) { pauseOffline(); return; }
+      if (view.status === 'offline') publish({ status: 'checking', reason: null });
+      if (foreground()) void run(false); else stopTimer();
+    };
     window.addEventListener('focus', recheck);
     window.addEventListener('online', recheck);
     window.addEventListener('offline', recheck);
@@ -163,10 +187,12 @@ export function useWritingTarget(enabled: boolean, opportunityId: string): Writi
       document.removeEventListener('visibilitychange', recheck);
     };
     scope.cancel = dispose;
-    if (foreground()) void run();
+    if (!connectionSnapshot()) pauseOffline();
+    else if (foreground()) void run();
     return dispose;
   }, [enabled, opportunityId, owner, scopeKey]);
 
   const visible = enabled && state.scope === scopeKey ? state.view : initialView();
-  return { status: visible.status, target: visible.target, reason: visible.reason, refresh, checkForAction };
+  return { status: enabled && !connected ? 'offline' : visible.status, target: visible.target,
+    reason: enabled && !connected ? null : visible.reason, refresh, checkForAction };
 }

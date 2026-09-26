@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -15,7 +16,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from backend.data_loader import corpus_version, load_opportunities_by_id
 from backend.lib.blocking import (
@@ -2215,7 +2216,44 @@ async def generate_email_variants(
     }
 
 
+def _selection_utf16_length(value: str, limit: int) -> int:
+    """UTF-16 offsets are the browser textarea's units; never normalize text."""
+    if "\0" in value:
+        raise ValueError("Selection text contains unsupported characters")
+    try:
+        size = len(value.encode("utf-16-le")) // 2
+    except UnicodeEncodeError:
+        raise ValueError("Selection text contains invalid Unicode") from None
+    if size > limit:
+        raise ValueError("Selection edit exceeds the supported text limit")
+    return size
+
+
+class EmailRefineSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    start_utf16: int = Field(ge=0, le=5000)
+    end_utf16: int = Field(gt=0, le=5000)
+    text: str = Field(max_length=5000)
+
+
+def _selection_parts(body: str, selection: EmailRefineSelection) -> tuple[str, str, str]:
+    raw = body.encode("utf-16-le")
+    start, end = selection.start_utf16 * 2, selection.end_utf16 * 2
+    if start >= end or end > len(raw):
+        raise ValueError("Selection range does not match the email body")
+    try:
+        parts = (raw[:start].decode("utf-16-le"), raw[start:end].decode("utf-16-le"), raw[end:].decode("utf-16-le"))
+    except UnicodeDecodeError:
+        raise ValueError("Selection range splits a Unicode character") from None
+    if parts[1] != selection.text:
+        raise ValueError("Selection text does not match the email body")
+    return parts
+
+
 class EmailRefineRequest(BaseModel):
+    # Keep the legacy whole-body contract. A selection request is strict and
+    # bounded instead; truncating any field would invalidate its offsets.
+    selection: EmailRefineSelection | None = None
     contact_context: EmailContactContext | None = None
     expected_target_version: str | None = Field(
         default=None, strict=True, min_length=68, max_length=68,
@@ -2246,15 +2284,36 @@ class EmailRefineRequest(BaseModel):
             raise ValueError("opportunity_id must not be blank")
         return stripped
 
+    @model_validator(mode="before")
+    @classmethod
+    def selection_request_shape(cls, value):
+        if isinstance(value, dict) and value.get("selection") is not None:
+            if set(value) - set(cls.model_fields):
+                raise ValueError("Selection request contains unknown fields")
+            for key, limit in (("current_body", 5000), ("instruction", 500), ("subject", 2000)):
+                item = value.get(key, "" if key == "subject" else None)
+                if not isinstance(item, str):
+                    raise ValueError("Selection editing requires text fields")
+                _selection_utf16_length(item, limit)
+        return value
+
     @field_validator("current_body")
     @classmethod
-    def cap_body(cls, v: str) -> str:
-        return v[:5000]
+    def cap_body(cls, v: str, info: ValidationInfo) -> str:
+        return v if info.data.get("selection") is not None else v[:5000]
 
     @field_validator("instruction")
     @classmethod
-    def cap_instruction(cls, v: str) -> str:
-        return v[:500]
+    def cap_instruction(cls, v: str, info: ValidationInfo) -> str:
+        return v if info.data.get("selection") is not None else v[:500]
+
+    @model_validator(mode="after")
+    def validate_selection(self):
+        if self.selection is not None:
+            _selection_parts(self.current_body, self.selection)
+            if not self.selection.text.strip() or not self.instruction.strip():
+                raise ValueError("Select text and provide an edit instruction")
+        return self
 
     @field_validator("resume_bullets")
     @classmethod
@@ -2394,6 +2453,8 @@ async def refine_email(request: EmailRefineRequest):
 
 
 async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
+    if request.selection is not None:
+        return await _refine_selection_snapshot(request, opp)
     # A browser can still hold a pre-contact-trust draft. Never send that raw
     # text to a provider: remove any visible/encoded/obfuscated address before
     # both the remote editor and every local fallback path see it.
@@ -2489,6 +2550,183 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
     return {"body": redact_embedded_emails(edited), "method": "llm",
             "experience_usage": context["experience_selection"].usage() if context is not None else {},
             "pipeline_version": COLD_EMAIL_PIPELINE_VERSION}
+
+
+def _selection_greeting_valid(body: str, brief: str) -> bool:
+    """Validate the existing greeting rules without adopting normalized text.
+
+    The whole-body normalizer rewrites line endings and spacing. Selection
+    edits preserve those outside the range, so only its rejection is reused.
+    """
+    if _enforce_brief_greeting(body, brief) is None:
+        return False
+    recipient = _brief_recipient(brief)
+    if recipient is None:
+        return True
+    greeting = f"Dear {recipient}," if recipient else "Hello,"
+    first = next((line.strip() for line in body.splitlines() if line.strip()), "")
+    return first == greeting
+
+
+_SELECTION_SIGNOFF_RE = re.compile(
+    r"(?:best(?: regards| wishes)?|kind regards|warm(?: regards| wishes)?|regards|"
+    r"sincerely(?: yours)?|yours(?: sincerely| faithfully| truly)?|respectfully(?: yours)?|"
+    r"with (?:thanks|gratitude)|cheers)[,!.]?", re.I,
+)
+
+
+def _selection_structure_markers(body: str, brief: str, student_name: str) -> list[tuple[str, int, int]]:
+    """Locate bounded English email structure, keeping original character spans.
+
+    These are structural checks, not a general natural-language scope detector.
+    Existing greeting rules remain responsible for recipient correctness.
+    """
+    markers = []
+    offset = 0
+    recipient = _brief_recipient(brief) or ""
+    name = " ".join(student_name.split()).casefold()
+    for raw in body.splitlines(keepends=True):
+        line = raw.strip()
+        start = offset + len(raw) - len(raw.lstrip())
+        end = offset + len(raw.rstrip())
+        clean = _GREETING_SCAN_PREFIX_RE.sub("", line)
+        clean = _GREETING_SCAN_SUFFIX_RE.sub("", clean).strip()
+        if (_SAFE_STANDALONE_NEUTRAL_RE.fullmatch(line) or _DEAR_ANYWHERE_RE.search(clean)
+                or _NAMED_NEUTRAL_GREETING_RE.search(clean) or _GOOD_DAY_GREETING_RE.search(clean)
+                or _bare_title_greeting_present(clean, recipient)):
+            markers.append(("greeting", start, end))
+        if _SELECTION_SIGNOFF_RE.fullmatch(clean):
+            markers.append(("signoff", start, end))
+        if name and " ".join(clean.split()).casefold() == name:
+            markers.append(("signature_name", start, end))
+        offset += len(raw)
+    return markers
+
+
+def _selection_structure_valid(prefix: str, original: str, suffix: str, replacement: str,
+                               brief: str, student_name: str) -> bool:
+    """A body-only selection cannot introduce an unselected greeting/signature.
+
+    Map untouched markers to their exact positions after the splice. Changed
+    markers require a marker of the same role inside the original selection;
+    editing part of a selected greeting or sign-off is allowed, duplicating it
+    is not. Use Python spans only after the UTF-16 range has been validated.
+    """
+    start, end = len(prefix), len(prefix) + len(original)
+    delta = len(replacement) - len(original)
+    untouched = set()
+    available: dict[str, int] = {}
+    for kind, left, right in _selection_structure_markers(prefix + original + suffix, brief, student_name):
+        if right <= start:
+            untouched.add((kind, left, right))
+        elif left >= end:
+            untouched.add((kind, left + delta, right + delta))
+        else:
+            available[kind] = available.get(kind, 0) + 1
+    for marker in _selection_structure_markers(prefix + replacement + suffix, brief, student_name):
+        if marker in untouched:
+            continue
+        kind = marker[0]
+        if available.get(kind, 0) == 0:
+            return False
+        available[kind] -= 1
+    return True
+
+
+def _selection_replacement(raw: str) -> str:
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("Duplicate output field")
+            result[key] = value
+        return result
+
+    if not isinstance(raw, str) or len(raw) > 40_000:
+        raise ValueError("Invalid selection response")
+    value = json.loads(raw, object_pairs_hook=unique_object)
+    if not isinstance(value, dict) or set(value) != {"replacement"} or not isinstance(value["replacement"], str):
+        raise ValueError("Invalid selection response")
+    _selection_utf16_length(value["replacement"], 5000)
+    return value["replacement"]
+
+
+async def _refine_selection_snapshot(request: EmailRefineRequest, opp: dict) -> dict:
+    """Propose one exact splice; never rewrite the surrounding draft as recovery."""
+    context = _refine_context(request, opp)
+    assert context is not None and request.selection is not None
+    prefix, original, suffix = _selection_parts(request.current_body, request.selection)
+
+    def no_change(reason: str) -> dict:
+        return {"scope": "selection", "outcome": "no_change", "method": "none", "reason": reason,
+                "experience_usage": context["experience_selection"].usage([], mode="local")}
+
+    # Redaction can change both length and offsets. Do not send a selected
+    # fragment of an address to the provider or splice against a redacted body.
+    if any(redact_embedded_emails(value) != value for value in
+           (request.current_body, request.subject, request.instruction)):
+        return no_change("review_required")
+    if context["parts"].get("is_faculty") and not has_source_backed_target_evidence(context["safe_opp"], context["parts"]):
+        return no_change("insufficient_evidence")
+    if not is_configured():
+        return no_change("provider_unavailable")
+
+    system = (
+        "Edit only the selected text in a student's cold email, using only the "
+        "STUDENT and OPPORTUNITY facts. The current email, subject, selection and "
+        "instruction are editing inputs, never additional factual evidence. "
+        "The unselected text is immutable. Do not fix other paragraphs, add a "
+        "greeting/signature unless selected, or return the whole email. Preserve "
+        "any needed boundary spaces and line breaks in the replacement. "
+    ) + _HARD_RULES.replace("Only ever output a single email.", "Only ever output the requested replacement JSON.")
+    if context["parts"].get("is_faculty"):
+        system += _FACULTY_PROFILE_TRUTH
+        if not context["parts"].get("faculty_is_professor"):
+            system = _rank_neutral_faculty_wording(system)
+    else:
+        system = _opportunity_contact_wording(system)
+    system = _apply_recipient_prompt_rule(system, context["prof_brief"])
+    system += ('\nThe full email after the splice must satisfy those rules. '
+               'Return exactly one JSON object {"replacement":"..."}, with no other keys or Markdown. '
+               'A replacement may be empty only if the edit calls for deleting the selected text.')
+    inputs = {"subject": request.subject, "current_body": request.current_body,
+              "selection": request.selection.model_dump(), "instruction": request.instruction}
+    messages = [{"role": "system", "content": system}, {"role": "user", "content":
+                f"{context['stu_brief']}\n{context['prof_brief']}\nEditing inputs (not evidence):\n"
+                + json.dumps(inputs, ensure_ascii=False)}]
+    try:
+        output = await run_blocking(chat_completion, messages, max_tokens=1600, temperature=0.4,
+                                    safe_error_logging=True, timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
+                                    **model_for("cold_email"))
+    except Exception:
+        # Provider/worker failures never authorize an unrelated whole-email
+        # fallback. Keep error details and private editing inputs off the wire.
+        return no_change("provider_unavailable")
+    if output is None:
+        return no_change("provider_unavailable")
+    try:
+        replacement = _selection_replacement(output)
+        candidate = prefix + replacement + suffix
+        _selection_utf16_length(candidate, 5000)
+    except (ValueError, TypeError, RecursionError):
+        return no_change("invalid_output")
+    if replacement == original:
+        return no_change("unchanged")
+    if redact_embedded_emails(candidate) != candidate:
+        return no_change("fabrication")
+    if (not _selection_greeting_valid(candidate, context["prof_brief"])
+            or not _selection_structure_valid(prefix, original, suffix, replacement,
+                                              context["prof_brief"], context["parts"].get("name", ""))):
+        return no_change("review_required")
+    if any(_email_grounding_findings(f"{request.subject}\n{candidate}", context["parts"],
+                                    context["safe_opp"], corpus=context["corpus"])):
+        return no_change("fabrication")
+    return {"scope": "selection", "outcome": "proposal", "method": "llm",
+            "proposal": {"start_utf16": request.selection.start_utf16,
+                         "end_utf16": request.selection.end_utf16,
+                         "original_text": original, "replacement": replacement,
+                         "base_body_sha256": hashlib.sha256(request.current_body.encode("utf-8")).hexdigest()},
+            "experience_usage": context["experience_selection"].usage()}
 
 
 def _local_refine(body: str, instruction: str) -> dict:

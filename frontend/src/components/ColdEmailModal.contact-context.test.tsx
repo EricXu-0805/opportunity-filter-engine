@@ -76,7 +76,11 @@ describe('confirmed contact context and editable email lifetime', () => {
     expect(screen.getByLabelText('coldEmail.to')).toHaveValue('manual@example.edu');
     expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Unsubmitted instruction');
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' }));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft referral');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined draft'); expect(api.refine.mock.calls[0][4].contactContext).toEqual(context);
+    expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Unsubmitted instruction');
   });
   it('requires confirmation and missing follow-up facts before allowing any new generation', async () => {
     open(); await ready(); manual(); purpose('follow_up'); apply(); kept();
@@ -107,6 +111,7 @@ describe('confirmed contact context and editable email lifetime', () => {
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' }));
     await screen.findByText('coldEmail.editFailed'); kept();
     expect(screen.queryByDisplayValue('WRONG CONTEXT')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
   });
   it('clears private background on target change and starts the new target with first contact', async () => {
     const view = open(); await ready(); referral();
@@ -278,6 +283,10 @@ describe('confirmed contact context and editable email lifetime', () => {
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
     await screen.findByRole('button', { name: 'coldEmail.copied' });
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' }));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft first_contact');
+    expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined draft');
     expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.copied')).toBeNull();

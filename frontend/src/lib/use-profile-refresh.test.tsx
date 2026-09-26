@@ -368,31 +368,31 @@ describe('continuous foreground profile checks', () => {
     const { result } = renderHook(() => useProfileRefresh(true)); await drain(); await tick(interval - 1);
     if (mode === 'hidden') visibility('hidden'); else connectivity(false);
     event('focus'); await tick(interval * 2); expect(mocks.selects).toHaveLength(1);
-    expect(result.current.status).toBe('ready');
+    expect(result.current.status).toBe(mode === 'hidden' ? 'ready' : 'offline');
     if (mode === 'hidden') visibility('visible'); else connectivity(true);
     await drain(); expect(mocks.selects).toHaveLength(2);
     await tick(interval - 1); expect(mocks.selects).toHaveLength(2);
     await tick(1); expect(mocks.selects).toHaveLength(3);
   });
 
-  it.each(['focus', 'visible', 'online'] as const)('keeps an already usable state quiet during a held %s event read', async (trigger) => {
+  it.each(['focus', 'visible', 'online'] as const)('keeps quiet reads usable but rechecks after an offline-to-%s transition', async (trigger) => {
     const { result } = renderHook(() => useProfileRefresh(true)); await drain();
     const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
     if (trigger === 'visible') { visibility('hidden'); visibility('visible'); }
     else if (trigger === 'online') { connectivity(false); connectivity(true); }
     else event('focus');
-    await drain(); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+    await drain(); expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe(trigger === 'online' ? 'checking' : 'ready');
     held.resolve(row()); await drain(); expect(result.current.status).toBe('ready');
   });
 
-  it.each(['hidden', 'offline'] as const)('finishes an already active read while %s without scheduling another until resume', async (mode) => {
+  it.each(['hidden', 'offline'] as const)('handles an active read while %s without scheduling another until resume', async (mode) => {
     const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
     const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
     await tick(interval);
     if (mode === 'hidden') visibility('hidden'); else connectivity(false);
-    expect(mocks.selects[1].signal?.aborted).toBe(false); expect(result.current.status).toBe('ready');
+    expect(mocks.selects[1].signal?.aborted).toBe(mode === 'offline'); expect(result.current.status).toBe(mode === 'offline' ? 'offline' : 'ready');
     held.resolve(row({ ...BASE, major: 'Already requested' }, 2)); await drain();
-    expect(accepted).toHaveBeenCalledTimes(2); expect(mirror().major).toBe('Already requested');
+    expect(accepted).toHaveBeenCalledTimes(mode === 'offline' ? 1 : 2); expect(mirror().major).toBe(mode === 'offline' ? BASE.major : 'Already requested');
     await tick(interval * 2); expect(mocks.selects).toHaveLength(2);
     if (mode === 'hidden') visibility('visible'); else connectivity(true);
     await drain(); expect(mocks.selects).toHaveLength(3);
@@ -486,5 +486,94 @@ describe('continuous foreground profile checks', () => {
     await tick(interval); expect(result.current.status).toBe('conflict');
     const journal = readOutstandingOps(); expect(journal.ok && journal.value.length).toBeGreaterThan(0);
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('offline profile authority and reconnection', () => {
+  function network(connected: boolean) {
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: connected }); event(connected ? 'online' : 'offline');
+  }
+
+  it('shows offline on first render and never starts auth or an explicit read before reconnecting', async () => {
+    network(false); advanceOwnerEpoch(null); localStorage.clear();
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted));
+    expect(result.current.status).toBe('offline'); await drain();
+    expect(await refresh(result)).toBe(false); expect(await result.current.checkForAction!()).toBeNull();
+    expect(mocks.getSession).not.toHaveBeenCalled(); expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled(); expect(accepted).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(captureOwnerToken().uid).toBeNull();
+    mocks.getSession.mockResolvedValue(session(OWNER)); network(true); await drain();
+    expect(captureOwnerToken().uid).toBe(OWNER); expect(result.current.status).toBe('ready');
+  });
+
+  it('aborts a pending action read offline, retains the mirror, and accepts only the fresh reconnect read', async () => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    const old = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(old.promise);
+    let action!: Promise<ProfileActionReceipt | null>; act(() => { action = result.current.checkForAction!(); }); await drain();
+    network(false); await drain(); expect(result.current.status).toBe('offline'); expect(await action).toBeNull();
+    expect(mocks.selects[1].signal?.aborted).toBe(true); expect(mirror()).toEqual(BASE);
+    expect(await refresh(result)).toBe(false); expect(await result.current.checkForAction!()).toBeNull(); expect(mocks.selects).toHaveLength(2);
+    const current = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(current.promise);
+    network(true); event('focus'); event('online'); await drain();
+    expect(result.current.status).toBe('checking'); expect(mocks.selects).toHaveLength(3); expect(accepted).toHaveBeenCalledTimes(1);
+    current.resolve(row({ ...BASE, major: 'Rechecked source' }, 2)); await drain(); expect(result.current.status).toBe('ready');
+    old.resolve(row({ ...BASE, major: 'Obsolete pre-offline source' }, 99)); await drain();
+    expect(mirror().major).toBe('Rechecked source'); expect(accepted).toHaveBeenCalledTimes(2); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('withdraws local-only action readiness while offline without converting it into a cloud claim', async () => {
+    advanceOwnerEpoch(null); localStorage.clear(); expect(enterLocalOnlyMode()).toBe(true);
+    mocks.getSession.mockResolvedValue({ data: { session: null } });
+    mocks.signIn.mockResolvedValue({ data: { session: null }, error: { message: 'No session' } });
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); expect(result.current.status).toBe('local-only');
+    mocks.getSession.mockClear(); network(false); expect(result.current.status).toBe('offline');
+    expect(await refresh(result)).toBe(false); expect(await result.current.checkForAction!()).toBeNull(); expect(mocks.getSession).not.toHaveBeenCalled();
+    network(true); expect(result.current.status).toBe('checking'); await drain(); expect(result.current.status).toBe('local-only');
+    expect(mocks.read).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it('remains unverified if the reconnect read fails, then permits a fresh explicit retry', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); network(false);
+    mocks.read.mockResolvedValueOnce({ data: null, error: { message: 'Private server failure' } });
+    network(true); expect(result.current.status).toBe('checking'); await drain();
+    expect(result.current.status).toBe('failed'); expect(mirror()).toEqual(BASE);
+    expect(await refresh(result)).toBe(true); expect(result.current.status).toBe('ready');
+  });
+
+  it('does not mistake connectivity returning in a hidden tab for a checked source', async () => {
+    const { result } = renderHook(() => useProfileRefresh(true)); await drain(); network(false);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    network(true); expect(result.current.status).toBe('checking'); await drain(); expect(mocks.selects).toHaveLength(1);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); }); await drain();
+    expect(mocks.selects).toHaveLength(2); expect(result.current.status).toBe('ready');
+  });
+
+  it('does not revive an old queued generation after reconnection returns unchanged data', async () => {
+    const execute = vi.fn();
+    const { result } = renderHook(() => {
+      const [profile, setProfile] = useState<ProfileData | null>(null);
+      const refresh = useProfileRefresh(true, loaded => setProfile(loaded.profile));
+      const action = useProfileAction<string>({ isOpen: true, profile, profileAvailable: !!profile,
+        scopeKey: 'same-target', editRevision: 0, refresh,
+        readiness: refresh.status === 'checking' ? 'waiting' : refresh.status === 'ready' ? 'ready' : 'blocked', execute });
+      return { refresh, action };
+    });
+    await drain(); const held = deferred<ReturnType<typeof row>>(); mocks.read.mockReturnValueOnce(held.promise);
+    act(() => result.current.action.request('old generate')); await drain(); expect(result.current.action.busy).toBe(true);
+    network(false); await drain(); expect(result.current.action.busy).toBe(false); expect(execute).not.toHaveBeenCalled();
+    network(true); await drain(); held.resolve(row()); await drain();
+    expect(result.current.refresh.status).toBe('ready'); expect(execute).not.toHaveBeenCalled();
+    act(() => result.current.action.request('new explicit generate')); await drain();
+    expect(execute).toHaveBeenCalledExactlyOnceWith('new explicit generate');
+  });
+
+  it('checks only the new owner after switching accounts while offline', async () => {
+    const accepted = vi.fn(); const { result } = renderHook(() => useProfileRefresh(true, accepted)); await drain();
+    network(false); await moveOwner('offline-next-owner'); expect(result.current.status).toBe('offline'); expect(mocks.selects).toHaveLength(1);
+    mocks.read.mockResolvedValue(row({ ...BASE, major: 'Next owner source' }, 3)); network(true); await drain();
+    expect(result.current.status).toBe('ready'); expect(accepted).toHaveBeenLastCalledWith(expect.objectContaining({ token: captureOwnerToken() }));
+    expect(mirror().major).toBe('Next owner source'); expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

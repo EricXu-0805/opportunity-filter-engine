@@ -163,7 +163,12 @@ describe('persistent cold-email draft recovery', () => {
     api.refine.mockImplementation((_body, _instruction, _profile, id, options) => emailReceipt(
       { body: 'Explicitly revised from the recovered draft', method: 'llm' }, id, options.expectedTargetVersion, options.contactContext));
     await waitFor(() => expect(button('submitRequest')).toBeEnabled()); fireEvent.click(button('submitRequest'));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Explicitly revised from the recovered draft');
+    expect(field('body')).toHaveValue(edits.body);
+    expect(field('requestLabel')).toHaveValue(edits.request);
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Explicitly revised from the recovered draft');
+    expect(field('requestLabel')).toHaveValue('');
     expect(api.refine).toHaveBeenCalledOnce(); expect(api.refine.mock.calls[0][0]).toBe(edits.body);
     expect(api.refine.mock.calls[0][1]).toBe(edits.request); expect(api.stream).not.toHaveBeenCalled();
     expect(field('subject')).toHaveValue(edits.subject); expect(field('to')).toHaveValue(edits.recipient);

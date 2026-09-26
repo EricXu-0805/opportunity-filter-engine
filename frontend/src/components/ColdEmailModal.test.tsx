@@ -923,9 +923,10 @@ describe('ColdEmailModal', () => {
         'opp',
         { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
       );
-      await waitFor(() =>
-        expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
-      );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('I would greatly appreciate to chat.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would love to chat.\n\nBest regards,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would greatly appreciate to chat.\n\nRespectfully,\nAlex'));
     });
 
     it('"shorter" routes through the backend refine (deterministic fallback shown)', async () => {
@@ -954,10 +955,11 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByText('coldEmail.quickActions.shorter'));
       await waitFor(() => expect(mockRefineEmail).toHaveBeenCalledTimes(1));
       expect(mockRefineEmail.mock.calls[0][1]).toBe('Make it shorter and more concise');
-      await waitFor(() => {
-        const textarea = screen.getByDisplayValue(/Line one/) as HTMLTextAreaElement;
-        expect(textarea.value).not.toMatch(/fast learner/);
-      });
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Line three.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Line one.\nI am a fast learner and want to help.\nLine three.');
+      expect(screen.getByText('Basic edit suggestion ready. Compare it, then accept or reject.')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Line one.\nLine three.'));
     });
 
     it('"coursework" inserts the profile\'s coursework when present', async () => {
@@ -975,6 +977,9 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Intro/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Intro.\n\nBest regards,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue(/CS 225/)).toBeInTheDocument());
       expect(screen.getByDisplayValue(/CS 374/)).toBeInTheDocument();
     });
@@ -994,6 +999,9 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Intro paragraph/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Intro paragraph.\n\nSincerely,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       const value = await waitFor(() => {
         const ta = screen.getByDisplayValue(/CS 225/) as HTMLTextAreaElement;
         return ta.value;
@@ -1056,7 +1064,12 @@ describe('ColdEmailModal', () => {
         'opp',
         { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } },
       );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined body.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('Make it warmer');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
+      expect(input).toHaveValue('');
     });
 
     it('R72-A: shows the fabrication hint when a refine edit is rejected', async () => {
@@ -1087,6 +1100,9 @@ describe('ColdEmailModal', () => {
       await waitFor(() =>
         expect(screen.getByText('coldEmail.refineFabrication')).toBeInTheDocument(),
       );
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('say I know Rust');
+      expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     });
 
     it('reports an evidence-gated safe-template replacement instead of a basic tone edit', async () => {
@@ -1115,9 +1131,12 @@ describe('ColdEmailModal', () => {
         fireEvent.submit(form!);
       });
 
-      await waitFor(() =>
-        expect(screen.getByDisplayValue('Safe general inquiry template.')).toBeInTheDocument(),
-      );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Safe general inquiry template.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('Make it warmer');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByDisplayValue('Safe general inquiry template.')).toBeInTheDocument());
+      expect(input).toHaveValue('');
       expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument();
       expect(screen.queryByText('coldEmail.doneFallback')).not.toBeInTheDocument();
       expect(screen.queryByText('coldEmail.doneLlm')).not.toBeInTheDocument();

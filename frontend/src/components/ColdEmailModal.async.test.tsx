@@ -107,6 +107,7 @@ describe('cold email draft lifetime', () => {
     await act(async () => { edit.resolve({ body: 'Late AI edit', method: 'llm' }); });
     expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Late AI edit')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(screen.getByText('coldEmail.editSuperseded')).toBeInTheDocument();
     expect(screen.getByText('coldEmail.quickActions.shorter')).toBeEnabled();
   });
@@ -119,6 +120,9 @@ describe('cold email draft lifetime', () => {
     requestEdit();
     await screen.findByText('coldEmail.editFailed');
     requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('New edit');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('New edit');
     expect(api.refine).toHaveBeenCalledTimes(2);
   });
@@ -143,8 +147,12 @@ describe('cold email draft lifetime', () => {
     expect(api.refine).toHaveBeenCalledTimes(2);
     await act(async () => { first.resolve({ body: 'Old edit', method: 'llm' }); });
     expect(screen.queryByDisplayValue('Old edit')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
     await act(async () => { second.resolve({ body: 'Current edit', method: 'llm' }); });
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Current edit');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue(expected);
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     expect(await screen.findByDisplayValue('Current edit')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.editing')).toBeNull();
   });
@@ -185,6 +193,9 @@ describe('cold email draft lifetime', () => {
     requestEdit();
     act(() => { advanceOwnerEpoch(captureOwnerToken().uid); });
     await act(async () => { edit.resolve({ body: 'Current owner result', method: 'llm' }); });
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Current owner result');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     expect(await screen.findByDisplayValue('Current owner result')).toBeInTheDocument();
     expect(view.onClose).not.toHaveBeenCalled();
   });
@@ -455,6 +466,9 @@ describe('confirmed experience draft inputs', () => {
     openModal({ ...profile, experience_entries: [entry] });
     await ready();
     requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined draft retaining confirmed experience');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined draft retaining confirmed experience');
     expect(screen.getByText('coldEmail.experienceReceiptLimit')).toBeVisible();
     expect(screen.queryByText('coldEmail.experienceNone')).toBeNull();
@@ -489,6 +503,9 @@ describe('confirmed experience draft inputs', () => {
     openModal({ ...profile, experience_entries: entries });
     await ready();
     requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined current draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined current draft');
     for (const entry of entries) expect(screen.getByText(entry.text)).toBeInTheDocument();
     expect(screen.getByText(entries[0].text)).toHaveTextContent('I did not lead the project.');
@@ -569,6 +586,7 @@ describe('confirmed experience draft inputs', () => {
     await act(async () => { old.resolve({ body: 'Old refine', method: 'llm', experience_usage: used(entry) }); });
     expect(screen.getByDisplayValue('Current draft without the entry')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Old refine')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(screen.queryByText(entry.text)).toBeNull();
   });
 
@@ -635,6 +653,10 @@ describe('confirmed experience draft inputs', () => {
     expect(screen.getByText(two.text)).toBeInTheDocument();
     expect(screen.queryByText(one.text)).toBeNull();
     requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined current draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B');
+    expect(screen.getByText(two.text)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined current draft');
     expect(screen.getByText('coldEmail.experienceNone')).toBeInTheDocument();
     expect(screen.queryByText(two.text)).toBeNull();
@@ -803,6 +825,7 @@ describe('missing profile keeps the email draft', () => {
     await act(async () => { pending.resolve({ body: 'Late deleted-profile refinement', method: 'llm' }); });
     expect(screen.getByDisplayValue('Keep my email after profile removal')).toBeVisible();
     expect(screen.queryByDisplayValue('Late deleted-profile refinement')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
   });
 
@@ -852,7 +875,11 @@ describe('action-time profile checks', () => {
     expect(api.stream).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.coursework' }));
     await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(3));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('My new manual wording');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue(/My new manual wording[\s\S]*CS 225/);
+    expect(checkForAction).toHaveBeenCalledTimes(4);
     expect(api.stream).toHaveBeenCalledTimes(1);
   });
 
@@ -890,8 +917,14 @@ describe('action-time profile checks', () => {
     expect(api.refine).not.toHaveBeenCalled();
     api.refine.mockResolvedValueOnce({ body: 'Verified refinement', method: 'llm' });
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
-    await screen.findByDisplayValue('Verified refinement');
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Verified refinement');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    expect(input).toHaveValue('Keep my exact request');
     expect(checkForAction).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Verified refinement');
+    expect(input).toHaveValue('');
+    expect(checkForAction).toHaveBeenCalledTimes(4);
     expect(api.refine).toHaveBeenCalledTimes(1);
     expect(api.refine.mock.calls[0][1]).toBe('Keep my exact request');
   });

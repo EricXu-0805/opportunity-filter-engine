@@ -128,11 +128,11 @@ vi.mock('./use-result-modal-history', async (importOriginal) => {
 });
 
 vi.mock('@/components/CheckedColdEmailModal', () => ({
-  default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget, profileAvailable, onClose }: {
-    isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity; profileAvailable?: boolean; onClose: () => void;
+  default: function EmailEditor({ isOpen, opportunityId, profile, targetReady, reminderTarget, profileAvailable, onClose, profileRefresh }: {
+    isOpen: boolean; opportunityId: string; profile: ProfileData; targetReady: boolean; reminderTarget?: Opportunity; profileAvailable?: boolean; onClose: () => void; profileRefresh?: { status: string };
   }) {
     const [text, setText] = useState('Original email');
-    return isOpen ? <div role="dialog" data-testid="cold-email-modal">
+    return isOpen ? <div role="dialog" data-testid="cold-email-modal" data-refresh={profileRefresh?.status}>
       <span data-testid="profile-available">{String(profileAvailable)}</span><button onClick={onClose}>Close email</button><span>target:{opportunityId}</span><span data-testid="editor-profile">{profile.research_interests}</span>
       <textarea aria-label="Email text" value={text} onChange={(event) => setText(event.target.value)} />
       <button type="button" disabled={!targetReady} onClick={() => generateColdEmail(opportunityId)}>Generate</button>
@@ -285,6 +285,20 @@ describe('Results keeps writing buffers while current target actions fail closed
     fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
     expect(generateColdEmail).toHaveBeenCalledWith('a');
     expect(screen.getByTestId('reminder-target')).toHaveTextContent('a');
+  });
+
+  it('reopens a retained canonical target offline while forwarding the action pause', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    await openDialogFor('a');
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    try {
+      act(() => window.dispatchEvent(new Event('offline')));
+      expect(screen.getByTestId('cold-email-modal')).toHaveAttribute('data-refresh', 'offline');
+      fireEvent.click(screen.getByRole('button', { name: 'Close email' }));
+      act(() => captured.draft!('a'));
+      expect(await screen.findByTestId('cold-email-modal')).toHaveAttribute('data-refresh', 'offline');
+      expect(generateColdEmail).not.toHaveBeenCalled();
+    } finally { online.mockRestore(); }
   });
 
   it.each(['closed', 'missing', 'unready'] as const)('refuses both editors at entry when target/owner is %s', async (mode) => {

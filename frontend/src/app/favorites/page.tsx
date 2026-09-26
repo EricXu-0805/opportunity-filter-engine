@@ -17,6 +17,7 @@ import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
 import { useCheckedWritingProfile } from '@/lib/use-checked-writing-profile';
 import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
 import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import { profileActionKey } from '@/lib/use-profile-action';
 import ProfileRefreshBanner, { profileRefreshReady } from '@/components/ProfileRefreshBanner';
 import type { ProfileData } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -130,7 +131,19 @@ export default function FavoritesPage() {
   const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
   const emailProfile = useRetainedWritingProfile(profile, emailModal.open, `${writingScope}:${emailModal.id}`);
   const tailorProfile = useRetainedWritingProfile(profile, tailorModal.open, `${writingScope}:${tailorModal.id}`);
-  const canOpenWriting = ownerReady && !loading && !error && !!profile && profileRefreshReady(profileRefresh);
+  // Going offline pauses source-dependent actions, not access to a previously
+  // available local editor. A failed/conflicted read, profile change or owner
+  // change retires this entry receipt; it never grants generation/send authority.
+  const profileKey = profileActionKey(profile);
+  const [editorEntry, setEditorEntry] = useState<{ scope: string; profileKey: string | null } | null>(null);
+  const sameEditorEntry = editorEntry?.scope === writingScope && editorEntry.profileKey === profileKey;
+  const checkedEditorAvailable = ownerReady && !!profile && profileRefreshReady(profileRefresh);
+  if (checkedEditorAvailable && !sameEditorEntry) setEditorEntry({ scope: writingScope, profileKey });
+  else if (editorEntry && (!ownerReady || !profile || !sameEditorEntry
+    || (profileRefresh.status !== 'offline' && !checkedEditorAvailable))) setEditorEntry(null);
+  const offlineEditorAvailable = profileRefresh.status === 'offline' && sameEditorEntry;
+  const canOpenWriting = ownerReady && !loading && !error && !!profile
+    && (profileRefreshReady(profileRefresh) || offlineEditorAvailable);
 
   const opportunities = useMemo<Opp[]>(
     () => [...customImports.map(customImportToOpp), ...serverOpportunities],
@@ -157,8 +170,9 @@ export default function FavoritesPage() {
     // this decides what may actually open, so a card variant that keeps a
     // control cannot reach a modal the server would refuse to serve.
     if (!canOpenWriting || emailModal.open || tailorModal.open || targetPosture(opp) !== 'actionable') return;
+    if (profileRefresh.status === 'offline' && !serverOpportunities.some(record => record.id === opp.id && targetPosture(record) === 'actionable')) return;
     setEmailModal({ open: true, id: opp.id, title: opp.title, school: opp.school ?? null });
-  }, [canOpenWriting, emailModal.open, tailorModal.open]);
+  }, [canOpenWriting, emailModal.open, tailorModal.open, profileRefresh.status, serverOpportunities]);
 
   const closeEmailModal = useCallback(() => {
     setEmailModal({ open: false, id: '', title: '', school: null });
@@ -167,8 +181,9 @@ export default function FavoritesPage() {
   const openTailorModal = useCallback((opp: Opp) => {
     if (!canOpenWriting || emailModal.open || tailorModal.open) return;
     if (targetPosture(opp) !== 'actionable') return;
+    if (profileRefresh.status === 'offline' && !serverOpportunities.some(record => record.id === opp.id && targetPosture(record) === 'actionable')) return;
     setTailorModal({ open: true, id: opp.id, title: opp.title });
-  }, [canOpenWriting, emailModal.open, tailorModal.open]);
+  }, [canOpenWriting, emailModal.open, tailorModal.open, profileRefresh.status, serverOpportunities]);
 
   const closeTailorModal = useCallback(() => {
     setTailorModal({ open: false, id: '', title: '' });

@@ -1,3 +1,4 @@
+import type { EmailTextSelection } from './email-revision';
 import type {
   ProfileData,
   ProfileRequest,
@@ -1067,6 +1068,20 @@ export async function getEmailVariants(
   );
 }
 
+export interface EmailRefineResponse {
+  body?: string;
+  method: string;
+  fallback_reason?: string;
+  scope?: 'selection';
+  outcome?: 'proposal' | 'no_change';
+  reason?: 'provider_unavailable' | 'insufficient_evidence' | 'review_required' | 'invalid_output' | 'fabrication' | 'unchanged';
+  proposal?: Omit<EmailTextSelection, 'text'> & { original_text: string; replacement: string; base_body_sha256: string };
+  experience_usage?: ExperienceUsage;
+  opportunity_id?: string | null;
+  target_version?: string | null;
+  contact_context_receipt?: EmailContactContextReceipt;
+}
+
 export async function refineEmail(
   currentBody: string,
   instruction: string,
@@ -1076,12 +1091,13 @@ export async function refineEmail(
   // only ever meant "send null and hope"; the modal has always had the id.
   opportunityId: string,
   /** Legacy resumeBullets are ignored; only confirmed profile entries count. */
-  options: { resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
-): Promise<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null; contact_context_receipt?: EmailContactContextReceipt }> {
-  return request<{ body: string; method: string; fallback_reason?: string; experience_usage?: ExperienceUsage; opportunity_id?: string | null; target_version?: string | null; contact_context_receipt?: EmailContactContextReceipt }>('/cold-email/refine', {
+  options: { resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null; selection?: EmailTextSelection; subject?: string } = {},
+): Promise<EmailRefineResponse> {
+  return request<EmailRefineResponse>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
+      ...(options.selection ? { selection: options.selection, subject: options.subject ?? '' } : {}),
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,

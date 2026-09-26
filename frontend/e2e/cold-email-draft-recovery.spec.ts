@@ -240,11 +240,11 @@ test('offline edits save locally and survive same-page reopen before source rech
     await f.saved(); await assertLocalText(); await f.close();
     // Keep the loaded application alive. Offline site loading/reload is not promised.
     await f.open(false); await assertLocalText();
-    await expect(page.getByTestId('writing-target-status')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: f.copy.title }).getByTestId('profile-refresh-status')).toBeVisible();
     expect(f.state.calls).toHaveLength(writingCalls);
     // The source hooks intentionally pause while navigator.onLine is false.
-    // Reopening retains a checking state without attempting a network read.
-    await expect(page.getByTestId('writing-target-status')).toContainText(f.locale === 'zh' ? '正在核对' : 'Checking current opportunity');
+    // Reopening shows an explicit offline state without attempting a network read.
+    await expect(page.getByRole('dialog', { name: f.copy.title }).getByTestId('profile-refresh-status')).toContainText(f.locale === 'zh' ? '当前离线。草稿仍保留' : "You're offline. Your draft is kept");
     await expect(page.getByRole('button', { name: 'Gmail', exact: true })).toBeDisabled();
     expect(f.state.calls).toHaveLength(writingCalls);
     await page.locator('#cold-email-body').scrollIntoViewIfNeeded(); await proof(page, info, 'offline-kept-' + f.locale + '.png');

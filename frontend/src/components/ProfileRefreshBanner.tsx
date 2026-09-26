@@ -14,11 +14,17 @@ export default function ProfileRefreshBanner({ refresh, targetRefresh, targetRea
   refresh?: ProfileRefreshState; targetRefresh?: WritingTargetState; targetReady?: boolean; profileAvailable?: boolean; locale?: 'en' | 'zh';
   onBeforeReview?: (event: MouseEvent<HTMLAnchorElement>) => boolean;
 }) {
-  if (profileAvailable && targetReady && (!refresh || refresh.status === 'ready') && (!targetRefresh || targetRefresh.status === 'ready')) return null;
+  const offline = refresh?.status === 'offline' || targetRefresh?.status === 'offline';
+  if (!offline && profileAvailable && targetReady && (!refresh || refresh.status === 'ready') && (!targetRefresh || targetRefresh.status === 'ready')) return null;
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const status = refresh?.status;
   const targetStatus = targetRefresh?.status;
   const targetReason = targetRefresh?.reason;
+  if (offline) return <div role="status"
+    className="max-h-[25vh] shrink-0 overflow-y-auto border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-950"
+    data-testid="profile-refresh-status">
+    <p>{copy("You're offline. Your draft is kept; generation and email actions are paused. We'll check the sources again when you're online.", '当前离线。草稿仍保留，生成和邮件操作已暂停；联网后会自动重新核对资料。')}</p>
+  </div>;
   const targetExplanation = targetReason === 'listing_closed'
     ? copy('Applications for this opportunity are closed.', '此机会已停止接受申请。')
     : targetReason === 'faculty_not_accepting'

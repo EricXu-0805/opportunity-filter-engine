@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WritingTargetState } from '@/lib/use-writing-target';
-import ProfileRefreshBanner from './ProfileRefreshBanner';
+import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 afterEach(cleanup);
 const target = (status: WritingTargetState['status']): WritingTargetState => ({ status, target: null, reason: 'internal-code-not-copy', refresh: vi.fn().mockResolvedValue(true), checkForAction: vi.fn() });
 describe('writing target refresh explanations', () => {
@@ -44,6 +44,32 @@ describe('writing target refresh explanations', () => {
     const view = render(<ProfileRefreshBanner targetRefresh={target('failed')} locale="zh" />);
     expect(screen.getByText('暂时无法核对这个机会。草稿仍保留，生成和邮件操作已暂停。')).toBeVisible();
     view.rerender(<ProfileRefreshBanner targetRefresh={target('ready')} />);
+    expect(screen.queryByTestId('profile-refresh-status')).toBeNull();
+  });
+});
+
+
+describe('offline source explanation', () => {
+  it.each(['profile', 'target', 'both'] as const)('shows one clear offline message when %s is offline and does not offer a network retry', source => {
+    const refresh = { status: source === 'target' ? 'ready' as const : 'offline' as const, refresh: vi.fn() };
+    const targetRefresh = target(source === 'profile' ? 'ready' : 'offline');
+    const view = render(<ProfileRefreshBanner refresh={refresh} targetRefresh={targetRefresh} />);
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent("You're offline. Your draft is kept");
+    expect(screen.getByTestId('profile-refresh-status').querySelectorAll('p')).toHaveLength(1);
+    expect(screen.queryByRole('button')).toBeNull(); expect(screen.queryByText(/Could not check|Could not verify/)).toBeNull();
+    expect(refresh.refresh).not.toHaveBeenCalled(); expect(targetRefresh.refresh).not.toHaveBeenCalled();
+    view.rerender(<ProfileRefreshBanner refresh={refresh} targetRefresh={targetRefresh} locale="zh" />);
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('当前离线。草稿仍保留，生成和邮件操作已暂停；联网后会自动重新核对资料。');
+  });
+
+  it('keeps source readiness false and shows checking after reconnect until both fresh reads complete', () => {
+    expect(profileRefreshReady({ status: 'offline', refresh: vi.fn() })).toBe(false);
+    const view = render(<ProfileRefreshBanner refresh={{ status: 'offline', refresh: vi.fn() }} targetRefresh={target('offline')} />);
+    view.rerender(<ProfileRefreshBanner refresh={{ status: 'checking', refresh: vi.fn() }} targetRefresh={target('checking')} />);
+    expect(screen.queryByText(/offline/)).toBeNull(); expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Checking for profile updates');
+    view.rerender(<ProfileRefreshBanner refresh={{ status: 'ready', refresh: vi.fn() }} targetRefresh={target('checking')} />);
+    expect(screen.getByTestId('writing-target-status')).toHaveTextContent('Checking current opportunity information');
+    view.rerender(<ProfileRefreshBanner refresh={{ status: 'ready', refresh: vi.fn() }} targetRefresh={target('ready')} />);
     expect(screen.queryByTestId('profile-refresh-status')).toBeNull();
   });
 });

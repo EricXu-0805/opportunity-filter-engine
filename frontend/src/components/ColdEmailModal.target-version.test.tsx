@@ -46,7 +46,11 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible(); expect(screen.queryByText('coldEmail.generating')).toBeNull();
   });
   it('sends the same checked token for templates, streaming, and refinement', async () => {
-    await open(); refine(); await screen.findByDisplayValue('Verified refinement');
+    await open(); refine();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Verified refinement');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Template body');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Verified refinement');
     expect(api.variants).toHaveBeenCalledWith(profile, ID, undefined, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } });
     expect(api.stream).toHaveBeenCalledWith(profile, ID, { engine: 'ai', style: 'professional', expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
     expect(api.refine).toHaveBeenCalledWith('Template body', expect.any(String), profile, ID, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } });
@@ -74,6 +78,7 @@ describe('ColdEmail authoritative target receipt', () => {
   it.each([{ target_version: undefined }, { target_version: B }, { opportunity_id: 'another-target' }])('preserves every edited field on an invalid refine receipt: %j', async mismatch => {
     await open(); edit(); api.refine.mockResolvedValue({ ...receipt, ...mismatch, body: 'Unverified replacement', method: 'llm' }); refine(); await drain();
     kept(); expect(screen.queryByDisplayValue('Unverified replacement')).toBeNull(); expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
   });
   it('keeps manual fields on target 409 without automatic replay, then regenerates using a newly verified target', async () => {
     const view = await open(); edit(); api.refine.mockRejectedValueOnce(Object.assign(new Error('PRIVATE'), { code: 'WRITING_TARGET_CHANGED', status: 409 }));
@@ -148,6 +153,7 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible();
     await act(async () => held.resolve({ ...result, body: 'LATE REFINE AFTER REJECTION', method: method === 'stream' ? 'ai' : 'llm' })); await drain(); kept();
     expect(screen.queryByDisplayValue('LATE REFINE AFTER REJECTION')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
   });
 
   it('does not auto-generate when an empty editor rechecks a newly available target version', async () => {

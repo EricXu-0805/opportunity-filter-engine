@@ -154,7 +154,7 @@ describe('completion-relative foreground target refresh', () => {
   it('waits for a foreground online window before the initial read', async () => {
     visibility('hidden'); online(false);
     const { result } = renderHook(() => useWritingTarget(true, TARGET.id)); await drain();
-    expect(mocks.read).not.toHaveBeenCalled(); expect(result.current.status).toBe('checking');
+    expect(mocks.read).not.toHaveBeenCalled(); expect(result.current.status).toBe('offline');
     visibility('visible'); await drain(); expect(mocks.read).not.toHaveBeenCalled();
     online(true); await drain(); expect(mocks.read).toHaveBeenCalledOnce(); expect(result.current.status).toBe('ready');
   });
@@ -240,4 +240,55 @@ it('does not expose a prior session target when an owner changes and the new own
   mocks.read.mockRejectedValueOnce({ status: 503, message: 'not a public message' });
   await changeOwner('another-owner');
   expect(result.current.status).toBe('failed'); expect(result.current.target).toBeNull(); expect(result.current.reason).toBe('read_failed');
+});
+
+
+describe('offline target authority and reconnection', () => {
+  it('is offline from the first render and refuses every explicit action read until reconnected', async () => {
+    online(false); const { result } = renderHook(() => useWritingTarget(true, TARGET.id));
+    expect(result.current.status).toBe('offline'); await drain();
+    expect(await refresh(result)).toBe(false); expect(await result.current.checkForAction()).toBeNull();
+    expect(mocks.read).not.toHaveBeenCalled(); expect(result.current.target).toBeNull();
+    const held = deferred<Opportunity>(); mocks.read.mockReturnValueOnce(held.promise);
+    online(true); expect(result.current.status).toBe('checking'); await drain(); expect(mocks.read).toHaveBeenCalledOnce();
+    held.resolve(fresh()); await drain(); expect(result.current.status).toBe('ready');
+  });
+
+  it('settles old action waiters on offline, retains displayed target and rejects a late success after reconnect', async () => {
+    const { result } = renderHook(() => useWritingTarget(true, TARGET.id)); await drain(); const previous = result.current.target;
+    const old = deferred<Opportunity>(); mocks.read.mockReturnValueOnce(old.promise);
+    let action!: Promise<TargetActionReceipt | null>; act(() => { action = result.current.checkForAction(); }); await drain();
+    const signal = mocks.read.mock.calls[1][1].signal as AbortSignal;
+    online(false); await drain(); expect(await action).toBeNull(); expect(signal.aborted).toBe(true);
+    expect(result.current.status).toBe('offline'); expect(result.current.target).toBe(previous); expect(result.current.reason).toBeNull();
+    expect(await refresh(result)).toBe(false); expect(await result.current.checkForAction()).toBeNull(); expect(mocks.read).toHaveBeenCalledTimes(2);
+    const current = deferred<Opportunity>(); mocks.read.mockReturnValueOnce(current.promise);
+    online(true); event('focus'); event('online'); await drain(); expect(result.current.status).toBe('checking'); expect(mocks.read).toHaveBeenCalledTimes(3);
+    const changed = fresh({ description_clean: 'Fresh verified source after reconnect' }); current.resolve(changed); await drain();
+    expect(result.current.status).toBe('ready'); expect(result.current.target).toEqual(changed);
+    old.resolve(fresh({ description_clean: 'Old discarded source' })); await drain(); expect(result.current.target).toEqual(changed);
+  });
+
+  it('does not restore action authority merely because connectivity returned when the fresh target is closed', async () => {
+    const { result } = renderHook(() => useWritingTarget(true, TARGET.id)); await drain(); const previous = result.current.target; online(false);
+    mocks.read.mockResolvedValueOnce(fresh({ target_truth: { ...TARGET.target_truth!, actionable: false, listing_state: 'closed', accepting_state: 'not_accepting', reason_code: 'listing_closed' } }));
+    online(true); expect(result.current.status).toBe('checking'); await drain();
+    expect(result.current.status).toBe('blocked'); expect(result.current.target).toBe(previous); expect(result.current.reason).toBe('listing_closed');
+  });
+
+  it('keeps a reconnect in a hidden tab unverified until the foreground read completes', async () => {
+    const { result } = renderHook(() => useWritingTarget(true, TARGET.id)); await drain(); online(false); visibility('hidden');
+    online(true); expect(result.current.status).toBe('checking'); await drain(); expect(mocks.read).toHaveBeenCalledOnce();
+    const held = deferred<Opportunity>(); mocks.read.mockReturnValueOnce(held.promise); visibility('visible'); await drain();
+    expect(result.current.status).toBe('checking'); expect(mocks.read).toHaveBeenCalledTimes(2);
+    held.resolve(fresh()); await drain(); expect(result.current.status).toBe('ready');
+  });
+
+  it.each(['target', 'owner'] as const)('does not lend retained target data across an offline %s change', async change => {
+    const { result, rerender } = renderHook(({ id }) => useWritingTarget(true, id), { initialProps: { id: TARGET.id } }); await drain();
+    online(false); if (change === 'target') rerender({ id: 'new-offline-target' }); else await changeOwner('new-offline-owner');
+    expect(result.current.status).toBe('offline'); expect(result.current.target).toBeNull(); expect(mocks.read).toHaveBeenCalledOnce();
+    online(true); await drain(); expect(result.current.status).toBe('ready');
+    expect(result.current.target?.id).toBe(change === 'target' ? 'new-offline-target' : TARGET.id); expect(mocks.read).toHaveBeenCalledTimes(2);
+  });
 });

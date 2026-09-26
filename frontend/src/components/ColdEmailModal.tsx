@@ -1,5 +1,6 @@
 'use client';
 
+import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
 import { canFallbackColdEmailStream } from '@/lib/cold-email-stream';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import { isEmailPaperReadingCurrent } from '@/lib/email-paper-reading';
@@ -67,6 +68,20 @@ type PendingCompose = {
   id: number; popup: Window; owner: ReturnType<typeof captureOwnerToken>;
   key: string; provider: ComposeProvider; phase: 'sources' | 'recipient';
   controller: AbortController; deadline: ReturnType<typeof setTimeout>;
+};
+
+type EmailEditBase = {
+  body: string; subject: string; recipient: string; revision: number; session: number;
+  material: string; owner: ReturnType<typeof captureOwnerToken>;
+};
+type EmailEditRequest = { base: EmailEditBase; selection: EmailTextSelection | null };
+type EmailEditProposal = EmailEditRequest & {
+  id: number; afterBody: string; usage: ExperienceUsage | null; instruction?: string;
+};
+type EmailEditUndo = {
+  base: EmailEditBase; beforeBody: string; usage: ExperienceUsage | null;
+  sources: { profile: string; target: string | null; contact: string } | null;
+  origin: string | null; restored: ColdEmailDraftSources | null;
 };
 
 const AI_VARIANT_ID = 'ai';
@@ -535,6 +550,19 @@ export default function ColdEmailModal({
 
   const allVariants: EmailVariant[] = aiVariant ? [...variants, aiVariant] : variants;
 
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const [invalidSelection, setInvalidSelection] = useState(false);
+  const [selection, setSelection] = useState<{ body: string; range: EmailTextSelection } | null>(null);
+  const [editProposal, setEditProposal] = useState<EmailEditProposal | null>(null);
+  const proposalRef = useRef<EmailEditProposal | null>(null);
+  const [editUndo, setEditUndo] = useState<EmailEditUndo | null>(null);
+  const undoRef = useRef<EmailEditUndo | null>(null);
+  const clearEmailRevisions = useCallback(() => {
+    proposalRef.current = null; undoRef.current = null;
+    setEditProposal(null); setEditUndo(null); setSelection(null); setInvalidSelection(false);
+  }, []);
+  const discardProposal = () => { proposalRef.current = null; setEditProposal(null); };
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [userEditRevision, setUserEditRevision] = useState(0);
@@ -560,7 +588,7 @@ export default function ColdEmailModal({
     if (composeRef.current && composeRef.current.key !== composeKey) cancelCompose();
   }, [composeKey, cancelCompose]);
   useEffect(() => () => cancelCompose(), [cancelCompose]);
-  const noteUserEdit = () => { cancelCompose(); setUserEditRevision((value) => value + 1); };
+  const noteUserEdit = () => { discardProposal(); cancelCompose(); setUserEditRevision((value) => value + 1); };
   const [refining, setRefining] = useState(false);
   const [retired, setRetired] = useState(false);
   const [profileChanged, setProfileChanged] = useState(false);
@@ -616,6 +644,32 @@ export default function ColdEmailModal({
   const refineRequestRef = useRef(0);
   const refineInFlightRef = useRef<number | null>(null);
 
+  const editLiveRef = useRef({ body, subject, recipient, material: materialFingerprint });
+  useLayoutEffect(() => { editLiveRef.current = { body, subject, recipient, material: materialFingerprint }; });
+  const captureEditBase = (): EmailEditBase => ({ body, subject, recipient, material: materialFingerprint,
+    revision: draftRevisionRef.current, session: sendSessionRef.current, owner: captureOwnerToken() });
+  const editBaseCurrent = (base: EmailEditBase) => {
+    const live = editLiveRef.current;
+    return isOpen && !retired && isOwnerTokenValid(base.owner, base.owner.uid)
+      && base.session === sendSessionRef.current && base.revision === draftRevisionRef.current
+      && base.material === live.material && base.body === live.body && base.subject === live.subject && base.recipient === live.recipient;
+  };
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps --
+     Retire edit capabilities on every committed render, including owner-storage
+     notifications and ref-only lifecycle counters. Each guard clears its ref
+     before setting state, so retirement schedules at most one extra render. */
+  useLayoutEffect(() => {
+    // Comparing revisions also rejects editing away and back to the same text.
+    if (proposalRef.current && (!editBaseCurrent(proposalRef.current.base) || contextDirty || targetVersionError)) {
+      proposalRef.current = null; setEditProposal(null);
+    }
+    if (undoRef.current && (!editBaseCurrent(undoRef.current.base) || contextDirty)) {
+      undoRef.current = null; setEditUndo(null);
+    }
+    if (selection && selection.body !== body) setSelection(null);
+  });
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+
   const captureDraftSession = useCallback(() => {
     const session = sendSessionRef.current;
     const materials = profileSessionRef.current;
@@ -631,6 +685,7 @@ export default function ColdEmailModal({
   }, [onClose, cancelCompose]);
   const pauseWritingForNavigation = useCallback(() => {
     // Retire providers at the click, before storage can wait for another tab.
+    clearEmailRevisions();
     supplementScopeRef.current = null;
     setSupplementSession(null);
     composeActionCancelRef.current();
@@ -642,7 +697,7 @@ export default function ColdEmailModal({
     setAiLoading(false); setAiStage(null); setRefining(false); setProfileRegenerating(false);
     if (refine !== null) setChatMessages(messages => messages.map(message =>
       message.requestId === refine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
-  }, [cancelCompose, t]);
+  }, [cancelCompose, t, clearEmailRevisions]);
   const closeDraft = useCallback(() => {
     pauseWritingForNavigation();
     persistCurrentRef.current();
@@ -816,8 +871,9 @@ export default function ColdEmailModal({
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
-    | { kind: 'refine'; instruction: string; typed?: boolean; label?: string }
-    | { kind: 'coursework' }
+    | { kind: 'refine'; instruction: string; typed?: boolean; label?: string; edit: EmailEditRequest }
+    | { kind: 'accept-edit'; id: number }
+    | { kind: 'coursework'; edit: EmailEditRequest }
     | { kind: 'compose'; id: number };
   const action = useProfileAction<WritingIntent>({
     isOpen: isOpen && !retired, profile: requestProfile, profileAvailable,
@@ -835,24 +891,28 @@ export default function ColdEmailModal({
       // A source change keeps the existing manual draft. Its user must choose
       // to rebuild it before new generation or refinement can use that draft.
       if (profileChangedRef.current || profileChanged || profileRegenerating) return;
+      if (intent.kind === 'accept-edit') { acceptEdit(intent.id); return; }
       if (intent.kind === 'ai') {
         if (intent.selectExisting && aiVariant) selectVariant(variants.length);
         else void generateAi(intent.style);
         return;
       }
       if (intent.kind === 'coursework') {
-        const { body: next, reply } = applyQuickEdit(body, 'coursework', requestProfile, t);
-        draftRevisionRef.current += 1;
-        setBody(next);
-        draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
-        setOriginKey(JSON.stringify(draftSourcesRef.current));
-        setRestoredSources(null);
-        setChatMessages((messages) => [...messages, { role: 'user', content: t('coldEmail.quickActions.coursework') }, { role: 'assistant', content: reply }]);
+        if (!editBaseCurrent(intent.edit.base) || intent.edit.selection) return;
+        const { body: next, reply } = applyQuickEdit(intent.edit.base.body, 'coursework', requestProfile, t);
+        if (next !== intent.edit.base.body) {
+          const proposed: EmailEditProposal = { ...intent.edit, id: ++refineRequestRef.current,
+            afterBody: next, usage: experienceUsage };
+          proposalRef.current = proposed; setEditProposal(proposed);
+        }
+        setChatMessages((messages) => [...messages, { role: 'user', content: t('coldEmail.quickActions.coursework') },
+          { role: 'assistant', content: next === intent.edit.base.body ? reply
+            : locale === 'zh' ? '已准备课程补充建议，请比较后接受或拒绝。' : 'Coursework suggestion ready. Compare it, then accept or reject.' }]);
         return;
       }
-      if (intent.typed) setChatInput('');
+      if (!editBaseCurrent(intent.edit.base)) return;
       setChatMessages((messages) => [...messages, { role: 'user', content: intent.label ?? intent.instruction }]);
-      void runRefine(intent.instruction);
+      void runRefine(intent.instruction, intent.edit, intent.typed);
     },
   });
   useLayoutEffect(() => { composeActionCancelRef.current = action.cancel; }, [action.cancel]);
@@ -922,6 +982,7 @@ export default function ColdEmailModal({
       } else { void fetchVariantsRef.current(); }
     }
     return () => {
+      clearEmailRevisions();
       // Persist the last rendered editing snapshot before teardown resets it.
       persistCurrentRef.current();
       persistenceSessionRef.current += 1;
@@ -1252,6 +1313,7 @@ export default function ColdEmailModal({
     if (!sourceReadyRef.current || contextDirtyRef.current || targetVersionError || profileChanged || profileRegenerating || !v) return;
     draftRevisionRef.current += 1;
     noteUserEdit();
+    clearEmailRevisions();
     setActiveVariant(idx);
     setSubject(v.subject);
     setBody(v.body);
@@ -1309,6 +1371,7 @@ export default function ColdEmailModal({
       }
       if (resp.lab_type && resp.lab_type !== labType) setLabType(resp.lab_type);
       if (select) {
+        clearEmailRevisions();
         setActiveVariant(aiIdx);
         setSubject(v.subject);
         setBody(v.body);
@@ -1408,7 +1471,7 @@ export default function ColdEmailModal({
         setAiStage(null);
       }
     }
-  }, [contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
+  }, [contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange, clearEmailRevisions]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -1429,78 +1492,140 @@ export default function ColdEmailModal({
     action.request({ kind: 'ai', style });
   }
 
-  // Shared grounded-refine runner for typed chat instructions AND the tone
-  // quick-actions. Appends the "editing…" assistant message, calls the backend
-  // (which grounds the result and degrades to its deterministic EDIT_OPS when
-  // no LLM is configured), then replaces the placeholder with the outcome.
-  async function runRefine(instruction: string) {
-    if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+  // A suggestion is inert until an explicit accept passes fresh source checks.
+  async function runRefine(instruction: string, edit: EmailEditRequest, typed = false) {
+    if (!editBaseCurrent(edit.base) || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
+    discardProposal();
+    // Retire automatic generation without pretending the user edited the body.
+    // Starting or failing another request must leave the last accepted undo intact.
+    aiRequestRef.current += 1; aiInFlightRef.current = false;
+    setAiLoading(false); setAiStage(null);
     const sessionCurrent = captureDraftSession();
     const requestId = ++refineRequestRef.current;
     refineInFlightRef.current = requestId;
-    const current = () => sessionCurrent() && refineInFlightRef.current === requestId;
-    const revision = ++draftRevisionRef.current;
+    const current = () => sessionCurrent() && isOwnerTokenValid(edit.base.owner, edit.base.owner.uid) && refineInFlightRef.current === requestId;
     setRefining(true);
     const reply = (content: string) => setChatMessages((prev) => prev.map((msg) =>
       msg.requestId === requestId ? { ...msg, content } : msg));
     setChatMessages((prev) => [...prev, { requestId, role: 'assistant', content: t('coldEmail.editing') }]);
     try {
-      const result = await refineEmail(body, instruction, requestProfile, opportunityId, { expectedTargetVersion, contactContext: requestContactContext });
+      const result = await refineEmail(edit.base.body, instruction, requestProfile, opportunityId, {
+        expectedTargetVersion, contactContext: requestContactContext,
+        ...(edit.selection ? { selection: edit.selection, subject: edit.base.subject } : {}),
+      });
       if (!current()) return;
-      if (draftRevisionRef.current !== revision) {
-        reply(t('coldEmail.editSuperseded'));
-        return;
-      }
+      if (!editBaseCurrent(edit.base)) { reply(t('coldEmail.editSuperseded')); return; }
       requireTargetReceipt(result, opportunityId, expectedTargetVersion);
       await requireContactReceipt(result, requestContactContext);
       if (!current()) return;
-      if (draftRevisionRef.current !== revision) { reply(t('coldEmail.editSuperseded')); return; }
-      setBody(result.body);
-      draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
-      setOriginKey(JSON.stringify(draftSourcesRef.current));
-      setRestoredSources(null);
-      setExperienceUsage(result.experience_usage ?? null);
-      reply(
-            result.method === 'llm'
-              ? t('coldEmail.doneLlm')
-              : result.fallback_reason === 'insufficient_evidence'
-                ? aiFallbackMessage('insufficient_evidence', t)
-                : result.fallback_reason === 'fabrication'
-                  ? t('coldEmail.refineFabrication')
-                  : t('coldEmail.doneFallback'),
-      );
+      if (!editBaseCurrent(edit.base)) { reply(t('coldEmail.editSuperseded')); return; }
+      let afterBody = result.body;
+      if (edit.selection) {
+        if (result.scope !== 'selection') throw new Error('Invalid selection response');
+        if (result.outcome === 'no_change') {
+          const reasons = locale === 'zh' ? {
+            provider_unavailable: '修改服务暂不可用。原稿和要求已保留，请稍后重试。',
+            insufficient_evidence: '机会资料不足，暂时无法给出可靠的修改建议。原稿已保留。',
+            review_required: '请先检查原稿中的称呼和邮箱地址。原稿和要求已保留。',
+            invalid_output: '返回的建议不符合选段要求，未采用。原稿和要求已保留。',
+            fabrication: '建议含有无法核实的内容，未采用。原稿和要求已保留。',
+            unchanged: '所选内容没有变化。修改要求已保留。',
+          } : {
+            provider_unavailable: 'The editing service is unavailable. Your draft and request are kept. Try again later.',
+            insufficient_evidence: 'The opportunity has too little source evidence for a reliable edit. Your draft is kept.',
+            review_required: 'Review the greeting and email addresses in the body first. Your draft and request are kept.',
+            invalid_output: 'The suggestion did not meet the selection requirements. Your draft and request are kept.',
+            fabrication: 'The suggestion contained unsupported claims and was rejected. Your draft and request are kept.',
+            unchanged: 'The selected text is unchanged. Your request is kept.',
+          };
+          reply(result.reason && reasons[result.reason] || (locale === 'zh' ? '未生成可用建议。原稿和要求已保留。' : 'No usable suggestion. Your draft and request are kept.'));
+          return;
+        }
+        const proposed = result.proposal;
+        if (result.outcome !== 'proposal' || !proposed || proposed.start_utf16 !== edit.selection.start_utf16
+          || proposed.end_utf16 !== edit.selection.end_utf16 || proposed.original_text !== edit.selection.text
+          || typeof proposed.replacement !== 'string' || proposed.base_body_sha256 !== await emailDraftDigest(edit.base.body)) throw new Error('Invalid selection receipt');
+        const applied = applyEmailReplacement(edit.base.body, edit.selection, proposed.replacement);
+        if (applied === null) throw new Error('Invalid selection');
+        afterBody = applied;
+      }
+      if (!current()) return;
+      if (!editBaseCurrent(edit.base)) { reply(t('coldEmail.editSuperseded')); return; }
+      if (typeof afterBody !== 'string') throw new Error('Invalid refinement');
+      if (afterBody === edit.base.body) {
+        reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabrication')
+          : result.fallback_reason === 'insufficient_evidence' ? aiFallbackMessage('insufficient_evidence', t)
+          : locale === 'zh' ? '正文没有变化。修改要求已保留。' : 'The body is unchanged. Your request is kept.');
+        return;
+      }
+      const proposed: EmailEditProposal = { ...edit, id: requestId, afterBody,
+        usage: result.experience_usage ?? null, ...(typed ? { instruction } : {}) };
+      proposalRef.current = proposed; setEditProposal(proposed);
+      reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabrication')
+        : result.fallback_reason === 'insufficient_evidence' ? aiFallbackMessage('insufficient_evidence', t)
+        : locale === 'zh' ? (result.method === 'llm' ? '建议已准备好，请比较后接受或拒绝。' : '已生成基础修改建议，请比较后接受或拒绝。')
+          : result.method === 'llm' ? 'Suggestion ready. Compare it, then accept or reject.' : 'Basic edit suggestion ready. Compare it, then accept or reject.');
     } catch (error) {
       if (current()) {
         const failure = targetVersionFailure(error);
-        if (readingChanged(error)) {
-          reportReadingChange();
-          reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.');
-        }
+        if (readingChanged(error)) { reportReadingChange(); reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.'); }
         else if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
         else reply(t('coldEmail.editFailed'));
       }
     } finally {
-      if (current()) {
-        refineInFlightRef.current = null;
-        setRefining(false);
-      }
+      if (current()) { refineInFlightRef.current = null; setRefining(false); }
     }
   }
 
-  function handleQuickAction(key: QuickActionKey) {
-    if (!sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
-    if (key === 'coursework') { action.request({ kind: 'coursework' }); return; }
-    action.request({ kind: 'refine', instruction: QUICK_ACTION_INSTRUCTIONS[key], label: t(`coldEmail.quickActions.${key}`) });
+  function acceptEdit(id: number) {
+    const proposal = proposalRef.current;
+    if (!proposal || proposal.id !== id || !editBaseCurrent(proposal.base) || !sourceReadyRef.current
+      || contextDirtyRef.current || profileChangedRef.current || targetVersionError) return;
+    // Consume before setting state; a repeated click cannot apply it twice.
+    proposalRef.current = null; setEditProposal(null); setSelection(null);
+    cancelCompose();
+    const revision = ++draftRevisionRef.current;
+    const undo: EmailEditUndo = { base: { ...proposal.base, body: proposal.afterBody, revision },
+      beforeBody: proposal.base.body, usage: experienceUsage, sources: draftSourcesRef.current,
+      origin: originKey, restored: restoredSources };
+    undoRef.current = undo; setEditUndo(undo);
+    editorUsedRef.current = true;
+    setBody(proposal.afterBody); setActiveVariant(-1);
+    draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
+    setOriginKey(JSON.stringify(draftSourcesRef.current)); setRestoredSources(null);
+    setExperienceUsage(proposal.usage);
+    if (proposal.instruction && chatInput.trim() === proposal.instruction) setChatInput('');
+    setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已应用建议，可撤销本次修改。' : 'Suggestion applied. You can undo this edit.' }]);
   }
 
+  function undoEdit() {
+    const undo = undoRef.current;
+    if (!undo || !editBaseCurrent(undo.base) || contextDirtyRef.current) return;
+    clearEmailRevisions(); cancelCompose(); action.cancel();
+    draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
+    setBody(undo.beforeBody); setExperienceUsage(undo.usage);
+    draftSourcesRef.current = undo.sources; setOriginKey(undo.origin); setRestoredSources(undo.restored);
+    setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已撤销刚才接受的修改。' : 'Undid the last accepted edit.' }]);
+  }
+
+  function currentEdit(): EmailEditRequest {
+    return { base: captureEditBase(), selection: selection?.body === body ? selection.range : null };
+  }
+  function handleQuickAction(key: QuickActionKey) {
+    if (invalidSelection || !sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (key === 'coursework') {
+      if (selection?.body === body) return;
+      action.request({ kind: 'coursework', edit: currentEdit() }); return;
+    }
+    action.request({ kind: 'refine', instruction: QUICK_ACTION_INSTRUCTIONS[key], label: t(`coldEmail.quickActions.${key}`), edit: currentEdit() });
+  }
   function handleChatSubmit() {
     const msg = chatInput.trim();
-    if (!sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
-    // Do not erase the user's request until a successful check actually starts
-    // refinement. A failed or superseded read leaves the input untouched.
-    action.request({ kind: 'refine', instruction: msg, typed: true });
+    if (invalidSelection || !sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    // Keep the request through provider failure, rejection and close/reopen.
+    action.request({ kind: 'refine', instruction: msg, typed: true, edit: currentEdit() });
   }
 
   // Reveal the strip without recording anything — a draft opened/copied is
@@ -2152,8 +2277,21 @@ export default function ColdEmailModal({
                         </span>
                       )}
                     </div>
+                    {editUndo && <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <button type="button" onClick={undoEdit} className="rounded-lg border border-gray-300 px-3 py-1.5 font-medium text-gray-800 hover:bg-gray-50">
+                        {locale === 'zh' ? '撤销上次接受的修改' : 'Undo last accepted edit'}
+                      </button>
+                      <span>{locale === 'zh' ? '仅在本次编辑中保留；手改后不再撤销。' : 'Available in this editing session, until a manual edit.'}</span>
+                    </div>}
                     <textarea
                       id="cold-email-body"
+                      ref={bodyInputRef}
+                      onSelect={(event) => {
+                        const field = event.currentTarget;
+                        const range = captureTextareaSelection(body, field.value, field.selectionStart, field.selectionEnd);
+                        setInvalidSelection(field.selectionStart !== field.selectionEnd && !range);
+                        setSelection(range ? { body, range } : null);
+                      }}
                       value={body}
                       onChange={(e) => { editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setBody(e.target.value); }}
                       rows={12}
@@ -2218,8 +2356,28 @@ export default function ColdEmailModal({
                       </div>
                     </div>
                   ))}
+                  {editProposal && <section aria-label={locale === 'zh' ? '待确认的修改建议' : 'Pending edit suggestion'} className="rounded-xl border border-indigo-200 bg-white p-3 space-y-3 text-sm">
+                    <p className="font-semibold text-gray-900">{editProposal.selection ? (locale === 'zh' ? '修改所选内容' : 'Edit selected text') : (locale === 'zh' ? '修改整封正文' : 'Edit the full body')}</p>
+                    <div><p className="font-semibold text-gray-600">{locale === 'zh' ? '原文' : 'Original'}</p>
+                      <p className="whitespace-pre-wrap break-words border-l-2 border-gray-300 pl-2">{editProposal.selection?.text ?? editProposal.base.body}</p></div>
+                    <div><p className="font-semibold text-indigo-700">{locale === 'zh' ? '建议' : 'Suggestion'}</p>
+                      <p className="whitespace-pre-wrap break-words border-l-2 border-indigo-400 pl-2">{editProposal.selection
+                        ? editProposal.afterBody.slice(editProposal.selection.start_utf16, editProposal.afterBody.length - (editProposal.base.body.length - editProposal.selection.end_utf16)) || (locale === 'zh' ? '（删除所选内容）' : '(Delete selected text)')
+                        : editProposal.afterBody}</p></div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" disabled={!sourceReady || action.busy || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
+                        className="rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-40">{locale === 'zh' ? '接受建议' : 'Accept suggestion'}</button>
+                      <button type="button" onClick={() => { action.cancel(); discardProposal(); }} className="rounded-lg border border-gray-300 px-3 py-2 text-gray-800">{locale === 'zh' ? '拒绝建议' : 'Reject suggestion'}</button>
+                    </div>
+                  </section>}
                 </div>
 
+                <div className="px-4 py-2 text-xs text-gray-600" role="status">
+                  {invalidSelection ? (locale === 'zh' ? '这段选区无法准确定位，请重新选择。' : 'This selection cannot be located precisely. Select the passage again.') : selection?.body === body ? <>
+                    <span>{locale === 'zh' ? '本次只修改选中的内容；加入课程需切回整封。' : 'This request edits only the selected text. Use full body to add coursework.'}</span>
+                    <button type="button" onClick={() => { setSelection(null); setInvalidSelection(false); }} className="ml-2 rounded underline underline-offset-2 text-indigo-700">{locale === 'zh' ? '改为整封' : 'Use full body'}</button>
+                  </> : (locale === 'zh' ? '修改整封正文；在正文中选中一段可只改该段。' : 'Edit the full body, or select a passage in the body to edit only that passage.')}
+                </div>
                 {/* Quick actions */}
                 <div className="px-4 pb-2 shrink-0">
                   <div className="flex flex-wrap gap-1.5">
@@ -2228,7 +2386,7 @@ export default function ColdEmailModal({
                         key={key}
                         type="button"
                         onClick={() => handleQuickAction(key)}
-                        disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
+                        disabled={invalidSelection || (key === 'coursework' && selection?.body === body) || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {t(`coldEmail.quickActions.${key}`)}
@@ -2254,7 +2412,7 @@ export default function ColdEmailModal({
                     <button
                       type="submit"
                       aria-label={t('coldEmail.submitRequest')}
-                      disabled={!sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
+                      disabled={invalidSelection || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />
