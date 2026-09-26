@@ -633,6 +633,10 @@ def test_multi_target_install_failure_rolls_back_every_destination(
     with pytest.raises(OSError, match="injected"):
         _apply(context, latest)
     assert all(path.read_bytes() == content for path, content in before.items())
+    # Untouched destinations still share their inode with the hardlink backup;
+    # rename(backup, destination) may be a no-op and must not leak that backup.
+    assert not list((latest / "data").rglob("*.backup"))
+    assert not list((latest / "data").rglob("*.tmp"))
 
 
 def test_keyboard_interrupt_rolls_back_every_destination(

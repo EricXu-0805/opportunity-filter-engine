@@ -53,11 +53,13 @@ from __future__ import annotations
 import collections
 import json
 import logging
+import math
 import os
 import re
 import sys
 import time
 import unicodedata
+from email.utils import parsedate_to_datetime
 from typing import NamedTuple
 
 import requests
@@ -1709,6 +1711,7 @@ def _load_dotenv() -> None:
 _RESEARCH_PAGE_SIZE = 100
 _RESEARCH_RECORD_LIMIT = 25
 _RESEARCH_ROUNDS = 4
+_RESEARCH_RESPONSE_BYTES = 8 * 1024 * 1024
 _RESEARCH_SELECT = ('id,display_name,publication_year,publication_date,doi,'
                     'abstract_inverted_index,updated_date,primary_topic,authorships')
 
@@ -1727,6 +1730,105 @@ def _research_get(params: dict, *, url: str) -> tuple[dict | None, str | None]:
         return (data, None) if type(data) is dict else (None, 'invalid_response')
     except (requests.RequestException, ValueError, TypeError):
         return None, 'request_failed'
+
+
+def _research_header_number(value) -> float | None:
+    """Keep only finite, nonnegative header numbers, never header text."""
+    if type(value) not in (str, int, float) or type(value) is str and len(value) > 100:
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) and 0 <= number <= 2**53 - 1 else None
+
+
+def _research_retry_after(value) -> float | None:
+    number = _research_header_number(value)
+    if number is not None:
+        return number
+    if type(value) is not str or len(value) > 100:
+        return None
+    try:
+        date = parsedate_to_datetime(value)
+        if date.tzinfo is None:
+            return None
+        return _research_header_number(max(0, date.timestamp() - time.time()))
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def research_http_read(params: dict, *, url: str, timeout=20, session=None) -> tuple[dict | None, str | None, dict]:
+    """One bounded OpenAlex GET for the durable runner, with safe numeric receipts.
+
+    This new transport does not alter legacy ``_research_get`` callers. A real
+    injected Session must also have retries disabled; mock sessions can expose
+    only ``get``. Redirects are always disabled, including same-host redirects.
+    Responses are capped at eight MiB after decoding. Deadline checks stop
+    further reads; they cannot interrupt a currently blocked socket read.
+    Invalid local configuration raises before any request; remote failure is a
+    sanitized reason, and absent accounting headers remain explicitly unknown.
+    """
+    if type(url) is not str or re.fullmatch(r'https://api\.openalex\.org/(?:works|authors/A[1-9][0-9]*)', url) is None:
+        raise ValueError('invalid_research_url')
+    if type(timeout) not in (int, float) or not 0 < timeout <= 20 or not math.isfinite(timeout):
+        raise ValueError('invalid_research_timeout')
+    if type(params) is not dict or any(type(key) is not str or key.lower() == 'api_key' for key in params):
+        raise ValueError('invalid_research_params')
+    if isinstance(session, requests.Session):
+        retries = session.get_adapter(url).max_retries
+        if retries.total not in (0, False):
+            raise ValueError('research_transport_retries')
+    headers = dict(_HEADERS)
+    api_key = os.environ.get('OPENALEX_API_KEY')
+    if api_key:
+        headers['Authorization'] = 'Bearer ' + api_key
+    telemetry = dict.fromkeys(('http_status', 'retry_after_seconds', 'credits_used', 'remaining', 'reset_seconds'))
+    get = requests.get if session is None else session.get
+    response = None
+    deadline = time.monotonic() + timeout
+    try:
+        response = get(url, params=dict(params), headers=headers, timeout=timeout, allow_redirects=False, stream=True)
+        status = response.status_code
+        if type(status) is not int or not 100 <= status <= 599:
+            return None, 'invalid_response', telemetry
+        telemetry['http_status'] = status
+        response_headers = requests.structures.CaseInsensitiveDict(response.headers)
+        telemetry.update(
+            retry_after_seconds=_research_retry_after(response_headers.get('Retry-After')),
+            credits_used=_research_header_number(response_headers.get('X-RateLimit-Credits-Used')),
+            remaining=_research_header_number(response_headers.get('X-RateLimit-Remaining')),
+            reset_seconds=_research_header_number(response_headers.get('X-RateLimit-Reset')),
+        )
+        if status != 200:
+            error = 'rate_limited' if status == 429 else 'server_error' if status >= 500 else 'client_error'
+            return None, error, telemetry
+        # Count decoded bytes, including compressed responses. Do not trust an
+        # absent or incorrect Content-Length, and never read an error body.
+        body = bytearray()
+        chunks = iter(response.iter_content(chunk_size=8192))
+        while True:
+            if time.monotonic() >= deadline:
+                return None, 'request_failed', telemetry
+            try:
+                chunk = next(chunks)
+            except StopIteration:
+                break
+            if time.monotonic() >= deadline:
+                return None, 'request_failed', telemetry
+            if type(chunk) is not bytes or len(body) + len(chunk) > _RESEARCH_RESPONSE_BYTES:
+                return None, 'invalid_response', telemetry
+            body.extend(chunk)
+        try:
+            data = json.loads(body)
+        except (ValueError, TypeError, RecursionError):
+            return None, 'invalid_response', telemetry
+        return (data, None, telemetry) if type(data) is dict else (None, 'invalid_response', telemetry)
+    except requests.RequestException:
+        return None, 'request_failed', telemetry
+    finally:
+        if response is not None:
+            response.close()
 
 
 def reconstruct_research_abstract(value) -> tuple[str | None, str]:
@@ -1841,7 +1943,7 @@ def _research_work(raw: dict, author_id: str, fields: set[str]) -> dict | None:
             'abstract': abstract, 'abstract_status': status, 'updated_date': raw.get('updated_date')}
 
 
-def research_works_for_authors(author_fields: dict[str, set[str]], *, rounds: int = _RESEARCH_ROUNDS) -> dict:
+def research_works_for_authors(author_fields: dict[str, set[str]], *, rounds: int = _RESEARCH_ROUNDS, request=None) -> dict:
     """Each author gets success only after three usable works or proven exhaustion.
 
     A full page with no progress, malformed response, absent/truncated authorships
@@ -1852,12 +1954,15 @@ def research_works_for_authors(author_fields: dict[str, set[str]], *, rounds: in
         raise ValueError('research_refresh_limit')
     if any(normalized_openalex_id(a, 'A') != a or not fields for a, fields in author_fields.items()):
         raise ValueError('invalid_research_author')
+    read = _research_get if request is None else request
+    if not callable(read):
+        raise ValueError('invalid_research_request')
     pending = set(author_fields)
     results = {a: {'status': 'incomplete', 'reason': 'round_limit', 'works': []} for a in pending}
     for _ in range(rounds):
         if not pending:
             break
-        payload, error = _research_get({
+        payload, error = read({
             'filter': 'author.id:' + '|'.join(sorted(a.rsplit('/', 1)[-1] for a in pending)),
             'sort': 'publication_date:desc', 'per_page': _RESEARCH_PAGE_SIZE,
             'select': _RESEARCH_SELECT,
@@ -1925,12 +2030,8 @@ def _validate_research_corpus(opps: list[dict]) -> None:
             seen_ids.add(rid)
 
 
-def _research_targets(opps: list[dict], *, limit: int, schools: list[str] | None = None) -> list[dict]:
-    """Select a bounded faculty subset from the normal mixed opportunity corpus."""
-    if type(limit) is not int or not 1 <= limit <= _RESEARCH_RECORD_LIMIT:
-        raise ValueError('research_refresh_limit')
+def _iter_research_targets(opps: list[dict], *, schools: list[str] | None = None):
     _validate_research_corpus(opps)
-    selected = []
     for record in opps:
         school = record.get('school')
         # Normal national programs have nullable school/pi_name. They are not
@@ -1949,17 +2050,54 @@ def _research_targets(opps: list[dict], *, limit: int, schools: list[str] | None
             raise ValueError('invalid_research_target') from None
         if '\x00' in name:
             raise ValueError('invalid_research_target')
+        yield record
+
+
+def research_targets(opps: list[dict], *, schools: list[str] | None = None) -> list[dict]:
+    """All eligible faculty for due-time planning, without a first-page cap."""
+    return list(_iter_research_targets(opps, schools=schools))
+
+
+def _research_targets(opps: list[dict], *, limit: int, schools: list[str] | None = None) -> list[dict]:
+    """Keep the legacy bounded selector, including its validation boundary."""
+    if type(limit) is not int or not 1 <= limit <= _RESEARCH_RECORD_LIMIT:
+        raise ValueError('research_refresh_limit')
+    selected = []
+    for record in _iter_research_targets(opps, schools=schools):
         selected.append(record)
         if len(selected) == limit:
             break
     return selected
 
 
-def harvest_research_snapshots(opps: list[dict], *, limit: int = 10, schools: list[str] | None = None, now=None) -> dict:
+def harvest_research_snapshots(opps: list[dict], *, limit: int = 10, schools: list[str] | None = None,
+                               now=None, selected_ids: list[str] | None = None, request=None) -> dict:
     """Explicit small refresh, independent from old permanent misses/run-once gate."""
     from datetime import UTC, datetime
 
-    targets = _research_targets(opps, limit=limit, schools=schools)
+    if selected_ids is None:
+        targets = _research_targets(opps, limit=limit, schools=schools)
+    else:
+        if (type(selected_ids) is not list or len(selected_ids) > _RESEARCH_RECORD_LIMIT
+                or any(type(rid) is not str or not rid.strip() for rid in selected_ids)
+                or len(set(selected_ids)) != len(selected_ids)):
+            raise ValueError('invalid_research_selected_ids')
+        _validate_research_corpus(opps)
+        records_by_id = {record.get('id'): record for record in opps}
+        if any(rid not in records_by_id for rid in selected_ids):
+            raise ValueError('unavailable_research_selected_id')
+        # Validate only the explicitly authorized target identities. Unselected
+        # legacy source errors belong to the queue's visible review outcomes;
+        # full-corpus duplicate IDs and author collisions still fail closed.
+        selected_records = [records_by_id[rid] for rid in selected_ids]
+        targets = research_targets(selected_records, schools=schools)
+        if len(targets) != len(selected_ids):
+            raise ValueError('unavailable_research_selected_id')
+        # Explicit queue order is authoritative. Never silently fall back to the
+        # corpus prefix or truncate it with the legacy default limit of ten.
+    read = _research_get if request is None else request
+    if not callable(read):
+        raise ValueError('invalid_research_request')
     current = datetime.now(UTC) if now is None else now
     if not isinstance(current, datetime) or current.tzinfo is None:
         raise ValueError('invalid_research_time')
@@ -1983,17 +2121,17 @@ def harvest_research_snapshots(opps: list[dict], *, limit: int = 10, schools: li
             if aid in ambiguous or binding['author_id'] is None:
                 entry['research_refresh']['reason'] = 'identity_revoked'
             continue
-        author, error = _research_get({'select': 'id,display_name,affiliations,topics'}, url=_API + '/' + aid.rsplit('/', 1)[-1])
+        author, error = read({'select': 'id,display_name,affiliations,topics'}, url=_API + '/' + aid.rsplit('/', 1)[-1])
         if error:
             entry['research_refresh']['reason'] = error
             continue
-        matched = _research_author_matches(author, record, aid)
+        matched = _research_author_matches(author, record, aid) if type(author) is dict else None
         if matched is not True:
             entry['research_refresh']['reason'] = 'identity_revoked' if matched is False else 'invalid_response'
             continue
         author_fields[aid] = _author_own_fields(author)
         entry['_eligible'] = True
-    fetched = research_works_for_authors(author_fields) if author_fields else {}
+    fetched = research_works_for_authors(author_fields, request=read) if author_fields else {}
     for record in targets:
         entry = output[_person_key(record)]
         binding = entry['binding']
@@ -2056,7 +2194,7 @@ def apply_research_refresh(opps: list[dict], mapping: dict, *, now=None) -> int:
                     continue
         except (ValueError, KeyError, TypeError, AttributeError):
             continue
-        reasons = {'rate_limited', 'http_error', 'invalid_response', 'request_failed', 'identity_unavailable',
+        reasons = {'rate_limited', 'http_error', 'server_error', 'client_error', 'invalid_response', 'request_failed', 'identity_unavailable',
                    'identity_revoked', 'incomplete_page', 'round_limit', 'invalid_work'}
         if type(refresh['status']) is not str or (refresh['reason'] is not None and type(refresh['reason']) is not str):
             continue

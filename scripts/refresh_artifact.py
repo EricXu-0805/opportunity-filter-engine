@@ -874,6 +874,9 @@ def _install_with_rollback(
                 try:
                     if isinstance(backup, Path):
                         os.replace(backup, destination)
+                        # POSIX rename may leave both paths intact when an
+                        # untouched destination and its hardlink share an inode.
+                        backup.unlink(missing_ok=True)
                         operation["backup"] = None
                     else:
                         destination.unlink(missing_ok=True)
