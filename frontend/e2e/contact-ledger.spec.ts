@@ -53,6 +53,13 @@ async function network(page: Page, owner: Owner, options: { firstWriteUnknown?: 
       contact_context_receipt: receipt, variants: [{ ...DRAFT, contact_context_receipt: receipt }], recipient_status: 'revealed', lab_type: null,
       pipeline_version: 'w12.8', corpus_version: 'contact-ledger-browser' } });
   });
+  // This older Tracker attachment panel is adjacent to email history. Keep its
+  // empty fixture explicit; an unimplemented Storage endpoint must not look empty.
+  await page.route('**/storage/v1/object/list/tracker-attachments', route => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().postDataJSON().prefix).toBe(`${owner.session.user.id}/${TARGET}`);
+    return route.fulfill({ json: [] });
+  });
   await page.route('**/rest/v1/interaction_status_changes?**', route => route.fulfill({ json: [] }));
   await page.route('**/rest/v1/interactions**', async route => {
     const method = route.request().method();

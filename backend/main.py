@@ -678,7 +678,7 @@ class RequestBodyLimitMiddleware:
             max_bytes = self.full_target_max_bytes
         elif path == "/api/resume/full-target/export":
             max_bytes = self.export_max_bytes
-        elif path == "/api/application-materials" and scope.get("method") == "POST":
+        elif path in ("/api/application-materials", "/api/contact-materials") and scope.get("method") == "POST":
             max_bytes = self.material_max_bytes
         else:
             max_bytes = self.max_bytes

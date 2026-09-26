@@ -45,10 +45,10 @@ def metadata(**changes):
             "bytes_sha256": hashlib.sha256(PDF).hexdigest(), "attested": True, **changes}
 
 
-def artifact(status="ready", **changes):
+def artifact(status="ready", *, kind="application", **changes):
     ready = status == "ready"
     deleted = status == "deleted"
-    return {"material_id": MATERIAL, "record_id": RECORD, "application_event_id": EVENT,
+    return {"material_id": MATERIAL, "record_id": RECORD, f"{kind}_event_id": EVENT,
             "opportunity_id": SCOPE["opportunity_id"], "owner_id": OWNER, "status": status,
             "filename": None if deleted else "简历.pdf", "mime_type": None if deleted else "application/pdf",
             "byte_length": None if deleted else len(PDF), "sha256": hashlib.sha256(PDF).hexdigest() if ready else None,
@@ -59,7 +59,8 @@ def artifact(status="ready", **changes):
 
 
 class Provider:
-    def __init__(self):
+    def __init__(self, kind="application"):
+        self.kind = kind
         self.calls = []
         self.row = None
         self.object = None
@@ -83,37 +84,42 @@ class Provider:
             name = path.rsplit("/", 1)[-1]
             if name in self.rpc_overrides:
                 return httpx.Response(200, json=self.rpc_overrides[name])
-            if name == "stage_application_material":
+            if name != f"finalize_{self.kind}_material":
+                assert body[f"p_{self.kind}_event_id"] == EVENT
+                assert body["p_expected_owner"] == OWNER
+                assert body["p_opportunity_id"] == SCOPE["opportunity_id"]
+                assert f"p_{'contact' if self.kind == 'application' else 'application'}_event_id" not in body
+            if name == f"stage_{self.kind}_material":
                 if self.row is None:
-                    self.row = artifact("staged")
+                    self.row = artifact("staged", kind=self.kind)
                 return httpx.Response(200, json={"artifact": self.row, "replayed": self.row["status"] != "staged",
                     "upload": {"bucket": "application-materials", "object_key": f"pdf/{MATERIAL}.pdf",
                                "stage_token": TOKEN, "session_id": SESSION, "authorized_until": "2026-09-25T13:00:00Z"}
                     if self.row["status"] == "staged" else None})
-            if name == "finalize_application_material":
+            if name == f"finalize_{self.kind}_material":
                 assert request.headers["authorization"] == "Bearer service-secret"
                 assert body["p_verified_owner"] == OWNER and body["p_verified_session_id"] == SESSION
                 assert body["p_stage_token"] == TOKEN
                 assert body["p_verified_sha256"] == hashlib.sha256(self.object).hexdigest()
-                self.row = artifact("deleted" if self.finalize_deleted else "ready")
+                self.row = artifact("deleted" if self.finalize_deleted else "ready", kind=self.kind)
                 if self.finalize_unknown:
                     self.finalize_unknown = False
                     raise httpx.ReadTimeout("PRIVATE-provider-message")
                 return httpx.Response(200, json={"artifact": self.row, "replayed": False})
             assert request.headers["authorization"] == "Bearer user-token"
-            if name == "get_application_material":
+            if name == f"get_{self.kind}_material":
                 assert body["p_record_id"] == RECORD
                 return httpx.Response(200, json={"artifact": self.row})
-            if name == "list_application_materials":
+            if name == f"list_{self.kind}_materials":
                 return httpx.Response(200, json={"items": [] if self.row is None else [self.row], "next_cursor": None})
-            if name == "authorize_application_material_download":
+            if name == f"authorize_{self.kind}_material_download":
                 self.authorizations += 1
                 if self.revoke_on_authorize and self.authorizations == 2:
                     return httpx.Response(403, json={"code": "42501", "message": "PRIVATE-revoked"})
                 return httpx.Response(200, json={"artifact": self.row, "bucket": "application-materials",
                                                 "object_key": f"pdf/{MATERIAL}.pdf"})
-            if name == "delete_application_material":
-                self.row = artifact("deleted")
+            if name == f"delete_{self.kind}_material":
+                self.row = artifact("deleted", kind=self.kind)
                 return httpx.Response(200, json={"artifact": self.row, "replayed": False})
             raise AssertionError(name)
         assert path == f"/storage/v1/object/application-materials/pdf/{MATERIAL}.pdf"
@@ -357,7 +363,8 @@ def test_material_body_limit_honors_lower_operator_limit(monkeypatch):
     assert _material_body_limit_from_env() == 1048576
 
 
-def test_chunked_upload_uses_material_limit_only_on_upload_path():
+@pytest.mark.parametrize("base", [BASE, "/api/contact-materials"])
+def test_chunked_upload_uses_material_limit_only_on_upload_path(base):
     async def run(path, limit, method="POST"):
         sent, done = [], []
         messages = iter([{"type": "http.request", "body": b"x" * 9, "more_body": False}])
@@ -378,10 +385,10 @@ def test_chunked_upload_uses_material_limit_only_on_upload_path():
             {"type": "http", "path": path, "method": method, "headers": []}, receive, send)
         return sent[0]["status"], bool(done)
 
-    assert asyncio.run(run(BASE, 10)) == (200, True)
-    assert asyncio.run(run(BASE, 8)) == (413, False)
+    assert asyncio.run(run(base, 10)) == (200, True)
+    assert asyncio.run(run(base, 8)) == (413, False)
     assert asyncio.run(run("/api/unrelated", 10)) == (413, False)
-    assert asyncio.run(run(BASE, 10, "DELETE")) == (413, False)
+    assert asyncio.run(run(base, 10, "DELETE")) == (413, False)
 
 
 def test_cors_delete_and_download_integrity_headers(endpoint):
@@ -409,8 +416,9 @@ def test_database_timezone_does_not_leak_into_utc_http_contract(endpoint):
     assert record["linked_at"] == "2026-09-25T12:00:00.123456+00:00"
 
 
+@pytest.mark.parametrize("base", [BASE, "/api/contact-materials"])
 @pytest.mark.parametrize("disconnect", [False, True])
-def test_stalled_or_disconnected_multipart_releases_file_capacity(endpoint, monkeypatch, disconnect):
+def test_stalled_or_disconnected_multipart_releases_file_capacity(endpoint, monkeypatch, disconnect, base):
     _, state = endpoint
     monkeypatch.setattr(route, "_REQUEST_TIMEOUT_SECONDS", 0.02)
     async def run():
@@ -427,7 +435,7 @@ def test_stalled_or_disconnected_multipart_releases_file_capacity(endpoint, monk
         async def send(message):
             sent.append(message)
         scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
-                 "method": "POST", "scheme": "http", "path": BASE, "raw_path": BASE.encode(),
+                 "method": "POST", "scheme": "http", "path": base, "raw_path": base.encode(),
                  "root_path": "", "query_string": b"", "server": ("testserver", 80),
                  "client": ("127.0.0.1", 10000), "headers": [
                      (b"authorization", b"Bearer user-token"),

@@ -14,9 +14,9 @@ import httpx
 from backend.lib.material_archive_schema import (
     BUCKET,
     MAX_FILE_BYTES,
+    ArchiveInput,
+    ArchiveScope,
     MaterialError,
-    MaterialInput,
-    Scope,
     receipt,
     require_input_match,
     timestamp,
@@ -70,7 +70,7 @@ class MaterialService:
     def headers(self, *, user: bool = False) -> dict:
         return {"apikey": self.key, "Authorization": self.authorization if user else f"Bearer {self.key}"}
 
-    async def authenticate(self, scope: Scope | None = None) -> str:
+    async def authenticate(self, scope: ArchiveScope | None = None) -> str:
         if (not self.authorization or not self.authorization.startswith("Bearer ")
                 or not self.authorization[7:].strip() or len(self.authorization) > 16384):
             raise MaterialError("material_auth_required", 401)
@@ -112,22 +112,22 @@ class MaterialService:
         return result
 
     @staticmethod
-    def scope_args(scope: Scope) -> dict:
+    def scope_args(scope: ArchiveScope) -> dict:
         return {
-            "p_expected_owner": scope.expected_owner_id, "p_application_event_id": scope.application_event_id,
+            "p_expected_owner": scope.expected_owner_id, f"p_{scope.event_field}": getattr(scope, scope.event_field),
             "p_opportunity_id": scope.opportunity_id,
         }
 
-    async def lookup(self, scope: Scope, record_id: str) -> dict:
-        result = await self.rpc("get_application_material", {**self.scope_args(scope), "p_record_id": record_id})
+    async def lookup(self, scope: ArchiveScope, record_id: str) -> dict:
+        result = await self.rpc(f"get_{scope.material_kind}_material", {**self.scope_args(scope), "p_record_id": record_id})
         if set(result) != {"artifact"}:
             raise MaterialError("material_invalid_receipt", 502)
         if result["artifact"] is None:
             raise MaterialError("material_not_found", 404)
         return receipt(result["artifact"], scope, record_id=record_id)
 
-    async def list(self, scope: Scope, cursor_time: str | None, cursor_id: str | None) -> dict:
-        result = await self.rpc("list_application_materials", {
+    async def list(self, scope: ArchiveScope, cursor_time: str | None, cursor_id: str | None) -> dict:
+        result = await self.rpc(f"list_{scope.material_kind}_materials", {
             **self.scope_args(scope), "p_limit": 20, "p_before_recorded_at": cursor_time, "p_before_record_id": cursor_id,
         })
         try:
@@ -182,8 +182,8 @@ class MaterialService:
                 raise MaterialError("material_invalid_receipt", 502)
         return b"".join(chunks)
 
-    async def archive(self, data: MaterialInput, contents: bytes) -> dict:
-        stage = await self.rpc("stage_application_material", {
+    async def archive(self, data: ArchiveInput, contents: bytes) -> dict:
+        stage = await self.rpc(f"stage_{data.material_kind}_material", {
             **self.scope_args(data), "p_material_id": data.material_id, "p_record_id": data.record_id,
             "p_filename": data.filename, "p_byte_length": data.byte_length, "p_sha256": data.bytes_sha256,
         })
@@ -222,7 +222,7 @@ class MaterialService:
                 raise MaterialError() from None
         # Always hash the bytes read from Storage, not an upload acknowledgement.
         await self.object_bytes(key, data.byte_length, data.bytes_sha256)
-        result = await self.rpc("finalize_application_material", {
+        result = await self.rpc(f"finalize_{data.material_kind}_material", {
             "p_verified_owner": data.expected_owner_id, "p_verified_session_id": upload["session_id"],
             "p_material_id": data.material_id, "p_stage_token": upload["stage_token"],
             "p_verified_byte_length": data.byte_length, "p_verified_sha256": data.bytes_sha256,
@@ -237,8 +237,8 @@ class MaterialService:
         require_input_match(ready, data)
         return {"version": 1, "record": ready, "replayed": result["replayed"]}
 
-    async def authorize_download(self, scope: Scope, record_id: str) -> tuple[dict, str]:
-        result = await self.rpc("authorize_application_material_download", {
+    async def authorize_download(self, scope: ArchiveScope, record_id: str) -> tuple[dict, str]:
+        result = await self.rpc(f"authorize_{scope.material_kind}_material_download", {
             **self.scope_args(scope), "p_record_id": record_id,
         })
         if set(result) != {"artifact", "bucket", "object_key"}:
@@ -248,7 +248,7 @@ class MaterialService:
             raise MaterialError("material_not_ready", 409)
         return record, self.verify_location(result, record)
 
-    async def download(self, scope: Scope, record_id: str) -> tuple[dict, bytes]:
+    async def download(self, scope: ArchiveScope, record_id: str) -> tuple[dict, bytes]:
         record, key = await self.authorize_download(scope, record_id)
         contents = await self.object_bytes(key, record["byte_length"], record["bytes_sha256"])
         current, current_key = await self.authorize_download(scope, record_id)
@@ -256,8 +256,8 @@ class MaterialService:
             raise MaterialError("material_invalid_receipt", 502)
         return record, contents
 
-    async def delete(self, scope: Scope, record_id: str, material_id: str) -> dict:
-        result = await self.rpc("delete_application_material", {**self.scope_args(scope), "p_record_id": record_id, "p_material_id": material_id})
+    async def delete(self, scope: ArchiveScope, record_id: str, material_id: str) -> dict:
+        result = await self.rpc(f"delete_{scope.material_kind}_material", {**self.scope_args(scope), "p_record_id": record_id, "p_material_id": material_id})
         if set(result) != {"artifact", "replayed"} or type(result["replayed"]) is not bool:
             raise MaterialError("material_invalid_receipt", 502)
         record = receipt(result["artifact"], scope, record_id=record_id)

@@ -84,7 +84,7 @@ describe('ContactHistory — truthful saved snapshots', () => {
     expect(sources).not.toHaveAttribute('open');
     fireEvent.click(within(sources).getByText(label('materials')));
     expect(sources).toHaveAttribute('open');
-    expect(screen.getByText(label('materialsHint'))).toHaveTextContent('Files attached to the email were not recorded');
+    expect(screen.getByText(label('materialsHint'))).toHaveTextContent('these references do not contain the attached files');
     for (const version of ['profile-v1', 'target-v1', 'context-v1', 'resume-v1']) expect(screen.getByText(version)).toBeInTheDocument();
   });
 

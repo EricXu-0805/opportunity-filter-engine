@@ -56,6 +56,8 @@ export const USER_SCOPED_PREFIXES: readonly string[] = [
   STORAGE_KEYS.PROFILE_JOURNAL_PREFIX,
   STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX, // metadata only; never PDF bytes
   STORAGE_KEYS.APPLICATION_MATERIAL_DELETE_PREFIX, // opaque IDs for uncertain deletion
+  STORAGE_KEYS.CONTACT_MATERIAL_ATTEMPT_PREFIX, // separate contact-event file metadata
+  STORAGE_KEYS.CONTACT_MATERIAL_DELETE_PREFIX, // separate contact-event deletion intent
   STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX, // exact private submission snapshots awaiting a verified receipt
 ];
 

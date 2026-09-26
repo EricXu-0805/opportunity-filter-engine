@@ -5,6 +5,7 @@ import { getContactEvents } from '@/lib/supabase';
 import type { ContactEvent, ContactEventCursor } from '@/lib/contact-ledger';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
+import ContactMaterials from './ContactMaterials';
 
 interface Props {
   opportunityId: string;
@@ -115,6 +116,7 @@ export default function ContactHistory({ opportunityId, refreshKey }: Props) {
               <div><dt className="font-medium text-gray-600">{label('confirmedAt')}</dt><dd className="text-gray-700"><time dateTime={event.confirmedAt}>{dateLabel(event.confirmedAt)}</time></dd></div>
               <div><dt className="font-medium text-gray-600">{label('body')}</dt><dd className="mt-1 whitespace-pre-wrap text-gray-700">{event.body}</dd></div>
             </dl>
+            <ContactMaterials opportunityId={opportunityId} contactEventId={event.id} />
             <details className="mt-3 min-w-0 border-t border-gray-100 pt-2 text-xs text-gray-500" data-testid="contact-event-sources">
               <summary className="min-h-9 cursor-pointer font-medium focus-visible:ring-2 focus-visible:ring-indigo-500">{label('materials')}</summary>
               <p>{label('materialsHint')}</p>

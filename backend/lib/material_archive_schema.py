@@ -1,9 +1,9 @@
-"""Wire validation for user-reported application PDFs. Never infer a submission."""
+"""Wire validation for user-reported PDFs. Never infer a submission or contact."""
 from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Literal
+from typing import ClassVar, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
@@ -51,13 +51,11 @@ def filename(value: str) -> str:
     return value
 
 
-class Scope(BaseModel):
+class _Scope(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     expected_owner_id: str
     opportunity_id: str = Field(min_length=1, max_length=200)
-    application_event_id: str
-
-    _ids = field_validator("expected_owner_id", "application_event_id")(uuid_text)
+    _owner = field_validator("expected_owner_id")(uuid_text)
 
     @field_validator("opportunity_id")
     @classmethod
@@ -68,12 +66,34 @@ class Scope(BaseModel):
         return value
 
 
+class Scope(_Scope):
+    material_kind: ClassVar[str] = "application"
+    event_field: ClassVar[str] = "application_event_id"
+    application_event_id: str
+    _event = field_validator("application_event_id")(uuid_text)
+
+
+class ContactScope(_Scope):
+    material_kind: ClassVar[str] = "contact"
+    event_field: ClassVar[str] = "contact_event_id"
+    contact_event_id: str
+    _event = field_validator("contact_event_id")(uuid_text)
+
+
+ArchiveScope = Scope | ContactScope
+
+
+class ContactMaterialDeletion(ContactScope):
+    material_id: str
+    _material = field_validator("material_id")(uuid_text)
+
+
 class MaterialDeletion(Scope):
     material_id: str
     _material = field_validator("material_id")(uuid_text)
 
 
-class MaterialInput(Scope):
+class _MaterialFields(BaseModel):
     version: Literal[1]
     material_id: str
     record_id: str
@@ -108,6 +128,17 @@ class MaterialInput(Scope):
         return value
 
 
+class MaterialInput(_MaterialFields, Scope):
+    pass
+
+
+class ContactMaterialInput(_MaterialFields, ContactScope):
+    pass
+
+
+ArchiveInput = MaterialInput | ContactMaterialInput
+
+
 SQL_FIELDS = {
     "material_id", "record_id", "application_event_id", "opportunity_id", "owner_id", "status",
     "filename", "mime_type", "byte_length", "sha256", "created_at", "expires_at",
@@ -115,15 +146,17 @@ SQL_FIELDS = {
 }
 
 
-def receipt(row: object, scope: Scope, *, record_id: str | None = None) -> dict:
+def receipt(row: object, scope: ArchiveScope, *, record_id: str | None = None) -> dict:
     """Accept only the scoped, typed RPC receipt, never an arbitrary provider row."""
+    event_field = scope.event_field
+    fields = (SQL_FIELDS - {"application_event_id"}) | {event_field}
     try:
-        if not isinstance(row, dict) or set(row) != SQL_FIELDS:
+        if not isinstance(row, dict) or set(row) != fields:
             raise ValueError
-        for key in ("material_id", "record_id", "application_event_id", "owner_id"):
+        for key in ("material_id", "record_id", event_field, "owner_id"):
             uuid_text(row[key])
         if (row["owner_id"] != scope.expected_owner_id or row["opportunity_id"] != scope.opportunity_id
-                or row["application_event_id"] != scope.application_event_id
+                or row[event_field] != getattr(scope, event_field)
                 or (record_id is not None and row["record_id"] != record_id)
                 or row["confirmation_source"] != "user_reported"):
             raise ValueError
@@ -154,7 +187,7 @@ def receipt(row: object, scope: Scope, *, record_id: str | None = None) -> dict:
         raise MaterialError("material_invalid_receipt", 502) from None
     return {
         "version": 1, **{k: row[k] for k in (
-            "owner_id", "opportunity_id", "application_event_id", "material_id", "record_id", "status",
+            "owner_id", "opportunity_id", event_field, "material_id", "record_id", "status",
             "filename", "mime_type", "byte_length", "confirmation_source",
         )},
         "bytes_sha256": row["sha256"], "staged_at": utc_timestamp(row["created_at"]),
@@ -164,7 +197,7 @@ def receipt(row: object, scope: Scope, *, record_id: str | None = None) -> dict:
     }
 
 
-def require_input_match(record: dict, data: MaterialInput) -> None:
+def require_input_match(record: dict, data: ArchiveInput) -> None:
     if (record["material_id"] != data.material_id or record["record_id"] != data.record_id
             or record["filename"] != data.filename or record["mime_type"] != data.mime_type
             or record["byte_length"] != data.byte_length

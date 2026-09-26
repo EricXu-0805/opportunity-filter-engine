@@ -3358,7 +3358,7 @@ export const en = {
         confirmedAt: 'Confirmation saved at',
         body: 'Saved message',
         materials: 'Source versions',
-        materialsHint: 'References used for this draft. Files attached to the email were not recorded.',
+        materialsHint: 'References used for this draft; these references do not contain the attached files.',
         noMaterials: 'No source versions recorded.',
         materialKinds: { profile: 'Profile', target: 'Opportunity', contact_context: 'Contact background', resume: 'Resume' },
         eventId: 'Record ID',
@@ -3655,8 +3655,22 @@ export const en = {
     subjectMatches: 'Your top {count} matches from JoinALab',
     subjectFavorites: 'Your {count} saved opportunities',
   },
+  contactMaterials: {
+    "open": "Add email attachments",
+    "title": "Email attachments",
+    "hint": "Save the PDF you attached to this email. Kept privately until you delete the file or account. Uploading sends no email and does not confirm delivery.",
+    "signInHint": "Sign in to record or download email attachments.",
+    "empty": "No attachments recorded for this email.",
+    "fileLabel": "PDF attached to this email",
+    "fileHint": "One PDF at a time, up to 64 MiB. Select the version you actually attached.",
+    "attestation": "I confirm this PDF is the version I attached to this email.",
+    "saved": "PDF recorded for this email.",
+    "recordedAt": "Added to this email record at",
+    "another": "Record another email attachment"
+  },
   applicationRecord: {
     materials: {
+      "authError": "Could not check your account. Try again.",
       "open": "Files submitted with this application",
       "title": "Submitted files",
       "close": "Close files",
@@ -8205,7 +8219,7 @@ export const zh = {
         confirmedAt: '确认保存时间',
         body: '保存的正文',
         materials: '资料版本',
-        materialsHint: '用于这份草稿的资料引用，未记录邮件实际附件。',
+        materialsHint: '起草时使用的资料版本；这里的版本记录不包含邮件附件。',
         noMaterials: '未记录资料版本。',
         materialKinds: { profile: '个人资料', target: '机会', contact_context: '联系背景', resume: '简历' },
         eventId: '记录编号',
@@ -8477,8 +8491,22 @@ export const zh = {
     subjectMatches: 'JoinALab · 你的 {count} 条最佳匹配',
     subjectFavorites: '你的 {count} 个已保存机会',
   },
+  contactMaterials: {
+    "open": "补记邮件附件",
+    "title": "邮件附件",
+    "hint": "保存当时随这封邮件附上的 PDF，保留至你删除文件或账号。上传不会发送邮件，也不代表对方已收到。",
+    "signInHint": "登录后可补记或下载邮件附件。",
+    "empty": "这封邮件尚未补记附件。",
+    "fileLabel": "当时随邮件附上的 PDF",
+    "fileHint": "每次一份 PDF，最大 64 MiB。请选择当时实际附上的版本。",
+    "attestation": "我确认这份 PDF 是当时随这封邮件附上的版本。",
+    "saved": "PDF 已补记到这封邮件。",
+    "recordedAt": "补记到邮件记录的时间",
+    "another": "再补记一份邮件附件"
+  },
   applicationRecord: {
     materials: {
+      "authError": "未能核对账户，请重试。",
       "open": "这次申请提交的文件",
       "title": "已提交材料",
       "close": "关闭材料",

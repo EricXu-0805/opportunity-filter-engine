@@ -11,6 +11,7 @@ import hashlib
 import io
 import ipaddress
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,19 +54,45 @@ def main():
     parser.add_argument('--app-base', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--max-size', action='store_true')
+    parser.add_argument('--private-state', help='Optional 0600 journal; an existing path is refused to prevent blind replay.')
+    parser.add_argument('--skip-direct-finalize-probe', action='store_true', help='Explicitly omit the denied-EXECUTE probe; the report stays incomplete.')
+    parser.add_argument('--skip-direct-finalize-reason', help='Required explanation when omitting the denied-EXECUTE probe.')
+    parser.add_argument('--scope', choices=('application', 'contact'), default='application',
+                        help='Association to verify; original application fixture format remains the default.')
     args = parser.parse_args()
+    if args.skip_direct_finalize_probe and not (args.skip_direct_finalize_reason or '').strip():
+        parser.error('--skip-direct-finalize-probe requires --skip-direct-finalize-reason')
+    if args.skip_direct_finalize_reason and not args.skip_direct_finalize_probe:
+        parser.error('--skip-direct-finalize-reason requires --skip-direct-finalize-probe')
     fixture = json.loads(Path(args.fixture).read_text())
+    journal = Path(args.private_state) if args.private_state else None
+    if journal and journal.exists():
+        raise ValueError('Private journal exists; inspect it before rerunning')
+    journal_state = {'scope': args.scope, 'materials': []}
+    def remember(data):
+        journal_state['materials'].append(data)
+        if journal:
+            fd = os.open(journal, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, 'w') as output:
+                json.dump(journal_state, output, indent=2)
+            os.chmod(journal, 0o600)
+        return data
     storage = loopback(fixture['api_url'])
-    app = loopback(args.app_base) + '/api/application-materials'
+    app = loopback(args.app_base) + f'/api/{args.scope}-materials'
+    event_field = f'{args.scope}_event_id'
+    def event_id(user):
+        return user['event_id'] if args.scope == 'application' else user['contact_event_id']
     owner, other = fixture['users'][:2]
     assert owner['email'].endswith('.invalid') and other['email'].endswith('.invalid')
-    scope = {'expected_owner_id': owner['id'], 'opportunity_id': owner['opportunity_id'], 'application_event_id': owner['event_id']}
+    scope = {'expected_owner_id': owner['id'], 'opportunity_id': owner['opportunity_id'], event_field: event_id(owner)}
     headers = {'Authorization': 'Bearer ' + owner['access_token']}
     service_headers = {'Authorization': 'Bearer ' + fixture['service_role_key'], 'apikey': fixture['service_role_key']}
     user_headers = {**headers, 'apikey': fixture['anon_key']}
     checks = []
+    omitted_checks = ([{'name': 'direct user finalize denied', 'reason': args.skip_direct_finalize_reason}]
+                      if args.skip_direct_finalize_probe else [])
     report = {'checked_at': datetime.now(UTC).isoformat(), 'app_base': args.app_base,
-              'storage': storage, 'checks': checks, 'scope': 'disposable local Auth/PostgREST/Storage, no hosted writes'}
+              'storage': storage, 'checks': checks, 'omitted_checks': omitted_checks, 'complete': False, 'material_scope': args.scope, 'scope': 'disposable local Auth/PostgREST/Storage, no hosted writes'}
     def passed(name, **details):
         checks.append({'name': name, 'passed': True, **details})
         print(name + ': passed', flush=True)
@@ -76,9 +103,9 @@ def main():
         return response
     with httpx.Client(timeout=120, follow_redirects=False, trust_env=False) as client:
         def meta(contents, filename='实际提交的材料.pdf'):
-            return {'version': 1, **scope, 'material_id': str(uuid4()), 'record_id': str(uuid4()),
+            return remember({'version': 1, **scope, 'material_id': str(uuid4()), 'record_id': str(uuid4()),
                     'filename': filename, 'mime_type': 'application/pdf', 'byte_length': len(contents),
-                    'bytes_sha256': hashlib.sha256(contents).hexdigest(), 'attested': True}
+                    'bytes_sha256': hashlib.sha256(contents).hexdigest(), 'attested': True})
         def upload(data, contents):
             return client.post(app, headers=headers, files={'metadata': (None, json.dumps(data, ensure_ascii=False)),
                                 'file': (data['filename'], contents, 'application/pdf')})
@@ -109,27 +136,29 @@ def main():
         passed('archive, exact retry, original-byte download', byte_length=len(contents), sha256=data['bytes_sha256'])
         visible = expect(client.get(app, params=scope, headers=headers), 200).json()['items']
         assert any(row['record_id'] == data['record_id'] for row in visible)
-        other_scope = {'expected_owner_id': other['id'], 'opportunity_id': other['opportunity_id'], 'application_event_id': other['event_id']}
+        other_scope = {'expected_owner_id': other['id'], 'opportunity_id': other['opportunity_id'], event_field: event_id(other)}
         expect(client.get(app + '/' + data['record_id'], params=other_scope,
                           headers={'Authorization': 'Bearer ' + other['access_token']}), 404)
         denied = client.get(storage_url(data), headers=user_headers)
         assert denied.status_code in (400, 401, 403, 404) and denied.content != contents
         denied = client.post(storage_url(data), headers={**user_headers, 'Content-Type': 'application/pdf', 'x-upsert': 'true'}, content=contents)
-        assert denied.status_code >= 400
-        denied = client.post(storage + '/rest/v1/rpc/finalize_application_material', headers=user_headers,
-                             json={'p_verified_owner': owner['id'], 'p_verified_session_id': owner['session_id'],
-                                   'p_material_id': data['material_id'], 'p_stage_token': str(uuid4()),
-                                   'p_verified_byte_length': len(contents), 'p_verified_sha256': data['bytes_sha256']})
-        assert denied.status_code >= 400
-        passed('different owner and direct user Storage/finalize denied')
+        assert denied.status_code in (400, 401, 403, 404)
+        passed('different owner and direct user Storage denied')
+        if not args.skip_direct_finalize_probe:
+            denied = client.post(storage + f'/rest/v1/rpc/finalize_{args.scope}_material', headers=user_headers,
+                                 json={'p_verified_owner': owner['id'], 'p_verified_session_id': owner['session_id'],
+                                       'p_material_id': data['material_id'], 'p_stage_token': str(uuid4()),
+                                       'p_verified_byte_length': len(contents), 'p_verified_sha256': data['bytes_sha256']})
+            assert denied.status_code in (401, 403)
+            passed('direct user finalize denied', http_status=denied.status_code)
         # Simulate a lost upload/finalize response using actual user RPC and
         # immutable Storage bytes, then recover through the ordinary endpoint.
         recovery = meta(contents, 'retry.pdf')
         stage_args = {'p_expected_owner': owner['id'], 'p_material_id': recovery['material_id'],
-                      'p_record_id': recovery['record_id'], 'p_application_event_id': owner['event_id'],
+                      'p_record_id': recovery['record_id'], f'p_{event_field}': event_id(owner),
                       'p_opportunity_id': owner['opportunity_id'], 'p_filename': recovery['filename'],
                       'p_byte_length': len(contents), 'p_sha256': recovery['bytes_sha256']}
-        expect(client.post(storage + '/rest/v1/rpc/stage_application_material', json=stage_args, headers=user_headers), 200)
+        expect(client.post(storage + f'/rest/v1/rpc/stage_{args.scope}_material', json=stage_args, headers=user_headers), 200)
         expect(client.post(storage_url(recovery), content=contents,
                            headers={**service_headers, 'Content-Type': 'application/pdf', 'x-upsert': 'false'}), 200)
         staged = expect(client.get(app + '/' + recovery['record_id'], params=scope, headers=headers), 200).json()['record']
@@ -168,6 +197,7 @@ def main():
             expect(delete(remaining), 200)
             erased(remaining)
         report['passed'] = True
+        report['complete'] = not omitted_checks
         Path(args.output).write_text(json.dumps(report, indent=2) + '\n')
 
 
