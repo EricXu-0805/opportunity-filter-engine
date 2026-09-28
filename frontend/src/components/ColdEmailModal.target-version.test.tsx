@@ -5,7 +5,8 @@ import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/
 import { writingTargetKey } from '@/lib/writing-target';
 import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 import { emailTarget, FIRST_CONTACT_RECEIPT, EMAIL_TARGET_VERSION as A } from './ColdEmailModal.test-fixtures';
-vi.mock('@/i18n/client', () => { const t = (key: string) => key; return { useT: () => ({ t, locale: 'en' }) }; });
+const localization = vi.hoisted(() => ({ locale: 'en' }));
+vi.mock('@/i18n/client', () => { const t = (key: string) => key; return { useT: () => ({ t, locale: localization.locale }) }; });
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), auth: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/lib/api', () => ({ getEmailVariants: api.variants, generateColdEmailStream: api.stream, generateColdEmail: api.generate,
   refineEmail: api.refine, getVapidPublicKey: vi.fn() }));
@@ -31,7 +32,7 @@ function edit() {
 function kept() { for (const value of ['Manual subject', 'Manual body 王', 'manual@example.edu']) expect(screen.getByDisplayValue(value)).toBeVisible(); }
 function refine() { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })); }
 beforeEach(async () => {
-  vi.resetAllMocks(); localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('receipt-owner'); await syncLocalIdentityOwner('receipt-owner');
+  vi.resetAllMocks(); localization.locale = 'en'; localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('receipt-owner'); await syncLocalIdentityOwner('receipt-owner');
   api.auth.mockReturnValue(() => {}); api.variants.mockResolvedValue(templates);
   api.stream.mockResolvedValue({ ...result, method: 'template' }); api.generate.mockResolvedValue(result);
   api.refine.mockResolvedValue({ ...receipt, body: 'Verified refinement', method: 'llm' });
@@ -170,4 +171,41 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(api.variants).toHaveBeenCalledOnce();
   });
 
+});
+
+
+describe('oversized email material preserves the editor', () => {
+  for (const locale of ['en', 'zh']) {
+    const message = locale === 'zh'
+      ? '用于写邮件的资料和修改要求合计太长。请减少本次选用的内容后重试；原稿和要求已保留。'
+      : 'The selected email material and edit request are too long together. Reduce the selected content and try again. Your draft and request are kept.';
+    it(`shows an explicit ${locale} automatic-generation warning without replay or erasing a draft`, async () => {
+      localization.locale = locale;
+      api.stream.mockRejectedValue(new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413));
+      await open(); expect(screen.getByText(message)).toBeVisible();
+      expect(screen.getByDisplayValue('Template body')).toBeVisible();
+      expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled(); expect(api.variants).toHaveBeenCalledOnce();
+    });
+    it.each(['stream', 'compat'] as const)(`keeps all edited fields after a ${locale} %s generation rejection`, async mode => {
+      localization.locale = locale; await open(); edit();
+      const failure = new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413);
+      api.stream.mockRejectedValue(mode === 'stream' ? failure : new ColdEmailStreamError('unsupported', 404));
+      api.generate.mockRejectedValue(failure);
+      fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+      await screen.findByText(message); kept();
+      expect(api.stream).toHaveBeenCalledTimes(2);
+      expect(api.generate).toHaveBeenCalledTimes(mode === 'stream' ? 0 : 1);
+      expect(api.variants).toHaveBeenCalledOnce();
+    });
+    it(`keeps the manual draft and typed request after a ${locale} refinement rejection`, async () => {
+      localization.locale = locale; await open(); edit();
+      api.refine.mockRejectedValue(Object.assign(new Error('PRIVATE provider diagnostic'), { code: 'EMAIL_INPUT_TOO_LARGE', status: 413 }));
+      fireEvent.change(screen.getByPlaceholderText('coldEmail.refinePlaceholder'), { target: { value: 'Keep every contribution and explain this precise request.' } });
+      fireEvent.submit(screen.getByPlaceholderText('coldEmail.refinePlaceholder').closest('form')!);
+      await screen.findByText(message); kept();
+      expect(screen.getByPlaceholderText('coldEmail.refinePlaceholder')).toHaveValue('Keep every contribution and explain this precise request.');
+      expect(api.refine).toHaveBeenCalledOnce(); expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled();
+      expect(screen.queryByText('PRIVATE provider diagnostic')).toBeNull();
+    });
+  }
 });

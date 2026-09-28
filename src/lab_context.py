@@ -18,6 +18,13 @@ import idna
 
 LAB_MAX_AGE = timedelta(days=30)
 LAB_POLICY_VERSION = 1
+NIELSEN_RECORD_ID = 'faculty-ucb-stat-5558a1b1'
+NIELSEN_PROFILE = 'https://statistics.berkeley.edu/people/rasmus-nielsen'
+NIELSEN_HOME = 'https://nielsen-lab.github.io/'
+NIELSEN_TEAM = NIELSEN_HOME + 'team/'
+NIELSEN_RESEARCH = NIELSEN_HOME + 'research/'
+NIELSEN_ROLE = 'Professor of Computational Biology in the Department of Integrative Biology and the Department of Statistics'
+LAB_REVOCATION_REASONS = frozenset({'identity_mismatch', 'source_link_removed'})
 _SNAPSHOT_KEYS = {'version', 'source', 'record_id', 'record_source_url', 'school', 'department',
                   'identity_name', 'policy_version', 'checked_at', 'pages'}
 _PAGE_KEYS = {'kind', 'requested_url', 'source_url', 'page_title', 'identity_text', 'linked_from', 'sections'}
@@ -118,7 +125,7 @@ def reviewed_profile_policy(opp):
             'research_fields': ('div.field--name-field-research-interests', 'div.field--name-field-research-areas-ref')}
 
 
-def _snapshot(value):
+def _snapshot_v1(value):
     if type(value) is not dict or set(value) != _SNAPSHOT_KEYS:
         _fail()
     if (type(value['version']) is not int or value['version'] != 1 or value['source'] != 'official_website'
@@ -171,10 +178,110 @@ def _snapshot(value):
     return deepcopy(value)
 
 
+def reviewed_lab_chain_policy(opp):
+    policy = reviewed_profile_policy(opp)
+    if (policy is None or opp.get('id') != NIELSEN_RECORD_ID or policy['url'] != NIELSEN_PROFILE
+            or type(opp.get('pi_name')) is not str or not _same_complete_name(opp['pi_name'], 'Rasmus Nielsen')):
+        return None
+    return {'version': 2, 'urls': (NIELSEN_PROFILE, NIELSEN_HOME, NIELSEN_TEAM, NIELSEN_RESEARCH),
+            'name': 'Rasmus Nielsen', 'role_text': NIELSEN_ROLE}
+
+
+def resolve_lab_link(from_url, raw_href):
+    """Only canonical absolute links, missing root '/', or single-/ paths."""
+    if canonical_lab_url(from_url) != from_url or type(from_url) is not str:
+        return None
+    try:
+        _text(raw_href, 2000)
+    except ValueError:
+        return None
+    if raw_href.startswith('/') and not raw_href.startswith('//'):
+        source = urlsplit(from_url)
+        resolved = f'https://{source.netloc}' + raw_href
+    else:
+        resolved = raw_href
+        try:
+            parsed = urlsplit(resolved)
+        except ValueError:
+            return None
+        if parsed.scheme == 'https' and parsed.netloc and parsed.path == '':
+            resolved += '/'
+    return resolved if canonical_lab_url(resolved) == resolved else None
+
+
+def _snapshot_v2(value):
+    if (type(value) is not dict or set(value) != _SNAPSHOT_KEYS | {'source_chain'}
+            or type(value['version']) is not int or value['version'] != 2
+            or type(value['policy_version']) is not int or value['policy_version'] != 2):
+        _fail()
+    pages = value['pages']
+    if type(pages) is not list or len(pages) != 2:
+        _fail()
+    # Reuse the unchanged V1 faculty-page validation, without changing saved V1.
+    profile = {key: item for key, item in value.items() if key != 'source_chain'}
+    profile.update(version=1, policy_version=1, pages=[pages[0]])
+    _snapshot_v1(profile)
+    lab = pages[1]
+    if (type(lab) is not dict or set(lab) != {'kind', 'requested_url', 'source_url', 'page_title', 'sections'}
+            or lab['kind'] != 'lab_research' or type(lab['requested_url']) is not str
+            or canonical_lab_url(lab['requested_url']) != lab['requested_url'] or lab['source_url'] != lab['requested_url']):
+        _fail()
+    _text(lab['page_title'], 1000)
+    sections = lab['sections']
+    if type(sections) is not list or not 1 <= len(sections) <= 32:
+        _fail()
+    total = sum(len(section['heading']) + len(section['text']) for section in pages[0]['sections'])
+    for index, section in enumerate(sections, 1):
+        if type(section) is not dict or set(section) != {'section_id', 'heading', 'text'} or section['section_id'] != f's{index}':
+            _fail()
+        _text(section['heading'], 1000, blank=True); _text(section['text'], 4000)
+        total += len(section['heading']) + len(section['text'])
+    if total > 24000:
+        _fail()
+    chain = value['source_chain']
+    if type(chain) is not dict or set(chain) != {'documents', 'links', 'identity'}:
+        _fail()
+    documents, links, identity = chain['documents'], chain['links'], chain['identity']
+    if type(documents) is not list or len(documents) != 4 or type(links) is not list or len(links) != 3:
+        _fail()
+    urls = []
+    for role, document in zip(('profile', 'home', 'team', 'research'), documents, strict=True):
+        if (type(document) is not dict or set(document) != {'role', 'requested_url', 'source_url', 'page_title', 'checked_at', 'body_sha256'}
+                or document['role'] != role or type(document['requested_url']) is not str
+                or canonical_lab_url(document['requested_url']) != document['requested_url']
+                or document['source_url'] != document['requested_url'] or document['checked_at'] != value['checked_at']
+                or type(document['body_sha256']) is not str or re.fullmatch(r'[0-9a-f]{64}', document['body_sha256']) is None):
+            _fail()
+        _text(document['page_title'], 1000)
+        urls.append(document['source_url'])
+    if len(set(urls)) != 4 or len({urlsplit(url).netloc for url in urls[1:]}) != 1:
+        _fail()
+    for page, document in ((pages[0], documents[0]), (pages[1], documents[3])):
+        if page['source_url'] != document['source_url'] or page['page_title'] != document['page_title']:
+            _fail()
+    for (left, right), link in zip(((0, 1), (1, 2), (1, 3)), links, strict=True):
+        if (type(link) is not dict or set(link) != {'from_url', 'raw_href', 'anchor_text', 'to_url'}
+                or link['from_url'] != urls[left] or link['to_url'] != urls[right]
+                or resolve_lab_link(link['from_url'], link['raw_href']) != link['to_url']):
+            _fail()
+        _text(link['anchor_text'], 500)
+    if type(identity) is not dict or set(identity) != {'source_url', 'full_name', 'role_text'}:
+        _fail()
+    _text(identity['full_name'], 200); _text(identity['role_text'], 2000)
+    if (identity['source_url'] != urls[2] or identity['full_name'] != value['identity_name']
+            or identity['full_name'] != pages[0]['identity_text']):
+        _fail()
+    return deepcopy(value)
+
+
+def _snapshot(value):
+    return _snapshot_v2(value) if type(value) is dict and value.get('version') == 2 else _snapshot_v1(value)
+
+
 def lab_snapshot_version(snapshot):
     value = _snapshot(snapshot)
     raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
-    return 'ls1:' + hashlib.sha256(raw).hexdigest()
+    return ('ls2:' if value['version'] == 2 else 'ls1:') + hashlib.sha256(raw).hexdigest()
 
 
 def validate_public_lab_context(value):
@@ -188,7 +295,8 @@ def validate_public_lab_context(value):
         if value['status'] not in ('available', 'stale') or type(value['snapshot']) is not dict:
             return False
         public = value['snapshot']
-        if set(public) != _SNAPSHOT_KEYS | {'snapshot_version'}:
+        expected = _SNAPSHOT_KEYS | {'snapshot_version'} | ({'source_chain'} if public.get('version') == 2 else set())
+        if set(public) != expected:
             return False
         stored = {k: v for k, v in public.items() if k != 'snapshot_version'}
         return public['snapshot_version'] == lab_snapshot_version(stored)
@@ -201,8 +309,25 @@ def validate_lab_snapshot(value, opp, *, now=None):
     try:
         snapshot = _snapshot(value)
         policy = reviewed_profile_policy(opp)
-        if policy is None or len(snapshot['pages']) != 1:
-            return None  # No lab-site template is currently reviewed.
+        if policy is None:
+            return None
+        if snapshot['version'] == 1:
+            if len(snapshot['pages']) != 1:
+                return None
+        else:
+            chain_policy = reviewed_lab_chain_policy(opp)
+            if chain_policy is None:
+                return None
+            chain = snapshot['source_chain']
+            if (tuple(doc['source_url'] for doc in chain['documents']) != chain_policy['urls']
+                    or chain['identity']['full_name'] != chain_policy['name']
+                    or chain['identity']['role_text'] != chain_policy['role_text']
+                    or chain['links'][0]['raw_href'] not in (NIELSEN_HOME, NIELSEN_HOME.rstrip('/'))
+                    or chain['links'][1]['raw_href'] != '/team/' or chain['links'][2]['raw_href'] != '/research/'
+                    or chain['links'][0]['anchor_text'] not in (NIELSEN_HOME, NIELSEN_HOME.rstrip('/'))
+                    or chain['links'][1]['anchor_text'] != 'Team' or chain['links'][2]['anchor_text'] != 'Research'
+                    or len(snapshot['pages'][1]['sections']) != 10):
+                return None
         for field, record_field in (('record_id', 'id'), ('school', 'school'), ('department', 'department')):
             if snapshot[field] != opp.get(record_field):
                 return None
@@ -219,7 +344,7 @@ def validate_lab_snapshot(value, opp, *, now=None):
             revoked = refresh.get('identity_revoked_at')
             if 'identity_revoked_at' in refresh and _stamp(revoked) >= _stamp(snapshot['checked_at']):
                 return None
-            if refresh.get('reason') == 'identity_mismatch' and _stamp(refresh.get('checked_at')) >= _stamp(snapshot['checked_at']):
+            if refresh.get('reason') in LAB_REVOCATION_REASONS and _stamp(refresh.get('checked_at')) >= _stamp(snapshot['checked_at']):
                 return None
         return snapshot
     except (ValueError, TypeError, OverflowError, RecursionError):

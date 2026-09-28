@@ -41,7 +41,8 @@ export function createResearchDetailProxy(upstream = 'http://127.0.0.1:8200') {
         const value = input[fixtureKey]; const snapshot = value?.snapshot;
         if (value?.version !== 1 || !['available', 'stale'].includes(value.status) || !snapshot) return send(res, 400, { error: 'fixture_shape' });
         const { snapshot_version, ...stored } = snapshot;
-        if (snapshot_version !== (fixtureKey === 'lab_context' ? 'ls1:' : 'rs1:') + sha(stored)) return send(res, 400, { error: 'fixture_hash' });
+        const prefix = fixtureKey === 'lab_context' ? ({1:'ls1:',2:'ls2:'})[stored.version] : 'rs1:';
+        if (!prefix || snapshot_version !== prefix + sha(stored)) return send(res, 400, { error: 'fixture_hash' });
         materials[fixtureKey] = structuredClone(value); reads[fixtureKey] = []; return send(res, 200, { [fixtureKey]: materials[fixtureKey] });
       }
       if (url.pathname.startsWith('/__fixture/')) return send(res, 404, { error: 'unknown_fixture' });

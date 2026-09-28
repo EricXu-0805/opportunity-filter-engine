@@ -73,3 +73,19 @@ test('website source revisions share SSR/client bytes without replacing independ
     await fetch(control,{method:'DELETE'});assert.deepEqual(await(await fetch(base+'/api/opportunities/uiuc-siebel-ugresearch')).json(),original);
   } finally { await stop(proxy);await stop(upstream); }
 });
+
+test('V2 lab fixture uses ls2 only and preserves the complete source chain', async () => {
+  const upstream = createServer((_req,res)=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({id:'uiuc-siebel-ugresearch'}));});
+  const up=await start(upstream),proxy=createResearchDetailProxy(up),base=await start(proxy),control=base+'/__fixture/lab/uiuc-siebel-ugresearch';
+  try {
+    const snapshot={version:2,source_chain:{documents:[{role:'profile'},{role:'home'},{role:'team'},{role:'research'}],links:[{raw_href:'/research/'}]},pages:[{sections:[{text:'原文😀'}]}]};
+    const value={version:1,status:'available',snapshot:{...snapshot,snapshot_version:'ls2:'+createHash('sha256').update(canonical(snapshot)).digest('hex')}};
+    assert.equal((await fetch(control,{method:'POST',body:JSON.stringify({lab_context:value})})).status,200);
+    assert.deepEqual((await(await fetch(base+'/api/opportunities/uiuc-siebel-ugresearch')).json()).lab_context,value);
+    const oldPrefix=structuredClone(value);oldPrefix.snapshot.snapshot_version=oldPrefix.snapshot.snapshot_version.replace('ls2:','ls1:');
+    assert.equal((await fetch(control,{method:'POST',body:JSON.stringify({lab_context:oldPrefix})})).status,400);
+    const unknown=structuredClone(value);unknown.snapshot.version=3;
+    assert.equal((await fetch(control,{method:'POST',body:JSON.stringify({lab_context:unknown})})).status,400);
+    assert.deepEqual((await(await fetch(control)).json()).lab_context,value);
+  } finally {await stop(proxy);await stop(upstream);}
+});

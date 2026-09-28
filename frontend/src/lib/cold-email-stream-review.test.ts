@@ -70,6 +70,9 @@ describe('independent cold email stream boundaries', () => {
     [409, 'WRITING_TARGET_CHANGED', 'WRITING_TARGET_CHANGED'],
     [409, 'EMAIL_CONTACT_INSTRUCTIONS', 'EMAIL_CONTACT_INSTRUCTIONS'],
     [422, 'EMAIL_READING_CHANGED', 'EMAIL_READING_CHANGED'],
+    [413, 'EMAIL_INPUT_TOO_LARGE', 'EMAIL_INPUT_TOO_LARGE'],
+    [409, 'EMAIL_INPUT_TOO_LARGE', 'http_error'],
+    [413, 'OTHER_ERROR', 'http_error'],
     [422, 'EMAIL_CONTACT_INSTRUCTIONS', 'http_error'],
     [409, 'EMAIL_READING_CHANGED', 'http_error'],
     [409, 'OTHER_CONFLICT', 'http_error'],
@@ -99,5 +102,18 @@ describe('independent cold email stream boundaries', () => {
     pending.resolve({ status: 404, ok: false, body: { cancel } } as unknown as Response); await drain();
     expect(result.value).toMatchObject({ code: 'cancelled' }); expect(canFallbackColdEmailStream(result.value)).toBe(false);
     expect(cancel).toHaveBeenCalledOnce(); expect(fetchMock).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+
+describe('oversized source material in SSE', () => {
+  it.each([413, 422])('terminates immediately on an error frame with status %i, ignoring a later done', async status => {
+    const source = streamResponse(bytes({ stage: 'drafting' }, { stage: 'error', code: 'EMAIL_INPUT_TOO_LARGE', status, message: 'PRIVATE provider diagnostic' }, payload));
+    fetchMock.mockResolvedValue(source.response); const onStage = vi.fn();
+    const error = await generateColdEmailStream(profile, 'target-a', {}, onStage).catch(value => value);
+    expect(error).toMatchObject({ code: status === 413 ? 'EMAIL_INPUT_TOO_LARGE' : 'invalid_response' });
+    expect(String(error)).not.toContain('PRIVATE'); expect(canFallbackColdEmailStream(error)).toBe(false);
+    expect(onStage).toHaveBeenCalledExactlyOnceWith('drafting'); expect(source.cancel).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
   });
 });

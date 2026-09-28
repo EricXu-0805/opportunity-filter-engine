@@ -982,7 +982,7 @@ export async function generateColdEmailStream(
       if (!response.ok) {
         // Read only recognized source/context conflicts, within the existing deadline.
         // Upstream messages and unknown conflict codes never reach the editor.
-        if ((response.status === 409 || response.status === 422) && response.headers?.get('content-type')?.includes('application/json')) {
+        if ((response.status === 409 || response.status === 422 || response.status === 413) && response.headers?.get('content-type')?.includes('application/json')) {
           const failure: unknown = await response.json().catch(() => null);
           active();
           if (failure && typeof failure === 'object' && 'detail' in failure) {
@@ -990,7 +990,8 @@ export async function generateColdEmailStream(
             if (detail && typeof detail === 'object' && 'code' in detail) {
               const code = detail.code;
               if ((response.status === 409 && (code === 'WRITING_TARGET_CHANGED' || code === 'EMAIL_CONTACT_INSTRUCTIONS'))
-                || (response.status === 422 && code === 'EMAIL_READING_CHANGED')) {
+                || (response.status === 422 && code === 'EMAIL_READING_CHANGED')
+                || (response.status === 413 && code === 'EMAIL_INPUT_TOO_LARGE')) {
                 throw new ColdEmailStreamError(code, response.status);
               }
             }
@@ -1020,6 +1021,12 @@ export async function generateColdEmailStream(
             try { payload = JSON.parse(line.slice(6)); } catch { throw new ColdEmailStreamError('invalid_response'); }
             if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new ColdEmailStreamError('invalid_response');
             const data = payload as Record<string, unknown>;
+            if (data.stage === 'error') {
+              if (data.code === 'EMAIL_INPUT_TOO_LARGE' && data.status === 413) {
+                throw new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413);
+              }
+              throw new ColdEmailStreamError('invalid_response');
+            }
             if (data.stage === 'done') {
               if (typeof data.subject !== 'string' || typeof data.body !== 'string') throw new ColdEmailStreamError('invalid_response');
               final = data as unknown as ColdEmailResponse;

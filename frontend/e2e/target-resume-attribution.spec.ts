@@ -2,7 +2,7 @@ import { test, expect, request as apiRequest, type Page, type TestInfo } from '@
 import { readFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
 import { researchFixture, RESEARCH_TITLE, RESEARCH_ABSTRACT } from './research-fixture';
-import { labFixture, LAB_TITLE, LAB_TEXT } from './lab-fixture';
+import { labFixture, labChainFixture, LAB_TITLE, LAB_TEXT, LAB_CHAIN_TITLE, LAB_CHAIN_LAST } from './lab-fixture';
 import type { LabContext } from '../src/lib/lab-context';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { FULL_TARGET_AI_VERSION, type TargetResumeAiRequest, type TargetResumeAiResponse, type TargetResumeAiEvidence } from '../src/lib/target-resume-ai-protocol';
@@ -73,8 +73,10 @@ async function account() {
 }
 function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
   if (isCurrentTargetResumeContext(draft.target_snapshot) && draft.target_snapshot.lab.status === 'available') {
-    const source = draft.target_snapshot.lab.snapshot!.pages[0].sections[0].text;
-    return { field: 'lab_text', page_index: 0, section_index: 0, start: 0, end: Array.from(source).length, quote: source };
+    const snapshot = draft.target_snapshot.lab.snapshot!;
+    const pageIndex = snapshot.version === 2 ? 1 : 0, sectionIndex = snapshot.version === 2 ? 9 : 0;
+    const source = snapshot.pages[pageIndex].sections[sectionIndex].text;
+    return { field: 'lab_text', page_index: pageIndex, section_index: sectionIndex, start: 0, end: Array.from(source).length, quote: source };
   }
   if (isCurrentTargetResumeContext(draft.target_snapshot) && draft.target_snapshot.research.status === 'available') {
     const source = draft.target_snapshot.research.snapshot!.works[0].abstract!;
@@ -101,7 +103,7 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
     }),
   };
 }
-async function setup(page: Page, info: TestInfo, research?: 'available' | 'stale', labStatus?: 'available' | 'stale') {
+async function setup(page: Page, info: TestInfo, research?: 'available' | 'stale', labStatus?: 'available' | 'stale', labSnapshot?: LabContext) {
   const owner = await account(); const zh = info.project.name === 'mobile-chrome';
   const copy = (en: string, cn: string) => zh ? cn : en;
   if (zh) await page.setViewportSize({ width: 390, height: 844 });
@@ -137,7 +139,7 @@ async function setup(page: Page, info: TestInfo, research?: 'available' | 'stale
     return route.fulfill({ json: checkedReply(request) });
   });
   const material = research ? researchFixture(research) : null;
-  let labMaterial: LabContext | null = labStatus ? labFixture(labStatus) : null;
+  let labMaterial: LabContext | null = labSnapshot ?? (labStatus ? labFixture(labStatus) : null);
   const updateLab = async (next: LabContext) => {
     const response = await owner.http.post(`${RESEARCH_PROXY}/__fixture/lab/${TARGET}`, { data: { lab_context: next } });
     expect(response.status()).toBe(200); expect(await response.json()).toEqual({ lab_context: next }); labMaterial = next;
@@ -329,6 +331,9 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
     expect(file.text).not.toContain('Synthetic selection advice');
     expect(file.text).not.toContain('The laboratory studies instrument calibration and experimental design.');
     expect(file.text).not.toContain('官网完整段落');
+    expect(file.text).not.toContain(LAB_CHAIN_LAST);
+    expect(file.text).not.toContain('synthetic-lab.example');
+    expect(file.text).not.toContain('source_chain');
     expect(file.text).not.toContain(RAW_PRIVATE); expect(file.text).not.toContain(BAD_CLAIM);
     if (stem === 'restored-baseline') {
       expect(compact(file.text)).not.toContain(compact(MANUAL_NAME));
@@ -491,4 +496,61 @@ for (const status of ['available', 'stale'] as const) test(`official website ${s
     expect(f.audit.suggestions).toHaveLength(2);
     await info.attach('official-provenance-pair', { body: JSON.stringify({ status, provenance: pair }, null, 2), contentType: 'application/json' });
   } finally { await f.done(); }
+});
+
+for (const status of ['available', 'stale'] as const) test(`lab chain V2 ${status}: complete sources, history, precise quote and student-only exports`, async ({page}, info) => {
+  test.setTimeout(120_000);
+  const material=labChainFixture(status), f=await setup(page,info,undefined,undefined,material);
+  try {
+    await f.open();const baseline=await f.save(0);
+    await f.modal.getByText(f.copy('Target requirements and original materials','目标要求与原始材料'),{exact:true}).click();
+    const sources=f.modal.getByRole('region',{name:f.copy('Faculty and lab website sources','教授与实验室官网资料'),exact:true});
+    await sources.getByText(f.copy('View source verification','查看来源核对过程'),{exact:true}).click();
+    const sourcePages=sources.getByRole('list',{name:f.copy('Source pages','来源页面')});
+    await expect(sourcePages.getByRole('link')).toHaveCount(4);
+    for(const d of material.snapshot.source_chain.documents) await expect(sourcePages.getByRole('link',{name:d.page_title,exact:true})).toHaveAttribute('href',d.source_url);
+    const observed=sources.getByRole('list',{name:f.copy('Observed links','已观察到的链接')});
+    await expect(observed.getByRole('listitem')).toHaveCount(3);
+    for(const link of material.snapshot.source_chain.links) await expect(observed).toContainText(link.raw_href);
+    await expect(sources).toContainText(material.snapshot.source_chain.identity.full_name);
+    await expect(sources).toContainText(material.snapshot.source_chain.identity.role_text);
+    expect(f.audit.suggestions).toHaveLength(0);
+    await sources.getByText(f.copy('Full lab research: ','实验室研究全文：')+LAB_CHAIN_TITLE,{exact:true}).click();
+    await expect(sources.getByRole('heading',{name:'Research topic 10 研究',exact:true})).toBeVisible();
+    await expect(sources.getByText(LAB_CHAIN_LAST,{exact:true})).toBeVisible();
+    if(status==='stale') await expect(sources).toContainText(f.copy('excluded from new suggestions','暂不用于新建议'));
+    await sourcePages.scrollIntoViewIfNeeded();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2)).toBe(true);
+    await sources.locator('details').first().screenshot({path:info.outputPath(`chain-${status}-${f.zh?'zh':'en'}.png`),animations:'disabled'});
+    await sources.getByText(LAB_CHAIN_LAST,{exact:true}).screenshot({path:info.outputPath(`tenth-section-${status}-${f.zh?'zh':'en'}.png`),animations:'disabled'});
+    await aiPanel(page).getByRole('button',{name:f.copy('Generate AI suggestions','生成 AI 建议'),exact:true}).click();
+    const chosen=lines(baseline).find(({line})=>line.evidence.id==='readings-role')!.line;
+    await aiPanel(page).getByRole('checkbox',{name:`Use rewrite: ${chosen.id}`,exact:true}).check();
+    if(status==='available') await expect(aiPanel(page)).toContainText(LAB_CHAIN_LAST);
+    await aiPanel(page).getByRole('button',{name:f.copy('Apply selected suggestions','应用所选建议'),exact:true}).click();
+    const accepted=await f.save(1);
+    const pair=f.audit.writes.filter(w=>w.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as {version:number;events:{changes:{target_evidence:TargetResumeAiEvidence[]}[]}[]};
+    expect(pair.version).toBe(3);
+    const quotes=pair.events.flatMap(e=>e.changes.flatMap(c=>c.target_evidence));
+    if(status==='available') expect(quotes).toContainEqual({field:'lab_text',page_index:1,section_index:9,start:0,end:Array.from(LAB_CHAIN_LAST).length,quote:LAB_CHAIN_LAST});
+    else expect(quotes.some(q=>q.field==='lab_text'||q.field==='lab_heading')).toBe(false);
+    await expectFiles(page,info,f,accepted,`chain-${status}`);
+    for(const request of f.audit.exports) expect(JSON.stringify(request)).not.toMatch(/source_chain|synthetic-lab\.example|第十节/);
+    await f.editor(chosen.id).fill('Separate manual revision.');await f.save(2);
+    await f.modal.locator('summary').filter({hasText:f.copy('Version history','版本历史')}).click();
+    await f.modal.getByRole('button',{name:f.copy('Load latest 20 versions','读取最近 20 个版本'),exact:true}).click();
+    await f.modal.getByRole('button',{name:f.zh?/^查看版本 2 ·/:/^View version 2 ·/}).click();
+    expect(await f.save(3,true)).toEqual(accepted);
+    expect(f.audit.writes.filter(w=>w.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance).toEqual(pair);
+    const savedTarget=accepted.target_snapshot;
+    expect(isCurrentTargetResumeContext(savedTarget)&&savedTarget.lab.snapshot).toEqual(material.snapshot);
+    await f.updateLab(labChainFixture(status,' New website source revision.'));
+    const reread=page.waitForResponse(r=>new URL(r.url()).pathname===`/api/opportunities/${TARGET}`&&r.request().method()==='GET');
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await reread;
+    await expect(f.modal).toContainText(f.copy('This draft was created from different profile or target materials.','此稿基于不同版本的资料或目标。'));
+    await expect(aiPanel(page).getByRole('button',{name:f.copy('Generate AI suggestions','生成 AI 建议'),exact:true})).toBeDisabled();
+    await expect(sources).not.toContainText('New website source revision.');
+    expect(f.audit.suggestions).toHaveLength(1);
+    await info.attach('v2-chain-history-pair',{body:JSON.stringify({material,provenance:pair},null,2),contentType:'application/json'});
+  } finally {await f.done();}
 });

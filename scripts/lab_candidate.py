@@ -19,7 +19,14 @@ from scripts import refresh_artifact as artifacts
 from scripts import research_candidate as research
 from scripts.refresh_rotation import normalize_requested_shard
 from src.collectors.lab_website import _ERRORS, _preflight_previous_observation, canonical_record_sha
-from src.lab_context import _stamp, _text, reviewed_profile_policy, validate_lab_snapshot
+from src.lab_context import (
+    LAB_REVOCATION_REASONS,
+    _stamp,
+    _text,
+    reviewed_lab_chain_policy,
+    reviewed_profile_policy,
+    validate_lab_snapshot,
+)
 
 MANIFEST = 'lab_manifest.json'
 CANDIDATE_FILE = 'candidate.json'
@@ -80,7 +87,7 @@ def _old_revocation(before):
     if 'identity_revoked_at' in refresh:
         _stamp(refresh['identity_revoked_at'])
         return refresh['identity_revoked_at']
-    if refresh.get('reason') == 'identity_mismatch':
+    if refresh.get('reason') in LAB_REVOCATION_REASONS:
         _stamp(refresh.get('checked_at'))
         return refresh['checked_at']
     return None
@@ -115,6 +122,8 @@ def _patch_record(before, result, envelope):
         snapshot = patch['lab_snapshot']
         probe = deepcopy(before)
         probe.setdefault('metadata', {}).pop('lab_refresh', None)
+        if reviewed_lab_chain_policy(before) is not None and (type(snapshot) is not dict or snapshot.get('version') != 2):
+            raise ValueError('lab_chain_downgrade')
         valid = validate_lab_snapshot(snapshot, probe, now=checked)
         if valid is None or valid['checked_at'] != refresh['checked_at']:
             raise ValueError('invalid_lab_source_snapshot')
@@ -122,7 +131,7 @@ def _patch_record(before, result, envelope):
         reason = refresh['reason']
         if type(reason) is not str or reason not in _ERRORS or reason in ('unsupported_policy', 'invalid_target'):
             raise ValueError('invalid_lab_failure')
-        expected_revocation = envelope['created_at'] if reason == 'identity_mismatch' else prior_revocation
+        expected_revocation = envelope['created_at'] if reason in LAB_REVOCATION_REASONS else prior_revocation
         if expected_revocation is None:
             if 'identity_revoked_at' in refresh:
                 raise ValueError('unexpected_lab_revocation')

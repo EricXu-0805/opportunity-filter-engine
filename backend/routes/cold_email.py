@@ -89,6 +89,34 @@ from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
 logger = logging.getLogger("ofe.cold_email")
 
+# Count the complete serialized message array, including JSON escaping and all
+# stage inputs. This is an input-size bound, not a model token estimate.
+EMAIL_PROMPT_MAX_CHARACTERS = 120_000
+_EMAIL_INPUT_TOO_LARGE_MESSAGE = (
+    "The combined email input is too long. Reduce the selected material or "
+    "edit request and try again."
+)
+
+
+class _EmailInputTooLarge(HTTPException):
+    """An explicit input rejection; provider recovery must not replace it."""
+
+    def __init__(self):
+        super().__init__(status_code=413, detail={
+            "code": "EMAIL_INPUT_TOO_LARGE",
+            "message": _EMAIL_INPUT_TOO_LARGE_MESSAGE,
+            "max_characters": EMAIL_PROMPT_MAX_CHARACTERS,
+        })
+
+
+def _email_chat_completion(messages: list[dict], **kwargs) -> str | None:
+    """Reject oversized inputs before provider I/O without truncating evidence."""
+    serialized = json.dumps(messages, ensure_ascii=False, separators=(",", ":"))
+    if len(serialized) > EMAIL_PROMPT_MAX_CHARACTERS:
+        raise _EmailInputTooLarge()
+    return chat_completion(messages, **kwargs)
+
+
 class _EmailValidationRoute(APIRoute):
     """Return useful schema locations without echoing private resume inputs.
 
@@ -1246,7 +1274,7 @@ def _draft_email(
         system = _opportunity_contact_wording(system)
     system = _apply_recipient_prompt_rule(system, prof_brief)
     user = f"{stu_brief}\n{prof_brief}\nWrite the email now."
-    draft = chat_completion(
+    draft = _email_chat_completion(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens=1500,
         temperature=0.5,
@@ -1282,7 +1310,7 @@ def _judge_drafts(
         f"{prof_brief}\n{stu_brief}\n"
         f"Requested voice: {style or 'default'}\n\n{numbered}"
     )
-    raw = chat_completion(
+    raw = _email_chat_completion(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens=100,
         temperature=0.0,
@@ -1394,7 +1422,7 @@ def _llm_critique(draft: str, prof_brief: str, stu_brief: str, style: str | None
         f"Requested voice: {style or 'default'}\n\n"
         f"EMAIL TO REVIEW:\n{draft}"
     )
-    raw = chat_completion(
+    raw = _email_chat_completion(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens=350,
         temperature=0.0,
@@ -1546,7 +1574,7 @@ def _revise_email(
     )
     if is_opportunity_contact:
         user = _opportunity_contact_wording(user)
-    revised = chat_completion(
+    revised = _email_chat_completion(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens=1500,
         temperature=0.4,
@@ -1778,8 +1806,8 @@ async def generate_email(
     ``request.engine`` controls the generator:
       - ``"template"`` (default): deterministic template assembly (no LLM cost).
       - ``"ai"``: LLM-personalized draft via ``backend.lib.llm.chat_completion``.
-        Falls back to template if no LLM provider is configured or the call
-        fails, so callers always get a usable email.
+        Falls back to template if no provider is configured or the call
+        fails. Oversized provider input returns an explicit 413 error.
 
     The recipient is ALWAYS resolved server-side from the opportunity record —
     the request carries no address — and is offered only per the W10b contact
@@ -1816,7 +1844,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.13"
+COLD_EMAIL_PIPELINE_VERSION = "w12.14"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2021,8 +2049,8 @@ def _run_engine(
     on_stage: Callable[[str], None] | None = None,
 ) -> ColdEmailResponse:
     """The full engine decision + response assembly, shared by the blocking
-    route and the SSE stream. Never raises for LLM/orchestration problems —
-    every failure mode degrades to the template response."""
+    route and the SSE stream. Provider/orchestration failures use the template;
+    an oversized input remains an explicit rejection."""
     _assert_outreach_allowed(opp)
     assert_email_contact_policy(opp)
     method = "template"
@@ -2047,9 +2075,8 @@ def _run_engine(
         elif not is_configured():
             fallback_reason = "not_configured"
         else:
-            # Belt over the whole pipeline: "callers always get a usable
-            # email" is this route's contract, so any orchestration bug
-            # degrades to the template — never a 5xx.
+            # Provider failures may use the template. Input-limit errors must
+            # reach the client so the requested AI work is not shown as done.
             try:
                 ai_text = _pipeline_generate(
                     profile_dict,
@@ -2059,6 +2086,8 @@ def _run_engine(
                     on_stage=on_stage,
                     parts_cache=parts,
                 )
+            except _EmailInputTooLarge:
+                raise
             except Exception:
                 logger.exception("cold-email: pipeline crashed; using template")
                 ai_text = None
@@ -2178,8 +2207,8 @@ async def generate_email_stream(
     a final ``{"stage": "done", ...ColdEmailResponse fields...}``. The blocking
     JSON route is unchanged — old clients keep working; the UI uses this to
     show which stage the (now multi-call) pipeline is in instead of one long
-    opaque spinner. Same never-5xx contract: engine errors surface as the
-    template payload in the ``done`` event."""
+    opaque spinner. Provider failures may return a template; oversized input
+    emits an explicit error event and never a done event."""
     pipeline_version = COLD_EMAIL_PIPELINE_VERSION
     target = _email_target(request)
     opp = target.public
@@ -2223,11 +2252,15 @@ async def generate_email_stream(
                 break
         try:
             resp = work_task.result()
+        except _EmailInputTooLarge as exc:
+            yield _sse_frame({"stage": "error", "code": exc.detail["code"],
+                              "status": exc.status_code, "message": exc.detail["message"]})
+            return
         except BlockingWorkTimeout:
             logger.warning("cold-email stream: generation timed out; using template")
             resp = _template_after_timeout(request, opp, profile_dict, authed)
         except Exception:
-            # _run_engine is designed never to raise; this is the last belt.
+            # Unexpected provider/orchestration errors retain local recovery.
             logger.exception("cold-email stream: engine crashed; using template")
             resp = _template_after_timeout(request, opp, profile_dict, authed)
         resp = _bound_email_response(resp, request, target, pipeline_version, authed)
@@ -2620,7 +2653,7 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
     ]
     try:
         edited = await run_blocking(
-            chat_completion,
+            _email_chat_completion,
             messages,
             max_tokens=6000,
             temperature=0.7,
@@ -2806,10 +2839,12 @@ async def _refine_selection_snapshot(request: EmailRefineRequest, opp: dict) -> 
                 f"{context['stu_brief']}\n{context['prof_brief']}\nEditing inputs (not evidence):\n"
                 + json.dumps(inputs, ensure_ascii=False)}]
     try:
-        output = await run_blocking(chat_completion, messages, max_tokens=1600, temperature=0.4,
+        output = await run_blocking(_email_chat_completion, messages, max_tokens=1600, temperature=0.4,
                                     require_complete=True, safe_error_logging=True,
                                     timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
                                     **model_for("cold_email"))
+    except _EmailInputTooLarge:
+        raise
     except Exception:
         # Provider/worker failures never authorize an unrelated whole-email
         # fallback. Keep error details and private editing inputs off the wire.

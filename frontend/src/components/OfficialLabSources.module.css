@@ -9,3 +9,11 @@
 .excerpt { padding-block: .5rem; border-top: 1px solid #e2e8f0; }
 .excerpt h5 { margin: 0 0 .4rem; font-size: .875rem; font-weight: 600; }
 .excerpt p { margin: 0; white-space: pre-wrap; font-size: .875rem; line-height: 1.65; }
+
+.chain { margin-top: .75rem; min-width: 0; }
+.chain summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
+.chain ol, .chain ul { padding-left: 1.25rem; font-size: .875rem; line-height: 1.65; }
+.chain li { margin-block: .5rem; overflow-wrap: anywhere; }
+.chain a { color: #4338ca; text-decoration: underline; }
+.chain a:focus-visible, .chain summary:focus-visible { outline: 2px solid #4338ca; outline-offset: 3px; }
+.rawLink { display: block; color: #64748b; }

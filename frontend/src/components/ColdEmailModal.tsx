@@ -1,7 +1,7 @@
 'use client';
 
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
-import { canFallbackColdEmailStream } from '@/lib/cold-email-stream';
+import { canFallbackColdEmailStream, emailInputTooLargeMessage, isEmailInputTooLarge } from '@/lib/cold-email-stream';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import { isEmailPaperReadingCurrent } from '@/lib/email-paper-reading';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
@@ -879,7 +879,11 @@ export default function ColdEmailModal({
     } catch (err) {
       if (!current()) return;
       const targetFailure = targetVersionFailure(err);
-      if (readingChanged(err)) { reportReadingChange(); }
+      if (isEmailInputTooLarge(err)) {
+        if (keepEditor || preserveDraft) setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
+        else setError(emailInputTooLargeMessage(locale));
+      }
+      else if (readingChanged(err)) { reportReadingChange(); }
       else if (targetFailure) { reportTargetVersionFailure(targetFailure); }
       else if (keepEditor) {
         setProfileRegenerateError(isStudentNameRequiredError(err) ? 'name-required' : 'failed');
@@ -1430,14 +1434,16 @@ export default function ColdEmailModal({
           if (email) setRecipient((prev) => prev || email);
         } catch (error) {
           const failure = targetVersionFailure(error);
-          if (current() && readingChanged(error)) reportReadingChange();
+          if (current() && isEmailInputTooLarge(error)) {
+            setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
+          } else if (current() && readingChanged(error)) reportReadingChange();
           else if (current() && failure) reportTargetVersionFailure(failure);
           // Other reveal failures keep the existing sign-in affordance.
         }
       })();
     });
     return unsubscribe;
-  }, [contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
+  }, [locale, contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
 
   async function selectVariant(idx: number) {
     const v = allVariants[idx];
@@ -1594,8 +1600,10 @@ export default function ColdEmailModal({
       ]);
     } catch (error) {
       const failure = targetVersionFailure(error);
-      if (current() && readingChanged(error)) reportReadingChange();
-          else if (current() && failure) reportTargetVersionFailure(failure);
+      if (current() && isEmailInputTooLarge(error)) {
+        setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
+      } else if (current() && readingChanged(error)) reportReadingChange();
+      else if (current() && failure) reportTargetVersionFailure(failure);
       else if (current() && !auto) {
         setChatMessages((prev) => [
           ...prev,
@@ -1609,7 +1617,7 @@ export default function ColdEmailModal({
         setAiStage(null);
       }
     }
-  }, [contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange, clearEmailRevisions]);
+  }, [locale, contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange, clearEmailRevisions]);
 
   // AI is the default engine: once the template variants land, run the
   // pipeline once automatically. The template is the instant placeholder; the
@@ -1722,7 +1730,8 @@ export default function ColdEmailModal({
     } catch (error) {
       if (current()) {
         const failure = targetVersionFailure(error);
-        if (readingChanged(error)) { reportReadingChange(); reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.'); }
+        if (isEmailInputTooLarge(error)) reply(emailInputTooLargeMessage(locale));
+        else if (readingChanged(error)) { reportReadingChange(); reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.'); }
         else if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
         else {
           const detail = error && typeof error === 'object' && 'detail' in error ? error.detail : null;

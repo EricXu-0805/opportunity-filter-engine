@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "status": "available",
+  "snapshot": {
+    "version": 2,
+    "source": "official_website",
+    "record_id": "faculty-ucb-stat-5558a1b1",
+    "record_source_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+    "school": "ucb",
+    "department": "Department of Statistics",
+    "identity_name": "Rasmus Nielsen",
+    "policy_version": 2,
+    "checked_at": "2026-09-26T12:37:15Z",
+    "pages": [
+      {
+        "kind": "faculty_profile",
+        "requested_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "source_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+        "page_title": "Rasmus Nielsen | Department of Statistics",
+        "identity_text": "Rasmus Nielsen",
+        "linked_from": null,
+        "sections": [
+          {
+            "section_id": "s1",
+            "heading": "Research interests",
+            "text": "Statistical methods for population genetics."
+          }
+        ]
+      },
+      {
+        "kind": "lab_research",
+        "requested_url": "https://nielsen-lab.github.io/research/",
+        "source_url": "https://nielsen-lab.github.io/research/",
+        "page_title": "Nielsen Lab / research",
+        "sections": [
+          {
+            "section_id": "s1",
+            "heading": "Research theme 1",
+            "text": "Target lab research section 1. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 1"
+          },
+          {
+            "section_id": "s2",
+            "heading": "Research theme 2",
+            "text": "Target lab research section 2. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 2"
+          },
+          {
+            "section_id": "s3",
+            "heading": "Research theme 3",
+            "text": "Target lab research section 3. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 3"
+          },
+          {
+            "section_id": "s4",
+            "heading": "Research theme 4",
+            "text": "Target lab research section 4. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 4"
+          },
+          {
+            "section_id": "s5",
+            "heading": "Research theme 5",
+            "text": "Target lab research section 5. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 5"
+          },
+          {
+            "section_id": "s6",
+            "heading": "Research theme 6",
+            "text": "Target lab research section 6. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 6"
+          },
+          {
+            "section_id": "s7",
+            "heading": "Research theme 7",
+            "text": "Target lab research section 7. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 7"
+          },
+          {
+            "section_id": "s8",
+            "heading": "Research theme 8",
+            "text": "Target lab research section 8. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 8"
+          },
+          {
+            "section_id": "s9",
+            "heading": "Research theme 9",
+            "text": "Target lab research section 9. We do not claim clinical validation; 12 samples remain limited. Complete inline source words. Example Papers Example paper title 9"
+          },
+          {
+            "section_id": "s10",
+            "heading": "Research theme 10",
+            "text": "TENTH_SECTION_MARKER: We study somatic mutations and tumor evolution. We do not establish student expertise. Complete inline source words. Example Papers Example paper title 10"
+          }
+        ]
+      }
+    ],
+    "source_chain": {
+      "documents": [
+        {
+          "role": "profile",
+          "requested_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+          "source_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+          "page_title": "Rasmus Nielsen | Department of Statistics",
+          "checked_at": "2026-09-26T12:37:15Z",
+          "body_sha256": "c2cc6685625f252cc9ea745905d21619435823e2f8cf045abfd6c54b24bca296"
+        },
+        {
+          "role": "home",
+          "requested_url": "https://nielsen-lab.github.io/",
+          "source_url": "https://nielsen-lab.github.io/",
+          "page_title": "Nielsen Lab",
+          "checked_at": "2026-09-26T12:37:15Z",
+          "body_sha256": "024eff379544828e40c279a41d3747886286c4b0b507c0960e2f88136e1fe8a6"
+        },
+        {
+          "role": "team",
+          "requested_url": "https://nielsen-lab.github.io/team/",
+          "source_url": "https://nielsen-lab.github.io/team/",
+          "page_title": "Nielsen Lab / team",
+          "checked_at": "2026-09-26T12:37:15Z",
+          "body_sha256": "7f245e967e860055f01980692bb7c881ec8b68a85b812aaf2d3b4280ef5b06b9"
+        },
+        {
+          "role": "research",
+          "requested_url": "https://nielsen-lab.github.io/research/",
+          "source_url": "https://nielsen-lab.github.io/research/",
+          "page_title": "Nielsen Lab / research",
+          "checked_at": "2026-09-26T12:37:15Z",
+          "body_sha256": "04e9edea71f64d1502d2ae3cc6789e6ddb24b62b198a9716583218206327cd10"
+        }
+      ],
+      "links": [
+        {
+          "from_url": "https://statistics.berkeley.edu/people/rasmus-nielsen",
+          "raw_href": "https://nielsen-lab.github.io",
+          "anchor_text": "https://nielsen-lab.github.io",
+          "to_url": "https://nielsen-lab.github.io/"
+        },
+        {
+          "from_url": "https://nielsen-lab.github.io/",
+          "raw_href": "/team/",
+          "anchor_text": "Team",
+          "to_url": "https://nielsen-lab.github.io/team/"
+        },
+        {
+          "from_url": "https://nielsen-lab.github.io/",
+          "raw_href": "/research/",
+          "anchor_text": "Research",
+          "to_url": "https://nielsen-lab.github.io/research/"
+        }
+      ],
+      "identity": {
+        "source_url": "https://nielsen-lab.github.io/team/",
+        "full_name": "Rasmus Nielsen",
+        "role_text": "Professor of Computational Biology in the Department of Integrative Biology and the Department of Statistics"
+      }
+    },
+    "snapshot_version": "ls2:84b48d684a0aace38fa6a326588eeed1c8f1ad4f052a4a0ec2e576aa2ddbe019"
+  }
+}

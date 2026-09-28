@@ -148,4 +148,4 @@ def test_every_real_pipeline_call_receives_the_same_connection_boundary(client, 
     for response in (initial, refined):
         assert evidence in response.json()["body"]
         assert response.json()["experience_usage"]["selected"][0]["excerpt"] == evidence
-        assert response.json()["pipeline_version"] == "w12.13"
+        assert response.json()["pipeline_version"] == "w12.14"

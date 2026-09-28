@@ -9,15 +9,23 @@ from copy import deepcopy
 from datetime import UTC, datetime
 
 import requests
-from bs4 import BeautifulSoup, Comment
+from bs4 import BeautifulSoup, Comment, NavigableString
 
 from backend.lib.safe_webpush import UnsafePushEndpointError, _NoRedirectSession, validate_push_endpoint
 from src.collectors.ucb_common import profile_page_is_denial
 from src.lab_context import (
+    LAB_REVOCATION_REASONS,
+    NIELSEN_HOME,
+    NIELSEN_PROFILE,
+    NIELSEN_RESEARCH,
+    NIELSEN_ROLE,
+    NIELSEN_TEAM,
     _same_complete_name,
     _stamp,
     _text,
     canonical_lab_url,
+    resolve_lab_link,
+    reviewed_lab_chain_policy,
     reviewed_profile_policy,
     validate_lab_snapshot,
 )
@@ -25,7 +33,7 @@ from src.lab_context import (
 MAX_LAB_FETCH_BYTES = 5 * 1024 * 1024
 _ERRORS = {'unsafe_url', 'redirect', 'rate_limited', 'http_error', 'request_failed', 'response_too_large',
            'invalid_content_type', 'invalid_response', 'unsupported_policy', 'unsupported_template',
-           'identity_mismatch', 'missing_sections', 'invalid_snapshot', 'invalid_target'}
+           'identity_mismatch', 'source_link_removed', 'missing_sections', 'invalid_snapshot', 'invalid_target'}
 
 
 def fetch_lab_page(url, *, timeout=15, resolver=None, session_factory=None, clock=None):
@@ -187,6 +195,241 @@ def _profile_snapshot(opp, policy, page, checked_at):
     return (valid, None) if valid is not None else (None, 'invalid_snapshot')
 
 
+def _chain_soup(page, url):
+    if (type(page) is not dict or set(page) != {'requested_url', 'source_url', 'html'}
+            or page['requested_url'] != url or page['source_url'] != url):
+        return None, 'redirect'
+    if type(page['html']) is not bytes or len(page['html']) > MAX_LAB_FETCH_BYTES:
+        return None, 'response_too_large'
+    soup = BeautifulSoup(page['html'], 'html.parser')
+    if profile_page_is_denial(soup) or soup.find('base') is not None or len(soup.find_all('title')) != 1:
+        return None, 'unsupported_template'
+    return soup, None
+
+
+def _only_reviewed_children(node, children):
+    """Do not discard qualifiers next to a reviewed source link or identity."""
+    return (list(node.find_all(recursive=False)) == children
+            and not any(str(value).strip() for value in node.find_all(string=True, recursive=False)
+                        if not isinstance(value, Comment)))
+
+
+def _profile_home_link(soup):
+    containers = soup.select('article.node--type-faculty > div.node__content')
+    if len(containers) != 1:
+        return None, 'unsupported_template'
+    content = containers[0]
+    columns = content.select(':scope > div.node_columns')
+    fields = content.select(':scope > div.node_columns > div.field--name-field-website')
+    all_fields = content.select('.field--name-field-website')
+    if len(columns) != 1 or len(fields) != len(all_fields) or len(fields) > 1:
+        return None, 'unsupported_template'
+    if not fields:
+        # If the original link merely moved into an unknown container, that is
+        # template drift, not a verified removal of the official chain.
+        if any(resolve_lab_link(NIELSEN_PROFILE, a.get('href')) == NIELSEN_HOME for a in content.select('a[href]')):
+            return None, 'unsupported_template'
+        return None, 'source_link_removed'
+    field = fields[0]
+    labels = field.select(':scope > .field__label')
+    items = field.select(':scope > .field__item')
+    if len(labels) != 1 or labels[0].get_text(' ', strip=True) != 'Website' or len(items) != 1:
+        return None, 'unsupported_template'
+    if not _only_reviewed_children(field, [labels[0], items[0]]):
+        return None, 'unsupported_template'
+    anchors = items[0].select(':scope > a[href]')
+    if len(anchors) != len(items[0].select('a')) or len(anchors) > 1:
+        return None, 'unsupported_template'
+    if not anchors:
+        return None, 'source_link_removed' if not items[0].get_text(strip=True) else 'unsupported_template'
+    anchor = anchors[0]; raw = anchor.get('href')
+    if not _only_reviewed_children(items[0], [anchor]):
+        return None, 'unsupported_template'
+    resolved = resolve_lab_link(NIELSEN_PROFILE, raw)
+    if resolved is None:
+        return None, 'unsupported_template'
+    if resolved != NIELSEN_HOME:
+        return None, 'source_link_removed'
+    if anchor.get_text(' ', strip=True) not in (NIELSEN_HOME, NIELSEN_HOME.rstrip('/')):
+        return None, 'unsupported_template'
+    return {'from_url': NIELSEN_PROFILE, 'raw_href': raw,
+            'anchor_text': anchor.get_text(' ', strip=True), 'to_url': NIELSEN_HOME}, None
+
+
+def _home_links(soup):
+    navs = soup.select('body > div#header > nav.navbar')
+    if len(navs) != 1 or len(soup.select('#header')) != 1:
+        return None, 'unsupported_template'
+    menus = navs[0].select(':scope > div.container > div#navbarNav.navbar-collapse > ul.navbar-nav')
+    if len(menus) != 1:
+        return None, 'unsupported_template'
+    anchors = menus[0].select(':scope > li.nav-link > a[href]')
+    if not anchors or len(anchors) != len(menus[0].select('a[href]')):
+        return None, 'unsupported_template'
+    items = menus[0].select(':scope > li.nav-link')
+    if (not _only_reviewed_children(menus[0], items)
+            or any(not _only_reviewed_children(item, item.select(':scope > a[href]'))
+                   or len(item.select(':scope > a[href]')) != 1 for item in items)):
+        return None, 'unsupported_template'
+    links = []
+    for path, name in (('/team/', 'Team'), ('/research/', 'Research')):
+        matching = [a for a in anchors if a.get('href') == path]
+        if len(matching) > 1:
+            return None, 'unsupported_template'
+        if not matching:
+            destination = NIELSEN_HOME.rstrip('/') + path
+            if any(resolve_lab_link(NIELSEN_HOME, a.get('href')) == destination for a in soup.select('a[href]')):
+                return None, 'unsupported_template'
+            named = [a for a in anchors if a.get_text(' ', strip=True) == name]
+            if any(resolve_lab_link(NIELSEN_HOME, a.get('href')) is None for a in named):
+                return None, 'unsupported_template'
+            return None, 'source_link_removed'
+        anchor = matching[0]
+        if anchor.get_text(' ', strip=True) != name:
+            return None, 'unsupported_template'
+        links.append({'from_url': NIELSEN_HOME, 'raw_href': path, 'anchor_text': name,
+                      'to_url': NIELSEN_HOME.rstrip('/') + path})
+    return links, None
+
+
+def _team_identity(soup):
+    containers = soup.select('body > div.container.mt-4')
+    if len(containers) != 1:
+        return None, 'unsupported_template'
+    main = containers[0]
+    titles = main.select(':scope > div.row > div.col-lg-12 > div.title')
+    if ([title.get_text(' ', strip=True) for title in titles] != ['Current members', 'Recent past members']
+            or len(main.select('.title')) != 2):
+        return None, 'unsupported_template'
+    current = False; cards = []; all_cards = []
+    for child in main.find_all(recursive=False):
+        label = child.select_one(':scope > div.col-lg-12 > div.title')
+        if label is not None:
+            current = label.get_text(' ', strip=True) == 'Current members'
+        else:
+            direct_cards = child.select(':scope > div.memberbox')
+            all_cards.extend(direct_cards)
+            if current:
+                cards.extend(direct_cards)
+    if len(all_cards) != len(main.select('.memberbox')):
+        return None, 'unsupported_template'
+    candidates = []
+    for card in cards:
+        heads = card.select(':scope > div.media > div.media-body > div.head > a[href]')
+        # A matching identity/path in an unrecognized card cannot be ignored.
+        mentions = [a for a in card.select('a[href]') if a.get('href') == '/team/rasmus-nielsen/'
+                    or a.get_text(' ', strip=True) == 'Rasmus Nielsen']
+        if mentions and len(heads) != 1:
+            return None, 'unsupported_template'
+        if heads and (heads[0].get('href') == '/team/rasmus-nielsen/' or heads[0].get_text(' ', strip=True) == 'Rasmus Nielsen'):
+            candidates.append((card, heads[0]))
+    if not candidates:
+        return None, 'identity_mismatch'
+    if len(candidates) != 1:
+        return None, 'unsupported_template'
+    card, anchor = candidates[0]
+    bodies = card.select(':scope > div.media > div.media-body')
+    if len(bodies) != 1:
+        return None, 'unsupported_template'
+    body = bodies[0]; notes = body.select(':scope > p.note')
+    heads = body.select(':scope > div.head')
+    media = card.select(':scope > div.media')
+    spacers = card.select(':scope > div.bigspacer')
+    if (len(notes) != 1 or len(heads) != 1 or len(media) != 1
+            or not _only_reviewed_children(body, [heads[0], notes[0]])
+            or not _only_reviewed_children(heads[0], [anchor])
+            or not _only_reviewed_children(card, [media[0], *spacers])
+            or any(spacer.get_text(strip=True) or spacer.find() for spacer in spacers)):
+        return None, 'unsupported_template'
+    photos = media[0].select(':scope > a.float-left')
+    if len(photos) != 1 or not _only_reviewed_children(media[0], [photos[0], body]):
+        return None, 'unsupported_template'
+    images = photos[0].select(':scope > img')
+    if len(images) != 1 or not _only_reviewed_children(photos[0], images):
+        return None, 'unsupported_template'
+    name, role = anchor.get_text(' ', strip=True), notes[0].get_text(' ', strip=True)
+    if name != 'Rasmus Nielsen' or anchor.get('href') != '/team/rasmus-nielsen/' or role != NIELSEN_ROLE:
+        return None, 'identity_mismatch'
+    return {'source_url': NIELSEN_TEAM, 'full_name': name, 'role_text': role}, None
+
+
+def _research_sections(soup):
+    containers = soup.select('body > div.container.mt-4')
+    if len(containers) != 1:
+        return None, 'unsupported_template'
+    content = containers[0]
+    if content.select_one('script, style, nav, header, footer, aside, article') is not None:
+        return None, 'unsupported_template'
+    headings = content.select(':scope > h1')
+    if len(headings) != 10 or len(content.select('h1')) != 10:
+        return None, 'unsupported_template'
+    sections = []; parts = []; heading = None
+    def finish():
+        text = ' '.join(' '.join(parts).split())
+        if not text:
+            raise ValueError('empty_lab_section')
+        sections.append({'section_id': f's{len(sections) + 1}', 'heading': heading, 'text': text})
+    try:
+        for node in content.children:
+            if isinstance(node, Comment):
+                continue
+            if getattr(node, 'name', None) == 'h1':
+                if heading is not None:
+                    finish()
+                heading = node.get_text(' ', strip=True); parts = []
+            else:
+                text = str(node) if isinstance(node, NavigableString) else node.get_text(' ', strip=True)
+                if heading is None and text.strip():
+                    return None, 'unsupported_template'
+                if text.strip():
+                    parts.append(text)
+        finish()
+    except ValueError:
+        return None, 'missing_sections'
+    return sections, None
+
+
+def _nielsen_snapshot(opp, profile, profile_receipt, read, stamp):
+    """Four reviewed documents, three actual links, one explicit Team identity."""
+    receipts = [profile_receipt]; soups = []
+    soup, error = _chain_soup(profile_receipt, NIELSEN_PROFILE)
+    if error:
+        return None, error
+    soups.append(soup)
+    first_link, error = _profile_home_link(soup)
+    if error:
+        return None, error
+    for url in (NIELSEN_HOME, NIELSEN_TEAM, NIELSEN_RESEARCH):
+        receipt, error = read(url)
+        if error:
+            return None, error if type(error) is str and error in _ERRORS else 'request_failed'
+        soup, error = _chain_soup(receipt, url)
+        if error:
+            return None, error
+        receipts.append(receipt); soups.append(soup)
+        if url == NIELSEN_HOME:
+            nav_links, error = _home_links(soup)
+        elif url == NIELSEN_TEAM:
+            identity, error = _team_identity(soup)
+        else:
+            sections, error = _research_sections(soup)
+        if error:
+            return None, error
+    source = deepcopy(profile)
+    source.update(version=2, policy_version=2, identity_name=source['pages'][0]['identity_text'])
+    source['pages'].append({'kind': 'lab_research', 'requested_url': NIELSEN_RESEARCH, 'source_url': NIELSEN_RESEARCH,
+                            'page_title': soups[3].title.get_text(' ', strip=True), 'sections': sections})
+    source['source_chain'] = {'documents': [
+        {'role': role, 'requested_url': receipt['requested_url'], 'source_url': receipt['source_url'],
+         'page_title': soup.title.get_text(' ', strip=True), 'checked_at': stamp,
+         'body_sha256': hashlib.sha256(receipt['html']).hexdigest()}
+        for role, receipt, soup in zip(('profile', 'home', 'team', 'research'), receipts, soups, strict=True)],
+        'links': [first_link, *nav_links], 'identity': identity}
+    probe = deepcopy(opp); probe.setdefault('metadata', {}).pop('lab_refresh', None)
+    valid = validate_lab_snapshot(source, probe, now=_stamp(stamp))
+    return (valid, None) if valid is not None else (None, 'invalid_snapshot')
+
+
 def _preflight_previous_observation(opp, current):
     """Preserve monotonic success, attempt and explicit revocation times."""
     metadata = opp.get('metadata') if type(opp) is dict else None
@@ -222,11 +465,11 @@ def collect_lab_snapshot(opp, *, now=None, fetch=None):
     old_attempt = old_metadata.get('lab_refresh') if type(old_metadata) is dict else None
     if type(old_attempt) is dict:
         revoked = old_attempt.get('identity_revoked_at')
-        if revoked is None and old_attempt.get('reason') == 'identity_mismatch':
+        if revoked is None and old_attempt.get('reason') in LAB_REVOCATION_REASONS:
             revoked = old_attempt.get('checked_at')
         if revoked is not None:
             # Keep a prior explicit identity rejection across later outages.
-            # Only a newly matched profile snapshot below clears it.
+            # Only a newly verified complete source snapshot below clears it.
             _stamp(revoked)
             attempt['identity_revoked_at'] = revoked
     policy = reviewed_profile_policy(opp)
@@ -248,9 +491,11 @@ def collect_lab_snapshot(opp, *, now=None, fetch=None):
         attempt['reason'] = error if type(error) is str and error in _ERRORS else 'request_failed'
         return {'lab_refresh': attempt}
     snapshot, error = _profile_snapshot(opp, policy, page, stamp)
+    if error is None and reviewed_lab_chain_policy(opp) is not None:
+        snapshot, error = _nielsen_snapshot(opp, snapshot, page, read, stamp)
     if error:
         attempt['reason'] = error
-        if error == 'identity_mismatch':
+        if error in LAB_REVOCATION_REASONS:
             attempt['identity_revoked_at'] = stamp
         return {'lab_refresh': attempt}
     if 'identity_revoked_at' in attempt and _stamp(attempt['identity_revoked_at']) >= current:
