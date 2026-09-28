@@ -932,7 +932,10 @@ class TestHistoricalDetailCapabilityBridge:
         assert response.status_code == 409
         assert response.headers["Cache-Control"] == "private, no-store, max-age=0"
         assert response.headers["Pragma"] == "no-cache"
-        assert response.headers["Vary"] == "Authorization"
+        # Vary is a token list; CORS may also add Origin.
+        assert "authorization" in {
+            token.strip().lower() for token in response.headers["Vary"].split(",")
+        }
 
     def test_the_refusal_describes_no_record_at_all(self, serve):
         record = serve(deepcopy(_NON_ACTIONABLE_RECORDS["closed"]))
