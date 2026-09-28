@@ -803,6 +803,7 @@ def _common_parts(
         name=name, year=year, major=major, school=school,
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
+        research_interests_verbatim=profile.get("research_interests_text", ""),
         linkedin_url=linkedin_url, github_url=github_url,
         scholar_url=scholar_url,
         pi_name=pi_name, lab=lab, title=title,
@@ -1023,12 +1024,13 @@ def _target_match_terms(p: dict) -> set[str]:
     Student interests may explain motivation, but cannot prove relevance to
     this target. ``matching_skills`` is also omitted: it is a student-derived
     subset, while the source requirements and research below stand on their
-    own. These parts already pass the source/attribution gates in _common_parts.
+    own. Legacy fields pass the gates in _common_parts; source_research_text
+    is populated by email routes only from validated available snapshots.
     """
     target_text = " ".join(
         [str(k) for k in (p.get("opp_skills_required") or [])]
         + [str(p.get(key) or "") for key in (
-            "research_topic", "research_area", "research_areas_raw",
+            "research_topic", "research_area", "research_areas_raw", "source_research_text",
         )]
     )
     return {_stem(t) for t in _significant_terms(target_text) if len(t) > 3}

@@ -327,3 +327,16 @@ it('checks candidate freshness inside the lock and preserves a usable writer aft
   expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ revision: first.revision, draft: payload() });
   expect((await writer.delete()).status).toBe('deleted');
 });
+
+const supplemental = () => ({version:1 as const,opportunityId:O,targetKey:'wt1:original',entryId:'entry-one',activityId:'project-one',answers:{task:'Complete answer 王',method:'Unselected private method',personalRole:'I did not lead.',outcome:'',outcomeBasis:''},selected:['task' as const]});
+it('persists supplement text under the same owner and opportunity and preserves deletion CAS',async()=>{
+ const first=await save({...payload(),pendingSupplement:supplemental()});const token=captureOwnerToken();
+ expect(readColdEmailDraft(token,O)).toMatchObject({draft:{pendingSupplement:supplemental()}});
+ await deleteColdEmailDraft(token,O,first.revision);
+ expect(await saveColdEmailDraft(token,O,first.revision,{...payload(),pendingSupplement:supplemental()})).toMatchObject({status:'conflict'});
+ expect(readColdEmailDraft(token,O).status).toBe('missing');await owner(B);expect(readColdEmailDraft(captureOwnerToken(),O).status).toBe('missing');
+});
+it('rejects a supplement bound to another opportunity without altering the previous draft',async()=>{
+ const first=await save();await expect(saveColdEmailDraft(captureOwnerToken(),O,first.revision,{...payload(),pendingSupplement:{...supplemental(),opportunityId:'other'}})).rejects.toMatchObject({code:'invalid_draft'});
+ expect(readColdEmailDraft(captureOwnerToken(),O)).toMatchObject({draft:payload()});
+});

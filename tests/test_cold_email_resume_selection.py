@@ -49,7 +49,7 @@ def test_student_interest_does_not_authenticate_template_relevance():
     # aspirations. Neither is erased just because this target is unrelated.
     brief = ce._render_student_brief(parts)
     assert UNRELATED in brief
-    assert "Research interests (aspirations, NOT evidence of experience): robot motion planning" in brief
+    assert 'Research interests (aspirations, NOT evidence of experience): \"robot motion planning\"' in brief
 
 
 def test_template_quotes_the_selected_source_without_claiming_a_proven_connection():

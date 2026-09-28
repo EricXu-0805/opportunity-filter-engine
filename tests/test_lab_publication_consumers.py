@@ -148,7 +148,7 @@ def test_applied_source_is_sent_whole_to_controlled_email_provider(flow, monkeyp
         return 'Subject: Research inquiry\n\nDear Professor Ding,\n\nCould I ask about your research?\n\nThank you for your time.'
     monkeypatch.setattr(email,'chat_completion',model)
     reply = result(post(flow['client'],'',FIRST,opportunity_id=target['id'],engine='ai'), '')
-    assert calls and reply['pipeline_version']=='w12.14', reply
+    assert calls and reply['pipeline_version']=='w12.15', reply
     text = calls[0][1]['content']
     for section in target['metadata']['lab_snapshot']['pages'][0]['sections']:
         assert section['text'] in text

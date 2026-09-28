@@ -1,3 +1,4 @@
+import { parseResumeSupplementDraft, type ResumeSupplementDraftSnapshot } from './resume-supplement-draft';
 import { captureValidSelection, type EmailTextSelection } from './email-revision';
 import { normalizeEmailContactContext } from './email-contact-context';
 import { parseEmailContactDraftSnapshot, type EmailContactDraftSnapshot } from './email-contact-draft';
@@ -39,6 +40,7 @@ export interface ColdEmailDraftPayload {
   pendingEdit: string;
   context: EmailContactContext;
   pendingPanel?: EmailContactDraftSnapshot | null;
+  pendingSupplement?: ResumeSupplementDraftSnapshot | null;
   sources: ColdEmailDraftSources;
   history: ColdEmailDraftVersion[];
   editScope: ColdEmailEditScope;
@@ -132,7 +134,7 @@ function parsePayload(value: unknown, version: 1 | 2): ColdEmailDraftPayload {
   const item = snapshotJson(value);
   const required = ['subject', 'body', 'selectedStyle', 'pendingEdit', 'context', 'sources'];
   if (version === 2) required.push('history', 'editScope');
-  if (!record(item) || !exact(item, required, ['manualRecipient', 'pendingPanel'])
+  if (!record(item) || !exact(item, required, ['manualRecipient', 'pendingPanel', 'pendingSupplement'])
     || !text(item.subject, COLD_EMAIL_DRAFT_LIMITS.subject) || !text(item.body, COLD_EMAIL_DRAFT_LIMITS.body)
     || !text(item.pendingEdit, COLD_EMAIL_DRAFT_LIMITS.pendingEdit) || !validStyle(item.selectedStyle)
     || (Object.hasOwn(item, 'manualRecipient') && !text(item.manualRecipient, COLD_EMAIL_DRAFT_LIMITS.manualRecipient))
@@ -141,6 +143,7 @@ function parsePayload(value: unknown, version: 1 | 2): ColdEmailDraftPayload {
   // Validate the standard applied-context contract, but preserve its exact text.
   try { normalizeEmailContactContext(item.context); } catch { fail('invalid_draft'); }
   if (item.pendingPanel !== undefined && item.pendingPanel !== null && !parseEmailContactDraftSnapshot(item.pendingPanel)) fail('invalid_draft');
+  if (item.pendingSupplement !== undefined && item.pendingSupplement !== null && !parseResumeSupplementDraft(item.pendingSupplement)) fail('invalid_draft');
   if (version === 1) {
     // A legacy request did not record its range; never infer a whole-email edit.
     item.history = []; item.editScope = item.pendingEdit.trim() ? 'reselect' : 'full';
@@ -207,6 +210,7 @@ export function readColdEmailDraft(owner: OwnerToken, opportunityId: string): Co
   if (item.draft === null) return { status: 'missing', revision: item.revision };
   const draft = parsePayload(item.draft, item.version);
   if (draft.pendingPanel && draft.pendingPanel.opportunityId !== opportunityId) fail('invalid_draft');
+  if (draft.pendingSupplement && draft.pendingSupplement.opportunityId !== opportunityId) fail('invalid_draft');
   return { status: 'present', revision: item.revision, draft };
 }
 async function locked<T>(owner: OwnerToken, fn: () => T): Promise<T> {
@@ -234,6 +238,7 @@ async function mutate(owner: OwnerToken, opportunityId: string, expectedRevision
   if (expectedRevision !== null && !UUID.test(expectedRevision)) fail('invalid_draft');
   const copy = draft === null ? null : snapshotColdEmailDraft(draft);
   if (copy?.pendingPanel && copy.pendingPanel.opportunityId !== opportunityId) fail('invalid_draft');
+  if (copy?.pendingSupplement && copy.pendingSupplement.opportunityId !== opportunityId) fail('invalid_draft');
   return locked(origin, () => {
     if (isCurrent && !isCurrent()) fail('draft_changed');
     const previous = readColdEmailDraft(origin, opportunityId);

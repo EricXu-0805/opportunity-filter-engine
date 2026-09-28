@@ -39,7 +39,7 @@ function mount(props: Partial<ResumeSupplementPanelProps> = {}) {
   return { ...render(<ResumeSupplementPanel {...full} />), props: full };
 }
 const task = () => screen.getByRole('textbox', { name: 'What was the task?' });
-const confirm = () => screen.getByRole('checkbox', { name: 'I confirm the selected information is accurate.' });
+const confirm = () => screen.getByRole('checkbox', { name: /(?:I confirm the selected information|I reviewed the current activity and profile, and confirm the selected information) is accurate\./ });
 const submit = () => screen.getByRole('button', { name: 'Confirm and add to my master résumé' });
 function fill(value = 'I helped test the sensor; I did not lead the project.') {
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
@@ -292,4 +292,64 @@ describe('cold email contribution reuse', () => {
     mount({ purpose: 'cold_email' });
     expect(screen.getByText(locale === 'en' ? /Saved to your profile and master résumé. Your current email is kept/ : /已保存到个人资料和简历母版。当前邮件仍保留/)).toBeInTheDocument();
   });
+});
+
+const recoveredAnswer = () => ({ version: 1 as const, opportunityId: 'opportunity-one', targetKey: 'old-target', entryId: 'recovered-entry', activityId: 'project-one', answers: { task: 'Exact restored task 王', method: 'Unselected retained method', personalRole: '', outcome: '', outcomeBasis: '' }, selected: ['task' as const] });
+describe('recovering an unfinished supplement', () => {
+  it('requires current-material review and a new accuracy confirmation, preserving the original entry identity', async () => {
+    mount({ opportunityId: 'opportunity-one', initialDraft: recoveredAnswer() });
+    expect(task()).toHaveValue('Exact restored task 王'); expect(screen.getByLabelText('What methods or tools did you use?')).toHaveValue('Unselected retained method');
+    expect(confirm()).not.toBeChecked(); expect(confirm()).toBeEnabled(); expect(submit()).toBeDisabled(); expect(current().confirm).not.toHaveBeenCalled();
+    fireEvent.click(confirm()); expect(submit()).toBeEnabled(); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledOnce()); expect(vi.mocked(current().confirm).mock.calls[0][0].entryId).toBe('recovered-entry');
+  });
+  it('requires fresh review after answers, activity, target or hydrated profile change', () => {
+    const m=mount({ opportunityId:'opportunity-one',initialDraft:recoveredAnswer() });
+    const review=confirm;
+    fireEvent.click(review());fireEvent.change(task(),{target:{value:'Edited restored answer'}});expect(review()).not.toBeChecked();expect(submit()).toBeDisabled();
+    fireEvent.click(review());fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-two'}});expect(review()).not.toBeChecked();
+    fireEvent.click(review());mocked.controller=controller({view:{...view(),viewId:'new-current-profile'}});m.rerender(<ResumeSupplementPanel {...m.props}/>);expect(review()).not.toBeChecked();
+    fireEvent.click(review());m.rerender(<ResumeSupplementPanel {...m.props} targetKey="new-target"/>);expect(review()).not.toBeChecked();
+  });
+  it('does not silently replace a removed activity and never re-adds an already saved entry',()=>{
+    const v=view();v.renderedProfile.resume_master!.activities[0].details.push({id:'recovered-entry',revision:1});
+    v.renderedProfile.experience_entries!.push({id:'recovered-entry',revision:1,status:'confirmed',text:'Task: Exact restored task 王',source:{kind:'manual'}});
+    mocked.controller=controller({view:v});mount({opportunityId:'opportunity-one',initialDraft:recoveredAnswer()});
+    expect(screen.getByText('These selected answers are already recorded in your current profile. They will not be added again.')).toBeVisible();
+    expect(screen.getByRole('button',{name:'Added to master résumé'})).toBeDisabled();expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it('blocks a restored entry that now belongs to another activity',()=>{
+    const v=view();v.renderedProfile.resume_master!.activities[1].details.push({id:'recovered-entry',revision:1});
+    v.renderedProfile.experience_entries!.push({id:'recovered-entry',revision:1,status:'confirmed',text:'Task: Exact restored task 王',source:{kind:'manual'}});
+    mocked.controller=controller({view:v});mount({opportunityId:'opportunity-one',initialDraft:recoveredAnswer()});
+    expect(screen.getByRole('alert')).toHaveTextContent('belongs to another activity');expect(submit()).toBeDisabled();expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it.each(['edited', 'withdrawn', 'moved'])('can explicitly discard a %s recovered entry without resubmitting it', async change => {
+    const v = view();
+    v.renderedProfile.experience_entries!.push({ id: 'recovered-entry', revision: change === 'edited' ? 2 : 1,
+      status: change === 'withdrawn' ? 'withdrawn' : 'confirmed', text: change === 'edited' ? 'Later edited text' : 'Task: Exact restored task 王', source: { kind: 'manual' } });
+    v.renderedProfile.resume_master!.activities[change === 'moved' ? 1 : 0].details.push({ id: 'recovered-entry', revision: change === 'edited' ? 2 : 1 });
+    mocked.controller = controller({ view: v });
+    const changed = vi.fn(); mount({ opportunityId: 'opportunity-one', initialDraft: recoveredAnswer(), onDraftSnapshotChange: changed });
+    const discard = screen.getByRole('button', { name: 'Discard recovered answers and start again' });
+    const prompt = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(discard); expect(task()).toHaveValue('Exact restored task 王'); expect(current().acceptCurrent).not.toHaveBeenCalled();
+    prompt.mockReturnValue(true); fireEvent.click(discard);
+    await waitFor(() => expect(task()).toHaveValue(''));
+    expect(current().acceptCurrent).toHaveBeenCalledOnce(); expect(current().confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox')).toHaveValue(''); expect(confirm()).not.toBeChecked();
+    expect(changed.mock.calls.at(-1)![0].entryId).not.toBe('recovered-entry'); expect(screen.queryByTestId('supplement-recovery-review')).toBeNull();
+  });
+  it('keeps a deleted activity unavailable until the user explicitly selects a current activity', () => {
+    const v = view(); v.renderedProfile.resume_master!.activities.shift(); mocked.controller = controller({view:v});
+    mount({ opportunityId:'opportunity-one', initialDraft:recoveredAnswer() });
+    expect(screen.getByRole('combobox')).toHaveValue('project-one'); expect(screen.getByText('Previously selected activity is unavailable')).toBeInTheDocument();
+    expect(submit()).toBeDisabled(); expect(confirm()).not.toBeChecked();
+    fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-two'}}); expect(task()).toHaveValue('Exact restored task 王'); expect(submit()).toBeDisabled();
+  });
+  it('preserves over-limit input visibly and reports an unsavable draft rather than a truncated snapshot',()=>{
+    const changed=vi.fn();mount({opportunityId:'opportunity-one',onDraftSnapshotChange:changed});fireEvent.change(task(),{target:{value:'x'.repeat(66000)}});
+    expect(task()).toHaveValue('x'.repeat(66000));expect(changed).toHaveBeenLastCalledWith(null);fireEvent.change(task(),{target:{value:'Corrected'}});expect(changed.mock.calls.at(-1)![0].answers.task).toBe('Corrected');
+  });
+  it('ignores another opportunity’s snapshot and preserves the ordinary no-recovery path',()=>{mount({opportunityId:'other',initialDraft:recoveredAnswer()});expect(task()).toHaveValue('');expect(screen.queryByTestId('supplement-recovery-review')).toBeNull();});
 });

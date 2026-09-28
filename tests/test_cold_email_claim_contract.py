@@ -165,7 +165,7 @@ def test_real_beginner_project_survives_the_deterministic_template_belt(client):
         out = response.json()
         bodies = [v["body"] for v in out["variants"]] if "variants" in out else [out["body"]]
         assert all("Built a Python parser." in b for b in bodies)
-        assert out["pipeline_version"] == "w12.14"
+        assert out["pipeline_version"] == "w12.15"
 
 
 def test_pipeline_critique_also_flags_all_three_contract_findings():

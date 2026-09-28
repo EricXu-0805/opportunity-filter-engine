@@ -2,6 +2,7 @@
 
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
 import { canFallbackColdEmailStream, emailInputTooLargeMessage, isEmailInputTooLarge } from '@/lib/cold-email-stream';
+import type { ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
 import { isEmailPaperReadingCurrent } from '@/lib/email-paper-reading';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
@@ -352,6 +353,7 @@ export default function ColdEmailModal({
     && supplementProfile.targetId === opportunityId && isOwnerTokenValid(supplementProfile.view.token, supplementProfile.view.token.uid)
     ? supplementProfile.view.renderedProfile : incomingProfile;
   const [supplementSession, setSupplementSession] = useState<{ owner: ReturnType<typeof captureOwnerToken>; targetId: string; inputKey: string | null } | null>(null);
+  const [supplementExpanded, setSupplementExpanded] = useState(false);
   const supplementScopeRef = useRef(supplementSession);
   const supplementInputRef = useRef({ key: incomingProfileKey, available: profileAvailable && isOpen, targetId: opportunityId });
   useLayoutEffect(() => {
@@ -430,6 +432,9 @@ export default function ColdEmailModal({
   const persistenceSessionRef = useRef(0);
   const [pendingPanel, setPendingPanel] = useState<EmailContactDraftSnapshot | null>(null);
   const [panelSavable, setPanelSavable] = useState(true);
+  const lastSupplementSnapshotRef = useRef<string | null>(null);
+  const [pendingSupplement, setPendingSupplement] = useState<ResumeSupplementDraftSnapshot | null>(null);
+  const [supplementSavable, setSupplementSavable] = useState(true);
   const [restoredSources, setRestoredSources] = useState<ColdEmailDraftSources | null>(null);
   const [originKey, setOriginKey] = useState<string | null>(null);
   const [sourceSignatures, setSourceSignatures] = useState<{ key: string; value: ColdEmailDraftSources } | null>(null);
@@ -708,7 +713,6 @@ export default function ColdEmailModal({
     proposalRef.current = null; undoRef.current = null;
     setEditProposal(null); setEditUndo(null); setVersionCompare(null);
     supplementScopeRef.current = null;
-    setSupplementSession(null);
     composeActionCancelRef.current();
     cancelCompose();
     profileSessionRef.current += 1;
@@ -730,8 +734,9 @@ export default function ColdEmailModal({
       if (session !== sendSessionRef.current || !isTokenOwnerStillCurrent(owner)) return;
       setDraftClosing(false);
       if (saved && revision === draftRevisionRef.current) finishClose();
+      else supplementScopeRef.current = supplementSession;
     });
-  }, [flushDraft, finishClose, pauseWritingForNavigation]);
+  }, [flushDraft, finishClose, pauseWritingForNavigation, supplementSession]);
   const leaveForProfile = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
     const anchor = event.currentTarget;
     if (readyNavigationRef.current === anchor) {
@@ -749,10 +754,10 @@ export default function ColdEmailModal({
       setDraftClosing(false);
       if (saved && revision === draftRevisionRef.current && anchor.isConnected) {
         readyNavigationRef.current = anchor; anchor.click();
-      }
+      } else supplementScopeRef.current = supplementSession;
     });
     return false;
-  }, [flushDraft, finishClose, pauseWritingForNavigation]);
+  }, [flushDraft, finishClose, pauseWritingForNavigation, supplementSession]);
 
   // The epoch changes synchronously, before a parent's new profile reaches
   // this dialog. End the old draft session instead of generating with that
@@ -1012,6 +1017,8 @@ export default function ColdEmailModal({
         setContactState({ id: opportunityId, value: value.context, revision: 1, dirty: value.pendingPanel?.pending ?? false });
         contextDirtyRef.current = value.pendingPanel?.pending ?? false;
         setPendingPanel(value.pendingPanel ?? null); setPanelSavable(true);
+        setPendingSupplement(value.pendingSupplement ?? null); setSupplementSavable(true);
+        if (value.pendingSupplement) { setSupplementExpanded(true); setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }
         setRestoredSources(value.sources);
         profileChangedRef.current = true; setProfileChanged(true);
       } else { void fetchVariantsRef.current(); }
@@ -1024,13 +1031,13 @@ export default function ColdEmailModal({
       setVersionBusy(false); versionBusyRef.current = false; setSourceReview('pending');
       persistenceSessionRef.current += 1;
       detachDraft();
-      setDraftRestored(false); setDraftClosing(false); metadataRefreshingRef.current = false; setMetadataRefreshing(false); setPendingPanel(null); setPanelSavable(true);
+      setDraftRestored(false); setDraftClosing(false); metadataRefreshingRef.current = false; setMetadataRefreshing(false); setPendingPanel(null); setPanelSavable(true); setPendingSupplement(null); setSupplementSavable(true); lastSupplementSnapshotRef.current = null;
       setRestoredSources(null); setSourceSignatures(null);
       cancelCompose();
       autoFiredRef.current = false;
       contextDirtyRef.current = false; contextEditedRef.current = false;
       supplementScopeRef.current = null;
-      setSupplementSession(null); setSupplementProfile(null);
+      setSupplementSession(null); setSupplementExpanded(false); setSupplementProfile(null);
       setReadingReview(0); setReadingReviewRequired(false);
       setContactState({ id: opportunityId, value: defaultEmailContactContext(), revision: 0, dirty: false });
       setContextChanged(false);
@@ -1143,17 +1150,25 @@ export default function ColdEmailModal({
     if (snapshot) setPendingPanel({ ...snapshot, opportunityId });
     else markDraftUnsaved('too_large');
   }, [markDraftUnsaved, opportunityId]);
+  const supplementSnapshotChanged = useCallback((snapshot: ResumeSupplementDraftSnapshot | null) => {
+    const key = snapshot ? JSON.stringify(snapshot) : 'invalid';
+    if (lastSupplementSnapshotRef.current !== null && lastSupplementSnapshotRef.current !== key) userActionRevisionRef.current += 1;
+    lastSupplementSnapshotRef.current = key;
+    setSupplementSavable(snapshot !== null);
+    if (snapshot) setPendingSupplement({ ...snapshot, opportunityId });
+    else markDraftUnsaved('too_large');
+  }, [markDraftUnsaved, opportunityId]);
   const draftPayload: ColdEmailDraftPayload = {
     subject, body, selectedStyle, pendingEdit: chatInput, context: requestContactContext,
     history: savedVersions, editScope: scopeNeedsChoice || invalidSelection ? 'reselect' : selection?.body === body ? selection.range : 'full',
-    pendingPanel,
+    pendingPanel, pendingSupplement,
     sources: originKey && sourceSignatures?.key === originKey ? sourceSignatures.value : restoredSources ?? NO_DRAFT_SOURCES,
   };
   const draftPayloadKey = JSON.stringify(draftPayload);
   useLayoutEffect(() => { draftPayloadRef.current = recipientEditedRef.current ? { ...draftPayload, manualRecipient: recipient } : draftPayload; });
   useLayoutEffect(() => {
     changeDraftRef.current = async (next, reason, valid, apply) => {
-      if (versionBusyRef.current || !panelSavable || !valid()) return false;
+      if (versionBusyRef.current || !panelSavable || !supplementSavable || !valid()) return false;
       const before = JSON.parse(JSON.stringify(draftPayloadRef.current)) as ColdEmailDraftPayload;
       const base = captureEditBase(); const editEpoch = userActionRevisionRef.current;
       const saveBase = { edit: editEpoch, draft: base.revision, material: base.material }; versionSaveBaseRef.current = saveBase;
@@ -1203,7 +1218,7 @@ export default function ColdEmailModal({
   });
 
   async function deleteSavedVersion(id: string) {
-    if (versionBusyRef.current || !savedVersions.some(v => v.id === id)) return;
+    if (versionBusyRef.current || !panelSavable || !supplementSavable || !savedVersions.some(v => v.id === id)) return;
     if (!window.confirm(locale === 'zh' ? '删除这个历史版本？当前草稿会保留。' : 'Delete this saved version? Your current draft is kept.')) return;
     const base = captureEditBase(); const editEpoch = userActionRevisionRef.current;
     const saveBase = { edit: editEpoch, draft: base.revision, material: base.material }; versionSaveBaseRef.current = saveBase;
@@ -1242,20 +1257,20 @@ export default function ColdEmailModal({
 
   useLayoutEffect(() => {
     const current = () => {
-      if (!isOpen || persistenceSession !== persistenceSessionRef.current || !panelSavable) return;
+      if (!isOpen || persistenceSession !== persistenceSessionRef.current || !panelSavable || !supplementSavable) return;
       // Derived source hashes/panel receipts can settle during a checkpoint.
       // They are included in that atomic snapshot, not a competing user edit.
       const checkpoint = versionSaveBaseRef.current;
       if (versionBusyRef.current && checkpoint?.edit === userActionRevisionRef.current
         && checkpoint.draft === draftRevisionRef.current && checkpoint.material === editLiveRef.current.material) return;
-      if (!(subject || body || recipientEditedRef.current || chatInput || contextEditedRef.current || pendingPanel?.pending)) return;
+      if (!(subject || body || recipientEditedRef.current || chatInput || contextEditedRef.current || pendingPanel?.pending || pendingSupplement)) return;
       const payload = JSON.parse(draftPayloadKey) as ColdEmailDraftPayload;
       if (recipientEditedRef.current) payload.manualRecipient = recipient;
       persistDraft(payload);
     };
     persistCurrentRef.current = current;
     current();
-  }, [isOpen, persistenceSession, panelSavable, subject, body, recipient, chatInput, pendingPanel, draftPayloadKey, persistDraft, versionBusy]);
+  }, [isOpen, persistenceSession, panelSavable, supplementSavable, pendingSupplement, subject, body, recipient, chatInput, pendingPanel, draftPayloadKey, persistDraft, versionBusy]);
   useEffect(() => {
     if (!isOpen || !['saving', 'failed', 'conflict'].includes(draftPersistence.status)) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
@@ -2121,7 +2136,7 @@ export default function ColdEmailModal({
           {locale === 'zh' ? '删除草稿并重写' : 'Delete draft and start again'}
         </button>
         {draftPersistence.status === 'failed' && <button type="button" data-testid="cold-email-draft-retry"
-          disabled={!panelSavable || draftClosing} className="ml-3 underline disabled:opacity-50"
+          disabled={!panelSavable || !supplementSavable || draftClosing} className="ml-3 underline disabled:opacity-50"
           onClick={() => { persistCurrentRef.current(); void draftPersistence.retry(); }}>
           {locale === 'zh' ? '重试保存' : 'Retry saving'}
         </button>}
@@ -2285,11 +2300,11 @@ export default function ColdEmailModal({
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
                   <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
                     language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />
-                  <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement"
-                    onToggle={(event) => { if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
+                  <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement" open={supplementExpanded}
+                    onToggle={(event) => { setSupplementExpanded(event.currentTarget.open); if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-800">{locale === 'zh' ? '补充本人贡献（可跳过）' : 'Add your personal contribution (optional)'}</summary>
                     {supplementSession && supplementSession.targetId === opportunityId && <div className="mt-3">
-                      <ResumeSupplementPanel owner={supplementSession.owner} targetKey={targetFingerprint} purpose="cold_email" profileAvailable={profileAvailable}
+                      <ResumeSupplementPanel opportunityId={opportunityId} initialDraft={pendingSupplement} onDraftSnapshotChange={supplementSnapshotChanged} owner={supplementSession.owner} targetKey={targetFingerprint} purpose="cold_email" profileAvailable={profileAvailable}
                         onAcceptedProfile={(view, againstView) => {
                           const current = supplementInputRef.current, scope = supplementScopeRef.current;
                           if (!current.available || scope !== supplementSession || current.targetId !== scope.targetId

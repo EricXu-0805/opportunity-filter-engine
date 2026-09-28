@@ -1,5 +1,7 @@
 'use client';
 
+import { parseResumeSupplementDraft, supplementRecorded, type ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
+
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
 import type { OwnerToken } from '@/lib/identity-owner';
@@ -15,6 +17,9 @@ export interface ResumeSupplementPanelProps {
   onDirtyChange?: (dirty: boolean) => void;
   onAcceptedProfile?: (view: ProfileViewSnapshot, againstView: ProfileViewSnapshot) => void;
   onOpenProfile?: () => void;
+  opportunityId?: string;
+  initialDraft?: ResumeSupplementDraftSnapshot | null;
+  onDraftSnapshotChange?: (snapshot: ResumeSupplementDraftSnapshot | null) => void;
 }
 const emptyAnswers = (): SupplementAnswers => ({ task: '', method: '', personalRole: '', outcome: '', outcomeBasis: '' });
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
@@ -27,19 +32,20 @@ export default function ResumeSupplementPanel(props: ResumeSupplementPanelProps)
   return <SupplementSession key={ownerKey} {...props} />;
 }
 
-function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile }: ResumeSupplementPanelProps) {
+function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile, opportunityId, initialDraft, onDraftSnapshotChange }: ResumeSupplementPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const id = useId();
   const controller = useResumeSupplement({ enabled: true, profileAvailable, owner, targetKey, onAcceptedProfile });
-  const [entryId, setEntryId] = useState(() => crypto.randomUUID());
-  const [activityId, setActivityId] = useState('');
-  const [answers, setAnswers] = useState<SupplementAnswers>(emptyAnswers);
-  const [selected, setSelected] = useState<SupplementAnswerKey[]>([]);
+  const [recovered] = useState(() => { const draft = parseResumeSupplementDraft(initialDraft); return draft?.opportunityId === opportunityId ? draft : null; });
+  const [entryId, setEntryId] = useState(() => recovered?.entryId ?? crypto.randomUUID());
+  const [activityId, setActivityId] = useState(() => recovered?.activityId ?? '');
+  const [answers, setAnswers] = useState<SupplementAnswers>(() => recovered?.answers ?? emptyAnswers());
+  const [selected, setSelected] = useState<SupplementAnswerKey[]>(() => recovered?.selected ?? []);
   const [confirmedFor, setConfirmedFor] = useState<string | null>(null);
   const [busyFor, setBusyFor] = useState<string | null>(null);
   const [localError, setLocalError] = useState(false);
-  const [nextRound, setNextRound] = useState<{ target: string; entry: string } | null>(null);
+  const [nextRound, setNextRound] = useState<{ target: string; entry: string; clearActivity?: boolean } | null>(null);
   const active = useRef(true);
   const currentTarget = useRef(targetKey);
   useLayoutEffect(() => { currentTarget.current = targetKey; }, [targetKey]);
@@ -56,17 +62,26 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
   const master = view?.renderedProfile.resume_master;
   const activities = master?.activities ?? [];
   const activity = activities.find((item) => item.id === activityId);
-  const saved = profileAvailable && controller.phase === 'saved' && controller.confirmedEntryId === entryId;
+  const recoveredRound = recovered?.entryId === entryId;
+  const recoverySnapshot = { version: 1 as const, opportunityId: opportunityId ?? '', targetKey, ...draft };
+  const wasRecorded = recoveredRound && preview.ok && supplementRecorded(view?.baseProfile, recoverySnapshot, preview.previewText)
+    && supplementRecorded(view?.renderedProfile, recoverySnapshot, preview.previewText);
+  const recoveredConflict = recoveredRound && !wasRecorded && !!view?.renderedProfile.experience_entries?.some(item => item.id === entryId);
+  const saved = profileAvailable && ((controller.phase === 'saved' && controller.confirmedEntryId === entryId) || wasRecorded);
   const hasInput = Object.values(answers).some((value) => value.length > 0);
   const hasUnselectedInput = SUPPLEMENT_ANSWER_KEYS.some((key) => !selected.includes(key) && answers[key].length > 0);
   const dirty = controller.phase !== 'retired' && hasInput && (!saved || hasUnselectedInput);
   useLayoutEffect(() => { callbacks.current.onDirtyChange?.(dirty); }, [dirty]);
   const busy = busyFor === targetKey;
-  const locked = busy || !!nextRound || controller.operationLocked || ['saving', 'recorded', 'conflict', 'save-unknown', 'saved', 'retired'].includes(controller.phase);
+  const locked = saved || busy || !!nextRound || controller.operationLocked || ['saving', 'recorded', 'conflict', 'save-unknown', 'saved', 'retired'].includes(controller.phase);
   const fingerprint = JSON.stringify([targetKey, view?.viewId, draft]);
   const confirmed = confirmedFor === fingerprint;
   const ready = profileAvailable && (controller.phase === 'ready' || controller.phase === 'save-error');
-  const canConfirm = ready && !!activity && preview.ok && confirmed && !locked;
+  const canConfirm = ready && !!activity && preview.ok && confirmed && !locked && !recoveredConflict;
+  const snapshotCallback = useRef(onDraftSnapshotChange);
+  useLayoutEffect(() => { snapshotCallback.current = onDraftSnapshotChange; }, [onDraftSnapshotChange]);
+  const snapshotKey = JSON.stringify(recoverySnapshot);
+  useLayoutEffect(() => { if (opportunityId) snapshotCallback.current?.(parseResumeSupplementDraft(JSON.parse(snapshotKey))); }, [snapshotKey, opportunityId]);
   const questions: Record<SupplementAnswerKey, { question: string; include: string; label: string }> = {
     task: { question: copy('What was the task?', '当时要完成什么任务？'), include: copy('Include task', '纳入任务'), label: copy('Task', '任务') },
     method: { question: copy('What methods or tools did you use?', '用了哪些方法或工具？'), include: copy('Include method', '纳入方法'), label: copy('Method', '方法') },
@@ -91,13 +106,14 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setNextRound(null); return;
     }
-    if (controller.phase === 'ready' && profileAvailable) {
+    if (controller.phase === 'ready' && profileAvailable && !busy) {
       // The user explicitly requested another supplement; only discard this
       // already-saved answer round after accepting a fresh profile view.
       setEntryId(crypto.randomUUID()); setAnswers(emptyAnswers()); setSelected([]);
+      if (nextRound.clearActivity) setActivityId('');
       setConfirmedFor(null); setNextRound(null); setLocalError(false);
     } else if (controller.phase === 'retired' || !profileAvailable) setNextRound(null);
-  }, [nextRound, controller.phase, entryId, targetKey, profileAvailable]);
+  }, [nextRound, controller.phase, entryId, targetKey, profileAvailable, busy]);
   const messages: Partial<Record<typeof controller.phase, string>> = {
     loading: copy('Loading your saved profile…', '正在读取已保存的资料…'),
     'load-error': copy('Your profile could not be read. Your answers are still here. Retry before confirming.', '暂时无法读取资料，填写内容仍保留。请重试后再确认。'),
@@ -118,7 +134,10 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
   return <section aria-labelledby={`${id}-title`} className="min-w-0 rounded-xl border border-indigo-100 bg-indigo-50/20 p-4" data-testid="resume-supplement-panel">
     <h3 id={`${id}-title`} className="font-semibold">{copy('Add experience details', '补充经历信息')}</h3>
     <p className="mt-2 text-sm text-gray-600">{copy('Answer what you know, choose what to include, then confirm it is accurate. Numbers and outcomes are optional. Nothing is inferred or added automatically.', '填写你知道的内容，选择要纳入的部分，再确认属实。不必写数字或结果，也不会自动推测或补写。')}</p>
-    {purpose === 'cold_email' && <p className="mt-2 text-sm text-gray-600">{copy('Describe your own contribution, separately from the team’s result. Keep your original wording; you can skip any question. Only selected, confirmed answers are saved for email and résumé drafts.', '把你本人做的部分与团队结果分开写。保留你的原话，可以跳过任何问题；只保存你勾选并确认的内容，供邮件和简历使用。')}</p>}
+    {purpose === 'cold_email' && <p className="mt-2 text-sm text-gray-600">{copy('Describe your own contribution, separately from the team’s result. Keep your original wording; you can skip any question. Only selected, confirmed answers are added to your profile for email and résumé drafts.', '把你本人做的部分与团队结果分开写。保留你的原话，可以跳过任何问题；只有勾选并确认的内容才会加入个人资料，供邮件和简历使用。')}</p>}
+    {recoveredRound && !wasRecorded && <p role="status" data-testid="supplement-recovery-review" className="mt-3 text-sm text-amber-900">{copy('Your unfinished answers were restored. Check the current project and profile, then confirm again before adding them. No answer was submitted by restoring it.', '已恢复未完成的答案。请核对当前项目及个人资料，再重新确认后添加；恢复不会提交答案。')}</p>}
+    {wasRecorded && <p role="status" className="mt-3 text-sm text-indigo-900">{copy('These selected answers are already recorded in your current profile. They will not be added again.', '这些所选答案已经保存在当前个人资料中，不会重复添加。')}</p>}
+    {recoveredConflict && <p role="alert" className="mt-3 text-sm text-red-700">{copy('This saved entry has changed or belongs to another activity. Review it in your profile before continuing. Your answers are kept.', '这条已保存记录发生了变化，或属于其他经历。请先在个人资料中核对；答案仍保留。')}</p>}
     {messages[controller.phase] && <p role={['load-error', 'conflict', 'save-error'].includes(controller.phase) ? 'alert' : 'status'} className="mt-3 whitespace-pre-wrap text-sm text-indigo-900">{messages[controller.phase]}</p>}
     {localError && <p role="alert" className="mt-3 text-sm text-red-700">{copy('That action could not finish. Your answers are kept; please retry.', '操作未能完成，答案仍保留，请重试。')}</p>}
     {(noMaster || noActivities) && <p className="mt-3 text-sm text-amber-900">{noMaster ? copy('Create your master résumé before adding details here.', '请先建立简历母版，再在这里补充。') : copy('Add a project or experience to your master résumé first.', '请先在简历母版中添加一项项目或经历。')}</p>}
@@ -130,6 +149,7 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
       <select id={`${id}-activity`} value={activityId} disabled={locked || !activities.length} className="mt-1 w-full rounded-lg border p-2 text-sm"
         onChange={(event) => { setActivityId(event.target.value); setConfirmedFor(null); }}>
         <option value="">{copy('Choose an existing activity', '选择已有项目或经历')}</option>
+        {activityId && !activity && <option value={activityId} disabled>{copy('Previously selected activity is unavailable', '之前选择的经历已不可用')}</option>}
         {activities.map((item, index) => <option key={item.id} value={item.id}>{item.title?.value || item.organization?.value || `${copy('Activity', '经历')} ${index + 1}`}</option>)}
       </select>
     </div>
@@ -158,14 +178,19 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
         {SUPPLEMENT_ANSWER_KEYS.filter((key) => selected.includes(key) && answers[key].length > 0).map((key) => <div key={key} className="mt-3"><p className="text-xs font-medium">{questions[key].label}</p><pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{answers[key]}</pre></div>)}
       </>}
     </section>
-    <p className="mt-2 text-xs text-gray-600">{copy('This records your own confirmation, not an independent verification. Unselected answers are not saved.', '这里记录的是你本人的确认，不代表独立核验。未选答案不会保存。')}</p>
-    <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={saved || confirmed} disabled={locked || !preview.ok || !activity || !ready} onChange={(event) => setConfirmedFor(event.target.checked ? fingerprint : null)} />{copy('I confirm the selected information is accurate.', '我确认所选内容属实。')}</label>
+    <p className="mt-2 text-xs text-gray-600">{purpose === 'cold_email' && onDraftSnapshotChange ? copy('Unselected answers are not added to your profile. Unsubmitted answers are saved only in this browser’s email draft. Your confirmation is not independent verification.', '未选答案不会加入个人资料。未提交回答仅保存在此浏览器的邮件草稿中；你的确认不代表独立核验。') : copy('This records your own confirmation, not an independent verification. Unselected answers are not saved.', '这里记录的是你本人的确认，不代表独立核验。未选答案不会保存。')}</p>
+    <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={saved || confirmed} disabled={locked || !preview.ok || !activity || !ready || recoveredConflict} onChange={(event) => setConfirmedFor(event.target.checked ? fingerprint : null)} />{recoveredRound && !saved ? copy('I reviewed the current activity and profile, and confirm the selected information is accurate.', '我已核对当前经历和资料，确认所选内容属实。') : copy('I confirm the selected information is accurate.', '我确认所选内容属实。')}</label>
     <button type="button" className={`${button} mt-3 bg-indigo-600 text-white`} disabled={!canConfirm} onClick={() => {
       if (!canConfirm) return;
       const baseline = controller.baseline(activityId);
       if (baseline) void run(() => controller.confirm(draft, baseline));
       else setLocalError(true);
     }}>{saved ? copy('Added to master résumé', '已加入母版简历') : copy('Confirm and add to my master résumé', '确认并加入简历母版')}</button>
+    {recoveredRound && !saved && <button type="button" className={`${button} mt-3 ml-2`} disabled={busy || locked || controller.operationLocked} onClick={() => {
+      if (!window.confirm(copy('Discard these recovered answers and start a new supplement? Your email draft will be kept.', '放弃这些恢复的答案，开始新的补充？邮件正文会保留。'))) return;
+      setConfirmedFor(null);
+      setNextRound({ target: targetKey, entry: entryId, clearActivity: true }); void run(() => controller.acceptCurrent());
+    }}>{copy('Discard recovered answers and start again', '放弃恢复的答案并重新补充')}</button>}
     {saved && <button type="button" className={`${button} mt-3 ml-2`} disabled={busy} onClick={() => {
       if (hasUnselectedInput && !window.confirm(copy('Start another detail? Answers you did not include will be discarded.', '开始补充另一条？未纳入的答案将被丢弃。'))) return;
       setNextRound({ target: targetKey, entry: entryId }); void run(() => controller.acceptCurrent());

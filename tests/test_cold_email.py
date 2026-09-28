@@ -860,8 +860,8 @@ class TestSkillLevelThreading:
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
         system_msg = next(m["content"] for m in captured["messages"] if m["role"] == "system")
 
-        assert "Python (expert)" in user_msg
-        assert "R (beginner)" in user_msg
+        assert '{"name": "Python", "level": "expert"}' in user_msg
+        assert '{"name": "R", "level": "beginner"}' in user_msg
         assert "self-reported level" in system_msg
         assert "never present a beginner skill" in system_msg
 
@@ -893,7 +893,7 @@ class TestSkillLevelThreading:
         out = ce._pipeline_generate(profile, opp, None)
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
-        assert "MATLAB (beginner)" in user_msg
+        assert '{"name": "MATLAB", "level": "beginner"}' in user_msg
 
 
 class TestRecentWorkGrounding:
@@ -1138,7 +1138,7 @@ class TestColdEmailPipeline:
         )
         brief = _render_student_brief(p)
         assert "FAISS retrieval pipeline" in brief
-        assert "Python (expert)" in brief
+        assert '{"name": "Python", "level": "expert"}' in brief
 
     def test_resume_bullet_term_is_grounded(self):
         """A concrete term present ONLY in a resume bullet is in the corpus, so a

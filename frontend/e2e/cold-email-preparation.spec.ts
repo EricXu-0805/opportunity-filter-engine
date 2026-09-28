@@ -327,3 +327,65 @@ for (const status of ['available', 'stale'] as const) test(`website lab ${status
     await info.attach('website-lab-source-and-request-audit', { body: JSON.stringify({ status, source: snapshot, calls: f.state.calls, geometry, manualRetained: true }, null, 2), contentType: 'application/json' });
   } finally { await f.done(); }
 });
+
+
+test('B51 supplement draft survives close, reload and storage failure without restoring confirmation', async ({ page }, info) => {
+  test.setTimeout(60_000);
+  const locale = info.project.name === 'mobile-chrome' ? 'zh' : 'en';
+  const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
+  const f = await setup(page, info, locale);
+  try {
+    await f.open(); await f.ready();
+    const wrapper = page.getByTestId('cold-email-supplement'); await wrapper.locator(':scope > summary').click();
+    const panel = page.getByTestId('resume-supplement-panel');
+    const task = panel.getByLabel(copy('What was the task?', '当时要完成什么任务？'), { exact: true });
+    const method = panel.getByLabel(copy('What methods or tools did you use?', '用了哪些方法或工具？'), { exact: true });
+    const activity = panel.getByLabel(copy('Project or experience in your master résumé', '母版中的项目或经历'), { exact: true });
+    const original = '  Exact unfinished task 王. I did not lead the team.  ';
+    await activity.selectOption('project-1'); await task.fill(original); await method.fill('Unselected private method 王');
+    await panel.getByRole('checkbox', { name: copy('Include task', '纳入任务'), exact: true }).check();
+    await panel.getByRole('checkbox', { name: copy('I confirm the selected information is accurate.', '我确认所选内容属实。'), exact: true }).check();
+    await page.locator('#cold-email-body').fill('Manual email kept 王');
+    const close = page.getByRole('button', { name: copy('Close email editor', '关闭邮件编辑器'), exact: true });
+    await close.click(); await expect(page.locator('#cold-email-body')).toHaveCount(0);
+    await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(activity).toHaveValue('project-1');
+    const review = panel.getByRole('checkbox', { name: copy('I reviewed the current activity and profile, and confirm the selected information is accurate.', '我已核对当前经历和资料，确认所选内容属实。'), exact: true });
+    await expect(review).not.toBeChecked(); await expect(panel.getByRole('button', {name:copy('Confirm and add to my master résumé','确认并加入简历母版'),exact:true})).toBeDisabled();
+    const checkCurrent = async () => {
+      const refresh = panel.getByRole('button', {name:copy('Review current materials','重新核对当前材料'),exact:true});
+      if (await refresh.isVisible()) await refresh.click();
+      await expect(activity.locator('option:checked')).toHaveText('Instrument project');
+      await expect(review).toBeEnabled(); await expect(review).not.toBeChecked();
+    };
+    await checkCurrent(); await review.check();
+    await expect(panel.getByRole('button',{name:copy('Confirm and add to my master résumé','确认并加入简历母版'),exact:true})).toBeEnabled();
+    await review.uncheck();
+    expect(f.mutations).toEqual([]); await expect(page.locator('#cold-email-body')).toHaveValue('Manual email kept 王');
+    await review.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-single-confirmation-' + locale + '.png');
+    await task.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-restored-' + locale + '.png');
+    const generationCount = f.state.calls.filter(call=>call.path.endsWith('/stream')).length;
+    await page.reload(); await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(review).not.toBeChecked();
+    await checkCurrent();
+    expect(f.state.calls.filter(call=>call.path.endsWith('/stream'))).toHaveLength(generationCount);
+    await page.evaluate(prefix => {
+      const original = Storage.prototype.setItem;
+      (window as unknown as { __restoreB51Storage: () => void }).__restoreB51Storage = () => { Storage.prototype.setItem = original; };
+      Storage.prototype.setItem = function (key: string, value: string) { if (key.includes(prefix)) throw new DOMException('Local B51 quota fixture', 'QuotaExceededError'); return original.call(this,key,value); };
+    }, STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX);
+    await task.fill('Latest unsaved task 王');
+    await expect(page.getByTestId('cold-email-draft-status')).toContainText(copy('Could not save', '未能保存'));
+    await close.click(); await expect(task).toHaveValue('Latest unsaved task 王'); await expect(method).toHaveValue('Unselected private method 王');
+    await expect(page.locator('#cold-email-body')).toHaveValue('Manual email kept 王'); await expect(panel).toBeVisible();
+    await task.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-failed-close-kept-' + locale + '.png');
+    await page.evaluate(() => (window as unknown as { __restoreB51Storage: () => void }).__restoreB51Storage());
+    await page.getByTestId('cold-email-draft-retry').click(); await expect(page.getByTestId('cold-email-draft-status')).toContainText(copy('Saved on this browser', '已保存在此浏览器'));
+    await close.click(); await expect(page.locator('#cold-email-body')).toHaveCount(0); await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await expect(task).toHaveValue('Latest unsaved task 王'); await expect(review).not.toBeChecked();
+    page.once('dialog',dialog=>dialog.dismiss()); await panel.getByRole('button',{name:copy('Discard recovered answers and start again','放弃恢复的答案并重新补充'),exact:true}).click(); await expect(task).toHaveValue('Latest unsaved task 王');
+    page.once('dialog',dialog=>dialog.accept()); await panel.getByRole('button',{name:copy('Discard recovered answers and start again','放弃恢复的答案并重新补充'),exact:true}).click(); await expect(task).toHaveValue(''); await expect(method).toHaveValue('');
+    await expect(page.locator('#cold-email-body')).toHaveValue('Manual email kept 王'); expect(f.mutations).toEqual([]); expect(await windows(page)).toEqual([]);
+    await info.attach('b51-supplement-proof',{body:JSON.stringify({locale,closeReopen:true,refreshRecovery:true,quotaFailureRetained:true,retryPersisted:true,confirmationRestored:false,unselectedAnswerRecovered:true,discardPreservesEmail:true,profileMutations:0,sendCalls:0,generationCount}),contentType:'application/json'});
+  } finally { await f.done(); }
+});
