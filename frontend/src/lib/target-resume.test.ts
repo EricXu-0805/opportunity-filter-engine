@@ -52,7 +52,7 @@ const doc = () => createTargetResume(profile(), target(), 'draft-one');
   it('creates whole confirmed fields with exact role/labels, dates, contacts and authors', async () => {
     const source = profile();
     const result = await createTargetResume(source, target(), 'draft-one');
-    expect(result.base_snapshot).toEqual({ resume_text: '', experience_entries: source.experience_entries, resume_master: source.resume_master });
+    expect(result.base_snapshot).toEqual({ research_interests: source.research_interests, resume_text: '', experience_entries: source.experience_entries, resume_master: source.resume_master });
     expect(result.base).toMatchObject({ master_id: 'master', master_revision: 1, source_signature: await sourceDigest('') });
     expect(allLines(result).map((row) => [row.role, row.original])).toEqual([
       ['name', '徐国一'], ['email', 'student@example.test'], ['phone', '+1 (217) 000 0000'], ['location', 'Urbana'],
@@ -132,7 +132,7 @@ const doc = () => createTargetResume(profile(), target(), 'draft-one');
       criteria: { eligibility: { skills_required: ['Exact skill'] }, timing: {}, application: {}, setting: {}, availability: {},
         attribution: { skills_attribution: 'inferred' } } });
     const result = await createTargetResume(p, currentTarget);
-    for (const hidden of ['UNRELATED_PRIVATE_INTEREST', 'private-account', 'PRIVATE_GPA', 'PRIVATE_RAW_SCRAPE', 'PRIVATE_CONTACT', 'PRIVATE_TRACKING']) {
+    for (const hidden of ['private-account', 'PRIVATE_GPA', 'PRIVATE_RAW_SCRAPE', 'PRIVATE_CONTACT', 'PRIVATE_TRACKING']) {
       expect(JSON.stringify(result)).not.toContain(hidden);
     }
     opportunity.metadata.skills_attribution = null;

@@ -29,7 +29,7 @@ function view(token = owner): ProfileViewSnapshot {
 }
 function controller(overrides: Partial<Controller> = {}): Controller {
   return { view: view(), acceptedView: view(), phase: 'ready', error: null, ownerScopeKey: 'owner-a', operationLocked: false,
-    confirmedEntryId: null, acceptCurrent: vi.fn().mockResolvedValue(undefined), confirm: vi.fn().mockResolvedValue({ durable: false, reason: 'record-failed' }),
+    confirmedEntryId: null, acceptCurrent: vi.fn().mockResolvedValue(undefined), assign: vi.fn(), confirm: vi.fn().mockResolvedValue({ durable: false, reason: 'record-failed' }),
     retryRecorded: vi.fn().mockResolvedValue({ status: 'error', message: 'unavailable' }),
     baseline: vi.fn((activityId: string) => ({ view: current().view!, activityId, targetKey: (mocked.options as ResumeSupplementOptions).targetKey })), ...overrides };
 }

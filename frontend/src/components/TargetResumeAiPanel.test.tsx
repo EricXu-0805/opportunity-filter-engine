@@ -19,7 +19,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 let prepared: PreparedTargetResumeAi;
 const rewrite = 'I built a Python parser 😀 with my teammates. I did not lead the team.';
 function response(payload: TargetResumeAiRequest, structureOnly = false): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v4', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
     manifest: { unit_ids: prepared.units.map(unit => unit.unit_id), protected_unit_count: prepared.protected_unit_count }, method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
     receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => ({

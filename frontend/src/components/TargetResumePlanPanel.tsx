@@ -21,12 +21,12 @@ const toggle = (values: Set<string>, id: string, checked: boolean) => {
   const next = new Set(values); if (checked) next.add(id); else next.delete(id); return next;
 };
 
-export default function TargetResumePlanPanel({ draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumePlanPanelProps) {
+export default function TargetResumePlanPanel({ supportGroups, draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumePlanPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const [pages, setPages] = useState<1 | 2>(1);
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
-  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\n${draftKey}\n${pages}`;
+  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\n${draftKey}\n${pages}\n${JSON.stringify(supportGroups ?? null)}`;
   const [review, setReview] = useState<Review | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,11 +93,11 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
     const controller = new AbortController(); operation.current.controller = controller; operation.current.busy = true;
     setBusy(true); setError(null); setNotice(null);
     try {
-      const prepared = await prepareTargetResumePlan(draft, { target_pages: pages });
+      const prepared = await prepareTargetResumePlan(draft, { target_pages: pages }, supportGroups);
       if (!live(generation, expected)) return;
       if (!prepared.ok) { setError(prepared.code); return; }
       const payload: TargetResumePlanRequest = { version: 1, request_id: crypto.randomUUID(), locale: locale === 'zh' ? 'zh' : 'en',
-        draft: prepared.value.draft, document_signature: prepared.value.document_signature, options: prepared.value.options };
+        draft: prepared.value.draft, document_signature: prepared.value.document_signature, options: prepared.value.options, ...(prepared.value.support_groups === undefined ? {} : {support_groups:prepared.value.support_groups}) };
       const response = await generateTargetResumePlan(payload, { owner, signal: controller.signal });
       if (!live(generation, expected)) return;
       const checked = validateTargetResumePlanResponse(prepared.value, payload, response);
@@ -129,7 +129,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
     setBusy(false); setNotice('cancelled');
   };
   const hasSelection = selections.size > 0 || rewrites.size > 0;
-  const options = currentContext ? { selection_block_ids: [...selections], rewrite_unit_ids: [...rewrites], current_context: currentContext, options: { target_pages: pages } } : null;
+  const options = currentContext ? { selection_block_ids: [...selections], rewrite_unit_ids: [...rewrites], current_context: currentContext, options: { target_pages: pages }, ...(supportGroups === undefined ? {} : {support_groups:supportGroups}) } : null;
   const preview = review && ready && !working && !action.error && hasSelection && options
     ? applyTargetResumePlan(review.prepared, draft, review.response, options) : null;
   const apply = () => {
@@ -148,7 +148,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
           .find(block => block.id === item.block_id)?.lines.find(line => line.id === rewrite.unit_id);
         if (!line) { setError('invalid_response'); return; }
         annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: line.id, field: 'text',
-          reason: item.reason, target_evidence: item.target_evidence, source_evidence: item.source_evidence,
+          reason: item.reason, target_evidence: item.target_evidence, source_evidence: rewrite.source_evidence ?? item.source_evidence,
           check: review.response.check_version ? { version: review.response.check_version, pipeline_version: review.response.pipeline_version,
             request_id: review.response.request_id, document_signature: review.response.document_signature, original: line.original, evidence: line.evidence } : null });
       }
@@ -200,7 +200,9 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
           <li>{copy(`Pending experiences: ${review.response.scope.pending_experience_ids.length}`, `待确认经历：${review.response.scope.pending_experience_ids.length}`)}</li>
           <li>{copy(`Outdated confirmed experiences: ${review.response.scope.stale_experience_ids.length}`, `已失效的确认经历：${review.response.scope.stale_experience_ids.length}`)}</li>
           <li>{copy(`Unmapped source ranges: ${review.response.scope.unmapped_range_count}`, `未映射原文片段：${review.response.scope.unmapped_range_count}`)}</li>
-        </ul><p className="mt-2 text-xs text-gray-500">{copy('These materials are outside the plan. Review your master résumé to add or confirm them.', '以上材料不在本次选材范围内，可回母版补充或确认。')}</p>
+        </ul>
+        {review.response.scope.unreferenced_experience_ids.map(id => { const entry=review.prepared.draft.base_snapshot.experience_entries.find(item=>item.id===id);return entry ? <pre key={id} className="mt-2 whitespace-pre-wrap break-words rounded-lg border bg-white p-3 font-sans text-sm">{entry.text}</pre> : null; })}
+        <p className="mt-2 text-xs text-gray-500">{copy('These materials are outside the plan. Review your master résumé to add or confirm them.', '以上材料不在本次选材范围内，可回母版补充或确认。')}</p>
       </details>
       {review.response.items.map(item => {
         const section = review.prepared.draft.document.sections.find(value => value.id === item.section_id)!;
@@ -209,6 +211,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
         return <article key={item.block_id} data-plan-block-id={item.block_id} className="mt-4 min-w-0 rounded-lg border p-3">
           <h4 className="break-words font-medium">{title}</h4>
           <p className="mt-1 text-sm font-medium">{copy('Suggestion', '建议')}：{item.action === 'keep' ? copy('Keep', '保留') : item.action === 'compress' ? copy('Shorten', '压缩') : copy('Leave out for now', '暂不选用')}</p>
+          <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review reason and sources', '查看理由和依据')}</summary>
           <p className="mt-2 whitespace-pre-wrap break-words text-sm">{item.reason}</p>
           <div className="mt-2 space-y-2 text-sm">
             <p className="font-medium">{copy('Opportunity evidence', '机会依据')}</p>
@@ -216,6 +219,7 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
             <p className="font-medium">{copy('Source evidence', '原文依据')}</p>
             {item.source_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-gray-200 pl-2">{evidence.quote}</blockquote>)}
           </div>
+          </details>
           <details className="mt-3"><summary className="cursor-pointer text-sm">{copy('Read complete original and current text', '查看完整原文与当前稿')}</summary>
             <div className="mt-2 grid min-w-0 gap-3 md:grid-cols-2">{(['original', 'text'] as const).map(field => <div key={field} className="min-w-0 rounded-lg bg-gray-50 p-3">
               <h5 className="text-sm font-medium">{field === 'original' ? copy('Original source', '完整原文') : copy('Current draft', '当前稿')}</h5>
@@ -229,10 +233,10 @@ export default function TargetResumePlanPanel({ draft, profile, profileAvailable
           {item.action === 'compress' && <p className="mt-2 text-xs text-gray-600">{copy('Shorter wording is optional below. Selecting the content choice alone keeps the current text.', '短稿需在下方另行确认。只采用选材安排会保留当前表述。')}</p>}
           {item.rewrites.map(rewrite => <div key={rewrite.unit_id} className="mt-3 rounded-lg border p-3" data-plan-rewrite-id={rewrite.unit_id}>
             {rewrite.status === 'suggested' ? <>
-              <h5 className="text-sm font-medium">{copy('Shorter wording — check the facts', '短稿——请核对事实')}</h5>
+              <h5 className="text-sm font-medium">{rewrite.source_evidence ? copy('Combined wording — check the facts', '合并表述：请核对事实') : copy('Shorter wording — check the facts', '短稿：请核对事实')}</h5>
               <p className="mt-2 whitespace-pre-wrap break-words text-sm">{rewrite.proposed_text}</p>
               <label className="mt-2 flex items-start gap-2 text-sm"><input type="checkbox" aria-label={`Use shorter wording: ${rewrite.unit_id}`} checked={rewrites.has(rewrite.unit_id)} disabled={!ready || working || !!action.error}
-                onChange={event => setRewrites(old => toggle(old, rewrite.unit_id, event.target.checked))} />{copy('Use this shorter wording only', '采用这条短稿')}</label>
+                onChange={event => setRewrites(old => toggle(old, rewrite.unit_id, event.target.checked))} />{rewrite.source_evidence ? copy('Use this combined wording', '采用这条合并表述') : copy('Use this shorter wording only', '采用这条短稿')}</label>
               <p className="mt-1 text-xs text-gray-500">{copy('This changes wording only; it does not select a hidden block, section or field.', '仅修改表述，不会重新选用隐藏的内容块、章节或字段。')}</p>
             </> : <p className="text-sm text-amber-800">{rewrite.reason_code === 'not_shorter' ? copy('The candidate was not shorter. Current wording is kept.', '候选表述没有更短，保留当前稿。') : copy('The candidate failed source checks. Current wording is kept.', '候选短稿未通过来源核对，保留当前稿。')}</p>}
           </div>)}

@@ -664,7 +664,7 @@ describe('cold-email endpoints', () => {
     expect(body.profile.school).toBe('UIUC');
     expect(body).not.toHaveProperty('selection');
     expect(body).not.toHaveProperty('subject');
-    expect(body.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(body.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
@@ -703,7 +703,7 @@ describe('cold-email endpoints', () => {
       expect(body.instruction).toBe(instruction);
       expect(body.expected_target_version).toBe(targetVersion);
       expect(body.contact_context).toEqual(contactContext);
-      expect(body.experience_evidence).toEqual({ version: 1, resume_text: profile.resume_text, entries: [entry] });
+      expect(body.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: profile.resume_text, entries: [entry] });
       expect(body.profile.school).toBe('UIUC');
       expect(result).toEqual(response);
     });

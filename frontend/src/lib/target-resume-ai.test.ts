@@ -37,7 +37,7 @@ function receipt(p: PreparedTargetResumeAi, id: string, status: TargetResumeAiRe
       proposed_text: status === 'suggested' && u.evidence.kind === 'experience' ? 'Built the Python parser with the team.' : null } };
 }
 function response(p: PreparedTargetResumeAi, ids = p.batches[0], request_id = 'request'): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v4', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
+  return { version: 1, pipeline_version: 'full-target-v5', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
     document_signature: p.document_signature, base: clone(p.draft.base), manifest: { unit_ids: p.units.map(u => u.unit_id), protected_unit_count: p.protected_unit_count },
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2, receipts: ids.map(id => receipt(p, id)) };
 }

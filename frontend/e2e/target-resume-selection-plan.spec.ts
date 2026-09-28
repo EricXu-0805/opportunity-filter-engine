@@ -75,7 +75,7 @@ function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
 }
 function checkedReply(request: TargetResumePlanRequest): TargetResumePlanResponse {
   const blocks = request.draft.document.sections.filter(section => section.kind !== 'basics').flatMap(section => section.blocks.map(block => ({ section, block })));
-  return { version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base), options: { ...request.options },
     manifest: blocks.map(({ section, block }) => ({ section_id: section.id, block_id: block.id, line_ids: block.lines.map(line => line.id) })),
     scope: { unreferenced_experience_ids: ['unreferenced'], pending_experience_ids: ['pending'], stale_experience_ids: [], unmapped_range_count: 0 },

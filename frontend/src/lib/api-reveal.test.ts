@@ -130,14 +130,14 @@ describe('getEmailVariants (single generation with contact state)', () => {
     await getEmailVariants(profile, 'opp-1', ['Built a CV pipeline in PyTorch']);
     const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
     expect(sent).not.toHaveProperty('resume_bullets');
-    expect(sent.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
   });
 
   it('keeps the no-resume request explicit instead of enabling legacy evidence', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ recipient_status: 'revealed', variants: [] }));
     await getEmailVariants(profile, 'opp-1');
     const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
-    expect(sent.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
     expect(sent).not.toHaveProperty('resume_bullets');
   });
 

@@ -170,7 +170,7 @@ test.describe('Writing entry checks use current profiles', () => {
       await expect.poll(() => requests.some(item => item.path.endsWith('/stream'))).toBe(true);
       for (const request of requests) {
         expect(request.profile!.name).toBe(NEW_NAME);
-        expect(request.experience_evidence).toEqual({ version: 1, resume_text: profile().resume_text, entries: nextEntries });
+        expect(request.experience_evidence).toEqual({ version: 2, resume_master: profile().resume_master, resume_text: profile().resume_text, entries: nextEntries });
       }
       await fields.subject.fill('My retained subject'); await fields.body.fill(MANUAL);
       await fields.recipient.fill('manual@example.edu'); await fields.instruction.fill('Keep my unsent request');

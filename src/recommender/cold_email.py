@@ -1202,7 +1202,13 @@ def _p1_research_hook(p: dict) -> str:
 
     sentences = []
     if interest:
-        sentences.append(f"I am interested in {interest}.")
+        # A complete user sentence cannot be inserted as the object of "in".
+        # Quote it as an interest, not evidence that its contents happened.
+        if re.match(r"^(?:I\b|I['’]|My\b|我)", interest, re.I):
+            ending = "" if interest.endswith((".", "!", "?", "。", "！", "？")) else "."
+            sentences.append(f'My research interest is: “{interest}{ending}”')
+        else:
+            sentences.append(f"I am interested in {interest}.")
     if target:
         where = f" in {lab_ref}" if lab_ref else ""
         sentences.append(f"I would like to learn more about your work on {target}{where}.")

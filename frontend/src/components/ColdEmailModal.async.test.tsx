@@ -415,6 +415,13 @@ describe('confirmed experience draft inputs', () => {
       pipeline_version: 'confirmed-v1', corpus_version: 'snapshot' };
   }
 
+  it.each([true,false])('displays only the returned activity relation, linked=%s',async linked=>{
+    const entry=manual('related');const usage=used(entry);usage.selected[0].context=linked?{master_id:'master',master_revision:3,section:'activities',id:'project',kind:'research',fields:Object.fromEntries([['title','Actual project'],['organization','Current lab'],['start','Fall 2025'],['end','Spring 2026']].map(([id,value])=>[id,{id,value,revision:1,status:'confirmed',source:{kind:'manual'}}]))}:null;
+    api.variants.mockResolvedValue(variantsWith(usage));openModal({...profile,experience_entries:[entry]});await ready();
+    if(linked){for(const text of ['Actual project','Current lab','Fall 2025','Spring 2026'])expect(screen.getByText(text)).toBeInTheDocument();}
+    else expect(screen.getByText('No activity assigned; only this original entry is used.')).toBeInTheDocument();
+  });
+
   it('shows only reported input excerpts, including a selected 13th entry from the source tail', async () => {
     const prefix = '🧪 Earlier paragraph.\n'.repeat(500);
     const quote = 'Built a spectroscopy instrument at the resume tail.';

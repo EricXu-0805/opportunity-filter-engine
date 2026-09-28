@@ -90,7 +90,7 @@ async def full_target_suggestions(request: FullTargetRequest):
             raw = None
         except Exception:  # No provider or payload text is returned or logged.
             reason, calls, raw = "invalid_model_response", 1, None
-        results = parse_output(raw, processable, doc["target_snapshot"]) if raw else [receipt(unit, reason or "model_unavailable") for unit in processable]
+        results = parse_output(raw, processable, doc["target_snapshot"], request.locale) if raw else [receipt(unit, reason or "model_unavailable") for unit in processable]
     by_id = {row["unit_id"]: row for row in results}
     receipts = [receipt(unit, "unit_too_large") if unit_too_large(unit) else by_id[unit["unit_id"]] for unit in selected]
     return response_envelope(request, doc, units, protected, receipts, calls)
@@ -129,7 +129,7 @@ async def full_target_selection_plan(request: FullTargetPlanRequest):
         except Exception:  # Provider/payload text must not enter responses/logs.
             raw, reason, calls = None, "invalid_model_response", 1
         if raw:
-            items, reason = target_resume_plan.parse_plan_output(raw, blocks, doc["target_snapshot"])
+            items, reason = target_resume_plan.parse_plan_output(raw, blocks, doc["target_snapshot"], request.locale)
         elif not reason:
             reason = "model_unavailable"
     return target_resume_plan.plan_response(request, doc, manifest, scope, items, reason, calls)

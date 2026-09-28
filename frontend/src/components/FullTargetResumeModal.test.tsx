@@ -18,6 +18,7 @@ import { DEFAULT_PROFILE } from '@/app/home/types';
 import FullTargetResumeModal from './FullTargetResumeModal';
 
 const storage = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), history: vi.fn(), version: vi.fn() }));
+vi.mock('./ResumeExperienceAssignmentPanel', () => ({ default: () => null }));
 vi.mock('@/lib/target-resume-storage', () => ({
   loadTargetResume: (...args: unknown[]) => storage.load(...args), saveTargetResume: (...args: unknown[]) => storage.save(...args),
   loadTargetResumeHistory: (...args: unknown[]) => storage.history(...args), loadTargetResumeVersion: (...args: unknown[]) => storage.version(...args),

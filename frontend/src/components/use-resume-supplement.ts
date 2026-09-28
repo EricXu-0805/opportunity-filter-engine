@@ -11,6 +11,7 @@ import {
   type ProfileActionOutcome, type ProfileSaveResult, type ProfileViewSnapshot,
 } from '@/lib/profile-sync';
 import { resumeMasterEditBase } from '@/lib/resume-master';
+import { prepareExperienceAssignment, type ExistingExperienceAssignment } from '@/lib/resume-experience-assignment';
 import { prepareConfirmedSupplement, type SupplementDraft } from '@/lib/resume-supplement';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 
@@ -222,7 +223,7 @@ export function useResumeSupplement({ enabled = true, profileAvailable = true, o
     }
   }, [current, finish, publish]);
 
-  const confirm = useCallback(async (draft: SupplementDraft, against: SupplementBaseline): Promise<ProfileActionOutcome | null> => {
+  const submit = useCallback(async (draft: SupplementDraft | ExistingExperienceAssignment, against: SupplementBaseline): Promise<ProfileActionOutcome | null> => {
     const scope = scopeRef.current;
     if (!availability.current.available || !scope || !current(scope) || scope.busy || !scope.view || !['ready', 'save-error', 'saved', 'recorded'].includes(scope.phase) || against.view !== scope.view
       || against.targetKey !== scope.targetKey || against.activityId !== draft.activityId) return rejected();
@@ -238,7 +239,14 @@ export function useResumeSupplement({ enabled = true, profileAvailable = true, o
     if (envelope.ok && envelope.value?.pending?.lockedKeys.some(key => (RESUME_BUNDLE as readonly string[]).includes(key))) {
       publish(scope, 'conflict', 'bundle-conflict'); return rejected();
     }
-    const prepared = prepareConfirmedSupplement(against.view.renderedProfile, draft);
+    // Lock before digesting an existing source so repeated confirmation cannot
+    // create concurrent relation writes. The accepted view is checked again.
+    scope.busy = true;
+    const prepared = 'entryRevision' in draft
+      ? await prepareExperienceAssignment(against.view.renderedProfile, draft)
+      : prepareConfirmedSupplement(against.view.renderedProfile, draft);
+    scope.busy = false;
+    if (!current(scope) || !availability.current.available || scope.view !== against.view) return rejected();
     if (!prepared.ok) { publish(scope, 'save-error', prepared.reason); return { durable: false, reason: 'record-failed' }; }
     const operation: Operation = { against: Object.freeze({ ...against }), entry: prepared.entry, durable: false, confirmed: false };
     const availableVersion = availability.current.version;
@@ -269,6 +277,9 @@ export function useResumeSupplement({ enabled = true, profileAvailable = true, o
     }
   }, [current, finish, publish]);
 
+  const confirm = useCallback((draft: SupplementDraft, against: SupplementBaseline) => submit(draft, against), [submit]);
+  const assign = useCallback((draft: ExistingExperienceAssignment, against: SupplementBaseline) => submit(draft, against), [submit]);
+
   const acceptCurrent = useCallback(async () => {
     const scope = scopeRef.current;
     if (!availability.current.available || !scope || !current(scope) || scope.busy) return;
@@ -286,5 +297,5 @@ export function useResumeSupplement({ enabled = true, profileAvailable = true, o
   return { view: visible && profileAvailable ? state.view : null, acceptedView: visible && profileAvailable ? state.view : null,
     phase: visible ? !profileAvailable ? 'profile-unavailable' as ResumeSupplementPhase : state.phase : 'retired' as ResumeSupplementPhase, error: visible ? state.error : 'owner-changed',
     ownerScopeKey: scopeKey, operationLocked: !!visible && state.operationLocked, confirmedEntryId: visible && profileAvailable ? state.confirmedEntryId : null,
-    acceptCurrent, baseline, confirm, retryRecorded };
+    acceptCurrent, baseline, confirm, assign, retryRecorded };
 }

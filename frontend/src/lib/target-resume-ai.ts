@@ -1,3 +1,4 @@
+import { parseTargetResumeSupportGroups, supportGroupsForUnits, supportSourceIds, targetResumeSupportEvidence, type TargetResumeSupportGroup } from './target-resume-support';
 import { isTargetResumeEvidence } from './target-resume-evidence';
 import {
   validateTargetResume, verifyTargetResumeSignatures, isCurrentTargetResumeContext, type TargetResumeV1,
@@ -27,6 +28,7 @@ export interface MergedTargetResumeAI {
   receipts: TargetResumeAiReceipt[]; coverage: TargetResumeAICoverage; structureReady: boolean;
 }
 export interface ApplyTargetResumeAIOptions {
+  supportGroups?: TargetResumeSupportGroup[];
   rewriteUnitIds: string[]; applyStructure: boolean; currentContext: TargetResumeAICurrentContext;
 }
 class Invalid extends Error {
@@ -113,18 +115,24 @@ function same(left: unknown, right: unknown): boolean { return canonical(left) =
 function requirePrepared(prepared: PreparedTargetResumeAi): void {
   if (!isCurrentTargetResumeContext(prepared.draft.target_snapshot)) fail('legacy_target_context');
   if (canonical(prepared.draft) !== prepared.canonical_draft) fail('invalid_request');
+  if (prepared.support_groups !== undefined) {
+    const parsed = parseTargetResumeSupportGroups(prepared.draft, prepared.support_groups);
+    if (parsed === null || !same(parsed, prepared.support_groups)) fail('invalid_request');
+  }
   const expected = unitsFor(prepared.draft);
   if (!same(expected.units, prepared.units) || expected.protectedCount !== prepared.protected_unit_count) fail('invalid_request');
 }
 
 /** Freeze one exact draft before hashing. All eligible lines are traversed;
  * call budgets make multiple batches, not a first-N document selection. */
-export async function prepareTargetResumeAI(value: unknown): Promise<TargetResumeAIResult<PreparedTargetResumeAi>> {
+export async function prepareTargetResumeAI(value: unknown, supportGroups?: TargetResumeSupportGroup[]): Promise<TargetResumeAIResult<PreparedTargetResumeAi>> {
   try {
     const checked = validateTargetResume(value);
     if (!checked.ok) fail(checked.code === 'document_too_large' ? 'document_too_large' : 'invalid_document');
     const draft = checked.value;
     if (!isCurrentTargetResumeContext(draft.target_snapshot)) fail('legacy_target_context');
+    const capturedGroups = supportGroups === undefined ? undefined : parseTargetResumeSupportGroups(draft, supportGroups);
+    if (capturedGroups === null) fail('invalid_request');
     const canonicalDraft = canonical(draft);
     if (!await verifyTargetResumeSignatures(draft)) fail('invalid_signature');
     let documentSignature: string;
@@ -140,24 +148,20 @@ export async function prepareTargetResumeAI(value: unknown): Promise<TargetResum
     const batches: string[][] = [];
     const skippedUnits: TargetResumeAiReceipt[] = [];
     let batch: string[] = [];
-    let characters = 0;
-    let experienceCharacters = 0;
+    const byId = new Map(units.map(unit=>[unit.unit_id,unit]));
+    const fits = (ids: string[]) => {
+      const sources = supportSourceIds(ids, capturedGroups).map(id=>byId.get(id)!);
+      return ids.length <= FULL_TARGET_AI_MAX_UNITS && sources.reduce((sum,unit)=>sum+resumeTextCharacters(unit.original),0) <= FULL_TARGET_AI_MAX_UNIT_CHARACTERS
+        && sources.reduce((sum,unit)=>sum+(unit.evidence.kind==='experience' ? resumeTextCharacters(unit.original) : 0),0) <= FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS;
+    };
     for (const unit of units) {
-      const length = resumeTextCharacters(unit.original);
-      const experience = unit.evidence.kind === 'experience' ? length : 0;
-      if (targetTooLarge || length > FULL_TARGET_AI_MAX_UNIT_CHARACTERS || experience > FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS) {
-        skippedUnits.push(skipped(unit, targetTooLarge ? 'target_too_large' : 'unit_too_large')); continue;
-      }
-      if (batch.length && (batch.length === FULL_TARGET_AI_MAX_UNITS
-        || characters + length > FULL_TARGET_AI_MAX_UNIT_CHARACTERS
-        || experienceCharacters + experience > FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS)) {
-        batches.push(batch); batch = []; characters = 0; experienceCharacters = 0;
-      }
-      batch.push(unit.unit_id); characters += length; experienceCharacters += experience;
+      if (targetTooLarge || !fits([unit.unit_id])) { skippedUnits.push(skipped(unit,targetTooLarge ? 'target_too_large' : 'unit_too_large')); continue; }
+      if (batch.length && !fits([...batch,unit.unit_id])) { batches.push(batch); batch=[]; }
+      batch.push(unit.unit_id);
     }
     if (batch.length) batches.push(batch);
     return { ok: true, value: freeze({ draft, canonical_draft: canonicalDraft, document_signature: documentSignature,
-      units, protected_unit_count: protectedCount, batches, skipped: skippedUnits }) };
+      units, protected_unit_count: protectedCount, batches, skipped: skippedUnits, ...(capturedGroups === undefined ? {} : {support_groups:capturedGroups}) }) };
   } catch (error) { return failure(error, 'invalid_document'); }
 }
 
@@ -179,7 +183,9 @@ function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiU
   } else if (value.suggestion !== null) {
     if ((value.status === 'suggested' && value.reason_code !== null)
       || (value.status === 'unchanged' && value.reason_code !== 'no_change')) fail('invalid_response');
-    shape(value.suggestion, ['priority', 'reason', 'target_evidence', 'proposed_text']);
+    const group = prepared.support_groups?.find(item=>item.unit_id===unit.unit_id);
+    shape(value.suggestion, ['priority', 'reason', 'target_evidence', 'proposed_text', ...(group ? ['source_evidence'] : [])]);
+    if (group && !same(value.suggestion.source_evidence, targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
     const suggestion = value.suggestion;
     text(suggestion.reason);
     if (!PRIORITIES.has(String(suggestion.priority)) || !suggestion.reason.trim()
@@ -199,7 +205,7 @@ function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiU
  * cannot prove semantic entailment; only the server's fact checks plus the
  * student's explicit review can assess the proposed prose. */
 export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
-  expected: Pick<TargetResumeAiRequest, 'request_id' | 'selected_unit_ids'>,
+  expected: Pick<TargetResumeAiRequest, 'request_id' | 'selected_unit_ids' | 'support_groups'>,
   response: unknown): TargetResumeAIResult<TargetResumeAiResponse> {
   try {
     requirePrepared(prepared);
@@ -210,7 +216,9 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     const byId = new Map(prepared.units.map((unit) => [unit.unit_id, unit]));
     const eligible = new Set(prepared.batches.flat());
     if (expected.selected_unit_ids.some((id) => !byId.has(id) || !eligible.has(id))) fail('invalid_request');
-    const selectedUnits = expected.selected_unit_ids.map((id) => byId.get(id)!);
+    const groups = prepared.support_groups === undefined ? undefined : supportGroupsForUnits(prepared.support_groups, expected.selected_unit_ids);
+    if (!same(expected.support_groups ?? null, groups ?? null)) fail('invalid_request');
+    const selectedUnits = supportSourceIds(expected.selected_unit_ids, groups).map((id) => byId.get(id)!);
     if (selectedUnits.reduce((sum, unit) => sum + resumeTextCharacters(unit.original), 0) > FULL_TARGET_AI_MAX_UNIT_CHARACTERS
       || selectedUnits.reduce((sum, unit) => sum + (unit.evidence.kind === 'experience' ? resumeTextCharacters(unit.original) : 0), 0)
         > FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS) fail('invalid_request');
@@ -219,7 +227,8 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     const value: unknown = JSON.parse(serialized);
     const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys]);
+      'base', 'manifest', 'method', 'logical_calls', 'provider_attempts_upper_bound', 'receipts', ...checkKeys, ...(groups === undefined ? [] : ['support_groups'])]);
+    if (!same(value.support_groups ?? null, groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
     if (value.version !== 1 || value.pipeline_version !== FULL_TARGET_AI_VERSION || value.request_id !== expected.request_id
@@ -263,6 +272,7 @@ export function mergeTargetResumeAIResponses(prepared: PreparedTargetResumeAi,
     for (const response of responses) {
       const checked = validateTargetResumeAIResponse(prepared, {
         request_id: response.request_id, selected_unit_ids: response.receipts.map((item) => item.unit_id),
+        ...(prepared.support_groups === undefined ? {} : {support_groups:supportGroupsForUnits(prepared.support_groups,response.receipts.map(item=>item.unit_id))}),
       }, response);
       if (!checked.ok) fail(checked.code);
       for (const receipt of checked.value.receipts) {
@@ -291,6 +301,7 @@ export function applyTargetResumeAI(prepared: PreparedTargetResumeAi, currentDra
   responses: readonly TargetResumeAiResponse[], options: ApplyTargetResumeAIOptions): TargetResumeAIResult<TargetResumeV1> {
   try {
     requirePrepared(prepared);
+    if (!same(options.supportGroups ?? [], prepared.support_groups ?? [])) fail('stale_context');
     const context = options.currentContext;
     if (!context || context.profile_signature !== prepared.draft.base.profile_signature
       || context.source_signature !== prepared.draft.base.source_signature

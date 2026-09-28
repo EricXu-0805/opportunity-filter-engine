@@ -1,7 +1,8 @@
+import type { TargetResumeSupportGroup, TargetResumeSupportEvidence } from './target-resume-support';
 import type { TargetResumeV1 } from './target-resume';
 import type { TargetResumeAiEvidence } from './target-resume-ai-protocol';
 
-export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v3' as const;
+export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v4' as const;
 export const TARGET_RESUME_PLAN_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const TARGET_RESUME_PLAN_MAX_PROMPT_CHARACTERS = 120_000;
 export interface TargetResumePlanOptions { target_pages: 1 | 2 }
@@ -20,6 +21,7 @@ export interface TargetResumePlanSourceEvidence {
   unit_id: string; start: number; end: number; quote: string;
 }
 export interface TargetResumePlanRewrite {
+  source_evidence?: TargetResumeSupportEvidence[];
   unit_id: string;
   status: 'suggested' | 'skipped';
   reason_code: 'ungrounded_rewrite' | 'not_shorter' | null;
@@ -33,6 +35,7 @@ export interface TargetResumePlanItem {
   rewrites: TargetResumePlanRewrite[];
 }
 export interface TargetResumePlanRequest {
+  support_groups?: TargetResumeSupportGroup[];
   version: 1; request_id: string; locale: 'en' | 'zh';
   draft: TargetResumeV1; document_signature: string;
   options: TargetResumePlanOptions;
@@ -41,6 +44,7 @@ export type TargetResumePlanReason = 'context_too_large' | 'target_too_large'
   | 'no_plan_items' | 'budget_exhausted' | 'model_unavailable' | 'timeout'
   | 'invalid_model_response' | 'no_target_evidence' | 'no_source_evidence';
 export interface TargetResumePlanResponse {
+  support_groups?: TargetResumeSupportGroup[];
   /** Absent in older responses; never infer it from pipeline_version. */
   check_version?: string | null;
   version: 1; pipeline_version: typeof TARGET_RESUME_PLAN_VERSION;
@@ -54,12 +58,14 @@ export interface TargetResumePlanResponse {
   items: TargetResumePlanItem[];
 }
 export interface PreparedTargetResumePlan {
+  support_groups?: TargetResumeSupportGroup[];
   draft: TargetResumeV1; canonical_draft: string; document_signature: string;
   options: TargetResumePlanOptions;
   manifest: TargetResumePlanManifestItem[]; scope: TargetResumePlanScope;
 }
 /** Explicit user decisions, separate from generated advice and rewrites. */
 export interface ApplyTargetResumePlanOptions {
+  support_groups?: TargetResumeSupportGroup[];
   selection_block_ids: string[];
   rewrite_unit_ids: string[];
   current_context: { profile_signature: string; source_signature: string; target_signature: string };

@@ -34,7 +34,7 @@ async function make(texts = ['Built a Python parser with tests.', 'Analyzed 1000
 }
 const prepare = async (draft?: TargetResumeV1, target_pages: 1 | 2 = 1) => unwrap(await prepareTargetResumePlan(draft ?? await make(), { target_pages }));
 function response(prepared: PreparedTargetResumePlan): TargetResumePlanResponse {
-  return { version: 1, pipeline_version: 'full-target-plan-v3', request_id: 'request', document_id: prepared.draft.id,
+  return { version: 1, pipeline_version: 'full-target-plan-v4', request_id: 'request', document_id: prepared.draft.id,
     opportunity_id: prepared.draft.opportunity_id, document_signature: prepared.document_signature, base: clone(prepared.draft.base),
     options: clone(prepared.options), manifest: clone(prepared.manifest), scope: clone(prepared.scope), method: 'ai', complete: true,
     reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,

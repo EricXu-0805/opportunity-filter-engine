@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--evidence-dir', type=Path, required=True)
     parser.add_argument('--research-context', action='store_true', help='Also apply and verify V2 research provenance')
     parser.add_argument('--lab-context', action='store_true', help='Also apply and verify V3 lab provenance (includes research migration)')
+    parser.add_argument('--material-fixture', type=Path, help='Optional synthetic {doc, provenance} pair from the real frontend acceptance path')
     parser.add_argument('--pg-bin', type=Path, default=Path('/opt/homebrew/opt/postgresql@16/bin'))
     args = parser.parse_args()
     args.research_context = args.research_context or args.lab_context
@@ -51,6 +52,10 @@ def main():
     def report():
         (args.evidence_dir / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
 
+    if args.material_fixture:
+        helper = HERE / 'target_resume_material_roundtrip.py'
+        summary['source_hashes'][str(helper.relative_to(ROOT))] = hashlib.sha256(helper.read_bytes()).hexdigest()
+        summary['material_fixture'] = {'path': str(args.material_fixture.resolve()), 'sha256': hashlib.sha256(args.material_fixture.read_bytes()).hexdigest()}
     report()
     with tempfile.TemporaryDirectory(prefix='ofe-b45-pg-', dir='/private/tmp') as tmp:
         work = Path(tmp)
@@ -221,6 +226,9 @@ CREATE TABLE public.b48_before_history AS SELECT * FROM public.target_resume_ver
                 lab_test = 'BEGIN;\n' + (HERE / 'target_resume_lab_provenance_test.sql').read_text() + '\nROLLBACK;'
                 lab_test = lab_test.replace('\\i :fixture_path', '\\i ' + shlex.quote(str(HERE / 'target_resume_provenance_fixtures.sql')))
                 run('lab-provenance-behavior', sql=lab_test, expected=9)
+            if args.material_fixture:
+                from target_resume_material_roundtrip import material_roundtrip_sql
+                run('material-input-roundtrip', sql=material_roundtrip_sql(json.loads(args.material_fixture.read_text())), expected=5)
             run('legacy-after', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=7)
             script = 'set -euo pipefail\nPSQL=(' + ' '.join(shlex.quote(x) for x in psql) + ')\nWORK=' + shlex.quote(str(work)) + '\nSOCK=' + shlex.quote(str(sock)) + '\n'
             script += (HERE / 'target_resume_concurrency_test.sh').read_text()

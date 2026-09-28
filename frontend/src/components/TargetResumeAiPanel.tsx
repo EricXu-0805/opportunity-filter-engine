@@ -1,5 +1,7 @@
 'use client';
 
+import { supportGroupsForUnits, type TargetResumeSupportGroup } from '@/lib/target-resume-support';
+
 import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -19,6 +21,7 @@ import { useProfileAction } from '@/lib/use-profile-action';
 import type { PreparedTargetResumeAi, TargetResumeAiReceipt, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 
 export interface TargetResumeAiPanelProps {
+  supportGroups?: TargetResumeSupportGroup[];
   draft: TargetResumeV1;
   profile: ProfileData;
   profileAvailable?: boolean;
@@ -40,11 +43,11 @@ const authorityRefusals = new Set(['target_changed', 'target_not_found', 'TARGET
 const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
-export default function TargetResumeAiPanel({ draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumeAiPanelProps) {
+export default function TargetResumeAiPanel({ supportGroups, draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumeAiPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const draftKey = useMemo(() => JSON.stringify(draft), [draft]);
-  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\n${draftKey}`;
+  const binding = `${owner.uid}:${owner.epoch}:${owner.generation}\n${contextKey}\n${draftKey}\n${JSON.stringify(supportGroups ?? null)}`;
   const [run, setRun] = useState<Run | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +137,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
     try {
       let working = resume ? runRef.current : null;
       if (!working) {
-        const prepared = await prepareTargetResumeAI(draft);
+        const prepared = await prepareTargetResumeAI(draft,supportGroups);
         if (!live(generation, expected)) return;
         if (!prepared.ok) { setError(prepared.code); return; }
         working = { prepared: prepared.value, responses: [] };
@@ -152,7 +155,8 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
         });
         if (!ids.length) continue;
         const payload = { version: 1 as const, request_id: crypto.randomUUID(), locale: locale === 'zh' ? 'zh' as const : 'en' as const,
-          draft: working.prepared.draft, document_signature: working.prepared.document_signature, selected_unit_ids: ids };
+          draft: working.prepared.draft, document_signature: working.prepared.document_signature, selected_unit_ids: ids,
+          ...(working.prepared.support_groups === undefined ? {} : {support_groups:supportGroupsForUnits(working.prepared.support_groups,ids)}) };
         const response = await generateTargetResumeSuggestions(payload, { owner, signal: controller.signal });
         if (!live(generation, expected)) return;
         const checked = validateTargetResumeAIResponse(working.prepared, payload, response);
@@ -196,7 +200,7 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
   const apply = () => {
     if (!run || runRef.current !== run || !ready || working || action.error || !currentContext) return;
     const result = applyTargetResumeAI(run.prepared, draft, run.responses,
-      { rewriteUnitIds: [...selected], applyStructure: order, currentContext });
+      { rewriteUnitIds: [...selected], applyStructure: order, currentContext, supportGroups });
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
     if (appliedKey.current === draftKey) { setNotice('applied'); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
@@ -209,14 +213,14 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
       if (!response || !receipt?.suggestion || !unit) { setError('invalid_response'); return; }
       annotations.push({ section_id: unit.section_id, block_id: unit.block_id, line_id: unitId, field: 'text',
         reason: receipt.suggestion.reason, target_evidence: receipt.suggestion.target_evidence,
-        source_evidence: unit.original.trim() ? [{ unit_id: unitId, start: 0, end: Array.from(unit.original).length, quote: unit.original }] : [],
+        source_evidence: receipt.suggestion.source_evidence ?? (unit.original.trim() ? [{ unit_id: unitId, start: 0, end: Array.from(unit.original).length, quote: unit.original }] : []),
         check: response.check_version ? { version: response.check_version, pipeline_version: response.pipeline_version,
           request_id: response.request_id, document_signature: response.document_signature, original: unit.original, evidence: unit.evidence } : null });
     }
     onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
-    ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], applyStructure: order, currentContext }) : null;
+    ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], applyStructure: order, currentContext, supportGroups }) : null;
   const canContinue = !!run && (review?.coverage.pending || review?.receipts.some((item) => item.status === 'skipped' && !permanent.has(item.reason_code ?? '')));
   const unitLabel = (id: string) => {
     const unit = run?.prepared.units.find((item) => item.unit_id === id);
@@ -273,8 +277,11 @@ export default function TargetResumeAiPanel({ draft, profile, profileAvailable =
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Current wording', '当前表述')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.before_text}</p></div>
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Suggested wording — check the facts', '建议表述——请核对事实')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.suggestion!.proposed_text}</p></div>
         </div>
+        <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review reason and sources', '查看理由和依据')}</summary>
         <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{item.suggestion!.reason}</p>
         {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
+        {item.suggestion!.source_evidence?.map((evidence,index)=><blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 pl-2">{evidence.quote}</blockquote>)}
+        </details>
         <button type="button" className={`${button} mt-2`} disabled={working} aria-label={`Dismiss suggestion: ${item.unit_id}`} onClick={() => {
           setDismissed((old) => { const next = new Set(old); if (next.has(item.unit_id)) next.delete(item.unit_id); else next.add(item.unit_id); return next; });
           setSelected((old) => { const next = new Set(old); next.delete(item.unit_id); return next; });

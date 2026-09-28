@@ -92,7 +92,7 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
   const units = lines(request.draft).filter(unit => unit.section.kind !== 'basics');
   const selected = units.filter(unit => request.selected_unit_ids.includes(unit.line.id));
   expect(selected.some(unit => unit.line.evidence.id === 'team-role')).toBe(true);
-  return { version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
+  return { ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base),
     manifest: { unit_ids: units.map(unit => unit.line.id), protected_unit_count: lines(request.draft).filter(unit => unit.section.kind === 'basics').length },
     method: 'partial', logical_calls: 1, provider_attempts_upper_bound: 2,

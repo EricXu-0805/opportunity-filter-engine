@@ -149,7 +149,7 @@ def test_template_only_routes_do_not_apply_a_provider_budget(writing_client, mon
     monkeypatch.setattr(ce, 'is_configured', lambda: True)
     monkeypatch.setattr(ce, '_email_chat_completion', lambda *_a, **_k: pytest.fail('template entered provider boundary'))
     out = result(post(client, path, FIRST, opportunity_id=opp['id'], engine=engine), path)
-    assert out['pipeline_version'] == 'w12.15'
+    assert out['pipeline_version'] == 'w12.16'
     if path == 'variants':
         assert out['variants'] and all(item['body'] for item in out['variants'])
     else:

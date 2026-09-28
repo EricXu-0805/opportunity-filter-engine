@@ -11,7 +11,7 @@ the caller can fall back to complete original quotations rather than guess.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 # Inflection only, not a synonym/skills thesaurus. In particular helping,
@@ -105,6 +105,7 @@ class _Fact:
     negative: bool
     qualifiers: tuple[str, ...]
     entry: int
+    clause: str = ""
 
 
 def _actor(subject: str) -> str:
@@ -140,7 +141,7 @@ def _action(clause: str, resume: bool = False):
     return (action, negative, qualifiers) if action else None
 
 
-def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: bool = False) -> list[_Fact]:
+def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: bool = False, activity_aliases: dict | None = None) -> list[_Fact]:
     facts = []
     scope: tuple[str, ...] = ()
     label = None
@@ -150,9 +151,14 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
     sentences = _RESUME_SENTENCES if allow_subjectless_claims else _SENTENCES
     for sentence in sentences.split(text):
         sentence = sentence.strip(' \t\r\n-•“”\"')
+        # A named heading governs the following clauses. Per-clause resolution
+        # below permits two explicitly different activities in one sentence.
+        if activity_aliases is not None and sentence.endswith(":"):
+            scope = _activity_scope(sentence, activity_aliases) or scope
         project = _PROJECT_LABEL.match(sentence) or _PROJECT_PREFIX.match(sentence)
         if project:
-            scope = _tokens(project[1]); sentence = sentence[project.end():]
+            scope = (_activity_scope(project[1], activity_aliases) if activity_aliases is not None else ()) or _tokens(project[1])
+            sentence = sentence[project.end():]
             label = None
         field = _LABEL.match(sentence)
         if field:
@@ -174,6 +180,7 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                 clauses.append(candidate_clause)
         for clause in clauses:
             clause = clause.strip(' ,\t“”\"')
+            contextual_scope = _activity_scope(clause, activity_aliases) if activity_aliases is not None else ()
             actor = None
             parsed = _action(clause, True) if allow_subjectless_claims and carried else None
             if parsed:
@@ -185,7 +192,10 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                 if not candidate:
                     continue
                 before = clause[:subject.start()].strip()
-                if _CONDITIONAL.search(before) or (source and before and not _TEAM_PREFIX.fullmatch(before)):
+                if _CONDITIONAL.search(before) or (source and before and not _TEAM_PREFIX.fullmatch(before)
+                        and not (activity_aliases is not None and (
+                            _without_activity_suffix("fact " + before, activity_aliases) == "fact"
+                            or re.fullmatch(r"(?:at|in|for|on|during)\s+[^,]+,?", before, re.I)))):
                     continue
                 actor = _actor(subject[0]); parsed = candidate; break
             if not parsed and carried:
@@ -193,12 +203,16 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             if not parsed:
                 carried = None; continue
             action, negative, qualifiers = parsed
+            if contextual_scope:
+                scope = contextual_scope
             carried = actor
             objects = action[2].strip()
-            local_scope = scope
+            local_scope = contextual_scope or scope
             suffix = _PROJECT_SUFFIX.search(objects)
             if suffix:
-                local_scope = _tokens(suffix[1]); objects = objects[:suffix.start()]
+                local_scope = contextual_scope or _tokens(suffix[1]); objects = objects[:suffix.start()]
+            if contextual_scope:
+                objects = _without_activity_suffix(objects, activity_aliases)
             # The one neutral editorial suffix used by legacy resume rewrites
             # must not erase a local restriction, including "never carefully"
             # or "without working carefully". A nearby retained source sentence
@@ -216,9 +230,9 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and not _CARE_QUALIFIER.search(objects):
                 tokens = tokens[:-1]
             if tokens:
-                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], tokens, local_scope, negative, tuple(sorted(set(qualifiers))), entry))
+                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], tokens, local_scope, negative, tuple(sorted(set(qualifiers))), entry, clause))
             if tail and _tokens(tail):
-                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], _tokens(tail), local_scope, True, tuple(sorted(set(qualifiers))), entry))
+                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], _tokens(tail), local_scope, True, tuple(sorted(set(qualifiers))), entry, clause))
     return facts
 
 
@@ -347,8 +361,106 @@ def _objects_contradicted(source: _Fact, claim: _Fact, denial: _Fact, resume: bo
     return _objects_overlap(claim, denial, resume)
 
 
+
+def _context_key(context: dict) -> tuple[str, ...]:
+    return ("$activity", context["master_id"], context["section"], context["id"])
+
+
+def _explicit_activity_references(text: str) -> list[str]:
+    """Finite named-context forms, including currently unknown/deleted names."""
+    references = []
+    prefix = re.match(r"^(?:at|in|for|on|during)\s+([^,]+),\s*(?=" + _SUBJECT_PATTERN + r")", text, re.I)
+    if prefix:
+        references.append(prefix[1])
+    suffix = re.search(r"\s+(?:at|in|for|on|during)\s+([^,;.!?]+)[.!?]*$", text, re.I)
+    if suffix:
+        candidate = suffix[1].strip()
+        # Avoid classifying an ordinary lowercase object/method phrase as a
+        # named activity. Institutional labels and explicit years still count.
+        if (candidate[:1].isupper() or re.search(r"\b(?:lab|laboratory|university|college|company|institute|project|study|experiment)\b", candidate, re.I)
+                or re.fullmatch(r"(?:19|20)\d{2}", candidate)):
+            references.append(candidate)
+    if text.endswith(":") and re.search(r"\b(?:lab|laboratory|university|college|company|institute|project|study|experiment)\b", text, re.I):
+        references.append(text[:-1])
+    return references
+
+
+def _reference_remainder(reference: str, aliases: dict) -> str:
+    remaining = " ".join(reference.casefold().split())
+    for alias in sorted(aliases, key=len, reverse=True):
+        remaining = re.sub(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", " ", remaining)
+    return re.sub(r"\b(?:in|for|on|during|at|from|to|since|until|the|and)\b|[,()–—-]", " ", remaining).strip()
+
+
+def _activity_aliases(materials: list[dict]) -> dict[str, set[tuple[str, ...]]]:
+    """Exact admitted names/dates only, never inferred roles or synonyms."""
+    aliases: dict[str, set[tuple[str, ...]]] = {}
+    for material in materials:
+        context = material.get("context")
+        key = _context_key(context) if context else ("$experience", material["id"], str(material["revision"]))
+        for year in re.findall(r"\b(?:in|during|from|to|since|until|year)\s+((?:19|20)\d{2})\b",
+                               material["excerpt"], re.I):
+            aliases.setdefault(year, set()).add(key)
+        if not context:
+            # An independent original may itself state its organization/date.
+            # It does not acquire another record's project identity or fields.
+            for sentence in _SENTENCES.split(material["excerpt"]):
+                for reference in _explicit_activity_references(sentence.strip()):
+                    for value in re.split(r"\s+(?:in|during|from|to|since|until)\s+(?=(?:19|20)\d{2})", reference, flags=re.I):
+                        value = " ".join(value.casefold().split()).strip(" ,.")
+                        if value:
+                            aliases.setdefault(value, set()).add(key)
+            continue
+        for field, fact in context["fields"].items():
+            if field not in {"title", "organization", "school", "start", "end", "date"}:
+                continue
+            value = " ".join(fact["value"].casefold().split())
+            values = [value]
+            if field in {"start", "end", "date"}:
+                values.extend(re.findall(r"\b(?:19|20)\d{2}\b", value))
+            for alias in values:
+                if alias:
+                    aliases.setdefault(alias, set()).add(key)
+    return aliases
+
+
+def _activity_scope(text: str, aliases: dict) -> tuple[str, ...]:
+    normalized = " ".join(text.casefold().split())
+    matches = [scopes for alias, scopes in aliases.items()
+               if re.search(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", normalized)
+               and (not re.fullmatch(r"(?:19|20)\d{2}", alias)
+                    or re.search(r"\b(?:in|during|from|to|since|until|year)\s+" + alias + r"\b", normalized))]
+    for reference in _explicit_activity_references(text):
+        if _reference_remainder(reference, aliases):
+            # A partial known name must not authenticate a longer unknown one.
+            return ("$activity_unknown_name", " ".join(reference.casefold().split()))
+    for year in re.findall(r"\b(?:in|during|from|to|since|until|year)\s+((?:19|20)\d{2})\b", normalized):
+        if year not in aliases:
+            matches.append({("$activity_unknown_date", year)})
+    if not matches:
+        return ()
+    possible = set.intersection(*matches)
+    # A conflicting name/date or a shared ambiguous name cannot authenticate a
+    # concrete claim. A second exact field may disambiguate the same title.
+    return next(iter(possible)) if len(possible) == 1 else ("$activity_ambiguous",)
+
+
+def _without_activity_suffix(text: str, aliases: dict) -> str:
+    # The core fact object stays ordered. This only removes a trailing explicit
+    # known name/date context, e.g. "the parser at Alpha Lab in 2024".
+    for match in re.finditer(r"\s+(?:in|for|on|during|at|from|since)\s+", text, re.I):
+        tail = text[match.end():].strip(" ,.!?")
+        remainder = " ".join(tail.casefold().split())
+        for alias in sorted(aliases, key=len, reverse=True):
+            remainder = re.sub(r"(?<!\w)" + re.escape(alias) + r"(?!\w)", " ", remainder)
+        remainder = re.sub(r"\b(?:in|for|on|during|at|from|to|since|until|the|and)\b|[,–—-]", " ", remainder)
+        if not remainder.strip():
+            return text[:match.start()]
+    return text
+
 def experience_attribution_violations(
     text: str, evidence: list[str], *, allow_subjectless_claims: bool = False,
+    activity_materials: list[dict] | None = None,
 ) -> list[str]:
     """Return findings for recognized concrete claims without a local source.
 
@@ -365,14 +477,44 @@ def experience_attribution_violations(
     Email callers retain their default behavior.
     A missing finding means only this bounded checker did not detect a problem.
     """
-    sources = [fact for i, item in enumerate(evidence) if isinstance(item, str)
-               for fact in _facts(item, entry=i, source=True, allow_subjectless_claims=allow_subjectless_claims)]
+    aliases = _activity_aliases(activity_materials or []) if activity_materials is not None else None
+    sources = []
+    for i, item in enumerate(evidence):
+        if not isinstance(item, str):
+            continue
+        # A source's own explicit relationship disambiguates a shared title.
+        # Claims below must resolve against the complete collection instead.
+        own_aliases = _activity_aliases([activity_materials[i]]) if activity_materials and i < len(activity_materials) else {}
+        source_aliases = dict(aliases or {})
+        source_aliases.update(own_aliases)
+        sources.extend(_facts(item, entry=i, source=True, allow_subjectless_claims=allow_subjectless_claims,
+                              activity_aliases=source_aliases if activity_materials is not None else None))
+    if activity_materials is not None:
+        contexts = {i: material.get("context") for i, material in enumerate(activity_materials)}
+        sources = [replace(fact, scope=_context_key(contexts[fact.entry]))
+                   if contexts.get(fact.entry) and not fact.scope else fact for fact in sources]
+        # Existing explicit project names resolve to that same current context;
+        # a conflicting explicit name is never silently overwritten.
+        sources = [replace(fact, scope=_activity_scope(" ".join(fact.scope), aliases))
+                   if fact.scope and fact.scope[0] != "$activity" and _activity_scope(" ".join(fact.scope), aliases)
+                   else fact for fact in sources]
+        sources = [fact for fact in sources if not (
+            contexts.get(fact.entry) and fact.scope and fact.scope[0].startswith("$activity")
+            and fact.scope[0] != "$activity_unknown_name"
+            and fact.scope != _context_key(contexts[fact.entry]))]
     findings = set()
-    for claim in _facts(text, entry=-1, source=False, allow_subjectless_claims=allow_subjectless_claims):
+    for claim in _facts(text, entry=-1, source=False, allow_subjectless_claims=allow_subjectless_claims,
+                        activity_aliases=aliases):
         candidates = [fact for fact in sources if _same_actor(fact, claim)
                       and fact.action == claim.action and fact.negative == claim.negative
                       and fact.qualifiers == claim.qualifiers
                       and (not claim.scope or fact.scope == claim.scope)
+                      # An unclassified proper suffix may be a method/object,
+                      # not an activity ("in Rust", "for Open Source"). Its exact
+                      # admitted clause remains evidence, without promoting that
+                      # unknown phrase into a reusable organization or alias.
+                      and (not claim.scope or claim.scope[0] != "$activity_unknown_name"
+                           or " ".join(fact.clause.casefold().split()) == " ".join(claim.clause.casefold().split()))
                       # Shortening may drop trailing detail, never promote an object
                       # mentioned only in a method/for-clause into the action itself.
                       and _objects_supported(fact, claim, allow_subjectless_claims)]

@@ -1,4 +1,5 @@
 import type { EmailTextSelection } from './email-revision';
+import { validateResumeMaster } from './resume-master';
 import type {
   ProfileData,
   ProfileRequest,
@@ -883,10 +884,14 @@ export async function getShortlistOpportunities(ids: string[]): Promise<Shortlis
 /** Cold Email always sends an explicit evidence envelope. An empty confirmed
  * library must never resurrect legacy raw strings as experience facts. */
 function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
+  const master = validateResumeMaster(profile?.resume_master);
+  if (!master.ok) throw new ApiError(400, 'INVALID_EMAIL_EXPERIENCE_CONTEXT', 'Review your master résumé before using these materials.', false);
   return {
-    version: 1,
+    version: 2,
     resume_text: profile?.resume_text ?? '',
     entries: profile?.experience_entries ?? [],
+    // Carry current relationships explicitly; never infer an activity from prose.
+    resume_master: master.value,
   };
 }
 
@@ -1045,7 +1050,7 @@ export async function generateColdEmailStream(
     })()]);
   } catch (error) {
     active();
-    if (error instanceof ColdEmailStreamError) throw error;
+    if (error instanceof ColdEmailStreamError || error instanceof ApiError && error.code === 'INVALID_EMAIL_EXPERIENCE_CONTEXT') throw error;
     throw new ColdEmailStreamError('network_error');
   } finally {
     retired = true; clearTimeout(timer);

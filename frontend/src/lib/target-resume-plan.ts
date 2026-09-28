@@ -1,3 +1,4 @@
+import { parseTargetResumeSupportGroups, targetResumeSupportEvidence, type TargetResumeSupportGroup } from './target-resume-support';
 import { isTargetResumeEvidence } from './target-resume-evidence';
 import { isActiveExperience } from './experience-evidence';
 import { resumeTextCharacters } from './resume-input';
@@ -113,7 +114,11 @@ export function measureTargetResumeLength(draft: TargetResumeV1): number {
       + block.lines.filter(line => line.included).reduce((count, line) => count + resumeTextCharacters(line.text), 0), 0), 0);
 }
 function requirePrepared(prepared: PreparedTargetResumePlan): void {
-  shape(prepared, ['draft', 'canonical_draft', 'document_signature', 'options', 'manifest', 'scope'], 'invalid_request');
+  shape(prepared, ['draft', 'canonical_draft', 'document_signature', 'options', 'manifest', 'scope', ...(Object.hasOwn(prepared,'support_groups') ? ['support_groups'] : [])], 'invalid_request');
+  if (prepared.support_groups !== undefined) {
+    const parsed = parseTargetResumeSupportGroups(prepared.draft, prepared.support_groups);
+    if (parsed === null || !same(parsed, prepared.support_groups)) fail('invalid_request');
+  }
   options(prepared.options, 'invalid_request');
   const checked = validateTargetResume(prepared.draft);
   if (!checked.ok) fail('invalid_request');
@@ -129,7 +134,7 @@ function requirePrepared(prepared: PreparedTargetResumePlan): void {
 
 /** Capture both the entire draft and options before the first await. Whole
  * prompt capacity belongs to the server; preparation never takes a first N. */
-export async function prepareTargetResumePlan(value: unknown, settings: TargetResumePlanOptions): Promise<TargetResumePlanResult<PreparedTargetResumePlan>> {
+export async function prepareTargetResumePlan(value: unknown, settings: TargetResumePlanOptions, supportGroups?: TargetResumeSupportGroup[]): Promise<TargetResumePlanResult<PreparedTargetResumePlan>> {
   try {
     options(settings);
     const capturedOptions = clone(settings);
@@ -137,6 +142,8 @@ export async function prepareTargetResumePlan(value: unknown, settings: TargetRe
     if (!checked.ok) fail(checked.code === 'document_too_large' ? 'document_too_large' : 'invalid_document');
     const draft = checked.value;
     if (!isCurrentTargetResumeContext(draft.target_snapshot)) fail('legacy_target_context');
+    const capturedGroups = supportGroups === undefined ? undefined : parseTargetResumeSupportGroups(draft,supportGroups);
+    if (capturedGroups === null) fail('invalid_request');
     const canonicalDraft = canonical(draft);
     if (!await verifyTargetResumeSignatures(draft)) fail('invalid_signature');
     let signature: string;
@@ -145,7 +152,7 @@ export async function prepareTargetResumePlan(value: unknown, settings: TargetRe
       signature = `v1:sha256:${Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')}`;
     } catch { fail('signature_unavailable'); }
     const prepared = { draft, canonical_draft: canonicalDraft, document_signature: signature, options: capturedOptions,
-      manifest: targetResumePlanManifest(draft), scope: targetResumePlanScope(draft) };
+      manifest: targetResumePlanManifest(draft), scope: targetResumePlanScope(draft), ...(capturedGroups === undefined ? {} : {support_groups:capturedGroups}) };
     requirePrepared(prepared);
     return { ok: true, value: freeze(prepared) };
   } catch (error) { return failure(error, 'invalid_document'); }
@@ -181,7 +188,9 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
   if (value.action !== 'compress' && value.rewrites.length) fail('invalid_response');
   const seen = new Set<string>();
   for (const item of value.rewrites) {
-    shape(item, ['unit_id', 'status', 'reason_code', 'proposed_text']);
+    const group = object(item) ? prepared.support_groups?.find(group=>group.unit_id===item.unit_id) : undefined;
+    shape(item, ['unit_id', 'status', 'reason_code', 'proposed_text', ...(group ? ['source_evidence'] : [])]);
+    if (group && !same(item.source_evidence,targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
     if (typeof item.unit_id !== 'string' || seen.has(item.unit_id)) fail('invalid_response');
     seen.add(item.unit_id);
     const line = lines.get(item.unit_id);
@@ -189,8 +198,9 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
     if (item.status === 'suggested') {
       text(item.proposed_text);
       const length = resumeTextCharacters(item.proposed_text);
+      const supportLength = group ? targetResumeSupportEvidence(prepared.draft, group).slice(1).reduce((total, source) => total + resumeTextCharacters(source.quote), 0) : 0;
       if (item.reason_code !== null || !item.proposed_text.trim() || length > 6000
-        || length >= resumeTextCharacters(line.original) || length >= resumeTextCharacters(line.text)) fail('invalid_response');
+        || length >= resumeTextCharacters(line.original) + supportLength || length >= resumeTextCharacters(line.text) + supportLength) fail('invalid_response');
     } else if (item.status !== 'skipped' || !['ungrounded_rewrite', 'not_shorter'].includes(String(item.reason_code)) || item.proposed_text !== null) fail('invalid_response');
   }
 }
@@ -199,10 +209,11 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
  * The server checks each compression against its own original; the user still
  * reviews both selection and text independently before applying. */
 export function validateTargetResumePlanResponse(prepared: PreparedTargetResumePlan,
-  request: Pick<TargetResumePlanRequest, 'request_id' | 'options'>, response: unknown): TargetResumePlanResult<TargetResumePlanResponse> {
+  request: Pick<TargetResumePlanRequest, 'request_id' | 'options' | 'support_groups'>, response: unknown): TargetResumePlanResult<TargetResumePlanResponse> {
   try {
     requirePrepared(prepared);
     if (!request || typeof request.request_id !== 'string' || !request.request_id.trim()) fail('invalid_request');
+    if (!same(request.support_groups ?? null, prepared.support_groups ?? null)) fail('invalid_request');
     options(request.options, 'invalid_request');
     if (!same(request.options, prepared.options)) fail('invalid_request');
     if ('document_signature' in request && request.document_signature !== prepared.document_signature) fail('invalid_request');
@@ -212,7 +223,8 @@ export function validateTargetResumePlanResponse(prepared: PreparedTargetResumeP
     const value: unknown = JSON.parse(serialized);
     const checkKeys = object(value) && Object.hasOwn(value, 'check_version') ? ['check_version'] : [];
     shape(value, ['version', 'pipeline_version', 'request_id', 'document_id', 'opportunity_id', 'document_signature',
-      'base', 'options', 'manifest', 'scope', 'method', 'complete', 'reason_code', 'logical_calls', 'provider_attempts_upper_bound', 'items', ...checkKeys]);
+      'base', 'options', 'manifest', 'scope', 'method', 'complete', 'reason_code', 'logical_calls', 'provider_attempts_upper_bound', 'items', ...checkKeys, ...(prepared.support_groups === undefined ? [] : ['support_groups'])]);
+    if (!same(value.support_groups ?? null,prepared.support_groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
     if (value.version !== 1 || value.pipeline_version !== TARGET_RESUME_PLAN_VERSION || value.request_id !== request.request_id
@@ -246,7 +258,8 @@ export function applyTargetResumePlan(prepared: PreparedTargetResumePlan, curren
   try {
     requirePrepared(prepared);
     if (canonical(currentDraft) !== prepared.canonical_draft) fail('stale_document');
-    shape(selection, ['selection_block_ids', 'rewrite_unit_ids', 'current_context', 'options'], 'invalid_selection');
+    shape(selection, ['selection_block_ids', 'rewrite_unit_ids', 'current_context', 'options', ...(Object.hasOwn(selection,'support_groups') ? ['support_groups'] : [])], 'invalid_selection');
+    if (!same(selection.support_groups ?? [],prepared.support_groups ?? [])) fail('stale_context');
     options(selection.options, 'invalid_options');
     if (!same(selection.options, prepared.options)) fail('stale_context');
     shape(selection.current_context, ['profile_signature', 'source_signature', 'target_signature'], 'stale_context');
@@ -258,7 +271,7 @@ export function applyTargetResumePlan(prepared: PreparedTargetResumePlan, curren
     }
     if (!selection.selection_block_ids.length && !selection.rewrite_unit_ids.length) fail('invalid_selection');
     const requestId = object(response) && typeof response.request_id === 'string' ? response.request_id : '';
-    const checked = validateTargetResumePlanResponse(prepared, { request_id: requestId, options: prepared.options }, response);
+    const checked = validateTargetResumePlanResponse(prepared, { request_id: requestId, options: prepared.options, ...(prepared.support_groups === undefined ? {} : {support_groups:prepared.support_groups}) }, response);
     if (!checked.ok) fail(checked.code);
     if (!checked.value.complete || checked.value.method !== 'ai') fail('incomplete_plan');
     const items = new Map(checked.value.items.map(item => [item.block_id, item]));

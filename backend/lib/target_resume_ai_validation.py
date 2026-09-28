@@ -287,7 +287,9 @@ def validate_document(value):
         if type(base[key]) is not str or not pattern.fullmatch(base[key]):
             fail("invalid_signature")
     snapshot = doc["base_snapshot"]
-    shape(snapshot, ("resume_text", "experience_entries", "resume_master"))
+    shape(snapshot, ("resume_text", "experience_entries", "resume_master"), ("research_interests",))
+    if "research_interests" in snapshot:
+        text(snapshot["research_interests"])
     raw = text(snapshot["resume_text"], 60000)
     validate_entries(snapshot["experience_entries"])
     validate_master(snapshot["resume_master"])

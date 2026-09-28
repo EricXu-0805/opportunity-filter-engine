@@ -362,9 +362,10 @@ class ExperienceEntry(BaseModel):
 
 class ExperienceEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    version: Literal[1]
+    version: Literal[1, 2]
     resume_text: str = Field(max_length=MAX_RESUME_TEXT_CHARACTERS)
     entries: list[ExperienceEntry] = Field(max_length=100)
+    resume_master: dict | None = None
 
     @field_validator("resume_text")
     @classmethod
@@ -376,11 +377,18 @@ class ExperienceEvidence(BaseModel):
     @classmethod
     def integer_version(cls, value):
         if type(value) is not int:
-            raise ValueError("experience version must be integer 1")
+            raise ValueError("experience version must be integer 1 or 2")
         return value
 
     @model_validator(mode="after")
     def valid_collection(self):
+        if self.version == 2 and "resume_master" not in self.model_fields_set:
+            raise ValueError("experience version 2 requires current resume_master or null")
+        if self.version == 1 and "resume_master" in self.model_fields_set:
+            raise ValueError("resume_master requires experience version 2")
+        if self.resume_master is not None:
+            from backend.lib.target_resume_ai_validation import validate_master
+            validate_master(self.resume_master)
         if len({entry.id for entry in self.entries}) != len(self.entries):
             raise ValueError("duplicate experience entry id")
         if sum(len(entry.text) for entry in self.entries) > 60000:
@@ -618,16 +626,21 @@ class SelectedExperience(BaseModel):
     source: Union[ExperienceManualSource, ExperienceResumeReference] = Field(discriminator="kind")
 
 
+class SelectedExperienceWithContext(SelectedExperience):
+    # This is a projection of validated current facts, not the entire master.
+    context: dict | None
+
+
 class ExcludedExperience(BaseModel):
     id: str
     revision: int
-    reason: Literal["candidate", "rejected", "withdrawn", "source_signature_mismatch", "source_quote_mismatch"]
+    reason: Literal["candidate", "rejected", "withdrawn", "source_signature_mismatch", "source_quote_mismatch", "activity_reference_mismatch", "activity_ambiguous"]
 
 
 class ExperienceUsage(BaseModel):
     version: Literal[1] = 1
     eligible_count: int = 0
-    selected: list[SelectedExperience] = Field(default_factory=list, max_length=8)
+    selected: list[Union[SelectedExperienceWithContext, SelectedExperience]] = Field(default_factory=list, max_length=8)
     excluded: list[ExcludedExperience] = Field(default_factory=list, max_length=100)
     needs_review: bool = False
     notices: list[str] = Field(default_factory=list)

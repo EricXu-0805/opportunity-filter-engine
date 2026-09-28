@@ -5,7 +5,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-PIPELINE_VERSION = "full-target-v4"
+from backend.lib.target_resume_support_schema import ResumeSupportGroup
+
+PIPELINE_VERSION = "full-target-v5"
 MAX_DOCUMENT_BYTES = 2 * 1024 * 1024
 MAX_BODY_BYTES = MAX_DOCUMENT_BYTES + 64 * 1024
 MAX_UNITS = 24
@@ -24,7 +26,15 @@ class FullTargetRequest(BaseModel):
     include_check_version: bool = False
     draft: dict[str, Any]
     document_signature: str = Field(pattern=r"^v1:sha256:[0-9a-f]{64}$")
+    support_groups: list[ResumeSupportGroup] | None = Field(default=None, max_length=24)
     selected_unit_ids: list[str] = Field(min_length=1, max_length=MAX_UNITS)
+
+    @field_validator("support_groups", mode="before")
+    @classmethod
+    def support_selection_is_list(cls, value):
+        if type(value) is not list:
+            raise ValueError("invalid_support_groups")
+        return value
 
     @field_validator("version", mode="before")
     @classmethod

@@ -5,7 +5,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-PIPELINE_VERSION = "full-target-plan-v3"
+from backend.lib.target_resume_support_schema import ResumeSupportGroup
+
+PIPELINE_VERSION = "full-target-plan-v4"
 MAX_PROMPT_CHARACTERS = 120000
 MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
 
@@ -30,7 +32,15 @@ class FullTargetPlanRequest(BaseModel):
     include_check_version: bool = False
     draft: dict[str, Any]
     document_signature: str = Field(pattern=r"^v1:sha256:[0-9a-f]{64}$")
+    support_groups: list[ResumeSupportGroup] | None = Field(default=None, max_length=24)
     options: PlanOptions
+
+    @field_validator("support_groups", mode="before")
+    @classmethod
+    def support_selection_is_list(cls, value):
+        if type(value) is not list:
+            raise ValueError("invalid_support_groups")
+        return value
 
     @field_validator("version", mode="before")
     @classmethod

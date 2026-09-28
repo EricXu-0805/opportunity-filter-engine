@@ -143,7 +143,7 @@ function assertLatest(requests: WritingRequest[], entries: ExperienceEntry[]) {
   for (const item of requests) {
     expect(item.opportunity_id).toBe(TARGET);
     expect(item.profile.name).toBe(NEW_NAME);
-    expect(item.experience_evidence).toEqual({ version: 1, resume_text: profile().resume_text, entries });
+    expect(item.experience_evidence).toEqual({ version: 2, resume_master: profile().resume_master, resume_text: profile().resume_text, entries });
   }
 }
 function matches(include: boolean, name: string): MatchesResponse {

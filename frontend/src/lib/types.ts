@@ -517,11 +517,12 @@ export interface ExperienceUsage {
     revision: number;
     excerpt: string;
     source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number };
+    context?: { master_id: string; master_revision: number; section: 'activities' | 'education' | 'publications'; id: string; kind?: string; fields: Record<string, ResumeFact> } | null;
   }>;
   excluded: Array<{
     id: string;
     revision: number;
-    reason: 'candidate' | 'rejected' | 'withdrawn' | 'source_signature_mismatch' | 'source_quote_mismatch';
+    reason: 'candidate' | 'rejected' | 'withdrawn' | 'source_signature_mismatch' | 'source_quote_mismatch' | 'activity_reference_mismatch' | 'activity_ambiguous';
   }>;
   needs_review: boolean;
   notices: string[];

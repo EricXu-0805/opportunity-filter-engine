@@ -59,7 +59,7 @@ describe('Cold Email confirmed experience envelope', () => {
     const result = await call(path, input);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sent.experience_evidence).toEqual({ version: 1, resume_text: raw, entries });
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: raw, entries });
     expect(sent.experience_evidence.entries[12].source.end).toBe(Array.from(raw).length);
     expect(sent).not.toHaveProperty('resume_bullets');
     expect(sent.profile).not.toHaveProperty('experience_entries');
@@ -71,27 +71,29 @@ describe('Cold Email confirmed experience envelope', () => {
     fetchMock.mockResolvedValueOnce(response(path));
     await call(path, profile);
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(sent.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
     expect(sent).not.toHaveProperty('resume_bullets');
   });
 
-  it.each(paths)('%s does not send the full master through existing email requests', async (path) => {
+  it.each(paths)('%s sends the current validated master only in the V2 evidence envelope', async (path) => {
     const input = { ...profile, resume_master: { ...createEmptyResumeMaster('private-master'),
       basics: { links: [], name: { id: 'private-name', revision: 1, status: 'confirmed' as const,
         value: 'MASTER-ONLY-PRIVATE-NAME', source: { kind: 'manual' as const } } } } };
     fetchMock.mockResolvedValueOnce(response(path));
     await call(path, input);
     const body = fetchMock.mock.calls[0][1].body;
-    expect(body).not.toContain('resume_master');
-    expect(body).not.toContain('MASTER-ONLY-PRIVATE-NAME');
+    expect(JSON.parse(body).experience_evidence).toMatchObject({version:2,resume_master:input.resume_master});
+    expect(JSON.parse(body).profile).not.toHaveProperty('resume_master');
   });
+
+  it.each(paths)('%s rejects an invalid relationship snapshot before fetch',async path=>{const input={...profile,resume_master:{...createEmptyResumeMaster('invalid'),revision:0}};await expect(call(path,input)).rejects.toMatchObject({code:'INVALID_EMAIL_EXPERIENCE_CONTEXT'});expect(fetchMock).not.toHaveBeenCalled();});
 
   it('legacy refine with no profile still explicitly declares no experience evidence', async () => {
     fetchMock.mockResolvedValueOnce(response('refine'));
     await refineEmail('Current draft', 'Be concise', undefined, 'target', { resumeBullets: ['Never confirmed'] });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(sent.profile).toBeNull();
-    expect(sent.experience_evidence).toEqual({ version: 1, resume_text: '', entries: [] });
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
     expect(sent).not.toHaveProperty('resume_bullets');
   });
 });

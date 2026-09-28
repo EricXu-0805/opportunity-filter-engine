@@ -172,7 +172,7 @@ def test_real_email_routes_give_provider_complete_website_without_user_reading(w
         assert TEXT in messages[1]['content']
         assert 'OFFICIAL WEBSITE MATERIAL' in messages[1]['content']
         assert 'Do not write a website-reading claim' in messages[1]['content']
-    assert out['pipeline_version'] == 'w12.15'
+    assert out['pipeline_version'] == 'w12.16'
     for variant in out.get('variants', [out]):
         assert 'I read' not in variant['body'] and 'I have read' not in variant['body']
         assert 'I have experience with electroencephalography' not in variant['body']

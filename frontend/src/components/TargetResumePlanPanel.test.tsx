@@ -3,6 +3,7 @@ import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { targetResumeSupportEvidence } from '@/lib/target-resume-support';
 import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumePlan, measureTargetResumeLength } from '@/lib/target-resume-plan';
 import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
@@ -20,7 +21,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 const shorter = 'I did not lead the team.';
 async function response(payload: TargetResumePlanRequest): Promise<TargetResumePlanResponse> {
   const p = await prepareTargetResumePlan(payload.draft, payload.options); if (!p.ok) throw new Error(p.code);
-  return { version: 1, pipeline_version: 'full-target-plan-v3', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-plan-v4', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base), options: payload.options,
     manifest: p.value.manifest, scope: p.value.scope, method: 'ai', complete: true, reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
     items: p.value.manifest.map(item => {
@@ -65,7 +66,7 @@ describe('whole draft content planning', () => {
     fireEvent.click(within(card).getByText('Read complete original and current text'));
     expect(within(card).getByText(project(p.draft).lines[1].original)).toBeVisible();
     expect(within(card).getByText(project(p.draft).lines[1].text)).toBeVisible();
-    expect(within(card).getByText('Opportunity evidence')).toBeVisible();
+    expect(within(card).getByText('Opportunity evidence')).not.toBeVisible(); fireEvent.click(within(card).getByText('Review reason and sources')); expect(within(card).getByText('Opportunity evidence')).toBeVisible();
     expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(before); expect(p.onDirtyChange).toHaveBeenLastCalledWith(true);
   });
   it('applies only an explicitly selected omission, keeping originals, wording and master unchanged', async () => {
@@ -238,4 +239,16 @@ describe('accepted content-plan operation records', () => {
     const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
     expect(next).toEqual(p.draft); expect(appendTargetResumeProvenance(null, p.draft, next, action)).toBeNull();
   });
+});
+
+
+it('records both reviewed sources when applying a combined plan rewrite and discards earlier choices when sources change',async()=>{
+  const originalProps=props();const profile=clone(originalProps.profile);profile.experience_entries!.push({id:'same-project-support',revision:1,status:'confirmed',text:'I wrote Python tests for the parser and documented each failing case.',source:{kind:'manual'}});profile.resume_master!.activities[0].details.push({id:'same-project-support',revision:1});
+  const draft=await createTargetResume(profile,originalProps.draft.target_snapshot,'plan-support-draft');const block=project(draft),experiences=block.lines.filter(line=>line.evidence.kind==='experience');const groups=[{unit_id:experiences[0].id,support_unit_ids:[experiences[1].id],confirmed:true as const}];
+  const p={...originalProps,profile,draft,supportGroups:groups,currentContext:{profile_signature:draft.base.profile_signature,source_signature:draft.base.source_signature,target_signature:draft.base.target_signature}};
+  mocked.generate.mockImplementation(async(payload:TargetResumePlanRequest)=>{const result=await response(payload);for(const item of result.items)for(const rewrite of item.rewrites){const group=payload.support_groups?.find(group=>group.unit_id===rewrite.unit_id);if(group)rewrite.source_evidence=targetResumeSupportEvidence(payload.draft,group);}return result;});
+  const view=render(<TargetResumePlanPanel {...p}/>);await generate();await screen.findByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`});expect(mocked.generate.mock.calls[0][0].support_groups).toEqual(groups);
+  view.rerender(<TargetResumePlanPanel {...p} supportGroups={[]}/>);expect(screen.queryByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`})).toBeNull();expect(p.onApply).not.toHaveBeenCalled();
+  view.rerender(<TargetResumePlanPanel {...p}/>);await generate();fireEvent.click(await screen.findByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`}));apply();expect(p.onApply).toHaveBeenCalledTimes(1);
+  const [,next,action]=vi.mocked(p.onApply).mock.calls[0];expect(action.annotations![0].source_evidence).toEqual(targetResumeSupportEvidence(draft,groups[0]));const stored=appendTargetResumeProvenance(null,draft,next,action);expect(stored!.events[0].changes[0].source_evidence).toHaveLength(2);
 });

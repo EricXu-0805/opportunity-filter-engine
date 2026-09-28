@@ -86,7 +86,7 @@ export interface TargetResumeV1 {
     master_id: string; master_revision: number; profile_signature: string;
     source_signature: string; target_signature: string;
   };
-  base_snapshot: { resume_text: string; experience_entries: ExperienceEntry[]; resume_master: ResumeMasterV1 };
+  base_snapshot: { resume_text: string; experience_entries: ExperienceEntry[]; resume_master: ResumeMasterV1; research_interests?: string };
   target_snapshot: TargetResumeContext;
   document: { sections: TargetResumeSection[] };
 }
@@ -379,7 +379,8 @@ export function validateTargetResume(value: unknown): { ok: true; value: TargetR
     if (typeof parsed.base.source_signature !== 'string' || !DIGEST.test(parsed.base.source_signature)
       || typeof parsed.base.profile_signature !== 'string' || !FINGERPRINT.test(parsed.base.profile_signature)
       || typeof parsed.base.target_signature !== 'string' || !FINGERPRINT.test(parsed.base.target_signature)) fail('invalid_signature');
-    shape(parsed.base_snapshot, ['resume_text', 'experience_entries', 'resume_master']);
+    shape(parsed.base_snapshot, ['resume_text', 'experience_entries', 'resume_master', ...(record(parsed.base_snapshot) && Object.hasOwn(parsed.base_snapshot, 'research_interests') ? ['research_interests'] : [])]);
+    if (Object.hasOwn(parsed.base_snapshot, 'research_interests')) string(parsed.base_snapshot.research_interests);
     string(parsed.base_snapshot.resume_text, 'invalid_source');
     if (resumeTextCharacters(parsed.base_snapshot.resume_text) > MAX_RESUME_TEXT_CHARACTERS) fail('invalid_source');
     const master = validateResumeMaster(parsed.base_snapshot.resume_master);
@@ -456,7 +457,10 @@ export async function createTargetResume(profile: ProfileData, target: TargetRes
   const [sourceSignature, profileSignature, targetSignature] = await Promise.all([
     sourceDigest(raw), fingerprint(profileJson), targetResumeContextSignature(targetSnapshot),
   ]).catch(() => fail('signature_unavailable'));
-  const baseSnapshot = { resume_text: raw, experience_entries: entries.value, resume_master: master.value };
+  const interests = profileSnapshot.research_interests ?? '';
+  string(interests);
+  // Direction is retained verbatim for adaptation, never turned into résumé facts.
+  const baseSnapshot = { resume_text: raw, experience_entries: entries.value, resume_master: master.value, research_interests: interests };
   const doc: TargetResumeV1 = {
     kind: 'full_resume', version: 1, id, opportunity_id: targetSnapshot.opportunity_id,
     base: { master_id: master.value.id, master_revision: master.value.revision, profile_signature: profileSignature,

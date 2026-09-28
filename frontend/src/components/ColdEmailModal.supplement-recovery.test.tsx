@@ -7,7 +7,7 @@ import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { EmailContactContext, ProfileData } from '@/lib/types';
 import { emailReceipt, emailTarget } from './ColdEmailModal.test-fixtures';
 
-const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), recipient: vi.fn(), confirm: vi.fn() }));
+const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), recipient: vi.fn(), assign: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/lib/api', () => ({
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string,
     (args[3] as { expectedTargetVersion: string }).expectedTargetVersion,
@@ -40,7 +40,7 @@ let ownerNumber = 0;
 beforeEach(async () => {
   localStorage.clear(); advanceOwnerEpoch('draft-recovery-' + ++ownerNumber); await syncLocalIdentityOwner('draft-recovery-' + ownerNumber);
   const token=captureOwnerToken(); const view = { viewId:'fresh-view', baseProfile:profile, renderedProfile:profile, revision:1,token,identityGeneration:token.epoch,source:'hydration' as const };
-  supplement.controller = { view, acceptedView:view, phase:'ready', error:null, ownerScopeKey:'scope',operationLocked:false,confirmedEntryId:null,acceptCurrent:vi.fn().mockResolvedValue(undefined),confirm:vi.fn().mockResolvedValue({durable:false,reason:'record-failed'}),retryRecorded:vi.fn(),baseline:vi.fn((activityId:string)=>({view,activityId,targetKey:(supplement.options as ResumeSupplementOptions).targetKey})) } satisfies ReturnType<typeof useResumeSupplement>;
+  supplement.controller = { view, acceptedView:view, phase:'ready', error:null, ownerScopeKey:'scope',operationLocked:false,confirmedEntryId:null,acceptCurrent:vi.fn().mockResolvedValue(undefined),assign:vi.fn(),confirm:vi.fn().mockResolvedValue({durable:false,reason:'record-failed'}),retryRecorded:vi.fn(),baseline:vi.fn((activityId:string)=>({view,activityId,targetKey:(supplement.options as ResumeSupplementOptions).targetKey})) } satisfies ReturnType<typeof useResumeSupplement>;
   api.variants.mockReset().mockResolvedValue({ variants: [draft], recipient_status: 'revealed' });
   api.stream.mockReset().mockResolvedValue({ ...draft, method: 'template' }); api.refine.mockReset();
   api.recipient.mockReset().mockResolvedValue(undefined); api.confirm.mockReset().mockResolvedValue({ interaction: { type: 'contacted' } });

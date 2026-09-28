@@ -14,6 +14,9 @@ import { useProfileAction } from '@/lib/use-profile-action';
 import { writingTargetKey } from '@/lib/writing-target';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import ResumeSupplementPanel from './ResumeSupplementPanel';
+import ResumeExperienceAssignmentPanel from './ResumeExperienceAssignmentPanel';
+import TargetResumeSupportPanel from './TargetResumeSupportPanel';
+import type { TargetResumeSupportGroup } from '@/lib/target-resume-support';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
 import TargetResumePlanPanel from './TargetResumePlanPanel';
 import TargetResumeCriteria from './TargetResumeCriteria';
@@ -88,6 +91,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [leave, setLeave] = useState<LeaveAction | null>(null);
   const [supplementOpen, setSupplementOpen] = useState(false);
   const [supplementMounted, setSupplementMounted] = useState(false);
+  const [assignmentDirty, setAssignmentDirty] = useState(false);
+  const [supportDirty, setSupportDirty] = useState(false);
+  const [supportSelection, setSupportSelection] = useState<{key:string;groups:TargetResumeSupportGroup[]} | null>(null);
   const [supplementDirty, setSupplementDirty] = useState(false);
   const [aiDirty, setAiDirty] = useState(false);
   const [planDirty, setPlanDirty] = useState(false);
@@ -142,7 +148,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!isOpen) {
       // Closing the whole workspace retires its private answer buffer.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSupplementDirty(false); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAssignmentDirty(false); setSupportDirty(false); setSupportSelection(null); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
       return;
     }
@@ -153,7 +159,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     // A target-document read retry does not discard independent answers.
     if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
       || previous.owner.epoch !== scope.owner.epoch || previous.owner.generation !== scope.owner.generation) {
-      setSupplementDirty(false); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
+      setSupplementDirty(false); setAssignmentDirty(false); setSupportDirty(false); setSupportSelection(null); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
       supplementInputRef.current = null;
     }
     // Pending plans belong to the document workspace being replaced.
@@ -215,6 +221,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   };
 
   const doc = activeSession?.doc ?? null;
+  const supportKey = `${contextKey}\n${doc ? canonical(doc) : ''}`;
+  const supportGroups = supportSelection?.key === supportKey ? supportSelection.groups : [];
   const comparable = profileAvailable && checks?.key === contextKey ? checks : null;
   const incompleteTarget = !!doc && !isCurrentTargetResumeContext(doc.target_snapshot);
   const outdated = incompleteTarget || (!!doc && !!comparable && (doc.base.profile_signature !== comparable.profile
@@ -223,9 +231,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (supplementDirty || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
+    if (assignmentDirty || supportDirty || supplementDirty || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
-  }, [session, supplementDirty, aiDirty, planDirty, exit]);
+  }, [session, assignmentDirty, supportDirty, supplementDirty, aiDirty, planDirty, exit]);
 
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
@@ -468,6 +476,20 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       <div className={`min-h-0 overflow-y-auto p-4 sm:p-6 ${supplementOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6' : ''}`}>
         {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
           className="mb-5 min-w-0 rounded-xl border bg-gray-50 p-4 lg:order-2 lg:sticky lg:top-0 lg:mb-0 lg:max-h-[calc(92vh-10rem)] lg:overflow-y-auto">
+          <ResumeExperienceAssignmentPanel key={`assignment:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}`}
+            owner={activeSession.scope.owner} targetKey={targetKey} profileAvailable={profileAvailable}
+            onDirtyChange={(value) => { if (current(activeSession.scope)) setAssignmentDirty(value); }}
+            onAcceptedProfile={(view, againstView) => {
+              if (profileAvailableRef.current && current(activeSession.scope)
+                && activeSession.scope.creation === acceptedCreation && isOwnerTokenValid(view.token, view.token.uid)
+                && view.token.uid === activeSession.scope.owner.uid && view.token.epoch === activeSession.scope.owner.epoch
+                && view.token.generation === activeSession.scope.owner.generation
+                && isOwnerTokenValid(againstView.token, againstView.token.uid)
+                && (supplementInputRef.current === incomingProfileRef.current
+                  || canonical(againstView.renderedProfile) === incomingProfileRef.current)) {
+                setSupplementProfile({ view, inputKey: incomingProfileRef.current });
+              }
+            }} />
           <ResumeSupplementPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}`}
             owner={activeSession.scope.owner} targetKey={targetKey} profileAvailable={profileAvailable}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setSupplementDirty(value); }}
@@ -486,6 +508,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         </aside>}
         <div className="min-w-0 lg:order-1">
         <p className="mb-2 text-sm font-medium">{copy('Uses only confirmed items linked to your master résumé.', '只使用母版中已确认并关联的内容。')}</p>
+        {doc && <details className="mb-3 rounded-lg border p-3" data-testid="target-resume-direction"><summary className="cursor-pointer text-sm font-medium">{copy('Research interests — direction, not a claim of ability', '研究兴趣：用于确定方向，不代表已有能力')}</summary>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm">{doc.base_snapshot.research_interests === undefined
+            ? copy('This older draft does not contain research interests. Create a new draft from your current profile to include them.', '这份旧稿未包含研究兴趣。需要使用当前兴趣时，请根据当前资料创建新稿。')
+            : doc.base_snapshot.research_interests || copy('No research interests were provided for this draft.', '这份稿件的资料中没有填写研究兴趣。')}</p>
+        </details>}
+
         <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them, then export the current draft.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，再导出当前稿。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
@@ -537,7 +565,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey} enabled={canEdit && (profileRefreshReady(profileRefresh) || !profileAvailable)}
             unsaved={dirty} outdated={outdated} profileAvailable={profileAvailable} />
           {authorityBlocked && <p role="alert" className="my-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This opportunity could not be used for AI adaptation. Both AI tools are paused for these materials. Your draft can still be edited, saved and exported. Close and reopen to check the current opportunity.', '当前机会无法用于 AI 调整，本次材料的选材和改写均已暂停。文稿仍可手改、保存和导出，请关闭后重新打开，核对最新机会。')}</p>}
-          <TargetResumePlanPanel key={`plan:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
+          <TargetResumeSupportPanel key={supportKey} draft={doc} groups={supportGroups}
+            enabled={sourceReady && canEdit && !!comparable && !outdated && !activeSession.conflict && !authorityBlocked && !activeSession.provenanceError}
+            onChange={groups=>setSupportSelection({key:supportKey,groups})} onDirtyChange={setSupportDirty}/>
+          <TargetResumePlanPanel supportGroups={supportGroups} key={`plan:${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
             readiness={authorityBlocked || activeSession.provenanceError ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
@@ -557,7 +588,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                 } catch { return { ...old, error: 'provenance' }; }
               });
             }} />
-          <TargetResumeAiPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
+          <TargetResumeAiPanel supportGroups={supportGroups} key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}:${doc.id}`}
             draft={doc} owner={activeSession.scope.owner} contextKey={contextKey}
             profile={acceptedProfile} profileAvailable={profileAvailable} profileRefresh={profileRefresh} target={opportunity} targetRefresh={targetRefresh}
             readiness={authorityBlocked || activeSession.provenanceError ? 'blocked' : createReadiness === 'waiting' ? 'waiting' : !canEdit || outdated || activeSession.conflict ? 'blocked' : createReadiness}
@@ -601,7 +632,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                     <p className="mt-2 text-xs text-gray-500">{line.text === line.original ? copy('Kept exactly from the confirmed source.', '与已确认来源完全一致。') : copy('Edited from the confirmed source. Check the original and target requirements; this wording has not been fully fact-checked.', '已修改。请对照原文和目标要求核对；此表述尚未完成事实核查。')}</p>
                     {record && <p className="mt-2 text-xs text-gray-600">{recordKind(record.kind, 'text')}. {record.kind === 'manual'
                       ? copy('Earlier AI checks do not cover this manual wording.', '之前的 AI 检查不适用于当前手改表述。')
-                      : record.change.check ? `${copy('Recorded check version', '记录的检查版本')}: ${record.change.check.version}` : copy('Check version unknown.', '检查版本未知。')}</p>}
+                      : record.change.check ? copy('This rewrite and its sources are recorded.', '已记录本次改写及依据。') : copy('The source check for this wording is unknown.', '此表述的来源核查情况未知。')}</p>}
                     <button type="button" className={`${button} mt-2`} disabled={!canEdit || line.text === line.original} aria-label={`${copy('Restore original', '恢复原文')} ${label(line)}`}
                       onClick={() => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = line.original; })}>{copy('Restore original', '恢复原文')}</button>
                   </div>;
