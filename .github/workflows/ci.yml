@@ -21,15 +21,11 @@ jobs:
   backend:
     name: Backend (lint + pytest)
     runs-on: ubuntu-latest
-    # Corpus-bound: pytest assembles + validates the full multi-school corpus,
-    # which grows with each onboarding wave (61k→128k across the parity waves).
-    # The heavy tests used to re-parse the 300 MB+ work file once per test and
-    # re-rank the whole corpus once per assertion; memoizing the corpus loaders
-    # and sharing one ranker-sanity result cut the serial suite ~in half. What
-    # remains is inherent per-profile rank_all-over-corpus compute (one ~2 min
-    # TF-IDF-fit + batch-cosine call), which grows with the corpus — if it ever
-    # crowds the cap, parallelize with pytest-xdist or sample the ranker tests.
-    timeout-minutes: 30
+    # PR #974 passed all 4,927 tests in 28m18s, but setup and cleanup
+    # brought the job past its old 30-minute cap (run 35967896474).
+    # Keep the full suite and leave measured runner/setup headroom. Durations
+    # below expose the corpus-bound tests to optimize without dropping checks.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
 
@@ -69,7 +65,7 @@ jobs:
         run: python scripts/shard_corpus.py assemble
 
       - name: Run pytest
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --durations=20
 
   frontend:
     name: Frontend (typecheck + build)
