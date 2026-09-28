@@ -502,3 +502,40 @@ describe('OpportunityHeader favorite control — disabled vs busy', () => {
     expect(star).toHaveAttribute('aria-busy', 'false');
   });
 });
+
+describe('OpportunityHeader — M03 location and pay provenance', () => {
+  it('shows no pin for a listing located only by its host school', () => {
+    renderHeader({
+      opp: { ...OPP, location: 'Durham, NC', location_attribution: 'institution' } as Opportunity,
+    });
+    expect(screen.queryByText('Durham, NC')).toBeNull();
+  });
+
+  it('shows a location the posting stated', () => {
+    renderHeader({ opp: { ...OPP, location: 'Seattle, WA' } as Opportunity });
+    expect(screen.getByText('Seattle, WA')).toBeInTheDocument();
+  });
+
+  it('marks a location we read off another record as inferred', () => {
+    renderHeader({
+      opp: { ...OPP, location: 'Springfield, IL', location_attribution: 'inferred' } as Opportunity,
+    });
+    expect(screen.getByText('detail.locationInferred')).toBeInTheDocument();
+  });
+
+  it('keeps the faculty affiliation wording — that value IS the affiliation', () => {
+    renderHeader({ opp: facultyOpp({ location: 'Ann Arbor, MI', location_attribution: 'institution' }) });
+    expect(screen.getByText('detail.fields.facultyAffiliationLocation')).toBeInTheDocument();
+  });
+
+  it('hedges a stipend we defaulted rather than read', () => {
+    renderHeader({ opp: { ...OPP, paid: 'stipend', paid_attribution: 'inferred' } as Opportunity });
+    expect(screen.getByText('badges.payUnconfirmed')).toBeInTheDocument();
+    expect(screen.queryByText('badges.stipend')).toBeNull();
+  });
+
+  it('keeps a stated stipend', () => {
+    renderHeader({ opp: { ...OPP, paid: 'stipend' } as Opportunity });
+    expect(screen.getByText('badges.stipend')).toBeInTheDocument();
+  });
+});

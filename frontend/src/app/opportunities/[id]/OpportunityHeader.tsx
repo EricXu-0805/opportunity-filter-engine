@@ -177,7 +177,13 @@ export function OpportunityHeader({
                 ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.fundingMentioned')}</DetailBadge>
                 : <DetailBadge tone="emerald" icon={<DollarSign className="w-3 h-3" />}>{t('badges.paid')}</DetailBadge>
             )}
-            {isCurrentListing && opp.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
+            {/* Simplify writes "stipend" on every internship because its feed
+                has no pay field. That is our expectation, not the posting's. */}
+            {isCurrentListing && opp.paid === 'stipend' && (
+              opp.paid_attribution === 'inferred'
+                ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.payUnconfirmed')}</DetailBadge>
+                : <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>
+            )}
             {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
             {/* The values the pipeline actually writes. This tested 'yes',
@@ -211,12 +217,18 @@ export function OpportunityHeader({
                 they are taking students. A listing's location is where the
                 work would happen, which is a term of an offer, so it goes
                 when the offer does. */}
-            {opp.location && (isFaculty || isCurrentListing) && (
+            {/* M03: a listing whose location is only its host school's city
+                ('institution') shows no pin at all — the school's location is
+                not where the work happens. The faculty wording already says
+                affiliation, which is exactly what that value is. */}
+            {opp.location && (isFaculty || (isCurrentListing && opp.location_attribution !== 'institution')) && (
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
                 {isFaculty
                   ? t('detail.fields.facultyAffiliationLocation', { location: opp.location })
-                  : opp.location}
+                  : opp.location_attribution === 'inferred'
+                    ? t('detail.locationInferred', { location: opp.location })
+                    : opp.location}
               </span>
             )}
           </div>

@@ -507,7 +507,8 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "majors": majors,
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": intl == "no",
+            # Tri-state (M03): an unknown intl answer is not "no requirement".
+            "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
             "international_friendly": intl,
             "work_auth_notes": extra.get("citizenship_info", ""),
             "eligibility_text_raw": eligibility_text[:500],

@@ -189,6 +189,14 @@ export interface OpportunityMetadata {
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
+  // Where `location` came from. 'institution' means the collector wrote its
+  // host school's city — where the school is, not where the work happens —
+  // so no surface may print it as the opportunity's location. 'inferred'
+  // means we read it off another record (the NSF awardee). Absent = stated.
+  location_attribution?: 'institution' | 'inferred' | null;
+  // M03 per-field source / inferred / unknown classification (detail payload
+  // only). Read it through `readDetailFields` — never index it directly.
+  detail_fields?: unknown;
   // Scraped deadline prose (e.g. "Rolling admissions"). The ONLY accepted
   // evidence of genuinely rolling admissions — `is_rolling` alone is a blanket
   // collector default and must never be presented as a scraped fact.
@@ -281,6 +289,14 @@ export interface Opportunity {
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
+  // Where `location` came from. 'institution' means the collector wrote its
+  // host school's city — where the school is, not where the work happens —
+  // so no surface may print it as the opportunity's location. 'inferred'
+  // means we read it off another record (the NSF awardee). Absent = stated.
+  location_attribution?: 'institution' | 'inferred' | null;
+  // M03 per-field source / inferred / unknown classification (detail payload
+  // only). Read it through `readDetailFields` — never index it directly.
+  detail_fields?: unknown;
   // Match-card projection of metadata.faculty_title (scraped rank). Absent or
   // empty = unknown rank; gates "Professor" framing on card CTAs.
   faculty_title?: string;

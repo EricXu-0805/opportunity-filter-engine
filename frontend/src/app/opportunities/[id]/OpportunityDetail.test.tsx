@@ -51,6 +51,11 @@ vi.mock('./DetailSections', () => ({
   ApplicationSection: () => <div data-testid="section-application" />,
   KeywordsSection: () => <div data-testid="section-keywords" />,
 }));
+vi.mock('./DetailFactsSection', () => ({
+  DetailFactsSection: (props: { isFaculty: boolean }) => (
+    <div data-testid="section-facts" data-faculty={String(props.isFaculty)} />
+  ),
+}));
 vi.mock('./OpportunityHeader', () => ({
   OpportunityHeader: (props: {
     onOpenEmailModal?: () => void;
@@ -571,5 +576,41 @@ describe('OpportunityDetail target-truth postures', () => {
     for (const id of ALWAYS) {
       expect(screen.getByTestId(id), id).toBeInTheDocument();
     }
+  });
+});
+
+describe('OpportunityDetail — M03 detail facts', () => {
+  const withFacts = {
+    ...(opp as unknown as Record<string, unknown>),
+    detail_fields: { version: 'm03-v1', fields: {} },
+  };
+
+  it('renders the facts section in place of the legacy term sections', () => {
+    render(<OpportunityDetail opp={withFacts as never} />);
+    expect(screen.getByTestId('section-facts')).toBeInTheDocument();
+    for (const id of ['section-at-a-glance', 'section-eligibility', 'section-application', 'section-keywords']) {
+      expect(screen.queryByTestId(id), id).not.toBeInTheDocument();
+    }
+  });
+
+  it('falls back to the legacy sections when the payload carries no facts', () => {
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
+    expect(screen.getByTestId('section-at-a-glance')).toBeInTheDocument();
+  });
+
+  it('falls back on an unrecognised version rather than guessing at it', () => {
+    const future = { ...withFacts, detail_fields: { version: 'm03-v9', fields: {} } };
+    render(<OpportunityDetail opp={future as never} />);
+    expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
+  });
+
+  it('shows no facts on a historical record — its terms are not on offer', () => {
+    const closed = {
+      ...withFacts,
+      target_truth: { ...ACTIONABLE_TRUTH, listing_state: 'closed', actionable: false, accepting_state: 'closed', reason_code: 'listing_closed' },
+    };
+    render(<OpportunityDetail opp={closed as never} />);
+    expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
   });
 });

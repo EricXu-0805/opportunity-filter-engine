@@ -159,7 +159,8 @@ def _to_normalized(r: RawOpportunity) -> dict:
             "preferred_year": ["freshman", "sophomore"],
             "skills_required": [],
             "international_friendly": "unknown",
-            "citizenship_required": False,
+            # Unknown, not False: the page states no citizenship rule (M03).
+            "citizenship_required": None,
         },
         "application": {
             "application_url": r.url,

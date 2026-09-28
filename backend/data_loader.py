@@ -6,7 +6,7 @@ import re
 import threading
 from pathlib import Path
 
-from src.evidence import neutralize_unverified_faculty_claims
+from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +61,9 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # directories are contact/research evidence, not proof of an opening's
     # year, effort, location or immigration terms.
     neutralize_unverified_faculty_claims(opp)
+    # Same idea for listing collectors: a constant the collector writes on
+    # every row (Simplify's "stipend") is stamped as ours, not the posting's.
+    stamp_collector_templates(opp)
     for field in ("description_raw", "description_clean", "title"):
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])

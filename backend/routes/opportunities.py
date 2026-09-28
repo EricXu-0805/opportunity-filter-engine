@@ -29,6 +29,7 @@ from backend.lib.llm import (
     chat_model_options,
     chat_model_slug,
 )
+from backend.lib.opportunity_detail import build_detail_fields
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_projection import (
@@ -506,6 +507,10 @@ async def get_opportunity(
             headers=_TRUTH_CAPABILITY_HEADERS,
         )
     detail = _redact(opp)
+    # M03: every detail field as source / inferred / unknown, read off the
+    # projection just built (so nothing the projector stripped comes back)
+    # with the canonical record consulted only for how each value was made.
+    detail["detail_fields"] = build_detail_fields(detail, opp)
     # Revealing a contact is an action on the target, not a display detail: it
     # ends in a mailto and, for a signed-out visitor, in a sign-in prompt whose
     # only purpose is to unlock it. A closed listing stays readable, but there
