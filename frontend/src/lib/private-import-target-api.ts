@@ -10,7 +10,7 @@ export const PRIVATE_TARGET_TIMEOUT_MS = 30_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ID = /^private-import:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 type Options = { owner: OwnerToken; signal?: AbortSignal };
-export type PrivateTargetErrorCode = 'invalid_input' | 'invalid_receipt' | 'sign_in_required' | 'conflict' | 'deleted' | 'not_found' | 'too_large' | 'unavailable' | 'timeout' | 'aborted';
+export type PrivateTargetErrorCode = 'invalid_input' | 'invalid_receipt' | 'sign_in_required' | 'conflict' | 'changed' | 'deleted' | 'not_found' | 'too_large' | 'unavailable' | 'timeout' | 'aborted';
 export class PrivateTargetError extends Error {
   constructor(readonly code: PrivateTargetErrorCode) { super('The private import request could not be completed.'); this.name = 'PrivateTargetError'; }
 }
@@ -93,7 +93,7 @@ async function run<T>(origin: OwnerToken, signal: AbortSignal | undefined, work:
   finally { clearTimeout(timer); off(); signal?.removeEventListener('abort', abort); controller.abort(); if (typeof window !== 'undefined') window.removeEventListener('storage', retire); }
 }
 const errors: Record<string, [number, PrivateTargetErrorCode]> = {
-  auth_required: [401, 'sign_in_required'], conflict: [409, 'conflict'], deleted: [409, 'deleted'], not_found: [404, 'not_found'],
+  auth_required: [401, 'sign_in_required'], changed: [409, 'changed'], conflict: [409, 'conflict'], deleted: [409, 'deleted'], not_found: [404, 'not_found'],
   invalid_request: [422, 'invalid_input'], too_large: [413, 'too_large'], invalid_receipt: [502, 'invalid_receipt'], unavailable: [503, 'unavailable'],
 };
 async function request(path: string, owner: OwnerToken, operation: Operation, init?: RequestInit, list = false): Promise<Record<string, unknown>> {
@@ -215,5 +215,65 @@ export async function listPrivateImportTargets(options: Options & { cursor?: Pri
     }
     if (data.next_cursor !== null && (!record(data.next_cursor) || !exact(data.next_cursor, ['updated_at', 'id']) || data.items.length !== limit || !same(data.next_cursor, previous))) return fail();
     return data as unknown as PrivateImportPage;
+  });
+}
+
+
+export interface PrivateResolvedTarget {
+  version: 1; target_scope: 'private_import'; verification: 'unverified';
+  id: string; owner_id: string; revision: number; target_version: string;
+  detail: {
+    title: string; organization: string | null; description_raw: string;
+    source_url: string | null; url: string | null; location: string | null;
+    deadline: string | null; posted_date: string | null; import_source: PrivateImportTarget['import_source'];
+  };
+  tracker: {
+    id: string; title: string; organization: string | null; source_url: string | null; url: string | null;
+    target_scope: 'private_import'; verification: 'unverified'; target_version: string;
+  };
+  capabilities: { read: true; tracker_identity: true; writes: false };
+}
+export function isPrivateImportId(value: string): boolean { return ID.test(value); }
+function safeProjectedUrl(value: unknown): boolean {
+  if (value === null) return true;
+  if (typeof value !== 'string' || /[\u0000-\u0020\u007f\\]/.test(value)) return false;
+  try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !!url.hostname; }
+  catch { return false; }
+}
+/** Owner-authorized display only; this receipt cannot authorize AI or sending. */
+export async function getResolvedPrivateImportTarget(id: string, options: Options & { expectedVersion?: string }): Promise<PrivateResolvedTarget> {
+  const owner = { ...options.owner }; assertOwner(owner); validateId(id);
+  const expected = options.expectedVersion;
+  if (expected !== undefined && !/^pit1:[a-f0-9]{64}$/.test(expected)) fail('invalid_input');
+  const query = new URLSearchParams({ expected_owner_id: owner.uid });
+  if (expected) query.set('expected_target_version', expected);
+  return run(owner, options.signal, async op => {
+    const value = await request(`/${encodeURIComponent(id)}/resolved?${query}`, owner, op);
+    if (!exact(value, ['version','id','owner_id','revision','target_version','target_scope','verification','detail','tracker','capabilities'])
+      || value.version !== 1 || value.id !== id || value.owner_id !== owner.uid
+      || value.target_scope !== 'private_import' || value.verification !== 'unverified'
+      || !Number.isSafeInteger(value.revision) || (value.revision as number) < 1) return fail();
+    const bytes = new TextEncoder().encode(JSON.stringify({ id, owner_id: owner.uid, revision: value.revision }));
+    const digest = new Uint8Array(await op.wait(crypto.subtle.digest('SHA-256', bytes)));
+    const version = 'pit1:' + Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
+    if (value.target_version !== version || (expected && version !== expected)) return fail();
+    const detail = value.detail;
+    if (!record(detail) || !exact(detail, ['title','organization','description_raw','source_url','url','location','deadline','posted_date','import_source'])
+      || !safeProjectedUrl(detail.source_url) || !safeProjectedUrl(detail.url)
+      || !['organization','location','deadline','posted_date'].every(key => detail[key] === null || typeof detail[key] === 'string')) return fail();
+    try { snapshotOpportunity({ source: 'text_parser', title: detail.title, description_raw: detail.description_raw,
+      source_url: detail.source_url ?? '', url: detail.url ?? '', organization: detail.organization,
+      location: detail.location, deadline: detail.deadline, posted_date: detail.posted_date }); }
+    catch { return fail(); }
+    const labels = detail.import_source;
+    if (labels !== null && (!record(labels) || !exact(labels, ['version','description_source','ai_input_scope','llm_enriched'])
+      || labels.version !== 1 || !['page_text','page_excerpt','pasted_text','unknown'].includes(labels.description_source as string)
+      || !['source_excerpt','unknown'].includes(labels.ai_input_scope as string) || typeof labels.llm_enriched !== 'boolean'
+      || (labels.ai_input_scope === 'source_excerpt' && (labels.llm_enriched !== true || labels.description_source === 'unknown'))
+      || (labels.description_source === 'unknown' && labels.llm_enriched !== false))) return fail();
+    const tracker = { id, title: detail.title, organization: detail.organization, source_url: detail.source_url, url: detail.url,
+      target_scope: 'private_import', verification: 'unverified', target_version: version };
+    if (!same(value.tracker, tracker) || !same(value.capabilities, { read: true, tracker_identity: true, writes: false })) return fail();
+    return value as unknown as PrivateResolvedTarget;
   });
 }

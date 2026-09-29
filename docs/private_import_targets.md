@@ -1,8 +1,8 @@
 # Private import target storage
 
-B60 adds owner-bound persistence for imported opportunities. It does not publish an opportunity or enable email, résumé, matching, or Tracker actions. Those consumers still resolve the public corpus. The new API has no provider, importer fetch, outbound email, or corpus-write call.
+B60 adds owner-bound persistence for imported opportunities. B61 adds reviewed browser-to-account adoption, private details and Tracker identity/history integration; see [private_import_client.md](private_import_client.md). It does not publish an opportunity or enable private email, résumé or matching generation. The storage API has no provider, importer fetch, outbound email, or corpus-write call.
 
-The storage is designed for a user's private account database, including a future hosted deployment. This batch validates it only with mocked HTTP and an isolated local scratch database; it does not apply a hosted migration. Full-source model processing remains a separate, unapproved change.
+The storage is designed for a user's private account database, including a future hosted deployment. B60 used mocked HTTP and a scratch database on an existing local PostgreSQL service; native SQL acceptance remained partial. B61 uses mocked HTTP only and applies no hosted migration. Full-source model processing remains a separate, unapproved change.
 
 ## API
 
@@ -75,9 +75,9 @@ The SQL bootstrap refuses database names outside `ofe_b60_%`. It copies the exis
 
 Still required before the complete private-import journey is available:
 
-- Authenticated central private/public target resolver and purpose-specific unverified projection.
+- A reviewed public/private union for each writer. B61 has an authenticated private-only read/Tracker projection, separate from public evidence authority.
 - Email/refinement/manual validation and full-resume context/version integration without expanding model input scope.
 - Private target selection, draft restore and explicit source status in the UI.
-- Tracker event, history and material views that resolve the owner's private ID while retaining historical records after target deletion.
-- Local import adoption and explicit cloud-save/update controls. This batch does not silently upload existing localStorage entries.
+- Private email delivery and newly generated material integration. B61 now displays owner-scoped existing histories, supports user-reported past applications and keeps deleted-target history accessible; this does not establish sending/submission capability.
+- Cross-device edit/recovery and unified saved counts. B61 adds explicit browser-to-account save/update and independent account lists; existing localStorage entries are never uploaded silently.
 - Hosted migration/application deployment and real account acceptance. None is performed here.

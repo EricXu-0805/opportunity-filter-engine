@@ -5,6 +5,7 @@ import { ArrowLeft, ClipboardList, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+import { isPrivateImportId } from '@/lib/private-import-target-api';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import type { InteractionType } from '@/lib/supabase';
@@ -282,6 +283,8 @@ export default function TrackerPage() {
                       <p className="mt-1 text-[11px] font-medium text-gray-600">
                         {t(`tracker.status.${u.record.type}`)}
                       </p>
+                      {isPrivateImportId(u.id) && <Link href={'/private-imports/' + encodeURIComponent(u.id) + '#tracker-records'}
+                        className="mt-2 inline-flex min-h-9 items-center text-xs text-indigo-700 underline">{t('applicationRecord.viewRecords')}</Link>}
                       {u.record.notes && (
                         <p className="mt-1 whitespace-pre-wrap text-[12px] text-gray-500">
                           {u.record.notes}

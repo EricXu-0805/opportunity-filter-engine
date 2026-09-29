@@ -10,6 +10,10 @@ import { useRouter } from 'next/navigation';
 import SaveFavoritesAnchor from '@/components/SaveFavoritesAnchor';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
+import PrivateImportAdoptionPanel from '@/components/PrivateImportAdoptionPanel';
+import PrivateImportList from '@/components/PrivateImportList';
+import { usePrivateImportAdoption } from '@/lib/use-private-import-adoption';
+import { captureOwnerToken } from '@/lib/identity-owner';
 import { customImportFailureKey } from '@/lib/custom-import-feedback';
 import { useCustomImportStorageState } from '@/lib/custom-imports';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -89,6 +93,7 @@ export default function FavoritesPage() {
   const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const customStorage = useCustomImportStorageState();
   const customImports = customStorage.entries;
+  const adoption = usePrivateImportAdoption();
   const [savedSearchesEpoch, setSavedSearchesEpoch] = useState(0);
   const {
     selectionMode,
@@ -266,6 +271,10 @@ export default function FavoritesPage() {
         />
       )}
 
+      <PrivateImportList />
+      <PrivateImportAdoptionPanel adoption={adoption} onReread={(entry) => {
+        void adoption.prepare(customImports.find(item => item.id === entry.id) ?? entry, captureOwnerToken());
+      }} />
       <SavedSearchesPanel
         key={savedSearchesEpoch}
         t={t}
@@ -318,6 +327,8 @@ export default function FavoritesPage() {
               onRemove={handleRemove}
               removeDisabled={!!removePendingId || (!!opp._customId && customStorage.status !== 'ready')}
               removing={removePendingId === opp.id}
+              onSaveAccount={(item) => { const entry = customImports.find(record => record.id === item._customId); if (entry) void adoption.prepare(entry, captureOwnerToken()); }}
+              accountSaveDisabled={customStorage.status !== 'ready' || adoption.state.status === 'loading' || adoption.state.status === 'saving'}
               onOpenEmailModal={openEmailModal}
               onOpenTailorModal={openTailorModal}
               tailorDisabled={!canOpenWriting}

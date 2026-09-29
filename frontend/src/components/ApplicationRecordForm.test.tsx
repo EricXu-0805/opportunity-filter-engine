@@ -14,7 +14,7 @@ vi.mock('@/lib/application-attempt-storage', () => ({ readPendingApplicationAtte
 import ApplicationRecordForm from './ApplicationRecordForm';
 import { ApplicationEventError } from '@/lib/application-ledger';
 const input: ApplicationEventInput = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', channel: 'web_form', destination: 'https://example.edu/apply', submittedAt: null, notes: null, resultNote: null, nextStep: null };
-const snapshot = (data: ApplicationEventInput = input): ApplicationEvent => ({ ...data, deviceId: m.uid, opportunityId: 'target-a', confirmedAt: '2026-09-25T10:00:00Z', confirmationSource: 'user_reported' });
+const snapshot = (data: ApplicationEventInput = input, opportunityId = 'target-a'): ApplicationEvent => ({ ...data, deviceId: m.uid, opportunityId, confirmedAt: '2026-09-25T10:00:00Z', confirmationSource: 'user_reported' });
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (cause: Error) => void; const promise = new Promise<T>((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 function open(onConfirmed = vi.fn(), opportunityId = 'target-a') {
   const view = render(<ApplicationRecordForm opportunityId={opportunityId} ownerReady onConfirmed={onConfirmed} />);
@@ -31,7 +31,7 @@ beforeEach(() => {
   m.read.mockReturnValue([]);
   m.prepare.mockImplementation(async (_owner, opportunityId, draft) => ({ status: 'ready', attempt: { opportunityId, input: { id: input.id, ...draft } }, reused: false }));
   m.settle.mockResolvedValue(true);
-  m.confirm.mockImplementation(async (_target, data) => ({ event: snapshot(data), interaction: { type: 'applied' }, replayed: false }));
+  m.confirm.mockImplementation(async (target, data) => ({ event: snapshot(data, target), interaction: { type: 'applied' }, replayed: false }));
   m.get.mockResolvedValue(snapshot());
 });
 describe('ApplicationRecordForm', () => {
@@ -158,4 +158,15 @@ describe('ApplicationRecordForm', () => {
     await act(async () => hold.resolve({ event: snapshot(), interaction: { type: 'applied' }, replayed: false }));
     expect(onConfirmed).toHaveBeenCalledWith({ type: 'applied' });
   });
+});
+
+it('records a private target only after attestation and preserves its exact ID for Tracker', async () => {
+  const privateId = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const { onConfirmed } = open(vi.fn(), privateId);
+  expect(m.confirm).not.toHaveBeenCalled();
+  fillAndAttest(); await submit(); await screen.findByText('applicationRecord.saved');
+  expect(m.prepare).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner-a' }), privateId, expect.objectContaining({ destination: input.destination }));
+  expect(m.confirm.mock.calls[0][0]).toBe(privateId);
+  expect(m.settle).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner-a' }), privateId, expect.objectContaining({ id: input.id }));
+  expect(onConfirmed).toHaveBeenCalledWith({ type: 'applied' });
 });

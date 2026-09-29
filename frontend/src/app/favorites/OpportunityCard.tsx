@@ -61,6 +61,8 @@ export interface OpportunityCardProps {
   onRemove: (opp: Opp) => void;
   removeDisabled?: boolean;
   removing?: boolean;
+  onSaveAccount?: (opp: Opp) => void;
+  accountSaveDisabled?: boolean;
   onOpenEmailModal: (opp: Opp) => void;
   /**
    * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
@@ -90,6 +92,8 @@ export function OpportunityCard({
   onRemove,
   removeDisabled = false,
   removing = false,
+  onSaveAccount,
+  accountSaveDisabled = false,
   onOpenEmailModal,
   onOpenTailorModal,
   tailorDisabled,
@@ -210,6 +214,8 @@ export function OpportunityCard({
             )}
           </div>
 
+          {opp._customId && onSaveAccount && <button type="button" disabled={accountSaveDisabled} onClick={() => onSaveAccount(opp)}
+            className="mb-4 rounded-lg border border-indigo-200 px-3 py-2 text-sm text-indigo-700 disabled:opacity-50">{t('privateImport.prepareSave')}</button>}
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             {opp._customId && (
               <Badge variant="indigo" dot>

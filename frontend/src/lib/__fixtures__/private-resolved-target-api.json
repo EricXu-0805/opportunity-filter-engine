@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "target_scope": "private_import",
+  "verification": "unverified",
+  "id": "private-import:a2000000-0000-4000-8000-000000000001",
+  "owner_id": "a1000000-0000-4000-8000-000000000001",
+  "revision": 1,
+  "target_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+  "detail": {
+    "title": "Private research note",
+    "organization": null,
+    "description_raw": "GPA < 3.0 needs review; scores > 80 preferred. END 私人正文\n完整后段原文 LATE_SOURCE_MARKER",
+    "source_url": "https://school.example/research",
+    "url": null,
+    "location": null,
+    "deadline": null,
+    "posted_date": null,
+    "import_source": {
+      "version": 1,
+      "description_source": "pasted_text",
+      "ai_input_scope": "source_excerpt",
+      "llm_enriched": true
+    }
+  },
+  "tracker": {
+    "id": "private-import:a2000000-0000-4000-8000-000000000001",
+    "title": "Private research note",
+    "organization": null,
+    "source_url": "https://school.example/research",
+    "url": null,
+    "target_scope": "private_import",
+    "verification": "unverified",
+    "target_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040"
+  },
+  "capabilities": {
+    "read": true,
+    "tracker_identity": true,
+    "writes": false
+  }
+}

@@ -1,3 +1,4 @@
+import actualResolved from './__fixtures__/private-resolved-target-api.json';
 import actualApi from './__fixtures__/private-import-target-api.json';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -5,7 +6,7 @@ vi.mock('./supabase', () => ({ getAuthState: vi.fn() }));
 import { getAuthState } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, OwnerMismatchError } from './identity-owner';
 import { OWNER, OTHER, setupOwner, deferred, owner as setOwner } from './application-material.test-utils';
-import { deletePrivateImportTarget, getPrivateImportTarget, listPrivateImportTargets, savePrivateImportTarget, PRIVATE_TARGET_TIMEOUT_MS } from './private-import-target-api';
+import { deletePrivateImportTarget, getPrivateImportTarget, getResolvedPrivateImportTarget, listPrivateImportTargets, savePrivateImportTarget, PRIVATE_TARGET_TIMEOUT_MS } from './private-import-target-api';
 import type { ImportedOpportunity } from './api';
 const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const auth = vi.mocked(getAuthState); const fetchMock = vi.fn<typeof fetch>();
@@ -150,4 +151,37 @@ it('applies the source field limits to list summaries as well as full records', 
     fetchMock.mockResolvedValueOnce(json({ version: 1, items: [{ ...summary(), ...change }], next_cursor: null }));
     await expect(listPrivateImportTargets(options())).rejects.toMatchObject({ code: 'invalid_receipt' });
   }
+});
+
+
+function resolved() {
+  const raw = target(); const detail = { title: raw.opportunity!.title, organization: null, description_raw: raw.opportunity!.description_raw,
+    source_url: null, url: null, location: null, deadline: null, posted_date: null, import_source: raw.import_source };
+  return { version: 1, id, owner_id: OWNER, revision: 1, target_scope: 'private_import', verification: 'unverified', target_version: raw.target_version,
+    detail, tracker: { id, title: detail.title, organization: null, source_url: null, url: null, target_scope: 'private_import',
+      verification: 'unverified', target_version: raw.target_version }, capabilities: { read: true, tracker_identity: true, writes: false } };
+}
+it('reads an owner-bound private display receipt without granting writing authority', async () => {
+  const value = resolved(); fetchMock.mockResolvedValueOnce(json(value));
+  expect(await getResolvedPrivateImportTarget(id, { ...options(), expectedVersion: value.target_version })).toEqual(value);
+  expect(String(fetchMock.mock.calls[0][0])).toContain('/resolved?');
+  expect(String(fetchMock.mock.calls[0][0])).toContain('expected_target_version=pit1%3A');
+});
+it('rejects forged private display scope, version, links, fields, and action capabilities', async () => {
+  for (const change of [{ owner_id: OTHER }, { target_version: 'pit1:' + '0'.repeat(64) },
+    { capabilities: { read: true, tracker_identity: true, writes: true } },
+    { detail: { ...resolved().detail, source_url: 'javascript:alert(1)' } },
+    { tracker: { ...resolved().tracker, title: 'wrong target title' } },
+    { detail: { ...resolved().detail, recipient: 'fabricated@example.test' } }]) {
+    fetchMock.mockResolvedValueOnce(json({ ...resolved(), ...change }));
+    await expect(getResolvedPrivateImportTarget(id, options())).rejects.toMatchObject({ code: 'invalid_receipt' });
+  }
+  fetchMock.mockResolvedValueOnce(json({ detail: { code: 'private_target_changed' } }, 409));
+  await expect(getResolvedPrivateImportTarget(id, options())).rejects.toMatchObject({ code: 'changed' });
+});
+
+it('consumes the actual FastAPI resolved fixture without inventing public fields', async () => {
+  await setOwner(actualResolved.owner_id); auth.mockResolvedValue(state(actualResolved.owner_id));
+  fetchMock.mockResolvedValueOnce(json(actualResolved));
+  expect(await getResolvedPrivateImportTarget(actualResolved.id, options())).toEqual(actualResolved);
 });

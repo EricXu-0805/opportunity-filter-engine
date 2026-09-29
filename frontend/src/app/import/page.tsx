@@ -28,12 +28,12 @@ import {
 } from '@/lib/custom-imports';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
-import ImportSuggestions from '@/components/ImportSuggestions';
-import ImportSourceText from '@/components/ImportSourceText';
+import ImportOpportunityDetails from '@/components/ImportOpportunityDetails';
+import PrivateImportAdoptionPanel from '@/components/PrivateImportAdoptionPanel';
+import { usePrivateImportAdoption } from '@/lib/use-private-import-adoption';
 import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
 import { customImportFailureKey, canRetryCustomImport } from '@/lib/custom-import-feedback';
-import { importFailureKey, importSourceInfo } from '@/lib/import-source';
-import { importSuggestions } from '@/lib/import-suggestions';
+import { importFailureKey } from '@/lib/import-source';
 
 type Mode = 'url' | 'text';
 
@@ -86,6 +86,8 @@ export default function ImportPage() {
   const [updated, setUpdated] = useState(false);
   const requestGeneration = useRef(0);
   const customStorage = useCustomImportStorageState();
+  const adoption = usePrivateImportAdoption();
+  const cancelAccountReview = adoption.cancel;
   const customImports = customStorage.entries;
   const savedEntry: CustomImport | null = state.kind === 'success'
     ? findExistingImport(state.opportunity, customImports)
@@ -99,6 +101,7 @@ export default function ImportPage() {
   useEffect(() => onLocalOwnerStateChange(() => {
     requestGeneration.current += 1;
     mutationRef.current = null;
+    cancelAccountReview();
     setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
@@ -106,7 +109,7 @@ export default function ImportPage() {
     setState({ kind: 'idle' });
     setCopied(false);
     setSaveFailed(null);
-  }), []);
+  }), [cancelAccountReview]);
 
   useEffect(() => () => { requestGeneration.current += 1; mutationRef.current = null; }, []);
 
@@ -190,6 +193,7 @@ export default function ImportPage() {
     e.preventDefault();
     const generation = ++requestGeneration.current;
     mutationRef.current = null;
+    cancelAccountReview();
     setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
@@ -268,11 +272,12 @@ export default function ImportPage() {
       if (!stillCurrent()) return;
       setState({ kind: 'error', message: t('import.errorExtract') });
     }
-  }, [mode, url, text, t]);
+  }, [mode, url, text, t, cancelAccountReview]);
 
   const handleReset = useCallback(() => {
     requestGeneration.current += 1;
     mutationRef.current = null;
+    cancelAccountReview();
     setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
@@ -285,12 +290,13 @@ export default function ImportPage() {
     setState({ kind: 'idle' });
     setCopied(false);
     setSaveFailed(null);
-  }, [state]);
+  }, [state, cancelAccountReview]);
 
   const handleModeChange = useCallback((next: Mode) => {
     if (next === mode) return;
     requestGeneration.current += 1;
     mutationRef.current = null;
+    cancelAccountReview();
     setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
@@ -298,7 +304,7 @@ export default function ImportPage() {
     setMode(next);
     setState({ kind: 'idle' });
     setCopied(false);
-  }, [mode]);
+  }, [mode, cancelAccountReview]);
 
   const handleCopy = useCallback(async () => {
     if (state.kind !== 'success') return;
@@ -427,6 +433,8 @@ export default function ImportPage() {
           onReset={handleReset}
           onSave={handleSave}
           onReviewUpdate={handleReviewUpdate}
+          onSaveAccount={() => { if (savedEntry) void adoption.prepare(savedEntry, state.token); }}
+          accountPending={adoption.state.status === 'loading' || adoption.state.status === 'saving'}
           updated={updated}
           savedEntry={savedEntry}
           saveFailed={saveFailed}
@@ -436,6 +444,10 @@ export default function ImportPage() {
           t={t}
         />
       ))}
+      <PrivateImportAdoptionPanel adoption={adoption} onReread={(entry) => {
+        const current = customImports.find(item => item.id === entry.id) ?? entry;
+        void adoption.prepare(current, captureOwnerToken());
+      }} />
     </div>
   );
 }
@@ -474,6 +486,8 @@ function ResultCard({
   onReset,
   onSave,
   onReviewUpdate,
+  onSaveAccount,
+  accountPending,
   updated,
   savedEntry,
   saveFailed,
@@ -489,6 +503,8 @@ function ResultCard({
   onReset: () => void;
   onSave: () => void;
   onReviewUpdate: () => void;
+  onSaveAccount: () => void;
+  accountPending: boolean;
   updated: boolean;
   savedEntry: CustomImport | null;
   saveFailed: CustomImportWriteFailureReason | null;
@@ -515,12 +531,13 @@ function ResultCard({
         </span>
       </div>
 
-      <OpportunityDetails opportunity={opportunity} t={t} />
+      <ImportOpportunityDetails opportunity={opportunity} t={t} />
 
       <p className="text-[12px] text-gray-400 leading-relaxed border-t border-gray-100 pt-4 mt-6">
         {t('import.persistNote')}
       </p>
 
+      <p className="mt-3 text-xs text-gray-500">{t(matchesSaved ? 'privateImport.separateCopies' : 'privateImport.saveBrowserFirst')}</p>
       <div className="flex flex-wrap gap-2 mt-5">
         {savedEntry ? (
           <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-[13px] font-semibold ${matchesSaved ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
@@ -550,6 +567,8 @@ function ResultCard({
             {t('import.reviewUpdate')}
           </button>
         )}
+        {savedEntry && <button type="button" onClick={onSaveAccount} disabled={pending || accountPending || !storageReady || !matchesSaved}
+          className="rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 disabled:opacity-50">{t('privateImport.prepareSave')}</button>}
         {savedEntry && (
           <Link
             href="/favorites"
@@ -586,52 +605,6 @@ function sameImportedContent(a: ImportedOpportunity, b: ImportedOpportunity): bo
   try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
 }
 
-function OpportunityDetails({ opportunity, t }: {
-  opportunity: ImportedOpportunity;
-  t: (path: string, vars?: Record<string, string | number>) => string;
-}) {
-  const extra = opportunity.extra_fields ?? {};
-  const oppType = typeof extra.opportunity_type === 'string' ? extra.opportunity_type : null;
-  const onCampus = typeof extra.on_campus === 'boolean' ? extra.on_campus : null;
-  const paid = typeof extra.paid === 'string' ? extra.paid : null;
-  const suggestions = importSuggestions(extra);
-  const preferredYear = Array.isArray(extra.preferred_year) ? (extra.preferred_year as string[]) : [];
-  const intlFriendly = typeof extra.international_friendly === 'string'
-    ? extra.international_friendly
-    : null;
-
-  return <>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-[13px] mb-6">
-        <Field label={t('import.fieldOrg')} value={opportunity.organization} t={t} />
-        <Field label={t('import.fieldType')} value={oppType} t={t} capitalize />
-        <Field label={t('import.fieldLocation')} value={opportunity.location} t={t} />
-        <Field
-          label={t('import.fieldOnCampus')}
-          value={onCampus === null ? null : (onCampus ? 'yes' : 'no')}
-          t={t}
-          capitalize
-        />
-        <Field label={t('import.fieldPaid')} value={paid} t={t} capitalize />
-        <Field label={t('import.fieldDeadline')} value={opportunity.deadline} t={t} />
-        <Field label={t('import.fieldIntl')} value={intlFriendly} t={t} capitalize />
-        <Field
-          label={t('import.fieldYear')}
-          value={preferredYear.length > 0 ? preferredYear.join(', ') : null}
-          t={t}
-          capitalize
-        />
-      </dl>
-
-      {opportunity.description_raw && (
-        <div className="mb-6">
-          <ImportSourceText text={opportunity.description_raw} info={importSourceInfo(extra, opportunity.description_raw)} t={t} />
-        </div>
-      )}
-
-      <ImportSuggestions skills={suggestions.skills} summary={suggestions.summary} t={t} />
-  </>;
-}
-
 function ImportUpdateReview({ review, error, pending, onConfirm, onKeep, onReread, t }: {
   review: UpdateReview;
   error: UpdateReason | null;
@@ -655,7 +628,7 @@ function ImportUpdateReview({ review, error, pending, onConfirm, onKeep, onRerea
             <h3 className="text-sm font-semibold text-indigo-700">{t(label)}</h3>
             <p className="font-medium text-gray-900 break-words">{opportunity.title}</p>
             {(opportunity.source_url || opportunity.url) && <p className="text-xs text-gray-500 break-all">{opportunity.source_url || opportunity.url}</p>}
-            <OpportunityDetails opportunity={opportunity} t={t} />
+            <ImportOpportunityDetails opportunity={opportunity} t={t} />
           </section>
         ))}
       </div>
@@ -673,27 +646,5 @@ function ImportUpdateReview({ review, error, pending, onConfirm, onKeep, onRerea
         </button>
       </div>
     </section>
-  );
-}
-
-function Field({
-  label,
-  value,
-  t,
-  capitalize,
-}: {
-  label: string;
-  value: string | null | undefined;
-  t: (path: string, vars?: Record<string, string | number>) => string;
-  capitalize?: boolean;
-}) {
-  const display = value && value.trim() ? value : t('import.notProvided');
-  return (
-    <div>
-      <dt className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-0.5">
-        {label}
-      </dt>
-      <dd className={`text-gray-800 ${capitalize ? 'capitalize' : ''}`}>{display}</dd>
-    </div>
   );
 }

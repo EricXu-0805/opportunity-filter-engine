@@ -20,6 +20,7 @@ from backend.lib.private_import_targets_schema import (
     identifier,
     timestamp,
 )
+from backend.lib.private_target_resolution import resolve_private_import_target
 
 
 class PrivateTargetRoute(APIRoute):
@@ -112,3 +113,20 @@ async def delete_target(target_id: str, data: DeleteRequest, request: Request):
     async with service_for(request, data) as service:
         result = await service.delete(target_id, data)
     return JSONResponse(result, headers=PRIVATE)
+
+
+@router.get("/{target_id}/resolved")
+async def read_resolved_target(target_id: str, request: Request):
+    pairs = list(request.query_params.multi_items())
+    if len(pairs) != len(dict(pairs)) or any(
+        key not in {"expected_owner_id", "expected_target_version"} for key, _ in pairs
+    ):
+        raise ValueError("Invalid query")
+    params = dict(pairs)
+    result = await resolve_private_import_target(
+        target_id,
+        authorization=request.headers.get("authorization"),
+        expected_owner_id=params.get("expected_owner_id"),
+        expected_target_version=params.get("expected_target_version"),
+    )
+    return JSONResponse(result.as_dict(), headers=PRIVATE)
