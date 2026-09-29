@@ -9,6 +9,8 @@ import ResumeSupplementPanel from './ResumeSupplementPanel';
 import { isEmailPaperReadingCurrent } from '@/lib/email-paper-reading';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import ContactInstructionsPanel from './ContactInstructionsPanel';
+import EmailTargetConditionsPanel from './EmailTargetConditionsPanel';
+import { readEmailTargetConditions, isEmailConditionIssues, emailConditionIssueText, type EmailTargetConditions, type EmailConditionIssue } from '@/lib/email-target-conditions';
 import { contactEmailBlock, contactInstructionCopy } from '@/lib/contact-instructions';
 import { verifyComposeRecipient } from '@/lib/email-compose';
 import { writingTargetVersion } from '@/lib/writing-target-version';
@@ -46,6 +48,7 @@ import {
   generateColdEmailStream,
   getEmailVariants,
   refineEmail,
+  validateEmailDraft,
   type ColdEmailStage,
 } from '@/lib/api';
 import {
@@ -66,10 +69,10 @@ import LabTypeBadge from './LabTypeBadge';
 import EmailTipsPanel from './EmailTipsPanel';
 import styles from './ColdEmailModal.module.css';
 
-type ComposeProvider = 'default' | 'gmail' | 'outlook';
-type ComposeFailure = 'popup' | 'unavailable' | 'recipient';
+type ComposeProvider = 'default' | 'gmail' | 'outlook' | 'copy';
+type ComposeFailure = 'popup' | 'unavailable' | 'recipient' | 'conditions';
 type PendingCompose = {
-  id: number; popup: Window; owner: ReturnType<typeof captureOwnerToken>;
+  id: number; popup: Window | null; owner: ReturnType<typeof captureOwnerToken>;
   key: string; provider: ComposeProvider; phase: 'sources' | 'recipient';
   controller: AbortController; deadline: ReturnType<typeof setTimeout>;
 };
@@ -80,10 +83,10 @@ type EmailEditBase = {
 };
 type EmailEditRequest = { base: EmailEditBase; selection: EmailTextSelection | null };
 type EmailEditProposal = EmailEditRequest & {
-  id: number; afterBody: string; usage: ExperienceUsage | null; instruction?: string;
+  id: number; afterBody: string; usage: ExperienceUsage | null; conditions?: EmailTargetConditions | null; instruction?: string;
 };
 type EmailEditUndo = {
-  base: EmailEditBase; beforeBody: string; usage: ExperienceUsage | null;
+  base: EmailEditBase; beforeBody: string; usage: ExperienceUsage | null; conditions: EmailTargetConditions | null;
   sources: { profile: string; target: string | null; contact: string } | null;
   origin: string | null; restored: ColdEmailDraftSources | null;
 };
@@ -126,9 +129,11 @@ type TargetVersionFailure = 'unavailable' | 'changed';
 function targetVersionFailure(error: unknown): TargetVersionFailure | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
   return error.code === 'WRITING_TARGET_CHANGED' || error.code === 'EMAIL_CONTACT_INSTRUCTIONS' ? 'changed'
-    : error.code === 'INVALID_WRITING_TARGET_RECEIPT' ? 'unavailable' : null;
+    : error.code === 'INVALID_WRITING_TARGET_RECEIPT' || error.code === 'INVALID_EMAIL_TARGET_CONDITIONS' ? 'unavailable' : null;
 }
 function requireTargetReceipt(response: unknown, id: string, version: string) {
+  readEmailTargetConditions(response);
+  if (response && typeof response === 'object' && 'variants' in response && Array.isArray(response.variants)) response.variants.forEach(readEmailTargetConditions);
   if (!response || typeof response !== 'object' || Array.isArray(response)
     || !('opportunity_id' in response) || response.opportunity_id !== id
     || !('target_version' in response) || response.target_version !== version) {
@@ -493,6 +498,8 @@ export default function ColdEmailModal({
   // cached response without the field must not manufacture a warning OR a
   // false all-clear.
   const [experienceUsage, setExperienceUsage] = useState<ExperienceUsage | null>(null);
+  const [targetConditions, setTargetConditions] = useState<EmailTargetConditions | null>(null);
+  const [conditionCheck, setConditionCheck] = useState<{ key: string; issues: EmailConditionIssue[]; message?: string } | null>(null);
   const [experienceNeedsReview, setExperienceNeedsReview] = useState(false);
   const experienceBudgetOmission = experienceUsage?.notices.some((notice) =>
     notice === 'experience_prompt_budget_omission' || notice === 'experience_template_budget_omission',
@@ -500,7 +507,7 @@ export default function ColdEmailModal({
   const experienceReceiptLimited = experienceUsage?.notices.includes('experience_usage_receipt_limit') ?? false;
   const [freshness, setFreshness] =
     useState<'fresh' | 'stale' | 'inactive' | 'unknown'>('unknown');
-  const [copiedFor, setCopiedFor] = useState<{ contents: string } | null>(null);
+  const [copiedFor, setCopiedFor] = useState<{ contents: string; backup: boolean } | null>(null);
   const [copyFailedFor, setCopyFailedFor] = useState<string | null>(null);
   // Copying/opening a draft only REVEALS the follow-up strip — it is not
   // evidence the email was sent (the user may close the compose window), so
@@ -509,6 +516,7 @@ export default function ColdEmailModal({
   // not an application claim made on the student's behalf; the reminder chips
   // then follow, when the returned status is one the cron actually sends for.
   const [contacted, setContacted] = useState(false);
+  const contactedOwnerRef = useRef<ReturnType<typeof captureOwnerToken> | null>(null);
   // Same stamping as confirmedForId below, for the same reason: the
   // copy/open strip must not carry A's "did you send it?" question onto B.
   const [contactedForId, setContactedForId] = useState<string | null>(null);
@@ -519,7 +527,8 @@ export default function ColdEmailModal({
   const copyContentKey = JSON.stringify([subject, body, recipient, sendDraftEpoch]);
   const copyContentKeyRef = useRef(copyContentKey);
   useLayoutEffect(() => { copyContentKeyRef.current = copyContentKey; }, [copyContentKey]);
-  const copied = copiedFor?.contents === copyContentKey;
+  const copied = copiedFor?.contents === copyContentKey && !copiedFor.backup;
+  const backupCopied = copiedFor?.contents === copyContentKey && copiedFor.backup;
   const copyFailed = copyFailedFor === copyContentKey;
   const [contactedDraftEpoch, setContactedDraftEpoch] = useState<number | null>(null);
   const [confirmedDraftEpoch, setConfirmedDraftEpoch] = useState<number | null>(null);
@@ -605,7 +614,7 @@ export default function ColdEmailModal({
       composeRef.current = null;
       clearTimeout(pending.deadline); pending.controller.abort();
       composeActionCancelRef.current();
-      try { pending.popup.close(); } catch { /* Already closed or inaccessible. */ }
+      try { pending.popup?.close(); } catch { /* Already closed or inaccessible. */ }
     }
     setComposeBusy(false); setComposeFailure(failure);
   }, []);
@@ -837,7 +846,7 @@ export default function ColdEmailModal({
       }
       variantsReadyRef.current = true;
       setTargetVersionError(null);
-      setVariants(data.variants);
+      setVariants(data.variants.map(variant => ({ ...variant, target_conditions: variant.target_conditions ?? data.target_conditions })));
       const inferredLabType =
         data.lab_type
         ?? (data.variants.find((v) => v.lab_type)?.lab_type ?? null);
@@ -865,6 +874,7 @@ export default function ColdEmailModal({
         editorUsedRef.current = true;
         setActiveVariant(0);
         setExperienceUsage(first.experience_usage ?? null);
+        setTargetConditions(readEmailTargetConditions(first) ?? readEmailTargetConditions(data));
         profileChangedRef.current = false;
         setProfileChanged(false);
         contextEditedRef.current = false;
@@ -1096,7 +1106,7 @@ export default function ColdEmailModal({
       setRecipientStatus('unavailable');
       setGrounding('specific');
       setFreshness('unknown');
-      setExperienceUsage(null);
+      setExperienceUsage(null); setTargetConditions(null);
       setExperienceNeedsReview(false);
       setCopiedFor(null);
       setCopyFailedFor(null);
@@ -1258,7 +1268,7 @@ export default function ColdEmailModal({
         setScopeNeedsChoice(scope === 'reselect'); setVersionCompare(null);
         draftSourcesRef.current = null; setOriginKey(null); setRestoredSources(version.sources); setSourceReview('pending');
         setDraftRestored(true); metadataRefreshingRef.current = true; setMetadataRefreshing(true); restoredMetadataRef.current = false;
-        profileChangedRef.current = true; setProfileChanged(true); setExperienceUsage(null);
+        profileChangedRef.current = true; setProfileChanged(true); setExperienceUsage(null); setTargetConditions(null);
         setSubjectFormatConfirmation(null); setActualSentAt(''); setCopiedFor(null); setCopyFailedFor(null); setSendError(null);
         sendDraftEpochRef.current += 1; setSendDraftEpoch(sendDraftEpochRef.current);
         setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已恢复旧版；替换前的稿件也已保存。' : 'Version restored. The draft it replaced was also saved.' }]);
@@ -1319,7 +1329,7 @@ export default function ColdEmailModal({
     autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
-    setLoading(!hasDraft); setError(null); if (!targetCheckOnlyRef.current) setTargetVersionError(null); setNameRequired(false); setExperienceUsage(null);
+    setLoading(!hasDraft); setError(null); if (!targetCheckOnlyRef.current) setTargetVersionError(null); setNameRequired(false); setExperienceUsage(null); setTargetConditions(null);
     setProfileRegenerating(false); setProfileRegenerateError(null); setProfileChanged(hasDraft);
     if (retiredRefine !== null) setChatMessages((messages) => messages.map((message) =>
       message.requestId === retiredRefine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
@@ -1487,6 +1497,7 @@ export default function ColdEmailModal({
     setOriginKey(JSON.stringify(draftSourcesRef.current));
     setRestoredSources(null);
     setExperienceUsage(v.experience_usage ?? null);
+    setTargetConditions(readEmailTargetConditions(v));
     // Variants share one server-resolved recipient; when the reveal is locked
     // they carry "" — never wipe an address the user typed themselves.
     setRecipient((prev) => prev || v.recipient_email);
@@ -1531,6 +1542,7 @@ export default function ColdEmailModal({
         method: resp.method,
         fallback_reason: resp.fallback_reason,
         experience_usage: resp.experience_usage,
+        target_conditions: resp.target_conditions,
       };
       if (select && !auto && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style }, 'regenerated',
         () => current() && draftRevisionRef.current === revision, () => {})) return false;
@@ -1549,6 +1561,7 @@ export default function ColdEmailModal({
         setOriginKey(JSON.stringify(draftSourcesRef.current));
         setRestoredSources(null);
         setExperienceUsage(v.experience_usage ?? null);
+    setTargetConditions(readEmailTargetConditions(v));
         if (contactIsCurrent) {
           setRecipient((prev) => prev || v.recipient_email);
         }
@@ -1710,11 +1723,17 @@ export default function ColdEmailModal({
       await requireContactReceipt(result, requestContactContext);
       if (!current()) return;
       if (!editBaseCurrent(edit.base)) { reply(t('coldEmail.editSuperseded')); return; }
+      if (result.outcome === 'no_change' && result.reason === 'target_conditions') {
+        if (!isEmailConditionIssues(result.condition_issues) || result.condition_issues.length === 0) throw new Error('Invalid condition issue receipt');
+        reply(result.condition_issues.map(issue => emailConditionIssueText(issue, locale)).join(' ') + (locale === 'zh' ? ' 原稿和修改要求已保留。' : ' Your draft and request are kept.'));
+        return;
+      }
       let afterBody = result.body;
       if (edit.selection) {
         if (result.scope !== 'selection') throw new Error('Invalid selection response');
         if (result.outcome === 'no_change') {
           const reasons = locale === 'zh' ? {
+            target_conditions: '请对照来源核对申请条件。原稿和要求已保留。',
             provider_unavailable: '修改服务暂不可用。原稿和要求已保留，请稍后重试。',
             insufficient_evidence: '机会资料不足，暂时无法给出可靠的修改建议。原稿已保留。',
             review_required: '请先检查原稿中的称呼和邮箱地址。原稿和要求已保留。',
@@ -1722,6 +1741,7 @@ export default function ColdEmailModal({
             fabrication: '建议含有无法核实的内容，未采用。原稿和要求已保留。',
             unchanged: '所选内容没有变化。修改要求已保留。',
           } : {
+            target_conditions: 'Review the application conditions against the source. Your draft and request are kept.',
             provider_unavailable: 'The editing service is unavailable. Your draft and request are kept. Try again later.',
             insufficient_evidence: 'The opportunity has too little source evidence for a reliable edit. Your draft is kept.',
             review_required: 'Review the greeting and email addresses in the body first. Your draft and request are kept.',
@@ -1750,7 +1770,7 @@ export default function ColdEmailModal({
         return;
       }
       const proposed: EmailEditProposal = { ...edit, id: requestId, afterBody,
-        usage: result.experience_usage ?? null, ...(typed ? { instruction } : {}) };
+        usage: result.experience_usage ?? null, conditions: readEmailTargetConditions(result), ...(typed ? { instruction } : {}) };
       proposalRef.current = proposed; setEditProposal(proposed);
       reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabrication')
         : result.fallback_reason === 'insufficient_evidence' ? aiFallbackMessage('insufficient_evidence', t)
@@ -1788,14 +1808,14 @@ export default function ColdEmailModal({
     cancelCompose();
     const revision = ++draftRevisionRef.current;
     const undo: EmailEditUndo = { base: { ...proposal.base, body: proposal.afterBody, revision },
-      beforeBody: proposal.base.body, usage: experienceUsage, sources: draftSourcesRef.current,
+      beforeBody: proposal.base.body, usage: experienceUsage, conditions: targetConditions, sources: draftSourcesRef.current,
       origin: originKey, restored: restoredSources };
     undoRef.current = undo; setEditUndo(undo);
     editorUsedRef.current = true;
     setBody(proposal.afterBody); setActiveVariant(-1);
     draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
     setOriginKey(JSON.stringify(draftSourcesRef.current)); setRestoredSources(null);
-    setExperienceUsage(proposal.usage);
+    setExperienceUsage(proposal.usage); setTargetConditions(proposal.conditions ?? null);
     if (proposal.instruction && chatInput.trim() === proposal.instruction) setChatInput('');
     setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已应用建议，可撤销本次修改。' : 'Suggestion applied. You can undo this edit.' }]);
     });
@@ -1810,7 +1830,7 @@ export default function ColdEmailModal({
     await changeDraftRef.current({ body: undo.beforeBody, sources }, 'undo', () => undoRef.current === undo && editBaseCurrent(undo.base), () => {
     clearEmailRevisions(); cancelCompose(); action.cancel();
     draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
-    setBody(undo.beforeBody); setExperienceUsage(undo.usage);
+    setBody(undo.beforeBody); setExperienceUsage(undo.usage); setTargetConditions(undo.conditions);
     draftSourcesRef.current = undo.sources; setOriginKey(undo.origin); setRestoredSources(undo.restored);
     setChatMessages(messages => [...messages, { role: 'assistant', content: locale === 'zh' ? '已撤销刚才接受的修改。' : 'Undid the last accepted edit.' }]);
     });
@@ -1837,6 +1857,7 @@ export default function ColdEmailModal({
   // Reveal the strip without recording anything — a draft opened/copied is
   // not a verified send. No evidence = no tracking event.
   const markContacted = useCallback(() => {
+    contactedOwnerRef.current = captureOwnerToken();
     setContacted(true);
     setContactedDraftEpoch(sendDraftEpochRef.current);
     setContactedForId(opportunityId);
@@ -1849,7 +1870,8 @@ export default function ColdEmailModal({
   // An attestation saves one immutable email snapshot. Generating, copying,
   // and opening an external composer never write an event.
   const confirmSent = useCallback(async () => {
-    if (!sourceReadyRef.current || confirmInFlightRef.current) return;
+    if (confirmInFlightRef.current || !contactedHere || confirmedHere || contactedContentKey !== copyContentKeyRef.current
+      || !contactedOwnerRef.current || !isTokenOwnerStillCurrent(contactedOwnerRef.current)) return;
     // Captured at the click, before any await: the capability belongs to the
     // identity that attested, not to whoever owns the browser by the time the
     // round trip finishes.
@@ -1921,7 +1943,7 @@ export default function ColdEmailModal({
         setConfirming(false);
       }
     }
-  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, restoredSources, setSendError]);
+  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, restoredSources, setSendError, contactedHere, contactedContentKey, confirmedHere]);
 
   // Only asked once a reminder actually exists, so nobody is prompted about
   // notifications for a thing they have not done. 'subscribed' hides the offer;
@@ -1998,7 +2020,7 @@ export default function ColdEmailModal({
     }
   }, [opportunityId, reminderTarget, confirmedStatus, confirmedForId, onReminderSet, setSendError]);
 
-  async function handleCopy() {
+  async function handleCopy(checked = false) {
     const owner = captureOwnerToken();
     const session = sendSessionRef.current;
     const draft = sendDraftEpochRef.current;
@@ -2007,44 +2029,43 @@ export default function ColdEmailModal({
     const sameContents = () => sendSessionRef.current === session && sendDraftEpochRef.current === draft
       && copyContentKeyRef.current === contents && isTokenOwnerStillCurrent(owner);
     const current = () => sameContents() && draftRevisionRef.current === revision;
-    try {
-      await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
-    } catch {
-      // The clipboard genuinely refuses in the field: permission denied, the
-      // document not focused, an insecure context. Nothing was copied, so
-      // nothing may report that it was — and with no draft in hand there is
-      // nothing the student could have sent, so the attestation question
-      // stays away too.
-      if (current()) setCopyFailedFor(contents);
-      return;
-    }
-    if (!current()) return;
+    try { await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`); }
+    catch { if (current()) setCopyFailedFor(contents); return false; }
+    if (!current()) return false;
     setCopyFailedFor(null);
-    const feedback = { contents };
+    const feedback = { contents, backup: !checked };
     setCopiedFor(feedback);
-    // Expire this copy even while another body is displayed. An older timer
-    // must never clear the feedback from a newer copy of the same contents.
-    setTimeout(() => setCopiedFor((currentFeedback) => currentFeedback === feedback ? null : currentFeedback), 2000);
-    if (sourceReadyRef.current) markContacted();
+    setTimeout(() => setCopiedFor(currentFeedback => currentFeedback === feedback ? null : currentFeedback), 2000);
+    // A backup copy has no contact/attestation side effect.
+    if (checked && sourceReadyRef.current) markContacted();
+    return true;
   }
 
   function startCompose(provider: ComposeProvider) {
-    if (!sourceReadyRef.current || action.busy || composeRef.current || contextDirtyRef.current
-      || !paperReadingCurrent || profileChangedRef.current || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed })
-      || !recipient.trim() || !subject.trim() || !body.trim()) return;
-    // Reserve only an empty window during the user's click. Navigating after
-    // the bounded source checks must not depend on surviving user activation.
+    if (composeRef.current || action.busy) return;
+    if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
+      || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed })
+      || (provider !== 'copy' && !recipient.trim())) {
+      if (provider === 'copy') setConditionCheck({ key: composeKeyRef.current, issues: [], message: locale === 'zh'
+        ? '当前资料尚未核对。可选择“仅复制草稿”备份，原稿仍保留。'
+        : 'The current information has not been checked. Use Copy draft only to keep a backup. Your draft is kept.' });
+      return;
+    }
+    // External composition reserves a blank window during user activation.
+    // Copy uses the same bounded checks but does not create a window.
     let popup: Window | null = null;
-    try { popup = window.open('about:blank', '_blank'); if (popup) popup.opener = null; }
-    catch { try { popup?.close(); } catch { /* Inaccessible window. */ } popup = null; }
-    if (!popup) { setComposeFailure('popup'); return; }
+    if (provider !== 'copy') {
+      try { popup = window.open('about:blank', '_blank'); if (popup) popup.opener = null; }
+      catch { try { popup?.close(); } catch { /* Inaccessible window. */ } popup = null; }
+      if (!popup) { setComposeFailure('popup'); return; }
+    }
     const id = ++composeSequence.current;
     const controller = new AbortController();
     const pending: PendingCompose = { id, popup, owner: captureOwnerToken(), key: composeKeyRef.current,
       provider, phase: 'sources', controller, deadline: setTimeout(() => {
         if (composeRef.current?.id === id) cancelCompose('unavailable');
       }, 30_000) };
-    composeRef.current = pending; setComposeBusy(true); setComposeFailure(null);
+    composeRef.current = pending; setComposeBusy(true); setComposeFailure(null); setConditionCheck(null);
     action.request({ kind: 'compose', id });
   }
 
@@ -2059,24 +2080,52 @@ export default function ColdEmailModal({
     }
     pending.phase = 'recipient';
     try {
-      if (!recipientEditedRef.current) {
-        await verifyComposeRecipient(opportunityId, expectedTargetVersion, recipient.trim(), pending.controller.signal);
+      const over = ([['current_body', body, 5000], ['subject', subject, 2000]] as const).find(([, value, limit]) => value.length > limit);
+      if (over) {
+        setConditionCheck({ key: pending.key, issues: [], message: locale === 'zh'
+          ? `${over[0] === 'subject' ? '主题' : '正文'}超过核对上限（${over[2]} 个文本单位，部分 emoji 占两个）。全文已保留，可缩短后重试或仅复制草稿。`
+          : `${over[0] === 'subject' ? 'Subject' : 'Body'} exceeds the checking limit (${over[2]} text units; some emoji count as two). Your complete draft is kept. Shorten it and retry, or copy the draft only.` });
+        cancelCompose('conditions'); return;
       }
+      const validation = await validateEmailDraft(subject, body, requestProfile, opportunityId, {
+        expectedTargetVersion, contactContext: requestContactContext, signal: pending.controller.signal,
+      });
       if (!current()) return;
-      if (pending.popup.closed) { cancelCompose(); return; }
-      pending.popup.location.href = getMailtoLink(pending.provider);
+      requireTargetReceipt(validation, opportunityId, expectedTargetVersion);
+      await requireContactReceipt(validation, requestContactContext);
+      if (!current()) return;
+      const conditions = readEmailTargetConditions(validation);
+      if (!conditions || !isEmailConditionIssues(validation.issues)
+        || !['ready', 'review_required'].includes(validation.outcome)
+        || (validation.outcome === 'ready') !== (validation.issues.length === 0)) throw new Error('Invalid draft check');
+      setTargetConditions(conditions);
+      if (validation.outcome === 'review_required') {
+        setConditionCheck({ key: pending.key, issues: validation.issues }); cancelCompose('conditions'); return;
+      }
+      if (pending.provider === 'copy') {
+        await handleCopy(true);
+        if (!current()) return;
+      } else {
+        if (!recipientEditedRef.current) await verifyComposeRecipient(opportunityId, expectedTargetVersion, recipient.trim(), pending.controller.signal);
+        if (!current()) return;
+        if (!pending.popup || pending.popup.closed) { cancelCompose(); return; }
+        pending.popup.location.href = getMailtoLink(pending.provider);
+        markContacted();
+      }
       composeRef.current = null; clearTimeout(pending.deadline);
-      setComposeBusy(false); setComposeFailure(null);
-      // Opening a composer is not a send. Only the existing explicit historical
-      // attestation can create a contact record.
-      markContacted();
+      setComposeBusy(false); setComposeFailure(null); setConditionCheck(null);
     } catch (error) {
       if (!current()) return;
+      const failure = targetVersionFailure(error);
+      if (failure) reportTargetVersionFailure(failure);
+      setConditionCheck({ key: pending.key, issues: [], message: profileInputMessage(error, t) ?? (locale === 'zh'
+        ? '本次核对未完成。原稿仍保留；请重试，或选择“仅复制草稿”备份。'
+        : 'The check did not finish. Your draft is kept. Retry, or use Copy draft only to keep a backup.') });
       cancelCompose(error instanceof Error && error.message === 'recipient_changed' ? 'recipient' : 'unavailable');
     }
   }
 
-  function getMailtoLink(provider: 'default' | 'gmail' | 'outlook' = 'default'): string {
+  function getMailtoLink(provider: Exclude<ComposeProvider, 'copy'> = 'default'): string {
     const to = encodeURIComponent(recipient || '');
     const subj = encodeURIComponent(subject);
     const b = encodeURIComponent(body);
@@ -2332,6 +2381,7 @@ export default function ColdEmailModal({
                         }} />
                     </div>}
                   </details>
+                  <EmailTargetConditionsPanel receipt={targetConditions} current={sourceReady && !profileChanged && !targetVersionError && !contextDirty} />
                   <section className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600" data-testid="cold-email-experience">
                     <details>
                       <summary className="cursor-pointer font-semibold text-gray-800">{t('coldEmail.experienceTitle')}</summary>
@@ -2658,7 +2708,7 @@ export default function ColdEmailModal({
                     <button
                       type="button"
                       onClick={() => { void confirmSent(); }}
-                      disabled={!sourceReady || confirming}
+                      disabled={confirming}
                       data-testid="cold-email-confirm-sent"
                       className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-60 disabled:cursor-wait"
                     >
@@ -2758,8 +2808,13 @@ export default function ColdEmailModal({
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0" data-testid="cold-email-footer">
+              {conditionCheck?.key === composeKey && <div role="status" data-testid="email-condition-review" className="w-full max-h-[18dvh] overflow-y-auto text-xs text-amber-900">
+                {conditionCheck.message && <p>{conditionCheck.message}</p>}
+                {conditionCheck.issues.length > 0 && <ul className="list-disc pl-4 space-y-1">{conditionCheck.issues.map(issue => <li key={issue}>{emailConditionIssueText(issue, locale)}</li>)}</ul>}
+              </div>}
               {(composeBusy || composeFailure) && <p role="status" data-testid="cold-email-compose-status" className="w-full text-xs text-amber-900">
-                {composeBusy ? (locale === 'zh' ? '正在核对资料、机会和收件人…' : 'Checking your profile, opportunity and recipient…')
+                {composeBusy ? (locale === 'zh' ? '正在核对草稿、资料和目标条件…' : 'Checking your draft, profile and target conditions…')
+                  : composeFailure === 'conditions' ? (locale === 'zh' ? '请核对提示内容。原稿保留，邮件尚未打开。' : 'Review the flagged points. Your draft is kept; no email was opened.')
                   : composeFailure === 'popup' ? (locale === 'zh' ? '浏览器阻止了新窗口。请允许弹窗后重试；邮件尚未打开。' : 'The browser blocked the new window. Allow popups and try again; no email was opened.')
                   : composeFailure === 'recipient' ? (locale === 'zh' ? '官网收件地址已改变或无法确认。草稿仍保留，请核对收件人后重试。' : 'The source email address changed or could not be verified. Your draft is kept; review the recipient before trying again.')
                   : (locale === 'zh' ? '本次核对未完成，邮件尚未打开。草稿仍保留，请重试。' : 'The check did not finish, so no email was opened. Your draft is kept; try again.')}
@@ -2772,7 +2827,8 @@ export default function ColdEmailModal({
               )}
               <button
                 type="button"
-                onClick={handleCopy}
+                onClick={() => startCompose('copy')}
+                disabled={composeBusy || action.busy}
                 className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 {copied ? (
@@ -2781,6 +2837,14 @@ export default function ColdEmailModal({
                   <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
                 )}
               </button>
+              <button type="button" onClick={() => { cancelCompose(); void handleCopy(false); }}
+                className="px-2 py-2 text-xs text-gray-600 underline" data-testid="copy-draft-only">
+                {backupCopied ? (locale === 'zh' ? '草稿已复制' : 'Draft copied') : (locale === 'zh' ? '仅复制草稿' : 'Copy draft only')}
+              </button>
+              {!contactedHere && <button type="button" onClick={() => { cancelCompose(); markContacted(); }} disabled={confirming}
+                className="px-2 py-2 text-xs text-gray-600 underline disabled:opacity-50" data-testid="record-sent-email">
+                {locale === 'zh' ? '记录已发送的邮件' : 'Record an email already sent'}
+              </button>}
               {/* FE-2: the deep-link send buttons open a real compose window, so
                   disable them when no recipient is resolved — otherwise the user
                   is dropped into a draft addressed to nobody with no warning. The

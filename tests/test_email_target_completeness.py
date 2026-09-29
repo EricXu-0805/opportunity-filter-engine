@@ -51,10 +51,10 @@ def assert_complete(content, public):
     assert target_field(content, 'Lab / program') == public['lab_or_program']
     assert target_field(content, 'Contact title') == public['metadata']['faculty_title']
     assert target_field(content, "Contact's stated research areas") == public['metadata']['research_areas_raw']
-    assert target_field(content, 'Required skills') == public['eligibility']['skills_required']
+    assert target_field(content, 'Recorded skills (check application-condition evidence)') == public['eligibility']['skills_required']
     assert target_field(content, 'Description') == public['description_raw']
     assert target_field(content, 'Source-stated keywords') == public['keywords']
-    assert target_field(content, 'Source-stated application URL') == public['application']['application_url']
+    assert target_field(content, 'Recorded application URL (not proof of submission)') == public['application']['application_url']
     assert target_field(content, 'Organization') == public['organization']
     assert target_field(content, 'Department') == public['department']
     for work in public['metadata']['recent_works']:
@@ -173,7 +173,7 @@ def test_inferred_skills_never_become_source_requirements(writing_client, monkey
     assert response.status_code == 200 and len(calls) == 1
     content = calls[0][1]['content']; public = project_public_detail(opp)
     parts = _common_parts(profile, public)
-    assert target_field(content, 'Required skills') == ([phrase] if source_case == 'explicit_requirement' else [])
+    assert target_field(content, 'Recorded skills (check application-condition evidence)') == ([phrase] if source_case == 'explicit_requirement' else [])
     assert target_field(content, 'Description') == public['description_raw']
     assert (phrase in parts['matching_skills']) is (source_case != 'tag_only')
     assert 'not a requirement unless the source explicitly says so' in content

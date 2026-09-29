@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -9,6 +10,7 @@ import { emailReceipt, emailTarget } from './ColdEmailModal.test-fixtures';
 
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), recipient: vi.fn(), assign: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string,
     (args[3] as { expectedTargetVersion: string }).expectedTargetVersion,
     (args[3] as { contactContext: EmailContactContext }).contactContext),

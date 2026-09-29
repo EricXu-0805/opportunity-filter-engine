@@ -1,3 +1,4 @@
+import type { EmailTargetConditions } from './email-target-conditions';
 import type { ResearchContext } from './research-context';
 
 // ── Filter values shared across surfaces ─────────────────────────────
@@ -305,6 +306,7 @@ export type FacultyAvailabilityStatus =
   | 'research_inactive';
 
 export interface Opportunity {
+  target_conditions?: EmailTargetConditions;
   /** Validated source snapshot; available does not imply an opening or user reading. */
   research_context?: ResearchContext;
   lab_context?: import('./lab-context').LabContext;
@@ -562,6 +564,7 @@ export interface EmailContactContextReceipt {
 }
 
 export interface ColdEmailResponse {
+  target_conditions?: EmailTargetConditions;
   contact_context_receipt?: EmailContactContextReceipt;
   /** Server receipt for the exact public target used by this writing action. */
   opportunity_id?: string | null;
@@ -599,6 +602,7 @@ export interface ColdEmailResponse {
 export type ColdEmailEngine = 'template' | 'ai';
 
 export interface EmailVariant {
+  target_conditions?: EmailTargetConditions;
   contact_context_receipt?: EmailContactContextReceipt;
   experience_usage?: ExperienceUsage;
   id: string;
@@ -616,6 +620,7 @@ export interface EmailVariant {
 }
 
 export interface EmailVariantsResponse {
+  target_conditions?: EmailTargetConditions;
   contact_context_receipt?: EmailContactContextReceipt;
   /** Server receipt for the exact public target used by this writing action. */
   opportunity_id?: string | null;

@@ -680,6 +680,7 @@ class ExperienceUsage(BaseModel):
 
 
 class ColdEmailResponse(BaseModel):
+    target_conditions: dict | None = None
     contact_context_receipt: EmailContactReceipt | None = None
     target_version: str | None = None
     opportunity_id: str | None = None
@@ -719,6 +720,47 @@ class ColdEmailResponse(BaseModel):
     corpus_version: str | None = None
     pipeline_version: str | None = None
     source_freshness: str | None = None
+
+
+class EmailDraftValidationRequest(ColdEmailRequest):
+    """Provider-free checks of the exact manually edited draft and current target."""
+    model_config = ConfigDict(extra="forbid")
+    expected_target_version: str = Field(strict=True, min_length=68, max_length=68,
+                                          pattern=r"^wt1:[0-9a-f]{64}$")
+    subject: str = Field(strict=True)
+    body: str = Field(strict=True)
+
+    @field_validator("subject", "body")
+    @classmethod
+    def bounded_draft_text(cls, value, info):
+        if "\0" in value:
+            raise ValueError("Email text contains unsupported characters")
+        try:
+            size = len(value.encode("utf-16-le")) // 2
+        except UnicodeEncodeError:
+            raise ValueError("Email text contains invalid Unicode") from None
+        limit = 2000 if info.field_name == "subject" else 5000
+        if size > limit:
+            raise PydanticCustomError("email_refine_text_too_long",
+                                      "{field} must be at most {max_utf16} UTF-16 code units.",
+                                      {"field": info.field_name, "max_utf16": limit})
+        return value
+
+
+EmailDraftIssue = Literal[
+    "unsupported_eligibility_claim", "unsupported_deadline_claim",
+    "unsupported_material_claim", "unsupported_attachment_claim", "empty_draft",
+]
+
+
+class EmailDraftValidationResponse(BaseModel):
+    opportunity_id: str
+    target_version: str
+    pipeline_version: str
+    contact_context_receipt: EmailContactReceipt
+    target_conditions: dict
+    outcome: Literal["ready", "review_required"]
+    issues: list[EmailDraftIssue]
 
 
 class GapAnalysisResponse(BaseModel):

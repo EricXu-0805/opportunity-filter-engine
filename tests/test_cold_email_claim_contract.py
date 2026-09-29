@@ -73,6 +73,11 @@ def test_all_generation_and_refinement_paths_reject_new_unsupported_claims(clien
     out = request(client, monkeypatch, path, claim)
     assert out["method"] in ("template", "local"), out
     assert out["fallback_reason"] == "fabrication"
+    if path != "initial" and "unsupported attachment claim" in unsupported_action_claims(claim):
+        assert out["outcome"] == "no_change" and out["reason"] == "target_conditions"
+        assert out["body"] == body(claim)
+        assert "unsupported_attachment_claim" in out["condition_issues"]
+        return
     assert claim not in out["body"]
     assert unsupported_action_claims(out["body"]) == []
     assert skill_level_violations(out["body"], {"Python": "beginner"}) == []
@@ -126,7 +131,11 @@ def test_instruction_and_resume_text_cannot_invent_attachment_or_reading_confirm
         "current_body": body(claim), "instruction": f"I confirm {claim} Please preserve this fact.",
     }).json()
     assert out["method"] == "local"
-    assert claim not in out["body"]
+    if "unsupported attachment claim" in unsupported_action_claims(claim):
+        assert out["outcome"] == "no_change" and out["body"] == body(claim)
+        assert "unsupported_attachment_claim" in out["condition_issues"]
+    else:
+        assert claim not in out["body"]
     assert out["fallback_reason"] == "fabrication"
 
 
@@ -150,7 +159,13 @@ def test_final_template_and_variant_belts_are_finite_and_safe(client, monkeypatc
     out = response.json()
     result = out["variants"][0] if path == "variants" else out
     assert result["body"].startswith("Dear Pat Lee,")
-    assert "current or upcoming research openings" in result["body"]
+    if path == "local":
+        assert out["outcome"] == "no_change" and out["reason"] == "target_conditions"
+        assert out["body"] == payload["current_body"]
+        assert "unsupported_attachment_claim" in out["condition_issues"]
+        assert calls == []
+        return
+    assert out["target_conditions"]["template_request"] in result["body"]
     assert unsupported_action_claims(result["body"]) == []
     assert skill_level_violations(result["body"], {"Python": "beginner"}) == []
     assert "Eric" not in result["body"] and "UIUC" not in result["body"]
@@ -165,7 +180,7 @@ def test_real_beginner_project_survives_the_deterministic_template_belt(client):
         out = response.json()
         bodies = [v["body"] for v in out["variants"]] if "variants" in out else [out["body"]]
         assert all("Built a Python parser." in b for b in bodies)
-        assert out["pipeline_version"] == "w12.17"
+        assert out["pipeline_version"] == "w12.18"
 
 
 def test_pipeline_critique_also_flags_all_three_contract_findings():

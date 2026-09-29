@@ -49,6 +49,13 @@ from backend.lib.email_contact_instructions import (
 )
 from backend.lib.email_experience_attribution import experience_attribution_violations
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
+from backend.lib.email_target_conditions import (
+    email_target_conditions,
+    target_condition_claim_violations,
+    target_conditions_brief,
+    target_conditions_template_request,
+    target_conditions_vocabulary,
+)
 from backend.lib.experience_evidence import PROMPT_CHARACTER_BUDGET, ExperienceSelection, select_experience
 from backend.lib.grounding import (
     LENIENT_PROSE,
@@ -72,6 +79,8 @@ from backend.schemas import (
     ColdEmailResponse,
     EmailContactContext,
     EmailContactReceipt,
+    EmailDraftValidationRequest,
+    EmailDraftValidationResponse,
     ExperienceEvidence,
     ProfileRequest,
 )
@@ -1151,14 +1160,14 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         (f"{faculty_label.capitalize()}'s stated research areas" if is_faculty
          else "Contact's stated research areas", p.get("research_areas_raw", "")),
         ("Source-stated keywords", _stated_keywords(opp)),
-        ("Research topics / methods" if is_faculty else "Required skills", p["opp_skills_required"]),
+        ("Research topics / methods" if is_faculty else "Recorded skills (check application-condition evidence)", p["opp_skills_required"]),
         ("Research/current projects" if is_faculty else "Description", p["opp_desc"]),
     ]
     application = opp.get("application") or {}
     application_notes = (
         "- Recorded application/contact method (may be inferred): "
         + json.dumps(application.get("contact_method") or "unknown", ensure_ascii=False) + "\n"
-        + "- Source-stated application URL: "
+        + "- Recorded application URL (not proof of submission): "
         + json.dumps(application.get("application_url") or "", ensure_ascii=False) + "\n"
         + "- Honor the stated application method. An email inquiry does not replace a form "
         "or portal submission and does not prove an application was sent.\n"
@@ -1197,7 +1206,8 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
                 "or upcoming research openings.\n"
             )
         brief += "- Current opening confirmed: NO\n" + availability_line
-    return brief + application_notes
+    return brief + application_notes + target_conditions_brief(
+        p.get("target_conditions") or email_target_conditions(opp))
 
 
 # Structural angles for the N-draft judge tier: each parallel draft leads with
@@ -1712,6 +1722,7 @@ def _build_email_corpus(p: dict, opp: dict, *, include_lab: bool = True) -> str:
         _student_email_corpus(p),
         contact_vocabulary(p),
         contact_instruction_vocabulary(opp),
+        target_conditions_vocabulary(p.get("target_conditions") or email_target_conditions(opp)),
         # Interests may be discussed as interests, but never authenticate a
         # first-person experience claim in the separate student corpus.
         str(p.get("research_interests", "")),
@@ -1838,7 +1849,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.17"
+COLD_EMAIL_PIPELINE_VERSION = "w12.18"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -1901,6 +1912,17 @@ def _title_only_paper_detail_claim(text: str, opp: dict) -> bool:
     ))
 
 
+def _email_condition_findings(text: str, parts: dict, opp: dict) -> list[str]:
+    """Bounded target-condition checks; a target requirement is not a student fact."""
+    context = parts.get("target_conditions") or email_target_conditions(opp)
+    issues = target_condition_claim_violations(
+        text, context, student_evidence_texts=parts.get("resume_bullets") or [],
+    )
+    if "unsupported attachment claim" in unsupported_action_claims(text):
+        issues = [*issues, "unsupported_attachment_claim"]
+    return sorted(set(issues))
+
+
 def _email_grounding_findings(
     text: str, parts: dict, opp: dict, *, corpus: str | None = None,
 ) -> tuple[list[str], list[str]]:
@@ -1936,6 +1958,7 @@ def _email_grounding_findings(
                 _passed, after = validate_no_fabrication(clause, corpus, extra_allow=_EMAIL_SCAFFOLDING)
                 if set(before) - set(after):
                     fabricated.append("website material does not support paper methods or results")
+    fabricated.extend(_email_condition_findings(text, parts, opp))
     fabricated.extend(unsupported_website_reading_claims(text))
     fabricated.extend(unsupported_action_claims(
         text, confirmed_reading_sentence=parts.get("contact_paper_reading"),
@@ -1964,7 +1987,7 @@ def _neutral_inquiry(parts: dict, opp: dict) -> str:
     recipient = _brief_recipient(_render_professor_brief(parts, opp))
     greeting = f"Dear {recipient}," if recipient else "Hello,"
     context_lines = [parts.get(key) or "" for key in ("contact_opening", "contact_reply_line", "contact_paper_reading")]
-    ask = (
+    ask = parts.get("target_conditions_template_request") or (
         "Could you let me know the best next step for this inquiry?"
         if parts.get("contact_purpose") == "follow_up" and not parts.get("is_faculty") else
         "Could I ask whether you have any current or upcoming research openings? "
@@ -2048,6 +2071,8 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
     context = request.contact_context.model_dump(exclude_none=True) if request.contact_context else None
     validate_paper_reading(context, safe_opp)
     parts = _common_parts(profile_dict, safe_opp)
+    parts["target_conditions"] = email_target_conditions(safe_opp)
+    parts["target_conditions_template_request"] = target_conditions_template_request(parts["target_conditions"])
     parts["recent_works"] = email_research_works(safe_opp)
     parts["source_research_text"] = _source_research_text_for_selection(safe_opp)
     parts.update(contact_context_parts(context))
@@ -2171,6 +2196,7 @@ def _run_engine(
     response_parts = parts
 
     return ColdEmailResponse(
+        target_conditions=parts["target_conditions"],
         contact_context_receipt=parts["contact_context_receipt"],
         experience_usage=experience.usage() if method == "ai" else experience.quoted_usage(body),
         subject=subject,
@@ -2345,9 +2371,11 @@ async def generate_email_variants(
             "lab_type": v.get("lab_type") or lab_type,
             "experience_usage": experience.quoted_usage(body),
             "contact_context_receipt": parts["contact_context_receipt"],
+            "target_conditions": parts["target_conditions"],
         })
 
     return {
+        "target_conditions": parts["target_conditions"],
         "contact_context_receipt": parts["contact_context_receipt"],
         # The union across variants; each variant also has its exact receipt.
         "experience_usage": experience.quoted_usage("\n".join(item["body"] for item in results)),
@@ -2551,18 +2579,28 @@ def _local_refine_fallback(
     fallback_reason: str | None = None,
     use_template: bool = False,
 ) -> dict:
-    """Keep a factual browser draft, but never preserve unsupported claims.
+    """A local edit cannot authenticate claims in the previous draft.
 
-    Provider failure is not permission to authenticate the previous draft.
-    Check a local tone edit against the same evidence; rebuild the safe
-    template only when that draft cannot satisfy the fact/greeting contract.
+    Target-condition failures preserve the user's text with a review notice.
+    Other existing fact/greeting failures retain their finite template recovery.
     """
+    if context is not None:
+        condition_issues = _email_condition_findings(
+            f"{request.subject}\n{safe_body}", context["parts"], context["safe_opp"],
+        )
+        if condition_issues:
+            return _preserve_refine_draft_after_condition_failure(request, safe_body, context, condition_issues)
     source_body = safe_body
     if use_template and context is not None:
         source_body = _safe_refine_template_body(context)
     result = _local_refine(source_body, request.instruction)
     candidate = redact_embedded_emails(result["body"])
     if context is not None:
+        condition_issues = _email_condition_findings(
+            f"{request.subject}\n{candidate}", context["parts"], context["safe_opp"],
+        )
+        if condition_issues:
+            return _preserve_refine_draft_after_condition_failure(request, safe_body, context, condition_issues)
         normalized = _enforce_brief_greeting(candidate, context["prof_brief"])
         invalid = normalized is None or any(_email_grounding_findings(
             normalized, context["parts"], context["safe_opp"], corpus=context["corpus"],
@@ -2609,10 +2647,53 @@ async def refine_email(request: EmailRefineRequest):
     pipeline_version = COLD_EMAIL_PIPELINE_VERSION
     target = _email_target(request)
     result = await _refine_email_snapshot(request, target.public)
-    return {**result, "contact_context_receipt": contact_context_receipt(
+    return {"target_conditions": email_target_conditions(_contact_safe_opportunity(target.public)), **result, "contact_context_receipt": contact_context_receipt(
                 request.contact_context.model_dump(exclude_none=True) if request.contact_context else None),
             "opportunity_id": request.opportunity_id,
             "target_version": target.version, "pipeline_version": pipeline_version}
+
+
+@router.post("/cold-email/validate", response_model=EmailDraftValidationResponse)
+async def validate_email_draft(request: EmailDraftValidationRequest) -> EmailDraftValidationResponse:
+    """Check finite condition/attachment claims, never judge arbitrary manual prose.
+
+    No provider, rewrite, delivery or persistence occurs. A passing result is
+    bound to the current target and supplied facts; it is not verified personal
+    eligibility or permission to send. The browser keeps and versions its draft.
+    """
+    target = _email_target(request)
+    safe_opp = _contact_safe_opportunity(target.public)
+    parts, _experience = _experience_parts(request, request.profile.model_dump(), safe_opp)
+    issues = _email_condition_findings(f"{request.subject}\n{request.body}", parts, safe_opp)
+    if not request.subject.strip() or not request.body.strip():
+        issues.append("empty_draft")
+    return EmailDraftValidationResponse(
+        opportunity_id=request.opportunity_id, target_version=target.version,
+        pipeline_version=COLD_EMAIL_PIPELINE_VERSION,
+        contact_context_receipt=EmailContactReceipt(**parts["contact_context_receipt"]),
+        target_conditions=parts["target_conditions"],
+        outcome="review_required" if issues else "ready", issues=sorted(set(issues)),
+    )
+
+
+def _preserve_refine_draft_after_condition_failure(
+    request: EmailRefineRequest, safe_body: str, context: dict, issues: list[str],
+) -> dict:
+    """A rejected condition edit never replaces a user's draft.
+
+    Preserve the current text under the existing email-redaction rule, even
+    when it needs review or contains novel manual prose. The provider-free
+    manual check governs opening a composer; this recovery is not a readiness
+    declaration and must not run the generated-prose vocabulary whitelist.
+    """
+    original_issues = _email_condition_findings(
+        f"{request.subject}\n{safe_body}", context["parts"], context["safe_opp"],
+    )
+    return {"body": safe_body, "method": "local", "outcome": "no_change", "reason": "target_conditions",
+            "condition_issues": sorted(set(issues + original_issues)), "fallback_reason": "fabrication",
+            "experience_usage": context["experience_selection"].local_usage(safe_body),
+            "target_conditions": context["parts"]["target_conditions"],
+            "pipeline_version": COLD_EMAIL_PIPELINE_VERSION}
 
 
 async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
@@ -2691,6 +2772,10 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
         return _local_refine_fallback(request, safe_body, context)
 
     edited = redact_embedded_emails(edited)
+    if context is not None:
+        condition_issues = _email_condition_findings(f"{request.subject}\n{edited}", context["parts"], context["safe_opp"])
+        if condition_issues:
+            return _preserve_refine_draft_after_condition_failure(request, safe_body, context, condition_issues)
     if context is not None:
         edited = _enforce_brief_greeting(edited, context["prof_brief"])
         if edited is None:
@@ -2887,6 +2972,9 @@ async def _refine_selection_snapshot(request: EmailRefineRequest, opp: dict) -> 
             or not _selection_structure_valid(prefix, original, suffix, replacement,
                                               context["prof_brief"], context["parts"].get("name", ""))):
         return no_change("review_required")
+    condition_issues = _email_condition_findings(f"{request.subject}\n{candidate}", context["parts"], context["safe_opp"])
+    if condition_issues:
+        return {**no_change("target_conditions"), "condition_issues": condition_issues}
     if any(_email_grounding_findings(f"{request.subject}\n{candidate}", context["parts"],
                                     context["safe_opp"], corpus=context["corpus"])):
         return no_change("fabrication")

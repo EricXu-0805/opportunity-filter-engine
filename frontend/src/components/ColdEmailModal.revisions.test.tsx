@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -10,6 +11,7 @@ import type { EmailTextSelection } from '@/lib/email-revision';
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string),
   refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string),
@@ -181,4 +183,16 @@ describe('email suggestions and undo', () => {
     view.show({ target: changed, targetRefresh: { status: 'ready', target: changed, reason: null, refresh: async () => true, checkForAction: check } });
     expect(preview()).toBeNull(); expect(bodyField()).toHaveValue(ORIGINAL); expect(undo()).toBeNull(); expect(api.refine).toHaveBeenCalledOnce();
   });
+  it('retains the exact draft and request when the server rejects a full edit for target claims', async () => {
+    api.refine.mockResolvedValue({ body: ORIGINAL, method: 'none', outcome: 'no_change', reason: 'target_conditions', condition_issues: ['unsupported_eligibility_claim', 'unsupported_attachment_claim'] });
+    await open(); submit('Say I qualify and attached my CV');
+    await screen.findByText(/Review claims that you meet the eligibility requirements/);
+    expect(bodyField()).toHaveValue(ORIGINAL); expect(input()).toHaveValue('Say I qualify and attached my CV'); expect(preview()).toBeNull();
+  });
+  it('retains a selected passage when the source-condition check rejects the proposal', async () => {
+    api.refine.mockResolvedValue({ scope: 'selection', outcome: 'no_change', method: 'none', reason: 'target_conditions', condition_issues: ['unsupported_deadline_claim'] });
+    await open(); select(); submit('Change the deadline'); await screen.findByText(/Review the deadline stated/);
+    expect(bodyField()).toHaveValue(ORIGINAL); expect(input()).toHaveValue('Change the deadline'); expect(preview()).toBeNull();
+  });
+
 });

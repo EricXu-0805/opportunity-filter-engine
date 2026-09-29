@@ -1,3 +1,4 @@
+import { isEmailTargetConditions } from './email-target-conditions';
 import { isLabContext } from './lab-context';
 import { isResearchContext } from './research-context';
 import { opportunityRecordKind } from './record-kind';
@@ -27,6 +28,7 @@ export function isPublicDetail(value: unknown, id: string): value is Opportunity
   if ('contact_email' in value || 'pi_email' in value || value.contact_email_status === 'revealed') return false;
   if (!optional(value, 'writing_target_version', isWritingTargetVersion)
     || !optional(value, 'contact_instructions', isContactInstructions)
+    || !optional(value, 'target_conditions', isEmailTargetConditions)
     || !optional(value, 'research_context', isResearchContext)
     || !optional(value, 'lab_context', isLabContext)) return false;
   if (!optional(value, 'source_type', nullableString)

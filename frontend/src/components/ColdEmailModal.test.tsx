@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { ColdEmailStreamError } from '@/lib/cold-email-stream';
@@ -26,6 +27,7 @@ const mockExtractResumeBullets = vi.fn();
 // Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
 vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: (...args: unknown[]) => emailReceipt(mockGenerateColdEmail(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(mockGenerateColdEmailStream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),

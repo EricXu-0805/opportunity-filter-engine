@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
@@ -12,6 +13,7 @@ import { emailReceipt, emailTarget } from './ColdEmailModal.test-fixtures';
 
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), recipient: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string,
     (args[3] as { expectedTargetVersion: string }).expectedTargetVersion,
     (args[3] as { contactContext: EmailContactContext }).contactContext),
@@ -174,7 +176,7 @@ describe('persistent cold-email draft recovery', () => {
       expect(original.status).toBe('present'); expect(recovered.status).toBe('present');
       if (original.status === 'present' && recovered.status === 'present') expect(recovered.draft.sources).toEqual(original.draft.sources);
       expect(button('regenerateFromProfile')).toBeVisible();
-      fireEvent.click(button('copy'));
+      fireEvent.click(screen.getByTestId('copy-draft-only'));
       await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(`Subject: ${edits.subject}\n\n${edits.body}`));
       expect(window.open).not.toHaveBeenCalled();
     });
@@ -241,7 +243,7 @@ describe('persistent cold-email draft recovery', () => {
     await close(view); clearCalls();
     mount({ profile: { ...profile, research_interests: 'A different current profile' },
       target: { ...target, writing_target_version: `wt1:${'b'.repeat(64)}` } }); await restored();
-    expect(button('gmail')).toBeDisabled(); fireEvent.click(button('copy'));
+    expect(button('gmail')).toBeDisabled(); fireEvent.click(screen.getByTestId('record-sent-email'));
     await screen.findByTestId('cold-email-confirm-sent'); fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     await waitFor(() => expect(api.confirm).toHaveBeenCalledOnce());
     expect(api.confirm.mock.calls[0][1]).toMatchObject({ recipient: edits.recipient, subject: edits.subject, body: edits.body,

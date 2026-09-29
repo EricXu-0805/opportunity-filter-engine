@@ -35,6 +35,9 @@ def project_public_detail(opp: dict) -> dict:
     out = {k: v for k, v in opp.items() if k not in _NON_VERSIONED_FIELDS}
     # Recompute from current source snapshots, never trust a cached public policy.
     out["contact_instructions"] = requirements
+    # The central projector recomputes this from raw bound source blocks,
+    # then applies the same URL/privacy boundary as every public field.
+    out["target_conditions"] = None
     out["research_context"] = research
     out["lab_context"] = lab
     metadata = dict(out["metadata"]) if isinstance(out.get("metadata"), dict) else {}

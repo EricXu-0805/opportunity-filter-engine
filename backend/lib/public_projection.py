@@ -698,6 +698,17 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # (`stanford-f0a974ed2bd2` has one as its TITLE). Canonical does not mean
     # clean; it means authoritative about identity.
     prepared = dict(payload)
+    condition_context = None
+    if "target_conditions" in prepared:
+        # Do not trust a caller/corpus-supplied public receipt. Raw retained
+        # source blocks are still present here and are removed before serving.
+        from backend.lib.email_target_conditions import (
+            build_target_conditions,
+            target_conditions_template_request,
+        )
+
+        condition_context = build_target_conditions(canonical_record)
+        prepared["target_conditions"] = condition_context
     research = research_context_for(canonical_record)
     lab = lab_context_for(canonical_record)
     if "lab_context" in prepared:
@@ -728,6 +739,16 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # result is shared with `payload` — the shallow `dict()` above is only a
     # scaffold for the identity edit and never reaches the caller.
     projected = redact_embedded_emails(sanitize_public_urls(prepared))
+    if condition_context is not None:
+        public_conditions = projected["target_conditions"]
+        for original, visible in zip(condition_context["conditions"], public_conditions["conditions"], strict=True):
+            if original != visible:
+                # A changed source quote/URL/value no longer supports the
+                # displayed assertion. Retire only this item, not unrelated
+                # complete evidence; never re-sign redacted text as proof.
+                visible.update(status="unknown", usage="excluded", value=None,
+                               reason="source_not_public", sources=[])
+        public_conditions["template_request"] = target_conditions_template_request(public_conditions)
     research_changed = redact_embedded_emails(sanitize_public_urls(research)) != research
     if "lab_context" in projected and redact_embedded_emails(sanitize_public_urls(lab)) != lab:
         # Do not re-sign source text changed by privacy/URL filtering.

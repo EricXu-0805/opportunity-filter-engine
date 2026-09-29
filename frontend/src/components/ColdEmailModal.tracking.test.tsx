@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 /**
  * Verified-send tracking contract for the cold-email modal.
  *
@@ -26,6 +27,7 @@ const mockGetVariants = vi.fn();
 // Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
 vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn(),
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),

@@ -30,3 +30,11 @@ export async function emailReceipt(result: unknown, id: string, version = EMAIL_
   }
   return receipt;
 }
+
+/** A successful deterministic-check double. Condition behavior has its own adversarial suite. */
+export function emailValidationReceipt(...args: unknown[]) {
+  const options = args[4] as { expectedTargetVersion?: string; contactContext?: EmailContactContext };
+  return emailReceipt({ outcome: 'ready', issues: [], pipeline_version: 'test',
+    target_conditions: { version: 1, record_kind: 'listing', conditions: [], template_request: null } },
+    args[3] as string, options.expectedTargetVersion, options.contactContext);
+}

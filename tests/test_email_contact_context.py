@@ -288,7 +288,7 @@ def test_application_instructions_reach_actual_provider_briefs(client, monkeypat
     monkeypatch.setattr(ce, "chat_completion", provider)
     result(post(client, "", FIRST, engine="ai"), "")
     assert captured
-    assert all("Recorded application/contact method (may be inferred): portal" in m[1]["content"] for m in captured)
+    assert all('Recorded application/contact method (may be inferred): "portal"' in m[1]["content"] for m in captured)
     assert all("https://example.edu/apply" in m[1]["content"] for m in captured)
     assert all("does not replace a form or portal submission" in m[1]["content"] for m in captured)
 

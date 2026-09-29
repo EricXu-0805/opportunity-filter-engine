@@ -13,6 +13,7 @@ import {
   generateColdEmail,
   getEmailVariants,
   refineEmail,
+  validateEmailDraft,
   tailorResume,
   renovateResume,
   parseGitHubProfile,
@@ -1183,5 +1184,17 @@ describe('Tailor server target version transport', () => {
     const calls = fetchMock.mock.calls.filter(([url]) => url === '/api/tailor');
     expect(JSON.parse((calls[0][1] as RequestInit).body as string)).not.toHaveProperty('expected_target_version');
     expect(JSON.parse((calls[1][1] as RequestInit).body as string)).toHaveProperty('expected_target_version', '');
+  });
+});
+
+describe('manual email checking request', () => {
+  it('sends complete text, profile, confirmed materials and target binding without generation', async () => {
+    const profile = makeProfile({ research_interests: 'Full interests 🧪', experience_entries: [{ id: 'e1', revision: 1, status: 'confirmed', text: 'My work', source: { kind: 'manual' } }] });
+    fetchMock.mockResolvedValue(okJson({ outcome: 'review_required', issues: ['unsupported_attachment_claim'] }));
+    const body = 'Full body 🧪\n最後一段'; const subject = 'Exact subject'; const controller = new AbortController();
+    await validateEmailDraft(subject, body, profile, 'target-A', { expectedTargetVersion: 'wt1:' + 'a'.repeat(64), contactContext: { version: 1, purpose: 'first_contact' }, signal: controller.signal });
+    expect(fetchMock).toHaveBeenCalledOnce(); const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/cold-email/validate'); const sent = JSON.parse(init.body);
+    expect(sent).toMatchObject({ subject, body, opportunity_id: 'target-A', expected_target_version: 'wt1:' + 'a'.repeat(64), profile: { research_interests_text: profile.research_interests }, experience_evidence: { version: 2, entries: profile.experience_entries } });
   });
 });

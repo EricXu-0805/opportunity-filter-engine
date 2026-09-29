@@ -878,7 +878,7 @@ def _contact_template(email: str, p: dict) -> str:
     opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
     if p.get("contact_purpose") == "follow_up":
         subject = _cap_subject(f"Subject: Follow-up — {p.get('title') or 'research inquiry'}")
-        ask = (
+        ask = p.get("target_conditions_template_request") or (
             "Could you let me know whether there are any current or upcoming research "
             "openings, and the best next step if so?"
             if p.get("is_faculty") else
@@ -958,6 +958,8 @@ def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str
 
 
 def _template_ask(p: dict) -> str:
+    if p.get("target_conditions_template_request"):
+        return _contact_details(p) + "\n\n" + p["target_conditions_template_request"]
     return _contact_details(p) + _ask_for_lab_type(
         p.get("lab_type"), is_faculty=bool(p.get("is_faculty"))
     )

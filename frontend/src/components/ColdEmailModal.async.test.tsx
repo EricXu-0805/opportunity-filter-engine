@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -13,6 +14,7 @@ const api = vi.hoisted(() => ({
   variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn(),
 }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
@@ -269,6 +271,7 @@ describe('cold email draft lifetime', () => {
     const view = openModal();
     await ready();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledOnce());
     view.show({ opportunityId: 'B' });
     await screen.findByDisplayValue('Draft B');
     await act(async () => {

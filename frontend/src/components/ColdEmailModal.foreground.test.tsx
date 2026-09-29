@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,7 +17,8 @@ vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
   from: services.from, rpc: services.rpc,
 }) }));
-vi.mock('@/lib/api', () => ({ getEmailVariants: (...args: unknown[]) => emailReceipt(services.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt, getEmailVariants: (...args: unknown[]) => emailReceipt(services.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(services.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmail: (...args: unknown[]) => emailReceipt(services.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   refineEmail: (...args: unknown[]) => emailReceipt(services.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), getVapidPublicKey: vi.fn() }));
 vi.mock('@/i18n/client', () => {

@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
@@ -7,6 +8,7 @@ import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
 import { emailReceipt, emailTarget } from './ColdEmailModal.test-fixtures';
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), confirm: vi.fn(), supplement: null as ResumeSupplementPanelProps | null }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion: string }).expectedTargetVersion, (args[3] as { contactContext: EmailContactContext }).contactContext),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion: string }).expectedTargetVersion, (args[2] as { contactContext: EmailContactContext }).contactContext),
   refineEmail: api.refine, generateColdEmail: vi.fn(), getVapidPublicKey: vi.fn(),
@@ -66,7 +68,7 @@ describe('source instructions and personal preparation', () => {
     fireEvent.change(subject(), { target: { value: 'Research - Xu' } }); fireEvent.click(screen.getByRole('checkbox'));
     view.rerender(<ColdEmailModal {...view.props} target={{ ...target, writing_target_version: `wt1:${'b'.repeat(64)}` }} />);
     expect(screen.getByRole('checkbox')).not.toBeChecked(); expect(compose()).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' })); await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Research - Xu\n\nMy complete draft'));
+    fireEvent.click(screen.getByTestId('copy-draft-only')); await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Research - Xu\n\nMy complete draft'));
   });
   it('returns a rejected reading claim to the open background panel without replacing or replaying the draft', async () => {
     mount(); await ready(); api.refine.mockRejectedValue(Object.assign(new Error('changed'), { code: 'EMAIL_READING_CHANGED' }));

@@ -185,7 +185,7 @@ def test_limits_reject_instead_of_silently_truncating(environment, field, value)
     # rather than failing in the HTTP client's UTF-8 encoder.
     response = environment[0].post("/api/cold-email/refine", content=json.dumps(data), headers={"Content-Type": "application/json"})
     assert response.status_code == 422, response.text
-    assert environment[1] == [] and "input" not in response.text
+    assert environment[1] == [] and '"input":' not in response.text and '"ctx":' not in response.text
 
 
 def test_unknown_top_level_selection_fields_are_not_silently_ignored(environment):
@@ -261,7 +261,8 @@ def test_selecting_the_entire_draft_allows_one_greeting_and_signature(environmen
 ])
 def test_replacement_respects_existing_fact_and_address_checks(environment, monkeypatch, replacement, evidence):
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: json.dumps({"replacement": replacement}))
-    no_change(environment, payload(evidence=evidence), "fabrication")
+    reason = "target_conditions" if replacement == "I have attached my resume." else "fabrication"
+    no_change(environment, payload(evidence=evidence), reason)
 
 
 def test_grounding_checks_a_claim_assembled_across_the_selected_boundary(environment, monkeypatch):

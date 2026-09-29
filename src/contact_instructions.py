@@ -19,6 +19,20 @@ _UG = re.compile(r'\bundergrad(?:uate)?s?\b', re.I)
 _OTHER = re.compile(r'\b(?:ph\.?d\.?|doctoral|postdoc(?:toral)?s?|graduate|masters?|visiting scholars?)\b', re.I)
 _ALL = re.compile(r'\ball\s+(?:(?:prospective|interested)\s+)?(?:applicants|students|researchers)\b', re.I)
 _CONTACT = re.compile(r'\b(?:e-?mail|contact|apply|application|applicants|subject|form|portal|resume|curriculum vitae|CV|transcript|cover letter|statement of interest)\b', re.I)
+# Retention is broader than contact-rule interpretation: the same fetched,
+# identity-bound block also supplies application-condition evidence. Keep whole
+# paragraphs under relevant headings, including values with no repeated label.
+# This only retains source text; it does not classify a requirement or permit email.
+_APPLICATION_CONDITION = re.compile(
+    r"\b(?:eligib\w*|qualifications?|requirements?|citizenship|nationals?|"
+    r"permanent\s+residents?|work\s+authori[sz]ation|minimum\s+GPA|GPA|"
+    r"class\s+year|year\s+of\s+study|deadline|apply\s+by|applications?\s+due|"
+    r"rolling\s+(?:admissions?|applications?|basis)|required|preferred|"
+    r"recommendations?|references?|transcripts?|statements?\s+of\s+(?:interest|purpose))\b"
+    r"|申请资格|申请条件|申请材料|所需材料|截止日期|截止时间|国籍|居留资格|工作许可|最低绩点|年级要求",
+    re.I,
+)
+
 _NO_EMAIL = re.compile(
     r"\b(?:do\s+not|don['’]t|must\s+not|should\s+not)\s+(?:directly\s+)?(?:e-?mail|contact\s+(?:me|us)\s+(?:by|via)\s+e-?mail)\b"
     r'|\b(?:do\s+not|cannot)\s+accept\s+e-?mail\s+inquiries\b'
@@ -106,7 +120,10 @@ def source_from_html(html, *, source_url: str, record_source_url: str | None = N
             sections.append({'heading': heading, 'text': text})
         if len(sections) > _MAX_SECTIONS or any(len(s['text']) > _MAX_TEXT for s in sections[-1:]):
             return None
-    sections = [section for section in sections if _CONTACT.search(section['text'])]
+    sections = [section for section in sections
+                if _CONTACT.search(section['text'])
+                or _APPLICATION_CONDITION.search(section['heading'])
+                or _APPLICATION_CONDITION.search(section['text'])]
     if not sections:
         return None
     result = {'source_url': source_url, 'record_source_url': record_source_url or source_url,

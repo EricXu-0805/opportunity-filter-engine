@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
@@ -9,7 +10,8 @@ vi.mock('@/i18n/client', () => {
   return { useT: () => ({ t, locale: 'en' }), useLocale: () => 'en' };
 });
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn() }));
-vi.mock('@/lib/api', () => ({ getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt, getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion), extractResumeBullets: api.extract, getVapidPublicKey: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({ onAuthChange: () => () => {}, confirmContactEvent: vi.fn(), updateInteractionDetails: vi.fn() }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
@@ -88,7 +90,7 @@ describe('cold email initial readiness versus a retained editor', () => {
       expect(screen.getByRole('button', { name: 'coldEmail.openInEmail' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
     }
-    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    fireEvent.click(screen.getByTestId('copy-draft-only'));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: My subject\n\nMy manual body'));
     expect(screen.queryByText('coldEmail.generating')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(view.refresh).toHaveBeenCalledOnce();

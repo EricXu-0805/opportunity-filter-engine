@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
@@ -6,8 +7,9 @@ import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import type { TargetActionReceipt } from '@/lib/use-writing-target';
 import type { ProfileData } from '@/lib/types';
 
-const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), recipient: vi.fn(), confirm: vi.fn() }));
+const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), recipient: vi.fn(), confirm: vi.fn(), validate: vi.fn() }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: (...args: unknown[]) => api.validate(...args),
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(), args[1] as string),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(), args[1] as string),
   generateColdEmail: vi.fn(), refineEmail: vi.fn(), getVapidPublicKey: vi.fn(),
@@ -30,7 +32,7 @@ let sequence = 0;
 beforeEach(async () => {
   localStorage.clear(); advanceOwnerEpoch('compose-' + ++sequence); await syncLocalIdentityOwner('compose-' + sequence);
   api.variants.mockReset().mockResolvedValue({ variants: [draft], pipeline_version: 'test', recipient_status: 'revealed' });
-  api.stream.mockReset().mockResolvedValue({ ...draft, method: 'template' }); api.recipient.mockReset().mockResolvedValue(undefined); api.confirm.mockReset();
+  api.stream.mockReset().mockResolvedValue({ ...draft, method: 'template' }); api.recipient.mockReset().mockResolvedValue(undefined); api.confirm.mockReset(); api.validate.mockReset().mockImplementation(emailValidationReceipt);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
 });
 async function harness() {
@@ -97,8 +99,73 @@ describe('new composer source checks', () => {
   });
   it('keeps Copy available after source change but disables new external composition', async () => {
     const view = await harness(); view.rerender(<ColdEmailModal {...view.props} profile={{ ...profile, research_interests: 'new interests' }} />);
-    expect(button()).toBeDisabled(); fireEvent.click(button('copy'));
+    expect(button()).toBeDisabled(); fireEvent.click(screen.getByTestId('copy-draft-only'));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Subject\n\nMy complete draft'));
     expect(view.open).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
   });
+  it.each(['openInEmail', 'gmail', 'outlook', 'copy'])('blocks %s on an unsupported attachment claim and preserves the draft', async provider => {
+    const view = await harness();
+    api.validate.mockImplementation(async (...args) => ({ ...(await emailValidationReceipt(...args) as Record<string, unknown>), outcome: 'review_required', issues: ['unsupported_attachment_claim'] }));
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'My CV is attached.' } });
+    fireEvent.click(button(provider));
+    await screen.findByText('The draft claims files are attached. No attachment has been confirmed here.');
+    expect(screen.getByDisplayValue('My CV is attached.')).toBeVisible();
+    expect(view.window.location.href).toBe('about:blank'); expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    expect(api.recipient).not.toHaveBeenCalled(); expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+    fireEvent.click(screen.getByTestId('copy-draft-only'));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: Subject\n\nMy CV is attached.'));
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull(); expect(api.confirm).not.toHaveBeenCalled();
+  });
+  it.each(['target', 'missing', 'invalid'])('rejects a %s condition receipt without navigating', async fault => {
+    const view = await harness();
+    api.validate.mockImplementation(async (...args) => {
+      const result = await emailValidationReceipt(...args) as Record<string, unknown>;
+      if (fault === 'target') result.target_version = 'wt1:' + 'b'.repeat(64);
+      if (fault === 'missing') delete result.target_conditions;
+      if (fault === 'invalid') result.target_conditions = { version: 1, conditions: [] };
+      return result;
+    });
+    fireEvent.click(button()); await waitFor(() => expect(view.window.close).toHaveBeenCalledOnce());
+    expect(view.window.location.href).toBe('about:blank'); expect(screen.getByDisplayValue(draft.body)).toBeVisible();
+  });
+  it('cancels a held draft check after a manual edit and never opens the stale result', async () => {
+    const view = await harness(); const held = deferred<unknown>(); api.validate.mockReturnValue(held.promise);
+    fireEvent.click(button()); await waitFor(() => expect(api.validate).toHaveBeenCalledOnce());
+    const args = api.validate.mock.calls[0]; fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'My newer text' } });
+    await act(async () => held.resolve(await emailValidationReceipt(...args)));
+    expect(view.window.location.href).toBe('about:blank'); expect(api.recipient).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('My newer text')).toBeVisible(); expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+  });
+  it('keeps an offline backup copy available without a success or contact claim', async () => {
+    const view = await harness(); api.validate.mockRejectedValue(new Error('offline'));
+    fireEvent.click(button('copy')); await screen.findByText(/The check did not finish. Your draft is kept/);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('copy-draft-only')); await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledOnce());
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull(); expect(view.open).not.toHaveBeenCalled();
+  });
+
+  it('opens historical confirmation only on an explicit action, and retires it when the text changes', async () => {
+    await harness(); fireEvent.click(screen.getByTestId('record-sent-email'));
+    const confirm = await screen.findByTestId('cold-email-confirm-sent');
+    expect(api.validate).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Different draft' } });
+    expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull(); fireEvent.click(confirm);
+    expect(api.confirm).not.toHaveBeenCalled();
+  });
+
+  it('records a user-confirmed historical email after a condition rejection without rechecking it', async () => {
+    await harness(); api.validate.mockImplementation(async (...args) => ({ ...(await emailValidationReceipt(...args) as Record<string, unknown>), outcome: 'review_required', issues: ['unsupported_attachment_claim'] }));
+    api.confirm.mockResolvedValue({ interaction: { type: 'contacted' } });
+    fireEvent.click(button('copy')); await screen.findByText(/No attachment has been confirmed here/);
+    fireEvent.click(screen.getByTestId('record-sent-email')); fireEvent.click(await screen.findByTestId('cold-email-confirm-sent'));
+    await waitFor(() => expect(api.confirm).toHaveBeenCalledOnce()); expect(api.validate).toHaveBeenCalledOnce();
+    expect(api.confirm.mock.calls[0][1]).toMatchObject({ recipient: draft.recipient_email, subject: draft.subject, body: draft.body });
+  });
+  it('keeps historical confirmation available when a current target refresh fails', async () => {
+    const view = await harness(); api.confirm.mockResolvedValue({ interaction: { type: 'contacted' } });
+    view.rerender(<ColdEmailModal {...view.props} targetReady={false} targetRefresh={{ ...view.props.targetRefresh, status: 'failed' }} />);
+    fireEvent.click(screen.getByTestId('record-sent-email')); fireEvent.click(await screen.findByTestId('cold-email-confirm-sent'));
+    await waitFor(() => expect(api.confirm).toHaveBeenCalledOnce()); expect(api.validate).not.toHaveBeenCalled();
+  });
+
 });

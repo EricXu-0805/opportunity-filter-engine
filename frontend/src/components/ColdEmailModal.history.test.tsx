@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -12,6 +13,7 @@ import type { EmailTextSelection } from '@/lib/email-revision';
 const api = vi.hoisted(() => ({ variants: vi.fn(), stream: vi.fn(), refine: vi.fn(), confirm: vi.fn() }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
 vi.mock('@/lib/api', () => ({
+  validateEmailDraft: emailValidationReceipt,
   getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string),
   generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string),
   refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string),

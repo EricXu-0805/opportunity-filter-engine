@@ -1,3 +1,4 @@
+import type { EmailTargetConditions, EmailConditionIssue } from './email-target-conditions';
 import { assertProfileInput, ProfileInputError } from './profile-input';
 import type { EmailTextSelection } from './email-revision';
 import { validateResumeMaster } from './resume-master';
@@ -1093,7 +1094,9 @@ export interface EmailRefineResponse {
   fallback_reason?: string;
   scope?: 'selection';
   outcome?: 'proposal' | 'no_change';
-  reason?: 'provider_unavailable' | 'insufficient_evidence' | 'review_required' | 'invalid_output' | 'fabrication' | 'unchanged';
+  reason?: 'provider_unavailable' | 'insufficient_evidence' | 'review_required' | 'invalid_output' | 'fabrication' | 'unchanged' | 'target_conditions';
+  target_conditions?: EmailTargetConditions;
+  condition_issues?: EmailConditionIssue[];
   proposal?: Omit<EmailTextSelection, 'text'> & { original_text: string; replacement: string; base_body_sha256: string };
   experience_usage?: ExperienceUsage;
   opportunity_id?: string | null;
@@ -1124,6 +1127,27 @@ export async function refineEmail(
       ...(options.contactContext == null ? {} : { contact_context: normalizeEmailContactContext(options.contactContext) }),
       experience_evidence: coldEmailExperienceEvidence(profile),
     }),
+  });
+}
+
+export interface EmailValidationResponse {
+  opportunity_id: string;
+  target_version: string;
+  pipeline_version: string;
+  contact_context_receipt: EmailContactContextReceipt;
+  target_conditions: EmailTargetConditions;
+  outcome: 'ready' | 'review_required';
+  issues: EmailConditionIssue[];
+}
+
+/** Checks the current text against explicit target conditions without generating or sending mail. */
+export async function validateEmailDraft(subject: string, body: string, profile: ProfileData, opportunityId: string,
+  options: { expectedTargetVersion: string; contactContext: EmailContactContext; signal?: AbortSignal }): Promise<EmailValidationResponse> {
+  return request<EmailValidationResponse>('/cold-email/validate', {
+    method: 'POST', timeoutMs: 25000, signal: options.signal,
+    body: JSON.stringify({ subject, body, profile: toProfileRequest(profile), opportunity_id: opportunityId,
+      expected_target_version: options.expectedTargetVersion, contact_context: normalizeEmailContactContext(options.contactContext),
+      experience_evidence: coldEmailExperienceEvidence(profile) }),
   });
 }
 
