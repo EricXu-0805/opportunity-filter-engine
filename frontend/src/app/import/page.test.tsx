@@ -201,3 +201,51 @@ describe('ImportPage — failure keeps review material', () => {
     } finally { Object.defineProperty(window, 'localStorage', { value: originalStorage, configurable: true }); }
   });
 });
+
+
+describe('ImportPage — actionable input errors', () => {
+  it.each([
+    ['url', 'import_input_too_large', 'import.errorPageTooLong'],
+    ['url', 'import_source_unreadable', 'import.errorSourceUnreadable'],
+    ['text', 'import_input_too_large', 'import.errorTextTooLong'],
+  ] as const)('keeps %s input after %s, then permits retry', async (mode, code, expectedKey) => {
+    const importer = mode === 'url' ? mockImportByUrl : mockImportByText;
+    importer.mockResolvedValueOnce({ ok: false, error_code: code, llm_enriched: false });
+    importer.mockResolvedValueOnce({ ok: true, opportunity: { title: 'Retried source', extra_fields: {} }, llm_enriched: false });
+    render(<ImportPage />);
+    if (mode === 'text') fireEvent.click(screen.getByText('import.modeText'));
+    const input = screen.getByPlaceholderText(mode === 'url' ? 'import.urlPlaceholder' : 'import.textPlaceholder');
+    const original = mode === 'url' ? 'https://example.com/long' : 'Keep the full original input. '.repeat(250) + 'LAST LINE';
+    fireEvent.change(input, { target: { value: original } });
+    const submit = screen.getByText(mode === 'url' ? 'import.fetchButton' : 'import.extractButton');
+    fireEvent.click(submit);
+    await screen.findByText(expectedKey);
+    expect(input).toHaveValue(original);
+    expect(screen.queryByText('import.errorFetch')).toBeNull();
+    expect(screen.queryByText('import.errorExtract')).toBeNull();
+    fireEvent.click(screen.getByText(mode === 'url' ? 'import.fetchButton' : 'import.extractButton'));
+    await screen.findByText('Retried source');
+    expect(importer).toHaveBeenLastCalledWith(original);
+  });
+});
+
+
+it.each(['full_source', 'source_excerpt'] as const)('shows the full source and saves the exact %s input-scope marker', async (scope) => {
+  const text = 'Readable body.\n'.repeat(600) + 'LATE SOURCE RESTRICTION';
+  const opportunity = { source: 'url_parser', source_url: 'https://example.com/full', url: 'https://example.com/full',
+    title: 'Full body preview', description_raw: text,
+    extra_fields: { description_source: 'page_text', ai_input_scope: scope, suggested_skills: ['Python'] } };
+  mockImportByUrl.mockResolvedValueOnce({ ok: true, opportunity, llm_enriched: true });
+  render(<ImportPage />);
+  fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: opportunity.url } });
+  fireEvent.click(screen.getByText('import.fetchButton'));
+  await screen.findByText('Full body preview');
+  expect(screen.getByText(scope === 'full_source' ? 'import.fullAiInput' : 'import.excerptAiInput')).toBeInTheDocument();
+  expect(screen.getByText('import.pageText')).toBeInTheDocument();
+  const source = screen.getByText(/LATE SOURCE RESTRICTION/);
+  fireEvent.click(screen.getByRole('button', { name: 'import.expandSource' }));
+  expect(source).not.toHaveClass('line-clamp-4');
+  expect(source.textContent).toBe(text);
+  fireEvent.click(screen.getByText('import.saveToList'));
+  expect(readCustomImports()[0].opportunity).toEqual(opportunity);
+});

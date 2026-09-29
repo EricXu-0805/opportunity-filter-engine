@@ -1,3 +1,4 @@
+import { importSourceInfo, type ImportSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch } from '@/lib/saved-searches';
@@ -46,6 +47,7 @@ export interface Opp {
     years?: string[];
   };
   _customId?: string;
+  import_source?: ImportSourceInfo;
   import_suggestions?: { skills: string[]; summary: string };
 }
 
@@ -84,6 +86,7 @@ export function customImportToOpp(c: CustomImport): Opp {
     description_raw: e.description_raw || undefined,
     eligibility: intl ? { international_friendly: intl } : undefined,
     import_suggestions: suggestions,
+    import_source: importSourceInfo(extra, e.description_raw || ''),
   };
 }
 

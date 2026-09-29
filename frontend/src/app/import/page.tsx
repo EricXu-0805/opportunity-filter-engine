@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -27,12 +26,9 @@ import {
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
 import ImportSuggestions from '@/components/ImportSuggestions';
+import ImportSourceText from '@/components/ImportSourceText';
+import { importFailureKey, importSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
-
-const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
-  ssr: false,
-  loading: () => null,
-});
 
 type Mode = 'url' | 'text';
 
@@ -114,9 +110,7 @@ export default function ImportPage() {
         // failure of the CURRENT session, so it must not show an error.
         if (!stillCurrent()) return;
         if (!result.ok || !result.opportunity) {
-          const msg = result.error?.toLowerCase().includes('unsafe')
-            ? t('import.errorUnsafe')
-            : t('import.errorFetch');
+          const msg = t(importFailureKey('url', result));
           setState({ kind: 'error', message: msg });
           return;
         }
@@ -150,7 +144,7 @@ export default function ImportPage() {
       const result = await importByText(trimmedText);
       if (!stillCurrent()) return;
       if (!result.ok || !result.opportunity) {
-        setState({ kind: 'error', message: t('import.errorExtract') });
+        setState({ kind: 'error', message: t(importFailureKey('text', result)) });
         return;
       }
       setState({
@@ -409,10 +403,7 @@ function ResultCard({
 
       {opportunity.description_raw && (
         <div className="mb-6">
-          <h3 className="text-[12px] uppercase tracking-wide text-gray-400 font-semibold mb-2">
-            {t(extra.description_source === 'pasted_text' ? 'import.pastedSource' : extra.description_source === 'page_excerpt' ? 'import.pageExcerpt' : 'import.fieldDescription')}
-          </h3>
-          <MarkdownPreview>{opportunity.description_raw}</MarkdownPreview>
+          <ImportSourceText text={opportunity.description_raw} info={importSourceInfo(extra, opportunity.description_raw)} t={t} />
         </div>
       )}
 

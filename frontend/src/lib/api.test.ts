@@ -1198,3 +1198,25 @@ describe('manual email checking request', () => {
     expect(sent).toMatchObject({ subject, body, opportunity_id: 'target-A', expected_target_version: 'wt1:' + 'a'.repeat(64), profile: { research_interests_text: profile.research_interests }, experience_evidence: { version: 2, entries: profile.experience_entries } });
   });
 });
+
+
+describe('import rejection codes', () => {
+  it.each([importByUrl, importByText])('preserves an oversized-input code without exposing server material', async (importer) => {
+    fetchMock.mockResolvedValueOnce(badResponse(413, JSON.stringify({ detail: {
+      code: 'import_input_too_large', message: 'PRIVATE INPUT SHOULD NOT DISPLAY', retryable: false,
+    } })));
+    const result = await importer('original material');
+    expect(result).toEqual({ ok: false, error_code: 'import_input_too_large', llm_enriched: false });
+    expect(JSON.stringify(result)).not.toContain('PRIVATE');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['invalid_html', 'unsupported_content_type', 'empty_page', 'metadata_only', 'access_page', 'javascript_required'])(
+    'preserves the unreadable-source code for %s without leaking source details', async (reason) => {
+      fetchMock.mockResolvedValueOnce(badResponse(422, JSON.stringify({ detail: {
+        code: 'import_source_unreadable', reason, message: 'PRIVATE PAGE URL OR BODY', retryable: false,
+      } })));
+      expect(await importByUrl('https://example.com')).toEqual({ ok: false, error_code: 'import_source_unreadable', llm_enriched: false });
+    },
+  );
+});

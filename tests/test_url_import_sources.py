@@ -69,7 +69,6 @@ def test_cross_page_or_downgrade_does_not_import_new_page_as_old(monkeypatch,fin
 @pytest.mark.parametrize('html,status,has_sources', [
     ('<main><p>Our lab studies sensors.</p></main>','empty',True),
     ('<main><h2>Minimum GPA</h2><div>3.0</div><p>Our lab studies sensors.</p></main>','unsupported',False),
-    ('<html><title>Sign in</title><p>Enter your password.</p></html>','unsupported',False),
 ])
 def test_supported_empty_and_unsupported_remain_distinct(monkeypatch,html,status,has_sources):
     monkeypatch.setattr(url_parser.requests,'get',lambda *a,**k:response(text=html))
@@ -207,3 +206,17 @@ def test_actual_failed_fetch_never_creates_an_empty_source(monkeypatch):
         result=client.post('/api/import-url',json={'url':URL}).json()
     assert result['ok'] is False
     assert result['opportunity'] is None
+
+
+def test_login_page_refused_before_offering_an_import_draft(monkeypatch):
+    from src.collectors.import_document import ImportDocumentError
+    html = '<html><title>Sign in</title><p>Enter your password.</p></html>'
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(text=html))
+    with pytest.raises(ImportDocumentError) as raised:
+        url_parser.parse_url_llm(URL)
+    assert raised.value.reason == 'access_page'
+    with TestClient(app) as client:
+        result = client.post('/api/import-url', json={'url': URL})
+    assert result.status_code == 422
+    assert result.json()['detail']['code'] == 'import_source_unreadable'
+    assert 'opportunity' not in result.json()

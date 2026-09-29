@@ -15,6 +15,8 @@ import {
   Star,
 } from 'lucide-react';
 import Badge from '@/components/Badge';
+import ImportSourceText from '@/components/ImportSourceText';
+import { importSourceInfo } from '@/lib/import-source';
 import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
@@ -334,11 +336,11 @@ export function OpportunityCard({
                   </div>
                 )}
 
-                {desc && (
-                  <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">
-                    {desc}
-                  </p>
-                )}
+                {desc && (isCustom ? (
+                  <ImportSourceText key={opp.id} text={desc} info={opp.import_source ?? importSourceInfo(undefined, desc)} t={t} />
+                ) : (
+                  <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">{desc}</p>
+                ))}
 
                 {showsOfferTerms && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                   <div>

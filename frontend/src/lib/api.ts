@@ -1578,7 +1578,8 @@ export async function sendFavoritesEmail(
 export interface ImportedOpportunityExtras extends Record<string, unknown> {
   suggested_skills?: string[];
   suggested_description?: string;
-  description_source?: 'page_excerpt' | 'pasted_text';
+  description_source?: 'page_excerpt' | 'page_text' | 'pasted_text';
+  ai_input_scope?: 'full_source' | 'source_excerpt';
   needs_manual_review?: boolean;
 }
 
@@ -1598,6 +1599,7 @@ export interface ImportedOpportunity {
 
 export interface ImportUrlResponse {
   ok: boolean;
+  error_code?: 'import_input_too_large' | 'import_source_unreadable';
   opportunity?: ImportedOpportunity;
   error?: string;
   llm_enriched: boolean;
@@ -1610,6 +1612,9 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ url }),
     });
   } catch (err) {
+    if (err instanceof ApiError && (err.code === 'import_input_too_large' || err.code === 'import_source_unreadable')) {
+      return { ok: false, error_code: err.code, llm_enriched: false };
+    }
     const structured = err instanceof ApiError
       ? fastApiDetailText(err.detail)
       : null;
@@ -1632,6 +1637,9 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ text }),
     });
   } catch (err) {
+    if (err instanceof ApiError && (err.code === 'import_input_too_large' || err.code === 'import_source_unreadable')) {
+      return { ok: false, error_code: err.code, llm_enriched: false };
+    }
     const structured = err instanceof ApiError
       ? fastApiDetailText(err.detail)
       : null;

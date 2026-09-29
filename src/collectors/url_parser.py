@@ -1,11 +1,10 @@
 """URL + Text Parser — V1 OG-meta scrape + V2 LLM-enriched structured extraction.
 
-V1 (parse_url) reads OpenGraph tags + regex deadline. Best-effort, no LLM
-needed, no rate-limited external dep beyond the source URL. Stable since
-the very first manual-import iteration.
+V1 (parse_url) saves the current static HTML body without a model. It keeps
+metadata separately and refuses sources with no readable body.
 
 V2 (parse_url_llm) layers a single LLM call on top of V1: feeds the page
-body + V1's already-extracted title/description back to the model with a
+existing body excerpt + legacy metadata/body hints to the model with a
 strict JSON schema and merges the response into a RawOpportunity. Used
 by the /api/import-url backend route the frontend's "Add by URL" flow
 calls. Falls back to V1 silently when no LLM provider is configured
@@ -36,6 +35,7 @@ from bs4 import BeautifulSoup
 
 from ..contact_instructions import capture_from_html, capture_metadata, same_source_page
 from .base import RawOpportunity
+from .import_document import extract_import_document
 
 logger = logging.getLogger(__name__)
 
@@ -57,26 +57,51 @@ PASTE_TEXT_MIN_CHARS = 50
 PASTE_TEXT_MAX_CHARS = 50_000
 
 
-def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunity]:
-    """V1: OG-meta + regex deadline scrape. No LLM.
+def parse_url(
+    url: str, *, html: Optional[str] = None, content_type: str | None = None,
+) -> Optional[RawOpportunity]:
+    """Save the current static page's readable text without a model call.
 
-    Pass an already-fetched ``html`` body to reuse it instead of fetching again
-    — parse_url_llm needs both the parsed V1 fields and the raw text, and would
-    otherwise round-trip to the same URL twice.
+    ``html=`` reuses a fetched document; it does not create a fetch receipt.
+    Metadata remains separate and cannot substitute for missing source text.
     """
     if html is None:
         resp = _safe_fetch(url)
         return _parse_fetched_page(url, resp) if resp is not None else None
 
-    soup = BeautifulSoup(html, "html.parser")
+    document = extract_import_document(html, content_type=content_type)
+    domain = urlparse(url).netloc
+    return RawOpportunity(
+        source="url_parser",
+        source_url=url,
+        title=document["title"] or "Untitled Opportunity",
+        description_raw=document["text"],
+        url=url,
+        organization=_domain_to_org(domain),
+        deadline=_extract_deadline(document["text"]),
+        location=None,
+        extra_fields={
+            "domain": domain,
+            "description_source": "page_text",
+            "page_meta_summary": document["meta_summary"],
+            "needs_manual_review": True,
+        },
+    )
 
+
+def _legacy_model_hints(html: str) -> tuple[str, str]:
+    """Keep the existing model payload separate from locally saved full text.
+
+    Preserve the previous metadata/body hint and title exactly. Full-source
+    model processing is a separate pending change, not enabled by source saving.
+    """
+    soup = BeautifulSoup(html, "html.parser")
     title = ""
     og_title = soup.find("meta", property="og:title")
     if og_title:
         title = og_title.get("content", "")
     elif soup.title:
         title = soup.title.get_text(strip=True)
-
     description = ""
     og_desc = soup.find("meta", property="og:description")
     meta_desc = soup.find("meta", attrs={"name": "description"})
@@ -88,27 +113,7 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
         main = soup.find("main") or soup.find("article") or soup.find("body")
         if main:
             description = main.get_text(separator=" ", strip=True)[:2000]
-
-    domain = urlparse(url).netloc
-    organization = _domain_to_org(domain)
-
-    deadline = _extract_deadline(soup.get_text())
-
-    return RawOpportunity(
-        source="url_parser",
-        source_url=url,
-        title=title or "Untitled Opportunity",
-        description_raw=description,
-        url=url,
-        organization=organization,
-        deadline=deadline,
-        location=None,
-        extra_fields={
-            "domain": domain,
-            "description_source": "page_excerpt",
-            "needs_manual_review": True,
-        },
-    )
+    return title or "Untitled Opportunity", description
 
 
 
@@ -128,7 +133,9 @@ def _parse_fetched_page(url: str, response: requests.Response) -> RawOpportunity
         # Do not offer the other page's title/body as a draft under the old URL.
         # The user can explicitly import the destination when it is intended.
         raise UrlImportSourceError("redirect_mismatch")
-    base = parse_url(url, html=response.text)
+    base = parse_url(
+        url, html=response.text, content_type=response.headers.get("Content-Type"),
+    )
     capture = capture_from_html(
         response.text,
         source_url=final_url,
@@ -288,14 +295,15 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     base = _parse_fetched_page(url, response)
 
     body_excerpt = _strip_to_text(response.text)[:LLM_BODY_EXCERPT_CHARS]
+    title_hint, description_hint = _legacy_model_hints(response.text)
     enriched = _run_llm_extraction(
         base,
         body_excerpt=body_excerpt,
         url_hint=url,
-        title_hint=base.title,
-        description_hint=base.description_raw,
+        title_hint=title_hint,
+        description_hint=description_hint,
     )
-    # URL flow always has a V1 fallback (OG meta), so on any LLM failure
+    # URL flow has the saved static source, so on an LLM failure
     # we return the V1 result rather than failing the whole request.
     return enriched if enriched is not None else base
 
@@ -376,6 +384,10 @@ def _run_llm_extraction(
         callers can log + decide whether to surface an error.
       - The merged RawOpportunity on success.
     """
+    # Scope is established by this call, never inherited or model-reported.
+    extra = dict(base.extra_fields)
+    extra.pop("ai_input_scope", None)
+    base = _replace(base, extra_fields=extra)
     try:
         from backend.lib.llm import chat_completion, is_configured
     except ImportError:
@@ -401,7 +413,9 @@ def _run_llm_extraction(
         logger.warning("LLM returned unparseable JSON, no enrichment")
         return None
 
-    return _merge_llm_into_base(base, parsed)
+    result = _merge_llm_into_base(base, parsed)
+    result.extra_fields["ai_input_scope"] = "source_excerpt"
+    return result
 
 
 EXTRACTION_SYSTEM_PROMPT = """You extract structured data from research / internship / scholarship URLs.
