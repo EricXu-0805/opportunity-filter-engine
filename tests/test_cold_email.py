@@ -339,8 +339,8 @@ class TestFacultyContactProfileTruth:
         )
 
         assert "OPPORTUNITY CONTACT:" in user
-        assert "Posting title: Undergraduate Computer Vision Assistant" in user
-        assert "Required skills: Python, PyTorch" in user
+        assert 'Posting title: "Undergraduate Computer Vision Assistant"' in user
+        assert 'Required skills: ["Python", "PyTorch"]' in user
         assert "posting's required stack" in system
 
     def test_non_faculty_unspecified_recipient_ai_prompt_and_output_fail_closed(
@@ -952,18 +952,18 @@ class TestRecentWorkGrounding:
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
         # All stored (≤3, already the most recent) titles are offered with years,
         # and the model is told to cite at most one — the most relevant.
-        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
-        assert '"Cortical Signal Denoising for Implantable BCIs" (2024)' in user_msg
+        assert '"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026' in user_msg
+        assert '"title": "Cortical Signal Denoising for Implantable BCIs", "year": 2024' in user_msg
         assert "cite at most ONE, whichever is most relevant" in user_msg
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
-        assert "within the last three): (none)" in user_msg
+        assert "within the last three): []" in user_msg
 
     def test_prompt_excludes_unverified_works(self, monkeypatch):
         # Publication trust boundary: pipeline-verified works are presented as
         # the professor's own; name-matched / legacy / junk-status works are
-        # EXCLUDED from the prompt entirely — "(none)" is offered instead of a
+        # EXCLUDED from the prompt entirely — [] is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
         assert "Publications by this professor, newest first (cite at most ONE" in user_msg
@@ -981,7 +981,7 @@ class TestRecentWorkGrounding:
             user_msg = self._capture_prompt(
                 monkeypatch, self._opp(self._WORKS, status=status))
             assert "NeuroFlow" not in user_msg
-            assert "within the last three): (none)" in user_msg
+            assert "within the last three): []" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication

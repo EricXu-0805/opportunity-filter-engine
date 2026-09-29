@@ -31,7 +31,10 @@ from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 init_sentry()
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import TypeAdapter, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -774,6 +777,30 @@ app = FastAPI(
     openapi_url=None,
     lifespan=_lifespan,
 )
+
+@app.exception_handler(RequestValidationError)
+async def safe_profile_validation_error(request: Request, exc: RequestValidationError):
+    from backend.lib.profile_validation import safe_profile_validation_detail, safe_validation_errors
+
+    path = request.url.path
+    profile_root = path == "/api/matches" or (
+        path.startswith("/api/matches/") and path.endswith(("/gaps", "/explain"))
+    )
+    detail = safe_profile_validation_detail(exc, profile_root=profile_root)
+    if detail is not None:
+        return JSONResponse(status_code=422, content={"detail": detail})
+    profile_consumer = profile_root or path in {
+        "/api/matches/view", "/api/tailor", "/api/tailor/renovate", "/api/tailor/bullet", "/api/roadmap",
+    } or path.startswith("/api/cold-email") or (
+        path.startswith("/api/opportunities/") and path.endswith("/chat")
+    )
+    if profile_consumer:
+        # A parent model validator (e.g. duplicate renovation section IDs)
+        # can attach the entire request to an error at body root. Keep the
+        # standard error-list shape without reflecting its profile or text.
+        return JSONResponse(status_code=422, content={"detail": safe_validation_errors(exc)})
+    return await request_validation_exception_handler(request, exc)
+
 
 app.add_middleware(
     RequestBodyLimitMiddleware,

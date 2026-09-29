@@ -1,6 +1,6 @@
 # Email material selection
 
-Current pipeline: `w12.16`.
+Current pipeline: `w12.17`.
 
 ## Experience selection
 
@@ -25,7 +25,8 @@ Before every provider call, the serialized complete messages must fit 120,000 Un
 
 ## Boundaries still open
 
-- The existing `ProfileRequest` limits and transformations are unchanged. Examples: at most 50 skills/courses, 50-character skill names, 100-character course entries, 2,000-character interests and 100-character name/year/major. This change preserves fields after that admission; it does not claim arbitrary-length source ingestion.
+- Profile admission now uses explicit capacity errors and preserves the complete admitted fields; see [Profile input contract](profile_input_contract.md). The email provider still has its separate 120,000-character combined-message limit. This does not claim arbitrary-length source ingestion.
+- Legacy target fields also reach the shared brief without prefix caps; see [Email target input](email_target_input.md). Generated topic hints and template output selection remain separate.
 - The template keeps its existing shorter presentation. Full AI input does not mean the final email should repeat every fact.
 - V2 email evidence now carries the current resume master and pairs each selected original with its valid activity/education/publication context; see [Email activity context](email_activity_context.md). Independent confirmed originals remain usable without inventing a relation. General semantic activity attribution is still not verified.
 - Deterministic checks and captured test inputs do not establish live-model writing quality, broad semantic entailment, delivery, or production readiness. Human review should separately assess facts, specificity, naturalness and the clarity of the request.

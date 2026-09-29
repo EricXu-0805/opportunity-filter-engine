@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
 import { canFallbackColdEmailStream, emailInputTooLargeMessage, isEmailInputTooLarge } from '@/lib/cold-email-stream';
 import type { ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
@@ -302,8 +304,11 @@ function applyQuickEdit(
       if (courses.length === 0) {
         return { body, reply: t('coldEmail.replies.courseworkNone') };
       }
-      const courseStr = courses.slice(0, 4).join(', ');
+      const courseStr = courses.join(', ');
       const insertion = `\n\nI have completed relevant coursework including ${courseStr}.`;
+      if (body.length + insertion.length > COLD_EMAIL_DRAFT_LIMITS.body) {
+        return { body, reply: t('profileInput.courseworkTooLarge') };
+      }
       // FE-4: insert before the sign-off. The template closes with "Best
       // regards"/"Respectfully", but an AI draft can drift to "Sincerely",
       // "Warm regards", etc. — matching only Best/Respectfully appended the line
@@ -884,7 +889,12 @@ export default function ColdEmailModal({
     } catch (err) {
       if (!current()) return;
       const targetFailure = targetVersionFailure(err);
-      if (isEmailInputTooLarge(err)) {
+      const profileIssue = profileInputMessage(err, t);
+      if (profileIssue) {
+        if (keepEditor || preserveDraft) setChatMessages(messages => [...messages, { role: 'assistant', content: profileIssue }]);
+        else setError(profileIssue);
+      }
+      else if (isEmailInputTooLarge(err)) {
         if (keepEditor || preserveDraft) setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
         else setError(emailInputTooLargeMessage(locale));
       }
@@ -1449,7 +1459,9 @@ export default function ColdEmailModal({
           if (email) setRecipient((prev) => prev || email);
         } catch (error) {
           const failure = targetVersionFailure(error);
-          if (current() && isEmailInputTooLarge(error)) {
+          if (current() && profileInputMessage(error, t)) {
+            setChatMessages(messages => [...messages, { role: 'assistant', content: profileInputMessage(error, t)! }]);
+          } else if (current() && isEmailInputTooLarge(error)) {
             setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
           } else if (current() && readingChanged(error)) reportReadingChange();
           else if (current() && failure) reportTargetVersionFailure(failure);
@@ -1458,7 +1470,7 @@ export default function ColdEmailModal({
       })();
     });
     return unsubscribe;
-  }, [locale, contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
+  }, [t, locale, contextDirty, contextChanged, requestContactContext, sourceReady, isOpen, recipientStatus, profile, opportunityId, expectedTargetVersion, targetVersionError, captureDraftSession, reportTargetVersionFailure, reportReadingChange]);
 
   async function selectVariant(idx: number) {
     const v = allVariants[idx];
@@ -1615,7 +1627,9 @@ export default function ColdEmailModal({
       ]);
     } catch (error) {
       const failure = targetVersionFailure(error);
-      if (current() && isEmailInputTooLarge(error)) {
+      if (current() && profileInputMessage(error, t)) {
+        setChatMessages(messages => [...messages, { role: 'assistant', content: profileInputMessage(error, t)! }]);
+      } else if (current() && isEmailInputTooLarge(error)) {
         setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
       } else if (current() && readingChanged(error)) reportReadingChange();
       else if (current() && failure) reportTargetVersionFailure(failure);
@@ -1745,7 +1759,8 @@ export default function ColdEmailModal({
     } catch (error) {
       if (current()) {
         const failure = targetVersionFailure(error);
-        if (isEmailInputTooLarge(error)) reply(emailInputTooLargeMessage(locale));
+        if (profileInputMessage(error, t)) reply(profileInputMessage(error, t)!);
+        else if (isEmailInputTooLarge(error)) reply(emailInputTooLargeMessage(locale));
         else if (readingChanged(error)) { reportReadingChange(); reply(locale === 'zh' ? '原稿已保留。请在“联系目的与背景”中核对或跳过论文阅读。' : 'Your draft is kept. Review or skip paper reading in Contact purpose and background.'); }
         else if (failure) { reportTargetVersionFailure(failure); reply(t('coldEmail.editFailed')); }
         else {

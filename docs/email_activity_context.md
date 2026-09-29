@@ -1,6 +1,6 @@
 # Email activity context
 
-Pipeline: `w12.16`. This contract binds supplied student facts; it does not verify that the work happened or authenticate the current cloud profile.
+Pipeline: `w12.17`. This contract binds supplied student facts; it does not verify that the work happened or authenticate the current cloud profile.
 
 ## Request and compatibility
 

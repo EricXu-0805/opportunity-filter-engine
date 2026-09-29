@@ -11,9 +11,9 @@ Pattern mirrors ``backend/routes/cold_email.py``:
     returns malformed JSON, or anti-fabrication validation rejects every
     bullet. Callers always get a usable response — never a 5xx for LLM
     issues.
-  - All free-text profile fields are flattened through ``_sanitize_field``
-    before being interpolated into the prompt to defend against prompt
-    injection (mirrors the cold-email handler).
+  - Accepted profile fields reach the prompt in full, with whitespace flattened
+    only for formatting. External text remains untrusted data. Oversized
+    serialized prompts are refused explicitly before provider I/O.
 
 Writing checks are deliberately bounded: concrete terms and quantities must
 come from the corresponding original bullet, and sensitive EN/ZH claim locks
@@ -44,6 +44,7 @@ from backend.lib.grounding import LENIENT_PROSE_NUMERIC
 from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
+from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.lib.release_scope import release_visible_opportunity_by_id
@@ -98,7 +99,9 @@ _DEFAULT_BULLETS_PER_REQUEST = 12
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w13.5"
+TAILOR_PIPELINE_VERSION = "w13.6"
+
+TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 
 
 def _require_pipeline_version(expected: str | None) -> str:
@@ -380,15 +383,15 @@ def _ai_tailor_bullets(
       - JSON parse failure,
       - schema mismatch (missing 'bullets', not a list, items missing 'text').
     """
-    name = _sanitize_field(profile_dict.get("name", ""), max_len=100) or "(unnamed)"
-    major = _sanitize_field(profile_dict.get("major", ""), max_len=100) or "(unspecified)"
-    year = _sanitize_field(profile_dict.get("year", ""), max_len=50) or "(unspecified)"
-    research = _sanitize_field(profile_dict.get("research_interests_text", "")) or "(none stated)"
+    name = _sanitize_field(profile_dict.get("name", ""), max_len=None) or "(unnamed)"
+    major = _sanitize_field(profile_dict.get("major", ""), max_len=None) or "(unspecified)"
+    year = _sanitize_field(profile_dict.get("year", ""), max_len=None) or "(unspecified)"
+    research = _sanitize_field(profile_dict.get("research_interests_text", ""), max_len=None) or "(none stated)"
 
     skills_lines: list[str] = []
-    for skill in (profile_dict.get("hard_skills") or [])[:20]:
+    for skill in profile_dict.get("hard_skills") or []:
         if isinstance(skill, dict):
-            n = str(skill.get("name", ""))
+            n = _sanitize_field(skill.get("name", ""), max_len=None)
             if n:
                 # The CLAIMABLE level, same one the cold email speaks at. The
                 # rules below tell the model to lead with expert and experienced
@@ -401,11 +404,11 @@ def _ai_tailor_bullets(
         else:
             # A bare string carries no level. Printing one would assert
             # something the profile never said.
-            skills_lines.append(f"- {skill}")
+            skills_lines.append(f"- {_sanitize_field(skill, max_len=None)}")
     skills_block = "\n".join(skills_lines) or "(none listed)"
 
-    coursework = filter_course_entries(profile_dict.get("coursework"))[:15]
-    coursework_str = ", ".join(coursework) or "(none listed)"
+    coursework = filter_course_entries(profile_dict.get("coursework"))
+    coursework_str = _sanitize_field(", ".join(coursework), max_len=None) or "(none listed)"
 
     original_lines = []
     for i, b in enumerate(original_bullets[:_DEFAULT_BULLETS_PER_REQUEST], start=1):
@@ -450,11 +453,16 @@ def _ai_tailor_bullets(
         f"same order. Return the JSON object now."
     )
 
+    messages = [
+        {"role": "system", "content": _system_prompt_for(locale)},
+        {"role": "user", "content": user_prompt},
+    ]
+    check_prompt_size(
+        messages, limit=TAILOR_PROMPT_MAX_CHARACTERS, code="TAILOR_INPUT_TOO_LARGE",
+        message="The combined resume input is too long. Reduce the selected material and try again.",
+    )
     raw = chat_completion(
-        [
-            {"role": "system", "content": _system_prompt_for(locale)},
-            {"role": "user", "content": user_prompt},
-        ],
+        messages,
         max_tokens=2000,
         temperature=0.4,
         reasoning_effort="low",
@@ -809,11 +817,10 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
 async def _generate_tailor_response(request: TailorRequest, opp: dict) -> TailorResponse:
     """Tailor a student's resume bullets for a specific opportunity.
 
-    Always returns a usable response:
-      - 404 only if ``opportunity_id`` doesn't exist (matches cold-email
-        contract — every other failure mode degrades to the local
-        passthrough fallback so the user never sees a 5xx).
-      - Empty ``original_bullets`` → 200 with empty list and a hint.
+    Provider failures preserve the local original fallback. Schema, stale-target
+    and combined-input limit failures are explicit refusals, never a successful
+    fallback that hides rejected input. Empty bullets return an explanatory
+    empty response.
     """
     if not request.original_bullets:
         return TailorResponse(

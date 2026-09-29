@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
@@ -375,14 +377,14 @@ export function useResultsData(
         if (interimPainted) {
           setRefineFailed(true);
         } else {
-          const code = caught instanceof ApiError ? caught.code : null;
-          setErrorCode(code);
+          const code = caught instanceof ApiError || caught && typeof caught === 'object' && 'code' in caught && (caught.code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || caught.code === 'PROFILE_INPUT_INVALID') ? caught.code : null;
+          setErrorCode(typeof code === 'string' ? code : null);
           setError(
-            code === 'MATCH_TYPE_REQUIRED'
+            profileInputMessage(caught, t) ?? (code === 'MATCH_TYPE_REQUIRED'
               ? t('home.validation.seekingRequired')
               : caught instanceof ApiError
                 ? caught.message
-                : t('results.loadFailed'),
+                : t('results.loadFailed')),
           );
         }
       } finally {

@@ -1,3 +1,4 @@
+import { assertProfileInput, ProfileInputError } from './profile-input';
 import type { EmailTextSelection } from './email-revision';
 import { validateResumeMaster } from './resume-master';
 import type {
@@ -95,10 +96,10 @@ function safeHttpMessage(status: number): string {
 }
 
 async function apiErrorFromResponse(res: Response): Promise<ApiError> {
-  const raw = (await res.text().catch(() => '')).slice(0, 4096);
+  const raw = await res.text().catch(() => '');
   let detail: unknown = null;
   try {
-    detail = raw ? JSON.parse(raw) : null;
+    detail = raw && raw.length <= 1_000_000 ? JSON.parse(raw) : null;
   } catch {
     // HTML/text gateway bodies are intentionally ignored.
   }
@@ -134,7 +135,8 @@ async function apiErrorFromResponse(res: Response): Promise<ApiError> {
   return new ApiError(
     res.status,
     code,
-    message,
+    code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || code === 'PROFILE_INPUT_INVALID'
+      ? 'Check your profile input. Your original content is kept.' : message,
     envelope.retryable === true || res.status >= 500 || res.status === 429,
     res.headers?.get?.('x-request-id') ?? undefined,
     fastApiDetail,
@@ -354,7 +356,7 @@ async function requestWithRevealRetry<T>(
  * keywords for an exact-match bonus. Previously hardcoded to [], so that bonus
  * path was dead for every real user. Splits on commas/semicolons/newlines and
  * the conjunction "and" (so "computer vision and machine learning" → two terms),
- * trims, dedupes, and caps at 20 (the backend also caps). Non-matching terms are
+ * trims and dedupes without discarding later terms. The full text also travels unchanged. Non-matching terms are
  * harmless — the matcher only rewards terms that actually intersect a keyword.
  */
 export function deriveDesiredFields(interests: string | undefined): string[] {
@@ -364,23 +366,22 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
   for (const raw of interests.split(/[,;\n]|\s+and\s+/i)) {
     const term = raw.trim();
     const key = term.toLowerCase();
-    if (term.length >= 2 && term.length <= 100 && !seen.has(key)) {
+    if (term.length >= 2 && !seen.has(key)) {
       seen.add(key);
       out.push(term);
     }
-    if (out.length >= 20) break;
   }
   return out;
 }
 
-function toProfileRequest(profile: ProfileData): ProfileRequest {
+export function toProfileRequest(profile: ProfileData): ProfileRequest {
   const homeSchool = profile.home_school ?? 'uiuc';
   const requestedSeekingTypes =
     profile.seeking_types ?? ['research', 'summer_program'];
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
     (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
-  return {
+  const request: ProfileRequest = {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
     // home_school is the slug the matcher's scope filter consumes.
@@ -403,8 +404,8 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     hard_skills: profile.skills.map((s) => ({
       name: s.name,
       level: s.level,
-      ...(s.source ? { source: s.source } : {}),
-      ...(s.confirmed ? { confirmed: true } : {}),
+      ...(s.source !== undefined && s.source !== null ? { source: s.source } : {}),
+      ...(s.confirmed === true ? { confirmed: true } : {}),
     })),
     coursework: profile.coursework ?? [],
     experience_level: profile.experience_level ?? 'beginner',
@@ -419,6 +420,8 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     include_cross_school:
       RELEASE_SCOPE.crossSchoolMatching && (profile.include_cross_school ?? false),
   };
+  assertProfileInput(request);
+  return request;
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
@@ -994,6 +997,9 @@ export async function generateColdEmailStream(
             const detail = (failure as { detail: unknown }).detail;
             if (detail && typeof detail === 'object' && 'code' in detail) {
               const code = detail.code;
+              if (code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || code === 'PROFILE_INPUT_INVALID') {
+                throw new ApiError(response.status, code, 'Check your profile input.', false, undefined, detail);
+              }
               if ((response.status === 409 && (code === 'WRITING_TARGET_CHANGED' || code === 'EMAIL_CONTACT_INSTRUCTIONS'))
                 || (response.status === 422 && code === 'EMAIL_READING_CHANGED')
                 || (response.status === 413 && code === 'EMAIL_INPUT_TOO_LARGE')) {
@@ -1050,7 +1056,7 @@ export async function generateColdEmailStream(
     })()]);
   } catch (error) {
     active();
-    if (error instanceof ColdEmailStreamError || error instanceof ApiError && error.code === 'INVALID_EMAIL_EXPERIENCE_CONTEXT') throw error;
+    if (error instanceof ColdEmailStreamError || error instanceof ProfileInputError || error instanceof ApiError && ['INVALID_EMAIL_EXPERIENCE_CONTEXT', 'PROFILE_INPUT_LIMIT_EXCEEDED', 'PROFILE_INPUT_INVALID'].includes(error.code)) throw error;
     throw new ColdEmailStreamError('network_error');
   } finally {
     retired = true; clearTimeout(timer);

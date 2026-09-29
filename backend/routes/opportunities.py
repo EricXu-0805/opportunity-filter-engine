@@ -30,6 +30,7 @@ from backend.lib.llm import (
     chat_model_slug,
 )
 from backend.lib.position_truth import displayed_title
+from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import (
     _UNVERIFIED_PUBLICATION_KEYS as _UNVERIFIED_PUBLICATION_KEYS,
@@ -73,6 +74,16 @@ from src.tracking.professor_profiles import canonical_professor_id
 
 router = APIRouter()
 logger = logging.getLogger("ofe.opportunities")
+
+CHAT_PROMPT_MAX_CHARACTERS = 120_000
+
+
+def _check_chat_prompt(messages: list[dict]) -> None:
+    check_prompt_size(
+        messages, limit=CHAT_PROMPT_MAX_CHARACTERS, code="CHAT_INPUT_TOO_LARGE",
+        message="The combined chat input is too long. Reduce the conversation or profile and try again.",
+    )
+
 
 # The exact release scope the current frontend build sends on every server-side
 # detail fetch (frontend/src/lib/release-scope.ts). It doubles as a capability
@@ -730,7 +741,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
             f"- Skills: {_format_skill_list(p.hard_skills)}",
             f"- Coursework: {', '.join(p.coursework) or '(none listed)'}",
             f"- Experience level: {p.experience_level or '—'}",
-            f"- Research interests: {' '.join((p.research_interests_text or '').split())[:300] or '(none stated)'}",
+            f"- Research interests: {_sanitize_field(p.research_interests_text, max_len=None) or '(none stated)'}",
             "",
             "Personalize answers when the user asks fit-style questions (e.g., 'am I eligible', 'what gaps do I have').",
         ])
@@ -744,6 +755,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
 
 
 def _llm_chat_call(messages: list[dict], model_id: str | None = None) -> str | None:
+    _check_chat_prompt(messages)
     # User picked an OpenRouter model → route there; on any miss (unknown id,
     # OpenRouter unconfigured or failing) fall through to the default chain so
     # the picker can never make chat worse than the default.
@@ -760,6 +772,7 @@ def _llm_chat_call(messages: list[dict], model_id: str | None = None) -> str | N
 
 
 def _llm_chat_stream(messages: list[dict], model_id: str | None = None) -> Iterator[str]:
+    _check_chat_prompt(messages)
     # Streaming mirror of _llm_chat_call: a picked model that yields ZERO
     # chunks (unknown id, OpenRouter unconfigured or dead) falls through to
     # the default chain. A mid-stream raise after partial output propagates —
@@ -894,6 +907,9 @@ async def chat_with_opportunity(
     for msg in body.history[-10:]:
         messages.append({"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": body.message})
+    # Refuse before SSE headers or local fallback can turn a size error into
+    # a successful-looking, incomplete answer. Every selected message is kept.
+    _check_chat_prompt(messages)
 
     if stream == 1 or "text/event-stream" in request.headers.get("accept", ""):
         # Sync generator → Starlette iterates it in a threadpool, so the

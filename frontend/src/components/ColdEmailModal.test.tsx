@@ -972,7 +972,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal
           isOpen
           onClose={vi.fn()}
-          profile={makeProfile({ coursework: ['CS 225', 'CS 374'] })}
+          profile={makeProfile({ coursework: ['CS 225', 'CS 374', 'CS 101', 'CS 102', 'LATE COURSE 5'] })}
           opportunityId="opp"
           opportunityTitle="REU"
         />,
@@ -984,6 +984,17 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue(/CS 225/)).toBeInTheDocument());
       expect(screen.getByDisplayValue(/CS 374/)).toBeInTheDocument();
+      expect(screen.getByDisplayValue(/LATE COURSE 5/)).toBeInTheDocument();
+    });
+
+    it('keeps the draft when complete coursework exceeds the email body limit', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ body: 'Original draft.\n\nBest regards,\nAlex' })] });
+      render(<ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile({ coursework: Array.from({length:110},(_,i)=>String(i)+'x'.repeat(990)) })} opportunityId="opp" opportunityTitle="REU" />);
+      await screen.findByDisplayValue(/Original draft/);
+      fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByText('profileInput.courseworkTooLarge')).toBeInTheDocument();
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original draft.\n\nBest regards,\nAlex');
+      expect(screen.queryByRole('region', {name:'Pending edit suggestion'})).toBeNull();
     });
 
     it('FE-4: "coursework" inserts BEFORE a non-"Best" closing (e.g. Sincerely)', async () => {

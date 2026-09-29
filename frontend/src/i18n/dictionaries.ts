@@ -3,6 +3,38 @@ export type Locale = typeof LOCALES[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 export const en = {
+  profileInput: {
+  shareTooLarge: "This profile is too long to put in a share link. Share fewer details and try again. Your profile is unchanged.",
+  editProfile: "Edit profile",
+  totalTooLarge: "The complete profile is too long. Reduce the material used for this request and try again. Your original content is kept.",
+  matchTooLarge: "The profile and opportunity materials are too long together. Reduce the material used for this request and try again. Your original content is kept.",
+  courseworkTooLarge: "Adding all courses would exceed the email length limit. Add only the relevant courses to the email yourself. Your draft is unchanged.",
+  "fields": {
+    "international": "International student status", "weight": "Matching preference",
+    "all": "Profile",
+    "name": "Name",
+    "school": "School",
+    "college": "College",
+    "major": "Major",
+    "majors": "Additional majors",
+    "year": "Year",
+    "types": "Opportunity types",
+    "interests": "Research interests",
+    "skills": "Skills",
+    "courses": "Coursework",
+    "experience": "Experience level",
+    "linkedin": "LinkedIn link",
+    "github": "GitHub link",
+    "scholar": "Google Scholar link"
+  },
+  "characters": "{field} has {actual} characters; the limit is {limit}. Edit this input in your profile and try again. Your original content is kept.",
+  "items": "{field} has {actual} items; the limit is {limit}. Review this list in your profile and try again. Your original content is kept.",
+  "item": "{field}, item {n}",
+  "invalid": "Check {field} in your profile and try again. Your original content is kept.",
+  "shareInvalid": "This share link could not be imported. Your current profile is unchanged.",
+  "tailorTooLarge": "The profile, selected resume text and opportunity are too long together. Reduce the material selected for this request and try again. Your draft is kept.",
+  "chatTooLarge": "The question, conversation, profile and opportunity are too long together. Shorten the question or start a new conversation, or turn off profile sharing, and try again. Your question is kept."
+},
   common: {
     appName: 'JoinALab',
     // Shared relative-time copy. Three components used to carry their own
@@ -4906,6 +4938,38 @@ export const en = {
 } as const;
 
 export const zh = {
+  profileInput: {
+  shareTooLarge: "资料太长，无法放进分享链接。请减少要分享的内容后重试，原资料未改动。",
+  editProfile: "修改个人资料",
+  totalTooLarge: "整份资料过长，请减少本次使用的材料后重试。原内容已保留。",
+  matchTooLarge: "个人资料和机会材料合计过长，请减少本次使用的材料后重试。原内容已保留。",
+  courseworkTooLarge: "加入全部课程会超过邮件长度上限。请在正文中手动补充本次相关课程，原稿未改动。",
+  "fields": {
+    "international": "国际生身份", "weight": "匹配偏好",
+    "all": "个人资料",
+    "name": "姓名",
+    "school": "学校",
+    "college": "学院",
+    "major": "专业",
+    "majors": "其他专业",
+    "year": "年级",
+    "types": "机会类型",
+    "interests": "研究兴趣",
+    "skills": "技能",
+    "courses": "课程",
+    "experience": "经验程度",
+    "linkedin": "LinkedIn 链接",
+    "github": "GitHub 链接",
+    "scholar": "Google Scholar 链接"
+  },
+  "characters": "{field}共 {actual} 个字符，上限为 {limit}。请在个人资料中修改后重试，原文已保留。",
+  "items": "{field}共 {actual} 项，上限为 {limit}。请在个人资料中整理这份列表后重试，原内容已保留。",
+  "item": "{field}第 {n} 项",
+  "invalid": "请检查个人资料中的{field}后重试，原内容已保留。",
+  "shareInvalid": "无法导入这个分享链接，当前资料未改动。",
+  "tailorTooLarge": "个人资料、所选简历内容和机会资料合计太长。请减少本次选用的内容后重试，原稿已保留。",
+  "chatTooLarge": "问题、对话、个人资料和机会资料合计太长。请缩短问题、开始新对话，或关闭分享个人资料后重试，问题已保留。"
+},
   common: {
     appName: 'JoinALab',
     ago: {

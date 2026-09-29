@@ -172,7 +172,7 @@ def test_every_public_route_uses_confirmed_current_evidence_and_returns_receipt(
     assert out["experience_usage"]["eligible_count"] == 1
     assert len(out["experience_usage"]["selected"]) == 1
     assert out["experience_usage"]["selected"][0]["excerpt"] == RELEVANT
-    assert out["pipeline_version"] == "w12.16"
+    assert out["pipeline_version"] == "w12.17"
     if endpoint == "variants":
         assert all(v["experience_usage"]["selected"] == out["experience_usage"]["selected"] for v in out["variants"])
 
@@ -278,7 +278,8 @@ def test_invalid_unicode_returns_private_input_free_422(client, endpoint, field)
     assert response.status_code == 422
     details = response.json()["detail"]
     assert details and all(set(error) == {"loc", "msg", "type"} for error in details)
-    assert any(field in error["loc"] for error in details)
+    assert all(error["loc"] == ["body"] and error["msg"] == "Request input is invalid."
+               for error in details)
     assert "PRIVATE-RESUME-MARKER" not in response.text
     assert RELEVANT not in response.text
 

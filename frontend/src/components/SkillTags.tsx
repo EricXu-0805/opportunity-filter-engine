@@ -138,16 +138,16 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               // Tailwind has no dashed RING, so an unsettled chip swaps the
               // ring for the dashed border this codebase already uses for
               // provisional things, in the amber of the hint line below.
-              className={`inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ${cfg.bg} ${cfg.color} ${unsettled ? 'border border-dashed border-amber-300' : `ring-1 ${cfg.ring}`} text-sm font-medium group transition-all duration-200`}
+              className={`inline-flex max-w-full min-w-0 items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ${cfg.bg} ${cfg.color} ${unsettled ? 'border border-dashed border-amber-300' : `ring-1 ${cfg.ring}`} text-sm font-medium group transition-all duration-200`}
             >
-              {skill.name}
+              <span className="min-w-0 break-all">{skill.name}</span>
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   cycleLevel(skill.name);
                 }}
-                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
+                className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
                 title={
                   // The line it was found on beats any generic explanation:
                   // "Relevant coursework: Introduction to Python" tells the
@@ -169,7 +169,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   e.stopPropagation();
                   removeSkill(skill.name);
                 }}
-                className="p-0.5 rounded hover:bg-black/5 transition-colors"
+                className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
                 aria-label={t('skills.remove', { skill: skill.name })}
               >
                 <X className="w-3 h-3" />

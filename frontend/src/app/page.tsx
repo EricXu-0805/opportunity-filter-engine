@@ -46,6 +46,7 @@ function HomePageInner() {
     sharedBanner,
     dismissSharedBanner,
     shareCopied,
+    shareError,
     saveStatus,
     isSubmitting,
     retryCloudSave,
@@ -78,6 +79,7 @@ function HomePageInner() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {shareError && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{shareError}</p>}
       <SharedBanner message={sharedBanner} onDismiss={dismissSharedBanner} t={t} />
 
       <HeroSection t={t} />

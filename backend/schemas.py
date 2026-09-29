@@ -40,6 +40,37 @@ class ProfilePreferences(BaseModel):
     exclude_citizenship_restricted: bool = True
 
 
+# Unicode codepoints. Complete admitted profile data is never prefix-clipped.
+PROFILE_MAX_CHARACTERS = 160_000
+PROFILE_TEXT_LIMITS = {
+    "name": 256, "school": 1000, "home_school": 50, "year": 100,
+    "major": 1000, "college": 1000, "experience_level": 100,
+    "research_interests_text": 60_000,
+    "linkedin_url": 2048, "github_url": 2048, "scholar_url": 2048,
+}
+PROFILE_LIST_LIMITS = {
+    "seeking_type": (20, 100), "desired_fields": (512, 60_000),
+    "secondary_interests": (512, 1000), "coursework": (512, 1000),
+}
+PROFILE_SKILL_LIMIT = 512
+PROFILE_SKILL_TEXT_LIMIT = 1000
+
+
+def _profile_error(field: str, *, actual: int | None = None,
+                   limit: int | None = None, unit: str = "characters") -> None:
+    if actual is not None and limit is not None:
+        raise PydanticCustomError("profile_input_limit_exceeded", "Profile input exceeds the supported limit.",
+                                  {"field": field, "actual": actual, "limit": limit, "unit": unit})
+    raise PydanticCustomError("profile_input_invalid", "Profile input is invalid.", {"field": field})
+
+
+def _profile_text(value: object, field: str, limit: int) -> None:
+    if not isinstance(value, str) or any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+        _profile_error(field)
+    if len(value) > limit:
+        _profile_error(field, actual=len(value), limit=limit)
+
+
 class ProfileRequest(BaseModel):
     name: str = ""
     school: str = ""
@@ -75,78 +106,74 @@ class ProfileRequest(BaseModel):
     include_cross_school: bool = False
     preferences: ProfilePreferences | None = None
 
-    @field_validator("research_interests_text")
+    @model_validator(mode="before")
     @classmethod
-    def cap_research_text(cls, v: str) -> str:
-        return v[:2000]
-
-    @field_validator("name")
-    @classmethod
-    def cap_name(cls, v: str) -> str:
-        return v[:100]
-
-    # These four are interpolated verbatim into the chat system prompt —
-    # uncapped they let a 100k-char field balloon the prompt past the LLM
-    # context budget.
-    @field_validator("year", "major", "college", "experience_level")
-    @classmethod
-    def cap_short_text(cls, v: str) -> str:
-        return v[:100]
+    def complete_profile_input(cls, value):
+        if not isinstance(value, dict):
+            _profile_error("profile")
+        for field, limit in PROFILE_TEXT_LIMITS.items():
+            if field in value:
+                _profile_text(value[field], f"profile.{field}", limit)
+        for field, (count_limit, text_limit) in PROFILE_LIST_LIMITS.items():
+            if field not in value:
+                continue
+            items = value[field]
+            if not isinstance(items, list):
+                _profile_error(f"profile.{field}")
+            if len(items) > count_limit:
+                _profile_error(f"profile.{field}", actual=len(items), limit=count_limit, unit="items")
+            for item in items:
+                _profile_text(item, f"profile.{field}", text_limit)
+        if "hard_skills" in value:
+            items = value["hard_skills"]
+            if not isinstance(items, list):
+                _profile_error("profile.hard_skills")
+            if len(items) > PROFILE_SKILL_LIMIT:
+                _profile_error("profile.hard_skills", actual=len(items), limit=PROFILE_SKILL_LIMIT, unit="items")
+            for item in items:
+                if isinstance(item, SkillItem):
+                    item = item.model_dump()
+                if isinstance(item, str):
+                    _profile_text(item, "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
+                elif isinstance(item, dict):
+                    _profile_text(item.get("name", ""), "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
+                    _profile_text(item.get("level", "beginner"), "profile.hard_skills.level", PROFILE_SKILL_TEXT_LIMIT)
+                    if isinstance(item.get("source"), str) and any(0xD800 <= ord(c) <= 0xDFFF for c in item["source"]):
+                        _profile_error("profile.hard_skills.source")
+                else:
+                    _profile_error("profile.hard_skills")
+        return value
 
     @field_validator("home_school")
     @classmethod
-    def normalize_home_school(cls, v: str) -> str:
-        return v.strip().lower()[:50] or "uiuc"
-
-    @field_validator("linkedin_url", "github_url", "scholar_url")
-    @classmethod
-    def cap_url(cls, v: str) -> str:
-        return v[:300]
-
-    @field_validator("coursework")
-    @classmethod
-    def cap_coursework(cls, v: list) -> list:
-        # 100 to match every other string list on this model. At 20 the cap was
-        # sized for a course code ("MATH 241") and silently halved the course
-        # names the resume parser goes out of its way to extract — it accepts
-        # names up to 40 characters precisely so "Data Structures" survives
-        # alongside the codes. "Introduction to Machine Learning" reached the
-        # ranker and the tailor prompt as "Introduction to Mach".
-        return [str(c)[:100] for c in v[:50]]
-
-    @field_validator("seeking_type", "desired_fields", "secondary_interests")
-    @classmethod
-    def cap_string_lists(cls, v: list) -> list:
-        return [str(x)[:100] for x in v[:20]]
+    def normalize_home_school(cls, value: str) -> str:
+        return value.strip().lower() or "uiuc"
 
     @field_validator("hard_skills", mode="before")
     @classmethod
-    def normalize_skills(cls, v) -> list:
-        if not isinstance(v, list):
-            return []
+    def normalize_skills(cls, values) -> list:
         result = []
-        for item in v[:50]:
+        for item in values:
+            if isinstance(item, SkillItem):
+                item = item.model_dump()
             if isinstance(item, str):
-                result.append(SkillItem(name=item[:50], level="beginner"))
-            elif isinstance(item, dict):
-                item["name"] = str(item.get("name", ""))[:50]
-                item["level"] = str(item.get("level", "beginner"))[:50]
-                # Absent means student-chosen; anything we do not recognise is
-                # NOT promoted to that. A client asserting an unknown source
-                # would otherwise re-authorise the experience claim the gate
-                # exists to withhold, so unrecognised values fail closed to
-                # "imported" rather than to "typed".
-                source = item.get("source")
-                if source is not None:
-                    source = str(source)[:20]
-                    if source not in _SKILL_SOURCES:
-                        source = "unknown"
-                item["source"] = source
-                item["confirmed"] = item.get("confirmed") is True
-                result.append(SkillItem(**item))
+                result.append(SkillItem(name=item, level="beginner"))
             else:
-                result.append(item)
+                # Do not mutate the caller's dictionary. Unknown provenance is
+                # still imported/unconfirmed, never promoted to student-chosen.
+                normalized = dict(item)
+                source = normalized.get("source")
+                normalized["source"] = source if source is None or (isinstance(source, str) and source in _SKILL_SOURCES) else "unknown"
+                normalized["confirmed"] = normalized.get("confirmed") is True
+                result.append(SkillItem(**normalized))
         return result
+
+    @model_validator(mode="after")
+    def complete_profile_budget(self):
+        actual = len(json.dumps(self.model_dump(), ensure_ascii=False, separators=(",", ":")))
+        if actual > PROFILE_MAX_CHARACTERS:
+            _profile_error("profile", actual=actual, limit=PROFILE_MAX_CHARACTERS)
+        return self
 
     def skill_names(self) -> list[str]:
         return [s.name if isinstance(s, SkillItem) else s for s in self.hard_skills]
@@ -990,11 +1017,11 @@ class RenovateRequest(BaseModel):
         seen_bullets: set[str] = set()
         for s in self.sections:
             if s.id in seen_sections:
-                raise ValueError(f"duplicate section id: {s.id}")
+                raise ValueError("duplicate section id")
             seen_sections.add(s.id)
             for b in s.bullets:
                 if b.id in seen_bullets:
-                    raise ValueError(f"duplicate bullet id: {b.id}")
+                    raise ValueError("duplicate bullet id")
                 seen_bullets.add(b.id)
                 total += 1
         if total > 100:

@@ -976,7 +976,7 @@ function ResultsContent() {
         <ProfileCompletenessHint profile={profile} onEdit={() => router.push('/')} t={t} />
       )}
 
-      {(loading || !data) && (
+      {!error && (loading || !data) && (
         <div className="space-y-3 mb-8">
           <div className="skeleton h-11 rounded-xl" />
           <div className="flex flex-wrap gap-2">
@@ -1031,7 +1031,7 @@ function ResultsContent() {
         </div>
       )}
 
-      {loading && (
+      {loading && !error && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
           {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} />
@@ -1051,12 +1051,12 @@ function ResultsContent() {
           <button
             type="button"
             onClick={() => {
-              if (errorCode === 'MATCH_TYPE_REQUIRED') router.push('/');
+              if (errorCode === 'MATCH_TYPE_REQUIRED' || errorCode === 'PROFILE_INPUT_LIMIT_EXCEEDED' || errorCode === 'PROFILE_INPUT_INVALID') router.push('/');
               else window.location.reload();
             }}
             className="text-sm text-indigo-600 underline hover:text-indigo-700"
           >
-            {t(errorCode === 'MATCH_TYPE_REQUIRED' ? 'results.chooseOpportunityTypes' : 'common.retry')}
+            {t(errorCode === 'MATCH_TYPE_REQUIRED' ? 'results.chooseOpportunityTypes' : errorCode === 'PROFILE_INPUT_LIMIT_EXCEEDED' || errorCode === 'PROFILE_INPUT_INVALID' ? 'profileInput.editProfile' : 'common.retry')}
           </button>
         </div>
       )}
@@ -1113,7 +1113,7 @@ function ResultsContent() {
         </div>
       )}
 
-      {loading && (
+      {loading && !error && (
         <div
           className="fixed top-12 left-0 right-0 z-40"
           role="progressbar"

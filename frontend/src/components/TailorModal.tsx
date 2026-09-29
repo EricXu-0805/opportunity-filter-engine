@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useSyncExternalStore } from 'react';
 import {
   X,
@@ -764,7 +766,7 @@ export default function TailorModal({
       if (err && typeof err === 'object' && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') {
         setError(t('tailor.targetVersionChanged'));
       } else {
-        setError(err instanceof Error ? err.message : t('tailor.failedToTailor'));
+        setError(profileInputMessage(err, t) ?? (err instanceof Error ? err.message : t('tailor.failedToTailor')));
         handleRuleFailure(err);
       }
     } finally {

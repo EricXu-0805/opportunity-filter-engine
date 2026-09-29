@@ -889,10 +889,10 @@ describe('deriveDesiredFields', () => {
     expect(deriveDesiredFields(undefined)).toEqual([]);
   });
 
-  it('dedupes case-insensitively and caps at 20', () => {
+  it('dedupes case-insensitively and preserves terms after the twentieth', () => {
     expect(deriveDesiredFields('AI, ai, Ai')).toEqual(['AI']);
     const many = Array.from({ length: 30 }, (_, i) => `field${i}`).join(', ');
-    expect(deriveDesiredFields(many).length).toBe(20);
+    expect(deriveDesiredFields(many).length).toBe(30);
   });
 
   it('does not split the substring "and" inside a word', () => {

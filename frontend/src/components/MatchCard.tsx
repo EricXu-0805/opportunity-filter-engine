@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -189,6 +191,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
+  const [gapError, setGapError] = useState<unknown>(null);
   // R71 PR-2: local tailor-modal state — parent doesn't need to know.
   // We only mount the heavy modal once the user clicks the CTA, and
   // the button itself only renders when a profile exists (the route
@@ -691,10 +694,11 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
                   // spinner that ends in an error the user cannot act on.
                   if (posture !== 'actionable') return;
                   setGapLoading(true);
+                  setGapError(null);
                   try {
                     const data = await getGapAnalysis(profile, opp.id);
                     setGaps(data);
-                  } catch { /* best effort */ }
+                  } catch (error) { setGapError(error); }
                   finally { setGapLoading(false); }
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 text-[12px] font-medium text-teal-700 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors"
@@ -704,6 +708,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               </button>
             )}
 
+            {RELEASE_SCOPE.roadmap && profileInputMessage(gapError, t) && <p role="alert" className="text-sm text-amber-700">{profileInputMessage(gapError, t)}</p>}
             {RELEASE_SCOPE.roadmap && gaps && (
               <div className="space-y-4 pt-1">
                 {gaps.missing_skills.length > 0 && (

@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
@@ -46,7 +48,7 @@ import {
   type ProfileViewSnapshot,
   type ProfileConflictPrompt,
 } from '@/lib/profile-sync';
-import { decodeProfileWithKeys, buildShareUrl } from '@/lib/profile-share';
+import { decodeProfileResult, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
 
 /** Who a rendered screen belongs to: the owner it was issued for and the
@@ -113,6 +115,7 @@ export interface UseProfileFormResult {
   sharedBanner: string | null;
   dismissSharedBanner: () => void;
   shareCopied: boolean;
+  shareError: string | null;
   saveStatus: SaveStatus;
   /** Replays the last save that did not fully land (see 'cloud-failed',
    *  'device-failed' and 'error'). Deliberately CANNOT resolve a conflict:
@@ -212,6 +215,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   const [ghStatus, setGhStatus] = useState<string | null>(null);
   const [sharedBannerVisible, setSharedBannerVisible] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareIssue, setShareIssue] = useState<unknown>(null);
+  const shareCheckedParamRef = useRef<string | null>(null);
   // Which share this screen is currently showing the result of, and that
   // share's own timer. Both retired by an identity transition and by unmount.
   const shareRequestRef = useRef(0);
@@ -2024,8 +2029,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // load over it either; the auth stream owns loading from here.
         return;
       }
-      const decoded = decodeProfileWithKeys(shareParam);
-      if (decoded) {
+      const decoded = decodeProfileResult(shareParam);
+      // The entire link is accepted or rejected; a failed import never replaces the current draft.
+      if (shareCheckedParamRef.current !== shareParam) {
+        shareCheckedParamRef.current = shareParam;
+        setShareIssue(decoded.ok ? null : decoded.error ?? new Error('Invalid share'));
+      }
+      if (decoded.ok) {
         const shared = decoded.profile;
         // A newly accepted share owns the screen. Neither the old row nor its
         // deadline may replace this draft or fail it after its read was retired.
@@ -2328,9 +2338,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       shareTimerRef.current = null;
     }
     setShareCopied(false);
-    const url = buildShareUrl(
-      normalizeProfileForRelease({ ...profile, search_weight: searchWeight }),
-    );
+    let url: string;
+    try {
+      url = buildShareUrl(normalizeProfileForRelease({ ...profile, search_weight: searchWeight }));
+      setShareIssue(null);
+    } catch (error) {
+      setShareIssue(error);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(url);
       // The copy itself cannot be recalled. Saying "copied" on a screen that
@@ -3557,6 +3572,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     sharedBanner: sharedBannerVisible ? t('home.sharedBanner') : null,
     dismissSharedBanner,
     shareCopied,
+    shareError: shareIssue ? profileInputMessage(shareIssue, t) ?? t('profileInput.shareInvalid') : null,
     saveStatus,
     isSubmitting,
     retryCloudSave,

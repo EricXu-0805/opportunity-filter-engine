@@ -380,7 +380,7 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
     """
     parts = [
         str(keyword).strip()
-        for keyword in _stated_keywords(opportunity)[:20]
+        for keyword in _stated_keywords(opportunity)
         if str(keyword).strip()
     ]
     metadata = opportunity.get("metadata") or {}
@@ -655,7 +655,7 @@ def has_source_backed_target_evidence(
     # list made it disagree with the two helpers that already drop guessed
     # topics — it reported a specific signal while every field the professor
     # brief renders came back empty, which is an order to fabricate.
-    signals: list[object] = list(_stated_keywords(opportunity)[:20])
+    signals: list[object] = list(_stated_keywords(opportunity))
     metadata = opportunity.get("metadata") or {}
     if isinstance(metadata, dict):
         signals.append(metadata.get("research_areas_raw"))
@@ -680,6 +680,21 @@ def has_source_backed_target_evidence(
                for page in lab["snapshot"]["pages"] for section in page["sections"])
 
 
+def _stated_required_skills(opportunity: dict) -> list[str]:
+    """Do not upgrade inferred tags to a posting's stated requirements.
+
+    The public projection marks inferred lists without removing them from the
+    discovery UI. Email factual inputs need the same distinction. Unstamped
+    legacy lists keep their existing admission policy; this is not a new crawl
+    or verification of the source page.
+    """
+    if (faculty_contact_claims_unverified(opportunity)
+            or opportunity.get("skills_attribution") == "inferred"
+            or inferred_method(opportunity, "eligibility.skills_required")):
+        return []
+    return opportunity.get("eligibility", {}).get("skills_required", [])
+
+
 def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
     is_faculty = faculty_contact_claims_unverified(opp)
     desc = (
@@ -687,11 +702,7 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
         if is_faculty
         else (opp.get("description_raw") or opp.get("description_clean") or "")
     ).lower()
-    required = (
-        []
-        if is_faculty
-        else [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
-    )
+    required = [skill.lower() for skill in _stated_required_skills(opp)]
     desc_tokens = set(_SKILL_TOKEN_RE.findall(desc))
     req_tokens = set()
     for r in required:
@@ -752,11 +763,7 @@ def _common_parts(
     opp_desc = "" if is_faculty else (
         opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     )
-    opp_skills_required = (
-        []
-        if is_faculty
-        else opportunity.get("eligibility", {}).get("skills_required", [])
-    )
+    opp_skills_required = _stated_required_skills(opportunity)
     matching_skills = _match_skills_to_tasks(skills, opportunity)
 
     meta = opportunity.get("metadata") or {}

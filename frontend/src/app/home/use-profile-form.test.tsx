@@ -1189,6 +1189,7 @@ function IdentityHarness() {
       <button data-testid="set-coursework" onClick={() => form.update('coursework', ['CS 225'])}>cw</button>
       <span data-testid="gh-url">{form.profile.github_url ?? ''}</span>
       <span data-testid="shared-banner">{form.sharedBanner ?? ''}</span>
+      <span data-testid="share-error">{form.shareError ?? ''}</span>
       <span data-testid="gh-status">{form.ghStatus ?? ''}</span>
       <span data-testid="gh-loading">{form.ghLoading ? 'yes' : 'no'}</span>
       <span data-testid="skills">{form.profile.skills.map((s) => s.name).join(',')}</span>
@@ -10595,3 +10596,39 @@ describe('useProfileForm — full resume master lifecycle', () => {
     expect(commitProfilePatch).not.toHaveBeenCalled();
   });
 });
+
+ describe('B53 rejects a complete oversized shared import', () => {
+  it('keeps the owner profile and shows a safe error without saving a partial share',async()=>{
+    commitProfilePatch.mockClear();
+    const raw={v:1,major:'Other Major',interests:'x'.repeat(60001)};
+    searchRef.current='share='+btoa(JSON.stringify(raw));
+    mockLoadProfile=()=>Promise.resolve(cloudRow({research_interests:'my original full interests',major:'My Major'}));
+    await renderIdentityHarness();
+    await waitFor(()=>expect(screen.getByTestId('interests').textContent).toBe('my original full interests'));
+    expect(screen.getByTestId('major')).toHaveTextContent('My Major');
+    expect(screen.getByTestId('share-error')).toHaveTextContent('profileInput.characters');
+    expect(screen.getByTestId('shared-banner')).toBeEmptyDOMElement();
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+  });
+ });
+
+ describe('B53 sharing refuses an oversized encoded URL', () => {
+   it('does not copy, prompt, save or replace the complete profile', async () => {
+     const interests='🧪'.repeat(2000);
+     mockLoadProfile=()=>Promise.resolve(cloudRow({research_interests:interests}));
+     await renderIdentityHarness();
+     await waitFor(()=>expect(screen.getByTestId('interests').textContent).toBe(interests));
+     commitProfilePatch.mockClear();
+     const descriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+     const writeText=vi.fn().mockResolvedValue(undefined);
+     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText}});
+     const prompt=vi.spyOn(window,'prompt').mockReturnValue(null);
+     try {
+       fireEvent.click(screen.getByTestId('share'));
+       await waitFor(()=>expect(screen.getByTestId('share-error')).toHaveTextContent('profileInput.shareTooLarge'));
+       expect(screen.getByTestId('interests').textContent).toBe(interests);
+       expect(screen.getByTestId('share-copied')).toHaveTextContent('no');
+       expect(writeText).not.toHaveBeenCalled();expect(prompt).not.toHaveBeenCalled();expect(commitProfilePatch).not.toHaveBeenCalled();
+     } finally {prompt.mockRestore(); if(descriptor)Object.defineProperty(navigator,'clipboard',descriptor); else delete (navigator as {clipboard?:unknown}).clipboard;}
+   });
+ });

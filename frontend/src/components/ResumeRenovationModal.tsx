@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import {
   X,
@@ -680,7 +682,7 @@ export default function ResumeRenovationModal({
     } catch (err) {
       if (!current()) return;
       if (err && typeof err === 'object' && 'status' in err && err.status === 409 && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') setTargetVersionIssue('changed');
-      else setError(err instanceof Error ? err.message : t('renovate.failed'));
+      else setError(profileInputMessage(err, t) ?? (err instanceof Error ? err.message : t('renovate.failed')));
       if (originalDoc) setStructureResult(null);
       setPhase(originalDoc ? 'doc' : 'idle');
     }
@@ -777,7 +779,7 @@ export default function ResumeRenovationModal({
     } catch (err) {
       if (!current() || !isSameBullet()) return;
       if (err && typeof err === 'object' && 'status' in err && err.status === 409 && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') setTargetVersionIssue('changed');
-      else setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletFailed') }));
+      else setBulletNotices((prev) => ({ ...prev, [b.id]: profileInputMessage(err, t) ?? t('renovate.bulletFailed') }));
     } finally {
       if (current()) setOptimizingId(null);
     }

@@ -209,3 +209,16 @@ describe('oversized email material preserves the editor', () => {
     });
   }
 });
+
+ describe('profile input rejection keeps the current editor', () => {
+  it.each(['stream','refine'] as const)('shows a safe field issue after %s and keeps draft and request', async mode => {
+    await open(); edit();
+    const error = Object.assign(new Error('PRIVATE_PAYLOAD'), {code:'PROFILE_INPUT_LIMIT_EXCEEDED',status:422,detail:{field:'profile.research_interests_text',actual:60001,limit:60000,unit:'characters'}});
+    api[mode].mockRejectedValue(error);
+    if (mode === 'stream') fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+    else {fireEvent.change(screen.getByPlaceholderText('coldEmail.refinePlaceholder'), {target:{value:'Keep my precise edit request.'}}); fireEvent.submit(screen.getByPlaceholderText('coldEmail.refinePlaceholder').closest('form')!);}
+    await screen.findByText('profileInput.characters'); kept();
+    if(mode==='refine') expect(screen.getByPlaceholderText('coldEmail.refinePlaceholder')).toHaveValue('Keep my precise edit request.');
+    expect(screen.queryByText('PRIVATE_PAYLOAD')).toBeNull();expect(api.generate).not.toHaveBeenCalled();
+  });
+ });

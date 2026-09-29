@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -194,6 +196,7 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
   const requestIdentity = `${profileHash}|${llm ? 'ai1' : 'ai0'}|${
     comparable.map((o) => o.id).join(',')
   }`;
+  const [profileIssue, setProfileIssue] = useState<{identity: string; error: unknown} | null>(null);
   const [verdicts, setVerdicts] = useState<{
     identity: string;
     byId: Map<string, CanonicalMatchSummary | 'error' | 'excluded'>;
@@ -276,7 +279,8 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
             // ever asking again.
             if (summary && summary !== 'excluded') writeExplainCache(cacheKey, resp);
             setOne(id, summary ?? 'error');
-          } catch {
+          } catch (error) {
+            if (!cancelled) setProfileIssue({identity: requestIdentity, error});
             // The row stays explicitly unavailable. A local factor estimate is
             // never promoted into a replacement match score.
             setOne(id, 'error');
@@ -385,6 +389,9 @@ export default function CompareTable({ opps }: { opps: Opportunity[] }) {
       </div>
     );
   }
+
+  const inputMessage = profileIssue?.identity === requestIdentity ? profileInputMessage(profileIssue.error, t) : null;
+  if (inputMessage) return <div role="alert" className="rounded-xl bg-amber-50 p-5 text-sm text-amber-900">{inputMessage}<Link href="/" className="mt-3 block underline">{t('profileInput.editProfile')}</Link></div>;
 
   if (!ranked || !usable) {
     return (

@@ -203,7 +203,9 @@ def test_draft_judge_critic_and_revision_do_not_rewrite_student_fact_terms(monke
 def test_complete_student_material_over_budget_is_rejected_not_truncated(writing_client, monkeypatch, path):  # noqa: F811
     client, raw = writing_client; attach_lab_v2(raw)
     monkeypatch.setattr(ce, 'is_configured', lambda: True)
-    profile = {**PROFILE, 'school': 'x' * 120000}
+    profile = {**PROFILE, 'research_interests_text': 'x' * 60000,
+               'hard_skills': [{'name': f'Skill {i} ' + 'x' * 592, 'level': 'beginner'}
+                               for i in range(100)]}
     value = {'profile': profile, 'opportunity_id': raw['id']}
     if path == 'selection': response = client.post('/api/cold-email/refine', json=selection_payload(**value))
     else: response = post(client, path, FIRST, **value, engine='ai')
@@ -235,7 +237,7 @@ def test_rank_neutral_target_labels_preserve_source_values_and_snapshots(monkeyp
     snapshot_text = json.dumps(public[key]['snapshot'], ensure_ascii=False, sort_keys=True)
     brief = ce._render_professor_brief(parts, public)
     assert snapshot_text in brief
-    assert "- Faculty member's stated research areas: Professor Lee studies PI instrumentation" in brief
+    assert field(brief, "Faculty member's stated research areas") == public["metadata"]["research_areas_raw"]
     assert 'Ask whether the faculty member has' in brief
     assert public['metadata']['research_areas_raw'] in brief
     calls = []
