@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from src.evidence import neutralize_unverified_faculty_claims
+from src.import_source import sanitize_import_source
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,13 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # directories are contact/research evidence, not proof of an opening's
     # year, effort, location or immigration terms.
     neutralize_unverified_faculty_claims(opp)
+    import_source = sanitize_import_source(opp)
+    preserve_import_raw = import_source is not None and import_source['description_source'] != 'unknown'
     for field in ("description_raw", "description_clean", "title"):
+        # Identified import raw is already readable source text. Treating its
+        # comparisons or literal examples as HTML silently removes facts.
+        if field == "description_raw" and preserve_import_raw:
+            continue
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])
     # Pipeline-only payloads no serving path reads: drop them from the in-memory

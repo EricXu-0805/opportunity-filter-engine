@@ -144,6 +144,24 @@ def load_from_json(filepath: str) -> list[dict]:
         # If already in full schema format, use as-is
         if "eligibility" in item and isinstance(item["eligibility"], dict):
             results.append(item)
+        elif (
+            isinstance(item, dict)
+            and isinstance(item.get("source"), str)
+            and item.get("source") in {"url_parser", "text_parser"}
+            and "description_raw" in item
+        ):
+            # Copy JSON uses RawOpportunity field names. Passing it to the old
+            # flat-form builder discards description_raw and all source labels.
+            from src.import_source import valid_import_source_text
+            from src.normalizers.normalizer import normalize
+
+            if not (
+                all(isinstance(item.get(key), str) for key in ("title", "source_url", "url"))
+                and valid_import_source_text(item.get("description_raw"))
+                and isinstance(item.get("extra_fields"), dict)
+            ):
+                raise ValueError("Invalid imported opportunity record.")
+            results.append(normalize(item))
         else:
             # Flat format — convert to nested schema
             results.append(create_opportunity(**item))

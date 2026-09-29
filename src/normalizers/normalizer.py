@@ -11,6 +11,7 @@ from typing import Optional
 
 from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY, retained_sources
 from ..evidence import stamp_inferred
+from ..import_source import IMPORT_SOURCE_KEY, import_source_from_raw
 from ..opportunity_terms import extract_skill_requirements
 
 
@@ -28,6 +29,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     desc = raw.get("description_raw", "")
     title = raw.get("title", "")
     extra = raw.get("extra_fields")
+    import_source = import_source_from_raw(raw)
     contact_sources = retained_sources(extra.get(SOURCE_KEY)) if isinstance(extra, dict) else []
 
     title_inference = (extra.get("inferred_fields") or {}).get("title") if isinstance(extra, dict) and isinstance(extra.get("inferred_fields"), dict) else None
@@ -96,6 +98,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
             "manually_reviewed": False,
             "notes": "",
             "skill_mentions": skills["mentioned"],
+            **({IMPORT_SOURCE_KEY: import_source} if import_source is not None else {}),
             **({SOURCE_KEY: contact_sources} if isinstance(extra, dict) and SOURCE_KEY in extra else {}),
             **({PAGES_KEY: deepcopy(extra[PAGES_KEY])} if isinstance(extra, dict) and PAGES_KEY in extra else {}),
             **({CAPTURE_KEY: deepcopy(extra[CAPTURE_KEY])} if isinstance(extra, dict) and isinstance(extra.get(CAPTURE_KEY), dict) else {}),

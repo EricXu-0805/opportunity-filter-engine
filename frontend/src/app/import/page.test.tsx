@@ -249,3 +249,41 @@ it.each(['full_source', 'source_excerpt'] as const)('shows the full source and s
   fireEvent.click(screen.getByText('import.saveToList'));
   expect(readCustomImports()[0].opportunity).toEqual(opportunity);
 });
+
+
+describe('ImportPage — current request wins within one account', () => {
+  it('discards an older URL response after changing mode and completing a text request', async () => {
+    let finishOld!: (value: unknown) => void;
+    mockImportByUrl.mockReturnValueOnce(new Promise((resolve) => { finishOld = resolve; }));
+    mockImportByText.mockResolvedValueOnce({ ok: true, llm_enriched: false, opportunity: { title: 'Current text result', extra_fields: {} } });
+    render(<ImportPage />);
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: 'https://example.com/old-request' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    fireEvent.click(screen.getByText('import.modeText'));
+    fireEvent.change(screen.getByPlaceholderText('import.textPlaceholder'), { target: { value: 'Current pasted source. '.repeat(6) } });
+    fireEvent.click(screen.getByText('import.extractButton'));
+    await screen.findByText('Current text result');
+    finishOld({ ok: true, llm_enriched: false, opportunity: { title: 'Late old URL result', extra_fields: {} } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText('Current text result')).toBeInTheDocument();
+    expect(screen.queryByText('Late old URL result')).toBeNull();
+  });
+
+  it('discards an older error after two URL requests resolve out of order', async () => {
+    let failOld!: (error: Error) => void;
+    mockImportByUrl.mockReturnValueOnce(new Promise((_resolve, reject) => { failOld = reject; }));
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, llm_enriched: false, opportunity: { title: 'Current URL result', extra_fields: {} } });
+    render(<ImportPage />);
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: 'https://example.com/old-request' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    fireEvent.click(screen.getByText('import.modeText'));
+    fireEvent.click(screen.getByText('import.modeUrl'));
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: 'https://example.com/new-request' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Current URL result');
+    failOld(new Error('Late failure'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText('Current URL result')).toBeInTheDocument();
+    expect(screen.queryByText('import.errorFetch')).toBeNull();
+  });
+});
