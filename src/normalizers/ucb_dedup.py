@@ -177,21 +177,21 @@ def _source_update_for_duplicate(existing: dict, incoming: dict) -> dict | None:
     from copy import deepcopy
 
     from ..collectors.uiuc_faculty import carry_forward_contact_instruction_sources
-    from ..contact_instructions import CAPTURE_KEY, SOURCE_KEY
+    from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY
 
     supplied = incoming.get("metadata") or {}
-    if not any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY)):
+    if not any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY)):
         return None
     candidate = deepcopy(existing)
     metadata = candidate.setdefault("metadata", {})
-    for key in (CAPTURE_KEY, SOURCE_KEY):
+    for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY):
         metadata.pop(key, None)
         if key in supplied:
             metadata[key] = deepcopy(supplied[key])
     carry_forward_contact_instruction_sources(existing, candidate)
     previous = existing.get("metadata") or {}
     if all((key in metadata) == (key in previous) and metadata.get(key) == previous.get(key)
-           for key in (CAPTURE_KEY, SOURCE_KEY)):
+           for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY)):
         return None
     return candidate
 
@@ -239,10 +239,10 @@ def dedupe_against_existing(
                 # Keep the canonical project identity, but do not discard a
                 # newer source restriction/withdrawal for that exact target.
                 # Title-only/shared-program matches cannot transfer evidence.
-                from ..contact_instructions import CAPTURE_KEY, SOURCE_KEY
+                from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY
 
                 supplied = o.get("metadata")
-                has_bundle = isinstance(supplied, dict) and any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY))
+                has_bundle = isinstance(supplied, dict) and any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY))
                 matches = {item.get("id"): item for item in [*existing, *kept]
                            if item.get("id") and _same_source_target(item, o)} if has_bundle else {}
                 if len(matches) == 1:

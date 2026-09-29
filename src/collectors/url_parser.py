@@ -26,13 +26,15 @@ import json
 import logging
 import re
 import socket
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-from ..contact_instructions import SOURCE_KEY, source_from_html
+from ..contact_instructions import capture_from_html, capture_metadata, same_source_page
 from .base import RawOpportunity
 
 logger = logging.getLogger(__name__)
@@ -62,12 +64,9 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
     — parse_url_llm needs both the parsed V1 fields and the raw text, and would
     otherwise round-trip to the same URL twice.
     """
-    fetched_here = html is None
     if html is None:
         resp = _safe_fetch(url)
-        if resp is None:
-            return None
-        html = resp.text
+        return _parse_fetched_page(url, resp) if resp is not None else None
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -94,7 +93,6 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
     organization = _domain_to_org(domain)
 
     deadline = _extract_deadline(soup.get_text())
-    contact_source = source_from_html(soup, source_url=url) if fetched_here else None
 
     return RawOpportunity(
         source="url_parser",
@@ -107,11 +105,38 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
         location=None,
         extra_fields={
             "domain": domain,
-            **({SOURCE_KEY: [contact_source]} if contact_source else {}),
             "needs_manual_review": True,
         },
     )
 
+
+
+class UrlImportSourceError(ValueError):
+    """A fetched page cannot be attributed to the address the user submitted."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _parse_fetched_page(url: str, response: requests.Response) -> RawOpportunity:
+    final_url = getattr(response, "url", None)
+    if not isinstance(final_url, str) or not final_url:
+        raise UrlImportSourceError("unverified_response")
+    if not same_source_page(url, final_url):
+        # Do not offer the other page's title/body as a draft under the old URL.
+        # The user can explicitly import the destination when it is intended.
+        raise UrlImportSourceError("redirect_mismatch")
+    base = parse_url(url, html=response.text)
+    capture = capture_from_html(
+        response.text,
+        source_url=final_url,
+        requested_source_url=url,
+        record_source_url=url,
+        checked_at=getattr(response, "_ofe_checked_at", None),
+    )
+    base.extra_fields.update(capture_metadata(capture))
+    return base
 
 def is_safe_url(url: str) -> tuple[bool, str]:
     """SSRF guard for user-supplied URLs.
@@ -177,7 +202,12 @@ def _host_resolves_to_blocked_ip(host: str) -> bool:
     return any(_ip_is_blocked(info[4][0]) for info in infos)
 
 
-def _safe_fetch(url: str) -> Optional[requests.Response]:
+def _safe_fetch(
+    url: str,
+    *,
+    before_request: Callable[[str], bool] | None = None,
+    on_response: Callable[[requests.Response], None] | None = None,
+) -> Optional[requests.Response]:
     """SSRF-hardened GET — the only network entry point for user-supplied URLs.
 
     Validates the URL and EVERY redirect hop with ``is_safe_url`` plus a DNS
@@ -192,6 +222,9 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
     validated IP); the manual-redirect + resolve checks defeat the directly
     exploitable bypass, which is the realistic threat for this endpoint.
     """
+    # Optional observers let bounded refresh callers account for EVERY real
+    # request, including redirect hops. A refusal/exception stops this fetch;
+    # neither hook authorizes an otherwise unsafe address.
     headers = {"User-Agent": "OpportunityFilterEngine/1.0"}
     current = url
     try:
@@ -201,18 +234,21 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
                 return None
             if _host_resolves_to_blocked_ip(urlparse(current).hostname or ""):
                 return None
+            if before_request is not None and not before_request(current):
+                return None
             resp = requests.get(
                 current, timeout=PAGE_FETCH_TIMEOUT_S, headers=headers,
                 allow_redirects=False, stream=True,
             )
-            if resp.is_redirect:
-                resp.close()
-                location = resp.headers.get("Location")
-                if not location:
-                    break
-                current = urljoin(current, location)
-                continue
             try:
+                if on_response is not None:
+                    on_response(resp)
+                if resp.is_redirect:
+                    location = resp.headers.get("Location")
+                    if not location:
+                        break
+                    current = urljoin(current, location)
+                    continue
                 resp.raise_for_status()
                 declared = resp.headers.get("Content-Length")
                 if declared and declared.isdigit() and int(declared) > MAX_FETCH_BYTES:
@@ -226,6 +262,7 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
                         return None
                 resp._content = bytes(body)
                 resp._content_consumed = True
+                resp._ofe_checked_at = datetime.now(UTC).isoformat()
             finally:
                 resp.close()
             return resp
@@ -244,21 +281,12 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     """
     # Fetch once and reuse the body for both V1 parsing and the LLM excerpt
     # (was two separate _safe_fetch round-trips to the same URL).
-    raw_text = _fetch_text(url)
-    if raw_text is None:
+    response = _safe_fetch(url)
+    if response is None:
         return None
+    base = _parse_fetched_page(url, response)
 
-    base = parse_url(url, html=raw_text)
-    if base is None:
-        return None
-
-    # Only this server fetch authorizes a source snapshot; parse_url(html=...)
-    # by itself is an unverified parsing helper, not a network receipt.
-    contact_source = source_from_html(raw_text, source_url=url)
-    if contact_source:
-        base.extra_fields[SOURCE_KEY] = [contact_source]
-
-    body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
+    body_excerpt = _strip_to_text(response.text)[:LLM_BODY_EXCERPT_CHARS]
     enriched = _run_llm_extraction(
         base,
         body_excerpt=body_excerpt,
@@ -530,11 +558,6 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
 def _replace(opp: RawOpportunity, **kwargs) -> RawOpportunity:
     from dataclasses import replace
     return replace(opp, **kwargs)
-
-
-def _fetch_text(url: str) -> Optional[str]:
-    resp = _safe_fetch(url)
-    return resp.text if resp is not None else None
 
 
 def _strip_to_text(html: str) -> str:

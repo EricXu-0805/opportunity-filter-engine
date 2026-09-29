@@ -834,9 +834,13 @@ def test_every_budget_status_the_engine_emits_is_known_to_the_contract():
     emitted = set(re.findall(r'"status": "([a-z_]+)"', source))
     emitted |= set(re.findall(r'\["status"\] = "([a-z_]+)"', source))
 
-    from src.collectors.refresh_contract import RELEASABLE_INCOMPLETE_STATUSES
+    from src.collectors.refresh_contract import (
+        CONDITION_REFRESH_STATUSES,
+        RELEASABLE_INCOMPLETE_STATUSES,
+    )
 
-    known = {"ok", "error"} | RELEASABLE_INCOMPLETE_STATUSES
+    # Condition progress is a separate report, not a collector source status.
+    known = {"ok", "error"} | RELEASABLE_INCOMPLETE_STATUSES | CONDITION_REFRESH_STATUSES
     assert emitted <= known, (
         f"refresh_all emits status(es) the release contract has never been "
         f"told how to judge: {sorted(emitted - known)}. Decide explicitly: "

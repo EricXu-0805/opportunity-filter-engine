@@ -99,9 +99,10 @@ _DESC_CAP = 1500
 
 # Per-profile research enrichment fetches every faculty member's own profile page
 # (one HTTP request each), so it is gated behind an env flag: OFF in CI / the
-# weekly refresh (richer-dedup keeps the already-enriched records, so the cost is
-# paid once), ON for the deliberate one-shot enrichment run that generates the
-# data. Set OFE_ENRICH_PROFILES=1 to enable the per-profile pass.
+# weekly field-enrichment pass (richer-dedup preserves those existing fields).
+# Condition-source age is handled separately by faculty_condition_refresh at
+# the normalized-corpus stage; complete fields do not bypass that bounded pass.
+# Set OFE_ENRICH_PROFILES=1 to enable optional research/email/title enrichment.
 _PROFILE_ENRICH = os.environ.get("OFE_ENRICH_PROFILES") == "1"
 
 
@@ -2261,9 +2262,47 @@ def _enrich_profile(
         return result((pos, kw, items, email, profile_verified), reason="fetch_metadata_missing")
     if not same_source_page(url, observed["final_url"]):
         return result((pos, kw, items, email, profile_verified), reason="redirect_mismatch")
-    capture = capture_from_html(soup, source_url=observed["final_url"], record_source_url=url,
-                                identity_name=expected_name, checked_at=observed["checked_at"])
+    capture = capture_from_html(soup, source_url=observed["final_url"], requested_source_url=url,
+                                record_source_url=url, identity_name=expected_name, checked_at=observed["checked_at"])
     return result((pos, kw, items, email, profile_verified), capture)
+
+
+def capture_profile_condition_response(response, *, requested_url: str,
+                                       record_source_url: str, expected_name: str) -> dict:
+    """Parse one bounded, fetched response without research/email side effects.
+
+    The condition refresher's safe transport owns request budgets and redirects.
+    This pure adapter requires that actual page, fetch time and professor name
+    remain bound before it can retain any condition source.
+    """
+    from bs4 import BeautifulSoup
+
+    from .ucb_common import profile_page_is_denial
+
+    final = getattr(response, "url", None)
+    observed = getattr(response, "_ofe_checked_at", None)
+    binding = dict(source_url=final if _url(final) else requested_url,
+                   requested_source_url=requested_url, record_source_url=record_source_url,
+                   identity_name=expected_name)
+    try:
+        stamp = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+        valid_stamp = stamp.tzinfo is not None and stamp <= datetime.now(UTC)
+    except (AttributeError, TypeError, ValueError):
+        valid_stamp = False
+    if not _url(final) or not valid_stamp:
+        return capture_failure(**binding, reason="fetch_metadata_missing")
+    binding["checked_at"] = observed
+    if not same_source_page(requested_url, final):
+        return capture_failure(**binding, reason="redirect_mismatch")
+    try:
+        soup = BeautifulSoup(response.content, "html.parser")
+        if profile_page_is_denial(soup):
+            return capture_failure(**binding, reason="access_page")
+        if not profile_page_matches_person(soup, expected_name):
+            return capture_failure(**binding, reason="identity_mismatch")
+        return capture_from_html(soup, **binding)
+    except Exception:  # noqa: BLE001
+        return capture_failure(**binding, reason="parse_failed")
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:

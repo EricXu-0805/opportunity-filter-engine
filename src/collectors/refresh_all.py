@@ -54,6 +54,7 @@ from .campus_graph import (
 from .campus_graph import (
     merge_into_processed as merge_campus_graph,
 )
+from .faculty_condition_refresh import refresh_faculty_condition_sources
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
 from .pi_enricher import enrich_opportunities as enrich_pi
@@ -564,12 +565,39 @@ def validate_shard_selection(
                 f"unknown school slug(s): {sorted(unknown)}; known: {sorted(known)}")
 
 
+class _ConditionCheckpoint:
+    """Batch full-corpus snapshots; normal/error exit must explicitly flush.
+
+    Hard process termination can lose at most batch_pages - 1 changed page
+    attempts. Source truth is never dated until the corresponding fetch; this
+    buffer only limits full-corpus disk I/O, not network request accounting.
+    """
+    def __init__(self, path, records, *, batch_pages=20, interval_seconds=60, clock=time.monotonic):
+        self.path, self.records = path, records
+        self.batch_pages, self.interval_seconds, self.clock = batch_pages, interval_seconds, clock
+        self.pending = 0
+        self.last_flush = clock()
+
+    def __call__(self):
+        self.pending += 1
+        if self.pending >= self.batch_pages or self.clock() - self.last_flush >= self.interval_seconds:
+            self.flush()
+
+    def flush(self):
+        if self.pending:
+            atomic_write_json(self.path, self.records)
+            self.pending = 0
+            self.last_flush = self.clock()
+
+
 def refresh_all(
     deep: bool = True,
     schools: set[str] | None = None,
     national: bool = False,
     provenance: dict | None = None,
     time_budget_minutes: float | None = None,
+    condition_max_requests: int = 100,
+    condition_max_pages: int = 100,
 ) -> dict:
     """Run enabled collectors and merge results.
 
@@ -588,6 +616,10 @@ def refresh_all(
     Returns a summary dict with counts per source and totals.
     """
     validate_shard_selection(schools, national=national)
+    for name, value in (("condition_max_requests", condition_max_requests),
+                        ("condition_max_pages", condition_max_pages)):
+        if type(value) is not int or not 0 <= value <= 10000:
+            raise ValueError(f"Invalid {name}.")
     sharded = national or schools is not None
 
     def selected(school: str | None) -> bool:
@@ -1395,12 +1427,45 @@ def refresh_all(
             info["incomplete_reasons"] = invalid + incomplete
             info["error"] = "Source check incomplete: " + ", ".join(invalid + incomplete)
 
+    # Condition checks have their own freshness and do not count as directory
+    # observations, successful source health, or evidence of faculty departure.
+    summary["condition_refresh"] = {
+        "version": 1, "status": "skipped" if not deep or national else "unavailable",
+        "reason": "quick_mode" if not deep else "national_only" if national else "missing_corpus",
+    }
+
     # 6. PI enrichment pass
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
     if PROCESSED_FILE.exists():
         with open(PROCESSED_FILE, encoding="utf-8") as f:
             all_opps = json.load(f)
+
+        if deep and not national:
+            condition_pool = [
+                record for record in all_opps
+                if record.get("source_type") == "faculty_research"
+                and not (isinstance(record.get("metadata"), dict) and record["metadata"].get("is_active") is False)
+                and selected(record.get("school")
+                             or SOURCE_DEFAULTS.get(record.get("source") or "", (None, ""))[0])
+            ]
+            # Save only the complete corpus, never a shard subset. Batch costly
+            # snapshots, and flush completed pages even if a later page raises.
+            checkpoint = _ConditionCheckpoint(PROCESSED_FILE, all_opps)
+            try:
+                condition_stats = refresh_faculty_condition_sources(
+                    condition_pool, max_requests=condition_max_requests,
+                    max_pages=condition_max_pages, deadline=deadline,
+                    persist=checkpoint,
+                )
+            finally:
+                checkpoint.flush()
+            summary["condition_refresh"] = {
+                "version": 1,
+                "status": "partial" if any(condition_stats[k] for k in ("backlog", "skipped_records", "source_limit", "storage_rejected")) else "ok",
+                "records_in_scope": len(condition_pool),
+                **condition_stats,
+            }
 
         # max_scrapes: with the enricher now covering every school's faculty the
         # missing-email backlog is ~9k profile pages; at DELAY=2s an uncapped run
@@ -1889,6 +1954,10 @@ def main(argv: list[str] | None = None) -> int:
              "un-started sources report deferred_deadline and completed schools "
              "still publish (keep below the CI job's hard timeout-minutes)",
     )
+    parser.add_argument("--condition-max-requests", type=int, default=100,
+                        help="Maximum condition-check HTTP requests, including redirect hops (0 disables requests)")
+    parser.add_argument("--condition-max-pages", type=int, default=100,
+                        help="Maximum condition pages attempted after collector merges")
     parser.add_argument("--base-sha")
     parser.add_argument("--run-id")
     parser.add_argument("--run-attempt")
@@ -1937,6 +2006,8 @@ def main(argv: list[str] | None = None) -> int:
             national=args.national,
             provenance=provenance,
             time_budget_minutes=args.time_budget_minutes,
+            condition_max_requests=args.condition_max_requests,
+            condition_max_pages=args.condition_max_pages,
         )
     except Exception as e:
         elapsed = time.time() - start

@@ -1,0 +1,190 @@
+{
+  "baseline": "0c3440ec6abfb384537a77147d2f45ff61bbea25",
+  "cases": [
+    {
+      "name": "captured",
+      "request": {
+        "url": "https://example.edu/program"
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "url_parser",
+          "source_url": "https://example.edu/program",
+          "title": "Sensor research internship",
+          "description_raw": "Application materials A CV is required.",
+          "url": "https://example.edu/program",
+          "organization": "example.edu",
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "domain": "example.edu",
+            "needs_manual_review": true,
+            "contact_instruction_capture": {
+              "version": 1,
+              "status": "captured",
+              "reason": null,
+              "attempted_at": "2026-09-29T02:21:12.576414+00:00",
+              "source_url": "https://example.edu/program",
+              "record_source_url": "https://example.edu/program",
+              "requested_source_url": "https://example.edu/program"
+            },
+            "contact_instruction_sources": [
+              {
+                "source_url": "https://example.edu/program",
+                "record_source_url": "https://example.edu/program",
+                "checked_at": "2026-09-29T02:21:12.576414+00:00",
+                "sections": [
+                  {
+                    "heading": "Application materials",
+                    "text": "A CV is required."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "error": null,
+        "llm_enriched": false
+      }
+    },
+    {
+      "name": "normalized_url",
+      "request": {
+        "url": "http://example.edu/program"
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "url_parser",
+          "source_url": "http://example.edu/program",
+          "title": "Sensor research internship",
+          "description_raw": "Application materials A CV is required.",
+          "url": "http://example.edu/program",
+          "organization": "example.edu",
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "domain": "example.edu",
+            "needs_manual_review": true,
+            "contact_instruction_capture": {
+              "version": 1,
+              "status": "captured",
+              "reason": null,
+              "attempted_at": "2026-09-29T02:21:12.580354+00:00",
+              "source_url": "https://example.edu/program/",
+              "record_source_url": "http://example.edu/program",
+              "requested_source_url": "http://example.edu/program"
+            },
+            "contact_instruction_sources": [
+              {
+                "source_url": "https://example.edu/program/",
+                "record_source_url": "http://example.edu/program",
+                "checked_at": "2026-09-29T02:21:12.580354+00:00",
+                "sections": [
+                  {
+                    "heading": "Application materials",
+                    "text": "A CV is required."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "error": null,
+        "llm_enriched": false
+      }
+    },
+    {
+      "name": "empty",
+      "request": {
+        "url": "https://example.edu/program"
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "url_parser",
+          "source_url": "https://example.edu/program",
+          "title": "Untitled Opportunity",
+          "description_raw": "Our lab studies sensors.",
+          "url": "https://example.edu/program",
+          "organization": "example.edu",
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "domain": "example.edu",
+            "needs_manual_review": true,
+            "contact_instruction_capture": {
+              "version": 1,
+              "status": "empty",
+              "reason": null,
+              "attempted_at": "2026-09-29T02:21:12.583282+00:00",
+              "source_url": "https://example.edu/program",
+              "record_source_url": "https://example.edu/program",
+              "requested_source_url": "https://example.edu/program"
+            },
+            "contact_instruction_sources": []
+          }
+        },
+        "error": null,
+        "llm_enriched": false
+      }
+    },
+    {
+      "name": "unsupported",
+      "request": {
+        "url": "https://example.edu/program"
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "url_parser",
+          "source_url": "https://example.edu/program",
+          "title": "Untitled Opportunity",
+          "description_raw": "Minimum GPA 3.0 Our lab studies sensors.",
+          "url": "https://example.edu/program",
+          "organization": "example.edu",
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "domain": "example.edu",
+            "needs_manual_review": true,
+            "contact_instruction_capture": {
+              "version": 1,
+              "status": "unsupported",
+              "reason": "unparsed_relevant_content",
+              "attempted_at": "2026-09-29T02:21:12.585897+00:00",
+              "source_url": "https://example.edu/program",
+              "record_source_url": "https://example.edu/program",
+              "requested_source_url": "https://example.edu/program"
+            }
+          }
+        },
+        "error": null,
+        "llm_enriched": false
+      }
+    },
+    {
+      "name": "cross_page",
+      "request": {
+        "url": "https://example.edu/program"
+      },
+      "response": {
+        "ok": false,
+        "opportunity": null,
+        "error": "The link opened a different page. Open the intended page and import its address.",
+        "llm_enriched": false
+      }
+    }
+  ],
+  "boundary": "Actual backend.main endpoints; synthetic successful HTTP responses with exact final URL; no provider. Cross-page request rejected.",
+  "network_attempts": 0
+}

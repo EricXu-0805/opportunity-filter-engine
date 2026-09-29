@@ -408,6 +408,7 @@ _SEVEN_TRUTH_KEYS = {
 # narrowing of what is being checked.
 _EXPECTED_EVIDENCE_KEYS = frozenset({
     "contact_instruction_capture",
+    "contact_instruction_pages",
     "is_active",
     "listing_status",
     "urap_status",
@@ -1101,3 +1102,17 @@ class TestADerivedPiNameIsNotServed:
         record = self._program(inferred=False)
         served = project_public_opportunity_payload(dict(record), record)
         assert served["pi_name"] == "Spring Harbor"
+
+
+@pytest.mark.parametrize("projector", [_redact, _list_card, _match_card])
+def test_multisource_ledger_is_private_in_each_public_shape(projector):
+    record = _opportunity()
+    record['metadata']['contact_instruction_pages'] = {
+        'version': 1,
+        'pages': [{'receipt': {'reason': 'PRIVATE_PAGE_STATE_MARKER',
+                               'source_url': 'https://example.edu/private-source',
+                               'next_retry_at': '2030-01-01T00:00:00+00:00'}}],
+    }
+    projected = projector(record)
+    assert 'contact_instruction_pages' not in projected.get('metadata', {})
+    assert 'PRIVATE_PAGE_STATE_MARKER' not in str(projected)

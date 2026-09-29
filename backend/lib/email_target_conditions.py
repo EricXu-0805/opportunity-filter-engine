@@ -192,6 +192,9 @@ def build_target_conditions(opp: dict, *, now: datetime | None = None) -> dict:
     result = {'version': 1, 'record_kind': kind, 'conditions': [], 'template_request': None}
     meta = opp.get('metadata') if isinstance(opp.get('metadata'), dict) else {}
     sources = meta.get('contact_instruction_sources')
+    if 'contact_instruction_pages' in meta:
+        from src.contact_instructions import validated_contact_instruction_sources
+        sources = validated_contact_instruction_sources(opp)
     candidates = {}
     rejected_reason = None
     unsupported = []

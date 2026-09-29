@@ -27,7 +27,7 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
-from src.collectors.url_parser import is_safe_url, parse_url_llm
+from src.collectors.url_parser import UrlImportSourceError, is_safe_url, parse_url_llm
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -59,6 +59,14 @@ async def import_url(req: ImportUrlRequest) -> ImportUrlResponse:
             req.url,
             timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS,
         )
+    except UrlImportSourceError as exc:
+        # Fixed text only: signed or personal URLs must not be echoed in errors.
+        message = (
+            "The link opened a different page. Open the intended page and import its address."
+            if exc.reason == "redirect_mismatch"
+            else "The page address could not be verified. Try importing the page again."
+        )
+        return ImportUrlResponse(ok=False, error=message)
     except BlockingWorkOverloaded as exc:
         logger.warning("import_url_work_rejected reason=overloaded")
         raise HTTPException(

@@ -583,6 +583,7 @@ def public_target_truth(canonical_record: dict) -> dict:
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "contact_instruction_sources",
     "contact_instruction_capture",
+    "contact_instruction_pages",
     "research_snapshot",
     "research_refresh",
     "lab_snapshot",

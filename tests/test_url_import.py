@@ -32,7 +32,7 @@ client = TestClient(app)
 
 
 def _streamed_mock(text: str, *, content_length=None, status=200,
-                   is_redirect=False, location=None):
+                   is_redirect=False, location=None, url="https://example.com/job"):
     """A minimal stand-in for a streamed requests.Response: yields the body via
     iter_content (so _safe_fetch's byte-budget loop runs) and decodes .text from
     the bytes _safe_fetch caps and assigns to _content."""
@@ -40,6 +40,7 @@ def _streamed_mock(text: str, *, content_length=None, status=200,
 
     class _R:
         def __init__(self):
+            self.url = url
             self.status_code = status
             self.is_redirect = is_redirect
             self.headers: dict = {}
@@ -318,7 +319,7 @@ class TestParseUrlLlm:
         # string — the fallback warning must not interpolate them into logs.
         url = "https://example.com/job?token=SECRET-VALUE"
         with patch("src.collectors.url_parser.requests.get") as mock_get:
-            mock_get.return_value = self._mock_response(self.SAMPLE_HTML)
+            mock_get.return_value = _streamed_mock(self.SAMPLE_HTML, url=url)
             with patch("backend.lib.llm.is_configured", return_value=True):
                 with patch("backend.lib.llm.chat_completion", return_value="not json at all"):
                     with caplog.at_level("WARNING", logger="src.collectors.url_parser"):

@@ -9,7 +9,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Optional
 
-from ..contact_instructions import CAPTURE_KEY, SOURCE_KEY, retained_sources
+from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY, retained_sources
 
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
@@ -89,6 +89,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
             "manually_reviewed": False,
             "notes": "",
             **({SOURCE_KEY: contact_sources} if isinstance(extra, dict) and SOURCE_KEY in extra else {}),
+            **({PAGES_KEY: deepcopy(extra[PAGES_KEY])} if isinstance(extra, dict) and PAGES_KEY in extra else {}),
             **({CAPTURE_KEY: deepcopy(extra[CAPTURE_KEY])} if isinstance(extra, dict) and isinstance(extra.get(CAPTURE_KEY), dict) else {}),
         },
     }
@@ -96,6 +97,13 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     # Compute application effort
     normalized["application"]["application_effort"] = _compute_effort(normalized["application"])
 
+    if isinstance(extra, dict) and isinstance(extra.get(SOURCE_KEY), list) and len(extra[SOURCE_KEY]) > 8:
+        metadata = normalized['metadata']
+        metadata[SOURCE_KEY] = []
+        metadata[PAGES_KEY] = {'version':1, 'pages':[], 'merge_issue':'source_limit'}
+        receipt = metadata.get(CAPTURE_KEY)
+        if isinstance(receipt, dict):
+            metadata[CAPTURE_KEY] = {**receipt, 'status':'unsupported', 'reason':'source_limit'}
     return normalized
 
 

@@ -34,6 +34,12 @@ UCB_FACULTY_SOURCES = {s for s in FACULTY_SOURCES if s.startswith("ucb_")}
 
 
 def _stub_all_collectors(monkeypatch, tmp_path):
+    def conditions(records, **kwargs):
+        # This registration helper performs no condition requests. The real
+        # zero-budget pass still reports missing/invalid pages honestly.
+        from src.collectors.faculty_condition_refresh import refresh_faculty_condition_sources
+        return refresh_faculty_condition_sources(records, max_requests=0)
+    monkeypatch.setattr(refresh_all, "refresh_faculty_condition_sources", conditions)
     for attr in dir(refresh_all):
         if attr.startswith("fetch_"):
             monkeypatch.setattr(refresh_all, attr, lambda *a, **k: [])

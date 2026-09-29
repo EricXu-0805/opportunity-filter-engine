@@ -1,6 +1,6 @@
 # Contact source persistence
 
-B55 keeps source observations intact when a collector refreshes a directory record. The capture receipt describes this attempt; each source's `checked_at` remains the time its page was actually observed. General `metadata.last_verified` is not a substitute.
+B55 introduced retention; B56 adds per-page state (see `contact_source_pages.md`). The current implementation keeps source observations intact when a collector refreshes a directory record. The capture receipt describes this attempt; each source's `checked_at` remains the time its page was actually observed. General `metadata.last_verified` is not a substitute.
 
 ## Merge rules
 
@@ -9,10 +9,10 @@ B55 keeps source observations intact when a collector refreshes a directory reco
 | Incoming observation | Result |
 | --- | --- |
 | No capture or source supplied | Keep the old bound source and its original observation date. |
-| `captured` with a valid complete bundle | Replace the previous bundle. |
-| `empty` with an explicit empty source list | Clear the previous bundle and retain an empty receipt. |
+| `captured` with a valid complete page bundle | Replace only the same requested page; keep the other pages. |
+| `empty` with an explicit empty source list | Clear only the requested page and retain its empty receipt. |
 | Ordinary `failed` or `unsupported` | Keep the old bound source; retain the failed attempt separately. Ignore any source list attached to this failed attempt. |
-| Explicit identity, URL, redirect, source withdrawal, or ambiguous program scope | Clear the previous source and retain the receipt. |
+| Explicit page identity, redirect, source withdrawal, or ambiguous program scope | Clear the requested page and retain its deletion barrier; target identity or record URL changes inherit no old pages. |
 | Invalid receipt, binding, date, or source shape | Do not adopt the new source. Keep only a valid previous state that still belongs to this record. |
 | Older observation, or captured observation at the same time as an empty/withdrawn state | Do not restore the previous source. |
 
@@ -20,7 +20,7 @@ A B54 snapshot without a receipt remains compatible only when the capture key is
 
 Sources are carried only across a stable record ID, record URL set, source type, faculty identity and organization. Faculty snapshots must also bind their own identity to the record. Changed records do not inherit an old person's or project's requirements.
 
-The existing source limits remain: at most 8 snapshots, 160 sections per snapshot, 1,000 characters per heading and 4,000 per section body. Receipt and source dates must be timezone-aware and not in the future. Successful receipt and source dates must agree. The implementation does not truncate source text to fit these limits.
+The active source limits remain: at most 8 snapshots, 160 sections per snapshot, 1,000 characters per heading and 4,000 per section body. Receipt and source dates must be timezone-aware and not in the future. Successful receipt and source dates must agree. The implementation does not truncate source text to fit these limits. B56 also limits the private ledger to 32 pages without evicting deletion records.
 
 ## Actual collection and storage
 
@@ -42,8 +42,8 @@ Shared URLs or similar titles alone cannot transfer requirements. The historical
 
 - Complete faculty records can still skip profile enrichment when the existing research/email/title fetch rules do not request it. `always` enables enrichment; it does not force every complete profile to be fetched. This batch adds no school-wide requests or scheduler. Such profiles may still have no receipt.
 - The existing time budget can stop before later profiles. Unvisited profiles are not reported as freshly checked.
-- The source bundle is replaced atomically by a successful capture. Independent per-page refresh, page-specific withdrawal and combining separate profile/lab/application-page observations are not implemented.
-- A later task should define a bounded refresh queue for missing or expired receipts, including independent page identity, last success, last attempt, retry reason and a school-level request budget.
+- B56 replaces only the observed page, keeps independent page withdrawals, and retains conflicts between profile/lab/application pages. The active-source limit is 8 blocks; the private page ledger is limited to 32 entries.
+- B56 adds the bounded faculty condition refresh entry point. Actual historical backfill, broader collector coverage and production scheduling remain separate validation.
 - Synthetic offline tests prove state transfer and local storage behavior. They do not prove current website coverage or successful live collection. No corpus was applied during B55 validation.
 
 ## Verification

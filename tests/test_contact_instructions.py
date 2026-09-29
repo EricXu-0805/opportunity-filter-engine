@@ -153,7 +153,7 @@ def test_url_parser_and_normalizer_keep_html_evidence_independent_of_model(monke
     from src.normalizers.normalizer import normalize
     html = '''<html><head><meta property="og:description" content="A short summary"></head>
         <body><h1>Undergraduate students</h1><p>Do not email us directly. Complete the form.</p></body></html>'''
-    monkeypatch.setattr('src.collectors.url_parser._safe_fetch', lambda _url: SimpleNamespace(text=html))
+    monkeypatch.setattr('src.collectors.url_parser._safe_fetch', lambda _url: SimpleNamespace(text=html, url=URL))
     raw = parse_url(URL)
     assert raw.description_raw == 'A short summary'
     enriched = _merge_llm_into_base(raw, {'description': 'Please email us.', SOURCE_KEY: [{'forged': True}]})
@@ -261,7 +261,8 @@ def test_url_llm_fetch_retains_source_even_when_enrichment_is_unavailable(monkey
     from src.collectors.url_parser import parse_url_llm
     from src.normalizers.normalizer import normalize
     html = '<html><body><h1>Undergraduate researchers</h1><p>Do not email us.</p></body></html>'
-    monkeypatch.setattr('src.collectors.url_parser._fetch_text', lambda _url: html)
+    from types import SimpleNamespace
+    monkeypatch.setattr('src.collectors.url_parser._safe_fetch', lambda _url: SimpleNamespace(text=html, url=URL))
     monkeypatch.setattr('src.collectors.url_parser._run_llm_extraction', lambda *_a, **_k: None)
     raw = parse_url_llm(URL)
     assert contact_instructions_for(normalize(asdict(raw)))['email_policy'] == 'not_accepted'
