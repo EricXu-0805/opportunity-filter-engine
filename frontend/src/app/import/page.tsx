@@ -20,15 +20,18 @@ import {
 import {
   addCustomImport,
   findExistingImport,
-  readCustomImports,
+  readCustomImportStorageState,
   updateCustomImport,
-  useCustomImports,
+  useCustomImportStorageState,
+  type CustomImportWriteFailureReason,
   type CustomImport,
 } from '@/lib/custom-imports';
-import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
 import ImportSuggestions from '@/components/ImportSuggestions';
 import ImportSourceText from '@/components/ImportSourceText';
+import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
+import { customImportFailureKey, canRetryCustomImport } from '@/lib/custom-import-feedback';
 import { importFailureKey, importSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
 
@@ -36,7 +39,7 @@ type Mode = 'url' | 'text';
 
 const TEXT_MIN_CHARS = 50;
 
-type UpdateReason = 'owner_changed' | 'changed' | 'missing' | 'identity_mismatch' | 'storage_failed' | 'unavailable';
+type UpdateReason = CustomImportWriteFailureReason | 'unavailable';
 type UpdateReview = { expected: CustomImport; candidate: ImportedOpportunity; token: OwnerToken };
 const UPDATE_ERROR_KEYS: Record<UpdateReason, string> = {
   owner_changed: 'import.updateOwnerChanged',
@@ -45,6 +48,9 @@ const UPDATE_ERROR_KEYS: Record<UpdateReason, string> = {
   identity_mismatch: 'import.updateIdentityMismatch',
   storage_failed: 'import.updateStorageFailed',
   unavailable: 'import.updateUnavailable',
+  storage_damaged: 'import.storageDamaged',
+  coordination_unavailable: 'import.storageCoordinationUnavailable',
+  lock_timeout: 'import.storageBusy',
 };
 
 type FetchState =
@@ -72,12 +78,15 @@ export default function ImportPage() {
   const [text, setText] = useState('');
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
   const [copied, setCopied] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [saveFailed, setSaveFailed] = useState<CustomImportWriteFailureReason | null>(null);
+  const [mutationPending, setMutationPending] = useState(false);
+  const mutationRef = useRef<symbol | null>(null);
   const [updateReview, setUpdateReview] = useState<UpdateReview | null>(null);
   const [updateError, setUpdateError] = useState<UpdateReason | null>(null);
   const [updated, setUpdated] = useState(false);
   const requestGeneration = useRef(0);
-  const customImports = useCustomImports();
+  const customStorage = useCustomImportStorageState();
+  const customImports = customStorage.entries;
   const savedEntry: CustomImport | null = state.kind === 'success'
     ? findExistingImport(state.opportunity, customImports)
     : null;
@@ -89,22 +98,36 @@ export default function ImportPage() {
   // never be clicked after the switch.
   useEffect(() => onLocalOwnerStateChange(() => {
     requestGeneration.current += 1;
+    mutationRef.current = null;
+    setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
     setUpdated(false);
     setState({ kind: 'idle' });
     setCopied(false);
-    setSaveFailed(false);
+    setSaveFailed(null);
   }), []);
 
-  const handleSave = useCallback(() => {
-    if (state.kind !== 'success') return;
-    const saved = addCustomImport(state.opportunity, state.token);
-    setSaveFailed(!saved);
+  useEffect(() => () => { requestGeneration.current += 1; mutationRef.current = null; }, []);
+
+  const handleSave = useCallback(async () => {
+    if (state.kind !== 'success' || mutationRef.current) return;
+    const intent = Symbol('save');
+    mutationRef.current = intent;
+    const generation = requestGeneration.current;
+    setMutationPending(true);
+    setSaveFailed(null);
+    const result = await addCustomImport(state.opportunity, state.token)
+      .catch(() => ({ ok: false, reason: 'storage_failed' } as const));
+    if (mutationRef.current !== intent || generation !== requestGeneration.current
+      || !isTokenOwnerStillCurrent(state.token)) return;
+    mutationRef.current = null;
+    setMutationPending(false);
+    setSaveFailed(result.ok ? null : result.reason);
   }, [state]);
 
   const handleReviewUpdate = useCallback(() => {
-    if (state.kind !== 'success') return;
+    if (state.kind !== 'success' || mutationRef.current) return;
     // A refresh is a new review, never a silent change to the old confirmation.
     const candidate = updateReview?.candidate ?? state.opportunity;
     const token = updateReview?.token ?? state.token;
@@ -112,7 +135,12 @@ export default function ImportPage() {
       setUpdateError('owner_changed');
       return;
     }
-    const current = findExistingImport(candidate, readCustomImports());
+    const storage = readCustomImportStorageState(token);
+    if (storage.status !== 'ready') {
+      setUpdateError(storage.status === 'damaged' ? 'storage_damaged' : storage.reason);
+      return;
+    }
+    const current = findExistingImport(candidate, storage.entries);
     if (!current) {
       setUpdateReview(null);
       setUpdateError('unavailable');
@@ -127,11 +155,20 @@ export default function ImportPage() {
     }
   }, [state, updateReview]);
 
-  const handleConfirmUpdate = useCallback(() => {
-    if (!updateReview || (updateError && updateError !== 'storage_failed')) return;
+  const handleConfirmUpdate = useCallback(async () => {
+    if (!updateReview || mutationRef.current || (updateError && !canRetryCustomImport(updateError))) return;
+    const intent = Symbol('update');
+    mutationRef.current = intent;
+    const generation = requestGeneration.current;
+    setMutationPending(true);
     // This is the exact old entry and candidate shown in the review. The
     // storage operation checks them again; do not swap in the newest entry.
-    const result = updateCustomImport(updateReview.candidate, updateReview.expected, updateReview.token);
+    const result = await updateCustomImport(updateReview.candidate, updateReview.expected, updateReview.token)
+      .catch(() => ({ ok: false, reason: 'storage_failed' } as const));
+    if (mutationRef.current !== intent || generation !== requestGeneration.current
+      || !isTokenOwnerStillCurrent(updateReview.token)) return;
+    mutationRef.current = null;
+    setMutationPending(false);
     if (!result.ok) {
       setUpdateError(result.reason);
       return;
@@ -144,6 +181,7 @@ export default function ImportPage() {
   }, [updateReview, updateError]);
 
   const handleKeepSaved = useCallback(() => {
+    if (mutationRef.current) return;
     setUpdateReview(null);
     setUpdateError(null);
   }, []);
@@ -151,11 +189,13 @@ export default function ImportPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const generation = ++requestGeneration.current;
+    mutationRef.current = null;
+    setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
     setUpdated(false);
     setCopied(false);
-    setSaveFailed(false);
+    setSaveFailed(null);
     // Captured at the moment this extract request begins — stored on the
     // success state itself (see FetchState's own doc comment), never
     // re-captured after the await.
@@ -232,6 +272,8 @@ export default function ImportPage() {
 
   const handleReset = useCallback(() => {
     requestGeneration.current += 1;
+    mutationRef.current = null;
+    setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
     setUpdated(false);
@@ -242,12 +284,14 @@ export default function ImportPage() {
     }
     setState({ kind: 'idle' });
     setCopied(false);
-    setSaveFailed(false);
+    setSaveFailed(null);
   }, [state]);
 
   const handleModeChange = useCallback((next: Mode) => {
     if (next === mode) return;
     requestGeneration.current += 1;
+    mutationRef.current = null;
+    setMutationPending(false);
     setUpdateReview(null);
     setUpdateError(null);
     setUpdated(false);
@@ -279,6 +323,8 @@ export default function ImportPage() {
           {t('import.intro')}
         </p>
       </header>
+
+      <CustomImportStorageNotice state={customStorage} />
 
       <div role="tablist" aria-label="Import mode" className="mb-6 flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
         <ModeTab active={mode === 'url'} onClick={() => handleModeChange('url')} label={t('import.modeUrl')} />
@@ -370,7 +416,7 @@ export default function ImportPage() {
       )}
 
       {state.kind === 'success' && (updateReview ? (
-        <ImportUpdateReview review={updateReview} error={updateError} onConfirm={handleConfirmUpdate}
+        <ImportUpdateReview review={updateReview} error={updateError} pending={mutationPending} onConfirm={handleConfirmUpdate}
           onKeep={handleKeepSaved} onReread={handleReviewUpdate} t={t} />
       ) : (
         <ResultCard
@@ -384,6 +430,8 @@ export default function ImportPage() {
           updated={updated}
           savedEntry={savedEntry}
           saveFailed={saveFailed}
+          pending={mutationPending}
+          storageReady={customStorage.status === 'ready'}
           copied={copied}
           t={t}
         />
@@ -429,6 +477,8 @@ function ResultCard({
   updated,
   savedEntry,
   saveFailed,
+  pending,
+  storageReady,
   copied,
   t,
 }: {
@@ -441,7 +491,9 @@ function ResultCard({
   onReviewUpdate: () => void;
   updated: boolean;
   savedEntry: CustomImport | null;
-  saveFailed: boolean;
+  saveFailed: CustomImportWriteFailureReason | null;
+  pending: boolean;
+  storageReady: boolean;
   copied: boolean;
   t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
@@ -480,18 +532,20 @@ function ResultCard({
             <button
               type="button"
               onClick={onSave}
+              disabled={pending || !storageReady}
+              aria-busy={pending}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors"
             >
               <Bookmark className="w-3.5 h-3.5" />
-              {t('import.saveToList')}
+              {t(pending ? 'import.saving' : 'import.saveToList')}
             </button>
             {saveFailed && (
-              <p className="text-[12px] text-red-600">{t('import.saveFailed')}</p>
+              <p role="alert" className="text-[12px] text-red-600">{t(saveFailed === 'storage_failed' ? 'import.saveFailed' : customImportFailureKey(saveFailed))}</p>
             )}
           </div>
         )}
         {savedEntry && (
-          <button type="button" onClick={onReviewUpdate}
+          <button type="button" onClick={onReviewUpdate} disabled={pending || !storageReady}
             className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700">
             {t('import.reviewUpdate')}
           </button>
@@ -578,15 +632,16 @@ function OpportunityDetails({ opportunity, t }: {
   </>;
 }
 
-function ImportUpdateReview({ review, error, onConfirm, onKeep, onReread, t }: {
+function ImportUpdateReview({ review, error, pending, onConfirm, onKeep, onReread, t }: {
   review: UpdateReview;
   error: UpdateReason | null;
+  pending: boolean;
   onConfirm: () => void;
   onKeep: () => void;
   onReread: () => void;
   t: (path: string, vars?: Record<string, string | number>) => string;
 }) {
-  const mustReread = error !== null && error !== 'storage_failed';
+  const mustReread = error !== null && !canRetryCustomImport(error);
   return (
     <section aria-label={t('import.reviewUpdate')} className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 space-y-5">
       <h2 className="text-lg font-semibold text-gray-900">{t('import.reviewUpdate')}</h2>
@@ -606,15 +661,15 @@ function ImportUpdateReview({ review, error, onConfirm, onKeep, onReread, t }: {
       </div>
       {error && <p role="alert" className="text-sm text-red-700">{t(UPDATE_ERROR_KEYS[error])}</p>}
       <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={onKeep} className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700">
+        <button type="button" onClick={onKeep} disabled={pending} className="rounded-xl border border-gray-300 px-4 py-2 text-sm text-gray-700">
           {t(error ? 'import.cancelUpdate' : 'import.keepSaved')}
         </button>
-        {mustReread && <button type="button" onClick={onReread} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm text-indigo-700">
+        {mustReread && <button type="button" onClick={onReread} disabled={pending} className="rounded-xl border border-indigo-300 px-4 py-2 text-sm text-indigo-700">
           {t('import.rereadSaved')}
         </button>}
-        <button type="button" onClick={onConfirm} disabled={mustReread}
+        <button type="button" onClick={onConfirm} disabled={pending || mustReread} aria-busy={pending}
           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed">
-          {t('import.confirmUpdate')}
+          {t(pending ? 'import.saving' : 'import.confirmUpdate')}
         </button>
       </div>
     </section>

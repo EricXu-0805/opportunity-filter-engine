@@ -39,8 +39,9 @@ describe('import suggestions stay separate from requirements', () => {
     advanceOwnerEpoch('b57-import-owner');
     await syncLocalIdentityOwner('b57-import-owner');
     const opportunity = imported({ skills_required: ['Java'], skills_preferred: ['R', 'Java'], needs_manual_review: false });
-    const saved = addCustomImport(opportunity, captureOwnerToken());
-    expect(saved).not.toBeNull();
+    const saved = await addCustomImport(opportunity, captureOwnerToken());
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) throw new Error(saved.reason);
     const before = localStorage.getItem('ofe_custom_imports');
     const restored = readCustomImports()[0];
     const view = customImportToOpp(restored);

@@ -59,6 +59,8 @@ export interface OpportunityCardProps {
   onToggleExpand: (id: string) => void;
   onToggleSelect: (opp: Opp) => void;
   onRemove: (opp: Opp) => void;
+  removeDisabled?: boolean;
+  removing?: boolean;
   onOpenEmailModal: (opp: Opp) => void;
   /**
    * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
@@ -86,6 +88,8 @@ export function OpportunityCard({
   onToggleExpand,
   onToggleSelect,
   onRemove,
+  removeDisabled = false,
+  removing = false,
   onOpenEmailModal,
   onOpenTailorModal,
   tailorDisabled,
@@ -192,6 +196,8 @@ export function OpportunityCard({
               <button
                 type="button"
                 onClick={() => onRemove(opp)}
+                disabled={removeDisabled}
+                aria-busy={removing}
                 className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
                 aria-label={opp._customId ? t('favorites.removeCustomAria') : t('favorites.removeAria')}
               >

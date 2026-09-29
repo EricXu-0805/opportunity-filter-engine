@@ -21,8 +21,10 @@ function candidate(): ImportedOpportunity {
 }
 async function prepare() {
   const next = candidate();
-  const old = addCustomImport({ ...next, title: 'Old saved title', description_raw: oldSource,
-    extra_fields: { description_source: 'page_excerpt', suggested_skills: ['R'], suggested_description: 'Old suggestion' } }, captureOwnerToken())!;
+  const saved = await addCustomImport({ ...next, title: 'Old saved title', description_raw: oldSource,
+    extra_fields: { description_source: 'page_excerpt', suggested_skills: ['R'], suggested_description: 'Old suggestion' } }, captureOwnerToken());
+  if (!saved.ok) throw new Error(saved.reason);
+  const old = saved.entry;
   mocks.importUrl.mockResolvedValueOnce({ ok: true, opportunity: next, llm_enriched: true });
   render(<ImportPage />);
   fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: next.url } });
@@ -81,7 +83,7 @@ describe('review a saved import before replacing it', () => {
     fireEvent.click(screen.getByRole('button', { name: 'import.rereadSaved' }));
     expect(within(screen.getByRole('region', { name: 'import.previousVersion' })).getByText('Changed in another tab')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'import.confirmUpdate' }));
-    expect(readCustomImports()[0].opportunity).toEqual(next);
+    await waitFor(() => expect(readCustomImports()[0].opportunity).toEqual(next));
     expect(readCustomImports()[0].id).toBe(old.id);
   });
 
@@ -134,7 +136,7 @@ it('confirms the frozen candidate even if the original response object later cha
   next.description_raw = 'Unreviewed replacement';
   next.extra_fields.suggested_skills = ['Unreviewed skill'];
   fireEvent.click(screen.getByRole('button', { name: 'import.confirmUpdate' }));
-  expect(readCustomImports()[0].opportunity).toEqual(reviewed);
+  await waitFor(() => expect(readCustomImports()[0].opportunity).toEqual(reviewed));
   expect(screen.queryByText('Unreviewed replacement')).toBeNull();
 });
 
@@ -156,8 +158,9 @@ it('starting another import closes the old review and does not reuse its confirm
 it('preserves an unrelated entry added while the review is open', async () => {
   const { old, next } = await prepare();
   fireEvent.click(screen.getByRole('button', { name: 'import.reviewUpdate' }));
-  act(() => { addCustomImport({ ...next, source_url: 'https://example.edu/other', url: 'https://example.edu/other', title: 'Other opportunity' }, captureOwnerToken()); });
+  await act(async () => { await addCustomImport({ ...next, source_url: 'https://example.edu/other', url: 'https://example.edu/other', title: 'Other opportunity' }, captureOwnerToken()); });
   fireEvent.click(screen.getByRole('button', { name: 'import.confirmUpdate' }));
+  await screen.findByText('import.updated');
   const saved = readCustomImports();
   expect(saved).toHaveLength(2);
   expect(saved.find((entry) => entry.id === old.id)?.opportunity).toEqual(next);
@@ -183,7 +186,7 @@ it('does not describe unreadable storage as a deleted entry when opening review'
   // An uncoordinated write can happen before this tab receives a storage event.
   localStorage.setItem('ofe_custom_imports', '{not valid JSON');
   fireEvent.click(screen.getByRole('button', { name: 'import.reviewUpdate' }));
-  expect(screen.getByText('import.updateUnavailable')).toBeInTheDocument();
+  expect(screen.getAllByText('import.storageDamaged').length).toBeGreaterThan(0);
   expect(screen.queryByText('import.updateMissing')).toBeNull();
   expect(screen.getByText('New source title')).toBeInTheDocument();
   expect(localStorage.getItem('ofe_custom_imports')).toBe('{not valid JSON');

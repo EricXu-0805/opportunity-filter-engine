@@ -141,7 +141,7 @@ describe('ImportPage — unverified model suggestions', () => {
     expect(screen.getByText('AI summary wording.')).toBeInTheDocument();
     expect(screen.queryByText('import.fieldSkillsReq')).toBeNull();
     fireEvent.click(screen.getByText('import.saveToList'));
-    expect(readCustomImports()[0].opportunity).toEqual(opportunity);
+    await waitFor(() => expect(readCustomImports()[0]?.opportunity).toEqual(opportunity));
   });
 
   it('does not call historical saved model arrays confirmed requirements', async () => {
@@ -193,7 +193,7 @@ describe('ImportPage — failure keeps review material', () => {
     } });
     try {
       fireEvent.click(screen.getByText('import.saveToList'));
-      expect(screen.getByText('import.saveFailed')).toBeInTheDocument();
+      expect(await screen.findByText('import.saveFailed')).toBeInTheDocument();
       expect(screen.getByText('Unsaved result')).toBeInTheDocument();
       expect(screen.getByText('Java')).toBeInTheDocument();
       expect(screen.getByText('Keep this suggestion.')).toBeInTheDocument();
@@ -247,7 +247,7 @@ it.each(['full_source', 'source_excerpt'] as const)('shows the full source and s
   expect(source).not.toHaveClass('line-clamp-4');
   expect(source.textContent).toBe(text);
   fireEvent.click(screen.getByText('import.saveToList'));
-  expect(readCustomImports()[0].opportunity).toEqual(opportunity);
+  await waitFor(() => expect(readCustomImports()[0]?.opportunity).toEqual(opportunity));
 });
 
 

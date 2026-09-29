@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getShortlistOpportunities } from '@/lib/api';
 import { getAuthState, getFavorites, onAuthChange, toggleFavorite } from '@/lib/supabase';
-import { captureOwnerToken } from '@/lib/identity-owner';
-import { removeCustomImport } from '@/lib/custom-imports';
+import { captureOwnerToken, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { removeCustomImport, type CustomImportWriteFailureReason } from '@/lib/custom-imports';
 import type { Opp } from './types';
 
 export interface UseFavoritesDataResult {
@@ -34,6 +34,8 @@ export interface UseFavoritesDataResult {
    *  silent no-op. Cleared on the next handleRemove attempt. */
   removeError: Opp | null;
   retryRemove: () => void;
+  removePendingId: string | null;
+  removeErrorReason: CustomImportWriteFailureReason | null;
 }
 
 /**
@@ -60,6 +62,12 @@ export function useFavoritesData(onIdentityChange?: () => void): UseFavoritesDat
   const [identityGeneration, setIdentityGeneration] = useState(0);
   const [ownerScopeKey, setOwnerScopeKey] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<Opp | null>(null);
+  const [removePendingId, setRemovePendingId] = useState<string | null>(null);
+  const [removeErrorReason, setRemoveErrorReason] = useState<CustomImportWriteFailureReason | null>(null);
+  const removeIntent = useRef<symbol | null>(null);
+  useEffect(() => onLocalOwnerStateChange(() => {
+    removeIntent.current = null; setRemovePendingId(null); setRemoveError(null); setRemoveErrorReason(null);
+  }), []);
   // Data-attempt generation: bumped by EVERY load (a real identity
   // hydration AND a manual retry) — this is what load()/handleRemove use
   // to drop a stale response. identityGenerationRef below is a SEPARATE,
@@ -115,6 +123,7 @@ export function useFavoritesData(onIdentityChange?: () => void): UseFavoritesDat
   // transition specifically.
   const resetAndLoad = useCallback(() => {
     const generation = ++generationRef.current;
+    removeIntent.current = null; setRemovePendingId(null); setRemoveErrorReason(null);
     setServerOpportunities([]);
     setUnavailableCount(0);
     setLoading(true);
@@ -182,22 +191,26 @@ export function useFavoritesData(onIdentityChange?: () => void): UseFavoritesDat
   const retry = useCallback(() => { resetAndLoad(); }, [resetAndLoad]);
 
   const handleRemove = useCallback(async (opp: Opp) => {
+    if (removeIntent.current) return;
     if (opp._customId) {
-      // Captured HERE, at the moment the user's remove intent began — not
-      // gated on ownerReady below, which is specific to the server-backed
-      // toggleFavorite path; a custom import's removal is a pure local
-      // write already gated by identity-owner's own token validation.
-      const removed = removeCustomImport(opp._customId, captureOwnerToken());
-      // A stale/rejected removal must surface the SAME visible retry path
-      // as a failed server-backed removal below — never a silent no-op the
-      // user has no way to know didn't take effect.
-      setRemoveError(removed ? null : opp);
+      const token = captureOwnerToken();
+      const generation = generationRef.current;
+      const intent = Symbol('remove'); removeIntent.current = intent;
+      setRemovePendingId(opp.id); setRemoveError(null); setRemoveErrorReason(null);
+      const result = await removeCustomImport(opp._customId, token)
+        .catch(() => ({ ok: false, reason: 'storage_failed' } as const));
+      if (removeIntent.current !== intent || generationRef.current !== generation
+        || !isTokenOwnerStillCurrent(token)) return;
+      removeIntent.current = null; setRemovePendingId(null);
+      setRemoveError(result.ok ? null : opp);
+      setRemoveErrorReason(result.ok ? null : result.reason);
       return;
     }
     if (!ownerReady || loading) return; // never capture the unprimed sentinel token, and nothing renderable to act on while loading
     const generation = generationRef.current;
     const token = captureOwnerToken();
     setRemoveError(null);
+    setRemoveErrorReason(null);
     try {
       await toggleFavorite(opp.id, true, token);
     } catch {
@@ -222,6 +235,6 @@ export function useFavoritesData(onIdentityChange?: () => void): UseFavoritesDat
   return {
     serverOpportunities, loading, error, retry, unavailableCount,
     identityGeneration, ownerReady, ownerScopeKey,
-    handleRemove, removeError, retryRemove,
+    handleRemove, removeError, retryRemove, removePendingId, removeErrorReason,
   };
 }

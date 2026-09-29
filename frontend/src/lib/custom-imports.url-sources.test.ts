@@ -18,8 +18,9 @@ describe('URL import source receipt persistence', () => {
     identity.advanceOwnerEpoch('b56-url-owner');
     await identity.syncLocalIdentityOwner('b56-url-owner');
     const opportunity = item.response.opportunity as ImportedOpportunity;
-    const saved = imports.addCustomImport(opportunity, identity.captureOwnerToken());
-    expect(saved).not.toBeNull();
+    const saved = await imports.addCustomImport(opportunity, identity.captureOwnerToken());
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) throw new Error(saved.reason);
     expect(imports.readCustomImports()[0].opportunity).toEqual(opportunity);
     const serialized = localStorage.getItem('ofe_custom_imports');
     expect(serialized).toContain('contact_instruction_capture');
@@ -32,7 +33,7 @@ describe('URL import source receipt persistence', () => {
     freshIdentity.advanceOwnerEpoch('b56-url-owner');
     await freshIdentity.syncLocalIdentityOwner('b56-url-owner');
     const restored = freshImports.readCustomImports();
-    expect(restored).toEqual([saved]);
+    expect(restored).toEqual([saved.entry]);
     expect(restored[0].opportunity.extra_fields).toEqual(opportunity.extra_fields);
     expect(restored[0].opportunity.extra_fields.needs_manual_review).toBe(true);
     expect(localStorage.getItem('ofe_custom_imports')).toBe(serialized);
@@ -45,10 +46,10 @@ describe('URL import source receipt persistence', () => {
     await identity.syncLocalIdentityOwner('b56-first-owner');
     const token = identity.captureOwnerToken();
     const opportunity = accepted[0].response.opportunity as ImportedOpportunity;
-    expect(imports.addCustomImport(opportunity, token)).not.toBeNull();
+    expect((await imports.addCustomImport(opportunity, token)).ok).toBe(true);
     identity.advanceOwnerEpoch('b56-second-owner');
     await identity.syncLocalIdentityOwner('b56-second-owner');
     expect(imports.readCustomImports()).toEqual([]);
-    expect(imports.addCustomImport(opportunity, token)).toBeNull();
+    expect(await imports.addCustomImport(opportunity, token)).toEqual({ ok: false, reason: 'owner_changed' });
   });
 });

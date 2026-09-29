@@ -9,7 +9,9 @@ import { useRouter } from 'next/navigation';
 
 import SaveFavoritesAnchor from '@/components/SaveFavoritesAnchor';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
-import { useCustomImports } from '@/lib/custom-imports';
+import CustomImportStorageNotice from '@/components/CustomImportStorageNotice';
+import { customImportFailureKey } from '@/lib/custom-import-feedback';
+import { useCustomImportStorageState } from '@/lib/custom-imports';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
@@ -85,7 +87,8 @@ export default function FavoritesPage() {
   const { t, locale } = useT();
 
   const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
-  const customImports = useCustomImports();
+  const customStorage = useCustomImportStorageState();
+  const customImports = customStorage.entries;
   const [savedSearchesEpoch, setSavedSearchesEpoch] = useState(0);
   const {
     selectionMode,
@@ -123,7 +126,7 @@ export default function FavoritesPage() {
   const {
     serverOpportunities, loading, error, retry, unavailableCount,
     identityGeneration, ownerReady, ownerScopeKey,
-    handleRemove,
+    handleRemove, removeError, retryRemove, removePendingId, removeErrorReason,
   } = useFavoritesData(resetPageLocalState);
 
   const writingScope = `${ownerScopeKey}:${identityGeneration}`;
@@ -228,6 +231,7 @@ export default function FavoritesPage() {
       </button>
 
       <StorageStatusBanner />
+      <CustomImportStorageNotice state={customStorage} />
       <ProfileRefreshBanner refresh={profileRefresh} locale={locale} />
 
       {/* R66: the lone anchor prompt — only renders when an anonymous
@@ -236,7 +240,7 @@ export default function FavoritesPage() {
           is included so a partial load doesn't undercount the real total. */}
       <SaveFavoritesAnchor favoriteCount={opportunities.length + unavailableCount} />
 
-      {error || unavailableCount > 0 ? (
+      {error || unavailableCount > 0 || customStorage.status !== 'ready' ? (
         // FavoritesHeader's own count text (opportunities.length === 0 ?
         // "empty" : count) can't tell a degraded load apart from a true
         // empty shortlist — it would claim "you have no favorites" during
@@ -245,7 +249,7 @@ export default function FavoritesPage() {
         // clean; Email/Compare are omitted rather than acting on it.
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
-          {!error && (
+          {!error && customStorage.status === 'ready' && (
             <p className="mt-2 text-[15px] text-gray-400">
               {t('favorites.count', { count: opportunities.length + unavailableCount })}
             </p>
@@ -269,7 +273,7 @@ export default function FavoritesPage() {
         hasOpportunities={opportunities.length > 0}
       />
 
-      {opportunities.length === 0 && !error && unavailableCount === 0 ? (
+      {opportunities.length === 0 && !error && unavailableCount === 0 && customStorage.status === 'ready' ? (
         <FavoritesEmptyState t={t} />
       ) : (
         <div className="space-y-4">
@@ -294,6 +298,12 @@ export default function FavoritesPage() {
               {t('favorites.unavailableWarning', { count: unavailableCount })}
             </div>
           )}
+          {removeError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p>{t('import.removeFailed', { title: removeError.title })}</p>
+            {removeErrorReason && <p>{t(customImportFailureKey(removeErrorReason))}</p>}
+            <button type="button" onClick={retryRemove} disabled={!!removePendingId}
+              className="mt-2 font-semibold text-indigo-700 disabled:opacity-50">{t('common.retry')}</button>
+          </div>}
           {opportunities.map((opp) => (
             <OpportunityCard
               key={opp.id}
@@ -306,6 +316,8 @@ export default function FavoritesPage() {
               onToggleExpand={toggleExpand}
               onToggleSelect={toggleSelect}
               onRemove={handleRemove}
+              removeDisabled={!!removePendingId || (!!opp._customId && customStorage.status !== 'ready')}
+              removing={removePendingId === opp.id}
               onOpenEmailModal={openEmailModal}
               onOpenTailorModal={openTailorModal}
               tailorDisabled={!canOpenWriting}

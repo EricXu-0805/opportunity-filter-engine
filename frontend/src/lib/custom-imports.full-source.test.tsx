@@ -52,7 +52,7 @@ describe.each(['en', 'zh'] as const)('actual local import response → Save → 
     fireEvent.click(screen.getByRole('button', { name: t('import.expandSource') }));
     expect(source).not.toHaveClass('line-clamp-4');
     fireEvent.click(screen.getByText(t('import.saveToList')));
-    expect(screen.getByText(t('import.saved'))).toBeInTheDocument();
+    expect(await screen.findByText(t('import.saved'))).toBeInTheDocument();
     const stored = localStorage.getItem('ofe_custom_imports');
     mounted.unmount();
     vi.resetModules();

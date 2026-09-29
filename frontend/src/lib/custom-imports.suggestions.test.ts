@@ -11,8 +11,9 @@ describe('actual API import suggestions survive Save and reopen', () => {
     owner.advanceOwnerEpoch('b57-fixture-owner');
     await owner.syncLocalIdentityOwner('b57-fixture-owner');
     const raw = response.opportunity as ImportedOpportunity;
-    const saved = storage.addCustomImport(raw, owner.captureOwnerToken());
-    expect(saved).not.toBeNull();
+    const saved = await storage.addCustomImport(raw, owner.captureOwnerToken());
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) throw new Error(saved.reason);
     const serialized = localStorage.getItem('ofe_custom_imports');
     vi.resetModules();
     const freshOwner = await import('./identity-owner');
@@ -20,7 +21,7 @@ describe('actual API import suggestions survive Save and reopen', () => {
     freshOwner.advanceOwnerEpoch('b57-fixture-owner');
     await freshOwner.syncLocalIdentityOwner('b57-fixture-owner');
     const restored = freshStorage.readCustomImports()[0];
-    expect(restored).toEqual(saved);
+    expect(restored).toEqual(saved.entry);
     expect(restored.opportunity.description_raw).toBe(raw.description_raw);
     const { customImportToOpp } = await import('@/app/favorites/types');
     const view = customImportToOpp(restored);

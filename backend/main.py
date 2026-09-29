@@ -49,6 +49,7 @@ from backend.routes import (
     opportunities,
     ops,
     orders,
+    private_import_targets,
     professors,
     push,
     readiness,
@@ -508,6 +509,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # authenticated tier is also token-varied, which no shared cache
             # keys on.
             or path == "/api/ready"
+            or path.rstrip("/") == "/api/private-import-targets"
+            or path.startswith("/api/private-import-targets/")
             or path.rstrip("/") in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan", "/api/resume/full-target/export"}
         ):
             # Admin responses can contain student email addresses, feedback
@@ -610,6 +613,11 @@ def _material_body_limit_from_env() -> int:
     return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
 
 
+def _private_target_body_limit_from_env() -> int:
+    from backend.lib.private_import_targets_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
 class _BodyTooLarge(StarletteHTTPException):
     """The cumulative chunked body crossed the limit.
 
@@ -636,7 +644,7 @@ class RequestBodyLimitMiddleware:
     trips 413 the moment the cumulative chunk size crosses the limit.
     """
 
-    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None, material_max_bytes: int | None = None):
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None, material_max_bytes: int | None = None, private_target_max_bytes: int | None = None):
         if max_bytes < 1:
             raise ValueError("max_bytes must be positive")
         self.app = app
@@ -644,10 +652,14 @@ class RequestBodyLimitMiddleware:
         self.full_target_max_bytes = full_target_max_bytes or max_bytes
         self.export_max_bytes = export_max_bytes or max_bytes
         self.material_max_bytes = material_max_bytes or max_bytes
+        self.private_target_max_bytes = private_target_max_bytes or max_bytes
 
     @staticmethod
-    async def _send_error(send, status: int) -> None:
-        if status == 413:
+    async def _send_error(send, status: int, *, private_target: bool = False) -> None:
+        if private_target:
+            body = (b'{"detail":{"code":"private_target_too_large"}}' if status == 413
+                    else b'{"detail":{"code":"private_target_invalid_request"}}')
+        elif status == 413:
             body = b'{"detail":"Request body too large"}'
         else:
             body = b'{"detail":"Invalid Content-Length"}'
@@ -678,7 +690,10 @@ class RequestBodyLimitMiddleware:
             return
 
         path = scope.get("path", "").rstrip("/")
-        if path in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan"}:
+        private_target = path == "/api/private-import-targets" or path.startswith("/api/private-import-targets/")
+        if private_target:
+            max_bytes = self.private_target_max_bytes
+        elif path in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan"}:
             max_bytes = self.full_target_max_bytes
         elif path == "/api/resume/full-target/export":
             max_bytes = self.export_max_bytes
@@ -694,14 +709,14 @@ class RequestBodyLimitMiddleware:
             # values happen to match, and have a history of request-smuggling
             # discrepancies between proxies and application servers.
             if len(content_lengths) != 1:
-                await self._send_error(send, 400)
+                await self._send_error(send, 400, private_target=private_target)
                 return
             raw_length = content_lengths[0]
             if not raw_length or not raw_length.isdigit() or len(raw_length) > 20:
-                await self._send_error(send, 400)
+                await self._send_error(send, 400, private_target=private_target)
                 return
             if int(raw_length) > max_bytes:
-                await self._send_error(send, 413)
+                await self._send_error(send, 413, private_target=private_target)
                 return
 
         received_bytes = 0
@@ -729,7 +744,7 @@ class RequestBodyLimitMiddleware:
                 # Too late for a clean 413 — surface the abort instead of
                 # corrupting an in-flight response.
                 raise
-            await self._send_error(send, 413)
+            await self._send_error(send, 413, private_target=private_target)
 
 
 def _warmup() -> None:
@@ -808,6 +823,7 @@ app.add_middleware(
     full_target_max_bytes=_full_target_body_limit_from_env(),
     export_max_bytes=_export_body_limit_from_env(),
     material_max_bytes=_material_body_limit_from_env(),
+    private_target_max_bytes=_private_target_body_limit_from_env(),
 )
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
@@ -851,6 +867,7 @@ app.include_router(tailor.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_export.router, prefix="/api", tags=["resume"])
 app.include_router(application_materials.router, prefix="/api", tags=["materials"])
+app.include_router(private_import_targets.router, prefix="/api", tags=["private-imports"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])

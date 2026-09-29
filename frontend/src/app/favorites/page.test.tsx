@@ -20,15 +20,16 @@ vi.mock('next/navigation', () => ({
 
 const profileRefreshFeed = vi.hoisted(() => ({ status: 'ready' as import('@/lib/use-profile-refresh').ProfileRefreshState['status'] }));
 vi.mock('@/lib/use-profile-refresh', () => ({ useProfileRefresh: () => ({ status: profileRefreshFeed.status, refresh: async () => true, checkForAction: async () => null }) }));
-beforeEach(() => { profileRefreshFeed.status = 'ready'; });
+beforeEach(() => { profileRefreshFeed.status = 'ready'; customStorageFeed.state = { status: 'ready', entries: [] }; });
 
+const customStorageFeed = vi.hoisted(() => ({ state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState }));
 vi.mock('@/lib/custom-imports', () => ({
-  useCustomImports: () => [],
+  useCustomImportStorageState: () => customStorageFeed.state,
 }));
 
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 vi.mock('@/components/SaveFavoritesAnchor', () => ({ default: () => null }));
-vi.mock('./FavoritesEmptyState', () => ({ FavoritesEmptyState: () => null }));
+vi.mock('./FavoritesEmptyState', () => ({ FavoritesEmptyState: () => <div data-testid="empty-favorites" /> }));
 vi.mock('./FavoritesHeader', () => ({ FavoritesHeader: () => null }));
 vi.mock('./SavedSearchesSection', () => ({ SavedSearchesSection: () => null }));
 vi.mock('./use-saved-searches', () => ({
@@ -57,10 +58,13 @@ vi.mock('./OpportunityCard', () => ({
     onOpenTailorModal?: (opp: { id: string; title: string }) => void;
     tailorDisabled: boolean;
     hasProfile: boolean;
+    removeDisabled: boolean;
+    removing: boolean;
     onOpenEmailModal: (opp: { id: string; title: string }) => void;
   }) => (
     <div data-testid={`opp-card-${props.opp.id}`}>
       <button disabled={!props.hasProfile} onClick={() => props.onOpenEmailModal(props.opp)}>{`Email ${props.opp.title}`}</button>
+      <button disabled={props.removeDisabled} aria-busy={props.removing}>{`Remove ${props.opp.title}`}</button>
       <span data-testid={`tailor-disabled-${props.opp.id}`}>{String(props.tailorDisabled)}</span>
       <button
         type="button"
@@ -367,4 +371,38 @@ describe('Favorites offline writing entry', () => {
     expect(screen.queryByTestId('mock-email-modal')).toBeNull();
     expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
   });
+});
+
+
+it('renders remove failure and connects a visible retry without claiming removal succeeded', () => {
+  const retry = vi.fn();
+  mockHookState.current = baseHookResult({ removeError: { id: 'custom-one', title: 'Saved source', _customId: 'custom-one' },
+    removeErrorReason: 'lock_timeout', retryRemove: retry });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.removeFailed')).toBeInTheDocument();
+  expect(screen.getByText('import.storageBusy')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('common.retry'));
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+
+it('keeps readable damaged imports visible, disables removal, and avoids a false empty state', () => {
+  customStorageFeed.state = { status: 'damaged', entries: [{ id: 'custom-source', imported_at: '2026-09-28', opportunity: {
+    source: 'url_parser', source_url: 'https://example.edu/project', url: 'https://example.edu/project', title: 'Readable source', description_raw: 'Complete original', extra_fields: {},
+  } }] };
+  mockHookState.current = baseHookResult({ serverOpportunities: [] });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.storageDamaged')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Remove Readable source' })).toBeDisabled();
+  expect(screen.queryByTestId('empty-favorites')).toBeNull();
+  expect(screen.getByText('import.exportBackup')).toBeInTheDocument();
+});
+
+it('does not call unavailable import storage an empty list or offer reset', () => {
+  customStorageFeed.state = { status: 'unavailable', entries: [], reason: 'storage_failed' };
+  mockHookState.current = baseHookResult({ serverOpportunities: [] });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.storageFailed')).toBeInTheDocument();
+  expect(screen.queryByTestId('empty-favorites')).toBeNull();
+  expect(screen.queryByText('import.reviewReset')).toBeNull();
 });

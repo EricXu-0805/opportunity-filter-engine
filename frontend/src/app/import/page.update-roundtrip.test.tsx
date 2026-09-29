@@ -34,6 +34,7 @@ describe('actual reimport response → reviewed update → reopened favorite', (
     fireEvent.click(screen.getByText(t('import.fetchButton')));
     await screen.findByText(fixture.initial.opportunity.title);
     fireEvent.click(screen.getByText(t('import.saveToList')));
+    await screen.findByText(t('import.saved'));
     const originalEntry = storage.readCustomImports()[0];
     const emailKey = STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX + originalEntry.id;
     const resumeKey = STORAGE_KEYS.TAILOR_DRAFT_PREFIX + originalEntry.id;

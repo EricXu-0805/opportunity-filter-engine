@@ -12,7 +12,7 @@ const fixture = vi.hoisted(() => ({ state: {} as Record<string, unknown>, accept
   refresh: { status: 'ready', refresh: vi.fn(), checkForAction: vi.fn() } as unknown as ProfileRefreshState }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ back: vi.fn() }) }));
-vi.mock('@/lib/custom-imports', () => ({ useCustomImports: () => [] }));
+vi.mock('@/lib/custom-imports', () => ({ useCustomImportStorageState: () => ({ status: 'ready', entries: [] }) }));
 vi.mock('@/lib/use-profile-refresh', () => ({ useProfileRefresh: (_ready: boolean, accepted: typeof fixture.accepted) => {
   fixture.accepted = accepted; return fixture.refresh;
 } }));
