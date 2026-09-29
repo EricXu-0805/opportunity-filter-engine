@@ -172,9 +172,8 @@ class TestTaggerUpdates:
             "paid": "unknown",
         }
         updates = rule_based_tag(opp)
-        assert "skills_required" in updates or "skills_preferred" in updates
-        all_skills = updates.get("skills_required", []) + updates.get("skills_preferred", [])
-        assert "Python" in all_skills
+        assert not updates.get("skills_required") and not updates.get("skills_preferred")
+        assert "Python" in updates["skill_mentions"]
 
     def test_rule_based_tag_extracts_from_url_path(self):
         opp = {
@@ -212,10 +211,12 @@ class TestTaggerUpdates:
         }
         updates = rule_based_tag(opp)
         all_skills = updates.get("skills_required", []) + updates.get("skills_preferred", [])
-        assert len(all_skills) > 0, "Should infer skills from domain keywords"
+        assert all_skills == [], "Domain keywords cannot establish skill requirements"
+        assert "Python" not in updates.get("skill_mentions", [])
 
     def test_apply_updates_modifies_opportunity(self):
         opp = {
+            "description_raw": "Python is required.",
             "paid": "unknown",
             "eligibility": {
                 "skills_required": [],

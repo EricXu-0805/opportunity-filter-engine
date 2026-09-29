@@ -15,6 +15,10 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from html import unescape
+
+from src.evidence import stamp_inferred
+from src.opportunity_terms import extract_skill_mentions, extract_skill_requirements
 
 from .rolling_truth import reconcile_rolling_with_deadline
 
@@ -215,86 +219,50 @@ KEYWORD_PATTERNS: dict[str, list[str]] = {
 }
 
 
-# Skill patterns with strict word boundaries. Used to backfill
-# eligibility.skills_required when upstream didn't extract any.
-# These intentionally require clear context (e.g. "R programming"
-# not "R" because "R" alone collides with words like "Research").
-SKILL_PATTERNS: dict[str, list[str]] = {
-    "Python": [r"\bpython\b"],
-    "PyTorch": [r"\bpytorch\b"],
-    "TensorFlow": [r"\btensorflow\b|\btensor flow\b"],
-    "scikit-learn": [r"\bscikit[- ]learn\b|\bsklearn\b"],
-    "NumPy": [r"\bnumpy\b"],
-    "pandas": [r"\bpandas\b"],
-    "MATLAB": [r"\bmatlab\b"],
-    "R": [r"\bR\s+programming\b", r"\bR\s+language\b", r"\bR\s+statistical\b",
-          r"\bR\s+(?:package|library|script)\b"],
-    "SAS": [r"\bSAS\s+(?:software|programming|analytics)\b"],
-    "Stata": [r"\bStata\b"],
-    "SPSS": [r"\bSPSS\b"],
-    "SQL": [r"\bSQL\b"],
-    "Java": [r"\bJava\s+programming\b", r"\bin\s+Java\b(?!script)"],
-    "C++": [r"C\+\+"],
-    "C": [r"\bC\s+programming\b"],
-    "JavaScript": [r"\bjavascript\b"],
-    "TypeScript": [r"\btypescript\b"],
-    "HTML/CSS": [r"\bHTML(?:\s*/\s*CSS)?\b", r"\bCSS\b"],
-    "Git": [r"\bgit\b|\bgithub\b|\bgitlab\b"],
-    "Docker": [r"\bdocker\b|\bcontainer"],
-    "Linux": [r"\blinux\b|\bunix\b|\bbash\s+scripting\b"],
-    "AWS": [r"\bAWS\b|\bamazon web services\b"],
-    "GCP": [r"\bGCP\b|\bgoogle cloud\b"],
-    "Azure": [r"\bmicrosoft azure\b"],
-    "LaTeX": [r"\bLaTeX\b"],
-    # ECE / hardware
-    "LabVIEW": [r"\blabview\b"],
-    "Verilog": [r"\bverilog\b|\bsystemverilog\b"],
-    "VHDL": [r"\bvhdl\b"],
-    "FPGA": [r"\bfpga\b"],
-    "PCB design": [r"\bpcb\s+design\b"],
-    # Mechanical / materials
-    "CAD": [r"\bCAD\b|\bAutoCAD\b|\bSolidWorks\b|\bFusion\s+360\b"],
-    "FEA": [r"\bFEA\b|\bfinite element\b|\bANSYS\b|\bAbaqus\b"],
-    "3D printing": [r"\b3D\s+printing\b|\badditive manufacturing\b"],
-    # Chemistry / biology wet-lab
-    "PCR": [r"\bPCR\b|\bqPCR\b"],
-    "microscopy": [r"\b(confocal |fluorescence |electron )?microscopy\b"],
-    "HPLC": [r"\bHPLC\b|\bLC[- ]MS\b|\bGC[- ]MS\b"],
-    "cell culture": [r"\bcell culture\b|\btissue culture\b"],
-    "spectroscopy": [r"\b(NMR|IR|UV[- ]Vis|Raman)\s+spectroscopy\b", r"\bmass spectrometry\b"],
-    # Statistical / data science
-    "machine learning": [r"\bmachine learning\b"],
-    "deep learning": [r"\bdeep learning\b|\bneural networks?\b"],
-    "statistical analysis": [r"\bstatistical analysis\b|\bregression analysis\b"],
-    "data analysis": [r"\bdata analysis\b|\bdata analytics\b"],
-}
-
-# Non-substring contexts that block a skill match even when the pattern
-# matches. Prevents e.g. "R" in "Research" from surfacing.
-_SKILL_BLOCKLIST_CONTEXTS: dict[str, list[str]] = {
-    "R": [r"\bresearch\b", r"\bReview\b", r"\bResume\b"],
-}
-
-
 def _extract_skills_from_text(text: str) -> list[str]:
-    found = []
-    for skill, patterns in SKILL_PATTERNS.items():
-        matched = False
-        for p in patterns:
-            if re.search(p, text, re.IGNORECASE):
-                matched = True
-                break
-        if not matched:
+    """Compatibility wrapper for lexical diagnostics, not eligibility claims."""
+    return extract_skill_mentions(text)
+
+
+def _source_title(opp: dict) -> str:
+    metadata = opp.get("metadata") or {}
+    inferred = metadata.get("inferred_fields") or {}
+    return "" if inferred.get("title") else (opp.get("title") or "")
+
+
+def _skill_source_text(opp: dict) -> str:
+    """Keep all available source prose, never derived tags or URL words."""
+    eligibility = opp.get("eligibility") or {}
+    values = [_source_title(opp), opp.get("description_raw"),
+              opp.get("description_clean"), opp.get("description"),
+              eligibility.get("eligibility_text_raw")]
+    parts = []
+    for value in values:
+        if not isinstance(value, str) or not value.strip():
             continue
-        blocklist = _SKILL_BLOCKLIST_CONTEXTS.get(skill)
-        if blocklist and any(re.search(b, text, re.IGNORECASE) for b in blocklist):
-            continue
-        found.append(skill)
-    return found
+        text = re.sub(r"</?(?:p|div|li|ul|ol|h[1-6]|br)\b[^>]*>", "\n", value, flags=re.IGNORECASE)
+        text = unescape(re.sub(r"<[^>]+>", " ", text)).strip()
+        if text and text not in parts:
+            parts.append(text)
+    return "\n".join(parts)
+
+
+def _store_skill_mentions(opp: dict, mentions: list[str]) -> bool:
+    """Write positive mentions separately from eligibility, with provenance."""
+    meta = opp.setdefault("metadata", {})
+    method = (meta.get("inferred_fields") or {}).get("metadata.skill_mentions")
+    if meta.get("skill_mentions") and method != "rule:opportunity_terms":
+        return False  # Preserve explicit upstream/manual values.
+    if not mentions and method != "rule:opportunity_terms":
+        return False
+    changed = meta.get("skill_mentions") != mentions or method != "rule:opportunity_terms"
+    meta["skill_mentions"] = list(mentions)
+    stamp_inferred(meta, "metadata.skill_mentions", "rule:opportunity_terms")
+    return changed
 
 
 def _combined_text(opp: dict) -> str:
-    title = (opp.get("title") or "").lower()
+    title = _source_title(opp).lower()
     desc = (opp.get("description_clean") or opp.get("description_raw") or "").lower()
     desc = re.sub(r"<[^>]+>", " ", desc)
     lab = (opp.get("lab_or_program") or "").lower()
@@ -313,7 +281,7 @@ def infer_majors(opp: dict) -> list[str]:
                 found.append(major)
                 break
 
-    title_text = (opp.get("title") or "").lower()
+    title_text = _source_title(opp).lower()
     if title_text:
         for major, patterns in JOB_TITLE_MAJOR_PATTERNS.items():
             if major in found:
@@ -454,20 +422,21 @@ def enrich_opportunity(opp: dict) -> dict:
         inferred = infer_majors(opp)
         if inferred:
             elig["majors"] = inferred
+            stamp_inferred(opp.setdefault("metadata", {}), "eligibility.majors", "rule:enricher")
 
-    # Skill inference is for program/job/internship listings, NOT faculty. A
-    # faculty record is a cold-email research contact, not a posting with
-    # "required skills": inferring them from research-topic prose is false-
-    # precise (a topology professor whose page says "finite element" gets
-    # skills_required=['FEA']) and it defeats the ranker's neutral skill score
-    # for honest-empty rolling faculty — routing a research-curious student's
-    # match through a skills mismatch they never should have been graded on.
-    if opp.get("source_type") != "faculty_research" and not elig.get("skills_required"):
-        desc = opp.get("description_raw") or opp.get("description_clean") or ""
-        if desc and len(desc) >= 80:
-            inferred_skills = _extract_skills_from_text(desc)
-            if inferred_skills:
-                elig["skills_required"] = inferred_skills
+    # Source prose can establish a requirement only through a local explicit
+    # qualifier. A tool used in the project remains a positive mention; a
+    # research domain cannot fabricate a tool or an applicant requirement.
+    if opp.get("source_type") != "faculty_research":
+        skills = extract_skill_requirements(_skill_source_text(opp))
+        for kind in ("required", "preferred"):
+            field = f"skills_{kind}"
+            other = "skills_preferred" if kind == "required" else "skills_required"
+            values = [value for value in skills[kind] if value not in (elig.get(other) or [])]
+            if values and not elig.get(field):
+                elig[field] = values
+                stamp_inferred(opp.setdefault("metadata", {}), f"eligibility.{field}", "rule:enricher")
+        _store_skill_mentions(opp, skills["mentioned"])
 
     # Keyword backfill is for program/listing records only. Faculty records get
     # their keywords from the collectors' own junk-gated pipeline; inferring
@@ -485,6 +454,7 @@ def enrich_opportunity(opp: dict) -> dict:
             inferred_kws = infer_keywords(opp)
             if inferred_kws:
                 opp["keywords"] = inferred_kws
+                stamp_inferred(opp.setdefault("metadata", {}), "keywords", "rule:enricher")
 
     if is_likely_non_opportunity(opp):
         meta = opp.setdefault("metadata", {})

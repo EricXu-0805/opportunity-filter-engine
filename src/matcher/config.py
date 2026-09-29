@@ -287,7 +287,10 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # 15: selected types are hard result-universe boundaries. Major affinity and
 # unknown record types can no longer admit an opportunity the user did not
 # select; invalidate snapshots and explanations built with that old filter.
-_MATCHER_VERSION_BASE = "15"
+# 16: inferred major and skill labels, and optional skills, are positive-only
+# relevance signals. They cannot manufacture missing qualifications or score
+# below unknown requirements. Retire cached scores and gap explanations.
+_MATCHER_VERSION_BASE = "16"
 
 
 def _matcher_fingerprint() -> str:

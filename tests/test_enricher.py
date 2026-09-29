@@ -157,16 +157,16 @@ class TestNonOpportunityDetection:
         assert not opp.get("eligibility", {}).get("skills_required")
 
     def test_program_skills_backfill_kept(self):
-        """A real internship/program still gets inferred skills — the skip is
-        faculty-only."""
+        """A real posting keeps explicitly required/preferred skill extraction."""
         opp = _opp(
             "Data Science Internship",
-            "Build models in Python and SQL; experience with machine learning "
-            "and finite element analysis simulation preferred for this role.",
+            "Python is required for this role. SQL is preferred for comparing "
+            "the recorded measurements across several experiments.",
         )
         opp["source_type"] = "internship"
         enrich_opportunity(opp)
-        assert opp["eligibility"].get("skills_required")
+        assert opp["eligibility"]["skills_required"] == ["Python"]
+        assert opp["eligibility"]["skills_preferred"] == ["SQL"]
 
 
 class TestInferKeywords:

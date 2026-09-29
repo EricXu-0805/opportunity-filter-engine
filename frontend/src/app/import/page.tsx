@@ -26,6 +26,8 @@ import {
 } from '@/lib/custom-imports';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { useT } from '@/i18n/client';
+import ImportSuggestions from '@/components/ImportSuggestions';
+import { importSuggestions } from '@/lib/import-suggestions';
 
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), {
   ssr: false,
@@ -362,8 +364,7 @@ function ResultCard({
   const oppType = typeof extra.opportunity_type === 'string' ? extra.opportunity_type : null;
   const onCampus = typeof extra.on_campus === 'boolean' ? extra.on_campus : null;
   const paid = typeof extra.paid === 'string' ? extra.paid : null;
-  const skillsReq = Array.isArray(extra.skills_required) ? (extra.skills_required as string[]) : [];
-  const skillsPref = Array.isArray(extra.skills_preferred) ? (extra.skills_preferred as string[]) : [];
+  const suggestions = importSuggestions(extra);
   const preferredYear = Array.isArray(extra.preferred_year) ? (extra.preferred_year as string[]) : [];
   const intlFriendly = typeof extra.international_friendly === 'string'
     ? extra.international_friendly
@@ -409,18 +410,13 @@ function ResultCard({
       {opportunity.description_raw && (
         <div className="mb-6">
           <h3 className="text-[12px] uppercase tracking-wide text-gray-400 font-semibold mb-2">
-            {t('import.fieldDescription')}
+            {t(extra.description_source === 'pasted_text' ? 'import.pastedSource' : extra.description_source === 'page_excerpt' ? 'import.pageExcerpt' : 'import.fieldDescription')}
           </h3>
           <MarkdownPreview>{opportunity.description_raw}</MarkdownPreview>
         </div>
       )}
 
-      {skillsReq.length > 0 && (
-        <SkillRow label={t('import.fieldSkillsReq')} skills={skillsReq} variant="required" />
-      )}
-      {skillsPref.length > 0 && (
-        <SkillRow label={t('import.fieldSkillsPref')} skills={skillsPref} variant="preferred" />
-      )}
+      <ImportSuggestions skills={suggestions.skills} summary={suggestions.summary} t={t} />
 
       <p className="text-[12px] text-gray-400 leading-relaxed border-t border-gray-100 pt-4 mt-6">
         {t('import.persistNote')}
@@ -495,37 +491,6 @@ function Field({
         {label}
       </dt>
       <dd className={`text-gray-800 ${capitalize ? 'capitalize' : ''}`}>{display}</dd>
-    </div>
-  );
-}
-
-function SkillRow({
-  label,
-  skills,
-  variant,
-}: {
-  label: string;
-  skills: string[];
-  variant: 'required' | 'preferred';
-}) {
-  const chipClass = variant === 'required'
-    ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
-    : 'bg-gray-50 text-gray-600 border-gray-200';
-  return (
-    <div className="mb-4">
-      <h3 className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-2">
-        {label}
-      </h3>
-      <div className="flex flex-wrap gap-1.5">
-        {skills.map((skill) => (
-          <span
-            key={skill}
-            className={`inline-flex px-2.5 py-1 rounded-full border text-[12px] font-medium ${chipClass}`}
-          >
-            {skill}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }

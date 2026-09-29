@@ -15,6 +15,7 @@ import {
   Star,
 } from 'lucide-react';
 import Badge from '@/components/Badge';
+import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
@@ -348,6 +349,10 @@ export function OpportunityCard({
                       ))}
                     </div>
                   </div>
+                )}
+
+                {isCustom && opp.import_suggestions && (
+                  <ImportSuggestions skills={opp.import_suggestions.skills} summary={opp.import_suggestions.summary} t={t} />
                 )}
 
                 {opp.keywords && opp.keywords.length > 0 && (

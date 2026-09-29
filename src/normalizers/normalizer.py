@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY, retained_sources
+from ..evidence import stamp_inferred
+from ..opportunity_terms import extract_skill_requirements
 
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
@@ -28,6 +30,11 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     extra = raw.get("extra_fields")
     contact_sources = retained_sources(extra.get(SOURCE_KEY)) if isinstance(extra, dict) else []
 
+    title_inference = (extra.get("inferred_fields") or {}).get("title") if isinstance(extra, dict) and isinstance(extra.get("inferred_fields"), dict) else None
+    source_title = "" if title_inference else title
+    terms_text = "\n".join(value for value in (source_title, desc, raw.get("eligibility_text", "")) if isinstance(value, str))
+    skills = extract_skill_requirements(terms_text)
+
     normalized = {
         "id": raw.get("id") or str(uuid.uuid4()),
         "source": raw.get("source", "unknown"),
@@ -45,7 +52,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
         "on_campus": raw.get("on_campus") if raw.get("on_campus") is not None else defaults.get("on_campus", None),
         "remote_option": raw.get("remote_option", "unknown"),
 
-        "opportunity_type": _infer_type(title, desc),
+        "opportunity_type": _infer_type(source_title, desc),
         "paid": raw.get("paid") or defaults.get("paid", "unknown"),
         "compensation_details": raw.get("compensation_details", ""),
 
@@ -57,9 +64,9 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
         "eligibility": {
             "preferred_year": _extract_years(desc),
             "min_gpa": _extract_gpa(desc),
-            "majors": _extract_majors(desc),
-            "skills_required": _extract_skills(desc, required=True),
-            "skills_preferred": _extract_skills(desc, required=False),
+            "majors": _extract_majors(terms_text),
+            "skills_required": skills["required"],
+            "skills_preferred": skills["preferred"],
             "citizenship_required": _check_citizenship(desc),
             "international_friendly": raw.get("international_friendly") or defaults.get("international_friendly", "unknown"),
             "work_auth_notes": raw.get("work_auth_notes", ""),
@@ -78,7 +85,7 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
 
         "description_raw": desc,
         "description_clean": _clean_description(desc),
-        "keywords": _extract_keywords(title, desc),
+        "keywords": _extract_keywords(source_title, desc),
 
         "metadata": {
             "confidence_score": 0.6,  # Default; increase after manual review
@@ -88,11 +95,21 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
             "is_active": True,
             "manually_reviewed": False,
             "notes": "",
+            "skill_mentions": skills["mentioned"],
             **({SOURCE_KEY: contact_sources} if isinstance(extra, dict) and SOURCE_KEY in extra else {}),
             **({PAGES_KEY: deepcopy(extra[PAGES_KEY])} if isinstance(extra, dict) and PAGES_KEY in extra else {}),
             **({CAPTURE_KEY: deepcopy(extra[CAPTURE_KEY])} if isinstance(extra, dict) and isinstance(extra.get(CAPTURE_KEY), dict) else {}),
         },
     }
+
+    if title_inference:
+        stamp_inferred(normalized["metadata"], "title", title_inference)
+    for field in ("majors", "skills_required", "skills_preferred"):
+        if normalized["eligibility"][field]:
+            stamp_inferred(normalized["metadata"], f"eligibility.{field}", "rule:opportunity_terms")
+    stamp_inferred(normalized["metadata"], "metadata.skill_mentions", "rule:opportunity_terms")
+    if normalized["keywords"]:
+        stamp_inferred(normalized["metadata"], "keywords", "rule:normalizer")
 
     # Compute application effort
     normalized["application"]["application_effort"] = _compute_effort(normalized["application"])
@@ -140,48 +157,50 @@ def _extract_gpa(text: str) -> Optional[float]:
 
 
 MAJOR_KEYWORDS = {
-    "CS": ["computer science", " cs ", "cs,", "cs/"],
-    "ECE": ["electrical", "computer engineering", " ece ", "ece,"],
-    "STAT": ["statistics", " stat ", "stat,"],
+    "CS": ["computer science"],
+    "ECE": ["electrical engineering", "computer engineering"],
+    "STAT": ["statistics"],
     "Data Science": ["data science"],
-    "IS": ["information science", "ischool", " is "],
-    "Math": ["mathematics", " math "],
+    "IS": ["information science", "information sciences", "information systems", "ischool"],
+    "Math": ["mathematics", "math"],
     "Physics": ["physics"],
-    "Biology": ["biology", "biological"],
-    "Chemistry": ["chemistry", "chemical"],
+    "Biology": ["biology", "biological sciences"],
+    "Chemistry": ["chemistry", "chemical engineering"],
     "Engineering": ["engineering"],
 }
+_MAJOR_ACRONYMS = {"CS": "CS", "ECE": "ECE", "STAT": "STAT", "IS": "IS"}
+_MAJOR_LIST = r"(?:CS|ECE|STAT|IS)(?:\s*(?:[,/&]|and|or)\s*(?:or\s+)?(?:CS|ECE|STAT|IS))*"
+_EDUCATION_PREFIX = re.compile(
+    r"\b(?:[Mm]ajoring\s+in|[Mm]ajors?\s*(?:in|:)\s*|[Dd]egrees?\s+in|"
+    r"[Ss]tudents?\s+(?:in|studying)|[Bb]ackground\s+in|[Dd]epartment\s+of)\s*(" + _MAJOR_LIST + r")(?!\w)")
+_EDUCATION_SUFFIX = re.compile(r"(?<!\w)(" + _MAJOR_LIST + r")\s+(?:majors?|students?|degrees?|department|program)\b")
 
 
 def _extract_majors(text: str) -> list[str]:
-    text_lower = text.lower()
+    # Field names describe research relevance, not verified admission rules.
+    # Ambiguous acronyms must occupy an education phrase, not just appear near
+    # the word 'students' (e.g. 'This IS a notice for students').
+    text = re.sub(r"(?:https?://|www\.)[^\s<>]+|<[^>]+>", " ", text)
+    positive_clauses = [clause for clause in re.split(r"[.!?;\n]", text)
+                        if not re.search(r"\b(?:no|not|without|neither)\b", clause, re.I)]
     found = []
     for major, keywords in MAJOR_KEYWORDS.items():
-        if any(kw in text_lower for kw in keywords):
+        if any(re.search(r"(?<!\w)" + re.escape(kw) + r"(?!\w)", clause, re.I)
+               for clause in positive_clauses for kw in keywords):
+            found.append(major)
+            continue
+        acronym = _MAJOR_ACRONYMS.get(major)
+        if acronym and any(re.search(r"\b" + acronym + r"\b", match.group(1))
+                           for clause in positive_clauses
+                           for pattern in (_EDUCATION_PREFIX, _EDUCATION_SUFFIX)
+                           for match in pattern.finditer(clause)):
             found.append(major)
     return found
 
 
-SKILL_KEYWORDS = [
-    "Python", "Java", "C++", "C#", "JavaScript", "TypeScript",
-    "R", "MATLAB", "SQL", "Rust", "Go",
-    "PyTorch", "TensorFlow", "scikit-learn", "pandas", "NumPy",
-    "OpenCV", "HuggingFace", "transformers",
-    "machine learning", "deep learning", "NLP",
-    "data analysis", "data visualization",
-    "Linux", "Git", "Docker",
-    "React", "Flask", "FastAPI", "Django",
-    "AWS", "GCP", "Azure",
-]
-
-
 def _extract_skills(text: str, required: bool = True) -> list[str]:
-    found = []
-    text_lower = text.lower()
-    for skill in SKILL_KEYWORDS:
-        if skill.lower() in text_lower:
-            found.append(skill)
-    return found
+    """Compatibility helper; bare mentions are metadata, not requirements."""
+    return extract_skill_requirements(text)["required" if required else "preferred"]
 
 
 def _check_citizenship(text: str) -> bool:

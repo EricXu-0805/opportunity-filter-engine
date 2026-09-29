@@ -105,6 +105,7 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
         location=None,
         extra_fields={
             "domain": domain,
+            "description_source": "page_excerpt",
             "needs_manual_review": True,
         },
     )
@@ -327,10 +328,10 @@ def parse_text_llm(text: str) -> Optional[RawOpportunity]:
         source="text_parser",
         source_url="",
         title="Untitled Opportunity",
-        description_raw="",
+        description_raw=text,
         url="",
         organization=None,
-        extra_fields={"needs_manual_review": True},
+        extra_fields={"needs_manual_review": True, "description_source": "pasted_text"},
     )
 
     body_excerpt = text[:LLM_BODY_EXCERPT_CHARS]
@@ -501,10 +502,12 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
         return out
 
     extra: dict = dict(base.extra_fields)
+    inferred = dict(extra.get("inferred_fields") or {})
 
     title = llm.get("title")
     if isinstance(title, str) and title.strip():
         base = _replace(base, title=title.strip())
+        inferred["title"] = "llm:url_parser"
 
     org = llm.get("organization")
     if isinstance(org, str) and org.strip():
@@ -532,15 +535,21 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
 
     description = llm.get("description")
     if isinstance(description, str) and description.strip():
-        base = _replace(base, description_raw=description.strip())
+        extra["suggested_description"] = description.strip()
+        inferred["suggested_description"] = "llm:url_parser"
 
-    skills_req = _coerce_str_list(llm.get("skills_required"))
-    if skills_req:
-        extra["skills_required"] = skills_req
-
-    skills_pref = _coerce_str_list(llm.get("skills_preferred"))
-    if skills_pref:
-        extra["skills_preferred"] = skills_pref
+    # Model lists are review suggestions, not source-stated qualifications.
+    # Preserve every suggested skill while dropping only duplicate labels.
+    skills = _coerce_str_list(llm.get("skills_required")) + _coerce_str_list(llm.get("skills_preferred"))
+    suggested = []
+    seen = set()
+    for skill in skills:
+        if skill.casefold() not in seen:
+            suggested.append(skill)
+            seen.add(skill.casefold())
+    if suggested:
+        extra["suggested_skills"] = suggested
+        inferred["suggested_skills"] = "llm:url_parser"
 
     pref_year = _coerce_str_list(llm.get("preferred_year"), _VALID_YEARS)
     if pref_year:
@@ -551,7 +560,9 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
         extra["international_friendly"] = intl.lower()
 
     extra["llm_enriched"] = True
-    extra["needs_manual_review"] = False
+    extra["needs_manual_review"] = True
+    if inferred:
+        extra["inferred_fields"] = inferred
     return _replace(base, extra_fields=extra)
 
 

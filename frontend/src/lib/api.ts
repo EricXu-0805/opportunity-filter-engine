@@ -1575,6 +1575,13 @@ export async function sendFavoritesEmail(
   });
 }
 
+export interface ImportedOpportunityExtras extends Record<string, unknown> {
+  suggested_skills?: string[];
+  suggested_description?: string;
+  description_source?: 'page_excerpt' | 'pasted_text';
+  needs_manual_review?: boolean;
+}
+
 export interface ImportedOpportunity {
   source: string;
   source_url: string;
@@ -1586,7 +1593,7 @@ export interface ImportedOpportunity {
   posted_date?: string | null;
   location?: string | null;
   raw_html?: string | null;
-  extra_fields: Record<string, unknown>;
+  extra_fields: ImportedOpportunityExtras;
 }
 
 export interface ImportUrlResponse {

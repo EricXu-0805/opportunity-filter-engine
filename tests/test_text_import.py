@@ -83,10 +83,11 @@ class TestParseTextLlm:
         assert result.extra_fields["opportunity_type"] == "internship"
         assert result.extra_fields["on_campus"] is True
         assert result.extra_fields["paid"] == "stipend"
-        assert result.extra_fields["skills_required"] == ["Python", "ROS"]
+        assert result.extra_fields["suggested_skills"] == ["Python", "ROS"]
+        assert result.description_raw == SAMPLE_TEXT
         assert result.extra_fields["preferred_year"] == ["sophomore", "junior"]
         assert result.extra_fields["llm_enriched"] is True
-        assert result.extra_fields["needs_manual_review"] is False
+        assert result.extra_fields["needs_manual_review"] is True
 
     def test_minimal_llm_response_still_succeeds(self):
         llm_json = json.dumps({"title": "Cool Thing"})

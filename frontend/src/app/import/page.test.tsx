@@ -10,10 +10,10 @@ vi.mock('@/i18n/client', () => {
   return { useT: () => ({ t: stableT, locale: 'en' as const, setLocale: () => {} }) };
 });
 
-const { mockImportByUrl } = vi.hoisted(() => ({ mockImportByUrl: vi.fn() }));
+const { mockImportByUrl, mockImportByText } = vi.hoisted(() => ({ mockImportByUrl: vi.fn(), mockImportByText: vi.fn() }));
 vi.mock('@/lib/api', () => ({
   importByUrl: mockImportByUrl,
-  importByText: vi.fn(),
+  importByText: mockImportByText,
 }));
 
 import ImportPage from './page';
@@ -22,6 +22,7 @@ import { readCustomImports } from '@/lib/custom-imports';
 
 beforeEach(async () => {
   mockImportByUrl.mockReset();
+  mockImportByText.mockReset();
   localStorage.clear();
   advanceOwnerEpoch('import-page-test-uid');
   await syncLocalIdentityOwner('import-page-test-uid');
@@ -118,5 +119,85 @@ describe('ImportPage — identity moves on mid-extract', () => {
     // already unmounted via the owner-change reset, U2's list must stay
     // completely empty — U1's result must never land in it.
     expect(readCustomImports()).toHaveLength(0);
+  });
+});
+
+
+describe('ImportPage — unverified model suggestions', () => {
+  it('separates new suggestions, keeps source text and saves the original response', async () => {
+    const opportunity = {
+      source: 'url_parser', source_url: 'https://example.com/terms', url: 'https://example.com/terms',
+      title: 'Source project', description_raw: 'Original source wording.',
+      extra_fields: { description_source: 'page_excerpt', suggested_skills: ['Python', 'R'], suggested_description: 'AI summary wording.', needs_manual_review: true },
+    };
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, opportunity, llm_enriched: true });
+    render(<ImportPage />);
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: opportunity.url } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Source project');
+    expect(screen.getByText('import.pageExcerpt')).toBeInTheDocument();
+    expect(screen.getByText('import.suggestionsNote')).toBeInTheDocument();
+    expect(screen.getByText('Python')).toBeInTheDocument();
+    expect(screen.getByText('AI summary wording.')).toBeInTheDocument();
+    expect(screen.queryByText('import.fieldSkillsReq')).toBeNull();
+    fireEvent.click(screen.getByText('import.saveToList'));
+    expect(readCustomImports()[0].opportunity).toEqual(opportunity);
+  });
+
+  it('does not call historical saved model arrays confirmed requirements', async () => {
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, llm_enriched: true,
+      opportunity: { title: 'Older response', extra_fields: { skills_required: ['Java'], skills_preferred: ['R'], needs_manual_review: false } },
+    });
+    render(<ImportPage />);
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: 'https://example.com/old' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Older response');
+    expect(screen.getByText('Java')).toBeInTheDocument();
+    expect(screen.getByText('R')).toBeInTheDocument();
+    expect(screen.queryByText('import.fieldSkillsReq')).toBeNull();
+    expect(screen.queryByText('import.fieldSkillsPref')).toBeNull();
+  });
+});
+
+
+describe('ImportPage — failure keeps review material', () => {
+  it('keeps full pasted input after a failed model extraction', async () => {
+    mockImportByText.mockResolvedValueOnce({ ok: false, error: 'controlled failure' });
+    render(<ImportPage />);
+    fireEvent.click(screen.getByText('import.modeText'));
+    const source = 'Original material. ' + 'Keep every sentence. '.repeat(250) + ' FINAL SENTENCE.';
+    fireEvent.change(screen.getByPlaceholderText('import.textPlaceholder'), { target: { value: source } });
+    fireEvent.click(screen.getByText('import.extractButton'));
+    await screen.findByText('import.errorExtract');
+    expect(screen.getByPlaceholderText('import.textPlaceholder')).toHaveValue(source);
+    expect(mockImportByText).toHaveBeenCalledWith(source);
+  });
+
+  it('keeps source and suggestions on a failed Save', async () => {
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, llm_enriched: true,
+      opportunity: { title: 'Unsaved result', description_raw: 'Keep this source.', source_url: 'https://example.com/fail-save',
+        extra_fields: { suggested_skills: ['Java'], suggested_description: 'Keep this suggestion.' } },
+    });
+    render(<ImportPage />);
+    fireEvent.change(screen.getByPlaceholderText('import.urlPlaceholder'), { target: { value: 'https://example.com/fail-save' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Unsaved result');
+    const originalStorage = window.localStorage;
+    Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+      get length() { return originalStorage.length; },
+      key: (index: number) => originalStorage.key(index),
+      getItem: (key: string) => originalStorage.getItem(key),
+      setItem: () => { throw new DOMException('Full', 'QuotaExceededError'); },
+      removeItem: (key: string) => originalStorage.removeItem(key),
+      clear: () => originalStorage.clear(),
+    } });
+    try {
+      fireEvent.click(screen.getByText('import.saveToList'));
+      expect(screen.getByText('import.saveFailed')).toBeInTheDocument();
+      expect(screen.getByText('Unsaved result')).toBeInTheDocument();
+      expect(screen.getByText('Java')).toBeInTheDocument();
+      expect(screen.getByText('Keep this suggestion.')).toBeInTheDocument();
+      expect(readCustomImports()).toEqual([]);
+    } finally { Object.defineProperty(window, 'localStorage', { value: originalStorage, configurable: true }); }
   });
 });

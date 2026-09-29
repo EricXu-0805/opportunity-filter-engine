@@ -56,11 +56,12 @@ def test_rule_based_fills_unknown_paid():
     assert opp["paid"] == "yes"
 
 
-def test_rule_based_fills_skills_from_domain():
+def test_rule_based_does_not_fabricate_tools_from_domain():
     opp = _opp(description_clean="Machine learning and computer vision research using deep learning.")
     apply_updates(opp, rule_based_tag(opp))
     skills = opp["eligibility"]["skills_required"] + opp["eligibility"]["skills_preferred"]
-    assert "Python" in skills
+    assert "Python" not in skills
+    assert "Python" not in opp.get("metadata", {}).get("skill_mentions", [])
 
 
 def test_rule_based_reconciles_citizenship_when_intl_resolved():
@@ -82,7 +83,8 @@ def test_rule_based_gates_context_less_single_letter_skills():
     apply_updates(opp, rule_based_tag(opp))
     skills = opp["eligibility"]["skills_required"] + opp["eligibility"]["skills_preferred"]
     assert "R" not in skills
-    assert "Python" in skills
+    assert "Python" not in skills
+    assert "Python" not in opp.get("metadata", {}).get("skill_mentions", [])
 
 
 def test_faculty_profiles_are_not_opening_tag_candidates():
@@ -131,10 +133,9 @@ def test_non_faculty_postings_still_infer_preferred_year():
 
 
 def test_rule_based_keeps_single_letter_skills_with_context():
-    # No "research"/"review"/"resume" anywhere (the enricher blocklists R on
-    # those tokens) + an explicit "R programming" context → R survives the gate.
-    opp = _opp(title="Data Analyst",
-               description_clean="Statistical modeling using R programming for field data.")
+    # A nearby Research label must not erase a clearly required R language.
+    opp = _opp(title="Research Analyst",
+               description_clean="R programming is required for field data modeling.")
     apply_updates(opp, rule_based_tag(opp))
     skills = opp["eligibility"]["skills_required"] + opp["eligibility"]["skills_preferred"]
     assert "R" in skills

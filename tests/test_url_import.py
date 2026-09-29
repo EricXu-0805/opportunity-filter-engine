@@ -192,15 +192,16 @@ class TestMergeLlmIntoBase:
         assert merged.organization == "Acme Corp"
         assert merged.location == "Champaign, IL"
         assert merged.deadline == "2026-03-15"
-        assert merged.description_raw == "Build cool stuff with us."
+        assert merged.description_raw == ""
+        assert merged.extra_fields["suggested_description"] == "Build cool stuff with us."
         assert merged.extra_fields["opportunity_type"] == "internship"
         assert merged.extra_fields["on_campus"] is True
         assert merged.extra_fields["paid"] == "stipend"
-        assert merged.extra_fields["skills_required"] == ["Python", "React"]
+        assert merged.extra_fields["suggested_skills"] == ["Python", "React", "TypeScript"]
         assert merged.extra_fields["preferred_year"] == ["junior", "senior"]
         assert merged.extra_fields["international_friendly"] == "yes"
         assert merged.extra_fields["llm_enriched"] is True
-        assert merged.extra_fields["needs_manual_review"] is False
+        assert merged.extra_fields["needs_manual_review"] is True
 
     def test_drops_invalid_enum_values(self, base):
         llm = {
