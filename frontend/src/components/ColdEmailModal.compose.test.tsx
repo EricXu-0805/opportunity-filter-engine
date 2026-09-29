@@ -169,3 +169,12 @@ describe('new composer source checks', () => {
   });
 
 });
+
+it.each(['not-an-email', 'a@example.edu,b@example.edu', 'Name <a@example.edu>', 'a@example.edu?cc=b@example.edu&bcc=c@example.edu'])('refuses an invalid manually entered recipient before opening any window: %s', async (recipient) => {
+  const view = await harness();
+  fireEvent.change(screen.getByLabelText('coldEmail.to'), { target: { value: recipient } });
+  expect(button('gmail')).toBeDisabled();
+  fireEvent.click(button('gmail'));
+  expect(view.open).not.toHaveBeenCalled(); expect(view.profileCheck).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+  expect(screen.getByDisplayValue(recipient)).toBeVisible();
+});

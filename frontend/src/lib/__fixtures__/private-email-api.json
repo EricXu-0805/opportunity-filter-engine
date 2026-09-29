@@ -1,0 +1,1423 @@
+{
+  "description": "Synthetic actual FastAPI GET and POST receipts. Only auth/storage mocked; no provider/network/SQL. Copied without rewriting responses.",
+  "get": {
+    "kind": "synthetic actual FastAPI responses with controlled auth/storage transport",
+    "cases": [
+      {
+        "status": 200,
+        "cache_control": "private, no-store, max-age=0",
+        "response": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "policy_review_required",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+        }
+      },
+      {
+        "status": 200,
+        "cache_control": "private, no-store, max-age=0",
+        "response": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "blocked",
+            "reason": "no_email",
+            "quotes": [
+              {
+                "start": 12000,
+                "end": 12023,
+                "quote": "Please do not email us.",
+                "restriction": "no_email"
+              }
+            ]
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d"
+        }
+      },
+      {
+        "status": 200,
+        "cache_control": "private, no-store, max-age=0",
+        "response": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "policy_review_required",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+        }
+      },
+      {
+        "status": 200,
+        "cache_control": "private, no-store, max-age=0",
+        "response": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": "https://Example.edu",
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "unverified_import",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:d30f4015a85c8869979dc2ded380c9684bdbca12a0aab0e56d08d8634b190064"
+        }
+      },
+      {
+        "status": 200,
+        "cache_control": "private, no-store, max-age=0",
+        "response": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": "https://école.example/机会",
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "unverified_import",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:71d1864ee28811ed221ce0aa9277b727e91454675fb27b33e01e7a49b206dc36"
+        }
+      }
+    ]
+  },
+  "post": {
+    "kind": "Actual main FastAPI requests with synthetic profile/source and mocked auth/storage. No provider, socket, real auth, real database, or delivery.",
+    "calls": [
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ],
+      [
+        "GET",
+        "/auth/v1/user",
+        "Bearer fixture-token"
+      ],
+      [
+        "POST",
+        "/rest/v1/rpc/read_private_import_target",
+        "Bearer fixture-token"
+      ]
+    ],
+    "cases": [
+      {
+        "label": "unknown",
+        "source": {
+          "source": "text_parser",
+          "title": "Synthetic \"source\" title 中文😀",
+          "description_raw": "Saved source for a research opportunity. No contact policy was stated.",
+          "source_url": "",
+          "url": "",
+          "extra_fields": {
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true,
+            "suggested_skills": [
+              "ImaginarySkill"
+            ],
+            "target_truth": {
+              "actionable": true
+            }
+          }
+        },
+        "context": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "policy_review_required",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+        },
+        "cases": [
+          {
+            "action": "variants",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              }
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "method": "template",
+              "grounding": "no_target_data",
+              "source_freshness": "unknown",
+              "recipient_status": "unavailable",
+              "recipient_email": "",
+              "lab_type": null,
+              "recommended_style": "professional",
+              "generated_at": "2026-09-29T05:44:16.394432+00:00",
+              "experience_usage": {
+                "version": 1,
+                "eligible_count": 1,
+                "selected": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "excerpt": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ],
+                "excluded": [],
+                "needs_review": false,
+                "notices": []
+              },
+              "variants": [
+                {
+                  "id": "private-first-contact",
+                  "label": "First contact",
+                  "subject": "Inquiry about an opportunity",
+                  "body": "Hello,\n\nMy name is Test Student. I saved a note titled “Synthetic \"source\" title 中文😀” and would like to ask about it.\n\nI built a Python parser for my class project.\n\nCould you let me know whom I should contact and which application process I should follow?\n\nThank you,\nTest Student",
+                  "recipient_email": "",
+                  "mailto_link": "",
+                  "experience_usage": {
+                    "version": 1,
+                    "eligible_count": 1,
+                    "selected": [
+                      {
+                        "id": "experience-0",
+                        "revision": 1,
+                        "excerpt": "I built a Python parser for my class project.",
+                        "source": {
+                          "kind": "manual"
+                        }
+                      }
+                    ],
+                    "excluded": [],
+                    "needs_review": false,
+                    "notices": []
+                  },
+                  "contact_context_receipt": {
+                    "version": 1,
+                    "purpose": "first_contact",
+                    "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+                  },
+                  "target_conditions": {
+                    "version": 1,
+                    "record_kind": "unverified",
+                    "conditions": [],
+                    "template_request": null
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "Hello, could you tell me which application process I should follow?",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "ready",
+              "issues": []
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "I have attached my resume. I meet all eligibility requirements.",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "review_required",
+              "issues": [
+                "unsupported_attachment_claim",
+                "unsupported_eligibility_claim"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "label": "blocked",
+        "source": {
+          "source": "text_parser",
+          "title": "Synthetic \"source\" title 中文😀",
+          "description_raw": "普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\n普通说明😀\nPlease do not email us.",
+          "source_url": "",
+          "url": "",
+          "extra_fields": {
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true,
+            "suggested_skills": [
+              "ImaginarySkill"
+            ],
+            "target_truth": {
+              "actionable": true
+            }
+          }
+        },
+        "context": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "blocked",
+            "reason": "no_email",
+            "quotes": [
+              {
+                "start": 12000,
+                "end": 12023,
+                "quote": "Please do not email us.",
+                "restriction": "no_email"
+              }
+            ]
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d"
+        },
+        "cases": [
+          {
+            "action": "variants",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              }
+            },
+            "status": 409,
+            "response": {
+              "detail": {
+                "code": "private_email_contact_blocked"
+              }
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "Hello, could you tell me which application process I should follow?",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "blocked",
+                  "reason": "no_email",
+                  "quotes": [
+                    {
+                      "start": 12000,
+                      "end": 12023,
+                      "quote": "Please do not email us.",
+                      "restriction": "no_email"
+                    }
+                  ]
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "review_required",
+              "issues": [
+                "contact_blocked"
+              ]
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "I have attached my resume. I meet all eligibility requirements.",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "blocked",
+                  "reason": "no_email",
+                  "quotes": [
+                    {
+                      "start": 12000,
+                      "end": 12023,
+                      "quote": "Please do not email us.",
+                      "restriction": "no_email"
+                    }
+                  ]
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:3f6c218b1b47e029ad1cd6d3e8eb87159d4f702c3b7b36898ba674ebb09ffe9d"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "review_required",
+              "issues": [
+                "contact_blocked",
+                "unsupported_attachment_claim",
+                "unsupported_eligibility_claim"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "label": "scoped_review",
+        "source": {
+          "source": "text_parser",
+          "title": "Synthetic \"source\" title 中文😀",
+          "description_raw": "Graduate applicants: do not email us.",
+          "source_url": "",
+          "url": "",
+          "extra_fields": {
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true,
+            "suggested_skills": [
+              "ImaginarySkill"
+            ],
+            "target_truth": {
+              "actionable": true
+            }
+          }
+        },
+        "context": {
+          "version": 1,
+          "target_scope": "private_import",
+          "verification": "unverified",
+          "purpose": "first_contact",
+          "id": "private-import:a2000000-0000-4000-8000-000000000001",
+          "owner_id": "a1000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+          "projection_version": 1,
+          "policy_version": 1,
+          "title": "Synthetic \"source\" title 中文😀",
+          "organization": null,
+          "source_url": null,
+          "import_source": {
+            "version": 1,
+            "description_source": "pasted_text",
+            "ai_input_scope": "source_excerpt",
+            "llm_enriched": true
+          },
+          "contact_policy": {
+            "state": "unknown",
+            "reason": "policy_review_required",
+            "quotes": []
+          },
+          "provider_allowed": false,
+          "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+        },
+        "cases": [
+          {
+            "action": "variants",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              }
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "method": "template",
+              "grounding": "no_target_data",
+              "source_freshness": "unknown",
+              "recipient_status": "unavailable",
+              "recipient_email": "",
+              "lab_type": null,
+              "recommended_style": "professional",
+              "generated_at": "2026-09-29T05:44:16.435796+00:00",
+              "experience_usage": {
+                "version": 1,
+                "eligible_count": 1,
+                "selected": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "excerpt": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ],
+                "excluded": [],
+                "needs_review": false,
+                "notices": []
+              },
+              "variants": [
+                {
+                  "id": "private-first-contact",
+                  "label": "First contact",
+                  "subject": "Inquiry about an opportunity",
+                  "body": "Hello,\n\nMy name is Test Student. I saved a note titled “Synthetic \"source\" title 中文😀” and would like to ask about it.\n\nI built a Python parser for my class project.\n\nCould you let me know whom I should contact and which application process I should follow?\n\nThank you,\nTest Student",
+                  "recipient_email": "",
+                  "mailto_link": "",
+                  "experience_usage": {
+                    "version": 1,
+                    "eligible_count": 1,
+                    "selected": [
+                      {
+                        "id": "experience-0",
+                        "revision": 1,
+                        "excerpt": "I built a Python parser for my class project.",
+                        "source": {
+                          "kind": "manual"
+                        }
+                      }
+                    ],
+                    "excluded": [],
+                    "needs_review": false,
+                    "notices": []
+                  },
+                  "contact_context_receipt": {
+                    "version": 1,
+                    "purpose": "first_contact",
+                    "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+                  },
+                  "target_conditions": {
+                    "version": 1,
+                    "record_kind": "unverified",
+                    "conditions": [],
+                    "template_request": null
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "Hello, could you tell me which application process I should follow?",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "ready",
+              "issues": []
+            }
+          },
+          {
+            "action": "validate",
+            "request": {
+              "expected_owner_id": "a1000000-0000-4000-8000-000000000001",
+              "expected_target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "profile": {
+                "name": "Test Student"
+              },
+              "engine": "template",
+              "contact_context": {
+                "version": 1,
+                "purpose": "first_contact"
+              },
+              "experience_evidence": {
+                "version": 1,
+                "resume_text": "",
+                "entries": [
+                  {
+                    "id": "experience-0",
+                    "revision": 1,
+                    "status": "confirmed",
+                    "text": "I built a Python parser for my class project.",
+                    "source": {
+                      "kind": "manual"
+                    }
+                  }
+                ]
+              },
+              "subject": "Question about your application process",
+              "body": "I have attached my resume. I meet all eligibility requirements.",
+              "recipient": "recipient@example.edu",
+              "contact_requirements_reviewed": true
+            },
+            "status": 200,
+            "response": {
+              "version": 1,
+              "target_scope": "private_import",
+              "verification": "unverified",
+              "owner_id": "a1000000-0000-4000-8000-000000000001",
+              "opportunity_id": "private-import:a2000000-0000-4000-8000-000000000001",
+              "target_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1",
+              "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+              "private_context": {
+                "version": 1,
+                "target_scope": "private_import",
+                "verification": "unverified",
+                "purpose": "first_contact",
+                "id": "private-import:a2000000-0000-4000-8000-000000000001",
+                "owner_id": "a1000000-0000-4000-8000-000000000001",
+                "revision": 1,
+                "source_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040",
+                "projection_version": 1,
+                "policy_version": 1,
+                "title": "Synthetic \"source\" title 中文😀",
+                "organization": null,
+                "source_url": null,
+                "import_source": {
+                  "version": 1,
+                  "description_source": "pasted_text",
+                  "ai_input_scope": "source_excerpt",
+                  "llm_enriched": true
+                },
+                "contact_policy": {
+                  "state": "unknown",
+                  "reason": "policy_review_required",
+                  "quotes": []
+                },
+                "provider_allowed": false,
+                "writing_version": "pwt1:96de5374ba7b65b72c5388d3ad2620ab01b4230ee241443882d3540018b1dfb1"
+              },
+              "pipeline_version": "private-cold-email-v1",
+              "contact_context_receipt": {
+                "version": 1,
+                "purpose": "first_contact",
+                "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+              },
+              "target_conditions": {
+                "version": 1,
+                "record_kind": "unverified",
+                "conditions": [],
+                "template_request": null
+              },
+              "outcome": "review_required",
+              "issues": [
+                "unsupported_attachment_claim",
+                "unsupported_eligibility_claim"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "sha256": {
+      "backend/lib/private_email_schema.py": "79cd35f48e5713efdf2796251b1b1257995eb01da68d44a35d11a7b69e65fef5",
+      "backend/lib/private_email_drafting.py": "6233f1dcb99cb667be26b807821b5cd9b1dd3cb568f6b7b7f2414be49af884e2",
+      "backend/routes/private_cold_email.py": "6cb3d860ac28292fa22ac7fa4708601a2c0ec56c66a81a749b1112aae13959d4",
+      "backend/lib/private_email_context.py": "98331e069b76cdfe5ac410916986b4a5074ffc732c2b0a10ced6552094e11df3",
+      "backend/main.py": "423b4d8ce4a6e86c10b8a19e3d9834cc38092a4a3122bb62893a4e3e846ba78b"
+    }
+  }
+}

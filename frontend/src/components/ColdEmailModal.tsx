@@ -1,5 +1,7 @@
 'use client';
 
+import { privateEmailKey, privateEmailVariants, validatePrivateEmail, type PrivateEmailIssue } from '@/lib/private-email';
+import type { PrivateEmailTargetState } from '@/lib/use-private-email-target';
 import { profileInputMessage } from '@/lib/profile-input';
 
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
@@ -22,7 +24,7 @@ import type { EmailContactDraftSnapshot } from '@/lib/email-contact-draft';
 import { COLD_EMAIL_DRAFT_LIMITS, type ColdEmailDraftPayload, type ColdEmailDraftSources, type ColdEmailDraftVersion } from '@/lib/cold-email-draft';
 import EmailVersionHistory from './EmailVersionHistory';
 import { useColdEmailDraftPersistence } from '@/lib/use-cold-email-draft';
-import { createContactEventInput, contactMaterialVersion, ContactEventError } from '@/lib/contact-ledger';
+import { createContactEventInput, contactMaterialVersion, ContactEventError, validContactRecipient } from '@/lib/contact-ledger';
 
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import Link from 'next/link';
@@ -128,8 +130,8 @@ function readingChanged(error: unknown): boolean {
 type TargetVersionFailure = 'unavailable' | 'changed';
 function targetVersionFailure(error: unknown): TargetVersionFailure | null {
   if (!error || typeof error !== 'object' || !('code' in error)) return null;
-  return error.code === 'WRITING_TARGET_CHANGED' || error.code === 'EMAIL_CONTACT_INSTRUCTIONS' ? 'changed'
-    : error.code === 'INVALID_WRITING_TARGET_RECEIPT' || error.code === 'INVALID_EMAIL_TARGET_CONDITIONS' ? 'unavailable' : null;
+  return error.code === 'changed' || error.code === 'deleted' || error.code === 'contact_blocked' || error.code === 'WRITING_TARGET_CHANGED' || error.code === 'EMAIL_CONTACT_INSTRUCTIONS' ? 'changed'
+    : error.code === 'invalid_receipt' || error.code === 'INVALID_WRITING_TARGET_RECEIPT' || error.code === 'INVALID_EMAIL_TARGET_CONDITIONS' ? 'unavailable' : null;
 }
 function requireTargetReceipt(response: unknown, id: string, version: string) {
   readEmailTargetConditions(response);
@@ -158,6 +160,7 @@ interface ColdEmailModalProps {
   profileRefresh?: ProfileRefreshState;
   target?: Opportunity | null;
   targetRefresh?: WritingTargetState;
+  privateTargetRefresh?: PrivateEmailTargetState;
   targetMembershipReady?: boolean;
   onClose: () => void;
   profile: ProfileData;
@@ -354,6 +357,7 @@ export default function ColdEmailModal({
   profileRefresh,
   target,
   targetRefresh,
+  privateTargetRefresh,
   targetMembershipReady,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
@@ -372,9 +376,12 @@ export default function ColdEmailModal({
     supplementInputRef.current = { key: incomingProfileKey, available: profileAvailable && isOpen, targetId: opportunityId };
   }, [supplementSession, incomingProfileKey, profileAvailable, isOpen, opportunityId]);
 
-  const contactPolicyBlock = contactEmailBlock(target);
-  const expectedTargetVersion = isPublicDetail(target, opportunityId) ? writingTargetVersion(target) : null;
-  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready');
+  const privateMode = !!privateTargetRefresh;
+  const privateContext = privateTargetRefresh?.target ?? null;
+  const privateBlocked = privateContext?.contact_policy.state === 'blocked';
+  const contactPolicyBlock = privateMode ? null : contactEmailBlock(target);
+  const expectedTargetVersion = privateMode ? privateContext?.writing_version ?? null : isPublicDetail(target, opportunityId) ? writingTargetVersion(target) : null;
+  const sourceReady = profileAvailable && targetReady && profileRefreshReady(profileRefresh) && (!targetRefresh || targetRefresh.status === 'ready') && (!privateTargetRefresh || privateTargetRefresh.status === 'ready');
   const sourceReadyRef = useRef(sourceReady);
   useLayoutEffect(() => { sourceReadyRef.current = sourceReady; }, [sourceReady]);
   const { openModal } = useAuthModal();
@@ -383,8 +390,8 @@ export default function ColdEmailModal({
   const profileFingerprint = JSON.stringify(profile);
   // A list refresh may temporarily withdraw the target. That is unknown,
   // not a change to its facts. Keep the last observed content for comparison.
-  const [knownTarget, setKnownTarget] = useState({ id: opportunityId, fingerprint: JSON.stringify(target ?? reminderTarget ?? null) });
-  const targetFingerprint = target || reminderTarget ? JSON.stringify(target ?? reminderTarget)
+  const [knownTarget, setKnownTarget] = useState({ id: opportunityId, fingerprint: privateMode ? privateEmailKey(privateContext) ?? 'null' : JSON.stringify(target ?? reminderTarget ?? null) });
+  const targetFingerprint = privateMode && privateContext ? privateEmailKey(privateContext)! : target || reminderTarget ? JSON.stringify(target ?? reminderTarget)
     : knownTarget.id === opportunityId ? knownTarget.fingerprint : 'null';
   if (knownTarget.id !== opportunityId || knownTarget.fingerprint !== targetFingerprint) {
     setKnownTarget({ id: opportunityId, fingerprint: targetFingerprint });
@@ -399,7 +406,7 @@ export default function ColdEmailModal({
   if (contactState.id !== opportunityId) setContactState(effectiveContact);
   const contactSerialized = serializeEmailContactContext(effectiveContact.value);
   const requestContactContext = useMemo(() => JSON.parse(contactSerialized) as EmailContactContext, [contactSerialized]);
-  const paperReadingCurrent = isEmailPaperReadingCurrent(requestContactContext, target);
+  const paperReadingCurrent = privateMode ? requestContactContext.purpose === 'first_contact' && !requestContactContext.paper_reading : isEmailPaperReadingCurrent(requestContactContext, target);
   const contextDirty = effectiveContact.dirty;
   const contextDirtyRef = useRef(contextDirty);
   useLayoutEffect(() => { contextDirtyRef.current = contextDirty; }, [contextDirty]);
@@ -478,6 +485,8 @@ export default function ColdEmailModal({
   if (subjectFormatConfirmation && !subjectFormatConfirmed) setSubjectFormatConfirmation(null);
   const [body, setBody] = useState('');
   const [recipient, setRecipient] = useState('');
+  const [privateReview, setPrivateReview] = useState<{ version: string; recipient: string } | null>(null);
+  const privateReviewed = !privateMode || !!privateReview && privateReview.version === expectedTargetVersion && privateReview.recipient === recipient;
   const recipientEditedRef = useRef(false);
   const [actualSentAt, setActualSentAt] = useState('');
   // W10b contact bar: why the To field is (or isn't) prefilled. 'sign_in_required'
@@ -499,7 +508,7 @@ export default function ColdEmailModal({
   // false all-clear.
   const [experienceUsage, setExperienceUsage] = useState<ExperienceUsage | null>(null);
   const [targetConditions, setTargetConditions] = useState<EmailTargetConditions | null>(null);
-  const [conditionCheck, setConditionCheck] = useState<{ key: string; issues: EmailConditionIssue[]; message?: string } | null>(null);
+  const [conditionCheck, setConditionCheck] = useState<{ key: string; issues: PrivateEmailIssue[]; message?: string } | null>(null);
   const [experienceNeedsReview, setExperienceNeedsReview] = useState(false);
   const experienceBudgetOmission = experienceUsage?.notices.some((notice) =>
     notice === 'experience_prompt_budget_omission' || notice === 'experience_template_budget_omission',
@@ -606,7 +615,7 @@ export default function ColdEmailModal({
   const composeRef = useRef<PendingCompose | null>(null);
   const composeSequence = useRef(0);
   const composeActionCancelRef = useRef<() => void>(() => {});
-  const composeKey = JSON.stringify([opportunityId, materialFingerprint, copyContentKey, userEditRevision]);
+  const composeKey = JSON.stringify([opportunityId, materialFingerprint, copyContentKey, userEditRevision, privateReviewed]);
   const composeKeyRef = useRef(composeKey);
   const cancelCompose = useCallback((failure: ComposeFailure | null = null) => {
     const pending = composeRef.current;
@@ -828,7 +837,9 @@ export default function ColdEmailModal({
     setError(null);
     setNameRequired(false);
     try {
-      const data = await getEmailVariants(requestProfile, opportunityId, undefined, { expectedTargetVersion, contactContext: requestContactContext });
+      const data = privateMode && privateContext
+        ? await privateEmailVariants(requestProfile, opportunityId, privateContext, requestContactContext)
+        : await getEmailVariants(requestProfile, opportunityId, undefined, { expectedTargetVersion, contactContext: requestContactContext });
       if (!current()) return;
       requireTargetReceipt(data, opportunityId, expectedTargetVersion);
       await requireContactReceipt(data, requestContactContext);
@@ -924,7 +935,7 @@ export default function ColdEmailModal({
         else if (!preserveDraft) setLoading(false);
       }
     }
-  }, [contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
+  }, [privateMode, privateContext, contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
@@ -934,11 +945,11 @@ export default function ColdEmailModal({
     | { kind: 'compose'; id: number };
   const action = useProfileAction<WritingIntent>({
     isOpen: isOpen && !retired, profile: requestProfile, profileAvailable,
-    scopeKey: `${opportunityId}\n${targetFingerprint}\n${contactFingerprint}`, editRevision: userEditRevision, refresh: profileRefresh, target, targetRefresh,
+    scopeKey: `${opportunityId}\n${targetFingerprint}\n${contactFingerprint}`, editRevision: userEditRevision, refresh: profileRefresh, target, targetRefresh, privateTarget: privateContext, privateTargetRefresh,
     readiness: contextDirty ? 'blocked' : sourceReady ? 'ready'
       : profileAvailable && (targetChecking || profileRefresh?.status === 'checking') ? 'waiting' : 'blocked',
     execute: (intent) => {
-      if (contextDirtyRef.current) return;
+      if (contextDirtyRef.current || (privateMode && !['variants', 'compose'].includes(intent.kind))) return;
       if (intent.kind === 'compose') { void finishCompose(intent.id); return; }
       if (contactPolicyBlock) { setError(contactInstructionCopy[locale][contactPolicyBlock]); setLoading(false); return; }
       if (!paperReadingCurrent) return;
@@ -1101,7 +1112,7 @@ export default function ColdEmailModal({
       editorUsedRef.current = false;
       setSubject(''); setSubjectFormatConfirmation(null);
       setBody('');
-      setRecipient(''); recipientEditedRef.current = false;
+      setRecipient(''); setPrivateReview(null); recipientEditedRef.current = false;
       draftSourcesRef.current = null; setOriginKey(null);
       setRecipientStatus('unavailable');
       setGrounding('specific');
@@ -1665,10 +1676,10 @@ export default function ColdEmailModal({
   // pipeline once automatically. The template is the instant placeholder; the
   // AI draft takes over on success (unless the user already started editing).
   useEffect(() => {
-    if (!sourceReady || !isOpen || profileChanged || profileRegenerating || !variantsReadyRef.current || loading || variants.length === 0 || autoFiredRef.current) return;
+    if (privateMode || !sourceReady || !isOpen || profileChanged || profileRegenerating || !variantsReadyRef.current || loading || variants.length === 0 || autoFiredRef.current) return;
     autoFiredRef.current = true;
     generateAi(selectedStyle, { auto: true });
-  }, [sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
+  }, [privateMode, sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
 
   function handleAiPillClick() {
     if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
@@ -1893,7 +1904,7 @@ export default function ColdEmailModal({
       && confirmationKeyRef.current === confirmedContents;
     try {
       const sentTime = actualSentAt ? new Date(actualSentAt) : null;
-      if (!recipient.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())
+      if (!validContactRecipient(recipient.trim())
         || !subject.trim() || !body.trim()
         || (sentTime && (!Number.isFinite(sentTime.getTime()) || sentTime.getTime() > Date.now()))) {
         setSendError('invalid-contact'); return;
@@ -2044,8 +2055,8 @@ export default function ColdEmailModal({
   function startCompose(provider: ComposeProvider) {
     if (composeRef.current || action.busy) return;
     if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
-      || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed })
-      || (provider !== 'copy' && !recipient.trim())) {
+      || profileChanged || profileRegenerating || targetVersionError || (privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed }))
+      || privateBlocked || !privateReviewed || (provider !== 'copy' && !validContactRecipient(recipient.trim()))) {
       if (provider === 'copy') setConditionCheck({ key: composeKeyRef.current, issues: [], message: locale === 'zh'
         ? '当前资料尚未核对。可选择“仅复制草稿”备份，原稿仍保留。'
         : 'The current information has not been checked. Use Copy draft only to keep a backup. Your draft is kept.' });
@@ -2075,7 +2086,7 @@ export default function ColdEmailModal({
     const current = () => composeRef.current === pending && pending.key === composeKeyRef.current
       && isTokenOwnerStillCurrent(pending.owner) && !pending.controller.signal.aborted;
     if (!current() || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
-      || profileChanged || profileRegenerating || targetVersionError || contactEmailBlock(target, subject, { subjectFormatConfirmed }) || !expectedTargetVersion) {
+      || profileChanged || profileRegenerating || targetVersionError || (privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || privateBlocked || !privateReviewed || !expectedTargetVersion) {
       cancelCompose(); return;
     }
     pending.phase = 'recipient';
@@ -2087,18 +2098,22 @@ export default function ColdEmailModal({
           : `${over[0] === 'subject' ? 'Subject' : 'Body'} exceeds the checking limit (${over[2]} text units; some emoji count as two). Your complete draft is kept. Shorten it and retry, or copy the draft only.` });
         cancelCompose('conditions'); return;
       }
-      const validation = await validateEmailDraft(subject, body, requestProfile, opportunityId, {
-        expectedTargetVersion, contactContext: requestContactContext, signal: pending.controller.signal,
-      });
+      const validation = privateMode && privateContext
+        ? await validatePrivateEmail(subject, body, recipient.trim(), privateReviewed, requestProfile, opportunityId, privateContext, requestContactContext, pending.controller.signal)
+        : await validateEmailDraft(subject, body, requestProfile, opportunityId, {
+          expectedTargetVersion, contactContext: requestContactContext, signal: pending.controller.signal,
+        });
       if (!current()) return;
-      requireTargetReceipt(validation, opportunityId, expectedTargetVersion);
-      await requireContactReceipt(validation, requestContactContext);
-      if (!current()) return;
-      const conditions = readEmailTargetConditions(validation);
-      if (!conditions || !isEmailConditionIssues(validation.issues)
-        || !['ready', 'review_required'].includes(validation.outcome)
-        || (validation.outcome === 'ready') !== (validation.issues.length === 0)) throw new Error('Invalid draft check');
-      setTargetConditions(conditions);
+      if (!privateMode) {
+        requireTargetReceipt(validation, opportunityId, expectedTargetVersion);
+        await requireContactReceipt(validation, requestContactContext);
+        if (!current()) return;
+        const conditions = readEmailTargetConditions(validation);
+        if (!conditions || !isEmailConditionIssues(validation.issues)
+          || !['ready', 'review_required'].includes(validation.outcome)
+          || (validation.outcome === 'ready') !== (validation.issues.length === 0)) throw new Error('Invalid draft check');
+        setTargetConditions(conditions);
+      }
       if (validation.outcome === 'review_required') {
         setConditionCheck({ key: pending.key, issues: validation.issues }); cancelCompose('conditions'); return;
       }
@@ -2106,7 +2121,8 @@ export default function ColdEmailModal({
         await handleCopy(true);
         if (!current()) return;
       } else {
-        if (!recipientEditedRef.current) await verifyComposeRecipient(opportunityId, expectedTargetVersion, recipient.trim(), pending.controller.signal);
+        if (!validContactRecipient(recipient.trim())) throw new Error('recipient_changed');
+        if (!privateMode && !recipientEditedRef.current) await verifyComposeRecipient(opportunityId, expectedTargetVersion, recipient.trim(), pending.controller.signal);
         if (!current()) return;
         if (!pending.popup || pending.popup.closed) { cancelCompose(); return; }
         pending.popup.location.href = getMailtoLink(pending.provider);
@@ -2177,7 +2193,7 @@ export default function ColdEmailModal({
           </button>
         </div>
 
-        <details className="shrink-0 max-h-[30dvh] overflow-y-auto border-b border-gray-100 px-4 py-2" open={!!contactPolicyBlock}>
+        {!privateMode && <details className="shrink-0 max-h-[30dvh] overflow-y-auto border-b border-gray-100 px-4 py-2" open={!!contactPolicyBlock}>
           <summary className="cursor-pointer text-sm font-medium text-gray-700">{contactInstructionCopy[locale].title}</summary>
           <ContactInstructionsPanel target={target} subject={subject} subjectFormatConfirmed={subjectFormatConfirmed}
             onConfirmSubjectFormat={(confirmed) => {
@@ -2186,7 +2202,16 @@ export default function ColdEmailModal({
             }} onUseSubject={(value) => {
             editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setSubject(value);
           }} />
-        </details>
+        </details>}
+        {privateMode && <section className="shrink-0 max-h-[24dvh] overflow-y-auto border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-950" data-testid="private-email-source">
+          <p>{locale === 'zh' ? '自带机会：目前支持模板和手改，AI 写作尚未接通。导入内容与邮箱均未独立核实。' : 'Private import: templates and manual editing are available. AI writing is not connected. The import and email address have not been independently verified.'}</p>
+          {privateContext?.source_url && <a href={privateContext.source_url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block underline">{locale === 'zh' ? '查看来源与联系要求' : 'Review source and contact instructions'}</a>}
+          {privateBlocked && <div role="alert"><p>{locale === 'zh' ? '导入原文含禁联或仅限表格申请的要求，暂不能生成邮件或打开邮箱。请先核对来源。' : 'The imported text includes a no-email or form-only instruction. Draft generation and email opening are blocked. Review the source first.'}</p>
+            {privateContext?.contact_policy.quotes.map(q => <blockquote key={`${q.start}:${q.end}:${q.restriction}`} className="mt-1 whitespace-pre-wrap break-words border-l-2 border-amber-400 pl-2">{q.quote}</blockquote>)}
+          </div>}
+          {privateTargetRefresh?.status !== 'ready' && !privateBlocked && <p role="status">{locale === 'zh' ? '正在核对，或暂时无法读取此账户记录；原稿保留。' : 'This account record is being checked or could not be read. Your draft is kept.'}</p>}
+          <button type="button" disabled={privateTargetRefresh?.status === 'checking'} className="mt-1 underline disabled:opacity-50" onClick={() => void privateTargetRefresh?.refresh()}>{locale === 'zh' ? '重新核对' : 'Check again'}</button>
+        </section>}
         <ProfileRefreshBanner locale={locale} refresh={profileRefresh} targetRefresh={targetRefresh} targetReady={targetMembershipReady ?? targetReady} profileAvailable={profileAvailable} onBeforeReview={leaveForProfile} />
       <div data-testid="cold-email-draft-status" role={draftPersistence.status === 'failed' || draftPersistence.status === 'conflict' ? 'alert' : 'status'}
         className="shrink-0 border-b border-gray-100 px-5 py-2 text-xs text-gray-600">
@@ -2220,9 +2245,9 @@ export default function ColdEmailModal({
         {readingReviewRequired && <div role="alert" data-testid="cold-email-reading-changed" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{locale === 'zh' ? '论文资料已变化。当前邮件保留，请在“联系目的与背景”中重新确认阅读信息或跳过。' : 'The paper information changed. Your email is kept. Review or skip the reading details in Contact purpose and background.'}</div>}
         {targetVersionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
           <p>{t(targetVersionError === 'changed' ? 'coldEmail.targetVersionChanged' : 'coldEmail.targetVersionUnavailable')}</p>
-          <button type="button" disabled={action.busy || profileRegenerating || !targetRefresh || targetRefresh.status === 'checking'}
+          <button type="button" disabled={action.busy || profileRegenerating || !(targetRefresh || privateTargetRefresh) || (targetRefresh || privateTargetRefresh)?.status === 'checking'}
             className="mt-1 font-semibold underline disabled:opacity-50"
-            onClick={() => { targetCheckOnlyRef.current = true; void targetRefresh?.refresh().catch(() => false); }}>{t('coldEmail.targetVersionRetry')}</button>
+            onClick={() => { targetCheckOnlyRef.current = true; void (privateTargetRefresh ?? targetRefresh)?.refresh().catch(() => false); }}>{t('coldEmail.targetVersionRetry')}</button>
           {!profileChanged && <button type="button" disabled={action.busy || profileRegenerating || !sourceReady}
             className="ml-3 mt-1 font-semibold underline disabled:opacity-50"
             onClick={() => action.request({ kind: 'variants', keepEditor: hasEditor })}>
@@ -2275,7 +2300,7 @@ export default function ColdEmailModal({
         {/* Two-panel layout */}
         {hasEditor && !loading && !error && !nameRequired && (
           <div className={styles.workspace} data-testid="cold-email-workspace">
-            <div className={styles.panels}>
+            <div className={styles.panels} data-private={privateMode}>
               <div className={`${styles.editorPane} lg:border-r border-gray-100`} data-testid="cold-email-editor">
                 {profileChanged && <div role="status" className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                   <p>{contextChanged ? (locale === 'zh' ? '联系背景已更改。先确认背景，再生成新稿；当前草稿仍保留。' : 'Contact background changed. Confirm it, then generate a new draft. Your current draft is kept.') : draftRestored && (!sourceReady || sourceReview === 'pending') ? (locale === 'zh' ? '尚未核对原稿所用资料。草稿仍保留，联网后会重新核对。' : 'The sources for this draft have not been checked yet. Your draft is kept; they will be checked when online.') : draftRestored && sourceReview === 'unknown' ? (locale === 'zh' ? '无法确认这份旧稿所用的资料。草稿仍保留；请核对后再生成新稿。' : 'The sources for this saved draft could not be confirmed. Your draft is kept; review them before generating a new draft.') : t('coldEmail.profileChanged')}</p>
@@ -2305,7 +2330,7 @@ export default function ColdEmailModal({
                       {v.label}
                     </button>
                   ))}
-                  <button
+                  {!privateMode && <button
                     type="button"
                     onClick={handleAiPillClick}
                     disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
@@ -2322,12 +2347,12 @@ export default function ColdEmailModal({
                     {aiLoading && aiStage
                       ? t(STAGE_LABEL_KEYS[aiStage])
                       : t('coldEmail.aiVariantLabel')}
-                  </button>
+                  </button>}
                 </div>
 
                 {/* Tone picker — drives the AI draft's voice. The recommended
                     tone is derived from the detected lab type (no scraping). */}
-                <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
+                {!privateMode && <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
                   <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-0.5">
                     {t('coldEmail.tone.label')}
                   </span>
@@ -2359,12 +2384,12 @@ export default function ColdEmailModal({
                       </button>
                     );
                   })}
-                </div>
+                </div>}
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
-                  <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
-                    language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />
-                  <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement" open={supplementExpanded}
+                  {!privateMode && <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
+                    language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />}
+                  {!privateMode && <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement" open={supplementExpanded}
                     onToggle={(event) => { setSupplementExpanded(event.currentTarget.open); if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-800">{locale === 'zh' ? '补充本人贡献（可跳过）' : 'Add your personal contribution (optional)'}</summary>
                     {supplementSession && supplementSession.targetId === opportunityId && <div className="mt-3">
@@ -2380,8 +2405,8 @@ export default function ColdEmailModal({
                           }
                         }} />
                     </div>}
-                  </details>
-                  <EmailTargetConditionsPanel receipt={targetConditions} current={sourceReady && !profileChanged && !targetVersionError && !contextDirty} />
+                  </details>}
+                  {!privateMode && <EmailTargetConditionsPanel receipt={targetConditions} current={sourceReady && !profileChanged && !targetVersionError && !contextDirty} />}
                   <section className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600" data-testid="cold-email-experience">
                     <details>
                       <summary className="cursor-pointer font-semibold text-gray-800">{t('coldEmail.experienceTitle')}</summary>
@@ -2420,13 +2445,20 @@ export default function ColdEmailModal({
                     </label>
                     <input
                       id="cold-email-to"
+                      aria-invalid={!!recipient.trim() && !validContactRecipient(recipient.trim())}
                       type="email"
                       value={recipient}
                       onChange={(e) => { recipientEditedRef.current = true; editorUsedRef.current = true; draftRevisionRef.current += 1; noteUserEdit(); setRecipient(e.target.value); }}
                       placeholder={t('coldEmail.toPlaceholder')}
                       className={`w-full min-w-0 px-3.5 py-2.5 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all ${!recipient ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}
                     />
-                    {!recipient && recipientStatus === 'sign_in_required' ? (
+                    {!!recipient.trim() && !validContactRecipient(recipient.trim()) && <p role="status" className="mt-1 text-xs text-amber-900">{locale === 'zh' ? '请填写一个完整邮箱，不要添加姓名或多个地址。' : 'Enter one complete email address, without a name or additional addresses.'}</p>}
+                    {privateMode ? <div className="mt-2 text-xs text-amber-900">
+                      <p>{locale === 'zh' ? '请自行核对并填写一个收件邮箱。这里不会把手填邮箱标成已验证。' : 'Check the source and enter one recipient address. A manually entered address is not marked as verified.'}</p>
+                      <label className="mt-2 flex items-start gap-2"><input type="checkbox" checked={privateReviewed} disabled={!sourceReady || privateBlocked || !validContactRecipient(recipient.trim())}
+                        onChange={event => { cancelCompose(); noteUserEdit(); setPrivateReview(event.target.checked && expectedTargetVersion ? { version: expectedTargetVersion, recipient } : null); }} />
+                        {locale === 'zh' ? '我已核对当前来源的联系要求和这个收件地址。' : 'I reviewed the current source’s contact instructions and this recipient address.'}</label>
+                    </div> : !recipient && recipientStatus === 'sign_in_required' ? (
                       /* W10b: a verified address exists behind the sign-in
                          gate — offer sign-in instead of the "we couldn't find
                          one" state, which would be a lie here. */
@@ -2503,7 +2535,7 @@ export default function ColdEmailModal({
                         </p>
                       </div>
                     )}
-                    {grounding === 'no_target_data' && (
+                    {!privateMode && grounding === 'no_target_data' && (
                       /* Evidence honesty: nothing in this record could
                          personalize a draft, so say so instead of letting a
                          generic email pass as tailored homework. */
@@ -2576,7 +2608,7 @@ export default function ColdEmailModal({
                 </div>
               </div>
 
-              <div className={`${styles.refinePane} bg-gray-50/60 border-t lg:border-t-0 border-gray-100`} data-has-guidelines={!!labType}>
+              {!privateMode && <div className={`${styles.refinePane} bg-gray-50/60 border-t lg:border-t-0 border-gray-100`} data-has-guidelines={!!labType}>
                 {labType && (
                   <div className={`${styles.guidelines} border-b border-gray-100`}>
                     <h3 id="cold-email-guidelines-heading" className="px-4 py-3 text-sm font-semibold text-gray-700 shrink-0">
@@ -2689,7 +2721,7 @@ export default function ColdEmailModal({
                   </form>
                 </div>
                 </section>
-              </div>
+              </div>}
             </div>
 
             {/* Post-draft strip — appears once the email is copied/opened.
@@ -2810,7 +2842,7 @@ export default function ColdEmailModal({
             <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0" data-testid="cold-email-footer">
               {conditionCheck?.key === composeKey && <div role="status" data-testid="email-condition-review" className="w-full max-h-[18dvh] overflow-y-auto text-xs text-amber-900">
                 {conditionCheck.message && <p>{conditionCheck.message}</p>}
-                {conditionCheck.issues.length > 0 && <ul className="list-disc pl-4 space-y-1">{conditionCheck.issues.map(issue => <li key={issue}>{emailConditionIssueText(issue, locale)}</li>)}</ul>}
+                {conditionCheck.issues.length > 0 && <ul className="list-disc pl-4 space-y-1">{conditionCheck.issues.map(issue => <li key={issue}>{issue === 'invalid_recipient' ? (locale === 'zh' ? '请填写一个有效的收件邮箱。' : 'Enter one valid recipient address.') : issue === 'contact_review_required' ? (locale === 'zh' ? '请核对来源的联系要求和收件地址。' : 'Review the source’s contact instructions and recipient.') : issue === 'contact_blocked' ? (locale === 'zh' ? '当前导入内容有联系限制，请查看来源。' : 'The current import has contact restrictions. Review the source.') : emailConditionIssueText(issue, locale)}</li>)}</ul>}
               </div>}
               {(composeBusy || composeFailure) && <p role="status" data-testid="cold-email-compose-status" className="w-full text-xs text-amber-900">
                 {composeBusy ? (locale === 'zh' ? '正在核对草稿、资料和目标条件…' : 'Checking your draft, profile and target conditions…')
@@ -2856,7 +2888,7 @@ export default function ColdEmailModal({
               >
                 <button
                   type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
                   onClick={() => startCompose('default')}
                   className="col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -2866,7 +2898,7 @@ export default function ColdEmailModal({
                 <div className="hidden w-px bg-indigo-400 sm:block" />
                 <button
                   type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
                   onClick={() => startCompose('gmail')}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openGmailTitle')}
@@ -2875,7 +2907,7 @@ export default function ColdEmailModal({
                 </button>
                 <button
                   type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!contactEmailBlock(target, subject, { subjectFormatConfirmed }) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || !recipient.trim()}
+                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
                   onClick={() => startCompose('outlook')}
                   className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title={t('coldEmail.openOutlookTitle')}

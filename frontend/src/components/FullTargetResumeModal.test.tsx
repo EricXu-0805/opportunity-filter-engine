@@ -286,7 +286,7 @@ describe('full target résumé modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load older versions' }));
     await screen.findByRole('button', { name: /View version 1 ·/ });
     expect(screen.getAllByRole('button', { name: /^View version / })).toHaveLength(30);
-    expect(storage.history.mock.calls[2]).toEqual([opportunity.id, captureOwnerToken(), 11]);
+    expect(storage.history.mock.calls[2]).toEqual([opportunity.id, captureOwnerToken(), 11, { signal: expect.any(AbortSignal) }]);
     expect(screen.queryByRole('button', { name: 'Load older versions' })).toBeNull(); expect(storage.version).not.toHaveBeenCalled();
   });
   it('ignores out-of-order history bodies and restores the selected immutable version through a new CAS save', async () => {
@@ -808,5 +808,34 @@ describe('saved operation records', () => {
     const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await waitFor(() => expect(ai.props?.enabled).toBe(true)); const prepared = await prepareTargetResumeAI(doc); if (!prepared.ok) throw new Error(prepared.code);
     act(() => ai.props!.onApply(prepared.value.canonical_draft, withName(doc, 'Unrecorded overwrite'), undefined as unknown as TargetResumeProvenanceAction));
     expect(screen.getByRole('textbox', { name: 'Edit Full name' })).toHaveValue('Alex 王'); expect(screen.getByText('Saved version 1')).toBeVisible();
+  });
+});
+
+
+describe('resume read retirement and retry', () => {
+  it('shows a timed-out read as retryable, keeps side-panel answers, and aborts the retired attempt', async () => {
+    storage.load.mockRejectedValueOnce({ code: 'timeout' });
+    const result = renderModal();
+    await screen.findByText('Reading the saved résumé took too long. Nothing was replaced; try reading it again.');
+    const firstSignal = storage.load.mock.calls[0][2].signal as AbortSignal;
+    fireEvent.click(screen.getByRole('button', { name: 'Add experience details' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Supplement test answer' }), { target: { value: 'Keep this unfinished contribution' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry reading saved résumé' }));
+    await waitFor(() => expect(storage.load).toHaveBeenCalledTimes(2));
+    expect(firstSignal.aborted).toBe(true);
+    expect(screen.getByRole('textbox', { name: 'Supplement test answer' })).toHaveValue('Keep this unfinished contribution');
+    result.unmount(); expect((storage.load.mock.calls[1][2].signal as AbortSignal).aborted).toBe(true);
+  });
+  it('aborts an old target read and ignores its later result after a new target is editable', async () => {
+    const p=profile(); const old=await docFor(p); const pending=deferred<LoadedTargetResume|null>();
+    storage.load.mockReturnValueOnce(pending.promise);
+    const mounted=renderModal(p); await waitFor(()=>expect(storage.load).toHaveBeenCalledOnce());
+    const signal=storage.load.mock.calls[0][2].signal as AbortSignal;
+    const target={...opportunity,id:'other-target'}; const next=await docFor(p,target);
+    storage.load.mockResolvedValueOnce(loaded(next));
+    mounted.rerender(<FullTargetResumeModal isOpen onClose={vi.fn()} profile={p} opportunity={target}/>);
+    await screen.findByRole('textbox',{name:'Edit Full name'});editName('Keep newer edit');expect(signal.aborted).toBe(true);
+    await act(async()=>pending.resolve(loaded(withName(old,'Late old owner material'))));
+    expect(screen.getByRole('textbox',{name:'Edit Full name'})).toHaveValue('Keep newer edit');expect(storage.save).not.toHaveBeenCalled();
   });
 });

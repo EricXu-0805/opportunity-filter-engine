@@ -4,8 +4,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExter
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from './identity-owner';
 import { PROFILE_REFRESH_DEADLINE_MS, type ProfileActionReceipt, type ProfileRefreshState } from './use-profile-refresh';
 import type { Opportunity, ProfileData } from './types';
-import type { TargetActionReceipt, WritingTargetState } from './use-writing-target';
+import type { WritingTargetState } from './use-writing-target';
 import { writingTargetKey } from './writing-target';
+import { privateEmailKey, type PrivateEmailContext } from './private-email';
+import type { PrivateEmailTargetState } from './use-private-email-target';
 
 /** In-memory structural binding only. Never persisted, logged or sent as a hash. */
 export function profileActionKey(profile: ProfileData | null): string | null {
@@ -35,6 +37,8 @@ export interface ProfileActionOptions<I> {
   /** The exact target committed by this editor, independent of its seed card. */
   target?: Opportunity | null;
   targetRefresh?: WritingTargetState;
+  privateTarget?: PrivateEmailContext | null;
+  privateTargetRefresh?: PrivateEmailTargetState;
   readiness: 'ready' | 'waiting' | 'blocked';
   execute: (intent: I) => void;
 }
@@ -50,9 +54,31 @@ interface Pending<I> {
   matched: boolean;
   targetBefore: string | null;
   targetId: string | null;
-  targetReceipt: TargetActionReceipt | null;
+  targetReceipt: { key: string } | null;
+  targetScope: 'public' | 'private' | null;
   targetMatched: boolean;
   timer: ReturnType<typeof setTimeout> | null;
+}
+
+type TargetOptions = Pick<ProfileActionOptions<unknown>, 'target' | 'targetRefresh' | 'privateTarget' | 'privateTargetRefresh'>;
+function actionTarget(options: TargetOptions) {
+  if (options.privateTargetRefresh) {
+    const target = options.privateTarget;
+    return { kind: 'private' as const, id: target?.id, key: privateEmailKey(target ?? null), status: options.privateTargetRefresh.status,
+      invalid: !!options.target || !!options.targetRefresh,
+      check: async () => {
+        const receipt = await options.privateTargetRefresh!.checkForAction();
+        return receipt && receipt.target.owner_id === receipt.owner.uid && privateEmailKey(receipt.target) === receipt.key
+          ? { owner: receipt.owner, id: receipt.target.id, key: receipt.key } : null;
+      } };
+  }
+  if (options.targetRefresh) return { kind: 'public' as const, id: options.target?.id, key: writingTargetKey(options.target ?? null),
+    status: options.targetRefresh.status, invalid: !!options.privateTarget,
+    check: async () => {
+      const receipt = await options.targetRefresh!.checkForAction();
+      return receipt && writingTargetKey(receipt.target) === receipt.key ? { owner: receipt.owner, id: receipt.target.id, key: receipt.key } : null;
+    } };
+  return null;
 }
 
 /** Queue data, never a generator closure. Only a committed render that actually
@@ -88,10 +114,12 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     const token = captureOwnerToken();
     const before = profileActionKey(current.profile);
     const check = current.refresh?.checkForAction;
-    const targetCheck = current.targetRefresh?.checkForAction;
-    const targetBefore = writingTargetKey(current.target ?? null);
+    const bound = actionTarget(current);
+    const targetCheck = bound?.check;
+    const targetBefore = bound?.key ?? null;
     if (!current.isOpen || !current.profileAvailable || !current.profile || !before
-      || (current.targetRefresh && (!targetCheck || !current.target?.id || !targetBefore))
+      || (bound && (bound.invalid || !targetCheck || !bound.id || !targetBefore))
+      || (current.privateTarget && !current.privateTargetRefresh)
       || (!check && !targetCheck && current.readiness === 'blocked') || !isOwnerTokenValid(token, token.uid)) {
       setError('unavailable'); return;
     }
@@ -100,7 +128,7 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     const record: Pending<I> = { intent: copied, owner: token, scopeKey: current.scopeKey,
       editRevision: current.editRevision, before, receipt: null, checking: !!check || !!targetCheck,
       legacy: !check, matched: false, targetBefore: targetCheck ? targetBefore : null,
-      targetId: targetCheck ? current.target!.id : null, targetReceipt: null, targetMatched: false, timer: null };
+      targetId: bound?.id ?? null, targetReceipt: null, targetScope: bound?.kind ?? null, targetMatched: false, timer: null };
     pending.current = record;
     setBusy(true);
     setError(null); setVersion((value) => value + 1);
@@ -120,8 +148,7 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
       if (pending.current !== record) return;
       if (check && (!receipt?.profile || !ownerMatches(receipt.owner))) { finish(record, 'unavailable'); return; }
       if (targetCheck && (!targetReceipt || !ownerMatches(targetReceipt.owner)
-        || targetReceipt.target.id !== record.targetId || !targetReceipt.key
-        || writingTargetKey(targetReceipt.target) !== targetReceipt.key)) { finish(record, 'unavailable'); return; }
+        || targetReceipt.id !== record.targetId || !targetReceipt.key)) { finish(record, 'unavailable'); return; }
       record.receipt = receipt;
       record.targetReceipt = targetReceipt;
       record.checking = false;
@@ -137,11 +164,13 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     const record = pending.current;
     if (!record) return;
     if (!options.isOpen) { finish(record, null); return; }
+    const target = actionTarget({ target: options.target, targetRefresh: options.targetRefresh,
+      privateTarget: options.privateTarget, privateTargetRefresh: options.privateTargetRefresh });
     if (!isOwnerTokenValid(record.owner, record.owner.uid) || options.scopeKey !== record.scopeKey
       || options.editRevision !== record.editRevision
-      || (record.targetId !== null && (options.target?.id !== record.targetId || !options.targetRefresh))) { finish(record, 'changed'); return; }
+      || (record.targetId !== null && (target?.id !== record.targetId || target?.kind !== record.targetScope))) { finish(record, 'changed'); return; }
     if (!options.profileAvailable || !options.profile) finish(record, 'unavailable');
-  }, [options.isOpen, options.profileAvailable, options.profile, options.scopeKey, options.editRevision, options.target, options.targetRefresh, owner, finish]);
+  }, [options.isOpen, options.profileAvailable, options.profile, options.scopeKey, options.editRevision, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, owner, finish]);
 
   useEffect(() => {
     const record = pending.current;
@@ -158,23 +187,24 @@ export function useProfileAction<I>(options: ProfileActionOptions<I>): {
     if (profileMatches) record.matched = true;
     let targetMatches = true;
     if (record.targetId !== null) {
-      if (!current.targetRefresh || current.target?.id !== record.targetId || !record.targetReceipt) { finish(record, 'changed'); return; }
-      const renderedTarget = writingTargetKey(current.target);
+      const bound = actionTarget(current);
+      if (!bound || bound.invalid || bound.id !== record.targetId || bound.kind !== record.targetScope || !record.targetReceipt) { finish(record, 'changed'); return; }
+      const renderedTarget = bound.key;
       if (!renderedTarget) { finish(record, 'unavailable'); return; }
       targetMatches = renderedTarget === record.targetReceipt.key;
       // Track each commit separately: one source may update while the other
       // still displays its old value. Once matched, reverting cancels the intent.
       if (!targetMatches && (record.targetMatched || renderedTarget !== record.targetBefore)) { finish(record, 'changed'); return; }
       if (targetMatches) record.targetMatched = true;
-      if (current.targetRefresh.status !== 'ready' && current.targetRefresh.status !== 'checking') { finish(record, 'unavailable'); return; }
-      if (current.targetRefresh.status === 'checking') return;
+      if (bound.status !== 'ready' && bound.status !== 'checking') { finish(record, 'unavailable'); return; }
+      if (bound.status === 'checking') return;
     }
     if (!profileMatches || !targetMatches) return;
     if (current.readiness === 'blocked') { finish(record, 'unavailable'); return; }
     if (current.readiness === 'waiting') return;
     finish(record, null); // Retire before executing; StrictMode cannot repeat it.
     current.execute(record.intent);
-  }, [version, options.profile, options.readiness, options.scopeKey, options.editRevision, options.profileAvailable, options.isOpen, options.target, options.targetRefresh, owner, finish]);
+  }, [version, options.profile, options.readiness, options.scopeKey, options.editRevision, options.profileAvailable, options.isOpen, options.target, options.targetRefresh, options.privateTarget, options.privateTargetRefresh, owner, finish]);
 
   useEffect(() => () => {
     const record = pending.current;

@@ -93,3 +93,7 @@
     overscroll-behavior-y: contain;
   }
 }
+
+@media (min-width: 1024px) and (min-height: 720px) {
+  .panels[data-private='true'] { grid-template-columns: minmax(0, 1fr); }
+}

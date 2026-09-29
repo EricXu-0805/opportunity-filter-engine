@@ -1,5 +1,8 @@
 'use client';
 
+import { sourceDigest } from '@/lib/experience-evidence';
+import { resumeSourceDisplayState } from '@/lib/resume-source-display';
+import type { ResumeFact } from '@/lib/types';
 import { parseResumeSupplementDraft, supplementRecorded, type ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
@@ -62,6 +65,29 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
   const master = view?.renderedProfile.resume_master;
   const activities = master?.activities ?? [];
   const activity = activities.find((item) => item.id === activityId);
+  const rawText = view?.renderedProfile.resume_text ?? '';
+  const [sourceCheck, setSourceCheck] = useState<{ rawText: string; digest: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void sourceDigest(rawText).then(digest => { if (active) setSourceCheck({ rawText, digest }); })
+      .catch(() => { if (active) setSourceCheck({ rawText, digest: '' }); });
+    return () => { active = false; };
+  }, [rawText]);
+  const sourceContext = sourceCheck?.rawText === rawText ? { rawText, expectedDigest: sourceCheck.digest } : null;
+  const currentFact = (fact: ResumeFact | undefined) => fact && resumeSourceDisplayState(fact, sourceContext) === 'current' ? fact : undefined;
+  const sourceStatus = (item: ResumeFact | NonNullable<ProfileViewSnapshot['renderedProfile']['experience_entries']>[number]) => {
+    const status = resumeSourceDisplayState(item, sourceContext);
+    return status === 'candidate' ? copy('Awaiting confirmation', '尚未确认')
+      : status === 'withdrawn' ? copy('Withdrawn', '已撤回')
+      : status === 'rejected' ? copy('Not accepted', '未采纳')
+      : status === 'checking' ? copy('Checking original source', '正在核对原始资料')
+      : copy('Source changed or unavailable; review in your profile', '原始资料已变化或不可用，请在个人资料中重新核对');
+  };
+  const activityFields = [
+    ['title', copy('Project name', '项目名称')], ['organization', copy('Organization', '组织')],
+    ['location', copy('Location', '地点')], ['start', copy('Start date', '开始日期')], ['end', copy('End date', '结束日期')],
+  ] as const;
+
   const recoveredRound = recovered?.entryId === entryId;
   const recoverySnapshot = { version: 1 as const, opportunityId: opportunityId ?? '', targetKey, ...draft };
   const wasRecorded = recoveredRound && preview.ok && supplementRecorded(view?.baseProfile, recoverySnapshot, preview.previewText)
@@ -74,7 +100,14 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
   useLayoutEffect(() => { callbacks.current.onDirtyChange?.(dirty); }, [dirty]);
   const busy = busyFor === targetKey;
   const locked = saved || busy || !!nextRound || controller.operationLocked || ['saving', 'recorded', 'conflict', 'save-unknown', 'saved', 'retired'].includes(controller.phase);
-  const fingerprint = JSON.stringify([targetKey, view?.viewId, draft]);
+  const displayedSources = activity ? [
+    ...activityFields.map(([key]) => activity[key] ? resumeSourceDisplayState(activity[key]!, sourceContext) : null),
+    ...activity.details.map(ref => {
+      const entry = view?.renderedProfile.experience_entries?.find(item => item.id === ref.id && item.revision === ref.revision);
+      return entry ? resumeSourceDisplayState(entry, sourceContext) : 'missing';
+    }),
+  ] : [];
+  const fingerprint = JSON.stringify([targetKey, view?.viewId, rawText, displayedSources, draft]);
   const confirmed = confirmedFor === fingerprint;
   const ready = profileAvailable && (controller.phase === 'ready' || controller.phase === 'save-error');
   const canConfirm = ready && !!activity && preview.ok && confirmed && !locked && !recoveredConflict;
@@ -150,14 +183,14 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
         onChange={(event) => { setActivityId(event.target.value); setConfirmedFor(null); }}>
         <option value="">{copy('Choose an existing activity', '选择已有项目或经历')}</option>
         {activityId && !activity && <option value={activityId} disabled>{copy('Previously selected activity is unavailable', '之前选择的经历已不可用')}</option>}
-        {activities.map((item, index) => <option key={item.id} value={item.id}>{item.title?.value || item.organization?.value || `${copy('Activity', '经历')} ${index + 1}`}</option>)}
+        {activities.map((item, index) => <option key={item.id} value={item.id}>{currentFact(item.title)?.value || currentFact(item.organization)?.value || copy(`Activity ${index + 1} — review its name`, `经历 ${index + 1}：请先核对名称`)}</option>)}
       </select>
     </div>
     {activity && <details className="mt-3 rounded-lg border bg-white p-3"><summary className="cursor-pointer text-sm font-medium">{copy('Current activity materials', '当前经历材料')}</summary>
-      {[activity.title, activity.organization, activity.location, activity.start, activity.end].filter((item) => !!item).map((item) => <p key={item!.id} className="mt-2 whitespace-pre-wrap break-words text-sm">{item!.value}</p>)}
+      {activityFields.map(([key, label]) => { const item = activity[key]; return item ? <p key={item.id} className="mt-2 whitespace-pre-wrap break-words text-sm">{currentFact(item) ? item.value : `${label}: ${sourceStatus(item)}`}</p> : null; })}
       {activity.details.map((ref) => {
         const entry = view?.renderedProfile.experience_entries?.find((item) => item.id === ref.id && item.revision === ref.revision);
-        return <div key={`${ref.id}:${ref.revision}`} className="mt-2 border-t pt-2 text-sm"><p className="whitespace-pre-wrap break-words">{entry?.text ?? copy('This linked experience needs review in your profile.', '这条关联经历需要在个人资料中重新核对。')}</p><p className="mt-1 text-xs text-gray-500">{copy('Existing material, shown for reference. It is not part of this new submission.', '已有材料仅供对照，不会混入本次补充。')}</p></div>;
+        return <div key={`${ref.id}:${ref.revision}`} className="mt-2 border-t pt-2 text-sm"><p className="whitespace-pre-wrap break-words">{entry && resumeSourceDisplayState(entry, sourceContext) === 'current' ? entry.text : entry ? sourceStatus(entry) : copy('This linked experience needs review in your profile.', '这条关联经历需要在个人资料中重新核对。')}</p><p className="mt-1 text-xs text-gray-500">{copy('Existing material, shown for reference. It is not part of this new submission.', '已有材料仅供对照，不会混入本次补充。')}</p></div>;
       })}
     </details>}
     <fieldset disabled={locked} className="mt-4 min-w-0 space-y-4">

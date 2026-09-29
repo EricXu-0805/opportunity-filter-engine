@@ -50,6 +50,7 @@ from backend.routes import (
     ops,
     orders,
     private_import_targets,
+    private_cold_email,
     professors,
     push,
     readiness,
@@ -868,6 +869,7 @@ app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
 app.include_router(target_resume_export.router, prefix="/api", tags=["resume"])
 app.include_router(application_materials.router, prefix="/api", tags=["materials"])
 app.include_router(private_import_targets.router, prefix="/api", tags=["private-imports"])
+app.include_router(private_cold_email.router, prefix="/api", tags=["private-email"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])

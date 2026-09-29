@@ -887,7 +887,7 @@ export async function getShortlistOpportunities(ids: string[]): Promise<Shortlis
 
 /** Cold Email always sends an explicit evidence envelope. An empty confirmed
  * library must never resurrect legacy raw strings as experience facts. */
-function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
+export function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
   const master = validateResumeMaster(profile?.resume_master);
   if (!master.ok) throw new ApiError(400, 'INVALID_EMAIL_EXPERIENCE_CONTEXT', 'Review your master résumé before using these materials.', false);
   return {

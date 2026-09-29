@@ -10,7 +10,7 @@ export const PRIVATE_TARGET_TIMEOUT_MS = 30_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ID = /^private-import:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 type Options = { owner: OwnerToken; signal?: AbortSignal };
-export type PrivateTargetErrorCode = 'invalid_input' | 'invalid_receipt' | 'sign_in_required' | 'conflict' | 'changed' | 'deleted' | 'not_found' | 'too_large' | 'unavailable' | 'timeout' | 'aborted';
+export type PrivateTargetErrorCode = 'invalid_input' | 'invalid_receipt' | 'sign_in_required' | 'conflict' | 'changed' | 'deleted' | 'not_found' | 'too_large' | 'unavailable' | 'timeout' | 'aborted' | 'contact_blocked' | 'ai_unavailable';
 export class PrivateTargetError extends Error {
   constructor(readonly code: PrivateTargetErrorCode) { super('The private import request could not be completed.'); this.name = 'PrivateTargetError'; }
 }
@@ -118,6 +118,8 @@ async function request(path: string, owner: OwnerToken, operation: Operation, in
   try { data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(all)); } catch { return fail(response.ok ? 'invalid_receipt' : 'unavailable'); }
   if (!response.ok) {
     const code = record(data) && record(data.detail) && typeof data.detail.code === 'string' ? data.detail.code : '';
+    if (code === 'private_email_contact_blocked' && response.status === 409) return fail('contact_blocked');
+    if (code === 'private_email_ai_unavailable' && response.status === 409) return fail('ai_unavailable');
     if (code === 'private_target_owner_changed' && response.status === 409) throw new OwnerMismatchError();
     const known = code.startsWith('private_target_') ? errors[code.slice('private_target_'.length)] : undefined;
     return fail(known?.[0] === response.status ? known[1] : 'unavailable');
@@ -275,5 +277,21 @@ export async function getResolvedPrivateImportTarget(id: string, options: Option
       target_scope: 'private_import', verification: 'unverified', target_version: version };
     if (!same(value.tracker, tracker) || !same(value.capabilities, { read: true, tracker_identity: true, writes: false })) return fail();
     return value as unknown as PrivateResolvedTarget;
+  });
+}
+
+/** Private email transport shares the account/auth/deadline boundary. No public
+ * endpoint or model endpoint is reachable through this finite action set. */
+export async function privateImportEmailRequest(id: string, action: 'context' | 'variants' | 'validate',
+  value: Record<string, unknown> | undefined, options: Options & { verify?: (data: Record<string, unknown>, wait: Operation['wait']) => Promise<void> }): Promise<Record<string, unknown>> {
+  const owner = { ...options.owner }; assertOwner(owner); validateId(id);
+  const body = action === 'context' ? undefined : jsonText({ ...value, expected_owner_id: owner.uid });
+  if (body && new TextEncoder().encode(body).length > 120000) fail('too_large');
+  return run(owner, options.signal, async op => {
+    const data = await request(`/${encodeURIComponent(id)}` + (action === 'context'
+      ? `/email-context?${new URLSearchParams({ expected_owner_id: owner.uid })}` : `/cold-email/${action}`), owner, op,
+      body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body } : undefined);
+    if (options.verify) await op.wait(options.verify(data, op.wait));
+    return data;
   });
 }

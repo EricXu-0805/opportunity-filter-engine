@@ -426,7 +426,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
-      const edited = 'p@x.edu?cc=evil@x.com&bcc=e2@x.com';
+      const edited = 'p+lab&tag@x.edu';
       fireEvent.change(screen.getByDisplayValue('p@x.edu'), { target: { value: edited } });
       fireEvent.click(screen.getByText('coldEmail.gmail'));
       await waitFor(() => expect(windowOpenMock.mock.results[0].value.location.href).toContain('mail.google.com'));

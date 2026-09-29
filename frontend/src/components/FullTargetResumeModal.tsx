@@ -37,16 +37,27 @@ import {
   captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange, type OwnerToken,
 } from '@/lib/identity-owner';
 
-type Scope = { active: boolean; owner: OwnerToken; targetId: string; context: string; creation: number; historyRequest: number; historyGeneration: number; historyListRequest: number };
+type Scope = { active: boolean; owner: OwnerToken; targetId: string; context: string; creation: number; historyRequest: number; historyGeneration: number; historyListRequest: number; reads: Map<string, AbortController> };
 type Session = {
   scope: Scope; phase: 'loading' | 'load-error' | 'idle' | 'creating' | 'doc';
   doc: TargetResumeV1 | null; provenance: TargetResumeProvenance | null; provenanceError: boolean; revision: number; savedJson: string | null; editRevision: number;
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
-  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | null;
+  error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
 };
 type LeaveAction = 'close' | 'legacy' | 'master' | 'rebuild';
+function beginRead(scope: Scope, kind: 'current' | 'history' | 'version'): AbortSignal {
+  scope.reads.get(kind)?.abort();
+  const controller = new AbortController(); scope.reads.set(kind, controller);
+  return controller.signal;
+}
+function retireScope(scope: Scope): void {
+  scope.active = false;
+  for (const controller of scope.reads.values()) controller.abort();
+  scope.reads.clear();
+}
+
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 // Synchronous content equality retires creation before a late digest completes.
 function canonical(value: unknown): string {
@@ -121,7 +132,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     setSession((old) => old?.scope === scope ? change(old) : old);
   }, [current]);
   const exit = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (scopeRef.current) scopeRef.current.active = false;
+    if (scopeRef.current) retireScope(scopeRef.current);
     setLeave(null);
     if (action === 'legacy') legacyRef.current?.();
     else { closeRef.current(); if (action === 'master') routerRef.current.push('/#resume-master'); }
@@ -154,7 +165,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     }
     const previous = scopeRef.current;
     const scope: Scope = { active: true, owner: captureOwnerToken(), targetId: opportunity.id,
-      context: contextKey, creation: 0, historyRequest: 0, historyGeneration: 0, historyListRequest: 0 };
+      context: contextKey, creation: 0, historyRequest: 0, historyGeneration: 0, historyListRequest: 0, reads: new Map() };
     scopeRef.current = scope;
     // A target-document read retry does not discard independent answers.
     if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
@@ -173,17 +184,17 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       if (!scope.active) return;
       const next = captureOwnerToken();
       if (!isTokenOwnerStillCurrent(scope.owner)) {
-        scope.active = false; setSession(null); setLeave(null); closeRef.current(); return;
+        retireScope(scope); setSession(null); setLeave(null); closeRef.current(); return;
       }
       if (next.generation !== scope.owner.generation && isOwnerTokenValid(next, next.uid)) {
-        scope.active = false; setLifecycle((old) => old + 1);
+        retireScope(scope); setLifecycle((old) => old + 1);
       }
     });
-    void loadTargetResume(opportunity.id, scope.owner).then((loaded) => {
+    void loadTargetResume(opportunity.id, scope.owner, { signal: beginRead(scope, 'current') }).then((loaded) => {
       update(scope, (old) => loaded === null ? { ...old, phase: 'idle' }
         : { ...old, phase: 'doc', doc: clone(loaded.doc), provenance: clone(loaded.provenance ?? null), provenanceError: false, revision: loaded.revision, savedJson: bundleKey(loaded.doc, loaded.provenance) });
-    }).catch(() => update(scope, (old) => ({ ...old, phase: 'load-error' })));
-    return () => { scope.active = false; unsubscribe(); };
+    }).catch((error: unknown) => update(scope, (old) => ({ ...old, phase: 'load-error', error: error && typeof error === 'object' && 'code' in error && error.code === 'timeout' ? 'timeout' : null })));
+    return () => { retireScope(scope); unsubscribe(); };
     // Content-only changes preserve local work and retire creation below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, opportunity.id, lifecycle, update]);
@@ -281,7 +292,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const scope = scopeRef.current;
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     const creation = ++scope.creation;
-    scope.historyGeneration += 1; scope.historyRequest += 1;
+    scope.historyGeneration += 1; scope.historyRequest += 1; scope.reads.get('history')?.abort(); scope.reads.get('version')?.abort();
     update(scope, (old) => ({ ...old, phase: 'creating', error: null, history: null, historyBusy: false, historyHasMore: false,
       selectedVersion: null, selectedRevision: null, versionBusy: false, versionError: false }));
     setLeave(null);
@@ -315,7 +326,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       const result = await saveTargetResume(snapshot, revision, scope.owner, provenanceSnapshot);
       if (!current(scope)) return;
       if (result.status === 'saved' || result.status === 'unchanged') {
-        scope.historyGeneration += 1; scope.historyRequest += 1; setLeave(null);
+        scope.historyGeneration += 1; scope.historyRequest += 1; scope.reads.get('history')?.abort(); scope.reads.get('version')?.abort(); setLeave(null);
         update(scope, (old) => ({ ...old,
         doc: old.editRevision === editRevision ? clone(result.value.doc) : old.doc,
         provenance: old.editRevision === editRevision ? clone(result.value.provenance ?? null) : old.provenance,
@@ -334,10 +345,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     update(scope, (old) => ({ ...old, reloading: true, error: null }));
     try {
-      const loaded = await loadTargetResume(opportunity.id, scope.owner);
+      const loaded = await loadTargetResume(opportunity.id, scope.owner, { signal: beginRead(scope, 'current') });
       if (!loaded) { update(scope, (old) => ({ ...old, reloading: false, error: 'missing' })); return; }
       if (!current(scope)) return;
-      scope.historyGeneration += 1; scope.historyRequest += 1;
+      scope.historyGeneration += 1; scope.historyRequest += 1; scope.reads.get('history')?.abort(); scope.reads.get('version')?.abort();
       update(scope, (old) => ({ ...old, phase: 'doc', doc: clone(loaded.doc), provenance: clone(loaded.provenance ?? null), provenanceError: false, revision: loaded.revision,
         savedJson: bundleKey(loaded.doc, loaded.provenance), editRevision: old.editRevision + 1, conflict: null, reloading: false,
         selectedVersion: null, selectedRevision: null, history: null, historyBusy: false, historyHasMore: false, versionBusy: false }));
@@ -349,13 +360,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!scope || scope !== activeSession.scope || !current(scope)) return;
     const before = older ? activeSession.history?.at(-1)?.revision : undefined;
     if (older && (!before || !activeSession.historyHasMore)) return;
-    if (!older) scope.historyGeneration += 1;
+    if (!older) { scope.historyGeneration += 1; scope.reads.get('version')?.abort(); }
     const generation = scope.historyGeneration;
     const request = ++scope.historyListRequest;
     update(scope, (old) => ({ ...old, historyBusy: true, historyError: false,
       ...(!older ? { selectedRevision: null, selectedVersion: null, versionBusy: false, versionError: false } : {}) }));
     try {
-      const versions = await loadTargetResumeHistory(opportunity.id, scope.owner, before);
+      const versions = await loadTargetResumeHistory(opportunity.id, scope.owner, before, { signal: beginRead(scope, 'history') });
       if (current(scope) && scope.historyGeneration === generation && scope.historyListRequest === request) update(scope, (old) => {
         const combined = older ? [...(old.history ?? []), ...versions] : versions;
         return { ...old, history: combined.filter((version, index) => combined.findIndex((item) => item.revision === version.revision) === index),
@@ -374,7 +385,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     const generation = scope.historyGeneration;
     update(scope, (old) => ({ ...old, selectedRevision: revision, selectedVersion: null, versionBusy: true, versionError: false }));
     try {
-      const loaded = await loadTargetResumeVersion(opportunity.id, revision, scope.owner);
+      const loaded = await loadTargetResumeVersion(opportunity.id, revision, scope.owner, { signal: beginRead(scope, 'version') });
       if (current(scope) && scope.historyRequest === request && scope.historyGeneration === generation) update(scope, (old) => ({ ...old, selectedVersion: loaded, versionBusy: false, versionError: !loaded }));
     } catch { if (current(scope) && scope.historyRequest === request && scope.historyGeneration === generation) update(scope, (old) => ({ ...old, versionBusy: false, versionError: true })); }
   };
@@ -445,6 +456,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     checking: copy('A profile or target check started. The unfinished draft was discarded; your existing edits are kept.', '已开始核对资料或目标，未完成的生成已作废，原有编辑仍保留。'),
     create: copy('Could not create a draft from confirmed materials. Review the master résumé and try again. Your existing work remains here.', '无法从已确认材料创建文稿，请核对母版后重试。原有编辑仍保留。'),
     invalid: copy('This draft cannot be saved yet. Check its structure and size limits. Your complete input is still here.', '此文稿暂不能保存，请检查结构与篇幅限制。输入全文仍保留。'),
+    timeout: copy('Reading the saved résumé took too long. Nothing was replaced; try reading it again.', '读取已保存简历超时，未替换任何内容，请重试读取。'),
     save: copy('The save was not confirmed. Your local edits remain here; retry saving.', '保存尚未确认。本地编辑仍保留，请重试保存。'),
     missing: copy('The saved document is unavailable. Your local edits have not been replaced.', '已保存文稿暂不可用，本地编辑未被替换。'),
     unavailable: copy('Cloud saving is unavailable for this session. Your local edits remain here.', '本次会话暂不能保存到云端，本地编辑仍保留。'),
@@ -517,12 +529,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         <p className="text-sm text-gray-600">{copy('Choose and edit content for this opportunity. Review AI suggestions before applying them, then export the current draft.', '选择并编辑适合该机会的内容。AI 建议经核对后再应用，再导出当前稿。')}</p>
         {(!activeSession || activeSession.phase === 'loading') && <p role="status" className="mt-4">{copy('Loading saved target résumé…', '正在读取已保存的目标简历…')}</p>}
         {activeSession?.phase === 'load-error' && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          <p>{copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
+          <p>{activeSession.error === 'timeout' ? copy('Reading the saved résumé took too long. Nothing was replaced; try reading it again.', '读取已保存简历超时，未替换任何内容，请重试读取。') : copy('The saved résumé could not be read. Nothing has been replaced, and creating a new draft is paused.', '无法读取已保存简历，未替换任何内容，暂不创建新稿。')}</p>
           <button type="button" className={`${button} mt-2`} onClick={() => setLifecycle((old) => old + 1)}>{copy('Retry reading saved résumé', '重试读取已保存简历')}</button>
         </div>}
         {createAction.busy && <p role="status" className="mt-3 text-sm">{copy(targetRefresh ? 'Checking current profile and opportunity before creating the draft…' : 'Checking current profile before creating the draft…', targetRefresh ? '创建文稿前正在核对最新资料及机会…' : '创建文稿前正在核对最新资料…')}</p>}
         {createAction.error && <p role="alert" className="mt-3 text-sm text-amber-800">{createAction.error === 'changed' ? copy('Your draft or target changed during the check. Your edits are kept; choose the action again when ready.', '核对期间文稿或目标已变更。编辑仍保留，请准备好后重新选择操作。') : copy(targetRefresh ? 'Your profile or opportunity could not be verified. Your draft is kept; retry the check before creating a new draft.' : 'Current profile could not be verified. Your draft is kept; retry the profile check before creating a new draft.', targetRefresh ? '未能核对当前资料或机会。文稿仍保留，请重试核对后再创建新稿。' : '未能核对当前资料。文稿仍保留，请重试资料核对后再创建新稿。')}</p>}
-        {activeSession?.error && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
+        {activeSession?.error && activeSession.phase !== 'load-error' && <p role="alert" className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{errors[activeSession.error]}</p>}
         {doc && <>
           {!comparable && <p role="status" className="mt-3 text-sm text-amber-800">{copy('Current source comparison is unavailable or still loading. This draft keeps its original source snapshots.', '当前来源对比尚未完成或不可用，此稿仍保留原始来源快照。')}</p>}
           {incompleteTarget && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{copy('This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.', '旧稿未保存完整机会要求，仍可编辑、保存和导出。请重新创建后，再用 AI 按当前要求修改。')}</p>}

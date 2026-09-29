@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useT } from '@/i18n/client';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { getPrivateImportTarget, getResolvedPrivateImportTarget, PrivateTargetError, type PrivateResolvedTarget } from '@/lib/private-import-target-api';
+import PrivateEmailLauncher from '@/components/PrivateEmailLauncher';
 import ContactHistory from '@/components/ContactHistory';
 import ApplicationRecordForm from '@/components/ApplicationRecordForm';
 import ApplicationHistory from '@/components/ApplicationHistory';
@@ -14,12 +15,12 @@ const copy = {
     error: 'This import could not be loaded. Your history has not been removed.', missing: 'This import is not available in this account.',
     signIn: 'Sign in to open an account import.', retry: 'Try again', deleted: 'This account copy was deleted. Your recorded contact and application history remains below.',
     unverified: 'Imported content — not independently verified. It does not establish an opening, eligibility, or permission to contact.',
-    source: 'View source page', original: 'Full imported text', history: 'Your recorded history', writes: 'Email and résumé preparation for private imports is not connected yet.' },
+    source: 'View source page', original: 'Full imported text', history: 'Your recorded history', writes: 'Email templates and manual editing are available below. AI writing and résumé preparation for private imports are not connected yet.' },
   zh: { back: '返回已保存机会', title: '账户中的导入', checking: '正在读取账户中的导入…',
     error: '暂时无法读取这条导入，历史记录没有删除。', missing: '当前账户无法查看这条导入。',
     signIn: '登录后可查看账户中的导入。', retry: '重试', deleted: '这条账户副本已删除；已记录的联系和申请历史仍保留在下方。',
     unverified: '导入内容尚未独立核对，不代表存在空缺、符合资格或允许联系。',
-    source: '查看来源网页', original: '完整导入原文', history: '已记录的历史', writes: '私有机会的邮件和简历准备尚未接通。' },
+    source: '查看来源网页', original: '完整导入原文', history: '已记录的历史', writes: '可在下方准备模板邮件并手动修改。私有机会的 AI 写作和简历准备尚未接通。' },
 };
 function snapshot() { const token = captureOwnerToken(); return JSON.stringify([token.uid, token.epoch, token.generation, isOwnerTokenValid(token, token.uid)]); }
 function subscribe(fn: () => void) { const off = onLocalOwnerStateChange(fn); window.addEventListener('storage', fn); return () => { off(); window.removeEventListener('storage', fn); }; }
@@ -67,6 +68,8 @@ export default function PrivateImportDetail({ id }: { id: string }) {
       <details className="rounded-xl border p-4"><summary className="min-h-10 cursor-pointer font-medium">{text.original}</summary><p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{content.description_raw}</p></details>
       <p className="text-sm text-gray-600">{text.writes}</p>
     </section>}
+    {!unreadyOwner && <PrivateEmailLauncher key={`${owner}:${id}`} id={id} scope={`${owner}:${id}`} title={content?.title ?? text.title}
+      available={view?.status === 'ready'} onContactConfirmed={() => setHistoryEpoch(n => n + 1)} />}
     {history && <section key={scope} id="tracker-records" className="space-y-6 border-t pt-6">
       <h2 className="text-lg font-semibold">{text.history}</h2>
       {view?.status === 'ready' && <ApplicationRecordForm opportunityId={id} ownerReady={true} onConfirmed={() => setHistoryEpoch(n => n + 1)} />}

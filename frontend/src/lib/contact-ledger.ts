@@ -68,6 +68,10 @@ export async function contactMaterialVersion(value: string): Promise<string> {
     return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
   } catch { throw new ContactEventError('unavailable'); }
 }
+/** A single bare address, shared by composition and immutable contact history. */
+export function validContactRecipient(value: unknown): value is string {
+  return validText(value, 320, true) && /^[^\s@,;<>"\\]+@[^\s@,;<>"\\]+\.[^\s@,;<>"\\]+$/.test(value);
+}
 export function validContactTarget(value: unknown): value is string { return validText(value, 200); }
 /** Keep PostgreSQL's microseconds: rounding them can skip a pagination boundary. */
 export function contactTimestamp(value: unknown): bigint | null {
@@ -96,7 +100,7 @@ function materials(value: unknown): ContactMaterialRef[] {
 export function snapshotContactEventInput(value: unknown): ContactEventInput {
   if (!contactRecord(value) || !exactKeys(value, ['id', 'recipient', 'subject', 'body', 'materialRefs', 'actualSentAt'])
     || typeof value.id !== 'string' || !UUID.test(value.id)
-    || !validText(value.recipient, 320, true) || !/^[^\s@,;<>"\\]+@[^\s@,;<>"\\]+\.[^\s@,;<>"\\]+$/.test(value.recipient)
+    || !validContactRecipient(value.recipient)
     || !validText(value.subject, 1000, true) || !validText(value.body, 100000)
     || (value.actualSentAt !== null && contactTimestamp(value.actualSentAt) === null)) throw new ContactEventError('invalid_input');
   return { id: value.id, recipient: value.recipient, subject: value.subject, body: value.body,

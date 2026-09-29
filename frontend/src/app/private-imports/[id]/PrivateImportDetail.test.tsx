@@ -5,6 +5,7 @@ vi.mock('@/lib/private-import-target-api', async original => {
   const importedModule = await original<typeof import('@/lib/private-import-target-api')>();
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
 });
+vi.mock('@/components/PrivateEmailLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private email</button> : null }));
 vi.mock('@/components/ApplicationRecordForm', () => ({ default: ({ opportunityId, ownerReady }: { opportunityId: string; ownerReady: boolean }) => <p>{ownerReady && 'Personal application record ' + opportunityId}</p> }));
 vi.mock('@/components/ContactHistory', () => ({ default: ({ opportunityId }: { opportunityId: string }) => <p>Contact history {opportunityId}</p> }));
 vi.mock('@/components/ApplicationHistory', () => ({ default: ({ opportunityId }: { opportunityId: string }) => <p>Application history {opportunityId}</p> }));
@@ -20,13 +21,14 @@ beforeEach(async () => { await setupOwner(); raw.mockReset(); resolved.mockReset
   resolved.mockResolvedValue(source);
 });
 afterEach(() => vi.restoreAllMocks());
-it('opens full private source and both owner-scoped histories without writing controls', async () => {
+it('opens full private source and both owner-scoped histories with private email preparation and no send action', async () => {
   render(<PrivateImportDetail id={id} />);
   await screen.findByText('Private test title');
   expect(screen.getByText('GPA < 3.0 and score > 80. END')).toBeInTheDocument();
   expect(screen.getByText('Contact history ' + id)).toBeInTheDocument();
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /generate|send|apply/i })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Prepare private email' })).toBeInTheDocument();
   expect(screen.getByText('Personal application record ' + id)).toBeInTheDocument();
   expect(resolved.mock.calls[0][1].expectedVersion).toBe('pit1:' + '1'.repeat(64));
 });

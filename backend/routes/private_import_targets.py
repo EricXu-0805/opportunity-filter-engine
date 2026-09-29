@@ -1,4 +1,4 @@
-"""Owner-bound private imports. CRUD only; no writing, network import, or publication."""
+"""Owner-bound imports and local preparation receipts; no model or publication."""
 
 from contextlib import asynccontextmanager
 
@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
+from backend.lib.private_email_context import resolve_private_email_context
 from backend.lib.private_import_targets import PrivateTargetService, new_client, settings
 from backend.lib.private_import_targets_schema import (
     PRIVATE,
@@ -130,3 +131,13 @@ async def read_resolved_target(target_id: str, request: Request):
         expected_target_version=params.get("expected_target_version"),
     )
     return JSONResponse(result.as_dict(), headers=PRIVATE)
+
+
+@router.get("/{target_id}/email-context")
+async def read_private_email_context(target_id: str, request: Request):
+    scope, _ = query(request)
+    result = await resolve_private_email_context(
+        target_id, authorization=request.headers.get("authorization"),
+        expected_owner_id=scope.expected_owner_id,
+    )
+    return JSONResponse(result, headers=PRIVATE)

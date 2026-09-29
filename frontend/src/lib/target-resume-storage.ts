@@ -9,9 +9,11 @@ import {
 export type { LoadedTargetResume, TargetResumeSaveResult } from './target-resume';
 export interface TargetResumeVersionSummary { revision: number; updated_at: string }
 export const TARGET_RESUME_HISTORY_LIMIT = 20;
+export const TARGET_RESUME_READ_TIMEOUT_MS = 30_000;
+export type TargetResumeReadOptions = { signal?: AbortSignal; timeoutMs?: number };
 const MAX_BYTES = 2 * 1024 * 1024;
 export class TargetResumeReadError extends Error {
-  constructor(public readonly code: 'abandoned' | 'unavailable' | 'failed' | 'invalid') {
+  constructor(public readonly code: 'abandoned' | 'unavailable' | 'failed' | 'invalid' | 'timeout') {
     super(`target_resume_${code}`);
     this.name = 'TargetResumeReadError';
   }
@@ -27,6 +29,49 @@ async function ready(token: OwnerToken): Promise<void> {
   owner(token);
   if (uid === null) throw new TargetResumeReadError('unavailable');
   if (uid !== token.uid) throw new TargetResumeReadError('abandoned');
+}
+/** One deadline covers identity, transport, body and signature work. This
+ * helper is read-only: cancellation never claims a save RPC was rolled back. */
+async function readWithin<T>(token: OwnerToken, options: TargetResumeReadOptions,
+  read: (origin: OwnerToken, signal: AbortSignal, wait: <V>(value: PromiseLike<V>) => Promise<V>) => Promise<T>): Promise<T> {
+  const origin = { ...token };
+  owner(origin);
+  const duration = options.timeoutMs ?? TARGET_RESUME_READ_TIMEOUT_MS;
+  if (!Number.isFinite(duration) || duration < 0 || duration > 2_147_483_647) throw new TargetResumeReadError('invalid');
+  const controller = new AbortController();
+  let timedOut = false;
+  let retired = false;
+  const interrupted = () => new TargetResumeReadError(timedOut ? 'timeout' : 'abandoned');
+  const active = () => { owner(origin); if (retired || controller.signal.aborted) throw interrupted(); };
+  const abort = () => controller.abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  if (options.signal?.aborted) controller.abort();
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, duration);
+  const wait = <V,>(value: PromiseLike<V>): Promise<V> => new Promise((resolve, reject) => {
+    const clean = () => controller.signal.removeEventListener('abort', stop);
+    const stop = () => { clean(); reject(interrupted()); };
+    if (retired || controller.signal.aborted) {
+      // The argument may already be running even though this wait was retired.
+      void Promise.resolve(value).catch(() => {});
+      stop(); return;
+    }
+    controller.signal.addEventListener('abort', stop, { once: true });
+    Promise.resolve(value).then(result => {
+      clean(); try { active(); resolve(result); } catch (error) { reject(error); }
+    }, error => { clean(); reject(error); });
+  });
+  try {
+    active();
+    await wait(ready(origin));
+    active();
+    return await wait(read(origin, controller.signal, wait));
+  } catch (error) { throw errorFor(error, origin); }
+  finally { retired = true; clearTimeout(timer); options.signal?.removeEventListener('abort', abort); controller.abort(); }
+}
+function cancellable<T>(query: T, signal: AbortSignal): T {
+  // PostgREST supports this; small test/legacy adapters may only be thenable.
+  const candidate = query as T & { abortSignal?: (signal: AbortSignal) => T };
+  return typeof candidate.abortSignal === 'function' ? candidate.abortSignal(signal) : query;
 }
 function targetId(value: string): void {
   if (typeof value !== 'string' || !value.trim() || Array.from(value).length > 200) {
@@ -73,52 +118,51 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** A successful null is absent; every failed or unreadable read rejects. */
-export async function loadTargetResume(opportunityId: string, token: OwnerToken): Promise<LoadedTargetResume | null> {
-  try {
-    targetId(opportunityId); await ready(token);
-    const { data, error } = await supabase.from('target_resumes').select('revision,doc,updated_at,provenance')
-      .eq('owner_id', token.uid).eq('opportunity_id', opportunityId).maybeSingle();
-    owner(token);
+/** A successful null is absent; every failed, timed-out or unreadable read rejects. */
+export async function loadTargetResume(opportunityId: string, token: OwnerToken, options: TargetResumeReadOptions = {}): Promise<LoadedTargetResume | null> {
+  targetId(opportunityId);
+  return readWithin(token, options, async (origin, signal, wait) => {
+    const query = supabase.from('target_resumes').select('revision,doc,updated_at,provenance')
+      .eq('owner_id', origin.uid).eq('opportunity_id', opportunityId).maybeSingle();
+    const { data, error } = await wait(cancellable(query, signal));
     if (error) throw new TargetResumeReadError('failed');
-    return data === null ? null : await loaded(data, opportunityId, token);
-  } catch (error) { throw errorFor(error, token); }
+    return data === null ? null : await wait(loaded(data, opportunityId, origin));
+  });
 }
 
 /** Recent metadata only; older rows are retained, not silently deleted. */
-export async function loadTargetResumeHistory(opportunityId: string, token: OwnerToken, beforeRevision?: number): Promise<TargetResumeVersionSummary[]> {
-  try {
-    targetId(opportunityId);
-    if (beforeRevision !== undefined && !positive(beforeRevision)) throw new TargetResumeReadError('invalid');
-    await ready(token);
+export async function loadTargetResumeHistory(opportunityId: string, token: OwnerToken, beforeRevision?: number,
+  options: TargetResumeReadOptions = {}): Promise<TargetResumeVersionSummary[]> {
+  targetId(opportunityId);
+  if (beforeRevision !== undefined && !positive(beforeRevision)) throw new TargetResumeReadError('invalid');
+  return readWithin(token, options, async (origin, signal, wait) => {
     let query = supabase.from('target_resume_versions').select('revision,updated_at')
-      .eq('owner_id', token.uid).eq('opportunity_id', opportunityId);
+      .eq('owner_id', origin.uid).eq('opportunity_id', opportunityId);
     if (beforeRevision !== undefined) query = query.lt('revision', beforeRevision);
-    const { data, error } = await query.order('revision', { ascending: false }).limit(TARGET_RESUME_HISTORY_LIMIT);
-    owner(token);
+    const { data, error } = await wait(cancellable(query.order('revision', { ascending: false }).limit(TARGET_RESUME_HISTORY_LIMIT), signal));
     if (error) throw new TargetResumeReadError('failed');
     if (!Array.isArray(data) || data.length > TARGET_RESUME_HISTORY_LIMIT) throw new TargetResumeReadError('invalid');
     const result = data.map(summary);
     if (result.some((row, i) => (i > 0 && row.revision >= result[i - 1].revision)
       || (beforeRevision !== undefined && row.revision >= beforeRevision))) throw new TargetResumeReadError('invalid');
     return result;
-  } catch (error) { throw errorFor(error, token); }
+  });
 }
 
-export async function loadTargetResumeVersion(opportunityId: string, revision: number, token: OwnerToken): Promise<LoadedTargetResume | null> {
-  try {
-    targetId(opportunityId);
-    if (!positive(revision)) throw new TargetResumeReadError('invalid');
-    await ready(token);
-    const { data, error } = await supabase.from('target_resume_versions').select('revision,doc,updated_at,provenance')
-      .eq('owner_id', token.uid).eq('opportunity_id', opportunityId).eq('revision', revision).maybeSingle();
-    owner(token);
+export async function loadTargetResumeVersion(opportunityId: string, revision: number, token: OwnerToken,
+  options: TargetResumeReadOptions = {}): Promise<LoadedTargetResume | null> {
+  targetId(opportunityId);
+  if (!positive(revision)) throw new TargetResumeReadError('invalid');
+  return readWithin(token, options, async (origin, signal, wait) => {
+    const query = supabase.from('target_resume_versions').select('revision,doc,updated_at,provenance')
+      .eq('owner_id', origin.uid).eq('opportunity_id', opportunityId).eq('revision', revision).maybeSingle();
+    const { data, error } = await wait(cancellable(query, signal));
     if (error) throw new TargetResumeReadError('failed');
     if (data === null) return null;
-    const result = await loaded(data, opportunityId, token);
+    const result = await wait(loaded(data, opportunityId, origin));
     if (result.revision !== revision) throw new TargetResumeReadError('invalid');
     return result;
-  } catch (error) { throw errorFor(error, token); }
+  });
 }
 
 /** One RPC atomically commits current + history. Restore uses this same CAS. */

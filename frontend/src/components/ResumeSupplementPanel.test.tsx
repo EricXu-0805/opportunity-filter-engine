@@ -4,6 +4,7 @@ import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { OwnerToken } from '@/lib/identity-owner';
+import { sourceDigest } from '@/lib/experience-evidence';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
 import type { ResumeFact } from '@/lib/types';
 import { DEFAULT_PROFILE } from '@/app/home/types';
@@ -352,4 +353,55 @@ describe('recovering an unfinished supplement', () => {
     expect(task()).toHaveValue('x'.repeat(66000));expect(changed).toHaveBeenLastCalledWith(null);fireEvent.change(task(),{target:{value:'Corrected'}});expect(changed.mock.calls.at(-1)![0].answers.task).toBe('Corrected');
   });
   it('ignores another opportunity’s snapshot and preserves the ordinary no-recovery path',()=>{mount({opportunityId:'other',initialDraft:recoveredAnswer()});expect(task()).toHaveValue('');expect(screen.queryByTestId('supplement-recovery-review')).toBeNull();});
+});
+
+
+describe('current activity source display', () => {
+  it.each(['candidate', 'withdrawn', 'rejected'] as const)('does not turn a %s project label into a current name', (status) => {
+    const profileView = view();
+    const item = profileView.renderedProfile.resume_master!.activities[0];
+    item.title = { ...fact('title-one', 'PRIVATE OLD NAME'), status };
+    item.organization = { ...fact('org-one', 'PRIVATE OLD ORG'), status };
+    item.start = { ...fact('start-one', '1999 OLD DATE'), status };
+    mocked.controller = controller({ view: profileView }); mount();
+    expect(screen.queryByRole('option', { name: 'PRIVATE OLD NAME' })).toBeNull();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
+    expect(screen.getByRole('combobox')).toHaveValue('project-one');
+    expect(screen.queryByText('PRIVATE OLD NAME')).toBeNull(); expect(screen.queryByText('PRIVATE OLD ORG')).toBeNull(); expect(screen.queryByText('1999 OLD DATE')).toBeNull();
+    const state = status === 'candidate' ? 'Awaiting confirmation' : status === 'withdrawn' ? 'Withdrawn' : 'Not accepted';
+    expect(screen.getByText(`Project name: ${state}`)).toBeInTheDocument();
+    expect(screen.getByText(`Organization: ${state}`)).toBeInTheDocument();
+  });
+  it('uses a current confirmed organization if the title needs review, without changing the selected activity', () => {
+    const profileView=view(); const item=profileView.renderedProfile.resume_master!.activities[0];
+    item.title={...fact('title-one','Unconfirmed title'),status:'candidate'};item.organization=fact('org','Current organization');
+    mocked.controller=controller({view:profileView});mount();
+    expect(screen.getByRole('option',{name:'Current organization'})).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-one'}});
+    expect(screen.getByRole('combobox')).toHaveValue('project-one');expect(screen.getAllByText('Current organization')).toHaveLength(2);
+  });
+  it('keeps a full source-backed name only while its exact résumé source remains current', async () => {
+    const raw='Confirmed project 王🙂';const signature=await sourceDigest(raw);const profileView=view();
+    profileView.renderedProfile.resume_text=raw;
+    profileView.renderedProfile.resume_master!.activities[0].title={...fact('title-one',raw),source:{kind:'resume',signature,start:0,end:Array.from(raw).length,quote:raw}};
+    mocked.controller=controller({view:profileView});const mounted=mount();
+    await screen.findByRole('option',{name:raw});fill('My contribution stays here');fireEvent.click(confirm());
+    const changed={...structuredClone(profileView),viewId:'view-two'};changed.renderedProfile.resume_text='A replaced original';
+    mocked.controller=controller({view:changed});mounted.rerender(<ResumeSupplementPanel {...mounted.props}/>);
+    expect(screen.queryByRole('option',{name:raw})).toBeNull();expect(screen.getByRole('combobox')).toHaveValue('project-one');expect(task()).toHaveValue('My contribution stays here');expect(confirm()).not.toBeChecked();
+    await screen.findByText('Project name: Source changed or unavailable; review in your profile');
+    expect(screen.queryByText(raw)).toBeNull();
+  });
+  it('withholds withdrawn experience text while retaining its explicit state and the new answer', () => {
+    const profileView=view();profileView.renderedProfile.experience_entries![0].status='withdrawn';
+    mocked.controller=controller({view:profileView});mount();fill('Separate new answer');
+    expect(screen.queryByText('Existing full source; I did not lead the team.')).toBeNull();
+    expect(screen.getByText('Withdrawn')).toBeInTheDocument();expect(task()).toHaveValue('Separate new answer');
+  });
+  it('states missing current revisions instead of showing another revision as current material', () => {
+    const profileView=view();profileView.renderedProfile.experience_entries![0].revision=3;
+    mocked.controller=controller({view:profileView});mount();fill();
+    expect(screen.queryByText('Existing full source; I did not lead the team.')).toBeNull();
+    expect(screen.getByText('This linked experience needs review in your profile.')).toBeInTheDocument();
+  });
 });
