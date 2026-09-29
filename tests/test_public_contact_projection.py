@@ -407,6 +407,7 @@ _SEVEN_TRUTH_KEYS = {
 # a key added or removed there is a deliberate edit here rather than a silent
 # narrowing of what is being checked.
 _EXPECTED_EVIDENCE_KEYS = frozenset({
+    "contact_instruction_capture",
     "is_active",
     "listing_status",
     "urap_status",

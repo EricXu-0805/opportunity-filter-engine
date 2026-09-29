@@ -59,6 +59,11 @@ def _stub_all_collectors(monkeypatch, tmp_path):
     }
     monkeypatch.setattr(
         refresh_all,
+        "fetch_sro_with_evidence",
+        lambda **kwargs: ([], {}),
+    )
+    monkeypatch.setattr(
+        refresh_all,
         "fetch_campus_graph_with_evidence",
         lambda *args, **kwargs: ([], live_evidence),
     )
@@ -1141,3 +1146,149 @@ def test_cli_returns_two_for_a_verdict_that_predates_per_unit_publication(
     monkeypatch.setattr(refresh_all, "print_summary", lambda _summary: None)
 
     assert refresh_all.main(["--schools", "uw"]) == 2
+
+
+@pytest.mark.parametrize("failed_kind", ["failed", "unsupported"])
+def test_b55_condition_failure_keeps_last_success_and_tracking_closed(monkeypatch, tmp_path, failed_kind):
+    from datetime import UTC, datetime
+
+    from src.collectors import source_health
+    _stub_with_processed_file(monkeypatch, tmp_path, [_seed_faculty("uw_faculty", "uw-existing", days_ago=1)])
+    proof = {"deep": True, "crawl_sources_expected": 1, "crawl_sources_loaded": 1,
+             "live_pages_attempted": 1, "live_pages_loaded": 1, "seed_pages_expected": 1,
+             "seed_pages_loaded": 1, "seed_pages_failed": 0, "crawl_errors": [],
+             "condition_capture_counts": {"captured": 0, "empty": 0, "unsupported": 0, "failed": 0},
+             "condition_capture_complete": False}
+    proof["condition_capture_counts"][failed_kind] = 1
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([{"id": "safe-listing"}], proof))
+    ledger = source_health.empty_ledger()
+    source_health.record_attempt(ledger, source="campus_graph:uw", school="uw", outcome=source_health.SUCCESS_NONZERO,
+                                emitted=1, baseline=1, now=datetime(2026, 1, 1, tzinfo=UTC))
+    source_health.save_ledger(ledger, tmp_path / "source_health.json")
+    tracking = []
+    monkeypatch.setattr(refresh_all, "_update_professor_tracking", lambda *a, **k: tracking.append(k["refresh_ok"]))
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"})
+    info = summary["sources"]["campus_graph:uw"]
+    assert info["status"] == "partial_failure"
+    actual = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["campus_graph:uw"]
+    assert actual["status"] == source_health.FAILED
+    assert actual["last_success_at"] == "2026-01-01T00:00:00+00:00"
+    assert summary["release"]["status"] == "degraded"
+    assert "uw" in summary["release"]["publishable"]
+    assert tracking == [False]
+
+
+@pytest.mark.parametrize("kind", ["captured", "empty", "not_attempted"])
+def test_b55_capture_empty_or_unattempted_is_not_a_failure(monkeypatch, tmp_path, kind):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    counts = {"captured": 0, "empty": 0, "unsupported": 0, "failed": 0}
+    if kind != "not_attempted": counts[kind] = 1
+    proof = {"condition_capture_counts": counts, "condition_capture_complete": kind != "not_attempted"}
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([{"id": "safe-listing"}], proof))
+    summary = refresh_all.refresh_all(deep=False, schools={"uw"})
+    assert summary["sources"]["campus_graph:uw"]["status"] == "ok"
+
+
+def test_b55_total_fetch_error_records_attempt_without_moving_success(monkeypatch, tmp_path):
+    from datetime import UTC, datetime
+
+    from src.collectors import source_health
+    _stub_with_processed_file(monkeypatch, tmp_path, [_seed_faculty("uw_faculty", "uw-existing", days_ago=1)])
+    def fail(*a, **k): raise RuntimeError("synthetic fetch failure")
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", fail)
+    ledger = source_health.empty_ledger()
+    source_health.record_attempt(ledger, source="campus_graph:uw", school="uw", outcome=source_health.SUCCESS_NONZERO,
+                                emitted=1, baseline=1, now=datetime(2026, 1, 1, tzinfo=UTC))
+    source_health.save_ledger(ledger, tmp_path / "source_health.json")
+    summary = refresh_all.refresh_all(deep=True, schools={"uw"})
+    actual = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["campus_graph:uw"]
+    assert summary["sources"]["campus_graph:uw"]["status"] == "error"
+    assert actual["status"] == source_health.FAILED
+    assert actual["consecutive_failures"] == 1
+    assert actual["last_success_at"] == "2026-01-01T00:00:00+00:00"
+    assert actual["last_attempt_at"] != actual["last_success_at"]
+
+
+def test_b55_campus_failure_receipts_reach_merge_without_report_content(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    updates = [{"school": "uw", "collector_source": "sample", "requested_url": "https://example.edu/opportunities",
+                "capture": {"status": "unsupported", "reason": "synthetic"}}]
+    proof = {"condition_capture_counts": {"captured": 0, "empty": 0, "unsupported": 1, "failed": 0},
+             "condition_capture_complete": False, "condition_capture_updates": updates}
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([], proof))
+    calls = []
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
+    summary = refresh_all.refresh_all(deep=False, schools={"uw"})
+    assert len(calls) == 1
+    assert calls[0]["condition_capture_updates"] == updates
+    assert "condition_capture_updates" not in summary["sources"]["campus_graph:uw"]
+    assert proof["condition_capture_updates"] == updates
+
+
+@pytest.mark.parametrize("scenario", ["captured", "empty", "detail_failed", "unsupported", "list_failed"])
+def test_b55_real_sro_evidence_flows_to_health_and_safe_publish(monkeypatch, tmp_path, scenario):
+    import socket
+    from datetime import UTC, datetime, timedelta
+
+    import requests
+
+    from src.collectors import source_health, uiuc_sro
+    from src.collectors.base import RawOpportunity
+    from src.contact_instructions import SOURCE_KEY, source_from_html
+
+    url = "https://researchops.web.illinois.edu/audit-program"
+    now = datetime.now(UTC)
+    old_time = (now - timedelta(days=3)).isoformat()
+    prior = uiuc_sro.raw_to_normalized(RawOpportunity(source="uiuc_sro", source_url="https://researchops.web.illinois.edu/?page=0",
+        url=url, title="Audit program", description_raw="Study sensors"))
+    prior["metadata"][SOURCE_KEY] = [source_from_html("<main><h2>Minimum GPA</h2><p>3.0</p></main>", source_url=url, checked_at=old_time)]
+    prior["metadata"]["last_verified"] = old_time
+    path = _stub_with_processed_file(monkeypatch, tmp_path, [prior])
+    monkeypatch.setattr(socket.socket, "connect", lambda *a, **k: pytest.fail("No external network permitted"))
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "_rate_limit", lambda *a: None)
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "MAX_PAGES", 3)
+    table = '<table class="views-table"><tbody><tr><td class="views-field-title"><a href="/audit-program">Audit program</a><br>Study sensors</td></tr></tbody></table>'
+    empty = '<table class="views-table"><tbody></tbody></table>'
+    class Response:
+        def __init__(self, requested, html): self.url, self.text = requested, html
+        def raise_for_status(self): pass
+    def get(requested, **kwargs):
+        if "?page=" in requested:
+            if "page=1" in requested and scenario == "list_failed":
+                raise requests.Timeout("synthetic failure")
+            return Response(requested, table if "page=0" in requested else empty)
+        assert requested == url
+        if scenario == "detail_failed": raise requests.Timeout("synthetic detail failure")
+        body = {"empty": "<main><p>This lab studies sensors.</p></main>",
+                "unsupported": "<main><h2>Minimum GPA</h2><div>3.0</div><p>This lab studies sensors.</p></main>"}.get(
+                    scenario, "<main><h2>Minimum GPA</h2><p>3.5</p></main>")
+        return Response(requested, body)
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    monkeypatch.setattr(refresh_all, "fetch_sro_with_evidence", uiuc_sro.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_sro", lambda records: uiuc_sro.merge_into_processed(records, str(path)))
+    ledger = source_health.empty_ledger()
+    source_health.record_attempt(ledger, source="uiuc_sro", school=None, outcome=source_health.SUCCESS_NONZERO,
+                                emitted=1, baseline=1, now=now - timedelta(days=3))
+    source_health.save_ledger(ledger, tmp_path / "source_health.json")
+    summary = refresh_all.refresh_all(deep=True, national=True)
+    info = summary["sources"]["uiuc_sro"]
+    health = source_health.load_ledger(tmp_path / "source_health.json")["sources"]["uiuc_sro"]
+    stored = next(row for row in json.loads(path.read_text()) if row["id"] == prior["id"])
+    assert info["fetched"] == 1
+    assert info["list_pages_attempted"] == info["list_pages_loaded"] + info["list_pages_failed"]
+    assert sum(info["condition_capture_counts"].values()) == info["detail_pages_attempted"] == 1
+    assert "national" in summary["release"]["publishable"]
+    if scenario in {"captured", "empty"}:
+        assert info["status"] == "ok"
+        assert health["status"] == source_health.SUCCESS_NONZERO
+        assert health["last_success_at"] != old_time
+        assert info["condition_capture_counts"][scenario] == 1
+        assert bool(stored["metadata"][SOURCE_KEY]) == (scenario == "captured")
+    else:
+        assert info["status"] == "partial_failure"
+        assert health["status"] == source_health.FAILED
+        assert health["last_success_at"] == old_time
+        assert summary["release"]["status"] == "degraded"
+        if scenario != "list_failed":
+            assert stored["metadata"][SOURCE_KEY] == prior["metadata"][SOURCE_KEY]
+            assert stored["metadata"]["last_verified"] == old_time

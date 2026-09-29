@@ -13,8 +13,10 @@ surface grows automatically as the registry grows — no per-school test file.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import pytest
+from bs4 import BeautifulSoup
 
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
@@ -26,18 +28,14 @@ from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
 
-class _StaticSoup:
-    def __init__(self, text: str = "Applications open"):
-        self._text = text
+def _observed(soup, url):
+    soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                "checked_at": datetime.now(UTC).isoformat()}
+    return soup
 
-    def get_text(self, *_args, **_kwargs):
-        return self._text
 
-    def find_all(self, *_args, **_kwargs):
-        return []
-
-    def find(self, *_args, **_kwargs):
-        return None
+def _StaticSoup(url, text="Applications open"):
+    return _observed(BeautifulSoup(f"<body><p>{text}</p></body>", "html.parser"), url)
 
 # --- Registry integrity ----------------------------------------------------
 
@@ -291,7 +289,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: _StaticSoup() if url == urls[0] else None,
+            lambda url, **_: _StaticSoup(url) if url == urls[0] else None,
         )
 
         records, evidence = cg.fetch_and_normalize_with_evidence(
@@ -398,26 +396,26 @@ class TestSeedNormalization:
             "sources": [source],
         }
         seed = BeautifulSoup(
-            f'<a href="{detail_url}">Summer Research Fellowship 2026</a>',
+            f'<body><p>Programs</p><a href="{detail_url}">Summer Research Fellowship 2026</a></body>',
             "html.parser",
         )
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: seed if url == seed_url else None,
+            lambda url, **_: _observed(seed, url) if url == seed_url else None,
         )
         _status, discovered, evidence = cg._crawl_source(school, source)
         assert discovered == []
         assert evidence["degraded_page_errors"] == [detail_url]
 
         detail = BeautifulSoup(
-            "<main>Applications are now open for undergraduate researchers.</main>",
+            "<main><p>Applications are now open for undergraduate researchers.</p></main>",
             "html.parser",
         )
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: seed if url == seed_url else detail,
+            lambda url, **_: _observed(seed if url == seed_url else detail, url),
         )
         _status, discovered, _evidence = cg._crawl_source(school, source)
         assert len(discovered) == 1
@@ -476,7 +474,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: None if url == failed_url else _StaticSoup(),
+            lambda url, **_: None if url == failed_url else _StaticSoup(url),
         )
         records, evidence = cg.fetch_and_normalize_with_evidence(
             PRINCETON,

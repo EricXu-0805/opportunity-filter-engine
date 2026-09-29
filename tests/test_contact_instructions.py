@@ -170,7 +170,7 @@ def test_sro_deep_fetch_keeps_source_but_listing_does_not(monkeypatch):
     raw = RawOpportunity(source='uiuc_sro', source_url=URL, url=URL, title='Research', description_raw='Short listing')
     assert contact_instructions_for(raw_to_normalized(raw))['status'] == 'unknown'
     response = SimpleNamespace(text='<html><body><h1>Undergraduate researchers</h1><p>Please email us with your CV.</p></body></html>',
-                               raise_for_status=lambda: None)
+                               url=URL, raise_for_status=lambda: None)
     monkeypatch.setattr('src.collectors.uiuc_sro.requests.get', lambda *_a, **_k: response)
     UIUCSROCollector()._fetch_detail_page(raw)
     assert contact_instructions_for(raw_to_normalized(raw))['email_policy'] == 'allowed'
@@ -182,7 +182,8 @@ def test_identity_verified_faculty_enrichment_preserves_five_tuple_and_source(mo
               'location': 'Sample', 'id_prefix': 'sample'}
     dept = {'short': 'CS', 'name': 'Computer Science', 'majors': ['Computer Science']}
     html = '<html><body><h1>Jane Scientist</h1><h2>Undergraduate researchers</h2><p>Please email us with your CV.</p></body></html>'
-    monkeypatch.setattr('src.collectors.ucb_common.fetch_soup', lambda *_a, **_k: BeautifulSoup(html, 'html.parser'))
+    from src.collectors.ucb_common import _mark_fetched_soup_observation
+    monkeypatch.setattr('src.collectors.ucb_common.fetch_soup', lambda *_a, **_k: _mark_fetched_soup_observation(BeautifulSoup(html, 'html.parser'), requested_url=URL, final_url=URL))
     result = fg._enrich_profile(URL, {}, expected_name='Jane Scientist')
     assert len(result) == 5 and result[-1] is True
     person = fg.faculty('Jane Scientist', title='Professor', url=URL)

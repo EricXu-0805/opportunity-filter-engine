@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
 
 SOURCE_KEY = 'contact_instruction_sources'
+CAPTURE_KEY = 'contact_instruction_capture'
 _MAX_SOURCES = 8
 _MAX_SECTIONS = 160
 _MAX_TEXT = 4000
@@ -78,24 +79,136 @@ def _url(value):
         return None
 
 
+
+def same_source_page(requested_url, final_url) -> bool:
+    """Permit transport/slash normalization, never a different target page."""
+    requested, final = _url(requested_url), _url(final_url)
+    if not requested or not final:
+        return False
+    try:
+        before, after = urlsplit(requested), urlsplit(final)
+        if before.scheme != after.scheme and (before.scheme, after.scheme) != ('http', 'https'):
+            return False
+        # A default-port HTTP -> HTTPS upgrade retains resource identity.
+        def endpoint(parsed):
+            default = 443 if parsed.scheme == 'https' else 80
+            port = parsed.port or default
+            return parsed.hostname.casefold(), None if port == default else port
+        def path(parsed):
+            return (parsed.path or '/').removesuffix('/') or '/'
+        return (endpoint(before) == endpoint(after) and path(before) == path(after)
+                and before.query == after.query)
+    except ValueError:
+        return False
+
+
 def _identity(value):
     return ' '.join(value.casefold().split()) if isinstance(value, str) else ''
 
 
-def source_from_html(html, *, source_url: str, record_source_url: str | None = None,
-                     identity_name: str | None = None, checked_at: str | None = None) -> dict | None:
-    """Retain headings and whole body paragraphs only after a successful fetch.
+def capture_failure(*, source_url: str, record_source_url: str | None = None,
+                    identity_name: str | None = None, checked_at: str | None = None,
+                    reason: str = 'fetch_failed', status: str = 'failed') -> dict:
+    """An attempt receipt is not a successful source check.
 
-    Callers own fetch/identity verification. The explicit binding is checked
-    again at consumption. Oversized/unsupported pages fail closed, not truncated.
+    Callers use stable reason codes, never exception bodies, response HTML or
+    credentials. A failed receipt deliberately has no replacement source list.
+    """
+    if status not in ('failed', 'unsupported'):
+        raise ValueError('failure status must be failed or unsupported')
+    result = {'version': 1, 'status': status, 'reason': reason,
+              'attempted_at': checked_at or datetime.now(UTC).isoformat(),
+              'source_url': source_url, 'record_source_url': record_source_url or source_url}
+    if identity_name:
+        result['identity_name'] = identity_name
+    return result
+
+
+def capture_metadata(result: dict) -> dict:
+    """Detach a collector-owned result for storage, preserving explicit empty."""
+    keys = ('version', 'status', 'reason', 'attempted_at', 'source_url',
+            'record_source_url', 'identity_name')
+    receipt = {key: deepcopy(result[key]) for key in keys if key in result}
+    metadata = {CAPTURE_KEY: receipt}
+    if result.get('status') in ('captured', 'empty'):
+        metadata[SOURCE_KEY] = retained_sources(result.get('sources'))
+    return metadata
+
+
+def capture_from_sections(sections, *, source_url: str, record_source_url: str | None = None,
+                          identity_name: str | None = None, checked_at: str | None = None) -> dict:
+    """Retain complete raw DOM passages from an already verified page adapter.
+
+    Headings and text must come from the page, not schema labels, generated
+    summaries or inferred requirements. An empty input means unsupported DOM;
+    nonempty readable input without relevant passages means checked and empty.
+    """
+    binding = dict(source_url=source_url, record_source_url=record_source_url,
+                   identity_name=identity_name, checked_at=checked_at)
+    def unsupported(reason):
+        return capture_failure(**binding, status='unsupported', reason=reason)
+    if not _url(source_url) or not _url(record_source_url or source_url):
+        return unsupported('invalid_binding')
+    if not isinstance(sections, list) or not sections:
+        return unsupported('no_supported_content')
+    if len(sections) > _MAX_SECTIONS:
+        return unsupported('content_limit')
+    for section in sections:
+        if (not isinstance(section, dict) or not isinstance(section.get('heading'), str)
+                or not isinstance(section.get('text'), str) or not section['text'].strip()):
+            return unsupported('invalid_sections')
+        if len(section['heading']) > 1000 or len(section['text']) > _MAX_TEXT:
+            return unsupported('content_limit')
+    selected = [deepcopy(section) for section in sections
+                if _CONTACT.search(section['text'])
+                or _APPLICATION_CONDITION.search(section['heading'])
+                or _APPLICATION_CONDITION.search(section['text'])]
+    receipt = capture_failure(**binding)
+    receipt.update(status='captured' if selected else 'empty', reason=None, sources=[])
+    if selected:
+        source = {'source_url': source_url, 'record_source_url': record_source_url or source_url,
+                  'checked_at': receipt['attempted_at'], 'sections': selected}
+        if identity_name:
+            source['identity_name'] = identity_name
+        receipt['sources'] = [source]
+    return receipt
+
+
+_BLOCKED_PAGE_TITLE = re.compile(
+    r'^(?:sign[ -]?in|log[ -]?in|access denied|permission denied|forbidden|'
+    r'just a moment|attention required|verify (?:you are|that you are) human|'
+    r'page not found|404(?: error)?|service unavailable)(?:[.!…]+|\s*[-|:–—].*)?$',
+    re.I,
+)
+
+
+def capture_from_html(html, *, source_url: str, record_source_url: str | None = None,
+                      identity_name: str | None = None, checked_at: str | None = None) -> dict:
+    """Capture a fetched page without collapsing failure into 'no requirements'.
+
+    Callers still own successful HTTP, final URL, target identity and page-scope
+    verification. No source is created for unsupported or incomplete extraction.
     """
     from bs4 import BeautifulSoup
+    binding = dict(source_url=source_url, record_source_url=record_source_url,
+                   identity_name=identity_name, checked_at=checked_at)
+    def unsupported(reason):
+        return capture_failure(**binding, status='unsupported', reason=reason)
+    if not _url(source_url) or not _url(record_source_url or source_url):
+        return unsupported('invalid_binding')
     soup = BeautifulSoup(html, 'html.parser') if isinstance(html, str) else html
+    if soup is None or not callable(getattr(soup, 'find', None)):
+        return unsupported('invalid_html')
     body = soup.find('main') or soup.find('article') or soup.find('body')
-    if body is None or not _url(source_url) or not _url(record_source_url or source_url):
-        return None
+    if body is None:
+        return unsupported('no_supported_content')
+    titles = [soup.find('title'), body.find('h1')]
+    if (any(t is not None and _BLOCKED_PAGE_TITLE.fullmatch(t.get_text(' ', strip=True))
+            for t in titles) or body.find('input', attrs={'type': re.compile('^password$', re.I)})):
+        return unsupported('access_page')
     headings = {}
     sections = []
+    relevant_heading = False
     for element in body.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol']):
         if element.find_parent(['nav', 'header', 'footer', 'aside', 'script', 'style']):
             continue
@@ -108,7 +221,8 @@ def source_from_html(html, *, source_url: str, record_source_url: str | None = N
             continue
         if element.name.startswith('h'):
             if len(text) > 1000:
-                return None
+                return unsupported('content_limit')
+            relevant_heading = relevant_heading or bool(_CONTACT.search(text) or _APPLICATION_CONDITION.search(text))
             level = int(element.name[1])
             headings = {n: h for n, h in headings.items() if n < level}
             headings[level] = text
@@ -118,19 +232,26 @@ def source_from_html(html, *, source_url: str, record_source_url: str | None = N
             sections[-1]['text'] += '\n' + text
         else:
             sections.append({'heading': heading, 'text': text})
-        if len(sections) > _MAX_SECTIONS or any(len(s['text']) > _MAX_TEXT for s in sections[-1:]):
-            return None
-    sections = [section for section in sections
-                if _CONTACT.search(section['text'])
-                or _APPLICATION_CONDITION.search(section['heading'])
-                or _APPLICATION_CONDITION.search(section['text'])]
-    if not sections:
-        return None
-    result = {'source_url': source_url, 'record_source_url': record_source_url or source_url,
-              'checked_at': checked_at or datetime.now(UTC).isoformat(), 'sections': sections}
-    if identity_name:
-        result['identity_name'] = identity_name
-    return result
+        if len(sections) > _MAX_SECTIONS or len(sections[-1]['text']) > _MAX_TEXT:
+            return unsupported('content_limit')
+    # A supported paragraph beside an unparsed requirements field is not proof
+    # that the requirements disappeared. Adapters may handle that DOM explicitly.
+    remainder = BeautifulSoup(str(body), 'html.parser')
+    for element in remainder.find_all(['nav', 'header', 'footer', 'aside', 'script', 'style',
+                                      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol']):
+        element.decompose()
+    unparsed = remainder.get_text(' ', strip=True)
+    if (unparsed and relevant_heading) or _CONTACT.search(unparsed) or _APPLICATION_CONDITION.search(unparsed):
+        return unsupported('unparsed_relevant_content')
+    return capture_from_sections(sections, **binding)
+
+
+def source_from_html(html, *, source_url: str, record_source_url: str | None = None,
+                     identity_name: str | None = None, checked_at: str | None = None) -> dict | None:
+    """Compatibility reader; collectors should preserve the full capture receipt."""
+    result = capture_from_html(html, source_url=source_url, record_source_url=record_source_url,
+                               identity_name=identity_name, checked_at=checked_at)
+    return result['sources'][0] if result['status'] == 'captured' else None
 
 
 def retained_sources(value) -> list[dict]:

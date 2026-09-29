@@ -60,6 +60,7 @@ from .pi_enricher import enrich_opportunities as enrich_pi
 from .refresh_contract import (
     CONFIRMED_EMPTY_SOURCES,
     evaluate_refresh_summary,
+    expected_sources,
     shard_of_source,
 )
 from .schools import SCHOOL_CONFIGS
@@ -401,7 +402,7 @@ from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
 from .uiuc_siebel import fetch_and_normalize as fetch_siebel
 from .uiuc_siebel import merge_into_processed as merge_siebel
-from .uiuc_sro import fetch_and_normalize as fetch_sro
+from .uiuc_sro import fetch_and_normalize_with_evidence as fetch_sro_with_evidence
 from .uiuc_sro import merge_into_processed as merge_sro
 from .uiuc_urap import fetch_and_normalize as fetch_urap
 from .uiuc_urap import merge_into_processed as merge_urap
@@ -671,9 +672,10 @@ def refresh_all(
         logger.info("=" * 50)
         logger.info(f"Collecting from UIUC SRO database (deep={deep})...")
         try:
-            sro_opps = fetch_sro(deep=deep)
+            sro_opps, sro_evidence = fetch_sro_with_evidence(deep=deep)
             added, updated = merge_sro(sro_opps)
             summary["sources"]["uiuc_sro"] = {
+                **sro_evidence,
                 "fetched": len(sro_opps),
                 "new": added,
                 "updated": updated,
@@ -935,8 +937,13 @@ def refresh_all(
                     deep=deep,
                 )
             )
+            # Failure/revocation receipts are merge inputs, not public report
+            # content. Keep the collector's original evidence object untouched.
+            graph_evidence = dict(graph_evidence)
+            condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
             added, updated = merge_campus_graph(
                 school_opps,
+                condition_capture_updates=condition_capture_updates,
                 complete_recursive_sources=set(
                     graph_evidence.get("complete_recursive_sources") or ()
                 ),
@@ -1377,6 +1384,17 @@ def refresh_all(
             logger.error(f"Simplify internships collection failed: {e}")
             summary["sources"]["simplify_internships"] = {"status": "error", "error": str(e)}
 
+    # Persist useful partial harvests without claiming a complete source check.
+    # Failed/unsupported condition capture is distinct from a supported empty.
+    for info in summary["sources"].values():
+        if not isinstance(info, dict) or info.get("status") != "ok":
+            continue
+        incomplete, invalid = source_health.collection_evidence_issues(info)
+        if invalid or incomplete:
+            info["status"] = "error" if invalid or not info.get("fetched") else "partial_failure"
+            info["incomplete_reasons"] = invalid + incomplete
+            info["error"] = "Source check incomplete: " + ", ".join(invalid + incomplete)
+
     # 6. PI enrichment pass
     logger.info("=" * 50)
     logger.info("Running PI / contact email enrichment...")
@@ -1528,11 +1546,14 @@ def refresh_all(
             ledger_path = source_health.ledger_path_for(PROCESSED_FILE.parent)
             ledger = source_health.load_ledger(ledger_path)
             now = datetime.now(UTC)
+            required = expected_sources(schools, national=national, deep=deep)
             for name, info in summary["sources"].items():
-                if not isinstance(info, dict) or "fetched" not in info:
+                if not isinstance(info, dict):
                     continue
                 status = info.get("status")
-                if status == "error":
+                if "fetched" not in info and not (name in required and status in ("error", "deferred_deadline")):
+                    continue
+                if status in ("error", "partial_failure"):
                     outcome = source_health.FAILED
                     reason = str(info.get("error") or "collector reported an error")
                 elif status == source_health.SUSPICIOUS_ZERO:
@@ -1776,12 +1797,12 @@ def refresh_all(
         suspicious = [
             item["source"]
             for item in preliminary_release.get("degradations") or ()
-            if item.get("kind") == source_health.SUSPICIOUS_ZERO
+            if item.get("kind") in (source_health.SUSPICIOUS_ZERO, "partial_failure")
         ]
         if suspicious:
             logger.warning(
                 "professor tracking treats this run as unsuccessful: "
-                "%d source(s) emitted nothing (%s)",
+                "%d source(s) were empty or incompletely checked (%s)",
                 len(suspicious), ", ".join(sorted(suspicious)[:8]),
             )
         _update_professor_tracking(
@@ -1837,6 +1858,8 @@ def print_summary(summary: dict) -> None:
                     print(f"    {label}: {info[key]}")
             if "deep" in info:
                 print(f"    Deep:    {info['deep']}")
+        elif status == "partial_failure":
+            print(f"  {source}: PARTIAL - {info.get('error', 'source check incomplete')}")
         elif status == "deferred_deadline":
             print(f"  {source}: DEFERRED - run time budget exhausted before start")
         elif status == "partial_deadline":

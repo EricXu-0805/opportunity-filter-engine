@@ -1236,6 +1236,128 @@ def _stable_contact_identity_matches(
     return True
 
 
+
+def carry_forward_contact_instruction_sources(existing: dict, incoming: dict) -> None:
+    """Merge one bound source bundle without manufacturing a new observation.
+
+    Missing capture means no check occurred. Ordinary failure can retain an old
+    observation; successful empty or an explicit binding revocation is a durable
+    empty bundle. Only a newer successful observation may replace that state.
+    Mutates incoming metadata only, never existing/source dictionaries.
+    """
+    from copy import deepcopy
+
+    from ..contact_instructions import CAPTURE_KEY, SOURCE_KEY, _identity, _url
+
+    revoked = {'identity_mismatch', 'source_revoked', 'url_changed', 'redirect_mismatch', 'ambiguous_program_scope'}
+    current = datetime.now(UTC)
+
+    def timestamp(value):
+        if not isinstance(value, str) or len(value) > 80:
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            return parsed if parsed.tzinfo is not None and parsed <= current else None
+        except ValueError:
+            return None
+
+    def urls(record):
+        return {_url(record.get(key)) for key in ('url', 'source_url')} - {None}
+
+    def bound(value, record):
+        if not isinstance(value, dict) or _url(value.get('record_source_url')) not in urls(record) or not _url(value.get('source_url')):
+            return False
+        faculty = record.get('source_type') == 'faculty_research' or record.get('record_kind') == 'faculty_contact'
+        identity = value.get('identity_name')
+        return (not faculty and identity is None) or bool(_identity(record.get('pi_name')) and _identity(identity) == _identity(record.get('pi_name')))
+
+    def receipt(metadata, record):
+        value = metadata.get(CAPTURE_KEY)
+        required = {'version', 'status', 'reason', 'attempted_at', 'source_url', 'record_source_url'}
+        if not isinstance(value, dict) or not required.issubset(value) or set(value) - required - {'identity_name'}:
+            return None
+        if type(value.get('version')) is not int or value['version'] != 1 or not isinstance(value.get('status'), str) or value['status'] not in {'captured', 'empty', 'unsupported', 'failed'}:
+            return None
+        if value.get('reason') is not None and (not isinstance(value['reason'], str) or len(value['reason']) > 200):
+            return None
+        return deepcopy(value) if bound(value, record) and timestamp(value.get('attempted_at')) else None
+
+    def sources(metadata, record):
+        value = metadata.get(SOURCE_KEY)
+        if not isinstance(value, list) or len(value) > 8:
+            return None
+        for item in value:
+            if not bound(item, record) or not timestamp(item.get('checked_at')):
+                return None
+            sections = item.get('sections')
+            if not isinstance(sections, list) or not sections or len(sections) > 160:
+                return None
+            for section in sections:
+                if not isinstance(section, dict):
+                    return None
+                heading, text = section.get('heading'), section.get('text')
+                if (not isinstance(heading, str) or len(heading) > 1000 or not isinstance(text, str)
+                        or not text or len(text) > 4000 or any(0xD800 <= ord(char) <= 0xDFFF for char in heading + text)):
+                    return None
+        return deepcopy(value)
+
+    prior = existing.get('metadata') if isinstance(existing.get('metadata'), dict) else {}
+    if not isinstance(incoming.get('metadata'), dict):
+        incoming['metadata'] = {}
+    metadata = incoming['metadata']
+    incoming_capture_present = CAPTURE_KEY in metadata
+    old_receipt, new_receipt = receipt(prior, existing), receipt(metadata, incoming)
+    old_sources, new_sources = sources(prior, existing), sources(metadata, incoming)
+    if CAPTURE_KEY in prior and old_receipt is None:
+        old_sources = None
+    if incoming_capture_present and new_receipt is None:
+        new_sources = None
+    same_identity = bool(existing.get('id') and existing.get('id') == incoming.get('id')
+                         and urls(existing) and urls(existing) == urls(incoming)
+                         and existing.get('source_type') == incoming.get('source_type'))
+    for key in ('pi_name', 'organization'):
+        if _identity(existing.get(key)) != _identity(incoming.get(key)):
+            same_identity = False
+    if not same_identity:
+        old_receipt, old_sources = None, None
+    if old_receipt and (old_receipt['status'] == 'empty' or old_receipt.get('reason') in revoked):
+        old_sources = []
+    # Invalid incoming payloads cannot become a new authority. Keep only the
+    # validated previous state (if still bound), or no evidence at all.
+    metadata.pop(SOURCE_KEY, None)
+    metadata.pop(CAPTURE_KEY, None)
+    old_times = [timestamp(item['checked_at']) for item in old_sources or []]
+    if old_receipt:
+        old_times.append(timestamp(old_receipt['attempted_at']))
+    barrier = max(old_times) if old_times else None
+    new_time = timestamp(new_receipt['attempted_at']) if new_receipt else None
+    if new_receipt and barrier and (new_time < barrier or (new_receipt['status'] == 'captured' and new_time == barrier and (old_sources == [] or new_sources != old_sources))):
+        new_receipt, new_sources = None, None
+    if new_receipt and new_receipt.get('reason') in revoked:
+        metadata[CAPTURE_KEY], metadata[SOURCE_KEY] = new_receipt, []
+        return
+    if new_receipt and new_receipt['status'] in {'captured', 'empty'}:
+        successful = (new_receipt['status'] == 'empty' and new_sources == []) or (
+            new_receipt['status'] == 'captured' and bool(new_sources)
+            and all(timestamp(item['checked_at']) == new_time
+                    and _url(item['source_url']) == _url(new_receipt['source_url']) for item in new_sources))
+        if successful:
+            metadata[CAPTURE_KEY], metadata[SOURCE_KEY] = new_receipt, new_sources
+            return
+        new_receipt, new_sources = None, None
+    # B54 retained snapshots without a receipt remain usable. They must still
+    # be bound and cannot move behind a recorded later success/failure/revocation.
+    if not incoming_capture_present and new_sources and (barrier is None or min(timestamp(item['checked_at']) for item in new_sources) > barrier or (old_sources != [] and min(timestamp(item['checked_at']) for item in new_sources) == barrier)):
+        metadata[SOURCE_KEY] = new_sources
+        return
+    if old_sources is not None:
+        metadata[SOURCE_KEY] = old_sources
+    if new_receipt is not None:
+        metadata[CAPTURE_KEY] = new_receipt
+    elif old_receipt is not None:
+        metadata[CAPTURE_KEY] = old_receipt
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1252,6 +1374,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     produces it, so even a keyword-richer re-scrape must not wipe it — and the
     merge paths replace ``metadata`` wholesale (``cur.update(opp)`` /
     full-replace), which would otherwise drop it silently."""
+    carry_forward_contact_instruction_sources(existing, incoming)
     if _faculty_is_richer(existing, incoming):
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:

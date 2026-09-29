@@ -686,6 +686,9 @@ def merge_into_processed(
                     or existing_metadata.get("is_active") is False
                 ):
                     opp["title"] = existing_opp.get("title", opp["title"])
+            from .uiuc_faculty import carry_forward_contact_instruction_sources
+
+            carry_forward_contact_instruction_sources(existing_opp, opp)
             existing_opp.update(opp)
             updated += 1
         else:

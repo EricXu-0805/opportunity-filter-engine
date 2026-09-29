@@ -582,6 +582,7 @@ def public_target_truth(canonical_record: dict) -> dict:
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
     "contact_instruction_sources",
+    "contact_instruction_capture",
     "research_snapshot",
     "research_refresh",
     "lab_snapshot",

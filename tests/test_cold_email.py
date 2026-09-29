@@ -328,7 +328,7 @@ class TestFacultyContactProfileTruth:
         ):
             assert forbidden not in combined
 
-    def test_non_faculty_ai_prompt_keeps_existing_posting_semantics(self, monkeypatch):
+    def test_non_faculty_ai_prompt_keeps_posting_but_not_unverified_requirements(self, monkeypatch):
         ordinary = {
             **self._FACULTY,
             "source_type": "handshake",
@@ -340,7 +340,18 @@ class TestFacultyContactProfileTruth:
 
         assert "OPPORTUNITY CONTACT:" in user
         assert 'Posting title: "Undergraduate Computer Vision Assistant"' in user
-        assert 'Required skills: ["Python", "PyTorch"]' in user
+        assert 'Recorded skills (check application-condition evidence): ["Python", "PyTorch"]' in user
+        assert 'Required skills:' not in user
+        # A legacy skills list has no page evidence; retain it as a question,
+        # never promote it to a confirmed application requirement.
+        import json
+        condition_data = next(json.loads(line) for line in user.splitlines()
+                              if line.startswith('{"version":1,"record_kind":'))
+        requirement = next(row for row in condition_data["conditions"]
+                           if row["field"] == "eligibility.skills_required")
+        assert requirement["status"] == "unverified"
+        assert requirement["usage"] == "ask_only"
+        assert requirement["sources"] == []
         assert "posting's required stack" in system
 
     def test_non_faculty_unspecified_recipient_ai_prompt_and_output_fail_closed(

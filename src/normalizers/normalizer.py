@@ -5,10 +5,11 @@ V1 uses rule-based extraction. V2 will add LLM-powered extraction.
 
 import re
 import uuid
+from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Optional
 
-from ..contact_instructions import SOURCE_KEY, retained_sources
+from ..contact_instructions import CAPTURE_KEY, SOURCE_KEY, retained_sources
 
 
 def normalize(raw: dict, source_defaults: dict = None) -> dict:
@@ -87,7 +88,8 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
             "is_active": True,
             "manually_reviewed": False,
             "notes": "",
-            **({SOURCE_KEY: contact_sources} if contact_sources else {}),
+            **({SOURCE_KEY: contact_sources} if isinstance(extra, dict) and SOURCE_KEY in extra else {}),
+            **({CAPTURE_KEY: deepcopy(extra[CAPTURE_KEY])} if isinstance(extra, dict) and isinstance(extra.get(CAPTURE_KEY), dict) else {}),
         },
     }
 

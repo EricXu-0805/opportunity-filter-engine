@@ -21,6 +21,7 @@ from src.normalizers.school_audience import SOURCE_DEFAULTS
 from src.school_scope import is_supported
 
 from .schools import SCHOOL_CONFIGS
+from .source_health import collection_evidence_issues
 
 # The shard file that holds every record not owned by one school. It is a
 # publication unit exactly like a school is, so a broken nsf_reu withholds
@@ -394,6 +395,15 @@ def evaluate_refresh_summary(
         if not isinstance(info, dict):
             block(f"required source missing: {key}", unit_of(key))
             continue
+        incomplete, invalid = collection_evidence_issues(info)
+        if invalid:
+            block(f"source {key} has invalid collection evidence: {', '.join(invalid)}", unit_of(key))
+        if info.get("status") == "partial_failure" or incomplete:
+            degrade(
+                "partial_failure", key, ", ".join(incomplete) or "source check incomplete",
+                f"source {key} kept a partial harvest, but some pages or condition checks failed; "
+                "its last successful check does not advance",
+            )
         if info.get("status") == SUSPICIOUS_ZERO_STATUS:
             # A department that emitted nothing degrades ITSELF. It used to
             # block, and because unit_of() resolves a source to its shard
@@ -437,7 +447,7 @@ def evaluate_refresh_summary(
                 "records and stale retirement skips it",
             )
             continue
-        if info.get("status") != "ok":
+        if info.get("status") not in ("ok", "partial_failure"):
             # The generic error pass above supplies details for status=error.
             if info.get("status") != "error":
                 block(

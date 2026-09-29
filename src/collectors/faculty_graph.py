@@ -63,6 +63,7 @@ import re
 import time
 from collections import Counter, defaultdict
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
 from urllib.parse import unquote, urljoin
 
@@ -72,7 +73,16 @@ from src.normalizers.deactivate_stale_faculty import (
     identity_key,
 )
 
-from ..contact_instructions import SOURCE_KEY, retained_sources, source_from_html
+from ..contact_instructions import (
+    CAPTURE_KEY,
+    SOURCE_KEY,
+    _url,
+    capture_failure,
+    capture_from_html,
+    capture_metadata,
+    retained_sources,
+    same_source_page,
+)
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .ucb_common import (
     _RETIRED_TITLE_RE,
@@ -563,7 +573,7 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     # every path that doesn't tag — produce the exact historical metadata;
     # provenance never gates whether an email is kept.
     contact_sources = retained_sources(person.get("_contact_instruction_sources"))
-    if contact_sources:
+    if "_contact_instruction_sources" in person:
         original_name = " ".join((person.get("name") or "").casefold().split())
         for source in contact_sources:
             if isinstance(source, dict) and isinstance(source.get("identity_name"), str):
@@ -572,6 +582,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
                     # never rebind another person's retained snapshot.
                     source["identity_name"] = name
         metadata[SOURCE_KEY] = contact_sources
+    capture = person.get("_contact_instruction_capture")
+    if isinstance(capture, dict):
+        capture = deepcopy(capture)
+        if " ".join(str(capture.get("identity_name") or "").casefold().split()) == " ".join((person.get("name") or "").casefold().split()):
+            capture["identity_name"] = name
+        metadata[CAPTURE_KEY] = capture
     scope = person.get("_verification_scope")
     if scope in ("curated", "directory", "profile"):
         metadata["verification_scope"] = scope
@@ -1260,11 +1276,15 @@ def _render_soup(url: str, timeout_ms: int = 60000,
                         except Exception:  # noqa: BLE001 — handled by the retry guard
                             pass
                     html = page.content()
+                    final_url = page.url
+                    observed_at = datetime.now(UTC).isoformat()
                 finally:
                     browser.close()
             cand = BeautifulSoup(html, "html.parser") if html else None
             if cand is not None and not _is_cf_interstitial(cand) and (
                     not expect_selector or cand.select(expect_selector)):
+                cand._ofe_fetch_metadata = {"requested_url": url, "final_url": final_url, "checked_at": observed_at}
+                cand._ofe_requested_url, cand._ofe_final_url, cand._ofe_observed_at = url, final_url, observed_at
                 soup = cand
                 break
             logger.info("faculty_graph: render for %s unresolved (attempt %d: "
@@ -2040,11 +2060,17 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             expected_name=p.get("name"),
         )
         pos, research, items, email, fetched = enrichment
-        if fetched:
-            sources = retained_sources(getattr(enrichment, "contact_instruction_sources", []))
-            for source in sources:
-                source["record_source_url"] = p.get("url") or target
-            p["_contact_instruction_sources"] = sources
+        capture = getattr(enrichment, "contact_instruction_capture", None)
+        if isinstance(capture, dict):
+            capture = deepcopy(capture)
+            capture["record_source_url"] = p.get("url") or target
+            p["_contact_instruction_capture"] = capture
+            p.pop("_contact_instruction_sources", None)
+            if capture.get("status") in {"captured", "empty"}:
+                sources = retained_sources(getattr(enrichment, "contact_instruction_sources", []))
+                for source in sources:
+                    source["record_source_url"] = p.get("url") or target
+                p["_contact_instruction_sources"] = sources
         if fetched:
             p["_verification_scope"] = "profile"
         if items and want_research:
@@ -2073,9 +2099,10 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
 class _ProfileEnrichment(tuple):
     """Keep the historical five-item result while carrying verified HTML evidence."""
 
-    def __new__(cls, values, contact_instruction_sources):
+    def __new__(cls, values, contact_instruction_sources, contact_instruction_capture=None):
         result = super().__new__(cls, values)
         result.contact_instruction_sources = contact_instruction_sources
+        result.contact_instruction_capture = contact_instruction_capture
         return result
 
 
@@ -2097,6 +2124,11 @@ def _enrich_profile(
     labelled HTML block to be comma/semicolon-split downstream. A config uses one
     or the other depending on how the site stores research areas.
     """
+    def result(values, capture=None, *, reason="fetch_failed", status="failed"):
+        capture = capture or capture_failure(source_url=url, identity_name=expected_name, reason=reason, status=status)
+        metadata = capture_metadata(capture)
+        return _ProfileEnrichment(values, metadata.get(SOURCE_KEY, []), metadata[CAPTURE_KEY])
+
     if not url:
         return ("", "", [], None, False)
     dm = enrich.get("digitalmeasures")
@@ -2106,7 +2138,7 @@ def _enrich_profile(
             expected_name,
             identity,
         )
-        return ("", research if verified else "", [], None, verified)
+        return result(("", research if verified else "", [], None, verified), reason="non_html_source", status="unsupported")
     if enrich.get("render"):
         # Profile pages sit behind the same bot wall as the listing (Princeton
         # dept subdomains, umich) — a plain GET 403s, so route the per-profile
@@ -2121,7 +2153,7 @@ def _enrich_profile(
         try:
             from .ucb_common import fetch_soup
         except Exception:  # noqa: BLE001
-            return ("", "", [], None, False)
+            return result(("", "", [], None, False))
         _ua = enrich.get("ua")
         # Optional per-profile enrichment fetches one page PER faculty member —
         # thousands across an expanded multi-department school. Fail fast on
@@ -2132,7 +2164,7 @@ def _enrich_profile(
         soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r) if _ua
                 else fetch_soup(url, timeout=_t, max_retries=_r))
     if soup is None:
-        return ("", "", [], None, False)
+        return result(("", "", [], None, False))
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
     pos = ""
     if enrich.get("title_selector"):
@@ -2219,12 +2251,19 @@ def _enrich_profile(
         # Identity failure invalidates the extracted fields too. Otherwise a
         # support address or generic page heading from a login/WAF response can
         # contaminate the professor record even if it no longer advances TTL.
-        return ("", "", [], None, False)
-    contact_source = source_from_html(soup, source_url=url, identity_name=expected_name)
-    return _ProfileEnrichment(
-        (pos, kw, items, email, profile_verified),
-        [contact_source] if contact_source else [],
-    )
+        return result(("", "", [], None, False), reason="access_page" if denial_page else "identity_mismatch")
+    observed = getattr(soup, "_ofe_fetch_metadata", None)
+    if not isinstance(observed, dict):
+        observed = {"requested_url": getattr(soup, "_ofe_requested_url", None),
+                    "final_url": getattr(soup, "_ofe_final_url", None),
+                    "checked_at": getattr(soup, "_ofe_observed_at", None)}
+    if observed.get("requested_url") != url or not observed.get("checked_at") or not _url(observed.get("final_url")):
+        return result((pos, kw, items, email, profile_verified), reason="fetch_metadata_missing")
+    if not same_source_page(url, observed["final_url"]):
+        return result((pos, kw, items, email, profile_verified), reason="redirect_mismatch")
+    capture = capture_from_html(soup, source_url=observed["final_url"], record_source_url=url,
+                                identity_name=expected_name, checked_at=observed["checked_at"])
+    return result((pos, kw, items, email, profile_verified), capture)
 
 
 def _fetch_wp_api(dept: dict) -> list[dict]:
@@ -2329,6 +2368,7 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
         fetched = False
         email_from_profile = False
         contact_sources = []
+        contact_capture = None
         if enrich:
             enrichment = _enrich_profile(
                 url,
@@ -2336,7 +2376,8 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                 expected_name=name,
             )
             pos, extra_kw, extra_items, extra_email, fetched = enrichment
-            if fetched:
+            contact_capture = getattr(enrichment, "contact_instruction_capture", None)
+            if isinstance(contact_capture, dict) and contact_capture.get("status") in {"captured", "empty"}:
                 contact_sources = retained_sources(getattr(enrichment, "contact_instruction_sources", []))
             if pos:
                 title = pos
@@ -2353,7 +2394,10 @@ def _fetch_wp_api(dept: dict) -> list[dict]:
                        keywords=list(dict.fromkeys(keywords)))
         if fetched:
             spec["_verification_scope"] = "profile"
-            spec["_contact_instruction_sources"] = contact_sources
+        if isinstance(contact_capture, dict):
+            spec["_contact_instruction_capture"] = deepcopy(contact_capture)
+            if contact_capture.get("status") in {"captured", "empty"}:
+                spec["_contact_instruction_sources"] = contact_sources
         if email_from_profile:
             spec["_email_source"] = "profile_page"
         specs.append(spec)

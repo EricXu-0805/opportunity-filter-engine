@@ -14,6 +14,7 @@ import json
 import logging
 import re
 import time
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
@@ -23,7 +24,16 @@ from bs4 import BeautifulSoup
 
 from src.normalizers.deadlines import normalize_deadline, to_legacy
 
-from ..contact_instructions import SOURCE_KEY, retained_sources, source_from_html
+from ..contact_instructions import (
+    CAPTURE_KEY,
+    SOURCE_KEY,
+    capture_failure,
+    capture_from_html,
+    capture_from_sections,
+    capture_metadata,
+    retained_sources,
+    same_source_page,
+)
 from ..evidence import INFERRED_FIELDS_KEY
 from .base import BaseCollector, RawOpportunity
 
@@ -61,77 +71,161 @@ class UIUCSROCollector(BaseCollector):
             config=config or {"rate_limit_delay": 3},
         )
         self.deep = deep
+        self.evidence = self._new_evidence()
+
+    @staticmethod
+    def _new_evidence() -> dict:
+        return {
+            "list_pages_attempted": 0, "list_pages_loaded": 0, "list_pages_failed": 0,
+            "list_complete": False, "list_errors": [],
+            "detail_pages_attempted": 0, "detail_pages_loaded": 0, "detail_pages_failed": 0,
+            "detail_errors": [], "normalization_failed": 0,
+            "condition_capture_counts": {status: 0 for status in ("captured", "empty", "unsupported", "failed")},
+            "condition_capture_complete": False,
+        }
 
     def collect(self) -> list[RawOpportunity]:
         """Scrape all paginated pages."""
         opportunities = []
-
+        self.evidence = self._new_evidence()
         for page in range(self.MAX_PAGES):
             url = f"{self.BASE_URL}?page={page}"
-            self.logger.info(f"Scraping page {page + 1}: {url}")
-
+            self.evidence["list_pages_attempted"] += 1
             try:
                 resp = requests.get(url, timeout=30, headers={
                     "User-Agent": "OpportunityFilterEngine/1.0 (educational project)"
                 })
                 resp.raise_for_status()
-
-                page_opps = self._parse_page(resp.text, url)
-                if not page_opps:
-                    self.logger.info(f"No more results on page {page + 1}, stopping.")
-                    break
-
-                opportunities.extend(page_opps)
-                self._rate_limit()
-
-            except Exception as e:
-                self.logger.error(f"Failed to scrape page {page}: {e}")
+            except Exception:
+                self._list_failure(url, "fetch_failed")
+                continue
+            if not same_source_page(url, getattr(resp, "url", None)):
+                self._list_failure(url, "redirect_mismatch" if isinstance(getattr(resp, "url", None), str) else "fetch_metadata_missing")
+                continue
+            table = BeautifulSoup(resp.text, "html.parser").select_one("table.views-table")
+            if table is None or table.select_one("tbody") is None:
+                self._list_failure(url, "unsupported_list")
+                break
+            rows = table.select("tbody tr")
+            page_opps = [opp for opp in self._parse_page(resp.text, url) if opp.title and opp.url]
+            opportunities.extend(page_opps)
+            if len(page_opps) != len(rows):
+                self._list_failure(url, "unparsed_rows")
+            else:
+                self.evidence["list_pages_loaded"] += 1
+            if not rows:
+                self.evidence["list_complete"] = self.evidence["list_pages_failed"] == 0
+                break
+            self._rate_limit()
+        else:
+            self.evidence["list_errors"].append({"reason": "page_limit", "source_url": self.BASE_URL})
 
         if self.deep:
-            self.logger.info(f"Deep scraping {len(opportunities)} detail pages...")
             for i, opp in enumerate(opportunities):
-                if opp.url:
-                    self._fetch_detail_page(opp)
-                    if i < len(opportunities) - 1:
-                        time.sleep(DEEP_SCRAPE_DELAY)
-
+                self._fetch_detail_page(opp)
+                if i < len(opportunities) - 1:
+                    time.sleep(DEEP_SCRAPE_DELAY)
         return opportunities
 
+    def _list_failure(self, url: str, reason: str) -> None:
+        self.evidence["list_pages_failed"] += 1
+        self.evidence["list_errors"].append({"reason": reason, "source_url": url})
+
+    @staticmethod
+    def _capture_detail_html(html: str, **binding) -> dict:
+        """Adapt raw Drupal labels/items; never infer headings from field names."""
+        result = capture_from_html(html, **binding)
+        if result.get("reason") not in {"unparsed_relevant_content", "no_supported_content"}:
+            return result
+        soup = BeautifulSoup(html, "html.parser")
+        body = soup.find("main") or soup.find("article") or soup.find("body")
+        if body is None:
+            return result
+        sections = []
+        # These are fields already read by the detail parser, not new pages.
+        for node in list(body.select(
+            "div.field--name-field-eligibility, div.field--name-field-eligibility-requirements, "
+            "div.field--name-field-requirements, div.field--name-field-deadline, "
+            "div.field--name-field-deadline-anticipated, div.field--name-field-application-deadline, "
+            "div.field--name-field-application-url, div.field--name-field-apply-url, "
+            "div.field--name-field-application-link"
+        )):
+            label = node.select_one(".field__label, .field-label")
+            if label is None or not label.get_text(" ", strip=True):
+                return capture_failure(**binding, status="unsupported", reason="missing_field_label")
+            headings = {}
+            for previous in body.descendants:
+                if previous is node:
+                    break
+                name = getattr(previous, "name", None)
+                if name in {"h1", "h2", "h3", "h4", "h5", "h6"} and not previous.find_parent(
+                    ["nav", "header", "footer", "aside", "script", "style"]
+                ):
+                    level = int(name[1])
+                    headings = {depth: text for depth, text in headings.items() if depth < level}
+                    headings[level] = previous.get_text(" ", strip=True)
+            heading = " > ".join([*headings.values(), label.get_text(" ", strip=True)])
+            label.extract()
+            text = node.get_text(" ", strip=True)
+            if not text:
+                return capture_failure(**binding, status="unsupported", reason="empty_field_value")
+            sections.append({"heading": heading, "text": text})
+            node.decompose()
+        remainder = capture_from_html(soup, **binding)
+        if remainder["status"] == "unsupported" and remainder.get("reason") != "no_supported_content":
+            return remainder
+        for source in remainder.get("sources", []):
+            sections.extend(source["sections"])
+        # A raw field was found, and the rest of the page contains no ignored
+        # condition-bearing text. The section helper applies the full budgets.
+        return capture_from_sections(sections, **binding) if sections else result
+
     def _fetch_detail_page(self, opp: RawOpportunity) -> None:
-        """Fetch and parse a detail page, enriching the RawOpportunity in-place."""
+        """Record each attempted detail check, including parse and HTTP failure."""
+        self.evidence["detail_pages_attempted"] += 1
+        opp.extra_fields.pop("deep_scraped", None)
         try:
-            self.logger.info(f"  Deep scraping: {opp.url}")
             resp = requests.get(opp.url, timeout=30, headers={
                 "User-Agent": "OpportunityFilterEngine/1.0 (educational project)"
             })
             resp.raise_for_status()
-            detail = self._parse_detail_page(resp.text)
-            contact_source = source_from_html(resp.text, source_url=opp.url)
-            # Replace a prior snapshot only after this detail fetch succeeds.
-            opp.extra_fields.pop(SOURCE_KEY, None)
-            if contact_source:
-                opp.extra_fields[SOURCE_KEY] = [contact_source]
-
-            if detail.get("description"):
-                opp.description_raw = detail["description"]
-            if detail.get("organization"):
-                opp.organization = detail["organization"]
-            if detail.get("eligibility_text"):
-                opp.extra_fields["eligibility_text"] = detail["eligibility_text"]
-            if detail.get("application_url"):
-                opp.extra_fields["application_url"] = detail["application_url"]
-            if detail.get("deadline"):
-                opp.deadline = detail["deadline"]
-                opp.extra_fields["deadline_raw"] = detail["deadline"]
-            if detail.get("citizenship_info"):
-                opp.extra_fields["citizenship_info"] = detail["citizenship_info"]
-            if detail.get("paid_info"):
-                opp.extra_fields["paid_info"] = detail["paid_info"]
-
-            opp.extra_fields["deep_scraped"] = True
-
-        except Exception as e:
-            self.logger.error(f"  Failed to deep scrape {opp.url}: {e}")
+        except Exception:
+            self.evidence["detail_pages_failed"] += 1
+            result = capture_failure(source_url=opp.url, reason="fetch_failed")
+        else:
+            self.evidence["detail_pages_loaded"] += 1
+            final = getattr(resp, "url", None)
+            binding = dict(source_url=final or opp.url, record_source_url=opp.url,
+                           checked_at=datetime.now(UTC).isoformat())
+            if not isinstance(final, str):
+                result = capture_failure(**binding, reason="fetch_metadata_missing")
+            elif not same_source_page(opp.url, final):
+                result = capture_failure(**binding, reason="redirect_mismatch")
+            else:
+                try:
+                    result = self._capture_detail_html(resp.text, **binding)
+                    if result["status"] in {"captured", "empty"}:
+                        detail = self._parse_detail_page(resp.text)
+                        if detail.get("description"):
+                            opp.description_raw = detail["description"]
+                        if detail.get("organization"):
+                            opp.organization = detail["organization"]
+                        for key in ("eligibility_text", "application_url", "citizenship_info", "paid_info"):
+                            if detail.get(key):
+                                opp.extra_fields[key] = detail[key]
+                        if detail.get("deadline"):
+                            opp.deadline = detail["deadline"]
+                            opp.extra_fields["deadline_raw"] = detail["deadline"]
+                        opp.extra_fields["deep_scraped"] = True
+                except Exception:
+                    result = capture_failure(**binding, reason="parse_failed")
+        opp.extra_fields.pop(SOURCE_KEY, None)
+        opp.extra_fields.update(capture_metadata(result))
+        self.evidence["condition_capture_counts"][result["status"]] += 1
+        counts = self.evidence["condition_capture_counts"]
+        self.evidence["condition_capture_complete"] = bool(sum(counts.values()) and not counts["unsupported"] and not counts["failed"])
+        if result["status"] in {"failed", "unsupported"}:
+            self.evidence["detail_errors"].append({"source_url": opp.url, "reason": result["reason"]})
 
     def _parse_detail_page(self, html: str) -> dict:
         """Parse a detail page and extract structured fields."""
@@ -532,8 +626,10 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "keywords": [a.strip() for a in research_area.split(",") if a.strip()],
         "metadata": {
             "confidence_score": confidence,
-            **({SOURCE_KEY: retained_sources(extra[SOURCE_KEY])} if extra.get(SOURCE_KEY) else {}),
-            "last_verified": now,
+            **({SOURCE_KEY: retained_sources(extra[SOURCE_KEY])} if SOURCE_KEY in extra else {}),
+            **({CAPTURE_KEY: deepcopy(extra[CAPTURE_KEY])} if CAPTURE_KEY in extra else {}),
+            "detail_page_verified": is_deep,
+            "last_verified": extra.get(CAPTURE_KEY, {}).get("attempted_at") if is_deep else None,
             "first_seen_at": now,
             "last_seen_at": now,
             "is_active": True,
@@ -544,21 +640,23 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
     }
 
 
-def fetch_and_normalize(deep: bool = False) -> list[dict]:
-    """Fetch SRO database and return normalized records."""
+def fetch_and_normalize_with_evidence(deep: bool = False) -> tuple[list[dict], dict]:
+    """Return records and honest listing/detail completeness from this attempt."""
     collector = UIUCSROCollector(deep=deep)
     raw_opps = collector.collect()
-    logger.info(f"Fetched {len(raw_opps)} entries from SRO")
-
     normalized = []
     for raw in raw_opps:
         try:
-            norm = raw_to_normalized(raw)
-            normalized.append(norm)
-        except Exception as e:
-            logger.error(f"Failed to normalize '{raw.title}': {e}")
+            normalized.append(raw_to_normalized(raw))
+        except Exception:
+            collector.evidence["normalization_failed"] += 1
+            logger.error("SRO record normalization failed")
+    return normalized, collector.evidence
 
-    return normalized
+
+def fetch_and_normalize(deep: bool = False) -> list[dict]:
+    records, _evidence = fetch_and_normalize_with_evidence(deep=deep)
+    return records
 
 
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
@@ -578,6 +676,20 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             opp["metadata"]["first_seen_at"] = index[opp["id"]].get("metadata", {}).get(
                 "first_seen_at", opp["metadata"]["first_seen_at"]
             )
+            prior = index[opp["id"]]
+            # A list refresh cannot prove that previously fetched detail facts
+            # disappeared. Retain them without advancing their verification time.
+            if opp["metadata"].get("detail_page_verified") is not True:
+                for key in ("organization", "department", "lab_or_program", "pi_name", "contact_email",
+                            "eligibility", "application", "deadline", "is_rolling", "paid",
+                            "compensation_details", "description_raw", "description_clean"):
+                    if key in prior:
+                        opp[key] = deepcopy(prior[key])
+                if "last_verified" in prior.get("metadata", {}):
+                    opp["metadata"]["last_verified"] = prior["metadata"]["last_verified"]
+            from .uiuc_faculty import carry_forward_contact_instruction_sources
+
+            carry_forward_contact_instruction_sources(prior, opp)
             index[opp["id"]] = opp
             updated += 1
         else:

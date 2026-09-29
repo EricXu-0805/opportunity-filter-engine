@@ -184,6 +184,73 @@ def classify(
     return SUSPICIOUS_ZERO
 
 
+
+def collection_evidence_issues(info: dict) -> tuple[list[str], list[str]]:
+    """Return incomplete observations and malformed evidence separately.
+
+    Optional receipts keep legacy collectors compatible. Once a receipt family
+    is present, its counts must reconcile. A supported empty page is a success;
+    no attempted condition capture does not claim a condition check.
+    """
+    incomplete: list[str] = []
+    invalid: list[str] = []
+    def integer(value: object) -> bool:
+        return type(value) is int and value >= 0
+
+    for prefix in ("list_pages", "detail_pages"):
+        keys = [prefix + suffix for suffix in ("_attempted", "_loaded", "_failed")]
+        if not any(key in info for key in keys):
+            continue
+        values = [info.get(key) for key in keys]
+        if not all(integer(value) for value in values) or values[0] != values[1] + values[2]:
+            invalid.append(prefix + "_counts_invalid")
+            continue
+        if values[2]:
+            incomplete.append(prefix + "_failed")
+        if prefix == "list_pages":
+            complete = info.get("list_complete")
+            if type(complete) is not bool or (complete and (values[1] == 0 or values[2] != 0)):
+                invalid.append("list_completeness_invalid")
+            elif not complete:
+                incomplete.append("list_incomplete")
+    if "condition_capture_counts" in info or "condition_capture_complete" in info:
+        counts = info.get("condition_capture_counts")
+        names = {"captured", "empty", "unsupported", "failed"}
+        if not isinstance(counts, dict) or set(counts) != names or not all(integer(v) for v in counts.values()):
+            invalid.append("condition_capture_counts_invalid")
+        else:
+            total = sum(counts.values())
+            expected = total > 0 and counts["unsupported"] == counts["failed"] == 0
+            if type(info.get("condition_capture_complete")) is not bool or info["condition_capture_complete"] != expected:
+                invalid.append("condition_capture_completeness_invalid")
+            if "detail_pages_attempted" in info and total != info["detail_pages_attempted"]:
+                invalid.append("condition_capture_attempts_mismatch")
+            for outcome in ("unsupported", "failed"):
+                if counts[outcome]:
+                    incomplete.append("condition_capture_" + outcome)
+    for attempted_key, loaded_key in (("live_pages_attempted", "live_pages_loaded"),
+                                      ("crawl_sources_expected", "crawl_sources_loaded")):
+        if attempted_key not in info and loaded_key not in info:
+            continue
+        attempted, loaded = info.get(attempted_key), info.get(loaded_key)
+        if not integer(attempted) or not integer(loaded) or loaded > attempted:
+            invalid.append(attempted_key + "_invalid")
+        elif loaded < attempted:
+            incomplete.append(loaded_key + "_incomplete")
+    for key in ("seed_pages_failed", "normalization_failed"):
+        if key in info:
+            if not integer(info[key]):
+                invalid.append(key + "_invalid")
+            elif info[key]:
+                incomplete.append(key)
+    for key in ("crawl_errors", "degraded_page_errors", "list_errors", "detail_errors"):
+        if key in info:
+            if not isinstance(info[key], list):
+                invalid.append(key + "_invalid")
+            elif info[key]:
+                incomplete.append(key)
+    return incomplete, invalid
+
 def _iso(value: datetime) -> str:
     return value.astimezone(UTC).isoformat()
 
