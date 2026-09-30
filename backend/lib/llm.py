@@ -80,6 +80,9 @@ def _provider_log_scope(private: bool):
 _MAX_ATTEMPTS = 2
 _RETRY_BASE_DELAY_SECONDS = 0.5
 _REQUEST_TIMEOUT_SECONDS = 20.0
+# A second attempt that starts with less than this before the caller's
+# deadline cannot finish, but it is still billed.
+_MIN_RETRY_SECONDS = 10.0
 
 # (id, env_var, base_url, default_model). The id lets a caller target a
 # specific provider (e.g. the Ask-AI chat picker routes through "openrouter").
@@ -273,8 +276,15 @@ def chat_completion(
     provider_id: Optional[str] = None,
     safe_error_logging: bool = False,
     require_complete: bool = False,
+    request_timeout: Optional[float] = None,
+    deadline: Optional[float] = None,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
+
+    ``request_timeout`` replaces the default per-attempt HTTP timeout.
+    ``deadline`` is an absolute ``time.monotonic()`` value owned by the caller:
+    each attempt's timeout is cut to what is left of it, no attempt starts after
+    it, and a second attempt is not started with under 10 s left.
 
     ``model`` overrides the provider's default model (used by quality-sensitive
     callers via :func:`strong_model`); it must be a model the resolved provider
@@ -334,7 +344,15 @@ def chat_completion(
         call_kwargs["extra_body"] = extra_body
 
     last_error: Optional[Exception] = None
+    per_attempt = _REQUEST_TIMEOUT_SECONDS if request_timeout is None else request_timeout
     for attempt in range(1, _MAX_ATTEMPTS + 1):
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or (attempt > 1 and remaining < _MIN_RETRY_SECONDS):
+                break
+            client_kwargs["timeout"] = min(per_attempt, remaining)
+        else:
+            client_kwargs["timeout"] = per_attempt
         try:
             with _provider_log_scope(safe_error_logging):
                 client = openai.OpenAI(**client_kwargs)
@@ -352,6 +370,9 @@ def chat_completion(
             if attempt < _MAX_ATTEMPTS:
                 time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
 
+    if last_error is None:
+        logger.warning("LLM chat_completion not attempted: the caller's deadline had passed")
+        return None
     if safe_error_logging:
         status = getattr(last_error, "status_code", None)
         logger.warning(
