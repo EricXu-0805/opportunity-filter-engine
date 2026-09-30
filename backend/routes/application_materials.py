@@ -5,7 +5,7 @@ import asyncio
 import hashlib
 import json
 import threading
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from urllib.parse import quote
 
 import httpx
@@ -35,6 +35,11 @@ from backend.lib.material_archive_schema import (
 
 _IO_CAPACITY = threading.BoundedSemaphore(2)
 _REQUEST_TIMEOUT_SECONDS = 110
+# A body must keep arriving at this average rate after the grace period, so a
+# drip-fed upload ends long before the request timeout.
+_BODY_GRACE_SECONDS = 10
+_BODY_MIN_BYTES_PER_SECOND = 32 * 1024
+_ACTIVE_OWNERS: set[str] = set()
 
 
 class MaterialRoute(APIRoute):
@@ -74,6 +79,33 @@ async def io_slot():
         _IO_CAPACITY.release()
 
 
+@contextmanager
+def owner_slot(uid: str):
+    # One file transfer per account, so one account cannot hold every I/O slot.
+    if uid in _ACTIVE_OWNERS:
+        raise MaterialError("material_busy", 503)
+    _ACTIVE_OWNERS.add(uid)
+    try:
+        yield
+    finally:
+        _ACTIVE_OWNERS.discard(uid)
+
+
+def rate_bounded(request: Request) -> Request:
+    loop = asyncio.get_running_loop()
+    started, received = loop.time(), 0
+
+    async def receive():
+        nonlocal received
+        remaining = started + _BODY_GRACE_SECONDS + received / _BODY_MIN_BYTES_PER_SECOND - loop.time()
+        if remaining <= 0:
+            raise TimeoutError
+        message = await asyncio.wait_for(request.receive(), remaining)
+        received += len(message.get("body", b""))
+        return message
+    return Request(request.scope, receive)
+
+
 def scope_from_query(request: Request, *, scope_type=Scope, list_query: bool = False) -> tuple[ArchiveScope, str | None, str | None]:
     allowed = {"expected_owner_id", "opportunity_id", scope_type.event_field}
     if list_query:
@@ -97,33 +129,37 @@ def material_router(prefix: str, scope_type, input_type, deletion_type) -> APIRo
 
     @router.post("")
     async def archive_pdf(request: Request):
-        async with io_slot(), service_for(request) as service:
+        async with service_for(request) as service:
             # Reject guests before accepting/spooling their potentially large body.
             uid = await service.authenticate()
             if not request.headers.get("content-type", "").lower().startswith("multipart/form-data;"):
                 raise MaterialError("material_invalid_request", 422)
-            async with request.form(max_files=1, max_fields=1, max_part_size=8192) as form:
-                if len(form.multi_items()) != 2 or set(form) != {"metadata", "file"}:
-                    raise MaterialError("material_invalid_request", 422)
-                metadata, file = form["metadata"], form["file"]
-                if not isinstance(metadata, str) or len(metadata.encode("utf-8")) > 8192 or not isinstance(file, UploadFile):
-                    raise MaterialError("material_invalid_request", 422)
-                data = input_type.model_validate_json(metadata)
-                if data.expected_owner_id != uid:
-                    raise MaterialError("material_owner_mismatch", 409)
-                if file.content_type not in (None, "", "application/pdf", "application/octet-stream"):
-                    raise MaterialError("material_invalid_pdf", 422)
-                contents = await file.read(MAX_FILE_BYTES + 1)
-                if len(contents) > MAX_FILE_BYTES:
-                    raise MaterialError("material_too_large", 413)
-                if len(contents) != data.byte_length or hashlib.sha256(contents).hexdigest() != data.bytes_sha256:
-                    raise MaterialError("material_invalid_request", 422)
-                try:
-                    await validate_pdf(contents)
-                except TimeoutError:
-                    raise MaterialError("material_invalid_pdf", 422) from None
-                result = await service.archive(data, contents)
-                return JSONResponse(result, headers=PRIVATE)
+            # The body spools to disk outside the shared I/O slots; only the
+            # in-memory parse, hash and Storage transfer below hold one.
+            with owner_slot(uid):
+                async with rate_bounded(request).form(max_files=1, max_fields=1, max_part_size=8192) as form:
+                    if len(form.multi_items()) != 2 or set(form) != {"metadata", "file"}:
+                        raise MaterialError("material_invalid_request", 422)
+                    metadata, file = form["metadata"], form["file"]
+                    if not isinstance(metadata, str) or len(metadata.encode("utf-8")) > 8192 or not isinstance(file, UploadFile):
+                        raise MaterialError("material_invalid_request", 422)
+                    data = input_type.model_validate_json(metadata)
+                    if data.expected_owner_id != uid:
+                        raise MaterialError("material_owner_mismatch", 409)
+                    if file.content_type not in (None, "", "application/pdf", "application/octet-stream"):
+                        raise MaterialError("material_invalid_pdf", 422)
+                    async with io_slot():
+                        contents = await file.read(MAX_FILE_BYTES + 1)
+                        if len(contents) > MAX_FILE_BYTES:
+                            raise MaterialError("material_too_large", 413)
+                        if len(contents) != data.byte_length or hashlib.sha256(contents).hexdigest() != data.bytes_sha256:
+                            raise MaterialError("material_invalid_request", 422)
+                        try:
+                            await validate_pdf(contents)
+                        except TimeoutError:
+                            raise MaterialError("material_invalid_pdf", 422) from None
+                        result = await service.archive(data, contents)
+                        return JSONResponse(result, headers=PRIVATE)
 
 
     @router.get("")
@@ -149,9 +185,11 @@ def material_router(prefix: str, scope_type, input_type, deletion_type) -> APIRo
     async def download_material(request: Request, record_id: str):
         uuid_text(record_id)
         scope, _, _ = scope_from_query(request, scope_type=scope_type)
-        async with io_slot(), service_for(request) as service:
-            await service.authenticate(scope)
-            record, contents = await service.download(scope, record_id)
+        async with service_for(request) as service:
+            uid = await service.authenticate(scope)
+            with owner_slot(uid):
+                async with io_slot():
+                    record, contents = await service.download(scope, record_id)
         return Response(contents, media_type="application/pdf", headers={
             **PRIVATE, "Content-Disposition": f"attachment; filename=\"material.pdf\"; filename*=UTF-8''{quote(record['filename'], safe='')}",
             "x-ofe-material-id": record["material_id"], "x-ofe-material-record": record["record_id"],

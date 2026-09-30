@@ -23,7 +23,9 @@ for phase in before after; do
   "${PSQL[@]}" -f "$HERE/_stubs.sql" >/dev/null
   "${PSQL[@]}" -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role'
   for migration in "$ROOT/supabase/migrations/"*.sql; do
-    if [[ "$phase" == before && "$migration" == */20260925151438_contact_material_archive.sql ]]; then continue; fi
+    # The quota migration replaces a function the contact migration creates.
+    if [[ "$phase" == before && ( "$migration" == */20260925151438_contact_material_archive.sql
+          || "$migration" == */20260930090000_owner_storage_quotas.sql ) ]]; then continue; fi
     "${PSQL[@]}" -f "$migration" >/dev/null
   done
   if [[ "$phase" == before && "$MODE" == --upgrade-only ]]; then
@@ -45,6 +47,8 @@ sed -e 's/request.jwt.claim.sub/test.uid/g' -e 's/request.jwt.claims/test.jwt/g'
 source "$HERE/contact_material_concurrency_test.sh"
 { printf 'BEGIN;\n'; cat "$HERE/contact_event_ledger_test.sql"; printf '\nROLLBACK;\n'; } | "${PSQL[@]}" >/dev/null
 printf '%s\n' 'PASS unchanged contact-event ledger regression'
+"${PSQL[@]}" -f "$HERE/owner_storage_quota_test.sql" >/dev/null
+printf '%s\n' 'PASS per-account material and private-import quotas'
 "${PSQL[@]}" -c 'DROP TABLE public.material_test_receipts,public.contact_material_test_receipts'
 supabase db advisors --db-url "postgresql://postgres@127.0.0.1:$PORT/material_after?sslmode=require" --type security --level warn --fail-on none
 printf '%s\n' 'PASS isolated pre/post-migration application and contact material suites'

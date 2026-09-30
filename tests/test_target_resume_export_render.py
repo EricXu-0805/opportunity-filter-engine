@@ -283,3 +283,33 @@ def test_wrapped_pdf_first_line_keeps_natural_word_spacing(position):
             break
     assert len(positions) >= 2
     assert max(positions) - positions[0] < 160, positions
+
+
+def embedded_fonts(data):
+    z = zipfile.ZipFile(io.BytesIO(data))
+    fonts = etree.fromstring(z.read('word/fontTable.xml'))
+    names = [node.getparent().get(f'{{{W}}}name') for node in fonts.findall(f'{{{W}}}font/{{{W}}}embedRegular')]
+    return names, [name for name in z.namelist() if name.startswith('word/fonts/')]
+
+
+@pytest.mark.parametrize('text,needed', [
+    ('Jane Doe — Résumé • “quoted” naïve café €5', ()),
+    ('Jane Doe 😀', (1,)),
+    ('张三 Student', (0,)),
+    ('Jane Doe → α', (0,)),
+])
+def test_docx_embeds_only_the_fonts_its_text_needs(text, needed):
+    value = sample(text)
+    value['sections'].append({'kind': 'activities', 'heading': '', 'blocks': [{'lines': [{'role': 'experience', 'label': '', 'text': 'Research assistant.'}]}]})
+    data = renderer.render_export(value, 'docx')
+    assets = renderer.fonts()
+    names, parts = embedded_fonts(data)
+    assert names == [assets[index].name for index in needed]
+    assert len(parts) == len(needed)
+    if not needed:
+        # An English résumé stays an email-sized file and names no font the
+        # reader would need but does not receive.
+        assert len(data) < 100_000
+        assert assets[0].name.encode() not in zipfile.ZipFile(io.BytesIO(data)).read('word/document.xml')
+    from docx import Document
+    assert Document(io.BytesIO(data)).paragraphs[0].text == text

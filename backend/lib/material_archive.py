@@ -104,6 +104,7 @@ class MaterialService:
                 "23505": ("material_conflict", 409),
                 "P0002": ("material_not_found", 404),
                 "55000": ("material_not_ready", 409),
+                "54000": ("material_quota_exceeded", 409),
             }
             code, status = errors.get(sqlstate, ("material_unavailable", 503))
             raise MaterialError(code, status)
@@ -211,11 +212,17 @@ class MaterialService:
             f"{self.url}/storage/v1/object/{BUCKET}/{key}", content=contents,
             headers={**self.headers(), "Content-Type": "application/pdf", "x-upsert": "false", "Cache-Control": "no-store"},
         )
+        if response.status_code == 413:
+            raise MaterialError("material_too_large", 413)
         if response.status_code not in (200, 201, 400, 409):
             raise MaterialError()
         if response.status_code == 400:
             try:
                 duplicate = response.json()
+                # Storage reports its own object-size cap (which the project
+                # plan may set below MAX_FILE_BYTES) as a 400 envelope too.
+                if duplicate.get("statusCode") in ("413", 413):
+                    raise MaterialError("material_too_large", 413)
                 if duplicate.get("statusCode") not in ("409", 409) and duplicate.get("error") != "Duplicate":
                     raise MaterialError()
             except (ValueError, TypeError, AttributeError):

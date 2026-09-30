@@ -226,6 +226,34 @@ class CappedBuffer(io.BytesIO):
         return super().write(data)
 
 
+def portable(point: int) -> bool:
+    # Latin, Latin-1/Extended and general punctuation: every standard Word or
+    # LibreOffice template font renders these without an embedded font.
+    return point <= 0x024F or 0x2000 <= point <= 0x206F or point == 0x20AC
+
+
+def docx_fonts_needed(projection, assets, deadline=None) -> tuple[bool, bool]:
+    """Which bundled fonts this DOCX must carry, using font_runs' choice.
+
+    Each needed font is embedded whole (21.6 MB for CJK), so an English-only
+    résumé embeds none and keeps the template's standard fonts.
+    """
+    needed = [False, False]
+    for section in projection['sections']:
+        texts = [heading(section, projection['locale'])]
+        texts.extend(line_text(line, projection['locale']) for block in section['blocks'] for line in block['lines'])
+        for text in texts:
+            for offset, char in enumerate(text):
+                if offset % 1024 == 0:
+                    check_deadline(deadline)
+                point = ord(char)
+                if char in '\r\n\t' or point in assets[0].codepoints:
+                    needed[0] = needed[0] or not portable(point)
+                else:
+                    needed[1] = True
+    return needed[0], needed[1]
+
+
 def embed_docx_fonts(document, assets, deadline=None):
     """Embed full font programs, not subsets limited to today's résumé text."""
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -279,16 +307,19 @@ def render_docx(projection, assets, deadline=None):
     from docx.shared import Inches, Mm, Pt, RGBColor
 
     check_deadline(deadline)
+    needed = docx_fonts_needed(projection, assets, deadline)
+    names = [asset.name if need else None for asset, need in zip(assets, needed, strict=True)]
     document = Document()
     section = document.sections[0]
     section.page_width, section.page_height = (Inches(8.5), Inches(11)) if projection['page_size'] == 'letter' else (Mm(210), Mm(297))
     section.top_margin = section.bottom_margin = Mm(16)
     section.left_margin = section.right_margin = Mm(18)
     normal = document.styles['Normal']
-    normal.font.name = assets[0].name
+    if names[0]:
+        normal.font.name = names[0]
+        normal.element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), names[0])
     normal.font.size = Pt(10.5)
     normal.font.color.rgb = RGBColor(20, 28, 39)
-    normal.element.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), assets[0].name)
     normal.paragraph_format.space_after = Pt(3)
     normal.paragraph_format.line_spacing = 1.15
     normal.paragraph_format.widow_control = True
@@ -309,9 +340,10 @@ def render_docx(projection, assets, deadline=None):
             # python-docx maps CR and LF separately; treat CRLF as one
             # visual break while leaving the signed input untouched.
             run = paragraph.add_run(value.replace('\r\n', '\n').replace('\r', '\n'))
-            run.font.name = assets[index].name
+            if names[index]:
+                run.font.name = names[index]
+                run._r.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), names[index])
             run.font.size = Pt(size)
-            run._r.get_or_add_rPr().get_or_add_rFonts().set(qn('w:eastAsia'), assets[index].name)
             if link:
                 parent.append(run._r)
     for item in projection['sections']:
@@ -332,7 +364,8 @@ def render_docx(projection, assets, deadline=None):
                 paragraph.paragraph_format.keep_with_next = False
                 paragraph.paragraph_format.space_after = Pt(6 if index == len(block['lines']) - 1 else 3)
                 add_text(paragraph, line_text(line, projection['locale']), 18 if line['role'] == 'name' else 10.5, safe_link(line))
-    embed_docx_fonts(document, assets, deadline)
+    if any(needed):
+        embed_docx_fonts(document, [asset for asset, need in zip(assets, needed, strict=True) if need], deadline)
     output = CappedBuffer(deadline)
     document.save(output)
     check_deadline(deadline)

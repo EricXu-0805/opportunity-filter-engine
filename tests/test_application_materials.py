@@ -73,6 +73,7 @@ class Provider:
         self.authorizations = 0
         self.finalize_deleted = False
         self.rpc_overrides = {}
+        self.upload_response = None
 
     def handle(self, request):
         path = request.url.path
@@ -83,7 +84,8 @@ class Provider:
         if "/rpc/" in path:
             name = path.rsplit("/", 1)[-1]
             if name in self.rpc_overrides:
-                return httpx.Response(200, json=self.rpc_overrides[name])
+                override = self.rpc_overrides[name]
+                return override if isinstance(override, httpx.Response) else httpx.Response(200, json=override)
             if name != f"finalize_{self.kind}_material":
                 assert body[f"p_{self.kind}_event_id"] == EVENT
                 assert body["p_expected_owner"] == OWNER
@@ -126,6 +128,8 @@ class Provider:
         assert request.headers["authorization"] == "Bearer service-secret"
         if request.method == "POST":
             assert request.headers["x-upsert"] == "false"
+            if self.upload_response is not None:
+                return self.upload_response
             if self.object is not None:
                 return httpx.Response(409, json={"statusCode": "409", "error": "Duplicate"})
             self.object = request.content
@@ -344,7 +348,9 @@ def test_io_saturation_does_not_queue_or_accept_body(endpoint):
     try:
         response = upload(client)
         assert response.status_code == 503 and response.json()["detail"]["code"] == "material_busy"
-        assert state.calls == []
+        # Authentication runs before a slot is taken; nothing reaches the
+        # database or Storage while every slot is busy.
+        assert [path for _, path, _, _ in state.calls] == ["/auth/v1/user"]
     finally:
         route._IO_CAPACITY.release()
         route._IO_CAPACITY.release()
@@ -450,3 +456,163 @@ def test_stalled_or_disconnected_multipart_releases_file_capacity(endpoint, monk
     assert route._IO_CAPACITY.acquire(blocking=False)
     route._IO_CAPACITY.release()
     route._IO_CAPACITY.release()
+
+
+def test_account_quota_refusal_is_reported_without_storage_write(endpoint):
+    client, state = endpoint
+    state.rpc_overrides["stage_application_material"] = httpx.Response(
+        400, json={"code": "54000", "message": "material_quota_exceeded"})
+    response = upload(client)
+    assert response.status_code == 409 and response.json()["detail"]["code"] == "material_quota_exceeded"
+    assert "54000" not in response.text
+    assert not any("/storage/" in path for _, path, _, _ in state.calls)
+
+
+PAYLOAD_TOO_LARGE = {"statusCode": "413", "error": "Payload too large",
+                     "message": "The object exceeded the maximum allowed size"}
+
+
+@pytest.mark.parametrize("rejection", [
+    httpx.Response(413, json=PAYLOAD_TOO_LARGE), httpx.Response(400, json=PAYLOAD_TOO_LARGE),
+    httpx.Response(400, json={**PAYLOAD_TOO_LARGE, "statusCode": 413}),
+])
+def test_storage_size_rejection_is_reported_as_too_large(endpoint, rejection):
+    client, state = endpoint
+    state.upload_response = rejection
+    response = upload(client)
+    assert response.status_code == 413 and response.json()["detail"]["code"] == "material_too_large"
+    assert not any(path.endswith("finalize_application_material") for _, path, _, _ in state.calls)
+
+
+def test_other_storage_rejection_stays_unavailable(endpoint):
+    client, state = endpoint
+    state.upload_response = httpx.Response(400, json={"statusCode": "500", "error": "internal", "message": "x"})
+    response = upload(client)
+    assert response.status_code == 503 and response.json()["detail"]["code"] == "material_unavailable"
+
+
+def stalled_upload_scope(base):
+    return {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
+            "method": "POST", "scheme": "http", "path": base, "raw_path": base.encode(),
+            "root_path": "", "query_string": b"", "server": ("testserver", 80),
+            "client": ("127.0.0.1", 10000), "headers": [
+                (b"authorization", b"Bearer user-token"),
+                (b"content-type", b"multipart/form-data; boundary=boundary")]}
+
+
+async def start_stalled_upload(base):
+    """An authenticated upload whose body stops arriving after the first chunk."""
+    waiting = asyncio.Event()
+    first = True
+
+    async def receive():
+        nonlocal first
+        if first:
+            first = False
+            return {"type": "http.request", "body": b"--boundary\r\n", "more_body": True}
+        waiting.set()
+        await asyncio.Event().wait()
+
+    async def send(message):
+        pass
+
+    task = asyncio.create_task(app(stalled_upload_scope(base), receive, send))
+    await asyncio.wait_for(waiting.wait(), 1)
+    return task
+
+
+async def stop(task):
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+@pytest.mark.parametrize("base", [BASE, "/api/contact-materials"])
+def test_slow_body_does_not_hold_shared_io_capacity(endpoint, base):
+    async def run():
+        task = await start_stalled_upload(base)
+        taken = [route._IO_CAPACITY.acquire(blocking=False) for _ in range(2)]
+        try:
+            # Another account's upload or download can still take both slots.
+            assert taken == [True, True]
+        finally:
+            for ok in taken:
+                if ok:
+                    route._IO_CAPACITY.release()
+            await stop(task)
+    asyncio.run(run())
+
+
+def test_one_account_runs_one_upload_at_a_time_and_frees_it_after(endpoint):
+    _, state = endpoint
+
+    async def post(client):
+        return await client.post(BASE, headers=HEADERS, files={
+            "metadata": (None, json.dumps(metadata(), ensure_ascii=False)),
+            "file": ("selected.pdf", PDF, "application/pdf")})
+
+    async def run():
+        task = await start_stalled_upload(BASE)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+            try:
+                busy = await post(client)
+                assert busy.status_code == 503 and busy.json()["detail"]["code"] == "material_busy"
+                assert not any("/rest/" in path or "/storage/" in path for _, path, _, _ in state.calls)
+            finally:
+                await stop(task)
+            done = await post(client)
+            assert done.status_code == 200, done.text
+    asyncio.run(run())
+
+
+def test_body_slower_than_minimum_rate_is_cut_off_early(endpoint, monkeypatch):
+    _, state = endpoint
+    monkeypatch.setattr(route, "_BODY_GRACE_SECONDS", 0.05, raising=False)
+    sent = []
+
+    first = True
+
+    async def receive():
+        nonlocal first
+        if first:
+            first = False
+            return {"type": "http.request", "more_body": True, "body": (
+                b'--boundary\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\n'
+                b"Content-Type: application/pdf\r\n\r\n%PDF-")}
+        await asyncio.sleep(0.005)
+        return {"type": "http.request", "body": b"x", "more_body": True}
+
+    async def send(message):
+        sent.append(message)
+
+    async def run():
+        await asyncio.wait_for(app(stalled_upload_scope(BASE), receive, send), 1)
+    asyncio.run(run())
+    assert sent[0]["status"] == 503
+    assert not any("/rest/" in path for _, path, _, _ in state.calls)
+    assert route._IO_CAPACITY.acquire(blocking=False)
+    route._IO_CAPACITY.release()
+
+
+def test_one_account_cannot_hold_both_download_slots(endpoint, monkeypatch):
+    _, state = endpoint
+    state.row, state.object = artifact(), PDF
+    fetching, release = asyncio.Event(), asyncio.Event()
+
+    async def handle(request):
+        if request.method == "GET" and "/storage/" in request.url.path and not fetching.is_set():
+            fetching.set()
+            await release.wait()
+        return state.handle(request)
+
+    monkeypatch.setattr(route, "new_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(handle)))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+            first = asyncio.create_task(client.get(f"{BASE}/{RECORD}/file", params=SCOPE, headers=HEADERS))
+            await asyncio.wait_for(fetching.wait(), 1)
+            second = await client.get(f"{BASE}/{RECORD}/file", params=SCOPE, headers=HEADERS)
+            release.set()
+            assert second.status_code == 503 and second.json()["detail"]["code"] == "material_busy"
+            assert (await first).status_code == 200
+    asyncio.run(run())
