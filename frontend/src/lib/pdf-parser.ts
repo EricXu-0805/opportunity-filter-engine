@@ -175,6 +175,9 @@ const BULLET_GLYPH = /^[•●▪◦‣∙·*–—\-■►➢✓◆\uf0b7\uf0a7
 const DASH_CONTINUATION = /^[-–—]\s+(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?|spring|summer|fall|autumn|winter)\s+\d{4}|present\b|current\b)/iu;
 const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,;:&/(+]|\s[-–—]|(?:^|\s)(?:and|or|of|the|a|an|to|for|in|on|with|by|at|from|as|into|via|using|including|across|between|than|that|which|while|over|under|per))$/u;
 const CONTINUES_BEFORE = /^(?:\p{Ll}|[&()%]|\d(?!\d{3}\b))/u;
+// A break a word or two after a comma falls inside a list item ("Signals and
+// Systems, Biomedical" / "Imaging"); a comma further back says nothing.
+const LIST_TAIL = /,\s+\S+(?:\s+\S+)?$/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 // CJK text and its full-width punctuation wrap with no space at the break.
 const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
@@ -225,9 +228,11 @@ function shapeOf(line: VisualLine, text: string): LineShape | null {
  *  real one. A wrap continues the same paragraph: same style, size and
  *  alignment, ordinary line pitch, and the previous line stops where the next
  *  line's first word could not have fitted. Bullets, headings, table-like
- *  rows, contact details and finished sentences always start a new line. */
+ *  rows, contact details and finished sentences always start a new line.
+ *  `bulletItem` says the previous line belongs to an item that opened with a
+ *  bullet glyph or number, so the next item will open with one too. */
 function wrapSeparator(
-  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>,
+  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, bulletItem: boolean,
 ): string | null {
   const prev = shapes[index - 1];
   const next = shapes[index];
@@ -264,7 +269,12 @@ function wrapSeparator(
   const room = right - prev.right;
   const space = SPACE * next.size;
   const word = Array.from(firstWord).length * (next.right - next.left) / Array.from(after).length;
-  const evidence = CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || /,\s/u.test(before);
+  const evidence = CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || LIST_TAIL.test(before);
+  // Graphic list bullets and one-paragraph-per-item lists leave nothing in
+  // the text where the next item starts, and a capitalized first word that
+  // did not fit is just as likely to open it. Only the words themselves, or
+  // a lone widowed word, carry such a line on.
+  if (!bulletItem && /^\p{Lu}/u.test(after) && /\s/u.test(after) && !evidence) return null;
   if (right - left < NARROW * prev.size) {
     // A narrow column of short items ("Python" / "SolidWorks") is a list, not
     // a paragraph, unless the text itself says it goes on.
@@ -326,8 +336,12 @@ function pageText(items: readonly unknown[]): string {
     if (step >= 0.8 * prev.size && step < (pitch.get(key) ?? Infinity)) pitch.set(key, step);
   }
   let out = texts[0];
+  let bulletItem = BULLET_LINE.test(texts[0]);
   for (let index = 1; index < texts.length; index++) {
-    out += wrapSeparator(shapes, index, texts, pitch) ?? '\n';
+    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem);
+    // A joined line stays in the item it continues; any other line opens one.
+    if (separator === null) bulletItem = BULLET_LINE.test(texts[index]) && !DASH_CONTINUATION.test(texts[index].trim());
+    out += separator ?? '\n';
     out += texts[index];
   }
   return out;

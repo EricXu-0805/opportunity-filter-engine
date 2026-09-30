@@ -575,6 +575,22 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       'Seeking a research position for Summer 2026',
     ]);
   });
+
+  it('keeps items that end without a period on their own lines when their last line nearly fills the column', async () => {
+    // Several items here end within a word of the right edge, so geometry
+    // alone would read the next item as the rest of the line.
+    const roles = JSON.parse(readFileSync(join(FIXTURES, 'noperiod-roles.json'), 'utf8')) as Array<[string, string, string[]]>;
+    const paragraphs = readFileSync(join(FIXTURES, 'noperiod-paragraphs.txt'), 'utf8').trimEnd().split('\n');
+    expect((await parseFixture('resume-noperiod.pdf')).split('\n')).toEqual([
+      'Jordan Avery Lee',
+      'jordan.lee.test@example.com | (217) 555-0142 | Urbana, IL',
+      'EXPERIENCE',
+      ...roles.flatMap(([title, dates, bullets]) => [`${title}\t${dates}`, ...bullets]),
+      'SKILLS',
+      'Python, PyTorch, SQL, C++, Git, Linux, pandas, scikit-learn',
+      ...paragraphs,
+    ]);
+  });
 });
 
 describe('positioned text items', () => {
@@ -613,6 +629,45 @@ describe('positioned text items', () => {
       at('gradients saliency maps.', 50, 120, 688),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text).toBe('- Compared Grad-CAM and integrated-gradients saliency maps.');
+  });
+
+  it('keeps a capitalized line that no glyph or wording ties to the full line before it as the next item', async () => {
+    // Graphic list bullets leave no glyph in the text, so the next item's
+    // first word not fitting on the line above says nothing on its own. A
+    // glyph bullet earlier on the page does not carry over to these items.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Built a parser for the lab', 50, 120, 712, { hasEOL: true }),
+      at('Reduced nightly runtime by rewriting the joins and adding indexes', 50, 500, 700, { hasEOL: true }),
+      at('Wrote unit tests for fourteen functions', 50, 200, 688, { hasEOL: true }),
+      at('Configured CI to run linting, type checks and tests on every pull request', 50, 500, 676, { hasEOL: true }),
+      at('Mentored three students', 50, 110, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Built a parser for the lab',
+      'Reduced nightly runtime by rewriting the joins and adding indexes',
+      'Wrote unit tests for fourteen functions',
+      'Configured CI to run linting, type checks and tests on every pull request',
+      'Mentored three students',
+    ]);
+  });
+
+  it('still joins a capitalized word that wraps inside a glyph bullet, after a word that goes on, inside a list, or alone', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Trained a baseline that reached 0.87', 50, 500, 700, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 688, { hasEOL: true }),
+      at('Compared saliency maps computed with', 50, 500, 676, { hasEOL: true }),
+      at('Grad-CAM on chest X-rays.', 50, 120, 664, { hasEOL: true }),
+      at('Coursework: Signals and Systems, Biomedical', 50, 500, 652, { hasEOL: true }),
+      at('Imaging, Fluid Mechanics', 50, 120, 640, { hasEOL: true }),
+      at('Automated the calibration log with a shared Google', 50, 500, 628, { hasEOL: true }),
+      at('Sheet', 50, 25, 616),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Trained a baseline that reached 0.87 AUC on a held-out split.',
+      'Compared saliency maps computed with Grad-CAM on chest X-rays.',
+      'Coursework: Signals and Systems, Biomedical Imaging, Fluid Mechanics',
+      'Automated the calibration log with a shared Google Sheet',
+    ]);
   });
 
   it('keeps apart two lines that a paragraph gap separates', async () => {

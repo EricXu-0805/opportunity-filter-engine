@@ -1,0 +1,10 @@
+Designed and implemented a REST API in Flask serving 3 internal dashboards used by 40 analysts every week
+Reduced nightly ETL runtime from 40 minutes to 9 minutes by rewriting SQL joins and adding partitioned indexes
+Implemented Grad-CAM and integrated-gradients saliency maps to compare model explanations on chest X-rays
+Mentored three first-year students in data structures and algorithms during weekly office hours
+Fine-tuned a multilingual BERT model on 3,000 labeled tweets and reached 78% accuracy versus a 71% baseline
+Maintained the lab website and documentation using Jekyll and GitHub Pages
+Benchmarked three object-detection models on a custom drone dataset and reported mAP and latency tradeoffs
+Coordinated volunteer shifts for a food bank serving 300 families each month
+Optimized a CUDA kernel for sparse matrix multiplication and achieved a 3x speedup over the baseline
+Interviewed 25 users and synthesized findings into a product requirements document

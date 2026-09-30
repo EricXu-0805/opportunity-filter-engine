@@ -1,10 +1,13 @@
 // Regenerates the résumé PDF fixtures with Chromium's page.pdf, the way a
 // student's browser or a web résumé builder prints them. Run from frontend/:
-//   node src/lib/__fixtures__/resume-pdf/generate.mjs
-// The three persona files follow the recipes of the 2026-09-30 stranger walk
-// (their wrap points are the ones the walk reported); resume-layouts.pdf adds a
-// sidebar layout, list bullets drawn as graphics, right-aligned dates, a
-// one-item-per-line list and justified text split at soft hyphens.
+//   node src/lib/__fixtures__/resume-pdf/generate.mjs [name.pdf ...]
+// (no names: all of them). The three persona files follow the recipes of the
+// 2026-09-30 stranger walk (their wrap points are the ones the walk reported);
+// resume-layouts.pdf adds a sidebar layout, list bullets drawn as graphics,
+// right-aligned dates, a one-item-per-line list and justified text split at
+// soft hyphens; resume-noperiod.pdf prints items with no final period whose
+// last line nearly fills the column, as a résumé builder and a word processor
+// lay them out.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +19,8 @@ const PERSONA = readFileSync(join(OUT, 'persona.txt'), 'utf8');
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const HEADINGS = new Set(['EDUCATION', 'EXPERIENCE', 'PROJECTS', 'SKILLS']);
+const NO_PERIOD_ROLES = JSON.parse(readFileSync(join(OUT, 'noperiod-roles.json'), 'utf8'));
+const NO_PERIOD_PARAGRAPHS = readFileSync(join(OUT, 'noperiod-paragraphs.txt'), 'utf8').trimEnd().split('\n');
 
 const fixtures = {
   // Cold-email walk: one paragraph per line, Helvetica (fi ligatures), 0.7in.
@@ -100,12 +105,36 @@ const fixtures = {
     </div>`,
     pdf: { margin: { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' } },
   },
+  // Page 1: bold role rows with right-aligned dates over list bullets drawn as
+  // graphics. Page 2: one paragraph per item. No item ends with a period.
+  'resume-noperiod.pdf': {
+    body: `<style>
+      body{font-family:Helvetica,Arial,sans-serif;font-size:10.5pt;line-height:1.3;margin:0}
+      h1{font-size:18pt;margin:0} .contact{margin:2pt 0 8pt} .page{break-after:page}
+      h2{font-size:11pt;text-transform:uppercase;border-bottom:1px solid #999;margin:8pt 0 4pt}
+      .row{display:flex;justify-content:space-between;font-weight:bold;margin-top:4pt}
+      ul{margin:1pt 0 0;padding-left:14pt} li,p{margin:0}
+    </style>
+    <div class="page">
+      <h1>Jordan Avery Lee</h1><div class="contact">jordan.lee.test@example.com | (217) 555-0142 | Urbana, IL</div>
+      <h2>Experience</h2>
+      ${NO_PERIOD_ROLES.map(([title, dates, bullets]) => `<div class="row"><span>${esc(title)}</span><span>${esc(dates)}</span></div>
+        <ul>${bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>`).join('')}
+      <h2>Skills</h2><div>Python, PyTorch, SQL, C++, Git, Linux, pandas, scikit-learn</div>
+    </div>
+    <div style="font-size:10pt;width:6.5in">
+      ${NO_PERIOD_PARAGRAPHS.map((line) => `<p>${esc(line)}</p>`).join('')}
+    </div>`,
+    pdf: { margin: { top: '0.6in', bottom: '0.6in', left: '0.75in', right: '0.75in' } },
+  },
 };
 
+const only = process.argv.slice(2);
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
   for (const [name, spec] of Object.entries(fixtures)) {
+    if (only.length && !only.includes(name)) continue;
     await page.setContent(`<!doctype html><html lang="en"><head><meta charset="utf-8"></head><body>${spec.body}</body></html>`);
     writeFileSync(join(OUT, name), await page.pdf({ format: 'Letter', ...spec.pdf }));
   }
