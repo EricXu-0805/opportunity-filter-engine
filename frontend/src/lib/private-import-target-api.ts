@@ -6,6 +6,8 @@ import { contactTimestamp } from './contact-ledger';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 export const PRIVATE_TARGET_MAX_BYTES = 8 * 1024 * 1024;
+/** Mirrors backend private_import_targets_schema.MAX_BODY_BYTES, the body limit for every /private-import-targets/* route. */
+const PRIVATE_TARGET_MAX_BODY_BYTES = PRIVATE_TARGET_MAX_BYTES + 65536;
 export const PRIVATE_TARGET_TIMEOUT_MS = 30_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ID = /^private-import:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -280,13 +282,52 @@ export async function getResolvedPrivateImportTarget(id: string, options: Option
   });
 }
 
+export const PRIVATE_TRACKER_BATCH_LIMIT = 100;
+export type PrivateTrackerResolution = { id: string; status: 'resolved'; tracker: PrivateResolvedTarget['tracker'] } | { id: string; status: 'deleted' | 'not_found' };
+/** Tracker identity for many owned targets in one request. Only deleted/missing
+ * rows are per-item results; any other failure rejects the whole batch. */
+export async function resolvePrivateImportTrackerTargets(ids: string[], options: Options): Promise<PrivateTrackerResolution[]> {
+  const owner = { ...options.owner }; assertOwner(owner);
+  const wanted = [...ids];
+  if (wanted.length < 1 || wanted.length > PRIVATE_TRACKER_BATCH_LIMIT || new Set(wanted).size !== wanted.length) fail('invalid_input');
+  wanted.forEach(validateId);
+  const body = JSON.stringify({ expected_owner_id: owner.uid, ids: wanted });
+  return run(owner, options.signal, async op => {
+    const data = await request('/resolved', owner, op, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    if (!exact(data, ['version', 'items']) || data.version !== 1 || !Array.isArray(data.items) || data.items.length !== wanted.length) return fail();
+    const results: PrivateTrackerResolution[] = [];
+    for (const [index, item] of data.items.entries()) {
+      const id = wanted[index];
+      if (!record(item) || item.id !== id) return fail();
+      if (item.status === 'deleted' || item.status === 'not_found') {
+        if (!exact(item, ['id', 'status'])) return fail();
+        results.push({ id, status: item.status }); continue;
+      }
+      if (item.status !== 'resolved' || !exact(item, ['id', 'status', 'revision', 'tracker']) || !Number.isSafeInteger(item.revision) || (item.revision as number) < 1) return fail();
+      const bytes = new TextEncoder().encode(JSON.stringify({ id, owner_id: owner.uid, revision: item.revision }));
+      const digest = new Uint8Array(await op.wait(crypto.subtle.digest('SHA-256', bytes)));
+      const version = 'pit1:' + Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
+      const tracker = item.tracker;
+      if (!record(tracker) || !safeProjectedUrl(tracker.source_url) || !safeProjectedUrl(tracker.url)
+        || (tracker.organization !== null && typeof tracker.organization !== 'string')) return fail();
+      try { snapshotOpportunity({ source: 'text_parser', title: tracker.title, organization: tracker.organization,
+        source_url: tracker.source_url ?? '', url: tracker.url ?? '', description_raw: 'Summary validation only.' }); }
+      catch { return fail(); }
+      if (!same(tracker, { id, title: tracker.title, organization: tracker.organization, source_url: tracker.source_url, url: tracker.url,
+        target_scope: 'private_import', verification: 'unverified', target_version: version })) return fail();
+      results.push({ id, status: 'resolved', tracker: tracker as unknown as PrivateResolvedTarget['tracker'] });
+    }
+    return results;
+  });
+}
+
 /** Private email transport shares the account/auth/deadline boundary. No public
  * endpoint or model endpoint is reachable through this finite action set. */
 export async function privateImportEmailRequest(id: string, action: 'context' | 'variants' | 'validate',
   value: Record<string, unknown> | undefined, options: Options & { verify?: (data: Record<string, unknown>, wait: Operation['wait']) => Promise<void> }): Promise<Record<string, unknown>> {
   const owner = { ...options.owner }; assertOwner(owner); validateId(id);
   const body = action === 'context' ? undefined : jsonText({ ...value, expected_owner_id: owner.uid });
-  if (body && new TextEncoder().encode(body).length > 120000) fail('too_large');
+  if (body && new TextEncoder().encode(body).length > PRIVATE_TARGET_MAX_BODY_BYTES) fail('too_large');
   return run(owner, options.signal, async op => {
     const data = await request(`/${encodeURIComponent(id)}` + (action === 'context'
       ? `/email-context?${new URLSearchParams({ expected_owner_id: owner.uid })}` : `/cold-email/${action}`), owner, op,

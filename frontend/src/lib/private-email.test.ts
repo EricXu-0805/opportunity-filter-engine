@@ -6,6 +6,7 @@ import { getAuthState } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from './identity-owner';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import { getPrivateEmailContext, privateEmailVariants, validatePrivateEmail, type PrivateEmailContext } from './private-email';
+import { PRIVATE_TARGET_MAX_BYTES, privateImportEmailRequest } from './private-import-target-api';
 import { defaultEmailContactContext } from './email-contact-context';
 import type { ProfileData } from './types';
 
@@ -174,4 +175,21 @@ it('preserves stale/deleted/blocked server errors and does not retry any POST', 
     await expect(privateEmailVariants(profile(), id, target(), defaultEmailContactContext())).rejects.toMatchObject({ code: expected });
   }
   expect(fetchMock).toHaveBeenCalledTimes(3);
+});
+
+it('sends a schema-valid long non-Latin resume on the private route instead of failing it as too large on the client', async () => {
+  // 45,000 CJK characters is within the backend resume cap (60,000 characters) but about 135 KB of UTF-8.
+  const large = { ...profile(), resume_text: '中'.repeat(45_000) };
+  fetchMock.mockResolvedValueOnce(json(firstPost()));
+  expect(await privateEmailVariants(large, id, target(), defaultEmailContactContext())).toEqual(firstPost());
+  fetchMock.mockResolvedValueOnce(json(validPost()));
+  await expect(validatePrivateEmail('Question', 'Could you tell me the application process?', 'recipient@example.edu', true, large, id, target(), defaultEmailContactContext())).resolves.toMatchObject({ outcome: validPost().outcome });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string).experience_evidence.resume_text).toHaveLength(45_000);
+});
+
+it('still refuses a body above the private route body limit before any request', async () => {
+  const oversized = { resume_text: 'x'.repeat(PRIVATE_TARGET_MAX_BYTES + 65536) };
+  await expect(privateImportEmailRequest(id, 'variants', oversized, options())).rejects.toMatchObject({ code: 'too_large' });
+  expect(auth).not.toHaveBeenCalled(); expect(fetchMock).not.toHaveBeenCalled();
 });

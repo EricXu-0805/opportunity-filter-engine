@@ -1,5 +1,5 @@
 import { getShortlistOpportunities } from './api';
-import { getResolvedPrivateImportTarget, PrivateTargetError } from './private-import-target-api';
+import { PRIVATE_TRACKER_BATCH_LIMIT, resolvePrivateImportTrackerTargets } from './private-import-target-api';
 import type { OwnerToken } from './identity-owner';
 import type { Opp } from '@/app/favorites/types';
 
@@ -11,23 +11,14 @@ export async function loadTrackerTargets(ids: string[], owner: OwnerToken): Prom
   const publicResult = publicIds.length ? await getShortlistOpportunities(publicIds) : { opportunities: [], unavailableIds: [] };
   const opportunities = [...publicResult.opportunities] as unknown as Opp[];
   const unavailableIds = [...publicResult.unavailableIds];
-  let next = 0; let failed = false; let failure: unknown;
-  const controller = new AbortController();
-  await Promise.all(Array.from({ length: Math.min(4, privateIds.length) }, async () => {
-    while (!failed && next < privateIds.length) {
-      const id = privateIds[next++];
-      try {
-        const { tracker } = await getResolvedPrivateImportTarget(id, { owner: origin, signal: controller.signal });
-        if (failed) return;
-        opportunities.push({ id: tracker.id, title: tracker.title, organization: tracker.organization ?? undefined,
-          source_url: tracker.source_url ?? undefined, url: tracker.url ?? undefined });
-      } catch (error) {
-        if (failed) return;
-        if (error instanceof PrivateTargetError && ['not_found', 'deleted'].includes(error.code)) unavailableIds.push(id);
-        else { failed = true; failure = error; controller.abort(); }
-      }
+  // One request per batch, not per target: the per-IP budget is shared with every other route.
+  for (let start = 0; start < privateIds.length; start += PRIVATE_TRACKER_BATCH_LIMIT) {
+    for (const item of await resolvePrivateImportTrackerTargets(privateIds.slice(start, start + PRIVATE_TRACKER_BATCH_LIMIT), { owner: origin })) {
+      if (item.status !== 'resolved') { unavailableIds.push(item.id); continue; }
+      const { tracker } = item;
+      opportunities.push({ id: tracker.id, title: tracker.title, organization: tracker.organization ?? undefined,
+        source_url: tracker.source_url ?? undefined, url: tracker.url ?? undefined });
     }
-  }));
-  if (failed) throw failure;
+  }
   return { opportunities, unavailableIds };
 }

@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   getAuthState: vi.fn(),
   onAuthChange: vi.fn(),
   getShortlistOpportunities: vi.fn(),
-  getResolvedPrivateImportTarget: vi.fn(),
+  resolvePrivateImportTrackerTargets: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/lib/api', () => ({
 
 vi.mock('@/lib/private-import-target-api', async original => ({
   ...await original<typeof import('@/lib/private-import-target-api')>(),
-  getResolvedPrivateImportTarget: mocks.getResolvedPrivateImportTarget,
+  resolvePrivateImportTrackerTargets: mocks.resolvePrivateImportTrackerTargets,
 }));
 import { advanceOwnerEpoch, syncLocalIdentityOwner, captureOwnerToken, isOwnerTokenValid, OwnerMismatchError } from '@/lib/identity-owner';
 
@@ -101,7 +101,7 @@ beforeEach(() => {
   mocks.getAuthState.mockReset();
   mocks.onAuthChange.mockReset();
   mocks.getShortlistOpportunities.mockReset();
-  mocks.getResolvedPrivateImportTarget.mockReset();
+  mocks.resolvePrivateImportTrackerTargets.mockReset();
   authChangeCallback = null;
 
   interactions = new Map([
@@ -1161,9 +1161,9 @@ it('reloads private targets when the same account finishes initial local ownersh
   expect(isOwnerTokenValid(captureOwnerToken(), uid)).toBe(false);
   mocks.getAuthState.mockResolvedValue(authState(uid));
   mocks.getInteractionsFull.mockResolvedValue(new Map([[id, { type: 'applied' }]]));
-  mocks.getResolvedPrivateImportTarget.mockImplementation(async (_id, { owner }) => {
+  mocks.resolvePrivateImportTrackerTargets.mockImplementation(async (_ids, { owner }) => {
     if (!isOwnerTokenValid(owner, uid)) throw new OwnerMismatchError();
-    return { tracker: { id, title: 'Saved private target', organization: null, source_url: null, url: null } };
+    return [{ id, status: 'resolved', tracker: { id, title: 'Saved private target', organization: null, source_url: null, url: null } }];
   });
   const { result } = renderHook(useTrackerData);
   await waitFor(() => expect(result.current.error).toBe(true));

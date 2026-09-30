@@ -71,21 +71,32 @@ def parse_url(
 
     document = extract_import_document(html, content_type=content_type)
     domain = urlparse(url).netloc
+    organization = _domain_to_org(domain)
+    deadline = _extract_deadline(document["text"])
+    # A guess from the address or a date near "deadline" is not a stated fact.
+    inferred = {}
+    if organization:
+        inferred["organization"] = "heuristic:url_domain"
+    if deadline:
+        inferred["deadline"] = "heuristic:page_text_date"
+    extra_fields = {
+        "domain": domain,
+        "description_source": "page_text",
+        "page_meta_summary": document["meta_summary"],
+        "needs_manual_review": True,
+    }
+    if inferred:
+        extra_fields["inferred_fields"] = inferred
     return RawOpportunity(
         source="url_parser",
         source_url=url,
         title=document["title"] or "Untitled Opportunity",
         description_raw=document["text"],
         url=url,
-        organization=_domain_to_org(domain),
-        deadline=_extract_deadline(document["text"]),
+        organization=organization,
+        deadline=deadline,
         location=None,
-        extra_fields={
-            "domain": domain,
-            "description_source": "page_text",
-            "page_meta_summary": document["meta_summary"],
-            "needs_manual_review": True,
-        },
+        extra_fields=extra_fields,
     )
 
 
@@ -526,26 +537,32 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
     org = llm.get("organization")
     if isinstance(org, str) and org.strip():
         base = _replace(base, organization=org.strip())
+        inferred["organization"] = "llm:url_parser"
 
     opp_type = llm.get("opportunity_type")
     if isinstance(opp_type, str) and opp_type.lower() in _VALID_OPP_TYPES:
         extra["opportunity_type"] = opp_type.lower()
+        inferred["opportunity_type"] = "llm:url_parser"
 
     location = llm.get("location")
     if isinstance(location, str) and location.strip():
         base = _replace(base, location=location.strip())
+        inferred["location"] = "llm:url_parser"
 
     on_campus = llm.get("on_campus")
     if isinstance(on_campus, bool):
         extra["on_campus"] = on_campus
+        inferred["on_campus"] = "llm:url_parser"
 
     paid = llm.get("paid")
     if isinstance(paid, str) and paid.lower() in _VALID_PAID:
         extra["paid"] = paid.lower()
+        inferred["paid"] = "llm:url_parser"
 
     deadline = llm.get("deadline")
     if isinstance(deadline, str) and _ISO_DATE_RE.match(deadline.strip()):
         base = _replace(base, deadline=deadline.strip())
+        inferred["deadline"] = "llm:url_parser"
 
     description = llm.get("description")
     if isinstance(description, str) and description.strip():
@@ -568,10 +585,12 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
     pref_year = _coerce_str_list(llm.get("preferred_year"), _VALID_YEARS)
     if pref_year:
         extra["preferred_year"] = pref_year
+        inferred["preferred_year"] = "llm:url_parser"
 
     intl = llm.get("international_friendly")
     if isinstance(intl, str) and intl.lower() in _VALID_INTL:
         extra["international_friendly"] = intl.lower()
+        inferred["international_friendly"] = "llm:url_parser"
 
     extra["llm_enriched"] = True
     extra["needs_manual_review"] = True

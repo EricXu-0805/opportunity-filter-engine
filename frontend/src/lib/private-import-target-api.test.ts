@@ -1,12 +1,12 @@
 import actualResolved from './__fixtures__/private-resolved-target-api.json';
 import actualApi from './__fixtures__/private-import-target-api.json';
 import { createHash } from 'node:crypto';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('./supabase', () => ({ getAuthState: vi.fn() }));
 import { getAuthState } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, OwnerMismatchError } from './identity-owner';
 import { OWNER, OTHER, setupOwner, deferred, owner as setOwner } from './application-material.test-utils';
-import { deletePrivateImportTarget, getPrivateImportTarget, getResolvedPrivateImportTarget, listPrivateImportTargets, savePrivateImportTarget, PRIVATE_TARGET_TIMEOUT_MS } from './private-import-target-api';
+import { deletePrivateImportTarget, getPrivateImportTarget, getResolvedPrivateImportTarget, listPrivateImportTargets, resolvePrivateImportTrackerTargets, savePrivateImportTarget, PRIVATE_TARGET_TIMEOUT_MS } from './private-import-target-api';
 import type { ImportedOpportunity } from './api';
 const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const auth = vi.mocked(getAuthState); const fetchMock = vi.fn<typeof fetch>();
@@ -184,4 +184,57 @@ it('consumes the actual FastAPI resolved fixture without inventing public fields
   await setOwner(actualResolved.owner_id); auth.mockResolvedValue(state(actualResolved.owner_id));
   fetchMock.mockResolvedValueOnce(json(actualResolved));
   expect(await getResolvedPrivateImportTarget(actualResolved.id, options())).toEqual(actualResolved);
+});
+
+describe('batch Tracker resolution', () => {
+  const other = 'private-import:dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const version = (revision: number, target = id) => 'pit1:' + createHash('sha256').update(JSON.stringify({ id: target, owner_id: OWNER, revision })).digest('hex');
+  const tracker = (changes: Record<string, unknown> = {}) => ({ id, title: 'Research 中文', organization: null, source_url: 'https://lab.example.edu/join', url: null,
+    target_scope: 'private_import', verification: 'unverified', target_version: version(2), ...changes });
+  const batch = (items: unknown[]) => json({ version: 1, items });
+  const resolved = (changes: Record<string, unknown> = {}, trackerChanges: Record<string, unknown> = {}) => ({ id, status: 'resolved', revision: 2, tracker: tracker(trackerChanges), ...changes });
+
+  it('posts the owner and ids once and keeps per-item deleted/missing results in request order', async () => {
+    fetchMock.mockResolvedValueOnce(batch([resolved(), { id: other, status: 'not_found' }]));
+    expect(await resolvePrivateImportTrackerTargets([id, other], options())).toEqual([{ id, status: 'resolved', tracker: tracker() }, { id: other, status: 'not_found' }]);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toMatch(/\/private-import-targets\/resolved$/);
+    expect(init).toMatchObject({ method: 'POST', cache: 'no-store', redirect: 'error' });
+    expect(JSON.parse(init!.body as string)).toEqual({ expected_owner_id: OWNER, ids: [id, other] });
+  });
+
+  it.each([
+    ['empty', []], ['duplicate', [id, id]], ['public id', ['public-1']],
+    ['over the limit', Array.from({ length: 101 }, (_, n) => `private-import:cccccccc-cccc-4ccc-8ccc-${String(n).padStart(12, '0')}`)],
+  ])('refuses %s input before any request', async (_label, ids) => {
+    await expect(resolvePrivateImportTrackerTargets(ids as string[], options())).rejects.toMatchObject({ code: 'invalid_input' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['reordered items', () => [{ id: other, status: 'not_found' }, resolved()]],
+    ['missing item', () => [resolved()]],
+    ['forged version', () => [resolved({}, { target_version: version(3) }), { id: other, status: 'deleted' }]],
+    ['unrecomputable revision', () => [resolved({ revision: 0 }), { id: other, status: 'deleted' }]],
+    ['unsafe link', () => [resolved({}, { url: 'javascript:alert(1)' }), { id: other, status: 'deleted' }]],
+    ['extra authority', () => [resolved({}, { target_truth: { actionable: true } }), { id: other, status: 'deleted' }]],
+    ['public scope', () => [resolved({}, { target_scope: 'public' }), { id: other, status: 'deleted' }]],
+    ['blank title', () => [resolved({}, { title: ' ' }), { id: other, status: 'deleted' }]],
+    ['unknown status', () => [resolved(), { id: other, status: 'archived' }]],
+    ['detail smuggled into a status item', () => [resolved(), { id: other, status: 'deleted', tracker: tracker() }]],
+  ])('rejects a receipt with %s', async (_label, items) => {
+    fetchMock.mockResolvedValueOnce(batch(items()));
+    await expect(resolvePrivateImportTrackerTargets([id, other], options())).rejects.toMatchObject({ code: 'invalid_receipt' });
+  });
+
+  it('reports a refused batch as unavailable, never as missing targets', async () => {
+    fetchMock.mockResolvedValueOnce(json({ detail: 'Too many requests' }, 429));
+    await expect(resolvePrivateImportTrackerTargets([id], options())).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('refuses a session that resolves to another account', async () => {
+    auth.mockResolvedValueOnce(state(OTHER));
+    await expect(resolvePrivateImportTrackerTargets([id], options())).rejects.toBeInstanceOf(OwnerMismatchError);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

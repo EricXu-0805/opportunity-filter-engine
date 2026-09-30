@@ -619,6 +619,7 @@ function ImportUpdateReview({ review, error, pending, onConfirm, onKeep, onRerea
     <section aria-label={t('import.reviewUpdate')} className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 space-y-5">
       <h2 className="text-lg font-semibold text-gray-900">{t('import.reviewUpdate')}</h2>
       <p className="text-sm text-gray-600">{t('import.updateDraftsNotice')}</p>
+      <p className="text-sm text-amber-800">{t('import.updateFieldsInferred')}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {([
           ['import.previousVersion', review.expected.opportunity],

@@ -59,6 +59,7 @@ describe('actual reimport response → reviewed update → reopened favorite', (
     expect(within(replacement).getByText(t('import.excerptAiInput'))).toBeInTheDocument();
     expect(within(replacement).queryByText(t('import.fullAiInput'))).toBeNull();
     expect(screen.getByText(t('import.updateDraftsNotice'))).toBeInTheDocument();
+    expect(screen.getByText(t('import.updateFieldsInferred'))).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: t('import.confirmUpdate') }));
     await screen.findByText(t('import.updated'));
     const updated = storage.readCustomImports();

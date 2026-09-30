@@ -51,6 +51,7 @@ describe('review a saved import before replacing it', () => {
     expect(within(replacement).getByText(/NEW FINAL LINE/).textContent).toBe(newSource);
     expect(within(replacement).getByText('import.excerptAiInput')).toBeInTheDocument();
     expect(screen.getByText('import.updateDraftsNotice')).toBeInTheDocument();
+    expect(screen.getByText('import.updateFieldsInferred')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'import.keepSaved' }));
     expect(readCustomImports()).toEqual([old]);
     expect(screen.queryByRole('region', { name: 'import.previousVersion' })).toBeNull();

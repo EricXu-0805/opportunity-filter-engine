@@ -283,3 +283,108 @@ def test_valid_browser_links_are_not_blanket_removed(storage, url):
     response = get_resolved()
     assert response.status_code == 200
     assert response.json()["detail"]["source_url"] == url
+
+
+def _batch_storage(monkeypatch, rows, *, failing=frozenset()):
+    """Serve several owned rows by id; ``failing`` ids answer with a storage outage."""
+    import json
+
+    import httpx
+
+    calls = []
+
+    def handle(request):
+        calls.append(request.url.path)
+        if request.url.path == "/auth/v1/user":
+            return httpx.Response(200, json={"id": OWNER, "is_anonymous": False, "app_metadata": {"provider": "google"}})
+        data = json.loads(request.content)
+        assert request.url.path.endswith("/read_private_import_target")
+        if data["p_id"] in failing:
+            return httpx.Response(500, json={"code": "XX000"})
+        return httpx.Response(200, json={"target": rows.get(data["p_id"])})
+
+    monkeypatch.setattr(private_route, "new_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(handle)))
+    monkeypatch.setattr(resolution.storage, "new_client", private_route.new_client)
+    return calls
+
+
+def _row(target_id, *, deleted=False, url=""):
+    from tests.test_private_import_targets import OPPORTUNITY
+
+    row = raw_record({**OPPORTUNITY, "url": url}, revision=3 if deleted else 2, deleted=deleted)
+    row["id"] = target_id
+    return row
+
+
+def post_batch(ids, *, owner=OWNER, params=None, body=None):
+    return TestClient(app).post(
+        "/api/private-import-targets/resolved",
+        json=body if body is not None else {"expected_owner_id": owner, "ids": ids},
+        params=params,
+        headers={"Authorization": "Bearer fixture-token"},
+    )
+
+
+LIVE = "private-import:a2000000-0000-4000-8000-000000000011"
+GONE = "private-import:a2000000-0000-4000-8000-000000000012"
+MISSING = "private-import:a2000000-0000-4000-8000-000000000013"
+
+
+def test_batch_resolves_many_tracker_targets_in_one_request(storage, monkeypatch):
+    rows = {LIVE: _row(LIVE, url="http://localhost/admin"), GONE: _row(GONE, deleted=True)}
+    calls = _batch_storage(monkeypatch, rows)
+    response = post_batch([LIVE, GONE, MISSING])
+    assert response.status_code == 200, response.text
+    assert "no-store" in response.headers["cache-control"]
+    single = resolution.project_private_target(rows[LIVE], expected_owner_id=OWNER, target_id=LIVE)
+    assert response.json() == {
+        "version": 1,
+        "items": [
+            {"id": LIVE, "status": "resolved", "revision": 2, "tracker": single.tracker},
+            {"id": GONE, "status": "deleted"},
+            {"id": MISSING, "status": "not_found"},
+        ],
+    }
+    assert single.tracker["url"] is None
+    assert "description_raw" not in response.text and "extra_fields" not in response.text
+    assert calls.count("/auth/v1/user") == 1
+
+
+def test_batch_storage_outage_is_an_error_not_a_missing_target(storage, monkeypatch):
+    _batch_storage(monkeypatch, {LIVE: _row(LIVE)}, failing={MISSING})
+    response = post_batch([LIVE, MISSING])
+    assert response.status_code == 503
+    assert response.json() == {"detail": {"code": "private_target_unavailable"}}
+
+
+def test_batch_wrong_owner_stops_before_any_read(storage, monkeypatch):
+    from tests.test_private_import_targets import OTHER
+
+    calls = _batch_storage(monkeypatch, {LIVE: _row(LIVE)})
+    response = post_batch([LIVE], owner=OTHER)
+    assert response.status_code == 409
+    assert response.json() == {"detail": {"code": "private_target_owner_changed"}}
+    assert calls == ["/auth/v1/user"]
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["empty", "duplicate", "public_id", "too_many", "query", "extra_key", "not_a_list"],
+)
+def test_batch_invalid_request_is_refused_before_storage(storage, monkeypatch, case):
+    calls = _batch_storage(monkeypatch, {})
+    ids = {
+        "empty": [],
+        "duplicate": [LIVE, LIVE],
+        "public_id": [LIVE, "canonical-public-id"],
+        "too_many": [f"private-import:a2000000-0000-4000-8000-{n:012d}" for n in range(private_route.TRACKER_BATCH_LIMIT + 1)],
+    }.get(case, [LIVE])
+    body = {"expected_owner_id": OWNER, "ids": ids}
+    if case == "extra_key":
+        body["opportunity"] = "PRIVATE_SOURCE"
+    if case == "not_a_list":
+        body["ids"] = LIVE
+    response = post_batch(ids, body=body, params={"expected_owner_id": OWNER} if case == "query" else None)
+    assert response.status_code == 422
+    assert response.json() == {"detail": {"code": "private_target_invalid_request"}}
+    assert calls == []

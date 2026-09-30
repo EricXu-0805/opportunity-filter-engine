@@ -253,6 +253,55 @@ class TestMergeLlmIntoBase:
         assert "skills_required" not in merged.extra_fields
 
 
+    def test_stamps_every_model_set_field_as_inferred(self, base):
+        llm = {
+            "organization": "Acme Corp",
+            "opportunity_type": "internship",
+            "location": "Champaign, IL",
+            "on_campus": True,
+            "paid": "stipend",
+            "deadline": "2026-03-15",
+            "preferred_year": ["junior"],
+            "international_friendly": "yes",
+        }
+        merged = _merge_llm_into_base(base, llm)
+        stamps = merged.extra_fields["inferred_fields"]
+        for field in llm:
+            assert stamps[field] == "llm:url_parser", field
+
+    def test_does_not_stamp_fields_the_model_left_alone(self, base):
+        merged = _merge_llm_into_base(base, {"paid": "free pizza included", "deadline": "next March"})
+        assert "paid" not in merged.extra_fields.get("inferred_fields", {})
+        assert "deadline" not in merged.extra_fields.get("inferred_fields", {})
+
+
+class TestV1HeuristicStamps:
+    HTML = "<html><head><title>Lab opening</title></head><body><main>Deadline: March 15, 2026. Join us.</main></body></html>"
+
+    def test_domain_organization_and_regex_deadline_are_stamped(self):
+        from src.collectors.url_parser import parse_url
+        result = parse_url("https://cs.illinois.edu/lab", html=self.HTML)
+        assert result.organization == "University of Illinois at Urbana-Champaign"
+        assert result.deadline == "March 15, 2026"
+        assert result.extra_fields["inferred_fields"] == {
+            "organization": "heuristic:url_domain",
+            "deadline": "heuristic:page_text_date",
+        }
+
+    def test_model_value_replaces_the_heuristic_stamp(self):
+        from src.collectors.url_parser import parse_url
+        base = parse_url("https://cs.illinois.edu/lab", html=self.HTML)
+        merged = _merge_llm_into_base(base, {"deadline": "2026-03-15"})
+        assert merged.extra_fields["inferred_fields"]["deadline"] == "llm:url_parser"
+        assert merged.extra_fields["inferred_fields"]["organization"] == "heuristic:url_domain"
+
+    def test_no_deadline_found_means_no_deadline_stamp(self):
+        from src.collectors.url_parser import parse_url
+        result = parse_url("https://cs.illinois.edu/lab", html="<html><body><main>Join us.</main></body></html>")
+        assert result.deadline is None
+        assert "deadline" not in result.extra_fields["inferred_fields"]
+
+
 # ---------- parse_url_llm end-to-end ----------
 
 class TestParseUrlLlm:

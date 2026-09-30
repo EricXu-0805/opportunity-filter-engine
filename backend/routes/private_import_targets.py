@@ -1,12 +1,13 @@
 """Owner-bound imports and local preparation receipts; no model or publication."""
 
+import asyncio
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
-from pydantic import ValidationError
+from pydantic import Field, ValidationError, field_validator
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
@@ -21,7 +22,10 @@ from backend.lib.private_import_targets_schema import (
     identifier,
     timestamp,
 )
-from backend.lib.private_target_resolution import resolve_private_import_target
+from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
+
+TRACKER_BATCH_LIMIT = 100
+_TRACKER_BATCH_CONCURRENCY = 4
 
 
 class PrivateTargetRoute(APIRoute):
@@ -85,6 +89,52 @@ async def list_targets(request: Request):
     async with service_for(request, scope) as service:
         result = await service.list(scope, before_time, before_id, int(raw_limit))
     return JSONResponse(result, headers=PRIVATE)
+
+
+class TrackerBatchRequest(Scope):
+    ids: list[str] = Field(min_length=1, max_length=TRACKER_BATCH_LIMIT)
+
+    @field_validator("ids")
+    @classmethod
+    def private_unique(cls, value: list[str]) -> list[str]:
+        for item in value:
+            identifier(item)
+        if len(set(value)) != len(value):
+            raise ValueError("Duplicate identifier")
+        return value
+
+
+@router.post("/resolved")
+async def read_resolved_targets(data: TrackerBatchRequest, request: Request):
+    """Tracker identity for many owned targets in one rate-limited request.
+
+    Each row goes through the same read and projection as /{id}/resolved; only a
+    deleted or missing row becomes a per-item status, any other failure fails
+    the whole batch so an outage is never shown as a missing target.
+    """
+    if request.query_params:
+        raise ValueError("Unexpected query")
+    async with service_for(request, data) as service:
+        gate = asyncio.Semaphore(_TRACKER_BATCH_CONCURRENCY)
+
+        async def one(target_id: str) -> dict:
+            async with gate:
+                try:
+                    target = (await service.read(target_id, data))["target"]
+                except PrivateTargetError as exc:
+                    if exc.code == "private_target_not_found":
+                        return {"id": target_id, "status": "not_found"}
+                    raise
+            if target["deleted_at"] is not None:
+                return {"id": target_id, "status": "deleted"}
+            resolved = project_private_target(target, expected_owner_id=data.expected_owner_id, target_id=target_id)
+            return {"id": target_id, "status": "resolved", "revision": resolved.revision, "tracker": resolved.tracker}
+
+        results = await asyncio.gather(*(one(target_id) for target_id in data.ids), return_exceptions=True)
+    for result in results:
+        if isinstance(result, BaseException):
+            raise result
+    return JSONResponse({"version": 1, "items": results}, headers=PRIVATE)
 
 
 @router.get("/{target_id}")
