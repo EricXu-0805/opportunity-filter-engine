@@ -530,22 +530,29 @@ test.describe('Complete target résumé', () => {
     const units = aiUnits(request.draft);
     const selected = new Set(request.selected_unit_ids);
     return {
-      ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: request.request_id,
+      ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, pipeline_version: 'full-target-v6', request_id: request.request_id,
       document_id: request.draft.id, opportunity_id: request.draft.opportunity_id,
       document_signature: request.document_signature, base: structuredClone(request.draft.base),
       manifest: { unit_ids: units.map(unit => unit.line.id),
         protected_unit_count: draftLines(request.draft).filter(unit => unit.section.kind === 'basics').length },
-      method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
-      receipts: units.filter(unit => selected.has(unit.line.id)).map(({ section, block, line }) => ({
-        unit_id: line.id, section_id: section.id, block_id: block.id,
-        evidence: { ...line.evidence }, before_text: line.text,
-        status: structureOnly && line.evidence.kind === 'experience' ? 'unchanged' : 'suggested',
-        reason_code: structureOnly && line.evidence.kind === 'experience' ? 'no_change' : null,
-        suggestion: { priority: section.kind === 'other' ? 'high' : block.id === 'project-2' ? 'normal' : 'low',
-          reason: 'Review this complete item alongside the quoted target requirement.',
-          target_evidence: [targetEvidence(request.draft)],
-          proposed_text: !structureOnly && line.evidence.kind === 'experience' ? `${line.text}\nReviewed wording.` : null },
-      })),
+      method: 'ai', logical_calls: structureOnly ? 1 : 2, provider_attempts_upper_bound: structureOnly ? 2 : 4,
+      receipts: units.filter(unit => selected.has(unit.line.id)).map(({ section, block, line }) => {
+        // The whole line linked to the quoted requirement: advice, never a claimed match.
+        const target = targetEvidence(request.draft);
+        const links = line.original.trim() ? [{ id: 'L1', relation: 'broader' as const, entailed: false, target_evidence: target,
+          source_evidence: { unit_id: line.id, start: 0, end: Array.from(line.original).length, quote: line.original }, written_as: null }] : [];
+        const rewritten = !structureOnly && line.evidence.kind === 'experience';
+        return {
+          unit_id: line.id, section_id: section.id, block_id: block.id,
+          evidence: { ...line.evidence }, before_text: line.text,
+          status: structureOnly && line.evidence.kind === 'experience' ? 'unchanged' as const : 'suggested' as const,
+          reason_code: structureOnly && line.evidence.kind === 'experience' ? 'no_safe_change' as const : null,
+          suggestion: { priority: section.kind === 'other' && links.length ? 'high' as const : block.id === 'project-2' ? 'normal' as const : 'low' as const,
+            reason: 'Review this complete item alongside the quoted target requirement.',
+            target_evidence: links.map(link => link.target_evidence), links, ops: rewritten ? ['verb_first' as const] : [],
+            proposed_text: rewritten ? `${line.text}\nReviewed wording.` : null, alternative_text: null },
+        };
+      }),
     };
   }
   async function captureAi(page: Page, answer: (request: TargetResumeAiRequest, index: number, route: Route) => Promise<void>) {

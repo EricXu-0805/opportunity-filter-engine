@@ -5,10 +5,10 @@ import {
 } from './target-resume';
 import { resumeTextCharacters } from './resume-input';
 import {
-  FULL_TARGET_AI_VERSION, FULL_TARGET_AI_MAX_BODY_BYTES, FULL_TARGET_AI_MAX_UNITS,
+  FULL_TARGET_AI_VERSION, FULL_TARGET_AI_MAX_BODY_BYTES, FULL_TARGET_AI_MAX_UNITS, FULL_TARGET_AI_MAX_EXPERIENCE_UNITS,
   FULL_TARGET_AI_MAX_UNIT_CHARACTERS, FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS,
   FULL_TARGET_AI_MAX_TARGET_CHARACTERS, FULL_TARGET_AI_MAX_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS,
-  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS,
+  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_ANCHORS, TARGET_RESUME_AI_OPS,
   type PreparedTargetResumeAi, type TargetResumeAiUnit, type TargetResumeAiReceipt,
   type TargetResumeAiRequest, type TargetResumeAiResponse,
   type TargetResumeAiPriority,
@@ -23,6 +23,8 @@ export interface TargetResumeAICurrentContext {
 }
 export interface TargetResumeAICoverage {
   total: number; protected: number; pending: number; suggested: number;
+  /** suggested = rewrites (reviewed new wording) + advice (a fact line's priority and links). */
+  rewrites: number; advice: number;
   unchanged: number; skipped: number; processed: number; complete: boolean;
 }
 export interface MergedTargetResumeAI {
@@ -31,6 +33,8 @@ export interface MergedTargetResumeAI {
 export interface ApplyTargetResumeAIOptions {
   supportGroups?: TargetResumeSupportGroup[];
   rewriteUnitIds: string[]; applyStructure: boolean; currentContext: TargetResumeAICurrentContext;
+  /** Selected rewrites to apply without the posting's terms (their alternative_text). */
+  alternativeUnitIds?: string[];
 }
 class Invalid extends Error {
   constructor(readonly code: TargetResumeAIErrorCode) { super(code); }
@@ -124,6 +128,9 @@ function requirePrepared(prepared: PreparedTargetResumeAi): void {
   if (!same(expected.units, prepared.units) || expected.protectedCount !== prepared.protected_unit_count) fail('invalid_request');
 }
 
+/** One anchor's JSON around its text: {"from":"requirement","id":"t48","text":""} and a comma. */
+const ANCHOR_JSON_CHARACTERS = 44;
+
 /** Freeze one exact draft before hashing. All eligible lines are traversed;
  * call budgets make multiple batches, not a first-N document selection. */
 export async function prepareTargetResumeAI(value: unknown, supportGroups?: TargetResumeSupportGroup[]): Promise<TargetResumeAIResult<PreparedTargetResumeAi>> {
@@ -155,17 +162,24 @@ export async function prepareTargetResumeAI(value: unknown, supportGroups?: Targ
     const byId = new Map(units.map(unit=>[unit.unit_id,unit]));
     const fits = (ids: string[]) => {
       const sources = supportSourceIds(ids, capturedGroups).map(id=>byId.get(id)!);
-      return ids.length <= FULL_TARGET_AI_MAX_UNITS && sources.reduce((sum,unit)=>sum+resumeTextCharacters(unit.original),0) <= FULL_TARGET_AI_MAX_UNIT_CHARACTERS
+      return ids.length <= FULL_TARGET_AI_MAX_UNITS
+        && ids.filter(id => byId.get(id)!.evidence.kind === 'experience').length <= FULL_TARGET_AI_MAX_EXPERIENCE_UNITS
+        && sources.reduce((sum,unit)=>sum+resumeTextCharacters(unit.original),0) <= FULL_TARGET_AI_MAX_UNIT_CHARACTERS
         && sources.reduce((sum,unit)=>sum+(unit.evidence.kind==='experience' ? resumeTextCharacters(unit.original) : 0),0) <= FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS;
     };
-    // Mirrors the server's canonical prompt: every batch repeats the system
-    // instructions, target, direction and whole-block fact context. The server
-    // stays authoritative and asks for a smaller request if this falls short.
-    const promptTarget = { ...target,
-      research: target.research.status === 'available' ? target.research : { ...target.research, snapshot: null },
-      lab: target.lab.status === 'available' ? target.lab : { ...target.lab, snapshot: null } };
-    const fixedPrompt = FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS + resumeTextCharacters(canonical({ locale: 'en', target: promptTarget,
-      block_contexts: [], units: [], ...(interests === undefined ? {} : { student_direction: { research_interests: interests } }) }));
+    // Bounds the server's canonical prompt: every batch repeats the system
+    // instructions, anchors, criteria, direction and whole-block fact context.
+    // The server cuts the anchors, so every quotable field counts as if all of
+    // it were anchor text, plus each anchor's own JSON. The server stays
+    // authoritative and asks for a smaller request if this falls short.
+    const quotable = [target.description, ...target.requirements,
+      ...(target.research.status === 'available' ? target.research.snapshot!.works.map(work => work.title) : []),
+      ...(target.lab.status === 'available' ? target.lab.snapshot!.pages.flatMap(page => page.sections.flatMap(section => [section.heading, section.text])) : [])];
+    const anchorPrompt = quotable.reduce((sum, field) => sum + resumeTextCharacters(JSON.stringify(field)), 0)
+      + FULL_TARGET_AI_MAX_ANCHORS * ANCHOR_JSON_CHARACTERS;
+    const fixedPrompt = FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS + anchorPrompt + resumeTextCharacters(canonical({ anchors: [],
+      block_contexts: [], criteria: target.criteria, locale: 'en', opportunity: { organization: target.organization, title: target.title },
+      units: [], ...(interests === undefined ? {} : { student_direction: { research_interests: interests } }) }));
     const blockKey = (unit: TargetResumeAiUnit) => JSON.stringify([unit.section_id, unit.block_id]);
     const blockPrompt = new Map<string, number>();
     for (const section of draft.document.sections) for (const block of section.blocks) {
@@ -200,42 +214,86 @@ export async function prepareTargetResumeAI(value: unknown, supportGroups?: Targ
   } catch (error) { return failure(error, 'invalid_document'); }
 }
 
-const REASONS = new Set(['no_change', 'unit_too_large', 'context_too_large', 'target_too_large',
-  'interests_too_large', 'batch_context_too_large',
-  'model_unavailable', 'invalid_model_response', 'ungrounded_rewrite', 'missing_result',
-  'no_target_evidence', 'budget_exhausted', 'timeout']);
+const KEEP_CODES = new Set(['no_change', 'no_link', 'already_aligned', 'no_safe_change', 'cosmetic_only',
+  'beyond_allowed_edit', 'rewrite_rejected', 'review_rejected']);
+const SKIP_CODES = new Set(['unit_too_large', 'context_too_large', 'target_too_large', 'target_has_no_text',
+  'interests_too_large', 'batch_context_too_large', 'model_unavailable', 'invalid_model_response', 'missing_result',
+  'budget_exhausted', 'timeout', 'rewrite_unchecked']);
+const OPS: ReadonlySet<string> = new Set(TARGET_RESUME_AI_OPS);
 const PRIORITIES = new Set(['high', 'normal', 'low']);
 function evidenceQuote(draft: TargetResumeV1, value: unknown): void {
   if (!isTargetResumeEvidence(draft.target_snapshot, value)) fail('invalid_response');
 }
+/** A literal codepoint span of the unit's original or of one of its confirmed support lines. */
+function sourceQuote(originals: Map<string, string>, value: unknown): void {
+  shape(value, ['unit_id', 'start', 'end', 'quote']);
+  const original = typeof value.unit_id === 'string' ? originals.get(value.unit_id) : undefined;
+  text(value.quote);
+  if (original === undefined || !value.quote.trim() || !Number.isSafeInteger(value.start) || !Number.isSafeInteger(value.end)
+    || (value.start as number) < 0 || (value.end as number) <= (value.start as number)
+    || Array.from(original).slice(value.start as number, value.end as number).join('') !== value.quote) fail('invalid_response');
+}
+function rewriteText(value: unknown): void {
+  text(value);
+  if (!value.trim() || resumeTextCharacters(value) > FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS) fail('invalid_response');
+}
 function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiUnit, value: unknown): TargetResumeAiReceipt {
   shape(value, ['unit_id', 'section_id', 'block_id', 'evidence', 'before_text', 'status', 'reason_code', 'suggestion']);
   if (value.unit_id !== unit.unit_id || value.section_id !== unit.section_id || value.block_id !== unit.block_id
-    || !same(value.evidence, unit.evidence) || value.before_text !== unit.before_text
-    || !['suggested', 'unchanged', 'skipped'].includes(String(value.status))
-    || !(value.reason_code === null || REASONS.has(String(value.reason_code)))) fail('invalid_response');
+    || !same(value.evidence, unit.evidence) || value.before_text !== unit.before_text) fail('invalid_response');
+  const experience = unit.evidence.kind === 'experience';
   if (value.status === 'skipped') {
-    if (value.suggestion !== null || value.reason_code === null || value.reason_code === 'no_change') fail('invalid_response');
-  } else if (value.suggestion !== null) {
-    if ((value.status === 'suggested' && value.reason_code !== null)
-      || (value.status === 'unchanged' && value.reason_code !== 'no_change')) fail('invalid_response');
-    const group = prepared.support_groups?.find(item=>item.unit_id===unit.unit_id);
-    shape(value.suggestion, ['priority', 'reason', 'target_evidence', 'proposed_text', ...(group ? ['source_evidence'] : [])]);
-    if (group && !same(value.suggestion.source_evidence, targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
-    const suggestion = value.suggestion;
-    text(suggestion.reason);
-    if (!PRIORITIES.has(String(suggestion.priority)) || !suggestion.reason.trim()
-      || !Array.isArray(suggestion.target_evidence) || suggestion.target_evidence.length === 0) fail('invalid_response');
-    for (const quote of suggestion.target_evidence) evidenceQuote(prepared.draft, quote);
-    if (suggestion.proposed_text !== null) {
-      text(suggestion.proposed_text);
-      if (unit.evidence.kind !== 'experience' || !suggestion.proposed_text.trim()
-        || resumeTextCharacters(suggestion.proposed_text) > FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS) fail('invalid_response');
+    if (value.suggestion !== null || !SKIP_CODES.has(String(value.reason_code))) fail('invalid_response');
+    return value as unknown as TargetResumeAiReceipt;
+  }
+  // suggested: a reviewed rewrite of an experience, or advice on a fact line.
+  // unchanged: an experience kept as written, with its advice and the reason.
+  if (!(value.status === 'suggested' && value.reason_code === null)
+    && !(value.status === 'unchanged' && experience && KEEP_CODES.has(String(value.reason_code)))) fail('invalid_response');
+  const group = prepared.support_groups?.find(item=>item.unit_id===unit.unit_id);
+  shape(value.suggestion, ['priority', 'reason', 'target_evidence', 'proposed_text', 'links', 'ops', 'alternative_text',
+    ...(group ? ['source_evidence'] : [])]);
+  if (group && !same(value.suggestion.source_evidence, targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
+  const suggestion = value.suggestion;
+  text(suggestion.reason);
+  if (!PRIORITIES.has(String(suggestion.priority)) || !suggestion.reason.trim()
+    || !Array.isArray(suggestion.links) || suggestion.links.length > 3
+    || !Array.isArray(suggestion.target_evidence) || !Array.isArray(suggestion.ops)) fail('invalid_response');
+  const originals = new Map(supportSourceIds([unit.unit_id], group ? [group] : undefined)
+    .map(id => [id, prepared.units.find(item => item.unit_id === id)!.original] as const));
+  const ids = new Set<string>();
+  for (const link of suggestion.links as unknown[]) {
+    shape(link, ['id', 'relation', 'entailed', 'target_evidence', 'source_evidence', 'written_as']);
+    text(link.id);
+    // Only a link an operation used can be reviewed, and only a "same" link can be used.
+    if (!link.id || ids.has(link.id) || !['same', 'broader'].includes(String(link.relation)) || typeof link.entailed !== 'boolean'
+      || (link.entailed && link.relation !== 'same')) fail('invalid_response');
+    ids.add(link.id);
+    evidenceQuote(prepared.draft, link.target_evidence);
+    sourceQuote(originals, link.source_evidence);
+    if (link.written_as !== null) text(link.written_as);
+  }
+  const links = suggestion.links as TargetResumeAiLinkShape[];
+  const targets = [...new Map(links.map(link => [canonical(link.target_evidence), link.target_evidence])).values()];
+  if (!same(suggestion.target_evidence, targets) || (suggestion.priority === 'high' && !links.length)) fail('invalid_response');
+  const ops = suggestion.ops as unknown[];
+  if (ops.some(op => typeof op !== 'string' || !OPS.has(op)) || new Set(ops).size !== ops.length) fail('invalid_response');
+  if (suggestion.proposed_text === null) {
+    // Advice and kept lines carry no operations and nothing to apply.
+    if (ops.length || suggestion.alternative_text !== null || (value.status === 'suggested' && experience)) fail('invalid_response');
+  } else {
+    rewriteText(suggestion.proposed_text);
+    if (!experience || value.status !== 'suggested' || !ops.length
+      || ((ops.includes('lead_with') || ops.includes('relabel')) && !links.some(link => link.relation === 'same'))
+      || (ops.includes('translate') && ops.length !== 1)) fail('invalid_response');
+    if (suggestion.alternative_text !== null) {
+      rewriteText(suggestion.alternative_text);
+      if (!ops.includes('relabel') || suggestion.alternative_text === suggestion.proposed_text) fail('invalid_response');
     }
-    if (value.status === 'unchanged' && suggestion.proposed_text !== null) fail('invalid_response');
-  } else fail('invalid_response');
+  }
   return value as unknown as TargetResumeAiReceipt;
 }
+type TargetResumeAiLinkShape = { relation: string; target_evidence: unknown };
 
 /** Wire verification is deliberately stricter than a TypeScript cast. It
  * cannot prove semantic entailment; only the server's fact checks plus the
@@ -271,8 +329,8 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
       || value.document_id !== prepared.draft.id || value.opportunity_id !== prepared.draft.opportunity_id
       || value.document_signature !== prepared.document_signature || !same(value.base, prepared.draft.base)
       || !['ai', 'partial', 'unavailable'].includes(String(value.method))
-      || ![0, 1].includes(value.logical_calls as number) || ![0, 2].includes(value.provider_attempts_upper_bound as number)
-      || (value.logical_calls === 0) !== (value.provider_attempts_upper_bound === 0)) fail('invalid_response');
+      || ![0, 1, 2].includes(value.logical_calls as number)
+      || value.provider_attempts_upper_bound !== 2 * (value.logical_calls as number)) fail('invalid_response');
     shape(value.manifest, ['unit_ids', 'protected_unit_count']);
     if (!same(value.manifest.unit_ids, prepared.units.map((unit) => unit.unit_id))
       || value.manifest.protected_unit_count !== prepared.protected_unit_count
@@ -288,8 +346,8 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
       validateReceipt(prepared, byId.get(item.unit_id)!, item);
     }
     const skippedCount = value.receipts.filter((item) => (item as TargetResumeAiReceipt).status === 'skipped').length;
-    if ((value.method === 'ai' && (skippedCount !== 0 || value.logical_calls !== 1))
-      || (value.method === 'partial' && (skippedCount === 0 || skippedCount === value.receipts.length || value.logical_calls !== 1))
+    if ((value.method === 'ai' && (skippedCount !== 0 || value.logical_calls === 0))
+      || (value.method === 'partial' && (skippedCount === 0 || skippedCount === value.receipts.length || value.logical_calls === 0))
       || (value.method === 'unavailable' && skippedCount !== value.receipts.length)) fail('invalid_response');
     return { ok: true, value: freeze(value as unknown as TargetResumeAiResponse) };
   } catch (error) { return failure(error, 'invalid_response'); }
@@ -323,12 +381,15 @@ export function mergeTargetResumeAIResponses(prepared: PreparedTargetResumeAi,
     const ordered = prepared.units.flatMap((unit) => receipts.has(unit.unit_id) ? [receipts.get(unit.unit_id)!] : []);
     const count = (status: TargetResumeAiReceipt['status']) => ordered.filter((item) => item.status === status).length;
     const suggested = count('suggested');
+    const rewrites = ordered.filter((item) => item.status === 'suggested' && typeof item.suggestion?.proposed_text === 'string'
+      && item.suggestion.proposed_text !== item.before_text).length;
     const unchanged = count('unchanged');
     const processed = suggested + unchanged;
     const complete = prepared.units.length > 0 && processed === prepared.units.length;
     return { ok: true, value: freeze(clone({ receipts: ordered, coverage: { total: prepared.units.length,
       protected: prepared.protected_unit_count, pending: prepared.units.length - ordered.length,
-      suggested, unchanged, skipped: count('skipped'), processed, complete }, structureReady: complete })) };
+      suggested, rewrites, advice: suggested - rewrites, unchanged, skipped: count('skipped'), processed, complete },
+      structureReady: complete })) };
   } catch (error) { return failure(error, 'invalid_response'); }
 }
 
@@ -346,7 +407,10 @@ export function applyTargetResumeAI(prepared: PreparedTargetResumeAi, currentDra
       || context.source_signature !== prepared.draft.base.source_signature
       || context.target_signature !== prepared.draft.base.target_signature) fail('stale_context');
     if (canonical(currentDraft) !== prepared.canonical_draft) fail('stale_document');
+    const alternatives = options.alternativeUnitIds ?? [];
     if (!Array.isArray(options.rewriteUnitIds) || new Set(options.rewriteUnitIds).size !== options.rewriteUnitIds.length
+      || !Array.isArray(alternatives) || new Set(alternatives).size !== alternatives.length
+      || alternatives.some((id) => !options.rewriteUnitIds.includes(id))
       || typeof options.applyStructure !== 'boolean') fail('invalid_selection');
     const merged = mergeTargetResumeAIResponses(prepared, responses);
     if (!merged.ok) fail(merged.code);
@@ -357,7 +421,9 @@ export function applyTargetResumeAI(prepared: PreparedTargetResumeAi, currentDra
       const receipt = receipts.get(id);
       if (!receipt || receipt.status !== 'suggested' || receipt.evidence.kind !== 'experience'
         || typeof receipt.suggestion?.proposed_text !== 'string') fail('invalid_selection');
-      changes.set(id, receipt.suggestion.proposed_text);
+      const plain = alternatives.includes(id);
+      if (plain && typeof receipt.suggestion.alternative_text !== 'string') fail('invalid_selection');
+      changes.set(id, plain ? receipt.suggestion.alternative_text! : receipt.suggestion.proposed_text);
     }
     const draft = clone(prepared.draft);
     for (const section of draft.document.sections) for (const block of section.blocks) for (const line of block.lines) {

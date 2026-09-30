@@ -5,7 +5,7 @@ import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, validateTargetResume, type TargetResumeV1 } from './target-resume';
 import type { ExperienceEntry, ProfileData, ResumeFact } from './types';
-import type { PreparedTargetResumeAi, TargetResumeAiReceipt, TargetResumeAiResponse } from './target-resume-ai-protocol';
+import type { PreparedTargetResumeAi, TargetResumeAiLink, TargetResumeAiReceipt, TargetResumeAiResponse, TargetResumeAiUnit } from './target-resume-ai-protocol';
 import { prepareTargetResumeAI, validateTargetResumeAIResponse, mergeTargetResumeAIResponses, applyTargetResumeAI, type TargetResumeAIResult } from './target-resume-ai';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -28,20 +28,34 @@ async function make(facts: string[] = ['Python'], experiences: string[] = ['Buil
   return createTargetResume(profile, description === undefined ? target : { ...target, description }, 'draft');
 }
 const prep = async (draft?: TargetResumeV1) => unwrap(await prepareTargetResumeAI(draft ?? await make()));
+const PYTHON = { field: 'requirement' as const, requirement_index: 0, start: 0, end: 6, quote: 'Python' };
+/** A link from the unit's own "Python" (codepoint offsets) to the requirement, when the line has one. */
+function pythonLinks(u: TargetResumeAiUnit, entailed = false): TargetResumeAiLink[] {
+  const at = u.original.indexOf('Python');
+  if (at < 0) return [];
+  const start = Array.from(u.original.slice(0, at)).length;
+  return [{ id: 'L1', relation: 'same', entailed, target_evidence: { ...PYTHON },
+    source_evidence: { unit_id: u.unit_id, start, end: start + 6, quote: 'Python' }, written_as: null }];
+}
 function receipt(p: PreparedTargetResumeAi, id: string, status: TargetResumeAiReceipt['status'] = 'suggested'): TargetResumeAiReceipt {
   const u = p.units.find(u => u.unit_id === id)!;
+  const rewrite = status === 'suggested' && u.evidence.kind === 'experience';
+  const links = pythonLinks(u, rewrite);
   return { unit_id: id, section_id: u.section_id, block_id: u.block_id, evidence: clone(u.evidence), before_text: u.before_text,
-    status, reason_code: status === 'skipped' ? 'model_unavailable' : status === 'unchanged' ? 'no_change' : null,
+    status: status === 'unchanged' && u.evidence.kind !== 'experience' ? 'suggested' : status,
+    reason_code: status === 'skipped' ? 'model_unavailable' : status === 'unchanged' && u.evidence.kind === 'experience' ? 'no_link' : null,
     suggestion: status === 'skipped' ? null : { priority: 'normal', reason: 'Relevant to the stated Python requirement.',
-      target_evidence: [{ field: 'requirement', requirement_index: 0, start: 0, end: 6, quote: 'Python' }],
-      proposed_text: status === 'suggested' && u.evidence.kind === 'experience' ? 'Built the Python parser with the team.' : null } };
+      target_evidence: links.map(link => link.target_evidence), links, ops: rewrite ? [links.length ? 'lead_with' : 'verb_first'] : [],
+      proposed_text: rewrite ? 'Built the Python parser with the team.' : null, alternative_text: null } };
 }
 function response(p: PreparedTargetResumeAi, ids = p.batches[0], request_id = 'request'): TargetResumeAiResponse {
-  return { version: 1, pipeline_version: 'full-target-v5', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
+  return { version: 1, pipeline_version: 'full-target-v6', request_id, document_id: p.draft.id, opportunity_id: p.draft.opportunity_id,
     document_signature: p.document_signature, base: clone(p.draft.base), manifest: { unit_ids: p.units.map(u => u.unit_id), protected_unit_count: p.protected_unit_count },
     method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2, receipts: ids.map(id => receipt(p, id)) };
 }
 const expected = (r: TargetResumeAiResponse) => ({ request_id: r.request_id, selected_unit_ids: r.receipts.map(x => x.unit_id) });
+const exp = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'experience')!;
+const factReceipt = (r: TargetResumeAiResponse) => r.receipts.find(x => x.evidence.kind === 'fact')!;
 const context = (p: PreparedTargetResumeAi) => ({ profile_signature: p.draft.base.profile_signature, source_signature: p.draft.base.source_signature, target_signature: p.draft.base.target_signature });
 const options = (p: PreparedTargetResumeAi, rewriteUnitIds: string[] = [], applyStructure = false) => ({ currentContext: context(p), rewriteUnitIds, applyStructure });
 
@@ -56,10 +70,12 @@ describe('whole-document preparation and bounded complete batches', () => {
     expect(e.original).toContain('I did not lead'); expect(e.before_text).toBe('My manual draft edit is not evidence.');
     expect(createHash('sha256').update(p.canonical_draft).digest('hex')).toBe(p.document_signature.slice(10));
   });
-  it('traverses more than eight experiences and more than 24 units without omitting any tail', async () => {
+  it('traverses more than eight experiences and more than 20 units without omitting any tail', async () => {
     const p = await prep(await make(Array.from({ length: 30 }, (_, i) => `Skill ${i}`), Array.from({ length: 15 }, (_, i) => `I did not lead project ${i}. I contributed one parser.`)));
     expect(p.units).toHaveLength(45); expect(p.batches.flat()).toEqual(p.units.map(u => u.unit_id));
-    expect(p.batches.every(b => b.length <= 24)).toBe(true); expect(p.skipped).toEqual([]);
+    expect(p.batches.every(b => b.length <= 20)).toBe(true); expect(p.skipped).toEqual([]);
+    const experiences = (b: string[]) => b.filter(id => p.units.find(u => u.unit_id === id)!.evidence.kind === 'experience').length;
+    expect(p.batches.every(b => experiences(b) <= 8)).toBe(true); expect(p.batches.map(experiences)).toContain(8);
     expect(p.units.some(u => u.evidence.id === 'exp-14')).toBe(true);
   });
   it('keeps entire 6000-codepoint experiences with negation and emoji in separate batches', async () => {
@@ -130,12 +146,29 @@ describe('whole-document preparation and bounded complete batches', () => {
 });
 
 describe('strict receipts and target quotation', () => {
-  it('accepts genuine unchanged priorities and exact Unicode codepoint evidence', async () => {
+  it('accepts a kept line with its advice, priority and exact Unicode codepoint link targets', async () => {
     const p = await prep(); const r = response(p); const e = r.receipts.find(x => x.evidence.kind === 'experience')!;
     Object.assign(e, receipt(p, e.unit_id, 'unchanged')); e.suggestion!.priority = 'high';
-    e.suggestion!.target_evidence = [{ field: 'description', requirement_index: null, start: 9, end: 10, quote: '😀' }];
+    const emoji = { field: 'description' as const, requirement_index: null, start: 9, end: 10, quote: '😀' };
+    e.suggestion!.links = [{ ...e.suggestion!.links[0], relation: 'broader', target_evidence: emoji }, { ...e.suggestion!.links[0], id: 'L2' }];
+    e.suggestion!.target_evidence = [emoji, PYTHON];
     const checked = unwrap(validateTargetResumeAIResponse(p, expected(r), r));
-    expect(checked.receipts[0].suggestion!.priority).toBe('high'); expect(Object.isFrozen(checked.receipts)).toBe(true);
+    const kept = checked.receipts.find(x => x.unit_id === e.unit_id)!;
+    expect(kept).toMatchObject({ status: 'unchanged', reason_code: 'no_link' }); expect(kept.suggestion!.priority).toBe('high');
+    expect(Object.isFrozen(checked.receipts)).toBe(true);
+  });
+  it.each(['no_link', 'already_aligned', 'no_safe_change', 'cosmetic_only', 'beyond_allowed_edit', 'rewrite_rejected', 'review_rejected', 'no_change'] as const)(
+    'accepts a line kept as %s', async (code) => {
+      const p = await prep(); const r = response(p); const e = r.receipts.find(x => x.evidence.kind === 'experience')!;
+      Object.assign(e, receipt(p, e.unit_id, 'unchanged'), { reason_code: code });
+      expect(validateTargetResumeAIResponse(p, expected(r), r).ok).toBe(true);
+    });
+  it('accepts a reviewed rewrite with its alternative and a second logical call for the review', async () => {
+    const p = await prep(); const r = response(p); const e = r.receipts.find(x => x.evidence.kind === 'experience')!;
+    Object.assign(e.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.' });
+    Object.assign(r, { logical_calls: 2, provider_attempts_upper_bound: 4 });
+    const checked = unwrap(validateTargetResumeAIResponse(p, expected(r), r));
+    expect(checked.receipts.find(x => x.unit_id === e.unit_id)!.suggestion!.links[0].entailed).toBe(true);
   });
   it.each([
     ['wrong signature', (r: TargetResumeAiResponse) => { r.document_signature += 'x'; }],
@@ -148,24 +181,52 @@ describe('strict receipts and target quotation', () => {
     ['wrong block', (r: TargetResumeAiResponse) => { r.receipts[0].block_id = 'another'; }],
     ['wrong revision', (r: TargetResumeAiResponse) => { r.receipts[0].evidence.revision += 1; }],
     ['wrong before text', (r: TargetResumeAiResponse) => { r.receipts[0].before_text += 'manual edit'; }],
-    ['fact rewrite', (r: TargetResumeAiResponse) => { r.receipts.find(x => x.evidence.kind === 'fact')!.suggestion!.proposed_text = 'Expert Python'; }],
-    ['blank rewrite', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.proposed_text = '  '; }],
-    ['oversize rewrite', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.proposed_text = 'x'.repeat(6001); }],
-    ['invalid unicode', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.proposed_text = '\ud800'; }],
-    ['NUL', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.reason += '\0'; }],
-    ['missing target evidence', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.target_evidence = []; }],
-    ['invented quote', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.target_evidence[0].quote = 'Rust'; }],
-    ['bad quote offset', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.target_evidence[0].start = 1; }],
-    ['blank reason', (r: TargetResumeAiResponse) => { r.receipts[0].suggestion!.reason = ''; }],
+    ['fact rewrite', (r: TargetResumeAiResponse) => { Object.assign(factReceipt(r).suggestion!, { proposed_text: 'Expert Python', ops: ['verb_first'] }); }],
+    ['blank rewrite', (r: TargetResumeAiResponse) => { exp(r).suggestion!.proposed_text = '  '; }],
+    ['oversize rewrite', (r: TargetResumeAiResponse) => { exp(r).suggestion!.proposed_text = 'x'.repeat(6001); }],
+    ['invalid unicode', (r: TargetResumeAiResponse) => { exp(r).suggestion!.proposed_text = '\ud800'; }],
+    ['NUL', (r: TargetResumeAiResponse) => { exp(r).suggestion!.reason += '\0'; }],
+    ['target evidence not from its links', (r: TargetResumeAiResponse) => { exp(r).suggestion!.target_evidence = []; }],
+    ['target evidence without a link', (r: TargetResumeAiResponse) => { exp(r).suggestion!.links = []; }],
+    ['invented quote', (r: TargetResumeAiResponse) => { for (const x of [exp(r).suggestion!.links[0].target_evidence, exp(r).suggestion!.target_evidence[0]]) x.quote = 'Rust'; }],
+    ['bad quote offset', (r: TargetResumeAiResponse) => { for (const x of [exp(r).suggestion!.links[0].target_evidence, exp(r).suggestion!.target_evidence[0]]) x.start = 1; }],
+    ['source outside its line', (r: TargetResumeAiResponse) => { exp(r).suggestion!.links[0].source_evidence.start += 1; }],
+    ['source in another line', (r: TargetResumeAiResponse) => { exp(r).suggestion!.links[0].source_evidence.unit_id = factReceipt(r).unit_id; }],
+    ['entailed broader link', (r: TargetResumeAiResponse) => { exp(r).suggestion!.links[0].relation = 'broader'; }],
+    ['repeated link id', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; s.links.push(clone(s.links[0])); }],
+    ['four links', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; s.links = [1, 2, 3, 4].map(i => ({ ...s.links[0], id: `L${i}` })); }],
+    ['high priority without a link', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { priority: 'high', links: [], target_evidence: [], ops: ['verb_first'] }); }],
+    ['rewrite without operations', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops = []; }],
+    ['unknown operation', (r: TargetResumeAiResponse) => { (exp(r).suggestion!.ops as string[]).push('trim'); }],
+    ['repeated operation', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops.push('lead_with'); }],
+    ['lead_with without a same link', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { links: [], target_evidence: [] }); }],
+    ['translation with another move', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops = ['translate', 'lead_with']; }],
+    ['alternative without a relabel', (r: TargetResumeAiResponse) => { exp(r).suggestion!.alternative_text = 'Built a parser.'; }],
+    ['alternative equal to the rewrite', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { ops: ['relabel'], alternative_text: s.proposed_text }); }],
+    ['blank reason', (r: TargetResumeAiResponse) => { exp(r).suggestion!.reason = ''; }],
     ['no calls but claims AI', (r: TargetResumeAiResponse) => { r.logical_calls = 0; r.provider_attempts_upper_bound = 0; }],
+    ['bound not twice the calls', (r: TargetResumeAiResponse) => { r.logical_calls = 2; }],
+    ['three calls', (r: TargetResumeAiResponse) => { Object.assign(r, { logical_calls: 3, provider_attempts_upper_bound: 6 }); }],
     ['partial without skipped', (r: TargetResumeAiResponse) => { r.method = 'partial'; }],
-    ['unchanged without suggestion', (r: TargetResumeAiResponse) => { Object.assign(r.receipts[0], { status: 'unchanged', reason_code: 'no_change', suggestion: null }); }],
-    ['unchanged with rewrite', (r: TargetResumeAiResponse) => { Object.assign(r.receipts[0], { status: 'unchanged', reason_code: 'no_change' }); }],
-    ['suggested with no_change code', (r: TargetResumeAiResponse) => { r.receipts[0].reason_code = 'no_change'; }],
-    ['skipped with suggestion', (r: TargetResumeAiResponse) => { Object.assign(r.receipts[0], { status: 'skipped', reason_code: 'timeout' }); }],
+    ['unchanged without suggestion', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'unchanged', reason_code: 'no_link', suggestion: null }); }],
+    ['unchanged with rewrite', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'unchanged', reason_code: 'no_link' }); }],
+    ['unchanged fact line', (r: TargetResumeAiResponse) => { Object.assign(factReceipt(r), { status: 'unchanged', reason_code: 'no_link' }); }],
+    ['kept line with operations', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'unchanged', reason_code: 'no_link' }); exp(r).suggestion!.proposed_text = null; }],
+    ['kept with a skip code', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'unchanged', reason_code: 'timeout' }); Object.assign(exp(r).suggestion!, { proposed_text: null, ops: [] }); }],
+    ['suggested experience without a rewrite', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { proposed_text: null, ops: [] }); }],
+    ['suggested with no_change code', (r: TargetResumeAiResponse) => { exp(r).reason_code = 'no_change'; }],
+    ['skipped with suggestion', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'skipped', reason_code: 'timeout' }); }],
+    ['skipped with a keep code', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'skipped', reason_code: 'no_link', suggestion: null }); }],
+    ['retired v5 code', (r: TargetResumeAiResponse) => { Object.assign(exp(r), { status: 'skipped', reason_code: 'ungrounded_rewrite', suggestion: null }); r.method = 'partial'; }],
   ] as const)('rejects %s atomically', async (_name, mutate) => {
     const p = await prep(); const r = response(p); const request = expected(r); mutate(r);
     expect(validateTargetResumeAIResponse(p, request, r)).toEqual({ ok: false, code: 'invalid_response' });
+  });
+  it('accepts a target with no quotable text as a stop for every line, with no call', async () => {
+    const p = await prep(); const r = response(p);
+    Object.assign(r, { method: 'unavailable', logical_calls: 0, provider_attempts_upper_bound: 0 });
+    for (const item of r.receipts) Object.assign(item, { status: 'skipped', reason_code: 'target_has_no_text', suggestion: null });
+    expect(validateTargetResumeAIResponse(p, expected(r), r).ok).toBe(true);
   });
   it('accepts a request-size refusal only for a request of more than one unit', async () => {
     const p = await prep(); const r = response(p);
@@ -203,11 +264,31 @@ describe('partial completion, explicit continuation and independent application'
     const conflict = clone(retry); conflict.receipts[0].suggestion!.priority = 'low';
     expect(mergeTargetResumeAIResponses(p, [r, retry, conflict])).toEqual({ ok: false, code: 'invalid_response' });
   });
+  it('lets a rewrite the review could not check be sent again and replaced', async () => {
+    const p = await prep(); const r = response(p); const e = exp(r);
+    Object.assign(e, { status: 'skipped', reason_code: 'rewrite_unchecked', suggestion: null });
+    Object.assign(r, { method: 'partial', logical_calls: 2, provider_attempts_upper_bound: 4 });
+    const first = unwrap(mergeTargetResumeAIResponses(p, [r]));
+    expect(first.coverage).toMatchObject({ skipped: 1, rewrites: 0, advice: 1, complete: false });
+    const done = unwrap(mergeTargetResumeAIResponses(p, [r, response(p, [e.unit_id], 'retry')]));
+    expect(done.coverage).toMatchObject({ skipped: 0, suggested: 2, rewrites: 1, advice: 1, unchanged: 0, complete: true });
+  });
+  it('applies a selected rewrite without the posting terms only when asked and offered', async () => {
+    const p = await prep(); const r = response(p); const e = exp(r);
+    Object.assign(e.suggestion!, { ops: ['relabel'], alternative_text: 'Built a parser, in Python, with the team.' });
+    const plain = unwrap(applyTargetResumeAI(p, p.draft, [r], { ...options(p, [e.unit_id]), alternativeUnitIds: [e.unit_id] }));
+    expect(lines(plain).find(l => l.id === e.unit_id)!.text).toBe('Built a parser, in Python, with the team.');
+    const tailored = unwrap(applyTargetResumeAI(p, p.draft, [r], options(p, [e.unit_id])));
+    expect(lines(tailored).find(l => l.id === e.unit_id)!.text).toBe('Built the Python parser with the team.');
+    expect(applyTargetResumeAI(p, p.draft, [r], { ...options(p, []), alternativeUnitIds: [e.unit_id] })).toEqual({ ok: false, code: 'invalid_selection' });
+    e.suggestion!.alternative_text = null;
+    expect(applyTargetResumeAI(p, p.draft, [r], { ...options(p, [e.unit_id]), alternativeUnitIds: [e.unit_id] })).toEqual({ ok: false, code: 'invalid_selection' });
+  });
   it('merges out-of-order disjoint batches and counts every unit once', async () => {
     const p = await prep(await make(Array.from({ length: 50 }, (_, i) => `Skill ${i}`), []));
     const rs = p.batches.map((ids, i) => response(p, ids, `r-${i}`)).reverse();
     expect(unwrap(mergeTargetResumeAIResponses(p, rs)).receipts.map(r => r.unit_id)).toEqual(p.units.map(u => u.unit_id));
-    expect(unwrap(mergeTargetResumeAIResponses(p, rs.slice(1))).coverage.pending).toBe(2);
+    expect(unwrap(mergeTargetResumeAIResponses(p, rs.slice(1))).coverage.pending).toBe(p.batches.at(-1)!.length);
   });
   it('never considers skipped or basics-only material complete', async () => {
     const p = await prep(await make(['x'.repeat(16001)], []));
@@ -231,7 +312,16 @@ describe('partial completion, explicit continuation and independent application'
     d.document.sections.reverse(); const skills = d.document.sections.find(s => s.kind === 'skills')!;
     skills.included = false; skills.blocks[0].included = false; skills.blocks[0].lines[0].included = false;
     const p = await prep(d); const r = response(p);
-    for (const item of r.receipts) item.suggestion!.priority = item.evidence.id === 'skill-0' ? 'low' : item.evidence.id.startsWith('skill-') ? 'high' : 'normal';
+    const robotics = { field: 'description' as const, requirement_index: null, start: 0, end: 8, quote: 'Robotics' };
+    for (const item of r.receipts) {
+      item.suggestion!.priority = item.evidence.id === 'skill-0' ? 'low' : item.evidence.id.startsWith('skill-') ? 'high' : 'normal';
+      // "high" is a relevance claim, so it comes with a link.
+      if (item.suggestion!.priority === 'high') {
+        const original = p.units.find(u => u.unit_id === item.unit_id)!.original;
+        Object.assign(item.suggestion!, { target_evidence: [robotics], links: [{ id: 'L1', relation: 'broader', entailed: false, target_evidence: robotics,
+          source_evidence: { unit_id: item.unit_id, start: 0, end: Array.from(original).length, quote: original }, written_as: null }] });
+      }
+    }
     const result = unwrap(applyTargetResumeAI(p, d, [r], options(p, [], true)));
     expect(result.document.sections.map(s => s.kind)).toEqual(['basics', 'skills', 'activities']);
     expect(result.document.sections[1].blocks.map(b => b.lines[0].evidence.id)).toEqual(['skill-1', 'skill-2', 'skill-0']);

@@ -19,7 +19,7 @@ import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
-import { FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS, type PreparedTargetResumeAi, type TargetResumeAiReceipt, type TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
+import { FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS, type PreparedTargetResumeAi, type TargetResumeAiOp, type TargetResumeAiReceipt, type TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 
 export interface TargetResumeAiPanelProps {
   supportGroups?: TargetResumeSupportGroup[];
@@ -41,9 +41,9 @@ export interface TargetResumeAiPanelProps {
 type Run = { prepared: PreparedTargetResumeAi; responses: TargetResumeAiResponse[] };
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const authorityRefusals = new Set(['target_changed', 'target_not_found', 'TARGET_NOT_ACTIONABLE', 'legacy_target_context']);
-const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large', 'interests_too_large']);
+const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large', 'interests_too_large', 'target_has_no_text']);
 // Whole-draft causes: no smaller request can succeed until the draft changes.
-const stopping = new Set(['budget_exhausted', 'target_too_large', 'interests_too_large']);
+const stopping = new Set(['budget_exhausted', 'target_too_large', 'interests_too_large', 'target_has_no_text']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
 export default function TargetResumeAiPanel({ supportGroups, draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumeAiPanelProps) {
@@ -56,6 +56,8 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<'stale' | 'applied' | 'cancelled' | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Rewrites the student chose to use without the posting's terms.
+  const [plain, setPlain] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [order, setOrder] = useState(false);
   const stateRef = useRef({ binding, enabled, owner, currentContext });
@@ -80,7 +82,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     // receipts on the identical baseline. They remain disabled until ready.
     if (!changed && profileAvailable) return;
     // Actual source/document/availability changes invalidate the old advice.
-    setRun(null); runRef.current = null; setSelected(new Set()); setDismissed(new Set()); setOrder(false); setError(null);
+    setRun(null); runRef.current = null; setSelected(new Set()); setPlain(new Set()); setDismissed(new Set()); setOrder(false); setError(null);
     setNotice(appliedKey.current === draftKey ? 'applied' : hadWork ? 'stale' : null);
     appliedKey.current = null;
   }, [binding, currentContext, draftKey, enabled, owner, profileAvailable]);
@@ -90,7 +92,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     const unsubscribe = onLocalOwnerStateChange(() => {
       if (isOwnerTokenValid(stateRef.current.owner, stateRef.current.owner.uid)) return;
       request.generation += 1; request.controller?.abort(); request.busy = false;
-      setBusy(false); setRun(null); runRef.current = null; setSelected(new Set()); setDismissed(new Set()); setOrder(false); setNotice(null); setError(null);
+      setBusy(false); setRun(null); runRef.current = null; setSelected(new Set()); setPlain(new Set()); setDismissed(new Set()); setOrder(false); setNotice(null); setError(null);
     });
     return () => {
       request.generation += 1; request.controller?.abort(); request.busy = false;
@@ -113,11 +115,18 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     target_too_large: copy('The saved opportunity details exceed this AI request’s limit.', '保存的机会资料超过本次 AI 处理范围。'),
     interests_too_large: translate(locale, 'tailor.fullTarget.interestsTooLarge', { limit: FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS }),
     batch_context_too_large: translate(locale, 'tailor.fullTarget.batchContextTooLarge'),
+    target_has_no_text: copy('This opportunity lists no research topics or requirements to adapt to. Your draft is unchanged.', '这个机会没有列出可对照的研究方向或要求，文稿未改动。'),
+    rewrite_unchecked: copy('The fact check did not finish for this line. Your wording is kept; continue to check it again.', '这一条的事实核对没有完成，保留原表述；可继续处理再核对一次。'),
+    no_link: copy('No change recommended: nothing in this line matches what the opportunity lists.', '建议保留原文：这一条与机会列出的内容没有对应。'),
+    already_aligned: copy('No change recommended: this line already uses the opportunity’s wording.', '建议保留原文：这一条已使用机会中的表述。'),
+    no_safe_change: copy('No change recommended: related wording found, but no change the checks could verify.', '建议保留原文：找到了相关表述，但没有能通过核对的改法。'),
+    cosmetic_only: copy('No change recommended: the only possible edits were cosmetic.', '建议保留原文：可做的修改只是措辞上的。'),
+    beyond_allowed_edit: copy('Kept your wording: the suggested edit went beyond the allowed changes.', '保留你的表述：建议的修改超出了允许的范围。'),
+    rewrite_rejected: copy('Kept your wording: the suggestion did not pass the fact check.', '保留你的表述：建议未通过事实核对。'),
+    review_rejected: copy('Kept your wording: the suggestion did not pass the fact check.', '保留你的表述：建议未通过事实核对。'),
     legacy_target_context: copy('This older draft is missing saved opportunity requirements. Rebuild before using AI.', '旧稿缺少完整机会要求，请重新创建后再用 AI。'),
     budget_exhausted: copy('The AI allowance is used up. Continue after it becomes available.', 'AI 额度已用完，恢复后可继续。'),
-    ungrounded_rewrite: copy('The proposed wording failed the source checks. Your wording is kept.', '建议未通过来源核对，保留现有表述。'),
     missing_result: copy('AI did not return this item. It remains unchanged.', 'AI 未返回此项结果，内容未变。'),
-    no_target_evidence: copy('No usable target citation was returned.', '没有返回可核对的目标依据。'),
     no_change: copy('No change suggested.', '建议保留原文。'),
     invalid_response: copy('The suggestions could not be verified. Your draft is unchanged.', '无法核对这批建议，文稿未变。'),
     invalid_model_response: copy('AI returned an unusable result. Your draft is unchanged.', 'AI 返回结果不可用，文稿未变。'),
@@ -211,10 +220,11 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     requestRef.current.generation += 1; requestRef.current.controller?.abort(); requestRef.current.busy = false;
     setBusy(false); setNotice('cancelled');
   };
+  const alternativeUnitIds = () => [...selected].filter((id) => plain.has(id));
   const apply = () => {
     if (!run || runRef.current !== run || !ready || working || action.error || !currentContext) return;
     const result = applyTargetResumeAI(run.prepared, draft, run.responses,
-      { rewriteUnitIds: [...selected], applyStructure: order, currentContext, supportGroups });
+      { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups });
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
     if (appliedKey.current === draftKey) { setNotice('applied'); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
@@ -234,7 +244,13 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     onApply(run.prepared.canonical_draft, result.value, { kind: 'ai_rewrite', annotations });
   };
   const nextPreview = run && ready && !working && !action.error && currentContext && (selected.size > 0 || order)
-    ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], applyStructure: order, currentContext, supportGroups }) : null;
+    ? applyTargetResumeAI(run.prepared, draft, run.responses, { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups }) : null;
+  const opLabel = (op: TargetResumeAiOp) => ({
+    lead_with: copy('Leads with the matching part', '相关内容放在最前'), relabel: copy('Uses the opportunity’s term', '改用机会中的术语'),
+    verb_first: copy('Starts with your own verb', '以你原有的动词开头'), personal_first: copy('Puts your own part first', '先写你本人负责的部分'),
+    tighten: copy('Drops a repeated word', '删去重复的词'), translate: copy('Translated', '已翻译'),
+  })[op];
+  const kept = review?.receipts.filter((item) => item.status === 'unchanged') ?? [];
   const canContinue = !!run && (review?.coverage.pending || review?.receipts.some((item) => item.status === 'skipped' && !permanent.has(item.reason_code ?? '')));
   const unitLabel = (id: string) => {
     const unit = run?.prepared.units.find((item) => item.unit_id === id);
@@ -268,9 +284,13 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
       : notice === 'stale' ? copy('Your draft, profile or target changed. Earlier suggestions were discarded; your edits are kept.', '文稿、资料或目标已变更，旧建议已作废，手动编辑保留。')
         : copy('Generation stopped. Your draft and completed suggestions are kept.', '已停止生成，原稿及已完成建议保留。')}</p>}
     {review && <>
-      <p role="status" className="mt-3 text-sm">{copy(`Reviewed ${review.coverage.processed} of ${review.coverage.total} items; ${review.coverage.pending} pending, ${review.coverage.skipped} unprocessed.`,
-        `已核对 ${review.coverage.processed}/${review.coverage.total} 项；${review.coverage.pending} 项待处理，${review.coverage.skipped} 项未完成。`)}</p>
+      <p role="status" className="mt-3 text-sm">{copy(`Suggested ${review.coverage.rewrites} rewrites · ${review.coverage.advice} advice-only · ${review.coverage.unchanged} no change · ${review.coverage.pending} pending · ${review.coverage.skipped} unprocessed`,
+        `建议改写 ${review.coverage.rewrites} 条 · 仅供参考 ${review.coverage.advice} 条 · 保留原文 ${review.coverage.unchanged} 条 · 待处理 ${review.coverage.pending} 条 · 未完成 ${review.coverage.skipped} 条`)}</p>
       {review.receipts.filter((item) => item.status === 'skipped').map((item) => <p key={item.unit_id} className="mt-2 break-words text-sm text-amber-800">{unitLabel(item.unit_id)}: {reasonText(item.reason_code)}</p>)}
+      {kept.length > 0 && <section aria-label={copy('Lines kept as written', '保留原文的条目')} className="mt-3 text-sm">
+        <h4 className="text-xs font-medium text-gray-500">{copy('Kept as written', '保留原文')}</h4>
+        {kept.map((item) => <p key={item.unit_id} className="mt-1 break-words text-gray-600">{unitLabel(item.unit_id)}: {reasonText(item.reason_code)}</p>)}
+      </section>}
       <details className="mt-3 rounded-lg border p-3"><summary className="cursor-pointer text-sm font-medium">{copy('Content priorities and target evidence', '内容优先级与目标依据')}</summary>
         {review.receipts.filter((item) => item.status !== 'skipped').map((item) => <div key={item.unit_id} className="mt-3 min-w-0 border-t pt-3 text-sm">
           <p className="whitespace-pre-wrap break-words">{run?.prepared.units.find((unit) => unit.unit_id === item.unit_id)?.original}</p>
@@ -289,10 +309,15 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
           })} />{unitLabel(item.unit_id)}</label>
         <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Current wording', '当前表述')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.before_text}</p></div>
-          <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Suggested wording — check the facts', '建议表述——请核对事实')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.suggestion!.proposed_text}</p></div>
+          <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Suggested wording — check the facts', '建议表述——请核对事实')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{plain.has(item.unit_id) ? item.suggestion!.alternative_text : item.suggestion!.proposed_text}</p></div>
         </div>
-        <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review reason and sources', '查看理由和依据')}</summary>
+        <ul className="mt-2 flex flex-wrap gap-1" aria-label={copy('What changed', '改动')}>{item.suggestion!.ops.map((op) => <li key={op} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{opLabel(op)}</li>)}</ul>
+        {item.suggestion!.alternative_text !== null && <label className="mt-2 flex items-start gap-2 text-sm"><input type="checkbox" checked={plain.has(item.unit_id)}
+          disabled={!ready || working || !!action.error || dismissed.has(item.unit_id)} onChange={(event) => setPlain((old) => {
+            const next = new Set(old); if (event.target.checked) next.add(item.unit_id); else next.delete(item.unit_id); return next;
+          })} />{copy('Use without the posting’s terms', '不使用机会中的术语')}</label>}
         <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{item.suggestion!.reason}</p>
+        <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review sources', '查看依据')}</summary>
         {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
         {item.suggestion!.source_evidence?.map((evidence,index)=><blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 pl-2">{evidence.quote}</blockquote>)}
         </details>
