@@ -152,4 +152,31 @@ describe('local proposals and confirmed eligibility', () => {
     const next = await createResumeCandidates(lines('New'));
     expect(validateExperienceEntries([...replaced, ...next])).toMatchObject({ ok: true });
   });
+
+  it('groups a dense line-per-row résumé by bullets instead of failing past the cap', async () => {
+    // PDF text of a two-page résumé: 150 lines and no blank lines. One
+    // proposal per line would exceed the 100-entry cap and fail the upload.
+    const role = (i: number) => [
+      `EXPERIENCE ${i}`,
+      `Research Assistant ${i}, Example Lab (2025 - 2026)`,
+      `• Built parser ${i} for the lab's EEG`,
+      `recordings and documented it`,
+      `• Analyzed ${i}0 samples with Python`,
+    ];
+    const raw = Array.from({ length: 30 }, (_, i) => role(i).join('\n')).join('\n');
+    const entries = await createResumeCandidates(raw);
+    expect(entries.length).toBeLessThanOrEqual(100);
+    const points = Array.from(raw);
+    for (const entry of entries) {
+      if (entry.source.kind !== 'resume') throw new Error('expected resume');
+      expect(points.slice(entry.source.start, entry.source.end).join('')).toBe(entry.source.quote);
+    }
+    const quotes = entries.map((entry) => entry.text);
+    expect(quotes).toContain("• Built parser 7 for the lab's EEG\nrecordings and documented it");
+    expect(quotes.join('\n')).toBe(raw);
+  });
+  it('keeps one proposal per line when a line-per-row résumé fits the cap', async () => {
+    const raw = ['Built a robot', 'wrote a report', 'Led a team'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Built a robot', 'wrote a report', 'Led a team']);
+  });
 });

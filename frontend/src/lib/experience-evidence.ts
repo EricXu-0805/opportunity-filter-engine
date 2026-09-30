@@ -132,6 +132,40 @@ export function activeExperienceEntries(value: unknown, context: ExperienceSourc
   return checked.ok ? checked.value.filter((entry) => isActiveExperience(entry, context)) : [];
 }
 
+const BULLET_LINE = /^[\t ]*(?:[•●▪◦‣∙·*–—-]|\(?\d{1,2}[.)])\s/u;
+
+/** PDF text has one row per line and no blank lines, so a two-page résumé can
+ *  exceed the entry cap line by line. Only then, a bullet absorbs its wrapped
+ *  lowercase continuation rows, and the non-bullet rows directly before a
+ *  bullet (heading, title, dates) form one context entry. Rows that no bullet
+ *  follows stay one per line, so a bullet-free résumé is still refused whole
+ *  when it is over the cap. Every span stays a contiguous slice of the text. */
+function bulletSpans(points: string[], lines: Array<[number, number]>): Array<[number, number]> {
+  const grouped: Array<[number, number]> = [];
+  let context: Array<[number, number]> = [];
+  let inBullet = false;
+  const flush = (merge: boolean) => {
+    if (merge && context.length) grouped.push([context[0][0], context[context.length - 1][1]]);
+    else grouped.push(...context);
+    context = [];
+  };
+  for (const [from, to] of lines) {
+    const text = points.slice(from, to).join('');
+    if (BULLET_LINE.test(text)) {
+      flush(true);
+      grouped.push([from, to]);
+      inBullet = true;
+    } else if (inBullet && /^[\t ]*\p{Ll}/u.test(text)) {
+      grouped[grouped.length - 1][1] = to;
+    } else {
+      inBullet = false;
+      context.push([from, to]);
+    }
+  }
+  flush(false);
+  return grouped;
+}
+
 /** Local paragraph/line proposals retain exact codepoint offsets. Oversized
  *  paragraphs are split at whitespace where possible, without losing text.
  *  An over-limit result is rejected as a whole, never silently truncated. */
@@ -151,7 +185,7 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   }
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
-  for (const [from, to] of spans) {
+  for (const [from, to] of hasParagraphBreak || spans.length <= MAX_EXPERIENCE_ENTRIES ? spans : bulletSpans(points, spans)) {
     let left = from;
     let right = to;
     while (left < right && /\s/u.test(points[left])) left += 1;
