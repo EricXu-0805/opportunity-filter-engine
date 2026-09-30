@@ -158,7 +158,7 @@ export async function prepareTargetResumePlan(value: unknown, settings: TargetRe
   } catch (error) { return failure(error, 'invalid_document'); }
 }
 
-const REASONS = new Set(['context_too_large', 'target_too_large', 'no_plan_items', 'budget_exhausted',
+const REASONS = new Set(['context_too_large', 'target_too_large', 'interests_too_large', 'no_plan_items', 'budget_exhausted',
   'model_unavailable', 'timeout', 'invalid_model_response', 'no_target_evidence', 'no_source_evidence']);
 function quote(source: string, value: Record<string, unknown>): void {
   text(value.quote);

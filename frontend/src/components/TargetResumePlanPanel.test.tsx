@@ -207,6 +207,17 @@ describe('whole draft content planning', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Nothing was cut');
     expect(screen.queryByRole('checkbox')).toBeNull(); expect(screen.queryByText(/All 5 content blocks/)).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
   });
+  it.each([
+    ['en', 'Your research interests are over 8000 characters'],
+    ['zh', '研究兴趣超过 8000 个字符'],
+  ] as const)('names long research interests as the cause of an unavailable plan (%s)', async (locale, text) => {
+    mocked.locale = locale;
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), method: 'unavailable', complete: false, reason_code: 'interests_too_large', logical_calls: 0, provider_attempts_upper_bound: 0, items: [] }));
+    const p = props(); render(<TargetResumePlanPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成选材建议' : 'Generate content plan' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(text);
+    expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+  });
   it('uses Chinese visible copy and clears dirty review state only after explicit dismissal', async () => {
     mocked.locale = 'zh'; const p = props(); render(<TargetResumePlanPanel {...p} />);
     fireEvent.change(screen.getByRole('combobox', { name: '篇幅目标' }), { target: { value: '2' } });

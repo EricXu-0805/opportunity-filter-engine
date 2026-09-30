@@ -4,10 +4,12 @@ import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
+import { translate } from '@/i18n/translate';
 import { ApiError, generateTargetResumePlan } from '@/lib/api';
 import { isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { useProfileAction } from '@/lib/use-profile-action';
 import { applyTargetResumePlan, measureTargetResumeLength, prepareTargetResumePlan, validateTargetResumePlanResponse } from '@/lib/target-resume-plan';
+import { FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS } from '@/lib/target-resume-ai-protocol';
 import type { PreparedTargetResumePlan, TargetResumePlanRequest, TargetResumePlanResponse } from '@/lib/target-resume-plan-protocol';
 import type { TargetResumeProvenanceAnnotation } from '@/lib/target-resume-provenance';
 import type { TargetResumeV1 } from '@/lib/target-resume';
@@ -71,6 +73,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
   const reason = (code: string | null) => ({
     context_too_large: copy('The complete materials exceed this request’s limit. Nothing was cut; your draft is kept.', '完整材料超过本次处理容量，内容没有截断，原稿保留。'),
     target_too_large: copy('The opportunity details exceed this request’s limit. Your draft is kept.', '机会资料超过本次处理容量，原稿保留。'),
+    interests_too_large: translate(locale, 'tailor.fullTarget.interestsTooLarge', { limit: FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS }),
     no_plan_items: copy('This draft has no content blocks to plan beyond contact details.', '本稿除基本信息外，没有可安排的内容块。'),
     budget_exhausted: copy('The AI allowance is used up. Your draft and any earlier plan are kept.', 'AI 额度已用完，原稿及已有安排保留。'),
     timeout: copy('The plan did not finish in time. Your draft and any earlier plan are kept.', '选材未及时完成，原稿及已有安排保留。'),

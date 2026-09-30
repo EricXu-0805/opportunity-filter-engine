@@ -225,7 +225,7 @@ def test_complete_direction_and_support_enter_budget_without_clipping():
     _, _, selected, _ = ai.prepare_batch(req, doc)
     assert ai.batch_preflight(doc, selected, 'en') == (None, 'interests_too_large')
     blocks, _, scope = plan.prepare_plan(request(doc, planning=True), doc)
-    assert plan.plan_preflight(doc, blocks, scope, {'target_pages': 1}, 'en') == (None, 'context_too_large')
+    assert plan.plan_preflight(doc, blocks, scope, {'target_pages': 1}, 'en') == (None, 'interests_too_large')
     doc = document(originals=['I wrote tests. ' + 'a' * 3000, 'I ran checks. ' + 'b' * 3000])
     with pytest.raises(ValueError, match='batch_too_large'): ai.prepare_batch(request(doc, group(doc)), doc)
 
@@ -335,7 +335,7 @@ def test_real_route_rejects_invalid_or_oversized_input_before_provider(monkeypat
     if mutation == 'over_budget':
         assert response.status_code == 200
         result = response.json()
-        assert (result['reason_code'] if planning else result['receipts'][0]['reason_code']) == ('context_too_large' if planning else 'interests_too_large')
+        assert (result['reason_code'] if planning else result['receipts'][0]['reason_code']) == 'interests_too_large'
     else:
         assert response.status_code == 422, response.text
     assert calls == []

@@ -40,7 +40,7 @@ export interface TargetResumePlanRequest {
   draft: TargetResumeV1; document_signature: string;
   options: TargetResumePlanOptions;
 }
-export type TargetResumePlanReason = 'context_too_large' | 'target_too_large'
+export type TargetResumePlanReason = 'context_too_large' | 'target_too_large' | 'interests_too_large'
   | 'no_plan_items' | 'budget_exhausted' | 'model_unavailable' | 'timeout'
   | 'invalid_model_response' | 'no_target_evidence' | 'no_source_evidence';
 export interface TargetResumePlanResponse {

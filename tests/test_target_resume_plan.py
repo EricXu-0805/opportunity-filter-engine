@@ -13,6 +13,7 @@ from backend import main
 from backend.lib import target_resume_ai as ai
 from backend.lib import target_resume_plan as plan
 from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout
+from backend.lib.target_resume_ai_schema import MAX_DIRECTION_CHARACTERS
 from backend.lib.target_resume_ai_validation import confirmed_document, fingerprint, validate_document
 from backend.lib.target_resume_plan_schema import MAX_BODY_BYTES, FullTargetPlanRequest
 from backend.routes import target_resume_ai as route
@@ -280,6 +281,24 @@ def test_prompt_cap_boundary_counts_the_complete_unicode_prompt(endpoint, monkey
     monkeypatch.setattr(plan, "MAX_PROMPT_CHARACTERS", count - 1)
     unavailable(endpoint.submit(doc), "context_too_large", calls=0)
     assert not endpoint.calls
+
+
+@pytest.mark.parametrize("length", [MAX_DIRECTION_CHARACTERS + 1, 125000])
+def test_long_research_interests_are_refused_by_name_before_provider(endpoint, length):
+    # Both sizes used to surface as a document-level context_too_large (or, below
+    # the prompt cap, went to the model); the cause is the interests field.
+    doc = endpoint.doc()
+    doc["base_snapshot"]["research_interests"] = "i" * (length - 4) + "TAIL"
+    unavailable(endpoint.submit(doc), "interests_too_large", calls=0)
+    assert endpoint.calls == []
+
+
+def test_research_interests_at_the_limit_reach_the_model_verbatim(endpoint):
+    doc = endpoint.doc()
+    doc["base_snapshot"]["research_interests"] = "i" * (MAX_DIRECTION_CHARACTERS - 4) + "TAIL"
+    completed(endpoint, endpoint.submit(doc), doc)
+    prompt = json.loads(endpoint.calls[0][0][1]["content"])
+    assert prompt["student_direction"]["research_interests"] == doc["base_snapshot"]["research_interests"]
 
 
 @pytest.mark.parametrize("changes", [

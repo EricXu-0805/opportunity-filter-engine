@@ -205,6 +205,11 @@ describe('strict complete plan receipts', () => {
     result.items = response(prepared).items;
     expect(validateTargetResumePlanResponse(prepared, request(result), result).ok).toBe(false);
   });
+  it('accepts the named interests refusal as an honest unavailable plan', async () => {
+    const prepared = await prepare(); const result = response(prepared);
+    Object.assign(result, { method: 'unavailable', complete: false, reason_code: 'interests_too_large', logical_calls: 0, provider_attempts_upper_bound: 0, items: [] });
+    expect(validateTargetResumePlanResponse(prepared, request(result), result)).toMatchObject({ ok: true, value: { reason_code: 'interests_too_large' } });
+  });
   it.each([
     ['fact line', (p: PreparedTargetResumePlan, r: TargetResumePlanResponse) => { r.items[0].rewrites[0].unit_id = p.manifest[0].line_ids[0]; }],
     ['other block', (p: PreparedTargetResumePlan, r: TargetResumePlanResponse) => { r.items[0].rewrites[0].unit_id = p.manifest[1].line_ids.at(-1)!; }],

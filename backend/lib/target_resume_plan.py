@@ -11,7 +11,11 @@ from copy import deepcopy
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.target_resume_ai import dispatch, target_character_count, valid_quotes
 from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, supported_claim_upgrade_detected
-from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_CHARACTERS, MAX_TARGET_CHARACTERS
+from backend.lib.target_resume_ai_schema import (
+    MAX_DIRECTION_CHARACTERS,
+    MAX_EXPERIENCE_CHARACTERS,
+    MAX_TARGET_CHARACTERS,
+)
 from backend.lib.target_resume_ai_validation import (
     InvalidTargetResume,
     active,
@@ -116,6 +120,8 @@ def plan_preflight(doc, blocks, scope, options, locale):
         return None, "no_plan_items"
     if target_character_count(doc["target_snapshot"]) > MAX_TARGET_CHARACTERS:
         return None, "target_too_large"
+    if len(doc["base_snapshot"].get("research_interests", "")) > MAX_DIRECTION_CHARACTERS:
+        return None, "interests_too_large"
     prompt_blocks = deepcopy(blocks)
     for block in prompt_blocks:
         for line in block["lines"]:
