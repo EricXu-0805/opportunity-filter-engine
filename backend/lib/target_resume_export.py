@@ -4,7 +4,7 @@ No user markup, remote resources, source material, or current profile is read.
 Both outputs keep the submitted section/block/line order and current wording.
 standard-v1 sets each block as a résumé entry: its leading title/organization
 fields share one row, with their dates at the right margin, and contact details
-and skills each share one row. Field roles are layout, not printed labels.
+and single skills each share one row. Field roles are layout, not printed labels.
 """
 from __future__ import annotations
 
