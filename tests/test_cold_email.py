@@ -1291,6 +1291,23 @@ class TestColdEmailPipeline:
         notes = ce._revision_notes({"llm": rubric})
         assert isinstance(notes, str)
 
+    def test_revision_notes_explain_gate_findings_instead_of_listing_them_as_terms(self):
+        import backend.routes.cold_email as ce
+
+        notes = ce._revision_notes({
+            "unsupported": ["unsupported experience attribution: personal build",
+                            "unsupported contact history claim", "0.95 auc", "hypersonics"],
+            "borrowed_competence": ["unsupported skill level: PCR", "robotics"],
+        })
+        assert "actor, verb and object" in notes
+        assert "already met" in notes
+        assert "level the student listed: PCR." in notes
+        assert "remove them: 0.95 auc." in notes
+        terms = next(line for line in notes.splitlines() if "These terms" in line)
+        assert terms.endswith(": hypersonics.")
+        topics = next(line for line in notes.splitlines() if "PROFESSOR's own materials" in line)
+        assert topics.endswith(": robotics.")
+
     def test_pipeline_survives_bad_critique_end_to_end(self, monkeypatch):
         """Full pipeline with a wrong-typed critique: no exception, revise still
         runs off the deterministic findings."""

@@ -533,3 +533,39 @@ def test_resume_tool_omission_keeps_a_broad_denial_for_both_tool_positions(posit
     original = positive + ' Did not build ML models during coursework.'
     assert check('Built ML models during coursework.', [original], allow_subjectless_claims=True)
     assert check('Did not build ML models during coursework.', [original], allow_subjectless_claims=True) == []
+
+
+COURSE = ('Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; '
+          'reached 0.87 AUC on the NIH ChestX-ray14 validation split.')
+
+
+@pytest.mark.parametrize('claim', [
+    'In CS 446, I built a PyTorch image classifier for chest X-ray triage, reaching 0.87 AUC on the NIH '
+    'ChestX-ray14 validation split, which gave me practical exposure to evaluating models.',
+    'I built a PyTorch image classifier for chest X-ray triage, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.',
+    'I built a PyTorch image classifier for chest X-ray triage, which taught me how to evaluate a model.',
+])
+def test_a_trailing_result_phrase_is_its_own_claim_from_the_same_entry(claim):
+    # Real Sonnet drafts phrase a confirmed result this way; reading the
+    # participle as part of the object rejected every one of them.
+    assert check(claim, [COURSE]) == []
+
+
+@pytest.mark.parametrize('claim', [
+    'I built a PyTorch image classifier for chest X-ray triage, reaching 0.95 AUC.',
+    'I built a Python parser, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.',
+    'I built a PyTorch image classifier for chest X-ray triage, reducing latency by 12%.',
+    'I built a PyTorch image classifier for chest X-ray triage, a compiler, and a database.',
+])
+def test_a_trailing_phrase_cannot_invent_or_borrow_a_result_or_add_objects(claim):
+    assert check(claim, [COURSE, 'Built a Python parser.'])
+
+
+def test_comma_free_source_wording_still_supports_the_same_words_with_a_comma():
+    assert check('I built a Python parser, using Rust.', ['I built a Python parser using Rust.']) == []
+
+
+def test_saying_i_only_helped_understates_and_is_supported_but_not_the_reverse():
+    assert check('I helped build a Python parser.', ['Built a Python parser.']) == []
+    assert check('I built a Python parser.', ['I helped build a Python parser.'])
+    assert check('I did not help build a Python parser.', ['I did not build a Python parser.'])

@@ -1502,6 +1502,20 @@ def _findings_score(findings: dict) -> int:
     )
 
 
+_REVISION_FIXES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("unsupported experience attribution",),
+     "A sentence about what the student did does not match their confirmed "
+     "experience. Restate it with that entry's own actor, verb and object, and "
+     "attach a result only to the entry that states it."),
+    (("unsupported contact history claim", "missing or repeated confirmed contact sentence"),
+     "Remove any statement that the student has already met, written to, spoken "
+     "with, or been referred to this person unless the STUDENT brief states it; "
+     "keep a confirmed contact sentence exactly once."),
+    (("unsupported skill level", "unsupported expertise level"),
+     "Describe each skill no more strongly than the level the student listed"),
+)
+
+
 def _revision_notes(findings: dict) -> str:
     parts: list[str] = []
     if findings.get("banned_filler"):
@@ -1509,19 +1523,43 @@ def _revision_notes(findings: dict) -> str:
             "Remove these banned filler words and replace each with a specific "
             f"fact: {', '.join(findings['banned_filler'])}."
         )
-    if findings.get("unsupported"):
+    # Gate findings name a check, not a word to delete. Handed over as
+    # "terms", the reviser answered "unsupported experience attribution" by
+    # softening "built" to "helped build", which was rejected again.
+    unsupported = [str(t) for t in findings.get("unsupported") or []]
+    borrowed = [str(t) for t in findings.get("borrowed_competence") or []]
+    checks = unsupported + borrowed
+    handled: set[str] = set()
+    for prefixes, note in _REVISION_FIXES:
+        hits = [t for t in checks if t.startswith(prefixes)]
+        if hits:
+            handled.update(hits)
+            levels = [t.split(": ", 1)[1] for t in hits if ": " in t and "skill level" in t]
+            parts.append(f"{note}: {', '.join(levels)}." if levels else note.rstrip(".") + ".")
+    numbers = [t for t in checks if t[:1].isdigit()]
+    if numbers:
+        parts.append(
+            "These numbers do not appear in the student's confirmed "
+            f"experience — remove them: {', '.join(numbers[:8])}."
+        )
+    statements = [t for t in unsupported if t not in handled and not t[:1].isdigit() and (" " in t or "_" in t)]
+    if statements:
+        parts.append(f"Remove or rewrite the sentences these checks flagged: {', '.join(statements[:8])}.")
+    terms = [t for t in unsupported if t not in handled and t not in statements and t not in numbers]
+    if terms:
         parts.append(
             "These terms are NOT supported by the student's provided facts — "
             f"remove them or replace with something they actually listed: "
-            f"{', '.join(str(t) for t in findings['unsupported'][:8])}."
+            f"{', '.join(terms[:8])}."
         )
-    if findings.get("borrowed_competence"):
+    topics = [t for t in borrowed if t not in handled and t not in numbers]
+    if topics:
         parts.append(
             "The email claims the student personally has experience in these "
             "topics, but they appear only in the PROFESSOR's own materials — "
             "the student never listed them. Rephrase as interest in the "
             "professor's work, or drop the claim: "
-            f"{', '.join(str(t) for t in findings['borrowed_competence'][:8])}."
+            f"{', '.join(topics[:8])}."
         )
     if findings.get("has_specific_prof_data") and not findings.get("references_professor"):
         parts.append(

@@ -106,6 +106,41 @@ class _Fact:
     qualifiers: tuple[str, ...]
     entry: int
     clause: str = ""
+    # A claim ending in ", reaching X" / ", which ...": the action before the
+    # comma plus one fact per recognized participle, tried only when the
+    # whole-object reading is unsupported.
+    split: tuple = ()
+
+
+def _participle(lemma: str) -> str:
+    if lemma in {'win', 'debug'}:
+        return lemma + lemma[-1] + 'ing'
+    return (lemma[:-1] if lemma.endswith('e') else lemma) + 'ing'
+
+
+_PARTICIPLES = {_participle(lemma): lemma for lemma in _FORMS}
+_TRAILING = re.compile(
+    r',\s+(?:(' + '|'.join(sorted(_PARTICIPLES, key=len, reverse=True)) + r')\b|(?:which|where)\b)', re.I,
+)
+
+
+def _trailing_phrases(objects: str) -> tuple[str, list[tuple[str, str]]] | None:
+    """Split "X, reaching Y, which Z" into X and [("reach", "Y")].
+
+    Only a known action's participle becomes a fact; a which/where remark is
+    reflection, not an attribution claim, and stays with the prose gates.
+    An enumeration (", a compiler") never matches, so it is still compared as
+    one ordered object and fails closed.
+    """
+    matches = list(_TRAILING.finditer(objects))
+    if not matches:
+        return None
+    tails = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(objects)
+        if match[1]:
+            tails.append((_PARTICIPLES[match[1].casefold()], objects[match.end():end].strip()))
+    return objects[:matches[0].start()], tails
 
 
 def _actor(subject: str) -> str:
@@ -206,34 +241,58 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             if contextual_scope:
                 scope = contextual_scope
             carried = actor
+            lemma = (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()]
             objects = action[2].strip()
-            local_scope = contextual_scope or scope
-            suffix = _PROJECT_SUFFIX.search(objects)
-            if suffix:
-                local_scope = contextual_scope or _tokens(suffix[1]); objects = objects[:suffix.start()]
-            if contextual_scope:
-                objects = _without_activity_suffix(objects, activity_aliases)
-            # The one neutral editorial suffix used by legacy resume rewrites
-            # must not erase a local restriction, including "never carefully"
-            # or "without working carefully". A nearby retained source sentence
-            # cannot certify a new unrestricted positive assertion.
-            if allow_subjectless_claims and (manner := _CARE_QUALIFIER.search(objects)):
-                qualifiers.append(manner[1].casefold() + '_carefully')
-            # "I tested the parser, not the model" cannot support "tested model".
-            negated_object = _OBJECT_NEGATION.search(objects)
-            tail = objects[negated_object.end():] if negated_object else None
-            if negated_object:
-                objects = objects[:negated_object.start()]
-            if _BOUND.search(objects):
-                qualifiers.append('bounded_quantity')
-            tokens = _tokens(objects)
-            if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and not _CARE_QUALIFIER.search(objects):
-                tokens = tokens[:-1]
-            if tokens:
-                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], tokens, local_scope, negative, tuple(sorted(set(qualifiers))), entry, clause))
-            if tail and _tokens(tail):
-                facts.append(_Fact(actor, (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()], _tokens(tail), local_scope, True, tuple(sorted(set(qualifiers))), entry, clause))
+            shape = (actor, negative, scope, contextual_scope, activity_aliases, allow_subjectless_claims, entry, clause)
+            main, denied = _object_facts(objects, lemma, qualifiers, *shape)
+            trailing = _trailing_phrases(objects)
+            split: list[_Fact] = []
+            if trailing:
+                head, tails = trailing
+                parts = [_object_facts(head, lemma, qualifiers, *shape)[0]]
+                parts += [_object_facts(text, tail_lemma, qualifiers, *shape)[0] for tail_lemma, text in tails if _tokens(text)]
+                split = parts if all(parts) else []
+            if source:
+                # A source supports both readings of its own sentence.
+                facts.extend(fact for fact in (main, denied, *split) if fact)
+                continue
+            if main:
+                facts.append(replace(main, split=tuple(split)))
+            if denied:
+                facts.append(denied)
     return facts
+
+
+def _object_facts(objects: str, lemma: str, qualifiers: list[str], actor: str, negative: bool,
+                  scope: tuple[str, ...], contextual_scope: tuple[str, ...], activity_aliases: dict | None,
+                  allow_subjectless_claims: bool, entry: int, clause: str) -> tuple[_Fact | None, _Fact | None]:
+    qualifiers = list(qualifiers)
+    local_scope = contextual_scope or scope
+    suffix = _PROJECT_SUFFIX.search(objects)
+    if suffix:
+        local_scope = contextual_scope or _tokens(suffix[1]); objects = objects[:suffix.start()]
+    if contextual_scope:
+        objects = _without_activity_suffix(objects, activity_aliases)
+    # The one neutral editorial suffix used by legacy resume rewrites
+    # must not erase a local restriction, including "never carefully"
+    # or "without working carefully". A nearby retained source sentence
+    # cannot certify a new unrestricted positive assertion.
+    if allow_subjectless_claims and (manner := _CARE_QUALIFIER.search(objects)):
+        qualifiers.append(manner[1].casefold() + '_carefully')
+    # "I tested the parser, not the model" cannot support "tested model".
+    negated_object = _OBJECT_NEGATION.search(objects)
+    tail = objects[negated_object.end():] if negated_object else None
+    if negated_object:
+        objects = objects[:negated_object.start()]
+    if _BOUND.search(objects):
+        qualifiers.append('bounded_quantity')
+    tokens = _tokens(objects)
+    if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and not _CARE_QUALIFIER.search(objects):
+        tokens = tokens[:-1]
+    marks = tuple(sorted(set(qualifiers)))
+    main = _Fact(actor, lemma, tokens, local_scope, negative, marks, entry, clause) if tokens else None
+    denied = _Fact(actor, lemma, _tokens(tail), local_scope, True, marks, entry, clause) if tail and _tokens(tail) else None
+    return main, denied
 
 
 def _same_actor(source: _Fact, claim: _Fact) -> bool:
@@ -502,12 +561,14 @@ def experience_attribution_violations(
             contexts.get(fact.entry) and fact.scope and fact.scope[0].startswith("$activity")
             and fact.scope[0] != "$activity_unknown_name"
             and fact.scope != _context_key(contexts[fact.entry]))]
-    findings = set()
-    for claim in _facts(text, entry=-1, source=False, allow_subjectless_claims=allow_subjectless_claims,
-                        activity_aliases=aliases):
+    def supporting_entries(claim: _Fact, within: set[int] | None = None) -> set[int]:
         candidates = [fact for fact in sources if _same_actor(fact, claim)
+                      and (within is None or fact.entry in within)
                       and fact.action == claim.action and fact.negative == claim.negative
-                      and fact.qualifiers == claim.qualifiers
+                      # "I helped build" understates a confirmed "built"; the
+                      # reverse and every other qualifier change still fail.
+                      and (fact.qualifiers == claim.qualifiers
+                           or (not claim.negative and claim.qualifiers == ('help',) and not fact.qualifiers))
                       and (not claim.scope or fact.scope == claim.scope)
                       # An unclassified proper suffix may be a method/object,
                       # not an activity ("in Rust", "for Open Source"). Its exact
@@ -518,19 +579,27 @@ def experience_attribution_violations(
                       # Shortening may drop trailing detail, never promote an object
                       # mentioned only in a method/for-clause into the action itself.
                       and _objects_supported(fact, claim, allow_subjectless_claims)]
-        supported = False
-        for fact in candidates:
-            # An explicit denial of this action/object survives nearby positive
-            # team text. Separate named projects do not veto one another.
-            contradicted = not claim.negative and any(
-                other.negative and other.actor == claim.actor and other.action == claim.action
-                and (other.entry == fact.entry or not other.scope or other.scope == fact.scope)
-                and (not other.scope or not fact.scope or other.scope == fact.scope)
-                and _objects_contradicted(fact, claim, other, allow_subjectless_claims)
-                for other in sources
-            )
-            if not contradicted:
-                supported = True; break
-        if not supported:
-            findings.add(f'unsupported experience attribution: {claim.actor} {claim.action}')
+        # An explicit denial of this action/object survives nearby positive
+        # team text. Separate named projects do not veto one another.
+        return {fact.entry for fact in candidates if not (not claim.negative and any(
+            other.negative and other.actor == claim.actor and other.action == claim.action
+            and (other.entry == fact.entry or not other.scope or other.scope == fact.scope)
+            and (not other.scope or not fact.scope or other.scope == fact.scope)
+            and _objects_contradicted(fact, claim, other, allow_subjectless_claims)
+            for other in sources
+        ))}
+
+    findings = set()
+    for claim in _facts(text, entry=-1, source=False, allow_subjectless_claims=allow_subjectless_claims,
+                        activity_aliases=aliases):
+        if supporting_entries(claim):
+            continue
+        if claim.split:
+            # A trailing result must come from the entry that supports the
+            # action it is attached to, never from another project.
+            head, *tails = claim.split
+            entries = supporting_entries(head)
+            if entries and all(supporting_entries(tail, entries) for tail in tails):
+                continue
+        findings.add(f'unsupported experience attribution: {claim.actor} {claim.action}')
     return sorted(findings)
