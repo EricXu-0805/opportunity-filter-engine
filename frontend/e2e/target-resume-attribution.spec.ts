@@ -294,14 +294,16 @@ async function readDocx(page: Page, bytes: Buffer) {
       links: Array.from(parse(relationships).getElementsByTagName('Relationship'))
         .filter(item => item.getAttribute('Type')?.endsWith('/hyperlink')).map(item => item.getAttribute('Target')),
       protected: parse(settings).getElementsByTagNameNS(w, 'documentProtection').length,
-      embedded: parse(fonts).getElementsByTagNameNS(w, 'embedRegular').length,
+      embedded: Array.from(parse(fonts).getElementsByTagNameNS(w, 'embedRegular')).map(item => (item.parentNode as Element).getAttributeNS(w, 'name')),
     };
   }, { documentXml: documentXml!, relationships: entries.get('word/_rels/document.xml.rels')!.toString('utf8'),
     settings: entries.get('word/settings.xml')!.toString('utf8'), fonts: entries.get('word/fontTable.xml')!.toString('utf8') });
   expect(data.textRuns).toBeGreaterThan(0);
   expect(data.protected).toBe(0);
-  expect(data.embedded).toBeGreaterThanOrEqual(2);
-  expect([...entries.keys()].filter(name => /^word\/fonts\/.*\.odttf$/.test(name)).length).toBeGreaterThanOrEqual(2);
+  // Since fee17de0 a DOCX embeds only the fonts its text needs. Every line
+  // here is Latin except the CJK student name, and nothing is emoji.
+  expect(data.embedded).toEqual(['Noto Sans CJK SC']);
+  expect([...entries.keys()].filter(name => /^word\/fonts\/.*\.odttf$/.test(name))).toHaveLength(1);
   return { ...data, text: data.paragraphs.join('\n') };
 }
 

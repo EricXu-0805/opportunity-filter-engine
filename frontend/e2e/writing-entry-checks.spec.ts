@@ -477,7 +477,7 @@ test.describe('Saved opportunity requirements', () => {
   test.describe.configure({ timeout: 90_000 });
   const legacyNotice = 'This older draft did not save all opportunity requirements. You can still edit, save and export it. Rebuild to use AI with the current requirements.';
   async function saveDraft(page: Page, revision: number): Promise<{ status: string; revision: number; doc: TargetResumeV1 }> {
-    const response = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas'
       && r.request().postDataJSON()?.p_expected_revision === revision);
     await page.getByRole('button', { name: 'Save target draft', exact: true }).click();
     const receipt = await (await response).json();
@@ -507,7 +507,7 @@ test.describe('Saved opportunity requirements', () => {
       await newDraft(page);
       await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill(MANUAL);
       const saved = await saveDraft(page, 0);
-      expect(saved.doc.target_snapshot).toMatchObject({ context_version: 2, criteria: { eligibility: {
+      expect(saved.doc.target_snapshot).toMatchObject({ context_version: 4, criteria: { eligibility: {
         citizenship_required: false,
       } } });
       await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
@@ -579,11 +579,11 @@ test.describe('Saved opportunity requirements', () => {
       await expect(page.getByText(legacyNotice, { exact: true })).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeEnabled();
       const fourth = await saveDraft(page, 3);
-      expect(fourth.doc.target_snapshot).toMatchObject({ context_version: 2 });
+      expect(fourth.doc.target_snapshot).toMatchObject({ context_version: 4 });
       await page.getByText('Version history', { exact: true }).click();
       await page.getByRole('button', { name: 'Load latest 20 versions', exact: true }).click();
       await page.getByRole('button', { name: /^View version 3 ·/ }).click();
-      const restored = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_cas'
+      const restored = page.waitForResponse(r => new URL(r.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas'
         && r.request().postDataJSON()?.p_expected_revision === 4);
       await page.getByRole('button', { name: 'Restore selected version as a new save', exact: true }).click();
       const fifth = await (await restored).json();

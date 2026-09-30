@@ -454,7 +454,7 @@ test.describe('Complete target résumé', () => {
       const button = page.getByRole('button', { name: 'Save target draft', exact: true });
       await expect(button).toBeEnabled();
       const [response] = await Promise.all([
-        page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_cas')
+        page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_with_provenance_cas')
           && r.request().postDataJSON()?.p_expected_revision === expectedRevision, { timeout: 15_000 }),
         button.click(),
       ]);
@@ -563,7 +563,7 @@ test.describe('Complete target résumé', () => {
   function targetWrites(page: Page) {
     const writes: unknown[] = [];
     page.on('request', request => {
-      if (request.url().includes('/rest/v1/rpc/commit_target_resume_cas')) writes.push(request.postDataJSON());
+      if (request.url().includes('/rest/v1/rpc/commit_target_resume_with_provenance_cas')) writes.push(request.postDataJSON());
     });
     return writes;
   }
@@ -613,7 +613,7 @@ test.describe('Complete target résumé', () => {
     const picked = expected.find(unit => unit.line.evidence.id === 'ai-detail-14')!;
     const suggestion = aiPanel(page).getByRole('article', { name: `AI rewrite ${picked.line.id}`, exact: true });
     await expect(suggestion).toContainText(picked.line.text);
-    expect(await suggestion.locator('blockquote').textContent()).toBe(targetEvidence(draft).quote);
+    expect(await suggestion.locator('blockquote').textContent()).toBe(`Opportunity citation: ${targetEvidence(draft).quote}`);
     await aiPanel(page).getByRole('checkbox', { name: `Use rewrite: ${picked.line.id}`, exact: true }).check();
     await expect(aiPanel(page).getByRole('checkbox', { name: 'Use suggested section and block order', exact: true })).not.toBeChecked();
     await aiPanel(page).getByText('Preview complete résumé before applying', { exact: true }).click();
@@ -880,7 +880,7 @@ test.describe('Complete target résumé', () => {
     await page.getByRole('button', { name: /^View version 1 ·/ }).click();
     const old = page.getByRole('region', { name: 'Selected historical version preview' });
     await expect(old).toContainText('Alex 王'); await expect(old).toContainText(longField);
-    const response = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_cas')
+    const response = page.waitForResponse(r => r.url().includes('/rest/v1/rpc/commit_target_resume_with_provenance_cas')
       && r.request().postDataJSON()?.p_expected_revision === 2);
     await page.getByRole('button', { name: 'Restore selected version as a new save', exact: true }).click();
     const receipt = await (await response).json();
