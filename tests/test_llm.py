@@ -244,13 +244,13 @@ class TestModelFor:
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         assert llm.model_for("cold_email") == {
             "provider_id": "openrouter",
-            "model": "anthropic/claude-sonnet-5.5",
+            "model": "anthropic/claude-opus-5.5",
         }
 
-    def test_writing_tasks_default_to_sonnet_5_5(self, monkeypatch):
+    def test_resume_tasks_default_to_sonnet_5_5(self, monkeypatch):
         self._clear(monkeypatch)
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
-        for task in ("cold_email", "tailor", "extract"):
+        for task in ("tailor", "extract"):
             assert llm.model_for(task) == {
                 "provider_id": "openrouter",
                 "model": "anthropic/claude-sonnet-5.5",

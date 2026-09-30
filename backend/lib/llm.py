@@ -189,6 +189,12 @@ def strong_model() -> Optional[str]:
 # Nine emails is a small sample, so this is a latency-and-currency move, not a
 # measured quality gain. Opus 4.8 stays the judge/critique lens: Opus 5.5 in
 # that seat was slower (18 s per email) and rescued no more drafts.
+# The cold-email draft then moved to Opus 5.5 after a blind review of 65 real
+# emails (6 student profiles x 6 targets; a professor-reader judge and a
+# fact-checker per email, flagged claims re-checked): would-reply 3.31 vs 2.86
+# for Sonnet 5.5, 2.89 GPT-6.1 Sol, 2.33 Sonnet 5; best mean rank; no
+# fabricated claims for any model. It costs about twice Sonnet 5.5 and runs
+# about 7 s slower at the median.
 #   * cold_email — highest-stakes personalized writing (draft + revise).
 #   * cold_email_review — the critique rubric + N-draft judge (judgment, not
 #     prose: which email would a professor answer, what reads templated).
@@ -197,7 +203,7 @@ def strong_model() -> Optional[str]:
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
-    "cold_email": "anthropic/claude-sonnet-5.5",
+    "cold_email": "anthropic/claude-opus-5.5",
     # NB: OpenRouter's slug is dotted ("4.8") — the hyphenated "opus-4-8" does
     # not exist in the catalog and 404s, silently degrading the review tier.
     "cold_email_review": "anthropic/claude-opus-4.8",
