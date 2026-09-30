@@ -383,3 +383,36 @@ def test_challenge_widget_or_script_does_not_hide_a_readable_posting(extra):
     source = '<main><h1>Research opportunity</h1><p>Undergraduates may apply. Deadline June 1.</p></main>'
     text = extract_import_document(page(source + extra))['text']
     assert 'Undergraduates may apply. Deadline June 1.' in text
+
+
+# ASP.NET WebForms and SharePoint wrap the whole page, posting included, in one
+# form, so text inside forms has to count against a bot-check sentence or script.
+@pytest.mark.parametrize('extra', [
+    pytest.param('<p>Please verify you are human before submitting.</p>', id='captcha-note'),
+    pytest.param('<p>Uploading your CV: this may take a few seconds.</p>', id='upload-note'),
+    pytest.param('<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>', id='cloudflare-page-script'),
+    pytest.param('<iframe src="https://geo.captcha-delivery.com/captcha/?x=1"></iframe>', id='datadome-frame'),
+    pytest.param('<script src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=2"></script>',
+                 id='incapsula-script'),
+])
+def test_bot_check_sentence_or_script_does_not_hide_a_posting_inside_one_page_wide_form(extra):
+    source = page('<form method="post" action="./Posting.aspx?id=12" id="form1"><div class="aspNetHidden">'
+                  '<input type="hidden" name="__VIEWSTATE" value="abc"></div><div id="content">'
+                  '<h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an undergraduate '
+                  'research assistant for spring 2027.</p><p>Deadline: January 15, 2027.</p>' + extra + '</div></form>')
+    text = extract_import_document(source)['text']
+    assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
+
+
+# Imperva adds this script to ordinary pages of the sites it protects. Only its
+# frame (incapsula-frame above) serves a challenge.
+@pytest.mark.parametrize('body', [
+    pytest.param('<table><tr><th>Lab</th><th>Pay</th></tr><tr><td>Optics</td><td>$15</td></tr>'
+                 '<tr><td>Robotics</td><td>$16</td></tr></table>', id='table-listing'),
+    pytest.param('<p>Log in to Handshake and search for job 12345 to apply.</p>'
+                 '<p>Sign in with your NetID to see the full description.</p>', id='sign-in-sentences-only'),
+])
+def test_imperva_page_script_alone_is_not_a_bot_check(body):
+    source = '<main><h1>Open positions</h1>' + body + '</main>'
+    script = '<script src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=2"></script>'
+    assert extract_import_document(page(source + script)) == extract_import_document(page(source))

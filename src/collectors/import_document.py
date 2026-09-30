@@ -27,6 +27,8 @@ _BLOCKS = {
     'h4', 'h5', 'h6', 'header', 'hr', 'legend', 'main', 'nav', 'ol', 'p', 'pre', 'section',
     'summary', 'table', 'tbody', 'thead', 'tfoot', 'ul',
 }
+# Controls, headings, navigation and no-script notices: never source on their own.
+_CHROME = frozenset({'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'})
 _HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse))\s*(?:!important\s*)?(?:;|$)', re.I)
 _JS_WALL = re.compile(
     r'\b(?:enable|turn on|activate)\s+(?:your\s+)?javascript\b|'
@@ -63,7 +65,9 @@ _CHALLENGE_TEXT = re.compile(
     r'protected by anubis|ddos protection by)\b',
     re.I,
 )
-_CHALLENGE_SOURCE = re.compile(r'/cdn-cgi/challenge-platform/|/_Incapsula_Resource\b|captcha-delivery\.com', re.I)
+_CHALLENGE_SOURCE = re.compile(r'/cdn-cgi/challenge-platform/|captcha-delivery\.com', re.I)
+# Imperva also loads this script on ordinary pages it protects; only its frame is a challenge.
+_CHALLENGE_FRAME = re.compile(r'/_Incapsula_Resource\b', re.I)
 # Only a vendor's bot-check page carries these ids, scripts and redirects, so
 # they refuse it whatever title and explanation it shows around them.
 _CHALLENGE_PAGE_IDS = {'challenge-running', 'cf-challenge-running', 'challenge-form', 'anubis_challenge', 'px-captcha',
@@ -92,7 +96,7 @@ def _visible_in_body(tag: Tag) -> bool:
     return not any(_hidden(item) or item.name in _NON_BODY for item in [tag, *tag.parents] if isinstance(item, Tag))
 
 
-def _render(node, *, outside_form: bool = False, list_marker: str | None = None) -> str:
+def _render(node, *, skip: frozenset[str] = frozenset(), list_marker: str | None = None) -> str:
     if isinstance(node, Comment | Declaration | Doctype | ProcessingInstruction):
         return ''
     if isinstance(node, NavigableString):
@@ -100,9 +104,9 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
     if not isinstance(node, Tag):
         return ''
     name = node.name.lower()
-    if name in _NON_BODY or _hidden(node) or (outside_form and name in {'form', 'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}):
+    if name in _NON_BODY or _hidden(node) or name in skip:
         return ''
-    if outside_form and name == 'a' and any(
+    if skip and name == 'a' and any(
         parent.name in {'footer', 'header', 'nav'} for parent in node.parents if isinstance(parent, Tag)
     ):
         return ''
@@ -114,7 +118,7 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
             # Join actual cells rather than trimming a trailing delimiter: empty
             # first/last cells are meaningful column positions.
             values = [
-                re.sub(r'[\n\t]+', ' ', _clean_text(_render(cell, outside_form=outside_form)))
+                re.sub(r'[\n\t]+', ' ', _clean_text(_render(cell, skip=skip)))
                 for cell in cells
             ]
             return '\n' + '\t'.join(values) + '\n'
@@ -142,9 +146,9 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
                 marker = f'{number}. ' if number is not None else '- '
                 if number is not None:
                     number += step
-            rendered.append(_render(child, outside_form=outside_form, list_marker=marker))
+            rendered.append(_render(child, skip=skip, list_marker=marker))
         return '\n' + ''.join(rendered) + '\n'
-    text = ''.join(_render(child, outside_form=outside_form) for child in node.children)
+    text = ''.join(_render(child, skip=skip) for child in node.children)
     if name == 'li':
         return '\n' + (list_marker or '- ') + text.strip() + '\n'
     return '\n' + text + '\n' if name in _BLOCKS else text
@@ -156,9 +160,14 @@ def _clean_text(text: str) -> str:
     return '\n'.join(re.sub(r' *\t *', '\t', line) for line in lines if line)
 
 
-def _has_independent_source(root: Tag) -> bool:
-    """A login form can coexist with source prose; do not reject that page."""
-    for line in _clean_text(_render(root, outside_form=True)).splitlines():
+def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
+    """A login form can coexist with source prose; do not reject that page.
+
+    A login form's own text is not source. The bot-check rules count text
+    inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
+    posting included, in one form.
+    """
+    for line in _clean_text(_render(root, skip=_CHROME if forms else _CHROME | {'form'})).splitlines():
         # Login instructions can share a paragraph with a real deadline. Assess
         # sentences separately; a gate phrase must not discard adjacent facts.
         for sentence in re.split(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*', line):
@@ -184,7 +193,10 @@ def _is_challenge_page(soup: BeautifulSoup) -> bool:
 
 def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
     """Bot-check scripts, frames and redirects an ordinary page can also load."""
-    return any(_CHALLENGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'iframe', 'form', 'meta']))
+    return any(
+        _CHALLENGE_SOURCE.search(_address(tag)) or (tag.name == 'iframe' and _CHALLENGE_FRAME.search(_address(tag)))
+        for tag in soup.find_all(['script', 'iframe', 'form', 'meta'])
+    )
 
 
 def _meta(soup: BeautifulSoup, key: str) -> str:
@@ -227,13 +239,15 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         # independent source remains.
         if any(not _LOGIN.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
-        gate = bool(blocked) or _has_challenge_machinery(soup) or any(
+        gate = bool(blocked) or any(
             _visible_in_body(tag) and str(tag.get('type', '')).lower() == 'password' for tag in root.find_all('input')
         )
         if gate and not _has_independent_source(root):
             raise ImportDocumentError('access_page')
         text = _clean_text(_render(root))
-        if _ACCESS_SHELL.fullmatch(text) or (_CHALLENGE_TEXT.search(text) and not _has_independent_source(root)):
+        if _ACCESS_SHELL.fullmatch(text) or (
+                (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
+                and not _has_independent_source(root, forms=True)):
             raise ImportDocumentError('access_page')
         if root.find('script') is not None and _LOADING_SHELL.fullmatch(text):
             raise ImportDocumentError('javascript_required')
