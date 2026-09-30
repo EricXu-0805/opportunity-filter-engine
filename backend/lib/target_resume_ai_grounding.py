@@ -8,20 +8,10 @@ from __future__ import annotations
 
 import re
 
-from backend.lib.email_experience_attribution import (
-    collapse_whitespace,
-    experience_attribution_violations,
-)
+from backend.lib.email_experience_attribution import _TEAM_CONTEXT, experience_attribution_violations
 
 # Bump independently of the wire/pipeline version when source checks change.
-SOURCE_CHECK_VERSION = "target-resume-source-checks-v4"
-
-# Ordinary entries stay below this ceiling: at 6000 characters, English bullets
-# give about 80 clauses, Chinese prose about 130 and very short Chinese
-# sentences about 330. A long list of short items separated by '；' or ';' can
-# pass it. Past the ceiling the check fails closed (an upgrade is reported), so
-# the caller keeps the original.
-_MAX_CLAUSES = 400
+SOURCE_CHECK_VERSION = "target-resume-source-checks-v3"
 
 NEGATION = re.compile(r"\b(?:not|never|no|without|only)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未经|仅|只|未|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|接受|录用|发表)", re.I)
 TEAM = re.compile(r"\b(?:team|teammates?|we|our|collaborat\w*)\b|团队|小组|我们|共同|协作|合作", re.I)
@@ -60,9 +50,9 @@ def clauses(text):
     return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
 
-def personal_actions(text, clause_list=None):
+def personal_actions(text):
     found = set()
-    for clause in (clauses(text) if clause_list is None else clause_list):
+    for clause in clauses(text):
         if NEGATION.search(clause) or (TEAM.search(clause) and not PERSONAL.search(clause)):
             continue
         # Résumé fragments with no subject are personal claims too.
@@ -72,36 +62,89 @@ def personal_actions(text, clause_list=None):
     return found
 
 
-def publication_stages(text, clause_list=None):
-    return {name for clause in (clauses(text) if clause_list is None else clause_list) if not NEGATION.search(clause)
+def publication_stages(text):
+    return {name for clause in clauses(text) if not NEGATION.search(clause)
             for name, pattern in STAGES.items() if re.search(pattern, clause, re.I)}
 
 
 def claim_upgrade_detected(proposed, original):
-    proposed, original = collapse_whitespace(proposed), collapse_whitespace(original)
     if normalized(proposed) == normalized(original):
         return False
     proposed_normal = normalized(proposed)
-    proposed_clauses, original_clauses = clauses(proposed), clauses(original)
-    # Fail closed when either side is past the clause ceiling: an unverifiable
-    # rewrite keeps the original rather than being approved unchecked.
-    if len(proposed_clauses) > _MAX_CLAUSES or len(original_clauses) > _MAX_CLAUSES:
-        return True
     # Retain precise qualifiers/attribution, not merely one negation word
     # somewhere else in the new text. This intentionally rejects some valid
     # paraphrases; the original remains available for the student's review.
-    for clause in original_clauses:
+    for clause in clauses(original):
         if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
             return True
-    if personal_actions(proposed, proposed_clauses) - personal_actions(original, original_clauses):
+    if personal_actions(proposed) - personal_actions(original):
         return True
-    if publication_stages(proposed, proposed_clauses) - publication_stages(original, original_clauses):
+    if publication_stages(proposed) - publication_stages(original):
         return True
     # Compare only this original entry. A shared keyword or number in another
     # project, the target, or editable wording cannot establish who did what.
     # Resume bullets commonly omit "I"; opt into that finite English grammar
     # without changing the email checker's default treatment of fragments.
     return bool(experience_attribution_violations(proposed, [original], allow_subjectless_claims=True))
+
+
+HELP = re.compile(r"\b(?:help|helped|helping|helps|assist|assisted|assisting|assists)\b|协助|帮助|辅助", re.I)
+# A clause appended to mirror a posting states relevance, not something the
+# student did: "..., applying computational modeling", "..., building hands-on
+# laboratory experience". Allowed only when the original already says it.
+RELEVANCE_PADDING = re.compile(
+    r"[,，;；]\s*(?:thereby\s+|while\s+)?"
+    r"(?:applying|demonstrating|showcasing|highlighting|(?:directly\s+)?relevant\s+to|contributing\s+to"
+    r"|(?:building|gaining|developing|strengthening)\b[^,;.]*\b(?:experience|skills?|expertise)\b)"
+    r"|[，,]\s*(?:体现|展现|展示)了?|[，,]\s*(?:积累|锻炼|提升)了?[^，,。；;]*(?:经验|能力|技能)|为[^，,。；;]*奠定",
+    re.I)
+
+
+def _team_marked(text):
+    return bool(TEAM.search(text) or _TEAM_CONTEXT.search(text))
+
+
+def claim_upgrade_findings(proposed, original):
+    """Split the single-bullet claim locks into (hard, soft) findings.
+
+    Hard findings change who did what, add an action, status or relevance
+    clause, or drop a team/help/negation/publication qualifier entirely; no
+    reviewer may overrule them. Soft findings are the paraphrase-level
+    failures of this finite checker (a locked clause reworded while its
+    qualifier words survive, an object reworded or a setting moved), which a
+    faithfulness review may accept. ``claim_upgrade_detected`` is unchanged:
+    whenever it rejects, at least one finding is returned here.
+    """
+    if normalized(proposed) == normalized(original):
+        return [], []
+    hard = []
+    if _team_marked(original) and not _team_marked(proposed):
+        hard.append("team_qualifier_dropped")
+    # "As part of a team" may stand in for "helped" only when the original
+    # already said the work was shared.
+    if HELP.search(original) and not HELP.search(proposed) and not (
+            _team_marked(original) and _team_marked(proposed)):
+        hard.append("help_qualifier_dropped")
+    if NEGATION.search(original) and not NEGATION.search(proposed):
+        hard.append("negation_dropped")
+    if PUBLICATION.search(original) and not PUBLICATION.search(proposed):
+        hard.append("publication_qualifier_dropped")
+    if personal_actions(proposed) - personal_actions(original):
+        hard.append("personal_action_added")
+    if publication_stages(proposed) - publication_stages(original):
+        hard.append("publication_stage_added")
+    original_normal = normalized(original)
+    if any(normalized(match.group(0)).strip(",，;； ") not in original_normal
+           for match in RELEVANCE_PADDING.finditer(proposed)):
+        hard.append("relevance_clause_added")
+    soft = []
+    proposed_normal = normalized(proposed)
+    if any((NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause))
+           and normalized(clause) not in proposed_normal for clause in clauses(original)):
+        soft.append("locked_clause_reworded")
+    if experience_attribution_violations(proposed, [original], allow_subjectless_claims=True):
+        soft.append("attribution_unverified")
+    return hard, soft
 
 
 def supported_claim_upgrade_detected(proposed, originals):
@@ -113,21 +156,14 @@ def supported_claim_upgrade_detected(proposed, originals):
     """
     if len(originals) == 1:
         return claim_upgrade_detected(proposed, originals[0])
-    proposed = collapse_whitespace(proposed)
-    originals = [collapse_whitespace(original) for original in originals]
     proposed_normal = normalized(proposed)
-    proposed_clauses = clauses(proposed)
-    original_clauses = [clauses(original) for original in originals]
-    # Fail closed when any side is past the clause ceiling (see claim_upgrade_detected).
-    if len(proposed_clauses) > _MAX_CLAUSES or any(len(parts) > _MAX_CLAUSES for parts in original_clauses):
-        return True
-    for parts in original_clauses:
-        for clause in parts:
+    for original in originals:
+        for clause in clauses(original):
             if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
                 return True
-    if personal_actions(proposed, proposed_clauses) - set().union(*(personal_actions(o, parts) for o, parts in zip(originals, original_clauses, strict=True))):
+    if personal_actions(proposed) - set().union(*(personal_actions(original) for original in originals)):
         return True
-    if publication_stages(proposed, proposed_clauses) - set().union(*(publication_stages(o, parts) for o, parts in zip(originals, original_clauses, strict=True))):
+    if publication_stages(proposed) - set().union(*(publication_stages(original) for original in originals)):
         return True
     # The structural path proves only the closed surface forms below, preserving
     # the complete actor/action/object/quantity text for each separate clause.
@@ -189,11 +225,9 @@ def supported_surface_forms(proposed, originals):
                     objects = f'{rest} using {first}'
                 # with/using are equivalent only in the explicit trailing-method
                 # slot. Complete object text and every quantity remain unchanged.
-                # A tool has no space, so only the text after the last ' with '
-                # can name it.
-                head, separator, tool = objects.rpartition(' with ')
-                if separator and tool in tools:
-                    objects = head + ' using ' + tool
+                for tool in tools:
+                    if objects.endswith(' with ' + tool):
+                        objects = objects[:-len(' with ' + tool)] + ' using ' + tool
                 values.append((action, actor, objects))
         return values
 
@@ -201,8 +235,8 @@ def supported_surface_forms(proposed, originals):
     for source in originals:
         for action, actor, objects in forms(source):
             permitted.add((action, actor, objects))
-            head, separator, tool = objects.rpartition(' using ')
-            if action != 'exact' and separator and tool in tools:
-                permitted.add((action, actor, head))
+            for tool in tools:
+                if action != 'exact' and objects.endswith(' using ' + tool):
+                    permitted.add((action, actor, objects[:-len(' using ' + tool)]))
     proposed_forms = forms(proposed)
     return bool(proposed_forms) and all(item in permitted for item in proposed_forms)

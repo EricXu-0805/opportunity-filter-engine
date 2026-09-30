@@ -207,6 +207,9 @@ def strong_model() -> Optional[str]:
 #   * cold_email_review — the critique rubric + N-draft judge (judgment, not
 #     prose: which email would a professor answer, what reads templated).
 #   * tailor — constrained, anti-fabrication-validated bullet rewriting.
+#   * tailor_review — judges whether a tailored bullet the finite claim locks
+#     cannot prove (a reworded team clause, a moved setting) states only what
+#     its original says. Judgment, like cold_email_review; one call per action.
 #   * extract — background structured parsing (tailor's bullet extraction).
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
@@ -216,6 +219,7 @@ _TASK_MODEL_DEFAULTS: dict[str, str] = {
     # not exist in the catalog and 404s, silently degrading the review tier.
     "cold_email_review": "anthropic/claude-opus-4.8",
     "tailor": "anthropic/claude-sonnet-5.5",
+    "tailor_review": "anthropic/claude-opus-4.8",
     "extract": "anthropic/claude-sonnet-5.5",
 }
 

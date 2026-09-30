@@ -422,19 +422,25 @@ class TestAntiFabrication:
         were absent from the English filler allowlist, so every grounded
         draft degraded to the passthrough fallback (method='fallback') and
         the tailor feature produced nothing. LENIENT_PROSE flags only
-        concreteness-signal tokens, so this grounded rewrite is accepted.
+        concreteness-signal tokens, so none of these words is a fabrication.
+
+        The appended ", demonstrating ..." clause is still refused, but as a
+        relevance clause the original never stated (claim_upgrade), not as
+        fabricated vocabulary; the same words inside a plain rewrite pass.
         """
+        from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
+
+        original = "Worked on Python projects in CS 225"
+        padded = ("Applied Python during CS 225 coursework, "
+                  "demonstrating foundational understanding while "
+                  "identifying and analyzing trends.")
+        plain = "Applied foundational Python understanding across CS 225 projects."
+        assert validate_no_fabrication(padded, original, policy=LENIENT_PROSE_NUMERIC) == (True, [])
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
             "bullets": [
-                {
-                    "text": (
-                        "Applied Python during CS 225 coursework, "
-                        "demonstrating foundational understanding while "
-                        "identifying and analyzing trends."
-                    ),
-                    "source_evidence": "Python (experienced); CS 225",
-                },
+                {"text": padded, "source_evidence": "Python (experienced); CS 225"},
+                {"text": plain, "source_evidence": "Python (experienced); CS 225"},
             ],
         })
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
@@ -444,13 +450,14 @@ class TestAntiFabrication:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Worked on Python projects in CS 225"],
+                "original_bullets": [original, original],
             },
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["method"] == "ai"
-        assert body["warnings"] == []
+        assert body["warnings"] == ["bullet_0_rejected_fabrication: claim_upgrade"]
+        assert [b["text"] for b in body["tailored_bullets"]] == [plain]
 
     def test_fabrication_lowercase_tool_when_profile_lacks_it(
         self, java_profile, real_opp_id, monkeypatch,
