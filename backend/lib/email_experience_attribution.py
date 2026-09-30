@@ -127,18 +127,22 @@ def _participle(lemma: str) -> str:
 
 
 _PARTICIPLES = {_participle(lemma): lemma for lemma in _FORMS}
+_PAST = {form: lemma for lemma, forms in _FORMS.items() for form in forms[1:]}
 _TRAILING = re.compile(
-    r',\s+(?:(' + '|'.join(sorted(_PARTICIPLES, key=len, reverse=True)) + r')\b|(?:which|where)\b)', re.I,
+    r',?\s+(?:that|which)\s+(' + '|'.join(sorted(_PAST, key=len, reverse=True)) + r')\b'
+    r'|,\s+(' + '|'.join(sorted(_PARTICIPLES, key=len, reverse=True)) + r')\b'
+    r'|,\s+(?:which|where)\b', re.I,
 )
 
 
 def _trailing_phrases(objects: str) -> tuple[str, list[tuple[str, str]]] | None:
-    """Split "X, reaching Y, which Z" into X and [("reach", "Y")].
+    """Split "X that reached Y, which Z" into X and [("reach", "Y")].
 
-    Only a known action's participle becomes a fact; a which/where remark is
-    reflection, not an attribution claim, and stays with the prose gates.
-    An enumeration (", a compiler") never matches, so it is still compared as
-    one ordered object and fails closed.
+    A known action's past form after that/which, or its participle after a
+    comma, becomes a fact; any other which/where remark is reflection, not an
+    attribution claim, and stays with the prose gates. An enumeration
+    (", a compiler") never matches, so it is still compared as one ordered
+    object and fails closed.
     """
     matches = list(_TRAILING.finditer(objects))
     if not matches:
@@ -146,8 +150,9 @@ def _trailing_phrases(objects: str) -> tuple[str, list[tuple[str, str]]] | None:
     tails = []
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else len(objects)
-        if match[1]:
-            tails.append((_PARTICIPLES[match[1].casefold()], objects[match.end():end].strip()))
+        if match[1] or match[2]:
+            lemma = _PAST[match[1].casefold()] if match[1] else _PARTICIPLES[match[2].casefold()]
+            tails.append((lemma, objects[match.end():end].strip()))
     return objects[:matches[0].start()], tails
 
 
@@ -544,7 +549,25 @@ def experience_attribution_violations(
     text: str, evidence: list[str], *, allow_subjectless_claims: bool = False,
     activity_materials: list[dict] | None = None,
 ) -> list[str]:
-    """Return findings for recognized concrete claims without a local source.
+    """Return findings for recognized concrete claims without a local source."""
+    return sorted({f'unsupported experience attribution: {claim.actor} {claim.action}'
+                   for claim in _unsupported_claims(text, evidence, allow_subjectless_claims, activity_materials)})
+
+
+def unsupported_experience_claims(
+    text: str, evidence: list[str], *, allow_subjectless_claims: bool = False,
+    activity_materials: list[dict] | None = None,
+) -> list[str]:
+    """The clauses behind ``experience_attribution_violations``, in text order,
+    so a reviser can be told which sentence to restate."""
+    clauses = [claim.clause for claim in _unsupported_claims(text, evidence, allow_subjectless_claims, activity_materials)]
+    return list(dict.fromkeys(clauses))
+
+
+def _unsupported_claims(
+    text: str, evidence: list[str], allow_subjectless_claims: bool, activity_materials: list[dict] | None,
+) -> list[_Fact]:
+    """Recognized concrete claims without a local source.
 
     ``evidence`` must be complete, currently eligible confirmed entry texts,
     never target facts, interests, a generated draft or a user edit instruction.
@@ -609,7 +632,7 @@ def experience_attribution_violations(
             for other in sources
         ))}
 
-    findings = set()
+    unsupported = []
     for claim in _facts(text, entry=-1, source=False, allow_subjectless_claims=allow_subjectless_claims,
                         activity_aliases=aliases):
         if supporting_entries(claim):
@@ -621,5 +644,5 @@ def experience_attribution_violations(
             entries = supporting_entries(head)
             if entries and all(supporting_entries(tail, entries) for tail in tails):
                 continue
-        findings.add(f'unsupported experience attribution: {claim.actor} {claim.action}')
-    return sorted(findings)
+        unsupported.append(claim)
+    return unsupported

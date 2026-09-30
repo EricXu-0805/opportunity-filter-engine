@@ -466,7 +466,13 @@ def _in_corpus(token: str, corpus_lower: str, corpus_tokens: set[str]) -> bool:
     """
     if token in corpus_tokens:
         return True
-    return len(token) >= 5 and token in corpus_lower
+    if len(token) >= 5 and token in corpus_lower:
+        return True
+    # "hours/week", "robotics/ergonomics": grounded only if every part is.
+    parts = [part for part in token.split("/") if part]
+    return len(parts) > 1 and all(
+        part in _COMMON_FILLER or _in_corpus(part, corpus_lower, corpus_tokens) for part in parts
+    )
 
 
 def _lenient_fabricated(

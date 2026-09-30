@@ -332,3 +332,15 @@ def test_divergence_excludes_tokens_both_policies_flag():
         "I am an expert in PyTorch.", evidence_corpus="java research",
     )
     assert "pytorch" not in delta
+
+
+def test_a_slash_compound_is_grounded_when_every_part_is():
+    # "Robotics/Ergonomics" and "10 hours/week" rejected real drafts whose
+    # parts were each in the evidence.
+    from backend.lib.grounding import LENIENT_PROSE, competence_violations, validate_no_fabrication
+
+    assert validate_no_fabrication("Your work on Robotics/Ergonomics caught my attention.",
+                                   "robotics ergonomics human factors", policy=LENIENT_PROSE) == (True, [])
+    assert competence_violations("I have worked in a yeast lab since January 2026 (10 hours/week).",
+                                 "worked 10 hours per week in a yeast genetics lab since january 2026") == []
+    assert competence_violations("I have experience with Python/Rust.", "python") == ["python/rust"]

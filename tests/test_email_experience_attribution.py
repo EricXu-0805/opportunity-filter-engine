@@ -588,3 +588,26 @@ def test_saying_i_only_helped_understates_and_is_supported_but_not_the_reverse()
     assert check('I helped build a Python parser.', ['Built a Python parser.']) == []
     assert check('I built a Python parser.', ['I helped build a Python parser.'])
     assert check('I did not help build a Python parser.', ['I did not build a Python parser.'])
+
+
+@pytest.mark.parametrize('claim', [
+    'I built a PyTorch image classifier for chest X-ray triage that reached 0.87 AUC on the NIH ChestX-ray14 validation split.',
+    'I built a PyTorch image classifier for chest X-ray triage, which reached 0.87 AUC on the NIH ChestX-ray14 validation split.',
+])
+def test_a_relative_clause_result_is_checked_against_the_same_entry(claim):
+    assert check(claim, [COURSE]) == []
+
+
+@pytest.mark.parametrize('claim', [
+    'I built a Python parser that reached 0.87 AUC on the NIH ChestX-ray14 validation split.',
+    'I built a PyTorch image classifier for chest X-ray triage, which reached 0.95 AUC.',
+])
+def test_a_relative_clause_cannot_borrow_or_invent_a_result(claim):
+    assert check(claim, [COURSE, 'Built a Python parser.'])
+
+
+def test_unsupported_claims_are_reported_as_their_own_sentences():
+    from backend.lib.email_experience_attribution import unsupported_experience_claims
+    text = ('I built a PyTorch image classifier for chest X-ray triage. '
+            'I use Python and PyTorch at an experienced level.')
+    assert unsupported_experience_claims(text, [COURSE]) == ['I use Python and PyTorch at an experienced level']

@@ -1330,6 +1330,49 @@ class TestColdEmailPipeline:
         assert out is not None
         assert "computer vision" in out.lower()
 
+    def _staged_revisions(self, monkeypatch, verdicts, replies):
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setattr(ce, "_draft_email", lambda *a, **k: "draft")
+        monkeypatch.setattr(ce, "_deterministic_findings", lambda d, *a: verdicts[d])
+        notes = []
+        pending = iter(replies)
+
+        def revise(draft, findings, *a, **k):
+            notes.append(ce._revision_notes(findings))
+            return next(pending)
+
+        monkeypatch.setattr(ce, "_revise_email", revise)
+        return ce._pipeline_generate(self._profile(), self._opp(), None), notes
+
+    _ATTRIBUTION = {"banned_filler": [], "unsupported": ["unsupported experience attribution: personal build"],
+                    "attribution_clauses": ["I built X using Rust"], "borrowed_competence": [],
+                    "references_professor": True, "has_specific_prof_data": False}
+    _CLEAN = {**_ATTRIBUTION, "unsupported": [], "attribution_clauses": []}
+
+    def test_a_revision_that_still_fails_grounding_gets_one_repair_naming_the_sentence(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._ATTRIBUTION, "repaired": self._CLEAN},
+            ["revised", "repaired"])
+        assert out == "repaired"
+        assert len(notes) == 2
+        assert 'Rewrite: "I built X using Rust"' in notes[1]
+
+    def test_a_repair_that_does_not_improve_is_not_used(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._ATTRIBUTION, "repaired": self._ATTRIBUTION},
+            ["revised", "repaired"])
+        assert out == "revised"
+        assert len(notes) == 2
+
+    def test_a_clean_first_revision_gets_no_repair_call(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._CLEAN}, ["revised"])
+        assert out == "revised"
+        assert len(notes) == 1
+
     def test_surname_only_data_is_no_data_and_boundaries_hold(self):
         """Two contracts in one staging. (1) EG1: the PI surname is no longer
         an anchor at all — 'Jane Li' with nothing else means there is NOTHING

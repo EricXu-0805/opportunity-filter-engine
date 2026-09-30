@@ -47,7 +47,10 @@ from backend.lib.email_contact_instructions import (
     contact_instruction_vocabulary,
     required_email_subject,
 )
-from backend.lib.email_experience_attribution import experience_attribution_violations
+from backend.lib.email_experience_attribution import (
+    experience_attribution_violations,
+    unsupported_experience_claims,
+)
 from backend.lib.email_modes import EDIT_OPS, draft_voice, recommended_voice
 from backend.lib.email_target_conditions import (
     email_target_conditions,
@@ -1380,9 +1383,17 @@ def _deterministic_findings(draft: str, corpus: str, p: dict, opp: dict) -> dict
     references_professor = (not anchors) or any(
         re.search(rf"(?<![a-z0-9]){re.escape(a)}(?![a-z0-9])", low) for a in anchors
     )
+    attribution_clauses = unsupported_experience_claims(
+        re.sub(r"\bOne example of my experience:\s*", "", draft, flags=re.I),
+        [str(b) for b in p.get("resume_bullets", [])],
+        activity_materials=p.get("experience_materials_all"),
+    ) if any(str(t).startswith("unsupported experience attribution") for t in fabricated) else []
     return {
         "banned_filler": banned,
         "unsupported": fabricated,
+        # The sentences behind an attribution finding: the reviser cannot
+        # repair "personal build" without knowing which sentence it was.
+        "attribution_clauses": attribution_clauses,
         # First-person competence claims grounded only in the TARGET's
         # vocabulary — the revise loop gets a chance to fix these before the
         # engine-level gate falls back to the template.
@@ -1535,7 +1546,12 @@ def _revision_notes(findings: dict) -> str:
         if hits:
             handled.update(hits)
             levels = [t.split(": ", 1)[1] for t in hits if ": " in t and "skill level" in t]
-            parts.append(f"{note}: {', '.join(levels)}." if levels else note.rstrip(".") + ".")
+            if prefixes[0] == "unsupported experience attribution" and findings.get("attribution_clauses"):
+                quoted = "; ".join(f'"{c}"' for c in findings["attribution_clauses"][:4])
+                parts.append(f"{note.rstrip('.')}. Rewrite: {quoted}. Do not add tools, skill levels, "
+                             "settings or results that the entry does not name.")
+            else:
+                parts.append(f"{note}: {', '.join(levels)}." if levels else note.rstrip(".") + ".")
     numbers = [t for t in checks if t[:1].isdigit()]
     if numbers:
         parts.append(
@@ -1719,7 +1735,22 @@ def _pipeline_generate(
             # gate in generate_email still runs on whatever we return).
             r_findings = _deterministic_findings(revised, corpus, p, opp)
             if _findings_score(r_findings) <= _findings_score(findings):
-                return revised
+                draft, findings = revised, r_findings
+        # A draft that still fails grounding is discarded by the final gate,
+        # so one more targeted repair (deterministic findings only, no new
+        # critique) is cheaper than serving the template.
+        if findings.get("unsupported") or findings.get("borrowed_competence"):
+            if on_stage:
+                on_stage("revising")
+            repair_findings = {k: v for k, v in findings.items() if k != "llm"}
+            repaired = _revise_email(
+                draft, repair_findings, prof_brief, stu_brief, style,
+                faculty_is_professor=faculty_is_professor,
+            )
+            if repaired:
+                f_findings = _deterministic_findings(repaired, corpus, p, opp)
+                if _findings_score(f_findings) < _findings_score(findings):
+                    return repaired
     return draft
 
 
