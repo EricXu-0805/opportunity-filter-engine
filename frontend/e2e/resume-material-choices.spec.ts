@@ -4,7 +4,7 @@ import { createEmptyResumeMaster } from '../src/lib/resume-master';
 import type { ProfileData, ResumeFact } from '../src/lib/types';
 import type { TargetResumeAiRequest, TargetResumeAiResponse } from '../src/lib/target-resume-ai-protocol';
 import type { TargetResumeV1 } from '../src/lib/target-resume';
-const STUB=`http://127.0.0.1:${process.env.E2E_SUPABASE_PORT??55050}`,FRONT=`http://127.0.0.1:${process.env.E2E_PORT??3320}`,BACK=`http://127.0.0.1:${process.env.E2E_BACKEND_PORT??8320}`;
+const STUB=`http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT??54321)}`,FRONT=`http://127.0.0.1:${Number(process.env.E2E_PORT??3100)}`,BACK=`http://127.0.0.1:${Number(process.env.E2E_BACKEND_PORT??8100)}`;
 const TARGET='uiuc-siebel-ugresearch';
 const ORIGINAL='Measured robot trials; I did not lead the team.',SUPPORT='I wrote Python scripts to compare the recorded trials. I did not design the experiment.',UNBOUND='I checked the robot trial logs in Spring 2026.';
 const PROPOSED='Measured robot trials; wrote Python scripts to compare the recorded trials. I did not lead the team. I did not design the experiment.';
