@@ -217,8 +217,14 @@ _FUTURE = re.compile(r"\b(?:would|could|will|shall|can|may|might|i['’]d|we['�
 _PAST_VERB = re.compile(r"\b(?:was|were|appreciated|enjoyed|valued|thank|thanks|grateful|glad\s+(?:i|we)\s+(?:got|had)|"
                         r"had|got|met|spoke|talked|chatted)\b", re.I)
 _PAST_TIME = re.compile(r"\b(?:yesterday|last\s+\w+|this\s+(?:morning|afternoon)|earlier\s+today|ago)\b", re.I)
-_GROUP = re.compile(r"\b(?:team|club|group|class|course|section|partner|cohort|chapter|rso|project|every|each|weekly|"
-                    r"[A-Z]{2,5}\s*\d{3})\b")
+_GROUP = re.compile(r"\b(?:our|my|the|a)\s+(?:[\w-]+\s+){0,2}(?:team|club|group|class|course|section|cohort|chapter|rso|partners?)\b"
+                    r"|\b(?:every|each)\s+(?:week|day|morning|evening|month|meeting)\b|\bweekly\b|\b[A-Z]{2,5}\s*\d{3}\b")
+_NEGATED = re.compile(r"\b(?:not|never|no|didn['’]t|couldn['’]t|haven['’]t|hasn['’]t|wasn['’]t|without)\b[^,.;!?]{0,30}$", re.I)
+_PUBLIC_BEFORE = re.compile(r"\b(?:in|on|at|during|from)\s+(?:your|the|a|an)\s+(?:[\w'’-]+\s+){0,4}?" + _PUBLIC + r"\b"
+                            r"|\b(?:page|site|website|listing|profile|bio|posting|announcement|article|paper|news|newsletter)\s+"
+                            r"(?:says|said|states|stated|mentions|mentioned|notes|noted|shows|lists|reports|reported)\b", re.I)
+_CLAUSE_END = re.compile(r"[,;]|\s(?:so|but|and|which|while)\s", re.I)
+_AGAIN_GREETING = re.compile(r"^\s*(?:hi|hello|hey|dear)\s+again\b", re.I)
 _FIRST_PERSON = re.compile(r"\b(?:me|my|i|us)\b", re.I)
 
 _REFERRAL = re.compile(
@@ -229,17 +235,23 @@ _REFERRAL = re.compile(
     r"|\b(?:suggested|recommended|encouraged|advised|urged|told|asked)\s+(?:me\s+)?(?:that\s+)?(?:i\s+(?:should\s+|could\s+|might\s+)?)?(?:to\s+)?"
     r"(?:contact|email|e-mail|write\s+to|reach\s+out\s+to|talk\s+to|speak\s+(?:to|with)|get\s+in\s+touch\s+with|connect\s+with|meet)\s+you\b"
     r"|\b(?:said|thought|mentioned|told\s+me|indicated)\s+(?:that\s+)?you\s+(?:might|would|could|may|were|are)\b"
+    r"|\b(?:told|mentioned|recommended|introduced|described)\s+(?:you\s+about\s+me|me\s+to\s+you)\b"
+    r"|\byou(?:['’]re|\s+are|\s+were)\s+expecting\s+(?:my|me|to\s+hear)\b"
     r"|\b(?:on|at)\s+the\s+(?:recommendation|suggestion|advice)\s+of", re.I)
 _OUTREACH = re.compile(
-    r"\bi\s+(?:have\s+|had\s+)?(?:emailed|e-mailed|contacted|written\s+to|wrote\s+to|messaged|called|phoned|reached\s+out\s+to)\s+you\b"
+    r"\bi\s+(?:(?:have|had|already|previously|recently|just)\s+){0,2}(?:emailed|e-mailed|contacted|written|wrote|messaged|called|phoned|reached\s+out)\s+(?:with\s+|to\s+)?you\b"
     r"|\bi\s+sent\s+you\b"
     r"|\bi\s+(?:have\s+)?sent\s+(?:a|an|my)\s+(?:email|e-mail|message|note|application|cv|resume|request|inquiry|proposal)\b(?!\s+(?:\w+\s+){0,3}?to\s+(?!you\b))"
     r"|\b(?:the|my)\s+(?:\w+\s+)?(?:email|e-mail|message|note|application|cv|resume|proposal|request|inquiry|materials|sample|report|voicemail)\s+(?:that\s+)?i\s+(?:sent|submitted|shared|forwarded|left|attached|emailed|mentioned)\b"
     r"|\bmy\s+(?:previous|earlier|last|prior|first|original)\s+(?:email|e-mail|message|note|inquiry|request|application)\b"
     r"|\bmy\s+(?:email|e-mail|message|note|inquiry|request|application)\s+(?:of|from|on|dated|sent)\s+(?:\w+\s+){0,2}?(?:\d|last|monday|tuesday|wednesday|thursday|friday|january|february|march|april|may|june|july|august|september|october|november|december|two|three|a\s+few|earlier)"
-    r"|\bi\s+(?:applied|submitted\s+(?:my|an)\s+application)\s+(?:\w+\s+){0,3}?(?:to|for)\s+your\b"
+    r"|\bi\s+(?:(?:have|had|already|recently|just)\s+){0,2}(?:applied|submitted\s+(?:my|an|the)\s+application)\s+(?:\w+\s+){0,3}?(?:to|for)\s+your\b"
+    r"|\b(?:in|from|per)\s+(?:the|my|your)\s+(?:last|previous|earlier|prior)\s+(?:email|e-mail|message|note|conversation|meeting|call)\b"
+    r"|\b(?:late|slow|delayed)\s+(?:reply|response)\b|\breply(?:ing)?\s+to\s+your\s+(?:email|e-mail|message|note)\b"
+    r"|\b(?:student|person|one|undergraduate)\s+(?:that\s+|who\s+|whom\s+)?you\s+(?:met|talked\s+(?:to|with)|spoke\s+(?:to|with)|saw|interviewed)\b"
+    r"|\byou\s+took\s+the\s+time\b"
     r"|\b(?:application|request|inquiry|message|email)\s+you\s+(?:received|got|saw)\b"
-    r"|\b(?:left|sent)\s+(?:you\s+)?(?:a\s+)?voicemail\b|\bmessage\s+i\s+left\b"
+    r"|\b(?:left|sent)\s+(?:you\s+)?(?:a\s+)?(?:voicemail|voice\s+message)\b|\bmessage\s+i\s+left\b"
     r"|\b(?:re-?sending|resending|bumping\s+(?:this|my)|circling\s+back|circle\s+back|touching\s+base|touch\s+base|checking\s+in\s+again|"
     r"check\s+in\s+again|writing\s+again|reaching\s+out\s+(?:again|once\s+more)|following\s+up\s+again|follow\s+up\s+again|"
     r"second\s+attempt|gentle\s+reminder|quick\s+reminder|friendly\s+reminder|as\s+a\s+reminder|reconnect(?:ing)?|"
@@ -262,25 +274,30 @@ _FROM_RECIPIENT = re.compile(
     r"|\bthe\s+(?:\w+\s+)?(?:sample|materials?|information|documents?|details)\s+you\s+asked\s+for\b"
     r"|\byour\s+(?:time|help|advice|feedback|guidance)\s+(?:during|at|in|on)\s+(?:your\s+)?(?:office\s+hours|the\s+(?:call|meeting|chat|open\s+house|career\s+fair|phone\s+call))\b"
     r"|\b(?:thank\s+you|thanks)\s+(?:so\s+much\s+|very\s+much\s+)?(?:again\s+)?for\s+(?:your\s+)?(?:kind\s+words|feedback|advice|"
-    r"getting\s+back|agreeing|accepting|inviting|offering|forwarding|your\s+willingness|"
+    r"getting\s+back|replying|responding|answering|writing\s+back|agreeing|accepting|inviting|offering|forwarding|your\s+willingness|"
+    r"accept(?:ing)?\s+me|offer(?:ing)?\s+me|invit(?:e|ing)\s+me|"
     r"taking\s+the\s+time\s+to\s+(?:see|meet|speak|chat|talk|visit)|meeting|speaking|chatting|talking|seeing\s+me|"
     r"the\s+(?:call|phone\s+call|meeting|chat|conversation|interview|invitation|offer)|"
     r"the\s+opportunity\s+to\s+(?:interview|meet|speak|chat|visit))\b"
     r"|\b(?:stopped|dropped)\s+by\s+your\s+office\b|\bvisited\s+your\s+office\b", re.I)
 _THANKS_FOR_REPLY = re.compile(
     r"\b(?:thank\s+you|thanks)\s+(?:so\s+much\s+|very\s+much\s+)?(?:again\s+)?for\s+(?:your|the)\s+"
-    r"(?:kind\s+|quick\s+|prompt\s+|helpful\s+|thoughtful\s+)?(?:reply|response|email|e-mail|message)\b", re.I)
+    r"(?:[\w-]+\s+)?(?:reply|response|email|e-mail|message)\b(?!\s+(?:address|list|newsletter))", re.I)
 _IN_YOUR_REPLY = re.compile(r"\bin\s+your\s+(?:reply|response|email|e-mail|message|note)\b(?!\s+to\s+(?:the\s+)?(?:reviewers|comments|editor|critics))", re.I)
 # Recipient acts that bind to the student: "As you offered", "Since you agreed".
 _AS_YOU = re.compile(
-    r"\b(?:as|since|because)\s+(?:we|you)\s+(?:kindly\s+|had\s+|have\s+)?(?:discussed|agreed|arranged|planned|requested|asked|"
-    r"promised|offered|recommended|suggested|mentioned|noted|instructed|advised|proposed)\b", re.I)
+    r"\b(?:as|since|because|like)\s+(?:we|you)\s+(?:(?:kindly|had|have|already)\s+)?(?:discussed|talked(?:\s+about)?|spoke(?:\s+about)?|"
+    r"agreed|arranged|planned|requested|asked|promised|offered|recommended|suggested|mentioned|noted|instructed|advised|proposed|said)\b", re.I)
+# "According to our talk", "Following your suggestion in our phone call"
+_PRIOR_BASIS = re.compile(
+    r"\b(?:according\s+to|following|based\s+on)\s+(?:our|your)\s+(?:[\w-]+\s+)?(?:talk|conversation|discussion|meeting|call|chat|"
+    r"exchange|advice|suggestion|request|instructions?|reply|response|email|e-mail|message)\b", re.I)
 _AS_BARE = re.compile(r"\bas\s+(?:discussed|agreed|promised|requested|arranged|planned|instructed|advised|recommended|suggested)\b"
                       r"(?!\s+(?:in|by)\s+(?:the\s+)?(?:literature|prior\s+work|previous\s+work|research|studies|work|paper|papers))", re.I)
 _PER = re.compile(r"\b(?:per|as\s+per)\s+(?:our|your)\s+(?:conversation|exchange|correspondence|discussion|call|meeting|email|e-mail|"
                   r"message|note|request|suggestion|instructions?|advice)\b", re.I)
 _YOU_ACT = re.compile(
-    r"\byou\s+(?:(?:kindly|previously|already|had|have|'ve)\s+){0,2}(?:offered|agreed|promised|accepted|invited|asked|"
+    r"\byou\s+(?:(?:kindly|previously|already|had|have|'ve)\s+){0,2}(?:offered|agreed|promised|accepted|invited|asked|requested|"
     r"suggested|recommended|proposed|said|mentioned|told)\b", re.I)
 _OFFER_NOUN = re.compile(
     r"\b(?:opportunity|chance|spot|place|role|help|advice|support|invitation|offer)\s+(?:that\s+)?you\s+(?:kindly\s+)?"
@@ -289,8 +306,8 @@ _OFFER_NOUN = re.compile(
     r"|\byour\s+(?:kind\s+|generous\s+)?(?:offer|invitation|willingness|suggestion)\s+to\s+(?:let\s+me|me\b|meet|supervise|host|include|"
     r"join|review|look|take\s+me)", re.I)
 _MEETING = re.compile(
-    r"\b(?:meeting|met|meet|seeing|saw|see|speaking|spoke|speak|talking|talked|talk|chatting|chatted|chat|connecting|connected|"
-    r"visiting|visited)\s+(?:with\s+)?you\b(?!r)", re.I)
+    r"\b(?:meeting|met|meet|seeing|saw|see|visiting|visited|connecting|connected)\s+(?:with\s+)?you\b(?!r)"
+    r"|\b(?:speaking|spoke|speak|talking|talked|talk|chatting|chatted|chat)\s+(?:to|with)\s+you\b(?!r)", re.I)
 _WE = re.compile(
     r"\b(?:when|since|after|before)\s+we\s+(?:last\s+)?(?:met|spoke|talked|chatted|connected|corresponded)\b"
     r"|\bwe\s+(?:last\s+)?(?:met|spoke|talked|chatted|corresponded|connected)\s+(?:at|during|after|briefly|over|on|last|yesterday|earlier|in\s+person)\b"
@@ -322,8 +339,14 @@ def _claims_prior_contact(sentence: str) -> bool:
     for m in _REFERRAL.finditer(sentence):
         if not _PUBLIC_SUBJECT.search(sentence[:m.start()]):
             return True
-    if _OUTREACH.search(sentence) or _PER.search(sentence) or _RECALL.search(sentence) or (_WE.search(sentence) and not _GROUP.search(sentence)):
+    if _OUTREACH.search(sentence) or _PER.search(sentence) or _RECALL.search(sentence) or _AGAIN_GREETING.search(sentence):
         return True
+    for m in _WE.finditer(sentence):
+        if not _GROUP.search(sentence[max(0, m.start() - 40):m.end() + 40]):
+            return True
+    for m in _PRIOR_BASIS.finditer(sentence):
+        if not _PUBLIC_AFTER.search(sentence[m.end():]):
+            return True
     for m in _NOT_HEARD.finditer(sentence):
         if not _FROM_SOMEONE_ELSE.match(sentence[m.end():]):
             return True
@@ -342,14 +365,17 @@ def _claims_prior_contact(sentence: str) -> bool:
         if not _PUBLIC_AFTER.search(sentence[m.end():]):
             return True
     for m in _YOU_ACT.finditer(sentence):
-        rest = sentence[m.end():]
-        if _PUBLIC_AFTER.search(rest) or _future_frame(sentence[:m.start()], sentence):
+        head, rest = sentence[:m.start()], sentence[m.end():]
+        if _PUBLIC_AFTER.search(rest) or _PUBLIC_BEFORE.search(head) or _future_frame(head, sentence):
             continue
+        clause_end = _CLAUSE_END.search(rest)
+        rest = rest[:clause_end.start()] if clause_end else rest
         said = m.group(0).lower().split()[-1] in ("said", "mentioned", "told")
         if _FIRST_PERSON.search(rest) or (said and re.match(r"\s+(?:that\s+)?(?:you|there|the\s+lab|your\s+lab|a\s+|an\s+)", rest, re.I)):
             return True
     for m in _MEETING.finditer(sentence):
-        if not _future_frame(sentence[:m.start()], sentence):
+        head = sentence[:m.start()]
+        if not _future_frame(head, sentence) and not _NEGATED.search(head):
             return True
     for m in _FOLLOW_UP.finditer(sentence):
         head, obj = sentence[:m.start()], sentence[m.end():m.end() + 80]
