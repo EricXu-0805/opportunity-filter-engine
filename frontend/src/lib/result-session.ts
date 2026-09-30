@@ -33,6 +33,22 @@ export function resultRequestKey(profile: ProfileData, semantic: boolean, view: 
   return `${hashProfile(profile)}:${semantic ? '1' : '0'}:${JSON.stringify(view)}`;
 }
 
+/**
+ * The request key with the star and dismissal sets left out. Two keys that
+ * agree here differ only in those overlays: the server re-derives the list
+ * from them, so a saved position can still be walked back to, but the saved
+ * cursors (bound to the full view) cannot be replayed.
+ */
+export function resultListKey(requestKey: string): string | null {
+  const parts = /^([^:]*):([01]):(\{.*\})$/.exec(requestKey);
+  if (!parts) return null;
+  try {
+    const view: unknown = JSON.parse(parts[3]);
+    if (!view || typeof view !== 'object' || Array.isArray(view)) return null;
+    return `${parts[1]}:${parts[2]}:${JSON.stringify({ ...view, favorite_ids: [], dismissed_ids: [] })}`;
+  } catch { return null; }
+}
+
 /** Only public filters on this exact local route may become a return link. */
 export function publicResultsUrl(raw: string): string | null {
   if (raw.length > 3000 || !raw.startsWith('/results') || raw.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;

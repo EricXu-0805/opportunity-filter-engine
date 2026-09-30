@@ -24,6 +24,11 @@ const MATCH_VIEW_PAGE_SIZE = 50;
  *  fill the wait. Long enough that a warm server snapshot never triggers the
  *  extra ranking, short enough to be invisible next to a cold twenty seconds. */
 const INTERIM_PAINT_AFTER_MS = 600;
+/** Deepest page a return ticket may walk back to when its saved cursors were
+ *  bound to star/dismiss sets that have since changed. Each hop is a full
+ *  request on a route limited to 60 a minute; past this the student gets
+ *  page one and the notice instead. */
+const MAX_REBUILT_PAGE = 10;
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
@@ -123,6 +128,7 @@ export function useResultsData(
     response: MatchesResponse;
     state: ResultCursorState;
     owner: ReturnType<typeof captureOwnerToken>;
+    interim?: boolean;
   } | null>(null);
   const navigationRef = useRef(navigation);
   useLayoutEffect(() => { navigationRef.current = navigation; }, [navigation]);
@@ -132,7 +138,7 @@ export function useResultsData(
   });
   useLayoutEffect(() => {
     const pending = pendingCommitRef.current;
-    if (!pending || loading || error || !paginationReady || pending.response !== data
+    if (!pending || loading || error || (!paginationReady && !pending.interim) || pending.response !== data
       || pending.state.requestKey !== requestKey || pending.state.page !== page
       || !isOwnerTokenValid(pending.owner, pending.owner.uid)) return;
     pendingCommitRef.current = null;
@@ -181,7 +187,10 @@ export function useResultsData(
       };
     }
     const cursor = cursorsRef.current.byPage.get(page);
-    if (page > 1 && !cursor) {
+    const ticket = navigationRef.current?.restore;
+    const rebuild = page > 1 && !cursor && page <= MAX_REBUILT_PAGE && !!ticket
+      && ticket.requestKey === requestKey && ticket.page === page && sessionBelongsToOwner(ticket, requestOwner);
+    if (page > 1 && !cursor && !rebuild) {
       // Every reachable page must have been minted by the preceding response.
       // Showing the previous page under a new page number would be a silent
       // duplicate, so fail closed if parent state ever gets ahead of the
@@ -245,17 +254,40 @@ export function useResultsData(
       // The funnel event below fires after the request settles; it belongs to
       // the account this request was issued for.
       const owner = requestOwner;
-      const request = getMatchView(reqProfile, reqView, {
-        cursor: cursor ?? null,
-        pageSize: MATCH_VIEW_PAGE_SIZE,
-        llm: semanticRerank,
-        signal: controller.signal,
-      });
       let requestSettled = false;
-      const markSettled = () => { requestSettled = true; };
-      request.then(markSettled, markSettled);
 
       try {
+        // Mint this view's cursors page by page; nothing walked through is
+        // painted. A list that no longer reaches the saved page resets to
+        // page one with notice, the same as a dead cursor.
+        for (let hop = 1; rebuild && hop < page; hop += 1) {
+          const walked = await getMatchView(reqProfile, reqView, {
+            cursor: cursorsRef.current.byPage.get(hop) ?? null,
+            pageSize: MATCH_VIEW_PAGE_SIZE,
+            llm: semanticRerank,
+            signal: controller.signal,
+          });
+          if (!painting()) return;
+          if (!isCompleteView(walked)) {
+            clearMatchCache(cacheToken);
+            throw new ApiError(502, 'MATCH_CONTRACT_MISMATCH', 'Match results need to be refreshed. Please retry.', true);
+          }
+          if (!walked.has_more || !walked.next_cursor) {
+            cursorsRef.current.byPage = new Map([[1, null]]);
+            onCursorReset?.();
+            return;
+          }
+          cursorsRef.current.byPage.set(hop + 1, walked.next_cursor);
+        }
+        const request = getMatchView(reqProfile, reqView, {
+          cursor: cursorsRef.current.byPage.get(page) ?? null,
+          pageSize: MATCH_VIEW_PAGE_SIZE,
+          llm: semanticRerank,
+          signal: controller.signal,
+        });
+        const markSettled = () => { requestSettled = true; };
+        request.then(markSettled, markSettled);
+
         // A first-ever refined page costs about twenty seconds, and roughly
         // four of them are the rule ranking the refine has to run before it can
         // call the model at all. Ask for that ranking on its own as well: it is
@@ -304,6 +336,15 @@ export function useResultsData(
                 setLoading(false);
                 setRefining(true);
                 interimPainted = true;
+                // A complete page of this request cycle, so its cards' writing
+                // actions are live. Its cursor belongs to the rule snapshot,
+                // not the refined chain, so none is published.
+                pendingCommitRef.current = {
+                  response: ruleOnly,
+                  state: { requestKey, page, cursors: [[1, null]] },
+                  owner: cacheToken,
+                  interim: true,
+                };
               }
             } catch {
               // An optimization the student never asked for. Say nothing and

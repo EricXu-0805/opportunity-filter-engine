@@ -5,7 +5,7 @@ import type { MatchViewRequestState } from '@/lib/api';
 import type { ProfileData } from '@/lib/types';
 import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
 import {
-  discardResultSession, readResultSession, resultRequestKey, sessionBelongsToOwner,
+  discardResultSession, readResultSession, resultListKey, resultRequestKey, sessionBelongsToOwner,
   writeResultSession, type ResultCursorState, type ResultSession,
 } from '@/lib/result-session';
 
@@ -47,14 +47,23 @@ export function useResultsSession(props: Props) {
     const expectedKey = saved
       ? resultRequestKey(profile, semantic, { ...view, show_dismissed: saved.showDismissed })
       : '';
-    if (saved && saved.requestKey === expectedKey) {
-      sessionRef.current = saved;
-      positionRef.current = saved;
-      setRestore(saved);
-      setPage(saved.page);
-      setShowDismissed(saved.showDismissed);
-      viewedRef.current = saved.viewedIds;
-      setViewedIds(new Set(saved.viewedIds));
+    const savedList = saved ? resultListKey(saved.requestKey) : null;
+    // When only stars/dismissals moved (typically on the detail page) the list
+    // is re-requested under the current sets, since the server binds cursors
+    // to them; the page and position stand.
+    const accepted = !saved ? null
+      : saved.requestKey === expectedKey ? saved
+        : savedList !== null && savedList === resultListKey(expectedKey)
+          ? { ...saved, requestKey: expectedKey, cursors: [[1, null]] as ResultSession['cursors'] }
+          : null;
+    if (accepted) {
+      sessionRef.current = accepted;
+      positionRef.current = accepted;
+      setRestore(accepted);
+      setPage(accepted.page);
+      setShowDismissed(accepted.showDismissed);
+      viewedRef.current = accepted.viewedIds;
+      setViewedIds(new Set(accepted.viewedIds));
     } else {
       setSessionId(null);
       setPage(1);
@@ -161,6 +170,8 @@ export function useResultsSession(props: Props) {
       const saved = sessionRef.current;
       const current = currentRef.current;
       if (window.location.pathname !== '/results' || !saved || positionRef.current || !current.ready || saved.requestKey !== current.requestKey || saved.page !== current.page) return;
+      // A rebased ticket has no cursor for its page until the walk back validates.
+      if (!saved.cursors.some(([cursorPage]) => cursorPage === saved.page)) return;
       const token = captureOwnerToken();
       if (!sessionBelongsToOwner(saved, token)) return;
       const anchor = saved.anchorId ? document.getElementById(`match-card-${saved.anchorId}`) : null;

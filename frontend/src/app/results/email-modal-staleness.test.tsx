@@ -287,7 +287,7 @@ describe('Results keeps writing buffers while current target actions fail closed
     expect(screen.getByTestId('reminder-target')).toHaveTextContent('a');
   });
 
-  it('reopens a retained canonical target offline while forwarding the action pause', async () => {
+  it('reopens a retained canonical target offline and leaves the action pause to the forwarded refresh status', async () => {
     feed.current = response([result('a', ACTIONABLE_TRUTH)]);
     await openDialogFor('a');
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
@@ -297,7 +297,13 @@ describe('Results keeps writing buffers while current target actions fail closed
       fireEvent.click(screen.getByRole('button', { name: 'Close email' }));
       act(() => captured.draft!('a'));
       expect(await screen.findByTestId('cold-email-modal')).toHaveAttribute('data-refresh', 'offline');
-      expect(generateColdEmail).not.toHaveBeenCalled();
+      // Offline is not a closed or missing row: the page keeps the target
+      // ready and pauses actions only through the forwarded status. The real
+      // editor's sourceReady reads it via profileRefreshReady, which refuses
+      // 'offline' (ProfileRefreshBanner.test.tsx); this sentinel does not, so
+      // a click here would prove nothing about the provider.
+      expect(screen.getByTestId('reminder-target')).toHaveTextContent('a');
+      expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
     } finally { online.mockRestore(); }
   });
 

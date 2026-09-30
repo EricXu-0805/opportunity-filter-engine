@@ -75,15 +75,64 @@ describe('results session hydration and accepted request lifetime', () => {
     expect(result.current.sessionId).toBeNull();
   });
 
-  it.each(['profile', 'favorites', 'day'])('rejects an old ticket after %s changes', (kind) => {
+  it.each(['profile', 'search', 'day'])('rejects an old ticket after %s changes', (kind) => {
     const saved = seed();
     const { result } = renderHook(useHarness, { initialProps: { arrivalId: saved.id,
       currentProfile: kind === 'profile' ? { ...profile, research_interests: 'chemistry' } : profile,
-      currentView: kind === 'favorites' ? { ...view, favorite_ids: ['changed'] } : kind === 'day' ? { ...view, today: '2026-09-25' } : view,
+      currentView: kind === 'search' ? { ...view, search_query: 'chemistry' } : kind === 'day' ? { ...view, today: '2026-09-25' } : view,
     } });
     expect(result.current.page).toBe(1);
     expect(result.current.restore).toBeNull();
     expect(result.current.resetNotice).toBe(true);
+  });
+
+  // Starring or dismissing on the detail page is the common action there. The
+  // server binds cursors to those sets, so the old chain is dropped, but the
+  // student's page, toggle, viewed marks and anchor survive the trip back.
+  it.each([
+    ['a star', { favorite_ids: ['starred-on-detail'] }],
+    ['a dismissal', { dismissed_ids: ['robot'] }],
+  ] as Array<[string, Partial<MatchViewRequestState>]>)('keeps the page and position after %s on the detail page, without the stale cursors', (_kind, change) => {
+    const saved = seed();
+    const current = { ...view, ...change };
+    const { result } = renderHook(useHarness, { initialProps: { arrivalId: saved.id, currentView: current } });
+    expect(result.current.page).toBe(2);
+    expect(result.current.resetNotice).toBe(false);
+    expect(result.current.sessionId).toBe(saved.id);
+    expect(result.current.viewedIds.has('robot')).toBe(true);
+    expect(result.current.restore).toMatchObject({ page: 2, anchorId: 'robot', scrollY: 1800,
+      requestKey: resultRequestKey(profile, false, current), cursors: [[1, null]] });
+  });
+
+  it('restores the scroll of a re-requested page once it validates under the new stars', () => {
+    const saved = seed();
+    const current = { ...view, favorite_ids: ['starred-on-detail'] };
+    const anchor = document.createElement('div'); anchor.id = 'match-card-robot'; document.body.append(anchor);
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top: 640 } as DOMRect);
+    const { result } = renderHook(useHarness, { initialProps: { arrivalId: saved.id, currentView: current } });
+    const fresh: ResultCursorState = { requestKey: resultRequestKey(profile, false, current), page: 2,
+      cursors: [[1, null], [2, 'rebuilt-cursor']] };
+    act(() => result.current.onValidated(fresh));
+    act(paintFrames);
+    anchor.remove();
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 520, behavior: 'instant' });
+    expect(readResultSession(saved.id)).toMatchObject({ requestKey: fresh.requestKey, cursors: fresh.cursors, page: 2 });
+  });
+
+  it('keeps the same ticket when the student scrolls before the rebuilt page validates', () => {
+    const saved = seed();
+    const current = { ...view, dismissed_ids: ['other'] };
+    const { result } = renderHook(useHarness, { initialProps: { arrivalId: saved.id, currentView: current } });
+    const anchor = document.createElement('div'); anchor.id = 'match-card-robot'; document.body.append(anchor);
+    vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({ top: 120, bottom: 620, height: 500 } as DOMRect);
+    window.dispatchEvent(new Event('wheel'));
+    window.dispatchEvent(new Event('pagehide'));
+    anchor.remove();
+    const fresh: ResultCursorState = { requestKey: resultRequestKey(profile, false, current), page: 2,
+      cursors: [[1, null], [2, 'rebuilt-cursor']] };
+    act(() => result.current.onValidated(fresh));
+    expect(result.current.sessionId).toBe(saved.id);
+    expect(readResultSession(saved.id)).toMatchObject({ requestKey: fresh.requestKey, anchorId: 'robot' });
   });
 
   it('restores position only after the cursor response validates, then uses the anchor offset', () => {
