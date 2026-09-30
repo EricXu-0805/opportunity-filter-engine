@@ -7,6 +7,7 @@ DECLARE event jsonb; change jsonb; quote jsonb; check_record jsonb; atom jsonb;
   key text; ids text[] := ARRAY[]::text[];
 BEGIN
  IF value IS NULL THEN RETURN true; END IF;
+ IF octet_length(value::text) > 524288 THEN RETURN false; END IF;
  IF NOT private.target_resume_provenance_shape(value, ARRAY['version','document_id','opportunity_id','base','events'])
    OR (value->'version' IS DISTINCT FROM '1'::jsonb AND value->'version' IS DISTINCT FROM '2'::jsonb AND value->'version' IS DISTINCT FROM '3'::jsonb)
    OR (value->'version' = '2'::jsonb AND doc#>'{target_snapshot,context_version}' IS DISTINCT FROM '3'::jsonb)

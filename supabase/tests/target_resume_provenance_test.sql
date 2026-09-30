@@ -114,6 +114,23 @@ BEGIN
  PERFORM pg_temp.reject_prov(jsonb_set(d,'{padding}',to_jsonb((d->>'padding')||'x')),p,'document 2MiB+1 rejected');
  RAISE WARNING 'PASS provenance does not consume existing 2MiB document allowance';
 END $$;
+-- An oversized sidecar is refused before its nodes are walked: the only
+-- measure walk left is the document's own.
+SET track_functions = 'all';
+DO $$
+DECLARE u text:='45000000-0000-4000-8000-000000000001'; d jsonb:=pg_temp.prov_doc('walk','x'); p jsonb; before bigint; doc_walk bigint; refused boolean:=false;
+BEGIN
+ p:=pg_temp.prov(d,'walk');
+ p:=jsonb_set(p,'{events}',(p->'events')||(SELECT jsonb_agg(0) FROM generate_series(1,200000)));
+ SELECT coalesce(sum(calls),0) INTO before FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes';
+ PERFORM private.target_resume_json_bytes(d);
+ SELECT coalesce(sum(calls),0)-before INTO doc_walk FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes';
+ SELECT coalesce(sum(calls),0) INTO before FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes';
+ BEGIN PERFORM public.commit_target_resume_with_provenance_cas(u,'walk',0,d,p); EXCEPTION WHEN invalid_parameter_value THEN refused:=SQLERRM='invalid_target_resume_provenance'; END;
+ PERFORM pg_temp.require(refused,'oversized provenance refused');
+ PERFORM pg_temp.require((SELECT coalesce(sum(calls),0)-before=doc_walk FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes'),'oversized provenance walked before refusal');
+ RAISE WARNING 'PASS provenance size refused before any sidecar node walk';
+END $$;
 CREATE FUNCTION pg_temp.fail_provenance_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic_provenance_history_failure'; END $$;
 CREATE TRIGGER b45_fail_history BEFORE INSERT ON public.target_resume_versions FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_provenance_history();
 DO $$

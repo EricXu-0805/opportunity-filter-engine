@@ -2,6 +2,7 @@
 -- are synthetic and no HTTP occurs.
 \set ON_ERROR_STOP on
 BEGIN;
+SET LOCAL track_functions='all';
 INSERT INTO auth.users(id,is_anonymous) VALUES
  ('a1000000-0000-4000-8000-000000000001',false),('a1000000-0000-4000-8000-000000000002',false),
  ('a1000000-0000-4000-8000-000000000003',true),('a1000000-0000-4000-8000-000000000004',false);
@@ -62,6 +63,17 @@ DO $$ DECLARE value jsonb; i int; BEGIN
  PERFORM pg_temp.expect_error(format('SELECT public.save_private_import_target(%L,%L,0,%L::jsonb)','a1000000-0000-4000-8000-000000000001','private-import:a2000000-0000-4000-8000-000000000099',(pg_temp.payload()||jsonb_build_object('extra_fields',jsonb_build_object('large',repeat('x',262145))))::text),'54000');
  PERFORM pg_temp.expect_error(format('SELECT public.save_private_import_target(%L,%L,0,%L::jsonb)','a1000000-0000-4000-8000-000000000001','private-import:a2000000-0000-4000-8000-000000000099',(pg_temp.payload()||jsonb_build_object('description_raw',repeat('x',5242881)))::text),'54000');
  RAISE NOTICE 'PASS source shape/depth/explicit field budgets';
+END $$;
+-- Over twice the 8 MiB compact limit is refused before the depth or size walk.
+DO $$ DECLARE before bigint; actual text; BEGIN
+ SELECT coalesce(sum(calls),0) INTO before FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname IN ('private_import_json_depth','target_resume_json_bytes');
+ BEGIN PERFORM public.save_private_import_target('a1000000-0000-4000-8000-000000000001','private-import:a2000000-0000-4000-8000-000000000098',0,
+   pg_temp.payload()||jsonb_build_object('description_raw',repeat('x',16777217)));
+ EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS actual=RETURNED_SQLSTATE; END;
+ IF actual IS DISTINCT FROM '54000' THEN RAISE EXCEPTION 'expected SQLSTATE 54000, actual %',actual; END IF;
+ IF (SELECT coalesce(sum(calls),0) FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname IN ('private_import_json_depth','target_resume_json_bytes'))<>before THEN
+   RAISE EXCEPTION 'oversized private import walked before refusal'; END IF;
+ RAISE NOTICE 'PASS oversized private import refused before any node walk';
 END $$;
 SELECT pg_temp.expect_error($q$SELECT public.save_private_import_target('a1000000-0000-4000-8000-000000000001','public-id',0,pg_temp.payload())$q$,'22023');
 SELECT pg_temp.expect_error($q$SELECT public.save_private_import_target('a1000000-0000-4000-8000-000000000001','private-import:a2000000-0000-4000-8000-000000000099',0,pg_temp.payload()||'{"source":"faculty"}')$q$,'22023');

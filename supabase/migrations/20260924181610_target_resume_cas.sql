@@ -64,6 +64,27 @@ CREATE POLICY target_resumes_select_own ON public.target_resumes FOR SELECT TO a
 CREATE POLICY target_resume_versions_select_own ON public.target_resume_versions FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = owner_id AND private.target_resume_owner_active(owner_id));
 
+-- Storage stays bounded per account. Guests use anonymous sessions for real
+-- work, so they may save, under a lower target cap; unknown counts as a guest.
+-- At the cap existing targets stay editable and only a new target is refused.
+CREATE FUNCTION private.target_resume_admit(p_owner uuid) RETURNS void
+LANGUAGE plpgsql SET search_path = '' AS $$
+BEGIN
+  IF (SELECT count(*) FROM public.target_resumes WHERE owner_id = p_owner)
+    >= (CASE WHEN EXISTS (SELECT 1 FROM auth.users WHERE id = p_owner AND is_anonymous IS FALSE) THEN 100 ELSE 10 END) THEN
+    RAISE EXCEPTION 'target_resume_quota_exceeded' USING ERRCODE = '54000';
+  END IF;
+END;
+$$;
+-- Keeps the newest 20 after-images of one target (one client history page).
+CREATE FUNCTION private.target_resume_prune(p_owner uuid, p_opportunity_id text, p_revision bigint) RETURNS void
+LANGUAGE sql SET search_path = '' AS $$
+  DELETE FROM public.target_resume_versions
+    WHERE owner_id = p_owner AND opportunity_id = p_opportunity_id AND revision <= p_revision - 20;
+$$;
+REVOKE ALL ON FUNCTION private.target_resume_admit(uuid), private.target_resume_prune(uuid,text,bigint)
+  FROM PUBLIC, anon, authenticated, service_role;
+
 CREATE FUNCTION private.commit_target_resume_cas(
   p_expected_owner text, p_opportunity_id text, p_expected_revision bigint, p_doc jsonb
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
@@ -73,6 +94,11 @@ DECLARE
 BEGIN
   IF uid IS NULL OR p_expected_owner IS DISTINCT FROM uid::text THEN
     RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501';
+  END IF;
+  -- jsonb::text adds one space per separator, so it is at most twice the
+  -- compact size: refuse what is surely too large before walking any node.
+  IF octet_length(p_doc::text) > 4194304 THEN
+    RAISE EXCEPTION 'invalid_target_resume' USING ERRCODE = '22023';
   END IF;
   IF p_expected_revision IS NULL OR p_expected_revision < 0 OR p_expected_revision > 9007199254740991
     OR p_opportunity_id IS NULL OR length(p_opportunity_id) NOT BETWEEN 1 AND 200 OR btrim(p_opportunity_id) = ''
@@ -95,6 +121,7 @@ BEGIN
     WHERE owner_id = uid AND opportunity_id = p_opportunity_id FOR UPDATE;
   IF NOT FOUND THEN
     IF p_expected_revision <> 0 THEN RETURN jsonb_build_object('status', 'missing'); END IF;
+    PERFORM private.target_resume_admit(uid);
     next_revision := 1;
   ELSE
     IF current_row.doc = p_doc AND current_row.revision IN (p_expected_revision, p_expected_revision + 1) THEN
@@ -114,6 +141,7 @@ BEGIN
       revision = EXCLUDED.revision, doc = EXCLUDED.doc, updated_at = EXCLUDED.updated_at;
   INSERT INTO public.target_resume_versions(owner_id, opportunity_id, revision, doc, updated_at)
     VALUES (uid, p_opportunity_id, next_revision, p_doc, stamp);
+  PERFORM private.target_resume_prune(uid, p_opportunity_id, next_revision);
   RETURN jsonb_build_object('status', 'saved', 'revision', next_revision, 'doc', p_doc, 'updated_at', stamp);
 END;
 $$;

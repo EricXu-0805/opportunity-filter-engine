@@ -70,6 +70,57 @@ BEGIN
  BEGIN PERFORM public.commit_target_resume_cas(u,'limit',1,jsonb_set(d,'{padding}',to_jsonb((d->>'padding')||'x'))); RAISE EXCEPTION 'over limit accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  RAISE WARNING 'PASS target exact 2MiB/over byte/multibyte/escape';
 END $$;
+-- Size is refused before any per-node walk. jsonb::text is at most twice the
+-- compact size, so a doc over 4 MiB of text never reaches the recursive
+-- measure; a dense doc whose text alone exceeds 2 MiB is still measured exactly.
+SET track_functions = 'all';
+CREATE FUNCTION pg_temp.walks(name text) RETURNS bigint LANGUAGE sql AS $$
+ SELECT coalesce(sum(calls),0) FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname=name;
+$$;
+INSERT INTO auth.users(id) VALUES ('77000000-0000-4000-8000-000000000013');
+DO $$
+DECLARE u text := '77000000-0000-4000-8000-000000000013'; d jsonb; before bigint; overhead bigint; refused boolean := false;
+BEGIN
+ PERFORM set_config('test.uid',u,false);
+ d := pg_temp.target_doc('huge','x') || jsonb_build_object('padding',repeat('x',4194305));
+ before := pg_temp.walks('target_resume_json_bytes');
+ BEGIN PERFORM public.commit_target_resume_cas(u,'huge',0,d); EXCEPTION WHEN invalid_parameter_value THEN refused := SQLERRM = 'invalid_target_resume'; END;
+ IF NOT refused OR pg_temp.walks('target_resume_json_bytes') <> before THEN
+   RAISE EXCEPTION 'oversized doc walked % nodes before refusal', pg_temp.walks('target_resume_json_bytes') - before; END IF;
+ d := pg_temp.target_doc('dense','x') || jsonb_build_object('nodes',(SELECT jsonb_agg(0) FROM generate_series(1,150000)),'padding','');
+ overhead := private.target_resume_json_bytes(d);
+ d := jsonb_set(d,'{padding}',to_jsonb(repeat('x',(2097152-overhead)::int)));
+ IF private.target_resume_json_bytes(d) <> 2097152 OR octet_length(d::text) <= 2097152 THEN RAISE EXCEPTION 'dense fixture'; END IF;
+ IF public.commit_target_resume_cas(u,'dense',0,d)->>'status' <> 'saved' THEN RAISE EXCEPTION 'dense exact-limit doc refused'; END IF;
+ RAISE WARNING 'PASS target size refused before any node walk; dense exact 2MiB still saved';
+END $$;
+-- Bounded storage: the newest 20 after-images per target, 100 targets per
+-- account and 10 while anonymous. Guests may save; at the cap existing
+-- targets stay editable and only a new target is refused, writing nothing.
+INSERT INTO auth.users(id,is_anonymous) VALUES ('77000000-0000-4000-8000-000000000011',false),('77000000-0000-4000-8000-000000000012',true);
+DO $$
+DECLARE u text := '77000000-0000-4000-8000-000000000011'; g text := '77000000-0000-4000-8000-000000000012'; r jsonb; i int; refused boolean := false;
+BEGIN
+ PERFORM set_config('test.uid',u,false);
+ FOR i IN 0..24 LOOP r := public.commit_target_resume_cas(u,'kept',i,pg_temp.target_doc('kept','v'||i)); END LOOP;
+ IF r->>'status' <> 'saved' OR r->>'revision' <> '25' THEN RAISE EXCEPTION 'retention save %',r; END IF;
+ IF (SELECT count(*) FROM public.target_resume_versions WHERE owner_id=u::uuid AND opportunity_id='kept') <> 20
+   OR (SELECT min(revision) FROM public.target_resume_versions WHERE owner_id=u::uuid AND opportunity_id='kept') <> 6
+   OR (SELECT doc FROM public.target_resume_versions WHERE owner_id=u::uuid AND opportunity_id='kept' AND revision=25) <> pg_temp.target_doc('kept','v24')
+   THEN RAISE EXCEPTION 'history not pruned to the newest 20'; END IF;
+ FOR i IN 2..100 LOOP PERFORM public.commit_target_resume_cas(u,'t'||i,0,pg_temp.target_doc('t'||i,'x')); END LOOP;
+ IF (SELECT count(*) FROM public.target_resume_versions WHERE owner_id=u::uuid AND opportunity_id='kept') <> 20 THEN RAISE EXCEPTION 'pruning crossed targets'; END IF;
+ BEGIN PERFORM public.commit_target_resume_cas(u,'t101',0,pg_temp.target_doc('t101','x')); EXCEPTION WHEN program_limit_exceeded THEN refused := SQLERRM = 'target_resume_quota_exceeded'; END;
+ IF NOT refused OR EXISTS(SELECT 1 FROM public.target_resumes WHERE owner_id=u::uuid AND opportunity_id='t101') THEN RAISE EXCEPTION 'account target cap not enforced'; END IF;
+ IF public.commit_target_resume_cas(u,'kept',25,pg_temp.target_doc('kept','at-cap'))->>'revision' <> '26' THEN RAISE EXCEPTION 'existing target blocked at cap'; END IF;
+ PERFORM set_config('test.uid',g,false); refused := false;
+ FOR i IN 1..10 LOOP r := public.commit_target_resume_cas(g,'g'||i,0,pg_temp.target_doc('g'||i,'guest')); END LOOP;
+ IF r->>'status' <> 'saved' THEN RAISE EXCEPTION 'guest cannot save'; END IF;
+ BEGIN PERFORM public.commit_target_resume_cas(g,'g11',0,pg_temp.target_doc('g11','guest')); EXCEPTION WHEN program_limit_exceeded THEN refused := SQLERRM = 'target_resume_quota_exceeded'; END;
+ IF NOT refused OR (SELECT count(*) FROM public.target_resumes WHERE owner_id=g::uuid) <> 10 THEN RAISE EXCEPTION 'guest target cap not enforced'; END IF;
+ IF public.commit_target_resume_cas(g,'g1',1,pg_temp.target_doc('g1','edit'))->>'status' <> 'saved' THEN RAISE EXCEPTION 'guest existing target blocked at cap'; END IF;
+ RAISE WARNING 'PASS target history pruned to 20/100 targets per account/10 per guest';
+END $$;
 -- A failed history insert must roll the current update back as well.
 CREATE FUNCTION pg_temp.fail_target_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic_history_failure'; END $$;
 CREATE TRIGGER target_test_fail_history BEFORE INSERT ON public.target_resume_versions FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_target_history();

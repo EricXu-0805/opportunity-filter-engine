@@ -130,7 +130,7 @@ export async function loadTargetResume(opportunityId: string, token: OwnerToken,
   });
 }
 
-/** Recent metadata only; older rows are retained, not silently deleted. */
+/** Metadata only. The server keeps the newest 20 versions per target, so one page is the whole history. */
 export async function loadTargetResumeHistory(opportunityId: string, token: OwnerToken, beforeRevision?: number,
   options: TargetResumeReadOptions = {}): Promise<TargetResumeVersionSummary[]> {
   targetId(opportunityId);

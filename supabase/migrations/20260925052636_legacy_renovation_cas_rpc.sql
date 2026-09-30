@@ -94,6 +94,10 @@ BEGIN
     OR p_payload IS NULL OR jsonb_typeof(p_payload) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'invalid_renovation_payload' USING ERRCODE = '22023';
   END IF;
+  -- jsonb::text is at most twice the compact size: refuse before any node walk.
+  IF octet_length(p_payload::text) > 4194304 THEN
+    RAISE EXCEPTION 'invalid_renovation_payload' USING ERRCODE = '22023';
+  END IF;
   IF NOT (p_payload ?& ARRAY['doc','base_snapshot','method','warnings'])
     OR p_payload - ARRAY['doc','base_snapshot','method','warnings'] <> '{}'::jsonb
     OR jsonb_typeof(p_payload->'doc') IS DISTINCT FROM 'object'

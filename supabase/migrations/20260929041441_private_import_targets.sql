@@ -54,6 +54,8 @@ BEGIN
   field_limit:=CASE WHEN key IN ('organization','location') THEN 2000 ELSE 128 END;
   IF length(p_value->>key)>field_limit THEN RAISE EXCEPTION 'invalid_private_target' USING ERRCODE='22023'; END IF;
  END LOOP;
+ -- jsonb::text is at most twice the compact size: refuse before any node walk.
+ IF octet_length(p_value::text)>16777216 THEN RAISE EXCEPTION 'private_target_too_large' USING ERRCODE='54000'; END IF;
  PERFORM private.private_import_json_depth(p_value);
  IF length(p_value->>'description_raw')>5242880 OR private.target_resume_json_bytes(p_value)>8388608
   OR private.target_resume_json_bytes(coalesce(p_value->'extra_fields','{}'::jsonb))>262144 THEN

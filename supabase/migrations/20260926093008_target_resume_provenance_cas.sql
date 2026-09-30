@@ -32,6 +32,8 @@ DECLARE event jsonb; change jsonb; quote jsonb; check_record jsonb; atom jsonb;
   key text; ids text[] := ARRAY[]::text[];
 BEGIN
  IF value IS NULL THEN RETURN true; END IF;
+ -- Twice the 256 KiB compact limit bounds jsonb::text; refuse before walking.
+ IF octet_length(value::text) > 524288 THEN RETURN false; END IF;
  IF NOT private.target_resume_provenance_shape(value, ARRAY['version','document_id','opportunity_id','base','events'])
    OR value->'version' IS DISTINCT FROM '1'::jsonb
    OR NOT private.target_resume_provenance_string(value->'document_id')
@@ -154,6 +156,10 @@ BEGIN
   IF uid IS NULL OR p_expected_owner IS DISTINCT FROM uid::text THEN
     RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501';
   END IF;
+  -- Cheap bound before any node walk; see commit_target_resume_cas.
+  IF octet_length(p_doc::text) > 4194304 THEN
+    RAISE EXCEPTION 'invalid_target_resume' USING ERRCODE = '22023';
+  END IF;
   IF p_expected_revision IS NULL OR p_expected_revision < 0 OR p_expected_revision > 9007199254740991
     OR p_opportunity_id IS NULL OR length(p_opportunity_id) NOT BETWEEN 1 AND 200 OR btrim(p_opportunity_id) = ''
     OR p_doc IS NULL OR jsonb_typeof(p_doc) IS DISTINCT FROM 'object'
@@ -178,6 +184,7 @@ BEGIN
     WHERE owner_id = uid AND opportunity_id = p_opportunity_id FOR UPDATE;
   IF NOT FOUND THEN
     IF p_expected_revision <> 0 THEN RETURN jsonb_build_object('status', 'missing'); END IF;
+    PERFORM private.target_resume_admit(uid);
     next_revision := 1;
   ELSE
     IF current_row.doc = p_doc AND (p_legacy OR current_row.provenance IS NOT DISTINCT FROM p_provenance)
@@ -198,6 +205,7 @@ BEGIN
       revision = EXCLUDED.revision, doc = EXCLUDED.doc, updated_at = EXCLUDED.updated_at, provenance = EXCLUDED.provenance;
   INSERT INTO public.target_resume_versions(owner_id, opportunity_id, revision, doc, updated_at, provenance)
     VALUES (uid, p_opportunity_id, next_revision, p_doc, stamp, p_provenance);
+  PERFORM private.target_resume_prune(uid, p_opportunity_id, next_revision);
   RETURN jsonb_build_object('status', 'saved', 'revision', next_revision, 'doc', p_doc, 'updated_at', stamp, 'provenance', p_provenance);
 END;
 $$;

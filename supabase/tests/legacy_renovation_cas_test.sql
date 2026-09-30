@@ -94,6 +94,17 @@ BEGIN
  IF (public.read_renovation(u,'capacity')#>'{current,payload}')<>p THEN RAISE EXCEPTION 'capacity text truncated'; END IF;
  RAISE WARNING 'PASS legacy exact 2MiB compact UTF8 + reject without truncation';
 END $$;
+-- 5b. Over twice the compact limit is refused before the per-node measure.
+SET track_functions='all';
+DO $$ DECLARE u text:='88000000-0000-4000-8000-000000000002'; p jsonb:=pg_temp.legacy_payload('huge'); before bigint; refused boolean:=false;
+BEGIN
+ PERFORM set_config('test.uid',u,false); p:=jsonb_set(p,'{doc,padding}',to_jsonb(repeat('x',4194305)));
+ SELECT coalesce(sum(calls),0) INTO before FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes';
+ BEGIN PERFORM public.save_renovation_cas(u,'huge',0,p); EXCEPTION WHEN invalid_parameter_value THEN refused:=SQLERRM='invalid_renovation_payload'; END;
+ IF NOT refused OR (SELECT coalesce(sum(calls),0) FROM pg_stat_xact_user_functions WHERE schemaname='private' AND funcname='target_resume_json_bytes')<>before THEN
+   RAISE EXCEPTION 'oversized legacy payload walked before refusal'; END IF;
+ RAISE WARNING 'PASS legacy oversized payload refused before any node walk';
+END $$;
 -- 6. History failure rolls back the current row and revision.
 CREATE FUNCTION pg_temp.fail_legacy_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic_legacy_history_failure'; END $$;
 CREATE TRIGGER test_legacy_history_failure BEFORE INSERT ON public.resume_renovation_versions FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_legacy_history();
