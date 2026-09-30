@@ -804,18 +804,9 @@ class TestDerivedArtifacts:
         assert record["keywords"] == ["magnetic resonance imaging"]
         assert "publication_remediation" not in record["metadata"]
 
-    def test_the_client_match_cache_is_invalidated_by_version(self):
-        """29 + 31. A cached match page carries `recent_works` copied off the
-        card, so a seven-day local payload would keep rendering revoked
-        citations — and keep feeding them to a cold-email draft — after the
-        server stopped serving them. The cache version is the invalidation."""
-        from pathlib import Path
-
-        source = Path("frontend/src/lib/match-cache.ts").read_text(encoding="utf-8")
-        assert "pubtrust-v3" in source, (
-            "the historical remediation changes what a cached match page may "
-            "contain; CACHE_VERSION must move with it"
-        )
+    # 29 + 31, the client match cache, run where the cache does: "discards a
+    # page cached before pubtrust-v3 that cites a verified paper" in
+    # frontend/src/lib/match-cache.test.ts.
 
     def test_the_withdrawal_is_recorded_on_the_record_for_audit(self):
         record = faculty(author_id="A-WRONG")
@@ -861,19 +852,11 @@ class TestManualReview:
 # ---------------------------------------------------------------------------
 # The pipeline enforces the invariant without anyone running a script
 # ---------------------------------------------------------------------------
+# §2 of the contract. The refresh pass itself is exercised end to end by
+# test_post_merge_pass_withdraws_superseded_publication_trust in
+# tests/test_refresh_all.py.
 
 class TestPipelineEnforcement:
-    def test_refresh_all_withdraws_superseded_trust_every_run(self):
-        """§2 of the contract: production must not depend on a human
-        remembering to run a CLI. The refresh pass is the enforcement."""
-        import inspect
-
-        from src.collectors import refresh_all
-
-        source = inspect.getsource(refresh_all)
-        assert "invalidate_population(all_opps)" in source
-        assert 'summary["sources"]["publication_remediation"]' in source
-
     def test_the_pass_is_idempotent_over_a_clean_corpus(self):
         clean = [faculty("a", gate=CURRENT_WORKS_GATE), faculty("b", status=None, gate=None)]
         assert invalidate_population(clean) == {

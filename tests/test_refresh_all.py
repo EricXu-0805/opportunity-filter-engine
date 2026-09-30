@@ -1001,6 +1001,86 @@ def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):
     assert (saved["man-2"]["school"], saved["man-2"]["audience"]) == (None, "unknown")
 
 
+def test_post_merge_pass_withdraws_superseded_publication_trust(monkeypatch, tmp_path):
+    """Every refresh withdraws the trust a retired works gate granted, so
+    production never waits on someone running scripts/remediate_publications.py.
+    A record the current gate chose and a record already withdrawn come
+    through untouched, and the next refresh changes nothing."""
+    from src.publication_trust import (
+        CURRENT_WORKS_GATE,
+        PENDING_REMEDIATION,
+        VERIFIED_AUTHOR_ID,
+        verified_recent_works,
+    )
+
+    def faculty(ident, papers, status, **metadata):
+        record = _seed_faculty("uiuc_faculty", ident, days_ago=1)
+        record["pi_name"] = f"Professor {ident}"
+        record["metadata"].update(
+            recent_works=[{"title": f"{ident} paper {n}", "year": 2026} for n in range(papers)],
+            publication_attribution_status=status,
+            **metadata,
+        )
+        return record
+
+    already_withdrawn = {
+        "from_gate": 1,
+        "to_gate": CURRENT_WORKS_GATE,
+        "withdrawn_at": "2026-09-30T17:35:43.549131+00:00",
+        "prior_status": VERIFIED_AUTHOR_ID,
+        "prior_author_id": None,
+    }
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [
+        # No works_gate: written before the field existed, i.e. gate 1.
+        faculty("gate-1", 3, VERIFIED_AUTHOR_ID, publication_author_id="A-GATE-1"),
+        faculty("gate-2", 2, VERIFIED_AUTHOR_ID, works_gate=2),
+        faculty("pending", 1, PENDING_REMEDIATION, publication_remediation=already_withdrawn),
+        faculty("current", 3, VERIFIED_AUTHOR_ID, works_gate=CURRENT_WORKS_GATE,
+                publication_author_id="A-CURRENT"),
+    ])
+
+    summary = refresh_all.refresh_all(deep=False)
+
+    assert summary["sources"]["publication_remediation"] == {
+        "professors_withdrawn": 2,
+        "relationships_withdrawn": 5,
+        "pending_professors": 3,
+        "pending_relationships": 6,
+        "current_gate_professors": 1,
+        "works_gate": CURRENT_WORKS_GATE,
+        "status": "ok",
+    }
+    saved = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
+    for ident, from_gate, papers in (("gate-1", 1, 3), ("gate-2", 2, 2)):
+        md = saved[ident]["metadata"]
+        assert md["publication_attribution_status"] == PENDING_REMEDIATION
+        assert verified_recent_works(saved[ident]) == []
+        # The papers stay as the re-harvest's candidate list; only the trust goes.
+        assert len(md["recent_works"]) == papers
+        assert md["publication_remediation"]["from_gate"] == from_gate
+        assert md["publication_remediation"]["to_gate"] == CURRENT_WORKS_GATE
+    assert "publication_author_id" not in saved["gate-1"]["metadata"]
+    assert saved["gate-1"]["metadata"]["publication_remediation"]["prior_author_id"] == "A-GATE-1"
+    assert saved["pending"]["metadata"]["publication_attribution_status"] == PENDING_REMEDIATION
+    assert saved["pending"]["metadata"]["publication_remediation"] == already_withdrawn
+    current = saved["current"]["metadata"]
+    assert current["publication_attribution_status"] == VERIFIED_AUTHOR_ID
+    assert current["publication_author_id"] == "A-CURRENT"
+    assert "publication_remediation" not in current
+    assert len(verified_recent_works(saved["current"])) == 3
+
+    second = refresh_all.refresh_all(deep=False)
+
+    assert second["sources"]["publication_remediation"]["professors_withdrawn"] == 0
+    assert second["sources"]["publication_remediation"]["pending_professors"] == 3
+    again = {o["id"]: o for o in json.loads(processed.read_text(encoding="utf-8"))}
+    keys = ("publication_attribution_status", "publication_author_id", "works_gate",
+            "recent_works", "publication_remediation")
+    for ident, record in saved.items():
+        assert {k: again[ident]["metadata"].get(k) for k in keys} == \
+            {k: record["metadata"].get(k) for k in keys}, ident
+
+
 def test_time_budget_defers_unstarted_sources(monkeypatch, tmp_path):
     """A run whose wall-clock budget is exhausted must stop STARTING sources
     (status ``deferred_deadline``, fetch never called) instead of letting the
