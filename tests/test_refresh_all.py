@@ -1247,21 +1247,21 @@ def test_b55_campus_failure_receipts_reach_merge_without_report_content(monkeypa
     assert proof["condition_capture_updates"] == updates
 
 
-def test_listed_program_ids_reach_the_campus_merge_without_report_content(monkeypatch, tmp_path):
+def test_listed_program_keys_reach_the_campus_merge_without_report_content(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
-    listed = ["uw-000000000001", "uw-000000000002"]
+    listed = ["uw_first_program", "uw_second_program"]
     proof = {"condition_capture_counts": {"captured": 0, "empty": 0, "unsupported": 0, "failed": 0},
-             "condition_capture_complete": False, "listed_program_ids": listed}
+             "condition_capture_complete": False, "listed_program_keys": listed}
     monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([], proof))
     calls = []
     monkeypatch.setattr(refresh_all, "merge_campus_graph", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
 
     summary = refresh_all.refresh_all(deep=False, schools={"uw"})
 
-    assert [call["listed_program_ids"] for call in calls] == [set(listed)]
+    assert [call["listed_program_keys"] for call in calls] == [set(listed)]
     assert calls[0]["school_slug"] == "uw"
-    assert "listed_program_ids" not in summary["sources"]["campus_graph:uw"]
-    assert proof["listed_program_ids"] == listed
+    assert "listed_program_keys" not in summary["sources"]["campus_graph:uw"]
+    assert proof["listed_program_keys"] == listed
 
 
 def test_a_campus_refresh_retires_dropped_programs_only_where_it_completed(monkeypatch, tmp_path):

@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 import pytest
 from bs4 import BeautifulSoup
 
+from scripts.shard_corpus import assemble, load_shards, split
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.boulder import SCHOOL as BOULDER
@@ -691,7 +692,7 @@ def _refresh_school(school):
     cg.merge_into_processed(
         records,
         complete_recursive_sources=set(evidence["complete_recursive_sources"]),
-        listed_program_ids=set(evidence["listed_program_ids"]),
+        listed_program_keys=set(evidence["listed_program_keys"]),
         school_slug=school["school_slug"],
     )
     return evidence
@@ -730,11 +731,12 @@ class TestDroppedProgramRetirement:
         assert dropped["deactivation_reason"] == "no_longer_listed"
         assert dropped["deactivated_at"] == datetime.now(UTC).date().isoformat()
 
-    def test_an_empty_or_failed_enumeration_retires_nothing(self, monkeypatch, processed):
-        school = _listing_school("first", "second")
+    def test_an_empty_config_retires_nothing_and_a_failed_record_stays_listed(self, monkeypatch, processed):
+        school = _listing_school("first", "second", "third")
         _refresh_school(school)
 
-        assert _refresh_school(_listing_school())["listed_program_ids"] == []
+        assert _refresh_school(_listing_school())["listed_program_keys"] == []
+        assert all(row["metadata"]["is_active"] for row in _stored(processed).values())
 
         normalize = cg._normalize_program
 
@@ -744,11 +746,14 @@ class TestDroppedProgramRetirement:
             return normalize(school, source, spec, **kwargs)
 
         monkeypatch.setattr(cg, "_normalize_program", fail_second)
-        evidence = _refresh_school(school)
+        evidence = _refresh_school(_listing_school("first", "second"))
         assert evidence["normalization_failed"] == 1
-        assert evidence["listed_program_ids"] == []
+        assert evidence["listed_program_keys"] == ["first", "second"]
 
-        assert [row["metadata"]["is_active"] for row in _stored(processed).values()] == [True, True]
+        saved = _stored(processed)
+        assert saved[_program_id(school, "campus", "second")]["metadata"]["is_active"] is True
+        third = saved[_program_id(school, "campus", "third")]["metadata"]
+        assert third["deactivation_reason"] == "no_longer_listed"
 
     def test_other_sources_other_schools_and_inactive_rows_are_left_alone(self, processed):
         school = _listing_school("kept", "dropped", "closed", open_keys=("open_dropped",))
@@ -776,10 +781,12 @@ class TestDroppedProgramRetirement:
 
         saved = _stored(processed)
         assert saved[_program_id(school, "campus", "dropped")]["metadata"]["is_active"] is False
-        # An "open" row has no school; its id still ties it to this config.
+        # An "open" row lives in national.json, which no school-shard refresh
+        # writes, so retiring it here would never publish: it is left alone.
         open_row = saved[_program_id(school, "open", "open_dropped")]
         assert open_row["school"] is None
-        assert open_row["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert open_row["metadata"]["is_active"] is True
+        assert "deactivation_reason" not in open_row["metadata"]
         assert saved[closed_id]["metadata"]["is_active"] is False
         assert "deactivation_reason" not in saved[closed_id]["metadata"]
         for row in (discovery, other, faculty):
@@ -844,11 +851,75 @@ class TestDroppedProgramRetirement:
         second_id = _program_id(clash, "campus", "second")
         records, evidence = cg.fetch_and_normalize_with_evidence(clash, deep=False)
         assert second_id not in {record["id"] for record in records}
-        assert second_id in evidence["listed_program_ids"]
+        assert "second" in evidence["listed_program_keys"]
 
         _refresh_school(clash)
 
         assert _stored(processed)[second_id]["metadata"]["is_active"] is True
+
+
+class TestProgramMovesBetweenShards:
+    """A school-shard refresh publishes only its own shard; national.json,
+    where "open" rows live, is written by a full refresh alone. Listing by
+    record id got a program moving between the two wrong, because the id
+    names the bucket: its old row retired and its new one published on
+    different schedules."""
+
+    @staticmethod
+    def _commit(processed, shards, school):
+        """The committed corpus: ``school`` refreshed and every shard written."""
+        _refresh_school(school)
+        split(processed, shards)
+
+    @staticmethod
+    def _school_shard_refresh(processed, shards, school):
+        """The refresh workflow for one shard: assemble the work file from the
+        committed shards, refresh the school, split only its shard back."""
+        assemble(processed, shards, force=True, allow_empty=True)
+        _refresh_school(school)
+        split(processed, shards, only_shards={school["school_slug"]})
+
+    @staticmethod
+    def _published(shards, key):
+        return [row["metadata"]["is_active"] for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == key]
+
+    def test_a_program_moved_to_the_open_bucket_stays_listed_once(self, processed, tmp_path):
+        """Its campus row retired in example.json while its open record waited
+        in the work file for a full refresh, so the program was gone."""
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", "moving"))
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept", open_keys=("moving",)))
+
+        assert self._published(shards, "moving") == [True]
+        split(processed, shards)
+        assert self._published(shards, "moving") == [True]
+
+    def test_a_program_moved_out_of_the_open_bucket_is_listed_once(self, processed, tmp_path):
+        """Its open row retired only in the work file while its campus record
+        published, so the program was listed twice."""
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", open_keys=("moving",)))
+        national = (shards / "national.json").read_bytes()
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept", "moving"))
+
+        assert (shards / "national.json").read_bytes() == national
+        assert self._published(shards, "moving") == [True]
+        split(processed, shards)
+        assert self._published(shards, "moving") == [True]
+
+    def test_a_program_gone_from_the_whole_config_still_retires(self, processed, tmp_path):
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", "dropped"))
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept"))
+
+        [row] = [row for row in load_shards(shards) if row["metadata"].get("collector_key") == "dropped"]
+        assert row["school"] == "example"
+        assert row["metadata"]["is_active"] is False
+        assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
 
 
 # --- Per-school: Princeton (the reference config) ---------------------------
