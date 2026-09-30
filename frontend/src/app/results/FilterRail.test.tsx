@@ -178,6 +178,31 @@ describe('FilterRail — discovery-scope facet', () => {
   });
 });
 
+describe('FilterRail — every dropdown says what it filters', () => {
+  // A screen reader announced seven unnamed comboboxes; after picking
+  // "Unpaid / not disclosed" nothing said it was the pay filter.
+  it('names each select, the scope facet included', () => {
+    renderRail({ scopeOptions: [['', 'results.filters.scopeAll'], ['campus', 'results.filters.scopeMySchool']] });
+    const chips = document.getElementById('filter-rail-chips');
+    const names = within(chips!).getAllByRole('combobox').map((select) => select.getAttribute('aria-label'));
+    expect(names).toEqual([
+      'results.filters.paidAria', 'results.filters.intlAria', 'results.filters.sourceAria',
+      'results.filters.scopeAria', 'results.filters.locAria', 'results.filters.deadlineAria', 'results.filters.sortAria',
+    ]);
+    expect(screen.getByRole('combobox', { name: 'results.filters.paidAria' })).toHaveValue('');
+  });
+
+  it('has a name for each select in both languages', async () => {
+    const { translate } = await import('@/i18n/translate');
+    for (const key of ['paidAria', 'intlAria', 'sourceAria', 'scopeAria', 'locAria', 'deadlineAria', 'sortAria']) {
+      for (const locale of ['en', 'zh'] as const) {
+        expect(translate(locale, `results.filters.${key}`), `${locale} ${key}`).not.toBe(`results.filters.${key}`);
+      }
+      expect(translate('zh', `results.filters.${key}`)).not.toBe(translate('en', `results.filters.${key}`));
+    }
+  });
+});
+
 describe('FilterRail — cross-school toggle', () => {
   it('offers the cross-school toggle now that the facet is accepted', () => {
     renderRail();
