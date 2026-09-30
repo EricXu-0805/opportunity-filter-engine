@@ -1,0 +1,1190 @@
+{
+ "_about": "Declared evidence maps for backend/lib/evidence_map.check_rewrite. Anchors are description snippets t1..tN (an empty string only holds a place). 'expected' is [status, code, detail prefix] after the contract and, for a pending rewrite, the claim locks. Seeded from the design prototype's 27 cases; broader and cross-language relabels and trim are disabled by the calibration, so those now keep.",
+ "cases": [
+  {
+   "group": "churn",
+   "label": "cap_tr4 ', reaching' declared tighten",
+   "anchors": [],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "no_substantive_op"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 'Served as' declared verb_first",
+   "anchors": [],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Served as undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "verb_first_new_verb"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 drop I declared tighten",
+   "anchors": [],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "no_substantive_op"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 rover->robot declared relabel (AHS 'Robot')",
+   "anchors": [
+    "Robotics",
+    "Robot",
+    "Ergonomics",
+    "Aging",
+    "Age-related Differences",
+    "Human Factors",
+    "Aging in Place",
+    "Visual Search"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Robot",
+     "source": "club rover",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "club rover",
+     "to": "club robot"
+    },
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "undeclared purpose 'for aging research'",
+   "anchors": [
+    "The Brooks lab is looking for an undergraduate research assistant who is interested in gaining experience in physiology and genomics",
+    "Work in the lab is aimed at understanding how photosynthesis and nitrogen metabolism are coordinated and how these processes will respond to climate change",
+    "Duties will include growing plants, helping carry out experiments, analyzing data, and assisting with general laboratory maintenance",
+    "Specific techniques that are used in the lab are RNA/DNA extractions, PCR, cloning, and measuring nitrogen and photosynthetic traits by various techniques",
+    "This is a paid research experience, and is ongoing",
+    "For more information, including how to apply, please see full blog posting",
+    "PCR"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping for aging research and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t7",
+     "term": "PCR",
+     "source": "PCR genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    },
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:aging,research"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "borrowed number sentence",
+   "anchors": [],
+   "original": "Built a Python robot with a team of 3. I did not lead the project.",
+   "rewrite": "Built a Python robot with a team of 3. I did not lead the project. The robot weighed 3 kg.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    },
+    {
+     "op": "trim"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "unknown_op"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x bioe: deep learning modifier",
+   "anchors": [
+    "Image-guided adaptive radiation therapy",
+    "Functional image-based tumor response assessment and predication",
+    "Task-based medical imaging quality assessment",
+    "Medical imaging and image analysis for diagnosis and radiation therapy",
+    "Deep learning for clinical decision-making",
+    "Bioimaging at Multi-Scale"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch deep learning image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t5",
+     "term": "Deep learning",
+     "source": "PyTorch image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "PyTorch image classifier",
+     "to": "PyTorch deep learning image classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x rice: computer vision classifier",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Computer Vision",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier",
+     "to": "computer vision classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x rice: computer vision MODEL (head swap)",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision model for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Computer Vision",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier",
+     "to": "computer vision model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B2 verb first (no link)",
+   "anchors": [],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Held weekly office hours for about 40 students as undergraduate course assistant for CS 124 (Spring 2026).",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "bio x brooks: verb first + lead with PCR",
+   "anchors": [
+    "The Brooks lab is looking for an undergraduate research assistant who is interested in gaining experience in physiology and genomics",
+    "Work in the lab is aimed at understanding how photosynthesis and nitrogen metabolism are coordinated and how these processes will respond to climate change",
+    "Duties will include growing plants, helping carry out experiments, analyzing data, and assisting with general laboratory maintenance",
+    "Specific techniques that are used in the lab are RNA/DNA extractions, PCR, cloning, and measuring nitrogen and photosynthetic traits by various techniques",
+    "This is a paid research experience, and is ongoing",
+    "For more information, including how to apply, please see full blog posting",
+    "PCR"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t7",
+     "term": "PCR",
+     "source": "PCR genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "verb_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "bio x gatech: verb first only",
+   "anchors": [
+    "Yeast genetics and molecular biology",
+    "chaperones and protein misfolding",
+    "amyloid and prion diseases",
+    "epigenetics and protein-based inheritance"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Yeast genetics",
+     "source": "yeast genetics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "psych B1 x Fabiani: lead with survey topic",
+   "anchors": [
+    "Monica Fabiani's",
+    "research interests are in the cognitive neuroscience of human memory and aging",
+    "as well as in the development of tools for the non-invasive mapping of human brain function",
+    "As is typical of the cognitive neuroscience approach"
+   ],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Helped design an online survey on sleep and memory as part of a four-person team in PSYC 238 and cleaned the 212 responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "memory",
+     "source": "sleep and memory",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    },
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "psych B2 verb first",
+   "anchors": [],
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduled participants and scored cognitive tests as a research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "mech x ramezani: personal first + lead with design",
+   "anchors": [
+    "Mobility in contested environments where existing systems face the risk of complete immobilization",
+    "Robot design",
+    "modeling",
+    "closed-loop feedback control",
+    "Bio-inspired robot locomotion"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks and, with two teammates, built the drivetrain for the Illini Robotics club rover in 2025.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Robot design",
+     "source": "designed the motor mount",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "personal_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "lead_with_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "stat x medeiros: machine learning modifier",
+   "anchors": [
+    "Econometrics",
+    "statistical learning theory",
+    "machine learning",
+    "artificial intelligence",
+    "My area of research is econometrics"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting machine learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t3",
+     "term": "machine learning",
+     "source": "gradient-boosting model",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting machine learning model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "stat x piramuthu: credit scoring modifier",
+   "anchors": [
+    "Artificial Intelligence",
+    "Big Data",
+    "Blockchain",
+    "Carbon Footprint",
+    "Cold (Food Supply) Chains",
+    "Computer Integrated Manufacturing",
+    "CRM",
+    "Cryptography",
+    "Data Science",
+    "Database Management",
+    "eCommerce",
+    "Financial Credit Scoring",
+    "Healthcare",
+    "IoT",
+    "Machine Learning/Data Mining",
+    "RFID",
+    "Simulation",
+    "Supply Chain Management"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting credit scoring model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t12",
+     "term": "Credit Scoring",
+     "source": "credit default prediction",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting credit scoring model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "zh-2 x nguyen: 自来水->饮用水 (translated term) + lead",
+   "anchors": [
+    "Pathogens and biofilms in drinking water distribution system",
+    "Environmental surveillance of pathogens",
+    "Water and Food Safety",
+    "Undergraduate Research Opportunities",
+    "I currently advise 10 undergrad students doing research on pathogen removal",
+    "Environmental Engineering and Science"
+   ],
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "协助博士生用 qPCR 检测饮用水样本中的军团菌（2025 年 9 月起在环境微生物实验室担任本科研究助理，每周约 8 小时）；未参与引物设计和数据分析。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "drinking water",
+     "source": "自来水",
+     "relation": "broader"
+    },
+    {
+     "id": "L2",
+     "anchor": "t2",
+     "term": "pathogens",
+     "source": "军团菌",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "自来水",
+     "to": "饮用水"
+    },
+    {
+     "op": "lead_with",
+     "link": "L2"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "T3 x schoetz: electrochemical modifier",
+   "anchors": [
+    "Energy Storage, Electrochemistry, The research in our group focuses on engineering electrochemical interfaces",
+    "the regions where electronic and ionic charge meet. These interfaces govern the behavior of nearly all electrochemical technologies, from batteries, sensors"
+   ],
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "Helped three lab mates run electrochemical cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "electrochemical",
+     "source": "cyclic voltammetry",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "cyclic voltammetry",
+     "to": "electrochemical cyclic voltammetry"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "T2 personal first (my part was wiring)",
+   "anchors": [],
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "Wired the data logger and kept the test log for a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery reaching 72% round-trip efficiency.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "CS trim with permission (drop 'validation split')",
+   "anchors": [
+    "Image-guided adaptive radiation therapy",
+    "Functional image-based tumor response assessment and predication",
+    "Task-based medical imaging quality assessment",
+    "Medical imaging and image analysis for diagnosis and radiation therapy",
+    "Deep learning for clinical decision-making",
+    "Bioimaging at Multi-Scale"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on NIH ChestX-ray14.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t4",
+     "term": "image analysis",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "trim"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "unknown_op"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "bio x rochester: yeast -> Saccharomyces cerevisiae",
+   "anchors": [
+    "Molecular biology and genetics",
+    "Mutagenesis and repair of the mitochondrial genome of Saccharomyces cerevisiae"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a Saccharomyces cerevisiae genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Saccharomyces cerevisiae",
+     "source": "yeast",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "yeast",
+     "to": "Saccharomyces cerevisiae"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "cs-ml B2 x rice: office hours -> curriculum design",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), supporting curriculum design for about 40 students.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "curriculum design",
+     "source": "holding weekly office hours",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "holding weekly office hours",
+     "to": "supporting curriculum design"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "psych B1 x nusbaum: -> memory consolidation",
+   "anchors": [
+    "Wisdom",
+    "language use",
+    "attention",
+    "learning",
+    "memory consolidation and sleep",
+    "working memory",
+    "understanding",
+    "affect",
+    "categorization",
+    "cognitive neuropharmocology",
+    "cognitive engineering and human factors"
+   ],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, I helped design an online survey on memory consolidation and sleep and cleaned the 212 responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t5",
+     "term": "memory consolidation and sleep",
+     "source": "sleep and memory",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sleep and memory",
+     "to": "memory consolidation and sleep"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "stat x zheng: -> causal representation learning",
+   "anchors": [
+    "My research seeks to unveil and leverage the hidden world of observational data",
+    "aiming to uncover the truthful process underlying the data and thus go beyond the ceiling of correlation fitting",
+    "I develop foundations for, causal representation learning, tackling open problems in"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting causal representation learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t3",
+     "term": "causal representation learning",
+     "source": "gradient-boosting model",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting causal representation learning model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "zh-2 x nguyen: 检测 -> 监测 (surveillance)",
+   "anchors": [
+    "Pathogens and biofilms in drinking water distribution system",
+    "Environmental surveillance of pathogens",
+    "Water and Food Safety",
+    "Undergraduate Research Opportunities",
+    "I currently advise 10 undergrad students doing research on pathogen removal",
+    "Environmental Engineering and Science"
+   ],
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 监测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "surveillance",
+     "source": "检测",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "检测",
+     "to": "监测"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "EN original rewritten in Chinese",
+   "anchors": [],
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "自 2025 年秋季起在认知老化实验室担任研究助理，安排被试并为认知测试评分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "wrong_language"
+   ]
+  },
+  {
+   "group": "same",
+   "label": "a same term's missing word added",
+   "anchors": [
+    "Survey data dashboards for public health"
+   ],
+   "original": "Built a survey dashboard in R for the campus food pantry.",
+   "rewrite": "Built a survey data dashboard in R for the campus food pantry.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Survey data dashboards",
+     "source": "survey dashboard",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "survey dashboard",
+     "to": "survey data dashboard"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a setting word",
+   "anchors": [
+    "Survey research methods"
+   ],
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey research responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Survey research",
+     "source": "survey responses",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "survey responses",
+     "to": "survey research responses"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_setting"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a quality word",
+   "anchors": [
+    "Robust statistics for sensor data"
+   ],
+   "original": "Computed summary statistics for 30 sensor logs.",
+   "rewrite": "Computed robust summary statistics for 30 sensor logs.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Robust statistics",
+     "source": "summary statistics",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "summary statistics",
+     "to": "robust summary statistics"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_quality"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a team word",
+   "anchors": [
+    "Team science in soil ecology"
+   ],
+   "original": "Sampled soil cores for a science fair project.",
+   "rewrite": "Sampled soil cores for a team science fair project.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Team science",
+     "source": "science fair",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "science fair",
+     "to": "team science fair"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_lock_word"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a concrete tool",
+   "anchors": [
+    "PCR genotyping of mutant lines"
+   ],
+   "original": "Ran genotyping on 40 mutant fly lines.",
+   "rewrite": "Ran PCR genotyping on 40 mutant fly lines.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCR genotyping",
+     "source": "genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "genotyping",
+     "to": "PCR genotyping"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_new_concrete"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded by dropping I",
+   "anchors": [
+    "Motor mount design"
+   ],
+   "original": "Built the drivetrain with two teammates; I designed the motor mount.",
+   "rewrite": "Designed the motor mount; built the drivetrain with two teammates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Motor mount",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first is declared",
+   "anchors": [
+    "Motor mount design"
+   ],
+   "original": "Built the drivetrain with two teammates; I designed the motor mount.",
+   "rewrite": "Designed the motor mount; built the drivetrain with two teammates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Motor mount",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "personal_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "cosmetic",
+   "label": "tense only",
+   "anchors": [],
+   "original": "Analyze EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "cosmetic_only",
+    "same_words"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "协助护士为 30 名患者记录生命体征。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "translation drops the help",
+   "output": "zh",
+   "anchors": [],
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "为 30 名患者记录并分析了生命体征。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_help"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "translation with another op",
+   "output": "zh",
+   "anchors": [],
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "协助护士为 30 名患者记录生命体征。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    },
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_ops"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN",
+   "output": "en",
+   "anchors": [],
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: the team designed and built a lending mini-program for the community library; I only did the testing.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops the student's limit",
+   "output": "en",
+   "anchors": [],
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: designed and built a lending mini-program for the community library; did the testing.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_limit"
+   ]
+  },
+  {
+   "group": "shape",
+   "label": "same-language line marked translate",
+   "anchors": [],
+   "original": "Tutored 30 students in circuits lab each week.",
+   "rewrite": "Tutored 30 students each week in circuits lab.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_ops"
+   ]
+  }
+ ]
+}
