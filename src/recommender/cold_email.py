@@ -435,9 +435,36 @@ def _stated_keywords(opportunity: dict) -> list[str]:
     return opportunity.get("keywords") or []
 
 
+# Who and where a professor is, not what they study. faculty-bioe-b4e047a5
+# lists "medical physicist", "carle cancer center" and "urbana" between her
+# research areas, and the template told her "your work on ..., and medical
+# physicist" (walked 2026-09-30). Only a whole keyword that is a role or a named
+# institution (a few words, none of them of/for/and/the..., ending in the role
+# or singular institution noun) or the record's own city is set aside:
+# "technical communication for engineers" and "data centers" are still topics.
+_NO_FUNCTION_WORD = r"(?!(?:of|for|in|on|at|to|with|and|the)\b)"
+_ROLE_KEYWORD_RE = re.compile(
+    rf"^(?:{_NO_FUNCTION_WORD}[\w-]+\s+){{0,2}}(?:physicists?|professors?|lecturers?|directors?|chairs?|"
+    r"deans?|scientists?|researchers?|fellows?|postdocs?|physicians?|surgeons?|clinicians?|engineers?|"
+    r"investigators?)$", re.I)
+_INSTITUTION_KEYWORD_RE = re.compile(
+    rf"^(?:{_NO_FUNCTION_WORD}[\w&.'-]+\s+){{0,3}}(?:center|centre|hospital|clinic|institute|university|"
+    r"college|school|department|laboratory|lab)$", re.I)
+
+
+def _topic_keywords(opportunity: dict) -> list[str]:
+    """Stated keywords that can follow "your work on"."""
+    places = {part.strip().casefold() for part in re.split(r"[-,/]", str(opportunity.get("location") or ""))
+              if len(part.strip()) > 2}
+    return [kw for kw in _stated_keywords(opportunity)
+            if kw.lower() not in _EMAIL_GENERIC_KW
+            and not _ROLE_KEYWORD_RE.match(kw.strip())
+            and not _INSTITUTION_KEYWORD_RE.match(kw.strip())
+            and kw.strip().casefold() not in places]
+
+
 def _infer_research_topic(opportunity: dict) -> str:
-    keywords = _stated_keywords(opportunity)
-    specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
+    specific = _topic_keywords(opportunity)
 
     if specific:
         if len(specific) <= 2:
@@ -603,11 +630,9 @@ def _usable_research_phrase(raw: str) -> str:
 
 
 def _infer_research_area(opportunity: dict) -> str:
-    keywords = _stated_keywords(opportunity)
-    if keywords:
-        specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
-        if specific:
-            return specific[0]
+    specific = _topic_keywords(opportunity)
+    if specific:
+        return specific[0]
     if faculty_contact_claims_unverified(opportunity):
         metadata = opportunity.get("metadata") or {}
         raw = str(metadata.get("research_areas_raw") or "").strip()
