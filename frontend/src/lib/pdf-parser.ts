@@ -213,7 +213,11 @@ function shapeOf(line: VisualLine, text: string): LineShape | null {
   return {
     left: Math.min(...runs.map((run) => run.x)),
     right: Math.max(...runs.map((run) => run.x + run.width)),
-    textLeft: runs.length > 1 && BULLET_GLYPH.test(runs[0].str.trim()) ? runs[1].x : runs[0].x,
+    // Where a bullet's text starts, which its wrapped lines hang under. A
+    // glyph printed in the same run as the text is measured by the run's
+    // average character width.
+    textLeft: runs.length > 1 && BULLET_GLYPH.test(runs[0].str.trim()) ? runs[1].x
+      : runs[0].x + runs[0].width * (BULLET_LINE.exec(runs[0].str)?.[0].length ?? 0) / runs[0].str.length,
     baseline: runs[0].y,
     size,
     // A PDF may split one style across many font subsets (CJK glyphs are

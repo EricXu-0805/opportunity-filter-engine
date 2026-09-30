@@ -670,6 +670,19 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('rejoins the hanging lines of a bullet whose glyph is printed in the same run as its text', async () => {
+    // "• " takes about one em; the wrapped lines hang at the text, 1.2 em in.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('• Characterized perovskite thin films with X-ray diffraction and UV-Vis', 50, 500, 700, { hasEOL: true }),
+      at('spectroscopy for a funded project', 62, 160, 688, { hasEOL: true }),
+      at('• Trained a U-Net model', 50, 110, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• Characterized perovskite thin films with X-ray diffraction and UV-Vis spectroscopy for a funded project',
+      '• Trained a U-Net model',
+    ]);
+  });
+
   it('keeps apart two lines that a paragraph gap separates', async () => {
     const full = 'the first paragraph wraps here and its words run to the edge';
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
