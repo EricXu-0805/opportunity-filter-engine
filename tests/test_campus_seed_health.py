@@ -9,11 +9,16 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import requests
+import yaml
 
 _REPO = Path(__file__).resolve().parents[1]
 _SCRIPT = _REPO / "scripts" / "check_campus_seeds.py"
@@ -307,3 +312,89 @@ class TestProgramPages:
         assert not (set(pages) & seeds)
         assert configured <= seeds | set(pages)
         assert len(pages) > 100, "most program pages are not seeds"
+
+
+def _workflow_step(name_fragment: str) -> dict:
+    workflow = yaml.safe_load(
+        (_REPO / ".github" / "workflows" / "campus-seed-health.yml").read_text(encoding="utf-8")
+    )
+    return next(
+        step for step in workflow["jobs"]["probe"]["steps"]
+        if name_fragment in str(step.get("name", ""))
+    )
+
+
+class TestWorkflow:
+    """The weekly job: how long it may run, and what its mail claims.
+
+    Program pages took the probe from 595 pages to 1,083 under a 20-minute
+    job limit. Running past the limit cancels the job, and the alert, which
+    fires on cancellation too, said a page was gone.
+    """
+
+    def test_the_job_outlasts_every_page_timing_out_once(self):
+        workflow = yaml.safe_load(
+            (_REPO / ".github" / "workflows" / "campus-seed-health.yml").read_text(encoding="utf-8")
+        )
+        pages = len(_checker.configured_seeds()) + len(_checker.configured_program_urls())
+        every_page_times_out = pages * _checker.PROBE_TIMEOUT_S / _checker.DEFAULT_WORKERS
+        setup = 5 * 60
+
+        assert workflow["jobs"]["probe"]["timeout-minutes"] * 60 >= every_page_times_out + setup, (
+            f"{pages} pages take {every_page_times_out / 60:.0f} minutes if each times out once; "
+            "raise timeout-minutes in campus-seed-health.yml"
+        )
+
+    def test_the_alert_reads_how_the_job_and_the_probe_ended(self):
+        alert = _workflow_step("Alert operator")
+
+        assert {"failure()", "cancelled()"} <= set(re.findall(r"\w+\(\)", alert["if"]))
+        assert alert["env"]["JOB_STATUS"] == "${{ job.status }}"
+        assert alert["env"]["PROBE_OUTCOME"] == "${{ steps.probe.outcome }}"
+        assert _workflow_step("Probe every configured")["id"] == "probe"
+
+    @staticmethod
+    def _mail(tmp_path, job_status, probe_outcome):
+        """Run the alert step's script with a stand-in curl; return the mail it sends."""
+        script = re.sub(r"\$\{\{.*?\}\}", "JoinALab <alerts@example.com>", _workflow_step("Alert operator")["run"])
+        payload = tmp_path / "payload.json"
+        curl = tmp_path / "curl"
+        curl.write_text(
+            "#!/usr/bin/env bash\n"
+            f'while [ $# -gt 0 ]; do [ "$1" = -d ] && printf %s "$2" > "{payload}"; shift; done\n'
+        )
+        curl.chmod(0o755)
+        env = {
+            **os.environ,
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "RESEND_API_KEY": "re_test",
+            "OPERATOR_EMAIL": "ops@example.com",
+            "JOB_STATUS": job_status,
+            "PROBE_OUTCOME": probe_outcome,
+            "RUN_URL": "https://github.com/o/r/actions/runs/1",
+        }
+        result = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+        assert result.returncode == 0, result.stdout + result.stderr
+        mail = json.loads(payload.read_text(encoding="utf-8"))
+        assert "https://github.com/o/r/actions/runs/1" in mail["text"]
+        return mail
+
+    @pytest.mark.parametrize("probe_outcome", ["cancelled", "skipped"])
+    def test_a_cancelled_or_timed_out_run_says_so(self, tmp_path, probe_outcome):
+        mail = self._mail(tmp_path, "cancelled", probe_outcome)
+
+        assert mail["subject"] == "JoinALab: the campus page probe was cancelled or timed out"
+        assert "404" not in mail["text"]
+
+    def test_a_failed_probe_says_a_page_is_gone(self, tmp_path):
+        mail = self._mail(tmp_path, "failure", "failure")
+
+        assert mail["subject"] == "JoinALab: a configured campus page is gone"
+        assert "404 or 410" in mail["text"]
+
+    def test_another_failed_step_does_not_say_a_page_is_gone(self, tmp_path):
+        """The dead man's switch check-in runs after a clean probe."""
+        mail = self._mail(tmp_path, "failure", "success")
+
+        assert mail["subject"] == "JoinALab: the campus page probe run failed"
+        assert "404" not in mail["text"]

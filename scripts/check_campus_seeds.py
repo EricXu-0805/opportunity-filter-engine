@@ -47,6 +47,12 @@ OK = "ok"
 _GONE_STATUSES = frozenset({404, 410})
 _BLOCKED_STATUSES = frozenset({401, 403, 406, 429, 451})
 
+# One request per page, DEFAULT_WORKERS at a time. The workflow's job limit is
+# sized from these two; test_campus_seed_health.py keeps it in step with the
+# number of configured pages.
+PROBE_TIMEOUT_S = 20
+DEFAULT_WORKERS = 8
+
 
 def classify(status: object) -> str:
     """Map one probe result to the class that decides whether we alert."""
@@ -103,7 +109,7 @@ def _probe(item: tuple[str, str, str], kind: str = "seed") -> dict:
     slug, source, url = item
     try:
         resp = requests.get(
-            url, headers=HEADERS, timeout=20, verify=_ca_bundle()
+            url, headers=HEADERS, timeout=PROBE_TIMEOUT_S, verify=_ca_bundle()
         )
         status: object = resp.status_code
     except Exception as exc:  # noqa: BLE001 — every failure is data here
@@ -122,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit JSON")
     parser.add_argument(
-        "--workers", type=int, default=8, help="concurrent probes"
+        "--workers", type=int, default=DEFAULT_WORKERS, help="concurrent probes"
     )
     args = parser.parse_args(argv)
 
