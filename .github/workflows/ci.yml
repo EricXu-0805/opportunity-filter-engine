@@ -25,7 +25,9 @@ jobs:
     # brought the job past its old 30-minute cap (run 35967896474).
     # Keep the full suite and leave measured runner/setup headroom. Durations
     # below expose the corpus-bound tests to optimize without dropping checks.
-    timeout-minutes: 35
+    # The MVP integration (PR #1002) roughly doubled the suite: 9,522 tests
+    # ran in 26m10s (run 36680215980), so 35 minutes no longer left headroom.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
 
