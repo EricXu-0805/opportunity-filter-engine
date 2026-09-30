@@ -372,6 +372,30 @@ test.describe('Cold Email reachable editing workspace', () => {
     });
   }
 
+  test('1280x800: a pending suggestion is read in a real scroll area, not a two-line strip', async ({ page }) => {
+    // Walked 2026-09-30: with writing guidelines shown, the request log was
+    // 54px tall and a pending Original/Suggestion card showed only its
+    // "Reject suggestion" button.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await installNetwork(page, { labType: 'dry', body: VARIANT.body.repeat(20) });
+    await page.route('**/api/cold-email/refine', (route) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: VARIANT.body.repeat(21), method: 'llm' }),
+    }));
+    await openModal(page);
+    const history = page.getByTestId('cold-email-chat-history');
+    const guidelines = page.getByTestId('cold-email-guidelines');
+    const request = page.getByRole('textbox', { name: 'Request an edit' });
+    await request.fill('Make it shorter.');
+    await page.getByRole('button', { name: 'Submit request' }).click();
+    await expect(page.getByRole('region', { name: 'Pending edit suggestion' })).toBeVisible();
+    expect(await history.evaluate((el) => el.clientHeight)).toBeGreaterThanOrEqual(120);
+    expect(await guidelines.evaluate((el) => el.clientHeight)).toBeGreaterThanOrEqual(50);
+    await expect(request).toBeInViewport({ ratio: 1 });
+    await expect(page.getByTestId('cold-email-footer')).toBeInViewport();
+  });
+
   test('long AI history follows replies without scrolling the editor or workspace', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 900 });
     await installNetwork(page, { labType: 'dry', body: VARIANT.body.repeat(20) });

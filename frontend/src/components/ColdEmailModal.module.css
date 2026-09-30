@@ -76,9 +76,13 @@
     overscroll-behavior-y: contain;
   }
 
+  /* The request log is where a suggestion is read and accepted; the tips
+     have their own scroll range and give way first. The old 0.9 : 1.1 split
+     left the log 54px tall at 1280x800: two lines of a 1,700-character
+     comparison. */
   .refinePane {
     display: grid;
-    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(min(22rem, 100%), 3fr);
   }
 
   .refinePane[data-has-guidelines='false'] {
