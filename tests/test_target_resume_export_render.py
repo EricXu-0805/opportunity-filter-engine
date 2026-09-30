@@ -104,6 +104,40 @@ def test_short_docx_reads_as_a_compact_resume():
     assert len(document.paragraphs) == 19  # Was 37: one paragraph per field and per skill.
 
 
+def contact_projection(contact, page_size='letter'):
+    lines = [('name', '', 'Jordan Lee'), *contact]
+    return {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': page_size, 'sections': [
+        {'kind': 'basics', 'heading': '', 'blocks': [{'lines': [{'role': role, 'label': label, 'text': text}
+                                                                for role, label, text in lines]}]}]}
+
+
+LINKS = [('GitHub', 'https://github.com/alexandra-garcia0805'), ('LinkedIn', 'https://www.linkedin.com/in/alexandra-garcia-0805'),
+         ('Portfolio', 'https://alexandra-garcia.example.dev/projects')]
+CONTACTS = [
+    # 2026-09-30 review: Letter printed 'LinkedI' / 'n: https://…' and A4 'Link' / 'edIn: https://…'.
+    [('email', '', 'jordan@example.com'), ('phone', '', '+1 217 555 0100'), ('location', '', 'Urbana, IL'),
+     ('url', 'GitHub', 'https://github.com/jordan'), ('url', 'LinkedIn', 'https://www.linkedin.com/in/jordan')],
+    *[[('email', '', email), *([('phone', '', '+1 217 555 0100')] if phone else []), ('location', '', 'Urbana, IL'),
+       *[('url', label, url) for label, url in LINKS[:count]]]
+      for email in ('jordan@example.com', 'alexandra.garcia0805@illinois.edu') for phone in (False, True) for count in range(4)],
+]
+
+
+@pytest.mark.parametrize('page_size', ['letter', 'a4'])
+def test_pdf_contact_row_wraps_between_whole_items_and_keeps_their_links(page_size):
+    wrapped = 0
+    for contact in CONTACTS:
+        pdf = pdf_reader(renderer.render_export(contact_projection(contact, page_size), 'pdf'))
+        rows = pdf.pages[0].extract_text().splitlines()[1:]
+        wrapped += len(rows) > 1
+        # No item is cut inside a word, and a separator ends the line of the item before it.
+        items = [f'{label}: {text}' if label else text for _role, label, text in contact]
+        assert [item for row in rows for item in row.removesuffix(' ·').split(' · ')] == items, rows
+        targets = ['mailto:' + text if role == 'email' else text for role, _label, text in contact if role in ('email', 'url')]
+        assert sorted(annotation.get_object()['/A']['/URI'] for annotation in pdf.pages[0]['/Annots']) == sorted(targets), rows
+    assert wrapped >= 5
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)

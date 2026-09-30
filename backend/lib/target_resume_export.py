@@ -304,6 +304,16 @@ def render_pdf(projection, assets, deadline=None):
         # This is layout only: the signed projection is never changed.
         return text.replace('\r\n', '\n').replace('\r', '\n').replace('\t', '    ')
 
+    def fits(text):
+        """Whether write() sets text in the rest of this line. write() measures
+        each character alone and cuts a first word that does not fit there."""
+        room = pdf.w - pdf.r_margin - pdf.get_x() - 2 * pdf.c_margin
+        for char in text:
+            room -= pdf.get_string_width(char)
+            if room < 0:
+                return False
+        return True
+
     for index, item in enumerate(layout(projection)):
         check_deadline(deadline)
         size, leading = PDF_STYLES[item.style]
@@ -323,8 +333,21 @@ def render_pdf(projection, assets, deadline=None):
             pdf.ln(3)
         links = [link for _piece, link in item.pieces if link]
         if links and len(item.pieces) > 1:
-            for piece, link in item.pieces:
-                pdf.write(leading, plain(piece), link=link or '')
+            # A row alternates items and separators (joined()). It breaks between
+            # items, never inside one, and a separator ends the line it follows.
+            gap = ''
+            for position in range(0, len(item.pieces), 2):
+                piece, link = item.pieces[position]
+                separator = item.pieces[position + 1][0] if position + 1 < len(item.pieces) else ''
+                piece, tail = plain(piece), separator.rstrip()
+                if position and not fits(gap + piece.split('\n')[0] + tail):
+                    pdf.ln(leading)
+                elif gap:
+                    pdf.write(leading, gap)
+                pdf.write(leading, piece, link=link or '')
+                if tail:
+                    pdf.write(leading, tail)
+                gap = separator[len(tail):]
             pdf.ln(leading)
         else:
             top = pdf.get_y()
