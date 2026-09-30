@@ -50,8 +50,9 @@ _GATE_TEXT = re.compile(
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
 # A site can answer our server's address with a bot check while the same URL
-# opens normally for the student. These sentences, scripts, frames and element
-# ids belong to the check, never to the posting.
+# opens normally for the student. Checks print these sentences and load these
+# scripts and frames, but an ordinary page can carry them too, so they refuse
+# only a page with nothing else to read.
 _CHALLENGE_TEXT = re.compile(
     r'\b(?:(?:your|the|this) (?:request|browser|connection) (?:is being|will be) (?:verified|checked)|'
     r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
@@ -62,12 +63,12 @@ _CHALLENGE_TEXT = re.compile(
     r'protected by anubis|ddos protection by)\b',
     re.I,
 )
-_CHALLENGE_SOURCE = re.compile(
-    r'/cdn-cgi/challenge-platform/|/_Incapsula_Resource\b|captcha-delivery\.com|/\.within\.website/|'
-    r'/\.well-known/sgcaptcha\b', re.I,
-)
-_CHALLENGE_IDS = {'challenge-running', 'cf-challenge-running', 'challenge-form', 'anubis_challenge', 'px-captcha',
-                  'wsidchk-form'}
+_CHALLENGE_SOURCE = re.compile(r'/cdn-cgi/challenge-platform/|/_Incapsula_Resource\b|captcha-delivery\.com', re.I)
+# Only a vendor's bot-check page carries these ids, scripts and redirects, so
+# they refuse it whatever title and explanation it shows around them.
+_CHALLENGE_PAGE_IDS = {'challenge-running', 'cf-challenge-running', 'challenge-form', 'anubis_challenge', 'px-captcha',
+                       'wsidchk-form'}
+_CHALLENGE_PAGE_SOURCE = re.compile(r'/\.within\.website/x/cmd/anubis/|/\.well-known/sgcaptcha\b', re.I)
 
 
 class ImportDocumentError(ValueError):
@@ -169,18 +170,21 @@ def _has_independent_source(root: Tag) -> bool:
     return False
 
 
+def _address(tag: Tag) -> str:
+    if tag.name == 'meta':
+        return str(tag.get('content', '')) if str(tag.get('http-equiv', '')).lower() == 'refresh' else ''
+    return str(tag.get('action' if tag.name == 'form' else 'src') or '')
+
+
+def _is_challenge_page(soup: BeautifulSoup) -> bool:
+    """Vendor bot-check markup, visible or not."""
+    return soup.find(id=lambda value: value in _CHALLENGE_PAGE_IDS) is not None or any(
+        _CHALLENGE_PAGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'form', 'meta']))
+
+
 def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
-    """Bot-check scripts, frames, redirects and containers, visible or not."""
-    for tag in soup.find_all(['script', 'iframe', 'form', 'meta', 'div']):
-        if tag.get('id') in _CHALLENGE_IDS:
-            return True
-        if tag.name == 'meta':
-            address = tag.get('content') if str(tag.get('http-equiv', '')).lower() == 'refresh' else None
-        else:
-            address = tag.get('action' if tag.name == 'form' else 'src')
-        if address and _CHALLENGE_SOURCE.search(str(address)):
-            return True
-    return False
+    """Bot-check scripts, frames and redirects an ordinary page can also load."""
+    return any(_CHALLENGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'iframe', 'form', 'meta']))
 
 
 def _meta(soup: BeautifulSoup, key: str) -> str:
@@ -218,15 +222,13 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         if soup.title is not None:
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
-        # Denial/challenge titles are not job content. A bare sign-in heading or
-        # password form is only a wall when no independent source remains.
-        if any(not _LOGIN.fullmatch(value) for value in blocked):
+        # Denial/challenge titles and challenge markup are not job content. A
+        # bare sign-in heading or password form is only a wall when no
+        # independent source remains.
+        if any(not _LOGIN.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
         gate = bool(blocked) or _has_challenge_machinery(soup) or any(
-            _visible_in_body(tag) and (
-                (tag.name == 'input' and str(tag.get('type', '')).lower() == 'password')
-                or tag.get('id') in {'challenge-running', 'cf-challenge-running'}
-            ) for tag in root.find_all(['input', 'div', 'section', 'form'])
+            _visible_in_body(tag) and str(tag.get('type', '')).lower() == 'password' for tag in root.find_all('input')
         )
         if gate and not _has_independent_source(root):
             raise ImportDocumentError('access_page')

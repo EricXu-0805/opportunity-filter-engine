@@ -1,4 +1,6 @@
 """Offline, source-preserving HTML reader contract."""
+from pathlib import Path
+
 import pytest
 
 from src.collectors.import_document import ImportDocumentError, extract_import_document
@@ -329,6 +331,45 @@ IMUNIFY_WEBSHIELD = (
 def test_bot_verification_interstitial_is_an_access_page_not_a_posting(html):
     with pytest.raises(ImportDocumentError) as raised:
         extract_import_document(html, content_type='text/html')
+    assert raised.value.reason == 'access_page'
+
+
+# BotStopper titles the check with the site's own name and explains it in four
+# paragraphs, so neither a title nor a missing-text rule can tell it apart.
+ANUBIS_BOTSTOPPER = (Path(__file__).parent / 'fixtures' / 'anubis_botstopper_challenge.html').read_text(encoding='utf-8')
+
+
+def test_anubis_check_under_the_site_title_with_its_explanation_is_an_access_page():
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(ANUBIS_BOTSTOPPER, content_type='text/html')
+    assert raised.value.reason == 'access_page'
+
+
+# One vendor's challenge markup per case. Only a bot-check page carries it, so
+# it refuses the page whatever title and explanation surround it.
+@pytest.mark.parametrize(('head', 'body'), [
+    pytest.param('<script id="anubis_challenge" type="application/json">{"rules":{"algorithm":"fast"}}</script>', '',
+                 id='anubis-challenge-data'),
+    pytest.param('', '<script async type="module" src="/.within.website/x/cmd/anubis/static/js/main.mjs?cacheBuster=1.22.2">'
+                 '</script>', id='anubis-script'),
+    pytest.param('', '<form id="wsidchk-form" style="display:none;" action="/z0f76a1d14fd" method="GET">'
+                 '<input type="hidden" id="wsidchk" name="wsidchk"></form>', id='imunify360-form'),
+    pytest.param('', '<div id="px-captcha"></div>', id='perimeterx-captcha'),
+    pytest.param('', '<form id="challenge-form" action="/?__cf_chl_f_tk=abc" method="POST">'
+                 '<input type="hidden" name="md" value="x"></form>', id='cloudflare-form'),
+    pytest.param('', '<div id="challenge-running"></div>', id='cloudflare-running'),
+    pytest.param('', '<div id="cf-challenge-running"></div>', id='cloudflare-legacy-running'),
+    pytest.param('<meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fprogram">', '',
+                 id='siteground-refresh'),
+])
+def test_vendor_challenge_markup_refuses_the_page_however_much_it_explains(head, body):
+    title = '<title>Nicholas Institute for Energy, Environment &amp; Sustainability</title>'
+    explained = ('<main><h1>Nicholas Institute for Energy, Environment &amp; Sustainability</h1><p id="status">Loading...</p>'
+                 '<p>You are seeing this because the administrator of this website has set up a check to protect the '
+                 'server against aggressive scraping. This can and does cause downtime for the website.</p>{}</main>')
+    assert 'set up a check' in extract_import_document(page(explained.format(''), title))['text']
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page(explained.format(body), title + head))
     assert raised.value.reason == 'access_page'
 
 
