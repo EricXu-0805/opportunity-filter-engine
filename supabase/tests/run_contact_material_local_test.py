@@ -23,6 +23,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 DOCKER = '/usr/local/bin/docker'
 MIGRATION = '20260925151438_contact_material_archive.sql'
+# Replaces a function MIGRATION creates, so it must run after it.
+QUOTA_MIGRATION = '20260930090000_owner_storage_quotas.sql'
 CRASH = re.compile(r'terminated by signal|segmentation fault|terminating any other active server processes|database system was interrupted', re.I)
 
 
@@ -149,7 +151,7 @@ def main():
             if args.mode == 'full':
                 run('fresh-schema-guard', sql="DO $$ BEGIN IF to_regclass('public.material_artifacts') IS NOT NULL OR to_regclass('public.profiles') IS NOT NULL THEN RAISE EXCEPTION 'full mode requires fresh candidate app schema'; END IF; END $$;")
                 migrations = sorted((ROOT / 'supabase/migrations').glob('*.sql'))
-                old = [p for p in migrations if p.name != MIGRATION]
+                old = [p for p in migrations if p.name not in (MIGRATION, QUOTA_MIGRATION)]
                 run('old-migrations', sql='\n'.join(p.read_text() for p in old))
                 app('before')
                 upgrade = claims((HERE / 'contact_material_migration_upgrade_test.sql').read_text())
@@ -158,6 +160,7 @@ def main():
                 run('same-database-upgrade', sql=upgrade, expected=1)
                 run('drop-before-test-helper', sql='DROP TABLE public.material_test_receipts;')
                 run('contact-migration', sql=(ROOT / 'supabase/migrations' / MIGRATION).read_text())
+                run('quota-migration', sql=(ROOT / 'supabase/migrations' / QUOTA_MIGRATION).read_text())
                 app('after', translated=True)
                 contact_sql = claims((HERE / 'contact_material_archive_test.sql').read_text()).replace('36000000-', '38000000-').replace("'private.pdf'", "'b37-contact-private.pdf'")
                 run('contact-material', sql='BEGIN;\n' + contact_sql + '\nCOMMIT;', expected=14)

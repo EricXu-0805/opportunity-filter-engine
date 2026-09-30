@@ -35,6 +35,9 @@ PSQL=(psql -v ON_ERROR_STOP=1 -h "$SOCK" -U postgres -d postgres -q)
 
 echo "==> load test stubs"
 "${PSQL[@]}" -f "$HERE/_stubs.sql"
+# Supabase grants new public tables to these roles by default; without it the
+# table-ACL assertions below pass whether or not a migration revokes access.
+"${PSQL[@]}" -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role'
 
 echo "==> load migrations (effective prod schema; 004 superseded by 006)"
 for f in "$MIGRATIONS"/*.sql; do
@@ -207,6 +210,7 @@ echo "==> run contact_material_migration_upgrade_test.sql (pre-$CONTACT_MIGRATIO
 "${PSQL[@]}" -c "CREATE DATABASE contact_material_upgrade"
 UPGRADE_PSQL=(psql -v ON_ERROR_STOP=1 -h "$SOCK" -U postgres -d contact_material_upgrade -q)
 "${UPGRADE_PSQL[@]}" -f "$HERE/_stubs.sql"
+"${UPGRADE_PSQL[@]}" -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role'
 for f in "$MIGRATIONS"/*.sql; do
   base="$(basename "$f")"
   [[ "$base" == 004_* ]] && continue
