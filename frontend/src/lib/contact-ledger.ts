@@ -55,9 +55,11 @@ function wellFormedText(value: unknown): value is string {
   }
   return true;
 }
+// Single-line fields mirror SQL [[:cntrl:]], which under a UTF-8 locale also
+// matches C1 and U+2028/2029.
 function validText(value: unknown, max: number, singleLine = false): value is string {
   return wellFormedText(value) && !!value.trim() && Array.from(value).length <= max
-    && !(singleLine && /[\u0000-\u001f\u007f]/.test(value));
+    && !(singleLine && /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(value));
 }
 /** SHA-256 of the full exact serialized material. A complete profile includes
  * more than its resume, so this has no resume-text size cap or truncation. */

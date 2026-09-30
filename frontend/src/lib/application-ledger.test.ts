@@ -16,6 +16,8 @@ it.each([
   { id: 'wrong' }, { channel: 'auto' }, { notes: '' }, { nextStep: '  ' }, { resultNote: 2 },
   { notes: 'a'.repeat(4001) }, { notes: '\ud800' }, { notes: 'a\0b' }, { submittedAt: '2026-02-30T00:00:00Z' },
   { submittedAt: '2026-09-25' }, { unknown: true }, { destination: 'https://example.edu/\n' },
+  { channel: 'other', destination: 'Department\u0085office' }, { channel: 'other', destination: 'Department\u009foffice' },
+  { channel: 'other', destination: 'Department\u2028office' }, { channel: 'email', destination: 'pi@example.edu\u0085' },
 ])('rejects invalid snapshots %#', patch => expect(() => snapshotApplicationEventInput({ ...input(), ...patch })).toThrow());
 it('counts Unicode codepoints consistently with PostgreSQL and retains newline notes', () => {
   expect(snapshotApplicationEventInput({ ...input(), notes: '🎓'.repeat(4000) }).notes?.length).toBe(8000);

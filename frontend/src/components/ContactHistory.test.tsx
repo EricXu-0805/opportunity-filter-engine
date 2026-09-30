@@ -161,14 +161,33 @@ describe('ContactHistory — pagination and private read scopes', () => {
     expect(screen.getByText('Saved records: 2')).toBeInTheDocument();
   });
 
-  it('refreshes from page one after a new contact confirmation changes the parent timestamp', async () => {
-    mocks.getContactEvents.mockResolvedValueOnce(page([event()], cursor)).mockResolvedValueOnce(page([event({ id: 'event-B', subject: 'New confirmation' }), event()]));
+  it('refreshes from page one after a new contact confirmation without unmounting the open record', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getContactEvents.mockResolvedValueOnce(page([event()], cursor)).mockReturnValueOnce(refreshed.promise);
+    const { rerender } = render(<ContactHistory {...props} />);
+    const record = (await screen.findByText('Research question')).closest('details')!;
+    record.open = true;
+    rerender(<ContactHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    // Material uploads live inside this record; unmounting it would abort them silently.
+    expect(record.isConnected).toBe(true);
+    expect(screen.getByRole('status')).toHaveTextContent(label('loading'));
+    expect(screen.getByRole('button', { name: label('loadMore') })).toBeDisabled();
+    await act(async () => { refreshed.resolve(page([event({ id: 'event-B', subject: 'New confirmation' }), event()])); });
+    expect(screen.getByText('New confirmation')).toBeInTheDocument();
+    expect(record.isConnected).toBe(true); expect(record.open).toBe(true);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(mocks.getContactEvents.mock.calls).toEqual([['opp-A'], ['opp-A']]);
+  });
+
+  it('replaces a refreshing record with the error when the refreshed read fails', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getContactEvents.mockResolvedValueOnce(page([event()])).mockReturnValueOnce(refreshed.promise);
     const { rerender } = render(<ContactHistory {...props} />);
     await screen.findByText('Research question');
     rerender(<ContactHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    await act(async () => { refreshed.reject(new Error('offline')); });
+    expect(screen.getByRole('alert')).toHaveTextContent(label('error'));
     expect(screen.queryByText('Research question')).not.toBeInTheDocument();
-    await screen.findByText('New confirmation');
-    expect(mocks.getContactEvents.mock.calls).toEqual([['opp-A'], ['opp-A']]);
   });
 
   it('retracts the previous opportunity history immediately while the new read waits', async () => {
@@ -180,15 +199,17 @@ describe('ContactHistory — pagination and private read scopes', () => {
     expect(screen.getByRole('status')).toHaveTextContent(label('loading'));
   });
 
-  it('ignores a late initial result for another opportunity', async () => {
+  it.each(['resolves', 'rejects'] as const)('ignores a late initial read for another opportunity that %s', async outcome => {
     const pending = deferred<ReturnType<typeof page>>();
     mocks.getContactEvents.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([]));
     const { rerender } = render(<ContactHistory {...props} />);
     await waitFor(() => expect(mocks.getContactEvents).toHaveBeenCalledTimes(1));
     rerender(<ContactHistory {...props} opportunityId="opp-B" />);
     await screen.findByText(label('empty'));
-    await act(async () => { pending.resolve(page([event()])); });
+    await act(async () => { if (outcome === 'resolves') pending.resolve(page([event()])); else pending.reject(new Error('late failure')); });
     expect(screen.queryByText('Research question')).not.toBeInTheDocument();
+    expect(screen.getByText(label('empty'))).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('retires an old page request after the parent refreshes the same opportunity', async () => {

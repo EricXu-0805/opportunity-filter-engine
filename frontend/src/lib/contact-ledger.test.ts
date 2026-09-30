@@ -18,7 +18,7 @@ describe('immutable contact snapshot validation', () => {
   });
   it.each([
     { id: 'not-a-uuid' }, { recipient: 'a@example.edu,b@example.edu' }, { recipient: 'a@example.edu\nb@example.edu' },
-    { subject: 'header\ninjection' }, { subject: 'header\tinjection' }, { subject: 'header\u007finjection' }, { subject: '' }, { body: '   ' }, { body: '\ud800' },
+    { subject: 'header\ninjection' }, { subject: 'header\tinjection' }, { subject: 'header\u007finjection' }, { subject: 'header\u0085injection' }, { subject: 'header\u2029injection' }, { recipient: 'a@example.edu\u0085' }, { subject: '' }, { body: '   ' }, { body: '\ud800' },
     { actualSentAt: '2026-02-30T12:00:00Z' }, { actualSentAt: '2026-01-01' },
     { materialRefs: [{ kind: 'attachment', version: 'uploaded' }] },
     { materialRefs: [{ kind: 'profile', version: '' }] },

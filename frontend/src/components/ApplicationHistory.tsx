@@ -14,6 +14,7 @@ interface Props {
 }
 type History = {
   scope: string;
+  identity: string;
   status: 'ready' | 'error';
   events: ApplicationEvent[];
   nextCursor: ApplicationEventCursor | null;
@@ -35,11 +36,15 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
   const { t, locale } = useT();
   const owner = useSyncExternalStore(subscribeOwner, ownerSnapshot, () => 'server');
   const [retry, setRetry] = useState(0);
+  const identity = JSON.stringify([opportunityId, owner]);
   const scope = JSON.stringify([opportunityId, owner, refreshKey, retry]);
   const scopeRef = useRef(scope);
   const pageRequestRef = useRef<object | null>(null);
   const [history, setHistory] = useState<History | null>(null);
-  const view = history?.scope === scope ? history : null;
+  // A same-account refresh keeps the loaded list mounted until the new page
+  // arrives: unmounting it would abort material uploads open inside it.
+  const view = history?.scope === scope || (history?.identity === identity && history.status === 'ready') ? history : null;
+  const refreshing = !!view && view.scope !== scope;
 
   useLayoutEffect(() => {
     scopeRef.current = scope;
@@ -55,16 +60,16 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
       return getApplicationEvents(opportunityId);
     }).then(page => {
       if (active && isOwnerTokenValid(origin, origin.uid)) {
-        setHistory({ scope, status: 'ready', events: page.events, nextCursor: page.nextCursor, more: 'idle' });
+        setHistory({ scope, identity, status: 'ready', events: page.events, nextCursor: page.nextCursor, more: 'idle' });
       }
     }, () => {
-      if (active) setHistory({ scope, status: 'error', events: [], nextCursor: null, more: 'idle' });
+      if (active) setHistory({ scope, identity, status: 'error', events: [], nextCursor: null, more: 'idle' });
     });
     return () => { active = false; };
-  }, [opportunityId, scope]);
+  }, [opportunityId, scope, identity]);
 
   async function loadMore() {
-    if (!view || view.status !== 'ready' || !view.nextCursor || view.more === 'loading' || pageRequestRef.current) return;
+    if (!view || refreshing || view.status !== 'ready' || !view.nextCursor || view.more === 'loading' || pageRequestRef.current) return;
     const origin = captureOwnerToken();
     if (!origin.uid || !isOwnerTokenValid(origin, origin.uid) || scopeRef.current !== scope) return;
     const request = {};
@@ -96,7 +101,7 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
   return <section data-testid="application-history" aria-label={label('title')} className="min-w-0 space-y-2">
     <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{label('title')}</h3>
     <p className="text-xs text-gray-500">{label('hint')}</p>
-    {!view && <p role="status" className="text-xs text-gray-500">{label('loading')}</p>}
+    {(!view || refreshing) && <p role="status" className="text-xs text-gray-500">{label('loading')}</p>}
     {view?.status === 'error' && <div role="alert" className="text-xs text-amber-800">
       <p>{label('error')}</p>
       <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-1 min-h-9 rounded underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-indigo-500">{label('retry')}</button>
@@ -125,7 +130,7 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
         </li>)}
       </ol>
       {view.more === 'error' && <p role="alert" className="text-xs text-amber-800">{label('moreError')}</p>}
-      {view.nextCursor && <button type="button" onClick={() => { void loadMore(); }} disabled={view.more === 'loading'} className="min-h-10 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50">
+      {view.nextCursor && <button type="button" onClick={() => { void loadMore(); }} disabled={refreshing || view.more === 'loading'} className="min-h-10 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-indigo-700 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50">
         {label(view.more === 'loading' ? 'loadingMore' : view.more === 'error' ? 'retryMore' : 'loadMore')}
       </button>}
     </>}

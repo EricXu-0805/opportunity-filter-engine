@@ -40,8 +40,10 @@ function exactKeys(value: Record<string, unknown>, keys: string[]): boolean {
 function validText(value: unknown, max: number, singleLine = false): value is string {
   // PostgreSQL text cannot contain NUL or isolated UTF-16 surrogates. Count
   // Unicode code points, matching char_length rather than JS UTF-16 units.
+  // SQL [[:cntrl:]] under a UTF-8 locale also matches C1 and U+2028/2029; a
+  // looser client would persist an attempt the server can never accept.
   return typeof value === 'string' && !!value.trim() && !/[\u0000\ud800-\udfff]/u.test(value)
-    && Array.from(value).length <= max && !(singleLine && /[\u0000-\u001f\u007f]/.test(value));
+    && Array.from(value).length <= max && !(singleLine && /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(value));
 }
 /** Conservative shared client/SQL URL grammar. Validate but never normalize the snapshot. */
 export function validApplicationDestination(channel: ApplicationEventInput['channel'], value: unknown): value is string {

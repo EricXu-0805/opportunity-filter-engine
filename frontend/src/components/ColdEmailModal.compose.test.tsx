@@ -128,6 +128,20 @@ describe('new composer source checks', () => {
     fireEvent.click(button()); await waitFor(() => expect(view.window.close).toHaveBeenCalledOnce());
     expect(view.window.location.href).toBe('about:blank'); expect(screen.getByDisplayValue(draft.body)).toBeVisible();
   });
+  it.each([
+    ['another opportunity', { opportunity_id: 'other' }],
+    ['another contact context', { contact_context_receipt: { version: 1, purpose: 'first_contact', context_sig: '0'.repeat(64) } }],
+    ['a ready outcome with an issue', { outcome: 'ready', issues: ['unsupported_attachment_claim'] }],
+    ['a review outcome without an issue', { outcome: 'review_required', issues: [] }],
+    ['an unknown issue code', { outcome: 'review_required', issues: ['private text'] }],
+  ])('treats a draft check for %s as unfinished without navigating', async (_fault, override) => {
+    const view = await harness();
+    api.validate.mockImplementation(async (...args) => ({ ...(await emailValidationReceipt(...args) as Record<string, unknown>), ...override }));
+    fireEvent.click(button()); await waitFor(() => expect(view.window.close).toHaveBeenCalledOnce());
+    await screen.findByText(/The check did not finish. Your draft is kept/);
+    expect(view.window.location.href).toBe('about:blank'); expect(api.recipient).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue(draft.body)).toBeVisible(); expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+  });
   it('cancels a held draft check after a manual edit and never opens the stale result', async () => {
     const view = await harness(); const held = deferred<unknown>(); api.validate.mockReturnValue(held.promise);
     fireEvent.click(button()); await waitFor(() => expect(api.validate).toHaveBeenCalledOnce());

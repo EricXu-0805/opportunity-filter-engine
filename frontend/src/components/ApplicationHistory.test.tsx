@@ -160,14 +160,33 @@ describe('ApplicationHistory — pagination and private read scopes', () => {
     expect(screen.getByText('Saved records: 2')).toBeInTheDocument();
   });
 
-  it('refreshes from page one after a new application confirmation changes the parent timestamp', async () => {
-    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()], cursor)).mockResolvedValueOnce(page([event({ id: 'event-B', destination: 'New confirmation' }), event()]));
+  it('refreshes from page one after a new application confirmation without unmounting the open record', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()], cursor)).mockReturnValueOnce(refreshed.promise);
+    const { rerender } = render(<ApplicationHistory {...props} />);
+    const record = (await screen.findByText('Research program portal')).closest('details')!;
+    record.open = true;
+    rerender(<ApplicationHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    // Material uploads live inside this record; unmounting it would abort them silently.
+    expect(record.isConnected).toBe(true);
+    expect(screen.getByRole('status')).toHaveTextContent(label('loading'));
+    expect(screen.getByRole('button', { name: label('loadMore') })).toBeDisabled();
+    await act(async () => { refreshed.resolve(page([event({ id: 'event-B', destination: 'New confirmation' }), event()])); });
+    expect(screen.getByText('New confirmation')).toBeInTheDocument();
+    expect(record.isConnected).toBe(true); expect(record.open).toBe(true);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(mocks.getApplicationEvents.mock.calls).toEqual([['opp-A'], ['opp-A']]);
+  });
+
+  it('replaces a refreshing record with the error when the refreshed read fails', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()])).mockReturnValueOnce(refreshed.promise);
     const { rerender } = render(<ApplicationHistory {...props} />);
     await screen.findByText('Research program portal');
     rerender(<ApplicationHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    await act(async () => { refreshed.reject(new Error('offline')); });
+    expect(screen.getByRole('alert')).toHaveTextContent(label('error'));
     expect(screen.queryByText('Research program portal')).not.toBeInTheDocument();
-    await screen.findByText('New confirmation');
-    expect(mocks.getApplicationEvents.mock.calls).toEqual([['opp-A'], ['opp-A']]);
   });
 
   it('retracts the previous opportunity history immediately while the new read waits', async () => {
@@ -179,15 +198,17 @@ describe('ApplicationHistory — pagination and private read scopes', () => {
     expect(screen.getByRole('status')).toHaveTextContent(label('loading'));
   });
 
-  it('ignores a late initial result for another opportunity', async () => {
+  it.each(['resolves', 'rejects'] as const)('ignores a late initial read for another opportunity that %s', async outcome => {
     const pending = deferred<ReturnType<typeof page>>();
     mocks.getApplicationEvents.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(page([]));
     const { rerender } = render(<ApplicationHistory {...props} />);
     await waitFor(() => expect(mocks.getApplicationEvents).toHaveBeenCalledTimes(1));
     rerender(<ApplicationHistory {...props} opportunityId="opp-B" />);
     await screen.findByText(label('empty'));
-    await act(async () => { pending.resolve(page([event()])); });
+    await act(async () => { if (outcome === 'resolves') pending.resolve(page([event()])); else pending.reject(new Error('late failure')); });
     expect(screen.queryByText('Research program portal')).not.toBeInTheDocument();
+    expect(screen.getByText(label('empty'))).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('retires an old page request after the parent refreshes the same opportunity', async () => {
