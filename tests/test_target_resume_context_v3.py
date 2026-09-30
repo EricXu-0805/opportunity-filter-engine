@@ -130,7 +130,7 @@ def test_source_change_refuses_before_provider(endpoint, path, change):
 
 @pytest.mark.parametrize('path', PATHS)
 @pytest.mark.parametrize('quote', [dict(PAPER, paper_index=1), dict(PAPER, paper_index=-1), dict(PAPER, requirement_index=None),
-                                    dict(PAPER, end=7), dict(PAPER, field='paper_abstract', paper_index=1)])
+                                    dict(PAPER, end=13, quote='Second paper'), dict(PAPER, field='paper_abstract', paper_index=1)])
 def test_bad_research_quote_is_not_accepted(endpoint, path, quote):
     client, opp, state = endpoint
     state['quote'] = quote
@@ -142,6 +142,17 @@ def test_bad_research_quote_is_not_accepted(endpoint, path, quote):
         assert result['items'] == [] and result['reason_code'] == 'no_target_evidence'
     else:
         assert all(row['reason_code'] == 'no_target_evidence' for row in result['receipts'])
+
+
+@pytest.mark.parametrize('path', PATHS)
+@pytest.mark.parametrize('quote,start', [(dict(PAPER, end=7), 0), (dict(PAPER, field='paper_abstract', start=0, end=2, quote='研究😀'), 25)])
+def test_miscounted_research_quote_is_reanchored_in_both_routes(endpoint, path, quote, start):
+    client, opp, state = endpoint
+    state['quote'] = quote
+    result = submit(client, path, document(opp)).json()
+    assert result['method'] == 'ai'
+    rows = [row['suggestion'] for row in result['receipts']] if path.endswith('suggestions') else result['items']
+    assert rows and all(row['target_evidence'] == [dict(quote, start=start, end=start + len(quote['quote']))] for row in rows)
 
 
 @pytest.mark.parametrize('path', PATHS)

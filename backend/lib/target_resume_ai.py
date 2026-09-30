@@ -148,9 +148,31 @@ def unit_too_large(unit):
     )
 
 
+def anchor_quote(quote, source):
+    """Return the quote spanning its literal occurrence in this same field.
+
+    Models copy text reliably but miscount offsets, so a literal quote is
+    re-anchored to the occurrence nearest the model's start (ties: earliest).
+    Offsets are Unicode codepoints; a quote absent from the field is None."""
+    start, end, value = quote["start"], quote["end"], quote["quote"]
+    if type(start) is not int or type(end) is not int or not value:
+        return None
+    hits = []
+    hit = source.find(value)
+    while hit != -1:
+        hits.append(hit)
+        hit = source.find(value, hit + 1)
+    if not hits:
+        return None
+    best = min(hits, key=lambda position: (abs(position - start), position))
+    return {**quote, "start": best, "end": best + len(value)}
+
+
 def valid_quotes(value, target):
+    """Return the target quotes with literal spans, or None if any is invalid."""
     if type(value) is not list or not value:
-        return False
+        return None
+    anchored = []
     for quote in value:
         try:
             paper = quote.get("field") in ("paper_title", "paper_abstract") if type(quote) is dict else False
@@ -160,26 +182,26 @@ def valid_quotes(value, target):
             if paper:
                 research = target.get("research", {})
                 if target.get("context_version") not in (3, 4) or research.get("status") != "available":
-                    return False
+                    return None
                 works = research["snapshot"]["works"]
                 index = quote["paper_index"]
                 if type(index) is not int or not 0 <= index < len(works):
-                    return False
+                    return None
                 work = works[index]
                 if quote["field"] == "paper_abstract" and work["abstract_status"] != "present":
-                    return False
+                    return None
                 source = work["title"] if quote["field"] == "paper_title" else work["abstract"]
             elif lab:
                 context = target.get("lab", {})
                 if target.get("context_version") != 4 or context.get("status") != "available":
-                    return False
+                    return None
                 pages = context["snapshot"]["pages"]
                 index, section_index = quote["page_index"], quote["section_index"]
                 if type(index) is not int or not 0 <= index < len(pages):
-                    return False
+                    return None
                 sections = pages[index]["sections"]
                 if type(section_index) is not int or not 0 <= section_index < len(sections):
-                    return False
+                    return None
                 section = sections[section_index]
                 source = section["heading"] if quote["field"] == "lab_heading" else section["text"]
             elif quote["field"] == "description" and quote["requirement_index"] is None:
@@ -187,32 +209,35 @@ def valid_quotes(value, target):
             elif quote["field"] == "requirement" and type(quote["requirement_index"]) is int and 0 <= quote["requirement_index"] < len(target["requirements"]):
                 source = target["requirements"][quote["requirement_index"]]
             else:
-                return False
-            start, end = quote["start"], quote["end"]
-            if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(source) or source[start:end] != quote["quote"]:
-                return False
+                return None
+            quote = anchor_quote(quote, source)
+            if quote is None:
+                return None
+            anchored.append(quote)
         except (InvalidTargetResume, KeyError, TypeError):
-            return False
-    return True
+            return None
+    return anchored
 
 
 
 def valid_source_quotes(quotes, originals):
+    """Return the source quotes anchored in their own unit, or None if any is invalid."""
     if type(quotes) is not list or not quotes:
-        return False
+        return None
+    anchored = []
     try:
         for quote in quotes:
             shape(quote, ("unit_id", "start", "end", "quote"))
             text(quote["quote"], nonblank=True)
             if type(quote["unit_id"]) is not str or quote["unit_id"] not in originals:
-                return False
-            source = originals[quote["unit_id"]]
-            start, end = quote["start"], quote["end"]
-            if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(source) or source[start:end] != quote["quote"]:
-                return False
+                return None
+            quote = anchor_quote(quote, originals[quote["unit_id"]])
+            if quote is None:
+                return None
+            anchored.append(quote)
     except (InvalidTargetResume, KeyError, TypeError):
-        return False
-    return True
+        return None
+    return anchored
 
 
 def parse_output(raw, selected, target, locale="en"):
@@ -250,15 +275,16 @@ def parse_output(raw, selected, target, locale="en"):
         except (InvalidTargetResume, TypeError):
             results.append(receipt(unit, "invalid_model_response"))
             continue
-        if not valid_quotes(row["target_evidence"], target):
+        target_evidence = valid_quotes(row["target_evidence"], target)
+        if target_evidence is None:
             results.append(receipt(unit, "no_target_evidence"))
             continue
         sources = complete_source_quotes(unit)
         if "source_evidence" in row:
-            if not valid_source_quotes(row["source_evidence"], {item["unit_id"]: item["quote"] for item in sources}):
+            reason_sources = valid_source_quotes(row["source_evidence"], {item["unit_id"]: item["quote"] for item in sources})
+            if reason_sources is None:
                 results.append(receipt(unit, "invalid_model_response"))
                 continue
-            reason_sources = row["source_evidence"]
         else:
             reason_sources = sources
         if proposed is not None:
@@ -269,8 +295,8 @@ def parse_output(raw, selected, target, locale="en"):
                 continue
             if proposed == unit["before_text"]:
                 proposed = None
-        suggestion = {key: deepcopy(row[key]) for key in ("priority", "reason", "target_evidence")}
-        suggestion["reason"] = render_reason(row["reason"], row["priority"], reason_sources, row["target_evidence"], locale)
+        suggestion = {"priority": row["priority"], "reason": render_reason(row["reason"], row["priority"], reason_sources, target_evidence, locale),
+                      "target_evidence": target_evidence}
         suggestion["proposed_text"] = proposed
         if unit.get("support_sources"):
             suggestion["source_evidence"] = sources

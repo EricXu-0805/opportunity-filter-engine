@@ -93,7 +93,7 @@ def test_both_routes_use_available_exact_unicode_quotes_without_applying(endpoin
 
 @pytest.mark.parametrize('path', PATHS)
 @pytest.mark.parametrize('quote', [{**QUOTE, 'page_index': 1}, {**QUOTE, 'section_index': 1}, {**QUOTE, 'page_index': True},
-    {**QUOTE, 'section_index': -1}, {**QUOTE, 'start': 1}, {**QUOTE, 'end': 7}, {**QUOTE, 'quote': 'Invented'},
+    {**QUOTE, 'section_index': -1}, {**QUOTE, 'field': 'lab_text', 'section_index': 1, 'quote': '实验室方法😀'}, {**QUOTE, 'quote': 'Invented'},
     {**QUOTE, 'paper_index': 0}, {**QUOTE, 'requirement_index': None}, {**QUOTE, 'field': 'lab_url'}])
 def test_invalid_target_quote_cannot_be_accepted(endpoint, path, quote):
     client, opp, state = endpoint; state['quote'] = quote
@@ -104,6 +104,16 @@ def test_invalid_target_quote_cannot_be_accepted(endpoint, path, quote):
     else:
         assert result['complete'] is False and result['items'] == []
     assert len(state['calls']) == 1
+
+
+@pytest.mark.parametrize('path', PATHS)
+@pytest.mark.parametrize('quote,start', [({**QUOTE, 'start': 1}, 0), ({**QUOTE, 'end': 7}, 0),
+    ({**QUOTE, 'field': 'lab_text', 'start': 0, 'end': 6, 'quote': '实验室方法😀'}, 25)])
+def test_miscounted_lab_quote_is_reanchored_in_both_routes(endpoint, path, quote, start):
+    client, opp, state = endpoint; state['quote'] = quote
+    result = submit(client, path, document(opp)).json(); assert result['method'] == 'ai'
+    rows = [row['suggestion'] for row in result['receipts']] if path.endswith('suggestions') else result['items']
+    assert rows and all(row['target_evidence'] == [{**quote, 'start': start, 'end': start + 6}] for row in rows)
 
 
 @pytest.mark.parametrize('path', PATHS)

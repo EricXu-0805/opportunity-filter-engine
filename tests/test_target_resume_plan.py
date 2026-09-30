@@ -169,7 +169,7 @@ def test_any_invalid_structure_or_quote_invalidates_the_whole_plan(endpoint, kin
         elif kind == "bad_action": item["action"] = "delete"
         elif kind == "blank_reason": item["reason"] = " "
         elif kind == "bad_target": item["target_evidence"][0]["quote"] = "Invented"
-        elif kind == "bad_source": item["source_evidence"][0]["end"] += 1
+        elif kind == "bad_source": item["source_evidence"][0]["quote"] += " Invented"
         elif kind == "cross_block_source": item["source_evidence"] = deepcopy(rows[1]["source_evidence"])
         elif kind == "editable_source": item["source_evidence"] = [{"unit_id": experience["unit_id"], "start": 0, "end": 4, "quote": "FAKE"}]
         else:
@@ -354,6 +354,37 @@ def test_quote_offsets_are_exact_unicode_codepoints(endpoint):
         result["items"][0]["source_evidence"] = [{"unit_id": line["unit_id"], "start": start, "end": start + 4, "quote": "🧪 中文"}]
     endpoint.mutate = quote
     completed(endpoint, endpoint.submit(doc), doc)
+
+
+def test_miscounted_quote_offsets_are_reanchored_in_the_returned_plan(endpoint):
+    doc = endpoint.doc(["I wrote 🧪 tests; I wrote 中文 tests using Python."])
+    def miscount(result, data):
+        line = data["blocks"][0]["lines"][-1]
+        result["items"][0]["target_evidence"] = [
+            {"field": "description", "requirement_index": None, "start": 95, "end": 154, "quote": "Python parsers 🧪 中文"},
+            {"field": "requirement", "requirement_index": 0, "start": 7, "end": 9, "quote": "Python"}]
+        result["items"][0]["source_evidence"] = [{"unit_id": line["unit_id"], "start": 30, "end": 31, "quote": "I wrote"}]
+    endpoint.mutate = miscount
+    item = completed(endpoint, endpoint.submit(doc), doc)["items"][0]
+    description = doc["target_snapshot"]["description"]
+    start = description.index("Python parsers 🧪 中文")
+    assert item["target_evidence"] == [
+        {"field": "description", "requirement_index": None, "start": start, "end": start + 19, "quote": "Python parsers 🧪 中文"},
+        {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
+    # "I wrote" occurs at codepoints 0 and 17 of the original; 17 is nearest to 30.
+    unit_id = item["source_evidence"][0]["unit_id"]
+    assert item["source_evidence"] == [{"unit_id": unit_id, "start": 17, "end": 24, "quote": "I wrote"}]
+
+
+@pytest.mark.parametrize("where", ["other_block", "absent"])
+def test_source_quote_is_not_reanchored_outside_its_named_line(endpoint, where):
+    doc = endpoint.doc(["I wrote parser tests using Python.", "I built a Python parser using NumPy."])
+    def elsewhere(result, data):
+        line = data["blocks"][0]["lines"][-1]
+        quote = "I built a Python parser" if where == "other_block" else "I wrote parser code"
+        result["items"][0]["source_evidence"] = [{"unit_id": line["unit_id"], "start": 0, "end": len(quote), "quote": quote}]
+    endpoint.mutate = elsewhere
+    unavailable(endpoint.submit(doc), "no_source_evidence")
 
 
 def test_new_path_feature_private_and_body_cap_are_registered(endpoint):

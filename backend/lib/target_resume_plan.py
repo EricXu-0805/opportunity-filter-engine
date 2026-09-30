@@ -9,7 +9,7 @@ import json
 from copy import deepcopy
 
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
-from backend.lib.target_resume_ai import dispatch, target_character_count, valid_quotes
+from backend.lib.target_resume_ai import dispatch, target_character_count, valid_quotes, valid_source_quotes
 from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, supported_claim_upgrade_detected
 from backend.lib.target_resume_ai_schema import (
     MAX_DIRECTION_CHARACTERS,
@@ -137,24 +137,6 @@ def plan_preflight(doc, blocks, scope, options, locale):
     return messages, None
 
 
-def _valid_source_quotes(quotes, lines):
-    if type(quotes) is not list or not quotes:
-        return False
-    try:
-        for quote in quotes:
-            shape(quote, ("unit_id", "start", "end", "quote"))
-            text(quote["quote"], nonblank=True)
-            if type(quote["unit_id"]) is not str or quote["unit_id"] not in lines:
-                return False
-            source = lines[quote["unit_id"]]["original"]
-            start, end = quote["start"], quote["end"]
-            if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(source) or source[start:end] != quote["quote"]:
-                return False
-    except (InvalidTargetResume, KeyError, TypeError):
-        return False
-    return True
-
-
 def _rewrite_results(rows, action, lines):
     if type(rows) is not list or (action != "compress" and rows):
         fail()
@@ -211,13 +193,15 @@ def parse_plan_output(raw, blocks, target, locale="en"):
         for block in blocks:
             row = by_key[(block["section_id"], block["block_id"])]
             lines = {line["unit_id"]: line for line in block["lines"]}
-            if not valid_quotes(row["target_evidence"], target):
+            target_evidence = valid_quotes(row["target_evidence"], target)
+            if target_evidence is None:
                 return [], "no_target_evidence"
-            if not _valid_source_quotes(row["source_evidence"], lines):
+            source_evidence = valid_source_quotes(row["source_evidence"], {ident: line["original"] for ident, line in lines.items()})
+            if source_evidence is None:
                 return [], "no_source_evidence"
             rewrites = _rewrite_results(row["rewrites"], row["action"], lines)
-            items.append({**deepcopy(row), "rewrites": rewrites,
-                          "reason": render_reason(row["reason"], row["action"], row["source_evidence"], row["target_evidence"], locale)})
+            items.append({**deepcopy(row), "target_evidence": target_evidence, "source_evidence": source_evidence, "rewrites": rewrites,
+                          "reason": render_reason(row["reason"], row["action"], source_evidence, target_evidence, locale)})
         return items, None
     except (InvalidTargetResume, KeyError, TypeError, ValueError, RecursionError):
         return [], "invalid_model_response"

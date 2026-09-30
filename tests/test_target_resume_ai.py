@@ -210,8 +210,105 @@ def test_supported_quantity_in_the_number_case_is_accepted(endpoint, monkeypatch
 def test_target_quote_offsets_use_codepoints_and_require_literal_match():
     target = {"description": "A🧪中文Z", "requirements": []}
     quote = {"field": "description", "requirement_index": None, "start": 1, "end": 4, "quote": "🧪中文"}
-    assert engine.valid_quotes([quote], target)
-    assert not engine.valid_quotes([{**quote, "end": 5}], target)
+    assert engine.valid_quotes([quote], target) == [quote]
+    # A miscounted end is re-anchored to the literal codepoint span, not rejected.
+    assert engine.valid_quotes([{**quote, "end": 5}], target) == [quote]
+    assert engine.valid_quotes([{**quote, "quote": "🧪中文Y"}], target) is None
+    assert engine.valid_quotes([{**quote, "quote": "中文🧪"}], target) is None
+
+
+KINESIOLOGY = "Department of Health and Kinesiology at University of Illinois"
+KINESIOLOGY_DESCRIPTION = ("We study movement science with wearable sensors and field studies. "
+                           "The lab is part of the " + KINESIOLOGY + " and welcomes undergraduates.")
+
+
+def rich_target():
+    return {"context_version": 4, "description": "Build 😀中文 sensors; build again.",
+            "requirements": ["Python", "MATLAB and Python"],
+            "research": {"status": "available", "snapshot": {"works": [
+                {"title": "Robot 😀 Grasping", "abstract": "We study grasping.", "abstract_status": "present"},
+                {"title": "Soft Sensors", "abstract": "", "abstract_status": "missing"}]}},
+            "lab": {"status": "available", "snapshot": {"pages": [{"sections": [
+                {"heading": "实验室😀研究", "text": "We study Python sensors."},
+                {"heading": "Methods", "text": "Causal inference."}]}]}}}
+
+
+def test_real_model_quote_with_miscounted_offsets_is_reanchored_to_its_literal_span():
+    # Measured shape: literal quote, 62 codepoints, but the model sent start 95, end 154.
+    target = {"description": KINESIOLOGY_DESCRIPTION, "requirements": []}
+    quote = {"field": "description", "requirement_index": None, "start": 95, "end": 154, "quote": KINESIOLOGY}
+    assert len(KINESIOLOGY) == 62 and KINESIOLOGY_DESCRIPTION[95:154] != KINESIOLOGY
+    start = KINESIOLOGY_DESCRIPTION.index(KINESIOLOGY)
+    assert engine.valid_quotes([quote], target) == [{**quote, "start": start, "end": start + 62}]
+    assert quote["start"] == 95  # the model's row is not mutated
+
+
+@pytest.mark.parametrize("quote", [
+    {"field": "description", "requirement_index": None, "start": 0, "end": 5, "quote": "Invented"},
+    {"field": "description", "requirement_index": None, "start": 0, "end": 1, "quote": " "},
+    {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "MATLAB"},
+    {"field": "requirement", "requirement_index": 2, "start": 0, "end": 6, "quote": "Python"},
+    {"field": "requirement", "requirement_index": 0, "start": None, "end": 6, "quote": "Python"},
+    {"field": "paper_title", "paper_index": 1, "start": 0, "end": 5, "quote": "Robot"},
+    {"field": "paper_abstract", "paper_index": 0, "start": 0, "end": 7, "quote": "Robot 😀"},
+    {"field": "paper_abstract", "paper_index": 1, "start": 0, "end": 1, "quote": "S"},
+    {"field": "lab_text", "page_index": 0, "section_index": 0, "start": 0, "end": 6, "quote": "Causal"},
+    {"field": "lab_heading", "page_index": 0, "section_index": 1, "start": 0, "end": 3, "quote": "实验室"},
+])
+def test_quote_absent_from_its_named_field_is_still_rejected(quote):
+    assert engine.valid_quotes([quote], rich_target()) is None
+
+
+@pytest.mark.parametrize(("quote", "start"), [
+    ({"field": "description", "requirement_index": None, "start": 30, "end": 31, "quote": "build"}, 19),
+    ({"field": "description", "requirement_index": None, "start": 99, "end": 1, "quote": "中文 sensors"}, 7),
+    ({"field": "requirement", "requirement_index": 1, "start": 0, "end": 6, "quote": "Python"}, 11),
+    ({"field": "paper_title", "paper_index": 0, "start": 0, "end": 3, "quote": "😀 Grasping"}, 6),
+    ({"field": "paper_abstract", "paper_index": 0, "start": 5, "end": 9, "quote": "grasping"}, 9),
+    ({"field": "lab_heading", "page_index": 0, "section_index": 0, "start": 0, "end": 2, "quote": "😀研究"}, 3),
+    ({"field": "lab_text", "page_index": 0, "section_index": 1, "start": -4, "end": 0, "quote": "inference"}, 7),
+])
+def test_quote_is_reanchored_by_codepoints_within_its_named_field(quote, start):
+    assert engine.valid_quotes([quote], rich_target()) == [{**quote, "start": start, "end": start + len(quote["quote"])}]
+
+
+@pytest.mark.parametrize(("hint", "expected"), [(0, 0), (-5, 0), (1, 0), (2, 0), (3, 4), (5, 4), (6, 4), (7, 8), (99, 8)])
+def test_repeated_quote_anchors_to_nearest_occurrence_and_ties_go_earliest(hint, expected):
+    # "ab" starts at codepoints 0, 4 and 8; hints 2 and 6 are exact ties.
+    target = {"description": "ab😀😀ab中文ab", "requirements": []}
+    quote = {"field": "description", "requirement_index": None, "start": hint, "end": hint + 2, "quote": "ab"}
+    assert engine.valid_quotes([quote], target) == [{**quote, "start": expected, "end": expected + 2}]
+
+
+def test_source_quotes_are_reanchored_inside_the_named_original_only():
+    originals = {"a": "Built 😀 robot; built a robot arm.", "b": "Wrote tests."}
+    quote = {"unit_id": "a", "start": 50, "end": 60, "quote": "robot arm"}
+    assert engine.valid_source_quotes([quote], originals) == [{**quote, "start": 23, "end": 32}]
+    assert engine.valid_source_quotes([{**quote, "start": 0, "quote": "robot"}], originals)[0]["start"] == 8
+    assert engine.valid_source_quotes([{**quote, "unit_id": "b"}], originals) is None
+    assert engine.valid_source_quotes([{**quote, "quote": "robot legs"}], originals) is None
+    assert engine.valid_source_quotes([{**quote, "unit_id": "c"}], originals) is None
+
+
+def test_response_carries_reanchored_target_and_accepts_miscounted_source_spans(endpoint, monkeypatch):
+    client, doc, _, _ = endpoint
+    data = output(doc)
+    description = doc["target_snapshot"]["description"]
+    for row in data["units"]:
+        row["target_evidence"] = [{"field": "description", "requirement_index": None, "start": 95, "end": 154, "quote": "with Python."},
+                                  {"field": "requirement", "requirement_index": 0, "start": 3, "end": 9, "quote": "Python"}]
+    experience = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
+    row = next(row for row in data["units"] if row["unit_id"] == experience["unit_id"])
+    row["source_evidence"] = [{"unit_id": experience["unit_id"], "start": 40, "end": 70, "quote": "I did not lead the project."}]
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data, ensure_ascii=False))
+    body = client.post(PATH, json=payload(doc)).json()
+    assert body["method"] == "ai", body
+    start = description.index("with Python.")
+    for receipt in body["receipts"]:
+        assert receipt["suggestion"]["target_evidence"] == [
+            {"field": "description", "requirement_index": None, "start": start, "end": start + 12, "quote": "with Python."},
+            {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
+        assert description[start:start + 12] == "with Python."
 
 
 def test_budget_rechecked_inside_worker_before_provider(endpoint, monkeypatch):
