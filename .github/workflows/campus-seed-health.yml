@@ -3,7 +3,9 @@ name: campus-seed-health
 # Configured seed URLs rot silently. Five of them 404'd for weeks before
 # anyone looked, and the only place it showed was one line among hundreds in
 # a refresh log. This asks the question on its own schedule, so a dead page
-# arrives as mail rather than as a mystery gap in the corpus.
+# arrives as mail rather than as a mystery gap in the corpus. Program record
+# URLs that are not seeds are probed too: they are where Match sends a
+# student, and one of Duke's was a 404 with no seed pointing at it.
 #
 # Sunday 12:00 UTC — after the national refresh has finished and well clear
 # of every school shard, so a burst of probes cannot compete with a live
@@ -34,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Probe every configured campus seed
+      - name: Probe every configured campus seed and program page
         run: python3 scripts/check_campus_seeds.py
 
       # Dead man's switch (migration 032): the alert below fires when a seed is
@@ -47,7 +49,7 @@ jobs:
             -d '{"name":"campus_seed_health","detail":{"run_id":"${{ github.run_id }}"}}' \
             "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
 
-      - name: Alert operator on a dead seed page
+      - name: Alert operator on a dead seed or program page
         if: failure() || cancelled()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -63,6 +65,6 @@ jobs:
             -d "{
               \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
               \"to\": [\"$OPERATOR_EMAIL\"],
-              \"subject\": \"JoinALab: a configured campus seed page is gone\",
-              \"text\": \"At least one seed URL in schools/*.py now returns 404 or 410. The crawl still runs; it just no longer finds whatever that page used to link to.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe step output lists each dead URL with its school. Bot walls and timeouts are reported there too but never fail this check.\"
+              \"subject\": \"JoinALab: a configured campus page is gone\",
+              \"text\": \"At least one seed or program URL in schools/*.py now returns 404 or 410. A dead seed means the crawl no longer finds whatever that page used to link to; a dead program URL means Match sends students to a missing page.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe step output lists each dead URL with its school and whether it is a seed or a program page. Bot walls and timeouts are reported there too but never fail this check.\"
             }" || true

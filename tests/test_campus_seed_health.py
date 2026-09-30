@@ -8,8 +8,12 @@ refresh log.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+
+import requests
 
 _REPO = Path(__file__).resolve().parents[1]
 _SCRIPT = _REPO / "scripts" / "check_campus_seeds.py"
@@ -17,6 +21,44 @@ _spec = importlib.util.spec_from_file_location("check_campus_seeds", _SCRIPT)
 _checker = importlib.util.module_from_spec(_spec)
 sys.modules["check_campus_seeds"] = _checker
 _spec.loader.exec_module(_checker)
+
+
+def _school(slug, seeds, program_urls):
+    """The registry fields the canary reads: seeds and program URLs."""
+    return {
+        "school_slug": slug,
+        "sources": [{
+            "source_name": f"{slug}_programs",
+            "seeds": list(seeds),
+            "programs": [
+                {"key": f"program_{i}", "url": url}
+                for i, url in enumerate(program_urls)
+            ],
+        }],
+    }
+
+
+def _run(monkeypatch, capsys, registry, outcomes, *argv):
+    """Run the canary over ``registry`` with every request answered locally.
+
+    ``outcomes`` maps a URL to a status code or an exception to raise; any
+    other URL answers 200. Returns the exit code, stdout and each request.
+    """
+    from src.collectors import schools
+
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        outcome = outcomes.get(url, 200)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return SimpleNamespace(status_code=outcome)
+
+    monkeypatch.setattr(schools, "SCHOOL_CONFIGS", registry)
+    monkeypatch.setattr(requests, "get", get)
+    code = _checker.main(list(argv))
+    return code, capsys.readouterr().out, calls
 
 
 class TestClassify:
@@ -139,3 +181,101 @@ class TestSeedInventory:
         assert ("duke", "climate_plus_x") not in programs
         assert programs[("duke", "data_plus_x")] == "https://iid.duke.edu/iid/data/"
         assert programs[("duke", "data_plus_x")] in seeds
+
+
+class TestProgramPages:
+    """A program record's URL is the page a student lands on.
+
+    Duke's data_plus record pointed at a 404. Its URL was never a seed, so
+    the canary, which probed only seeds, never asked.
+    """
+
+    def test_a_dead_program_page_fails_the_run_like_a_dead_seed(
+        self, monkeypatch, capsys
+    ):
+        seed = "https://example.edu/research/"
+        dead = "https://example.edu/old-summer-program/"
+
+        code, out, _calls = _run(
+            monkeypatch, capsys, [_school("example", [seed], [dead])], {dead: 404}
+        )
+
+        assert code == 1
+        [line] = [line for line in out.splitlines() if dead in line]
+        assert line.split()[:4] == ["GONE", "example", "program", "404"]
+
+    def test_a_walled_or_unreachable_program_page_does_not_fail_the_run(
+        self, monkeypatch, capsys
+    ):
+        walled = "https://example.edu/walled/"
+        flaky = "https://example.edu/flaky/"
+
+        code, out, _calls = _run(
+            monkeypatch,
+            capsys,
+            [_school("example", [], [walled, flaky])],
+            {walled: 403, flaky: requests.ConnectTimeout()},
+            "--json",
+        )
+
+        assert code == 0
+        classes = {row["url"]: row["class"] for row in json.loads(out)["results"]}
+        assert classes == {walled: _checker.BLOCKED, flaky: _checker.UNREACHABLE}
+
+    def test_each_url_is_requested_once_even_when_programs_share_it(
+        self, monkeypatch, capsys
+    ):
+        """A program page that is already a seed, or that two programs share
+        (across schools too), costs the host one request, not one per
+        mention."""
+        seeded = "https://example.edu/summer/"
+        shared = "https://reu.example.org/"
+        registry = [
+            _school("example", [seeded], [seeded, shared]),
+            _school("other", [], [shared]),
+        ]
+
+        code, out, calls = _run(monkeypatch, capsys, registry, {}, "--json")
+
+        assert code == 0
+        assert sorted(url for url, _kwargs in calls) == sorted([seeded, shared])
+        payload = json.loads(out)
+        assert payload["probed"] == 2
+        assert {row["url"]: row["kind"] for row in payload["results"]} == {
+            seeded: "seed",
+            shared: "program",
+        }
+
+    def test_program_pages_are_probed_as_politely_as_seeds(
+        self, monkeypatch, capsys
+    ):
+        from src.collectors.campus_graph import HEADERS
+
+        seed = "https://example.edu/research/"
+        page = "https://example.edu/program/"
+
+        _code, _out, calls = _run(
+            monkeypatch, capsys, [_school("example", [seed], [page])], {}
+        )
+
+        assert {url for url, _kwargs in calls} == {seed, page}
+        for _url, kwargs in calls:
+            assert kwargs["timeout"] == 20
+            assert kwargs["headers"] is HEADERS
+
+    def test_every_configured_program_page_is_covered_exactly_once(self):
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        pages = [url for _slug, _src, url in _checker.configured_program_urls()]
+        configured = {
+            spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert len(pages) == len(set(pages))
+        assert not (set(pages) & seeds)
+        assert configured <= seeds | set(pages)
+        assert len(pages) > 100, "most program pages are not seeds"

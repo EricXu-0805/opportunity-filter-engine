@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report which configured campus_graph seed pages no longer exist.
+"""Report which configured campus_graph seed and program pages no longer exist.
 
 Every seed in ``schools.SCHOOL_CONFIGS`` is a URL some university controls,
 and universities move pages. When one 404s the crawl silently loses whatever
@@ -8,6 +8,12 @@ degrade instead of veto — a single dead URL could withhold a whole shard's
 publication. Five had rotted undetected by 2026-08: Bates' summer-grants
 index, Caltech's Grants_Funding section, Notre Dame's Kellogg undergraduate
 index, Northwestern's SROP page and MIT's Wellesley UROP page.
+
+A program record's URL is where Match sends a student, and on 2026-09-30
+488 of the 1,021 distinct program URLs were not seeds. Duke's data_plus
+record pointed at a 404 that nothing probed, because its page was never a
+seed. Program pages that are not seeds are now probed too, once per URL,
+through the same pool with the same timeout.
 
 A dead page is deterministic and worth waking someone for. A bot challenge,
 a timeout or a rate-limit is not: those recur, recover, and would train the
@@ -67,7 +73,28 @@ def configured_seeds() -> list[tuple[str, str, str]]:
     return seeds
 
 
-def _probe(item: tuple[str, str, str]) -> dict:
+def configured_program_urls() -> list[tuple[str, str, str]]:
+    """Program record URLs that no seed probe covers, one entry per URL.
+
+    A URL that is also a seed is left to the seed probe; a URL several
+    programs share is named after the first of them.
+    """
+    from src.collectors.schools import SCHOOL_CONFIGS
+
+    covered = {url for _slug, _source, url in configured_seeds()}
+    pages: list[tuple[str, str, str]] = []
+    for config in SCHOOL_CONFIGS:
+        slug = config.get("school_slug", "?")
+        for source in config.get("sources", []):
+            for spec in source.get("programs", []) or []:
+                url = spec["url"]
+                if url not in covered:
+                    covered.add(url)
+                    pages.append((slug, source["source_name"], url))
+    return pages
+
+
+def _probe(item: tuple[str, str, str], kind: str = "seed") -> dict:
     import requests
 
     from src.collectors.campus_graph import HEADERS
@@ -84,23 +111,26 @@ def _probe(item: tuple[str, str, str]) -> dict:
     return {
         "school": slug,
         "source": source,
+        "kind": kind,
         "url": url,
         "status": status,
         "class": classify(status),
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="emit JSON")
     parser.add_argument(
         "--workers", type=int, default=8, help="concurrent probes"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     seeds = configured_seeds()
+    pages = configured_program_urls()
+    kinds = ["seed"] * len(seeds) + ["program"] * len(pages)
     with concurrent.futures.ThreadPoolExecutor(args.workers) as pool:
-        results = list(pool.map(_probe, seeds))
+        results = list(pool.map(_probe, seeds + pages, kinds))
 
     gone = [r for r in results if r["class"] == GONE]
     blocked = [r for r in results if r["class"] == BLOCKED]
@@ -110,7 +140,8 @@ def main() -> int:
         print(json.dumps({"probed": len(results), "results": results}, indent=1))
     else:
         print(
-            f"probed {len(results)} configured seeds: "
+            f"probed {len(results)} configured pages ({len(seeds)} seeds, "
+            f"{len(pages)} program pages that are not seeds): "
             f"{len(results) - len(gone) - len(blocked) - len(unreachable)} ok, "
             f"{len(gone)} gone, {len(blocked)} blocked, "
             f"{len(unreachable)} unreachable"
@@ -121,12 +152,16 @@ def main() -> int:
             ("unreachable", unreachable),
         ):
             for row in sorted(rows, key=lambda r: (r["school"], r["url"])):
-                print(f"  {label:11s} {row['school']:14s} {row['status']}  {row['url']}")
+                print(
+                    f"  {label:11s} {row['school']:14s} {row['kind']:7s} "
+                    f"{row['status']}  {row['url']}"
+                )
 
     if gone:
         print(
-            f"::error::{len(gone)} configured campus seed page(s) no longer "
-            "exist; the crawl loses whatever they used to link to"
+            f"::error::{len(gone)} configured campus page(s) no longer exist; "
+            "a dead seed loses the crawl whatever it linked to, and a dead "
+            "program page is where Match sends students"
         )
         return 1
     return 0
