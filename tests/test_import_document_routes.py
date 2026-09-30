@@ -159,9 +159,11 @@ def test_late_source_requirement_survives_normalization_and_disk_reload(importer
 
 
 def test_bot_verification_page_is_refused_before_any_model_call(importer, monkeypatch):
-    # What the production server was served for a real UIUC posting on
-    # 2026-09-30. It came back ok:true, llm_enriched:true, titled
-    # "One moment, please...", and could be saved as an opportunity.
+    # On 2026-09-30 a real UIUC posting URL gave the production server an
+    # Imunify360 check titled "One moment, please...". It came back ok:true,
+    # llm_enriched:true, and could be saved as an opportunity. Only its title
+    # and text were kept, so this is Imunify360's WebShield template rebuilt
+    # around them, not the captured page.
     client, calls = importer
     html = ('<!DOCTYPE html><html><head><title>One moment, please...</title></head><body>'
             '<h1>Please wait while your request is being verified...</h1>'

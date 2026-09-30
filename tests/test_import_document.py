@@ -257,9 +257,12 @@ def test_large_ordered_list_keeps_every_item_and_number():
 
 
 # Bot-verification interstitials a site served to our fetcher instead of the
-# posting. The first is the page researchops.web.illinois.edu returned to the
-# production server on 2026-09-30, which was imported as an "AI-assisted"
-# opportunity titled "One moment, please...".
+# posting. On 2026-09-30 researchops.web.illinois.edu answered the production
+# server with an Imunify360 check, imported as an "AI-assisted" opportunity
+# titled "One moment, please..." whose text was only "Please wait while your
+# request is being verified...". The walk kept that title and text, not the
+# page, so the first case is a reconstruction of Imunify360's WebShield
+# template with the same title and text.
 IMUNIFY_WEBSHIELD = (
     '<!DOCTYPE html><html><head><meta charset="utf-8"><title>One moment, please...</title>'
     '<style>body{background:#F6F7F8}</style></head><body>'
@@ -271,7 +274,7 @@ IMUNIFY_WEBSHIELD = (
 
 
 @pytest.mark.parametrize('html', [
-    pytest.param(IMUNIFY_WEBSHIELD, id='imunify360-as-served'),
+    pytest.param(IMUNIFY_WEBSHIELD, id='imunify360-webshield'),
     # The same interstitial without the vendor form, title or script: its
     # sentences alone are not opportunity text.
     pytest.param(page('<h1>Please wait while your request is being verified...</h1>'
