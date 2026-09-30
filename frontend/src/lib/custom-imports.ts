@@ -17,6 +17,9 @@ export interface CustomImport {
   id: string;
   imported_at: string;
   updated_at?: string;
+  /** Replaces `id` as the account-copy identity after an explicit "save as a
+   * new account copy", because a deleted account copy's ID stays tombstoned. */
+  account_copy_key?: string;
   opportunity: ImportedOpportunity;
 }
 
@@ -96,6 +99,7 @@ function isImportEntry(value: unknown): value is CustomImport {
   const entry = value as Partial<CustomImport>;
   return typeof entry.id === 'string' && typeof entry.imported_at === 'string'
     && (entry.updated_at === undefined || typeof entry.updated_at === 'string')
+    && (entry.account_copy_key === undefined || typeof entry.account_copy_key === 'string')
     && isOpportunityValue(entry.opportunity);
 }
 
@@ -303,6 +307,25 @@ export async function updateCustomImport(
     const entry: CustomImport = {
       ...current.list[current.index], opportunity: candidate, updated_at: new Date().toISOString(),
     };
+    const next = current.list.map((value, index) => index === current.index ? entry : value);
+    if (!writeLocalStorageJSON(STORAGE_KEY, next, origin)) return { ok: false, reason: 'storage_failed' } as const;
+    const persisted = readUpdateTarget(entry, origin);
+    return persisted.ok ? { ok: true, entry } as const : persisted;
+  });
+}
+
+/** Explicit user request after the account copy was deleted: give the exact
+ * reviewed browser entry a fresh account-copy key. Content is unchanged; only
+ * a later reviewed confirmation uploads anything. */
+export async function startNewAccountCopy(expected: CustomImport, token: OwnerToken): Promise<CustomImportUpdateResult> {
+  const origin = { ...token };
+  let reviewed: CustomImport;
+  try { reviewed = JSON.parse(JSON.stringify(expected)); } catch { return { ok: false, reason: 'storage_failed' }; }
+  if (!isImportEntry(reviewed)) return { ok: false, reason: 'storage_failed' };
+  return coordinated(origin, () => {
+    const current = readUpdateTarget(reviewed, origin);
+    if (!current.ok) return current;
+    const entry: CustomImport = { ...current.list[current.index], account_copy_key: generateId() };
     const next = current.list.map((value, index) => index === current.index ? entry : value);
     if (!writeLocalStorageJSON(STORAGE_KEY, next, origin)) return { ok: false, reason: 'storage_failed' } as const;
     const persisted = readUpdateTarget(entry, origin);

@@ -65,6 +65,24 @@ describe('private email in the shared editor', () => {
     expect(api.confirm.mock.calls[0][0]).toBe(id); expect(api.confirm.mock.calls[0][1].materialRefs).toContainEqual({ kind: 'target', version: target.writing_version });
     await waitFor(() => expect(view.onContactConfirmed).toHaveBeenCalledOnce());
   });
+  it('re-reads the private target before recording a sent email and refuses visibly when it was deleted', async () => {
+    const view = await harness(); enterRecipient(); review();
+    fireEvent.click(compose()); await waitFor(() => expect(view.popup.location.href).toContain('person%40example.edu'));
+    view.check.mockClear(); view.check.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await screen.findByText('coldEmail.privateTargetUnconfirmed');
+    expect(view.check).toHaveBeenCalledOnce(); expect(api.confirm).not.toHaveBeenCalled(); expect(view.onContactConfirmed).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await waitFor(() => expect(api.confirm).toHaveBeenCalledOnce()); expect(view.check).toHaveBeenCalledTimes(2);
+    expect(view.check.mock.invocationCallOrder[1]).toBeLessThan(api.confirm.mock.invocationCallOrder[0]);
+  });
+  it('refuses to record a sent email against a private target that changed since it was shown', async () => {
+    const view = await harness(); enterRecipient(); review();
+    fireEvent.click(compose()); await waitFor(() => expect(view.popup.location.href).toContain('person%40example.edu'));
+    view.check.mockResolvedValueOnce(receipt({ ...target, revision: 2, source_version: 'pit1:' + '4'.repeat(64), writing_version: 'pwt1:' + '5'.repeat(64) }));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await screen.findByText('coldEmail.privateTargetUnconfirmed'); expect(api.confirm).not.toHaveBeenCalled();
+  });
   it('withdraws review after changing recipient and rejects invalid manual syntax before opening', async () => {
     const view = await harness(); enterRecipient(); review();
     fireEvent.change(screen.getByLabelText('coldEmail.to'), { target: { value: 'not-an-email' } });

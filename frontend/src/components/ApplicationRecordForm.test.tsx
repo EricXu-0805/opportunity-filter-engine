@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApplicationEventInput, ApplicationEvent } from '@/lib/application-ledger';
-const m = vi.hoisted(() => ({ read: vi.fn(), prepare: vi.fn(), settle: vi.fn(), confirm: vi.fn(), get: vi.fn(),
+const m = vi.hoisted(() => ({ read: vi.fn(), prepare: vi.fn(), settle: vi.fn(), discard: vi.fn(), confirm: vi.fn(), get: vi.fn(),
   uid: 'owner-a', epoch: 1, listeners: new Set<() => void>() }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
 vi.mock('@/lib/identity-owner', () => ({
@@ -10,7 +10,7 @@ vi.mock('@/lib/identity-owner', () => ({
   onLocalOwnerStateChange: (listener: () => void) => { m.listeners.add(listener); return () => m.listeners.delete(listener); },
 }));
 vi.mock('@/lib/supabase', () => ({ confirmApplicationEvent: m.confirm, getApplicationEvent: m.get }));
-vi.mock('@/lib/application-attempt-storage', () => ({ readPendingApplicationAttempts: m.read, prepareApplicationAttempt: m.prepare, settleApplicationAttempt: m.settle }));
+vi.mock('@/lib/application-attempt-storage', () => ({ readPendingApplicationAttempts: m.read, prepareApplicationAttempt: m.prepare, settleApplicationAttempt: m.settle, discardApplicationAttempt: m.discard }));
 import ApplicationRecordForm from './ApplicationRecordForm';
 import { ApplicationEventError } from '@/lib/application-ledger';
 const input: ApplicationEventInput = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', channel: 'web_form', destination: 'https://example.edu/apply', submittedAt: null, notes: null, resultNote: null, nextStep: null };
@@ -30,7 +30,7 @@ beforeEach(() => {
   vi.clearAllMocks(); m.uid = 'owner-a'; m.epoch = 1; m.listeners.clear();
   m.read.mockReturnValue([]);
   m.prepare.mockImplementation(async (_owner, opportunityId, draft) => ({ status: 'ready', attempt: { opportunityId, input: { id: input.id, ...draft } }, reused: false }));
-  m.settle.mockResolvedValue(true);
+  m.settle.mockResolvedValue(true); m.discard.mockImplementation(async () => { m.read.mockReturnValue([]); return true; });
   m.confirm.mockImplementation(async (target, data) => ({ event: snapshot(data, target), interaction: { type: 'applied' }, replayed: false }));
   m.get.mockResolvedValue(snapshot());
 });
@@ -169,4 +169,63 @@ it('records a private target only after attestation and preserves its exact ID f
   expect(m.confirm.mock.calls[0][0]).toBe(privateId);
   expect(m.settle).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner-a' }), privateId, expect.objectContaining({ id: input.id }));
   expect(onConfirmed).toHaveBeenCalledWith({ type: 'applied' });
+});
+
+describe('a pending attempt the server refused as invalid', () => {
+  it('offers an explicit owner-bound discard that returns the exact draft to editing', async () => {
+    const timed = { ...input, submittedAt: '2026-09-25T15:04:00.000Z', notes: 'Kept note' };
+    m.read.mockReturnValue([{ opportunityId: 'target-a', input: timed }]); m.confirm.mockRejectedValue(new ApplicationEventError('invalid_input')); open();
+    expect(screen.queryByRole('button', { name: 'applicationRecord.discard' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' }));
+    await screen.findByText('applicationRecord.rejectedTime');
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.discard' }));
+    await waitFor(() => expect(screen.getByLabelText('applicationRecord.destination')).toHaveValue(input.destination));
+    expect(m.discard).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner-a', epoch: 1 }), 'target-a', input.id);
+    const local = new Date(timed.submittedAt); const pad = (n: number) => String(n).padStart(2, '0');
+    expect(screen.getByLabelText(/applicationRecord.submittedAt/)).toHaveValue(`${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}T${pad(local.getHours())}:${pad(local.getMinutes())}`);
+    expect(screen.getByLabelText('applicationRecord.notes')).toHaveValue('Kept note');
+    expect(screen.getByRole('checkbox', { name: 'applicationRecord.attestation' })).not.toBeChecked(); expect(m.confirm).toHaveBeenCalledTimes(1); expect(m.settle).not.toHaveBeenCalled();
+  });
+  it('a refusal without a time names no clock problem, and an uncertain failure never offers discard', async () => {
+    m.read.mockReturnValue([{ opportunityId: 'target-a', input }]); m.confirm.mockRejectedValueOnce(new Error('response lost')).mockRejectedValueOnce(new ApplicationEventError('invalid_input')); open();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' })); await screen.findByText('applicationRecord.unavailable');
+    expect(screen.queryByRole('button', { name: 'applicationRecord.discard' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' })); await screen.findByText('applicationRecord.rejected');
+    expect(screen.getByRole('button', { name: 'applicationRecord.discard' })).toBeEnabled();
+  });
+  it('a failed discard keeps the pending record visible and says so', async () => {
+    m.read.mockReturnValue([{ opportunityId: 'target-a', input }]); m.confirm.mockRejectedValue(new ApplicationEventError('invalid_input')); m.discard.mockRejectedValue(new Error('locked')); open();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' })); await screen.findByText('applicationRecord.rejected');
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.discard' })); await screen.findByText('applicationRecord.storageError');
+    expect(screen.getByText(input.destination)).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'applicationRecord.discard' })).toBeEnabled();
+  });
+});
+describe('target re-check before an application write', () => {
+  it('refuses visibly and writes nothing when the target is no longer available', async () => {
+    const verifyTarget = vi.fn().mockResolvedValue(false);
+    render(<ApplicationRecordForm opportunityId="target-a" ownerReady onConfirmed={vi.fn()} verifyTarget={verifyTarget} />);
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.open' })); fillAndAttest();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.save' })); await screen.findByText('applicationRecord.targetUnavailable');
+    expect(verifyTarget).toHaveBeenCalledWith(expect.objectContaining({ uid: 'owner-a', epoch: 1 }));
+    expect(m.prepare).not.toHaveBeenCalled(); expect(m.confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'applicationRecord.save' })).toBeEnabled();
+  });
+  it('a failed re-check is a refusal, and a pending retry is re-checked too', async () => {
+    const verifyTarget = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(true);
+    m.read.mockReturnValue([{ opportunityId: 'target-a', input }]);
+    render(<ApplicationRecordForm opportunityId="target-a" ownerReady onConfirmed={vi.fn()} verifyTarget={verifyTarget} />);
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.open' }));
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' })); await screen.findByText('applicationRecord.targetUnavailable'); expect(m.confirm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.retry' })); await screen.findByText('applicationRecord.saved');
+    expect(verifyTarget).toHaveBeenCalledTimes(2); expect(verifyTarget.mock.invocationCallOrder[1]).toBeLessThan(m.confirm.mock.invocationCallOrder[0]);
+  });
+  it('drops a late re-check after an owner change without writing', async () => {
+    const hold = deferred<boolean>(); const verifyTarget = vi.fn().mockReturnValue(hold.promise);
+    render(<ApplicationRecordForm opportunityId="target-a" ownerReady onConfirmed={vi.fn()} verifyTarget={verifyTarget} />);
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.open' })); fillAndAttest();
+    fireEvent.click(screen.getByRole('button', { name: 'applicationRecord.save' })); await waitFor(() => expect(verifyTarget).toHaveBeenCalled());
+    act(() => { m.uid = 'owner-b'; m.epoch += 1; m.listeners.forEach(f => f()); });
+    await act(async () => hold.resolve(true));
+    expect(m.prepare).not.toHaveBeenCalled(); expect(m.confirm).not.toHaveBeenCalled();
+  });
 });

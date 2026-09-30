@@ -92,3 +92,15 @@ export async function settleApplicationAttempt(owner: OwnerToken, opportunityId:
     return true;
   });
 }
+/** Explicit user discard of an attempt the server definitively rejected as
+ * invalid (22023 is raised before any insert, so nothing was committed). Only
+ * the exact attempt the user saw is removed; a newer one is left in place. */
+export async function discardApplicationAttempt(owner: OwnerToken, opportunityId: string, attemptId: string): Promise<boolean> {
+  const origin = { ...owner }; assertOwner(origin);
+  return withAttemptLock(origin, opportunityId, () => {
+    const pending = readPendingApplicationAttempts(origin, opportunityId)[0];
+    if (!pending || pending.input.id !== attemptId) return false;
+    if (!removeUserScopedRaw(keyFor(opportunityId), origin)) throw new ApplicationAttemptStorageError('unavailable');
+    return true;
+  });
+}

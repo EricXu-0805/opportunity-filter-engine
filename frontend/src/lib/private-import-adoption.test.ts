@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 vi.mock('./private-import-target-api', () => ({ getPrivateImportTarget: vi.fn(), savePrivateImportTarget: vi.fn(), PRIVATE_TARGET_TIMEOUT_MS: 30_000, PrivateTargetError: class extends Error { constructor(readonly code: string) { super(code); } } }));
 import { createPrivateImportAdoptionController, derivePrivateImportTargetId } from './private-import-adoption';
 import { getPrivateImportTarget, savePrivateImportTarget, PrivateTargetError, type PrivateImportReceipt } from './private-import-target-api';
-import { addCustomImport, removeCustomImport, type CustomImport } from './custom-imports';
+import { addCustomImport, readCustomImports, removeCustomImport, type CustomImport } from './custom-imports';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from './identity-owner';
 import { writeLocalStorageJSON } from './use-local-storage-json';
 import { STORAGE_KEYS } from './storage-keys';
@@ -41,6 +41,24 @@ it('fetches the complete cloud original and exact revision anew for each review'
 });
 it('keeps deleted cloud ID tombstoned across cancellation/new controller', async () => {
  const entry = await local(), id = await derivePrivateImportTargetId(OWNER, entry.id); get.mockResolvedValue(receipt(id, 4, null)); await controller.prepare(entry, captureOwnerToken()); expect(controller.getState()).toMatchObject({ status: 'error', code: 'deleted', review: { targetId: id, expectedRevision: 4 } }); await controller.confirm(); controller.cancel(); controller = createPrivateImportAdoptionController(); await controller.prepare(entry, captureOwnerToken()); await controller.confirm(); expect(get.mock.calls.map(call => call[0])).toEqual([id, id]); expect(save).not.toHaveBeenCalled();
+});
+it('saves a deleted copy again only through the explicit new-copy action, under a fresh ID and a fresh review', async () => {
+ const entry = await local(), old = await derivePrivateImportTargetId(OWNER, entry.id); get.mockImplementation(async id => id === old ? receipt(id, 4, null) : null);
+ await controller.prepare(entry, captureOwnerToken()); expect(controller.getState()).toMatchObject({ status: 'error', code: 'deleted' });
+ await controller.startNewCopy(captureOwnerToken());
+ const [stored] = readCustomImports(); expect(stored).toMatchObject({ id: entry.id, opportunity: entry.opportunity }); expect(stored.account_copy_key).toEqual(expect.any(String));
+ const fresh = await derivePrivateImportTargetId(OWNER, stored.account_copy_key!); expect(fresh).not.toBe(old);
+ expect(review()).toMatchObject({ targetId: fresh, expectedRevision: 0, cloud: null, local: stored }); expect(save).not.toHaveBeenCalled();
+ save.mockResolvedValueOnce(receipt(fresh, 1, entry.opportunity)); await controller.confirm();
+ expect(save).toHaveBeenCalledOnce(); expect(save.mock.calls[0].slice(0, 3)).toEqual([fresh, entry.opportunity, 0]); expect(controller.getState().status).toBe('saved');
+ controller.cancel(); controller = createPrivateImportAdoptionController(); await controller.prepare(stored, captureOwnerToken()); expect(review().targetId).toBe(fresh);
+});
+it('refuses the new-copy action outside a deleted result or for another account', async () => {
+ const entry = await local(); await controller.prepare(entry, captureOwnerToken()); await controller.startNewCopy(captureOwnerToken());
+ expect(readCustomImports()[0].account_copy_key).toBeUndefined(); expect(controller.getState().status).toBe('review');
+ get.mockImplementation(async id => receipt(id, 4, null)); await controller.prepare(entry, captureOwnerToken());
+ await controller.startNewCopy({ ...captureOwnerToken(), uid: OTHER });
+ expect(readCustomImports()[0].account_copy_key).toBeUndefined(); expect(controller.getState()).toEqual({ status: 'idle' }); expect(save).not.toHaveBeenCalled();
 });
 it.each(['missing', 'changed', 'damaged'] as const)('refuses %s local storage before GET', async mode => {
  const entry = await local(); if (mode === 'missing') await removeCustomImport(entry.id, captureOwnerToken()); if (mode === 'changed') writeLocalStorageJSON(STORAGE_KEYS.CUSTOM_IMPORTS, [{ ...entry, legacy_note: 'changed' }], captureOwnerToken()); if (mode === 'damaged') writeLocalStorageJSON(STORAGE_KEYS.CUSTOM_IMPORTS, { invalid: true }, captureOwnerToken());

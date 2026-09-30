@@ -1,6 +1,6 @@
 /** Explicit adoption of one saved browser import. No background upload. */
 import type { ImportedOpportunity } from './api';
-import { readCustomImportStorageState, type CustomImport } from './custom-imports';
+import { readCustomImportStorageState, startNewAccountCopy, type CustomImport, type CustomImportWriteFailureReason } from './custom-imports';
 import { isOwnerTokenValid, onLocalOwnerStateChange, OwnerMismatchError, type OwnerToken } from './identity-owner';
 import { getPrivateImportTarget, savePrivateImportTarget, PrivateTargetError, PRIVATE_TARGET_TIMEOUT_MS,
   type PrivateTargetErrorCode, type PrivateImportReceipt } from './private-import-target-api';
@@ -78,7 +78,7 @@ interface Session {
   owner: OwnerToken;
   local: CustomImport;
   controller: AbortController;
-  phase: 'loading' | 'review' | 'saving' | 'saved' | 'error';
+  phase: 'loading' | 'review' | 'saving' | 'saved' | 'error' | 'rekeying';
   review: PrivateImportAdoptionReview | null;
 }
 function localProblem(session: Session): PrivateImportAdoptionError | null {
@@ -88,6 +88,12 @@ function localProblem(session: Session): PrivateImportAdoptionError | null {
   const found = current.entries.filter(entry => entry.id === session.local.id);
   if (!found.length) return 'local_missing';
   return found.length === 1 && same(found[0], session.local) ? null : 'local_changed';
+}
+function rekeyFailure(reason: CustomImportWriteFailureReason): PrivateImportAdoptionError {
+  if (reason === 'owner_changed') return 'owner_changed';
+  if (reason === 'missing') return 'local_missing';
+  if (reason === 'changed' || reason === 'identity_mismatch') return 'local_changed';
+  return reason === 'storage_damaged' ? 'storage_damaged' : 'storage_unavailable';
 }
 function errorCode(error: unknown): PrivateImportAdoptionError {
   if (error instanceof OwnerMismatchError) return 'owner_changed';
@@ -119,7 +125,8 @@ export function createPrivateImportAdoptionController() {
     const session = active;
     if (!session) return;
     if (!isOwnerTokenValid(session.owner, session.owner.uid)) { cancel(); return; }
-    if (session.phase === 'error') return;
+    // The re-key write notifies this tab; its own result is checked below.
+    if (session.phase === 'error' || session.phase === 'rekeying') return;
     const problem = localProblem(session);
     if (problem) fail(session, problem);
   }
@@ -148,7 +155,7 @@ export function createPrivateImportAdoptionController() {
     if (!current(session, 'loading')) return;
     publish({ status: 'loading', local });
     try {
-      const targetId = await waitForIdentity(derivePrivateImportTargetId(origin.uid, local.id), session.controller.signal);
+      const targetId = await waitForIdentity(derivePrivateImportTargetId(origin.uid, local.account_copy_key ?? local.id), session.controller.signal);
       if (!current(session, 'loading')) return;
       const cloud = await getPrivateImportTarget(targetId, { owner: origin, signal: session.controller.signal });
       if (!current(session, 'loading')) return;
@@ -175,8 +182,22 @@ export function createPrivateImportAdoptionController() {
       if (active === session && session.phase === 'saving') fail(session, errorCode(error));
     }
   };
+  /** A deleted account copy is never restored. Only this explicit action,
+   * by the account that saw the deletion, re-keys the browser entry; the new
+   * copy still needs its own review and confirmation before any upload. */
+  const startNewCopy = async (owner: OwnerToken): Promise<void> => {
+    const session = active;
+    if (!session || session.phase !== 'error' || state.status !== 'error' || state.code !== 'deleted') return;
+    const origin = { ...owner };
+    if (origin.uid !== session.owner.uid || !isOwnerTokenValid(origin, origin.uid)) { cancel(); return; }
+    session.phase = 'rekeying'; publish({ status: 'loading', local: session.local });
+    const result = await startNewAccountCopy(session.local, origin);
+    if (active !== session || session.phase !== 'rekeying') return;
+    if (!result.ok) { fail(session, rekeyFailure(result.reason)); return; }
+    await prepare(result.entry, origin);
+  };
   return {
-    prepare, confirm, cancel,
+    prepare, confirm, cancel, startNewCopy,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     getState(): PrivateImportAdoptionState {
       // Read-time masking also covers a missed cross-tab notification.

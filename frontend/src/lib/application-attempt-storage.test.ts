@@ -1,6 +1,6 @@
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { prepareApplicationAttempt, readPendingApplicationAttempts, settleApplicationAttempt } from './application-attempt-storage';
+import { discardApplicationAttempt, prepareApplicationAttempt, readPendingApplicationAttempts, settleApplicationAttempt } from './application-attempt-storage';
 import { advanceOwnerEpoch, captureOwnerToken, OwnerMismatchError, readUserScopedEntry, syncLocalIdentityOwner, writeUserScopedRaw } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
 import type { ApplicationDraftInput, ApplicationEvent, ApplicationEventInput } from './application-ledger';
@@ -114,4 +114,13 @@ describe.each(['owner', 'generation'] as const)('%s retirement', change => {
     expect(readPendingApplicationAttempts(captureOwnerToken(), O)).toEqual([]);
     await expect(settleApplicationAttempt(before, O, receipt(saved.attempt.input))).rejects.toBeInstanceOf(OwnerMismatchError);
   });
+});
+it('discards only the exact rejected attempt, and only for its owner', async () => {
+  const first = await prepare(); const token = captureOwnerToken();
+  expect(await discardApplicationAttempt(token, O, '00000000-0000-4000-8000-000000000000')).toBe(false);
+  expect(readPendingApplicationAttempts(token, O)).toEqual([first.attempt]);
+  expect(await discardApplicationAttempt(token, O, first.attempt.input.id)).toBe(true);
+  expect(readPendingApplicationAttempts(token, O)).toEqual([]);
+  const second = await prepare(); expect(second.attempt.input.id).not.toBe(first.attempt.input.id);
+  await owner(B); await expect(discardApplicationAttempt(token, O, second.attempt.input.id)).rejects.toBeInstanceOf(OwnerMismatchError);
 });

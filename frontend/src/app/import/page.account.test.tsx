@@ -92,6 +92,17 @@ describe('explicit browser import to account UI', () => {
     expect(screen.queryByText(translate('privateImport.confirmSave'))).toBeNull(); expect(screen.queryByText(translate('privateImport.confirmUpdate'))).toBeNull(); expect(mocks.save).not.toHaveBeenCalled();
     expect(readCustomImports()).toHaveLength(1);
   });
+  it('offers an explicit new account copy after deletion and saves it only after another review', async () => {
+    const tombstoned = new Set<string>();
+    mocks.get.mockImplementation(async id => tombstoned.has(id) || !tombstoned.size ? (tombstoned.add(id), { ...receipt(id, 5), target: { ...receipt(id, 5).target, opportunity: null, import_source: null, deleted_at: '2026-09-28T12:00:00Z' } }) : null);
+    await savedImport(); fireEvent.click(screen.getByText(translate('privateImport.prepareSave')));
+    await screen.findByText(translate('privateImport.newCopyHint'));
+    fireEvent.click(screen.getByText(translate('privateImport.saveAsNewCopy')));
+    await screen.findByText(translate('privateImport.confirmSave')); expect(mocks.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText(translate('privateImport.confirmSave'))); await screen.findByText(translate('privateImport.saved'));
+    expect(mocks.save).toHaveBeenCalledOnce(); expect(tombstoned.has(mocks.save.mock.calls[0][0])).toBe(false);
+    expect(mocks.save.mock.calls[0][1]).toEqual(opportunity()); expect(mocks.save.mock.calls[0][2]).toBe(0); expect(readCustomImports()).toHaveLength(1);
+  });
   it('lets the user reread a changed local record instead of trapping them with an old frozen candidate', async () => {
     await savedImport(); await prepare(); const entry = readCustomImports()[0];
     const changed = { ...entry.opportunity, title: 'Locally revised', description_raw: source + ' EXTRA LOCAL CHANGE' };

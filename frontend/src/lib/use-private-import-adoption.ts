@@ -10,5 +10,5 @@ export function usePrivateImportAdoption() {
   const controller = useMemo(() => createPrivateImportAdoptionController(), []);
   const state = useSyncExternalStore(controller.subscribe, controller.getState, () => EMPTY);
   useEffect(() => () => { controller.cancel(); }, [controller]);
-  return { state, prepare: controller.prepare, confirm: controller.confirm, cancel: controller.cancel };
+  return { state, prepare: controller.prepare, confirm: controller.confirm, cancel: controller.cancel, startNewCopy: controller.startNewCopy };
 }

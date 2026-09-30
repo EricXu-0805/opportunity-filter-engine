@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useT } from '@/i18n/client';
 import { useAuthModal } from '@/lib/auth-modal-context';
+import { captureOwnerToken } from '@/lib/identity-owner';
 import type { CustomImport } from '@/lib/custom-imports';
 import type { usePrivateImportAdoption } from '@/lib/use-private-import-adoption';
 import { privateImportErrorKey, privateImportSourceInfo } from '@/lib/private-import-ui';
@@ -14,7 +15,7 @@ export default function PrivateImportAdoptionPanel({ adoption, onReread }: {
   adoption: Adoption; onReread: (entry: CustomImport) => void;
 }) {
   const { t } = useT(); const { openModal } = useAuthModal();
-  const { state, confirm, cancel } = adoption;
+  const { state, confirm, cancel, startNewCopy } = adoption;
   const region = useRef<HTMLElement>(null);
   useEffect(() => { if (state.status === 'loading') region.current?.scrollIntoView?.({ block: 'nearest' }); }, [state.status]);
   if (state.status === 'idle') return null;
@@ -27,6 +28,7 @@ export default function PrivateImportAdoptionPanel({ adoption, onReread }: {
     {state.status === 'saving' && <p role="status">{t('privateImport.saving')}</p>}
     {state.status === 'error' && <div role="alert" className="space-y-2 text-sm text-red-700">
       <p>{t(privateImportErrorKey(state.code))}</p>
+      {state.code === 'deleted' && state.local && <p className="text-gray-700">{t('privateImport.newCopyHint')}</p>}
       {state.code === 'sign_in_required' && <button type="button" onClick={() => openModal({ phase: 'signin' })}
         className="font-semibold text-indigo-700">{t('privateImport.signIn')}</button>}
     </div>}
@@ -57,6 +59,8 @@ export default function PrivateImportAdoptionPanel({ adoption, onReread }: {
       </button>}
       {state.status === 'error' && state.local && state.code !== 'deleted' && state.code !== 'sign_in_required' && <button type="button" onClick={() => onReread(state.local!)}
         className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700">{t('privateImport.reread')}</button>}
+      {state.status === 'error' && state.local && state.code === 'deleted' && <button type="button" onClick={() => void startNewCopy(captureOwnerToken())}
+        className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700">{t('privateImport.saveAsNewCopy')}</button>}
     </div>
   </section>;
 }

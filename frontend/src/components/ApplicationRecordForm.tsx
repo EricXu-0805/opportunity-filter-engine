@@ -6,7 +6,7 @@ import { confirmApplicationEvent, getApplicationEvent } from '@/lib/supabase';
 import type { InteractionRecord, ConfirmApplicationEventResult } from '@/lib/supabase';
 import { ApplicationEventError, applicationEventMatches } from '@/lib/application-ledger';
 import type { ApplicationEventInput } from '@/lib/application-ledger';
-import { prepareApplicationAttempt, readPendingApplicationAttempts, settleApplicationAttempt } from '@/lib/application-attempt-storage';
+import { discardApplicationAttempt, prepareApplicationAttempt, readPendingApplicationAttempts, settleApplicationAttempt } from '@/lib/application-attempt-storage';
 import type { ApplicationPendingAttempt } from '@/lib/application-attempt-storage';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import type { OwnerToken } from '@/lib/identity-owner';
@@ -15,9 +15,18 @@ interface Props {
   opportunityId: string;
   ownerReady: boolean;
   onConfirmed: (record: InteractionRecord | null) => void;
+  /** Re-checks, as the clicking owner, that the target still exists unchanged. */
+  verifyTarget?: (owner: OwnerToken) => Promise<boolean>;
 }
 type Draft = { channel: ApplicationEventInput['channel']; destination: string; submittedAt: string; notes: string; resultNote: string; nextStep: string };
 const emptyDraft = (): Draft => ({ channel: 'web_form', destination: '', submittedAt: '', notes: '', resultNote: '', nextStep: '' });
+function localMinute(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso); const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+const draftFrom = (input: ApplicationEventInput): Draft => ({ channel: input.channel, destination: input.destination,
+  submittedAt: localMinute(input.submittedAt), notes: input.notes ?? '', resultNote: input.resultNote ?? '', nextStep: input.nextStep ?? '' });
 function ownerSnapshot() {
   const token = captureOwnerToken();
   return JSON.stringify([token.uid, token.epoch, token.generation, isOwnerTokenValid(token, token.uid)]);
@@ -32,7 +41,7 @@ export default function ApplicationRecordForm(props: Props) {
   const scope = useSyncExternalStore(subscribeOwner, ownerSnapshot, () => 'server');
   return <ApplicationRecordEditor key={scope + ':' + props.opportunityId} {...props} />;
 }
-function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed }: Props) {
+function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed, verifyTarget }: Props) {
   const { t, locale } = useT();
   const label = (key: string) => t('applicationRecord.' + key);
   const [open, setOpen] = useState(false);
@@ -41,7 +50,10 @@ function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed }: Pro
   const [pending, setPending] = useState<ApplicationPendingAttempt | null>(null);
   const [saved, setSaved] = useState<ConfirmApplicationEventResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<'save' | 'check' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'check' | 'discard' | null>(null);
+  // The server refused this exact pending attempt as invalid (22023 is raised
+  // before any insert), so it can never be saved and may be discarded.
+  const [rejected, setRejected] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const firstField = useRef<HTMLSelectElement>(null);
@@ -93,10 +105,16 @@ function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed }: Pro
   async function save() {
     if (!ready || request.current || loadFailed || saved || (!pending && !attested)) return;
     const owner = { ...captureOwnerToken() }; const call = {}; request.current = call;
-    setBusy('save'); setError(null);
-    let stage: 'prepare' | 'wire' = 'prepare';
+    setBusy('save'); setError(null); setRejected(false);
+    let stage: 'verify' | 'prepare' | 'wire' = 'verify';
+    let attempt = pending;
     try {
-      let attempt = pending;
+      if (verifyTarget) {
+        const available = await verifyTarget(owner);
+        if (!valid(owner, call)) return;
+        if (!available) { setError('targetUnavailable'); return; }
+      }
+      stage = 'prepare';
       if (!attempt) {
         const prepared = await prepareApplicationAttempt(owner, opportunityId, {
           channel: draft.channel, destination: draft.destination,
@@ -116,15 +134,33 @@ function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed }: Pro
       await accept(result, owner, call);
     } catch (cause) {
       if (!valid(owner, call)) return;
-      setError(cause instanceof ApplicationEventError && cause.code === 'invalid_input' ? 'invalid'
-        : cause instanceof ApplicationEventError && cause.code === 'conflict' ? 'conflict'
-          : stage === 'prepare' ? 'storageError' : 'unavailable');
+      if (stage === 'wire' && attempt && cause instanceof ApplicationEventError && cause.code === 'invalid_input') {
+        setRejected(true); setError(attempt.input.submittedAt ? 'rejectedTime' : 'rejected'); return;
+      }
+      setError(stage === 'verify' ? 'targetUnavailable'
+        : cause instanceof ApplicationEventError && cause.code === 'invalid_input' ? 'invalid'
+          : cause instanceof ApplicationEventError && cause.code === 'conflict' ? 'conflict'
+            : stage === 'prepare' ? 'storageError' : 'unavailable');
     } finally { if (valid(owner, call)) setBusy(null); if (request.current === call) request.current = null; }
+  }
+  async function discard() {
+    if (!ready || request.current || !pending || !rejected) return;
+    const owner = { ...captureOwnerToken() }; const call = {}; request.current = call; const attempt = pending;
+    setBusy('discard'); setError(null);
+    try {
+      await discardApplicationAttempt(owner, opportunityId, attempt.input.id);
+      if (!valid(owner, call)) return;
+      // Another tab may have replaced it; show whatever is pending now.
+      const attempts = readPendingApplicationAttempts(owner, opportunityId);
+      if (attempts.length > 1) throw new Error('ambiguous pending attempts');
+      setRejected(false); setPending(attempts[0] ?? null); setDraft(draftFrom(attempt.input)); setAttested(false);
+    } catch { if (valid(owner, call)) setError('storageError'); }
+    finally { if (mounted.current) setBusy(null); if (request.current === call) request.current = null; }
   }
   async function checkSaved() {
     if (!ready || request.current || !pending) return;
     const owner = { ...captureOwnerToken() }; const call = {}; request.current = call;
-    setBusy('check'); setError(null);
+    setBusy('check'); setError(null); setRejected(false);
     try {
       const event = await getApplicationEvent(opportunityId, pending.input.id, owner);
       if (!valid(owner, call)) return;
@@ -162,7 +198,7 @@ function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed }: Pro
               <div><dt className="font-medium">{label('submittedAt')}</dt><dd>{frozen.submittedAt ? new Date(frozen.submittedAt).toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US') : label('history.submittedUnknown')}</dd></div>
               {(['notes', 'resultNote', 'nextStep'] as const).map(key => frozen[key] && <div key={key}><dt className="font-medium">{label(key)}</dt><dd className="whitespace-pre-wrap">{frozen[key]}</dd></div>)}
             </dl>
-            <div className="flex flex-wrap gap-2"><button type="button" className={buttonClass} disabled={!!busy || !ready} onClick={() => { void save(); }}>{label(busy === 'save' ? 'saving' : 'retry')}</button><button type="button" className={buttonClass} disabled={!!busy || !ready} onClick={() => { void checkSaved(); }}>{label(busy === 'check' ? 'checking' : 'checkSaved')}</button></div>
+            <div className="flex flex-wrap gap-2"><button type="button" className={buttonClass} disabled={!!busy || !ready} onClick={() => { void save(); }}>{label(busy === 'save' ? 'saving' : 'retry')}</button><button type="button" className={buttonClass} disabled={!!busy || !ready} onClick={() => { void checkSaved(); }}>{label(busy === 'check' ? 'checking' : 'checkSaved')}</button>{rejected && <button type="button" className={buttonClass} disabled={!!busy || !ready} onClick={() => { void discard(); }}>{label(busy === 'discard' ? 'discarding' : 'discard')}</button>}</div>
           </div> : <form className="mt-3 space-y-3" onSubmit={event => { event.preventDefault(); void save(); }}>
             <label className="block text-sm font-medium">{label('channel')}<select ref={firstField} className={inputClass} disabled={!!busy || !ready} value={draft.channel} onChange={e => setDraft(d => ({ ...d, channel: e.target.value as Draft['channel'] }))}>{(['web_form', 'email', 'other'] as const).map(channel => <option key={channel} value={channel}>{label('history.channels.' + channel)}</option>)}</select></label>
             <label className="block text-sm font-medium">{label('destination')}<input className={inputClass} value={draft.destination} required maxLength={2000} aria-describedby="application-destination-hint" inputMode={draft.channel === 'web_form' ? 'url' : draft.channel === 'email' ? 'email' : 'text'} disabled={!!busy || !ready} onChange={e => setDraft(d => ({ ...d, destination: e.target.value }))} /></label>

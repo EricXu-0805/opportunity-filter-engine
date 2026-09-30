@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: 'en' }) }));
 vi.mock('@/lib/private-import-target-api', async original => {
@@ -6,7 +6,15 @@ vi.mock('@/lib/private-import-target-api', async original => {
   return { ...importedModule, getPrivateImportTarget: vi.fn(), getResolvedPrivateImportTarget: vi.fn() };
 });
 vi.mock('@/components/PrivateEmailLauncher', () => ({ default: ({ available }: { available: boolean }) => available ? <button>Prepare private email</button> : null }));
-vi.mock('@/components/ApplicationRecordForm', () => ({ default: ({ opportunityId, ownerReady }: { opportunityId: string; ownerReady: boolean }) => <p>{ownerReady && 'Personal application record ' + opportunityId}</p> }));
+vi.mock('@/components/ApplicationRecordForm', async () => {
+  const { useState } = await import('react'); const { captureOwnerToken } = await import('@/lib/identity-owner');
+  return { default: function Form({ opportunityId, ownerReady, verifyTarget }: { opportunityId: string; ownerReady: boolean; verifyTarget?: (owner: ReturnType<typeof captureOwnerToken>) => Promise<boolean> }) {
+    const [checked, setChecked] = useState<string | null>(null);
+    return <><p>{ownerReady && 'Personal application record ' + opportunityId}</p>
+      <button type="button" onClick={() => { void (verifyTarget ? verifyTarget(captureOwnerToken()) : Promise.resolve(true)).then(ok => setChecked(String(ok))); }}>Check target</button>
+      {checked && <p>Target check {checked}</p>}</>;
+  } };
+});
 vi.mock('@/components/ContactHistory', () => ({ default: ({ opportunityId }: { opportunityId: string }) => <p>Contact history {opportunityId}</p> }));
 vi.mock('@/components/ApplicationHistory', () => ({ default: ({ opportunityId }: { opportunityId: string }) => <p>Application history {opportunityId}</p> }));
 import { getPrivateImportTarget, getResolvedPrivateImportTarget, type PrivateResolvedTarget, PrivateTargetError } from '@/lib/private-import-target-api';
@@ -14,7 +22,7 @@ import { setupOwner, owner as setOwner, OTHER, deferred } from '@/lib/applicatio
 import PrivateImportDetail from './PrivateImportDetail';
 const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const raw = vi.mocked(getPrivateImportTarget); const resolved = vi.mocked(getResolvedPrivateImportTarget);
-const source = { detail: { title: 'Private test title', organization: 'Private Lab', description_raw: 'GPA < 3.0 and score > 80. END',
+const source = { target_version: 'pit1:' + '1'.repeat(64), detail: { title: 'Private test title', organization: 'Private Lab', description_raw: 'GPA < 3.0 and score > 80. END',
   source_url: null, url: null } } as PrivateResolvedTarget;
 beforeEach(async () => { await setupOwner(); raw.mockReset(); resolved.mockReset();
   raw.mockResolvedValue({ target: { deleted_at: null, target_version: 'pit1:' + '1'.repeat(64) } } as Awaited<ReturnType<typeof getPrivateImportTarget>>);
@@ -60,4 +68,21 @@ it('keeps history reachable when the target is deleted between its two reads', a
   expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
   expect(screen.queryByText('Private test title')).toBeNull();
   expect(screen.queryByText('Personal application record ' + id)).toBeNull();
+});
+
+it('re-resolves the exact shown version before an application write and withdraws the form after a deletion', async () => {
+  render(<PrivateImportDetail id={id} />); await screen.findByText('Personal application record ' + id);
+  resolved.mockClear(); resolved.mockRejectedValueOnce(new PrivateTargetError('deleted'));
+  fireEvent.click(screen.getByRole('button', { name: 'Check target' }));
+  await screen.findByText(/This account copy was deleted/);
+  expect(resolved).toHaveBeenCalledOnce(); expect(resolved.mock.calls[0][0]).toBe(id);
+  expect(resolved.mock.calls[0][1]).toMatchObject({ expectedVersion: 'pit1:' + '1'.repeat(64), owner: expect.objectContaining({ uid: expect.any(String) }) });
+  expect(screen.queryByText('Personal application record ' + id)).toBeNull(); expect(screen.queryByRole('button', { name: 'Prepare private email' })).toBeNull();
+  expect(screen.getByText('Application history ' + id)).toBeInTheDocument();
+});
+it('refuses an application write when the target changed or cannot be read, keeping the page', async () => {
+  render(<PrivateImportDetail id={id} />); await screen.findByText('Personal application record ' + id);
+  resolved.mockRejectedValueOnce(new PrivateTargetError('changed'));
+  fireEvent.click(screen.getByRole('button', { name: 'Check target' })); await screen.findByText('Target check false');
+  expect(screen.getByText('Private test title')).toBeInTheDocument();
 });

@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useT } from '@/i18n/client';
-import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import { getPrivateImportTarget, getResolvedPrivateImportTarget, PrivateTargetError, type PrivateResolvedTarget } from '@/lib/private-import-target-api';
 import PrivateEmailLauncher from '@/components/PrivateEmailLauncher';
 import ContactHistory from '@/components/ContactHistory';
@@ -53,6 +53,19 @@ export default function PrivateImportDetail({ id }: { id: string }) {
   const unreadyOwner = owner === 'server' || !JSON.parse(owner)[0] || JSON.parse(owner)[3] !== true;
   const content = view?.status === 'ready' ? view.target.detail : null;
   const history = !unreadyOwner && (view?.status === 'ready' || view?.status === 'deleted');
+  const readyVersion = view?.status === 'ready' ? view.target.target_version : null;
+  // The page read once; another tab may have deleted or edited the target since.
+  // An application write re-resolves the exact version shown, as the clicker.
+  const verifyTarget = async (clicker: OwnerToken): Promise<boolean> => {
+    if (!readyVersion) return false;
+    try { await getResolvedPrivateImportTarget(id, { owner: clicker, expectedVersion: readyVersion }); return true; }
+    catch (error) {
+      if (error instanceof PrivateTargetError && error.code === 'deleted' && isOwnerTokenValid(clicker, clicker.uid)) {
+        setResult(previous => previous?.scope === scope ? { scope, status: 'deleted' } : previous);
+      }
+      return false;
+    }
+  };
   return <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
     <Link href="/favorites" className="inline-flex min-h-10 items-center text-sm text-indigo-700 underline">{text.back}</Link>
     <h1 className="break-words text-2xl font-semibold">{content?.title || text.title}</h1>
@@ -72,7 +85,7 @@ export default function PrivateImportDetail({ id }: { id: string }) {
       available={view?.status === 'ready'} onContactConfirmed={() => setHistoryEpoch(n => n + 1)} />}
     {history && <section key={scope} id="tracker-records" className="space-y-6 border-t pt-6">
       <h2 className="text-lg font-semibold">{text.history}</h2>
-      {view?.status === 'ready' && <ApplicationRecordForm opportunityId={id} ownerReady={true} onConfirmed={() => setHistoryEpoch(n => n + 1)} />}
+      {view?.status === 'ready' && <ApplicationRecordForm opportunityId={id} ownerReady={true} verifyTarget={verifyTarget} onConfirmed={() => setHistoryEpoch(n => n + 1)} />}
       <ContactHistory opportunityId={id} refreshKey={String(historyEpoch)} />
       <ApplicationHistory opportunityId={id} refreshKey={String(historyEpoch)} />
     </section>}

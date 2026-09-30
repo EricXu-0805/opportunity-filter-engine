@@ -584,7 +584,7 @@ export default function ColdEmailModal({
   // not undo a confirmed contact. An owner move must not report the old
   // operation as success for the current account. Errors belong to this session AND
   // draft epoch: rebuilding clears them, and old writers cannot restore them.
-  type SendError = 'confirm' | 'reminder' | 'owner-changed' | 'invalid-contact' | 'contact-conflict';
+  type SendError = 'confirm' | 'reminder' | 'owner-changed' | 'invalid-contact' | 'contact-conflict' | 'private-target';
   const [sendFailure, setSendFailure] = useState<{ key: string; error: SendError } | null>(null);
   const sendError = sendFailure?.key === confirmationKey ? sendFailure.error : null;
   const setSendError = useCallback((error: SendError | null) => {
@@ -1887,6 +1887,7 @@ export default function ColdEmailModal({
     // identity that attested, not to whoever owns the browser by the time the
     // round trip finishes.
     const token = captureOwnerToken();
+    const privateKey = privateTargetRefresh ? privateEmailKey(privateContext) : null;
     const session = sendSessionRef.current;
     const confirmedEpoch = sendDraftEpochRef.current;
     const confirmedContents = confirmationKeyRef.current;
@@ -1922,6 +1923,16 @@ export default function ColdEmailModal({
         ...(restoredSources?.contact_sig ? [{ kind: 'contact_context' as const, version: restoredSources.contact_sig }] : []),
       ];
       if (!sameDraft() || !isTokenOwnerStillCurrent(token)) return;
+      // A private import can be deleted or edited in another tab after this
+      // modal read it. Re-read it now; only the same owned version may record.
+      if (privateTargetRefresh) {
+        const checked = await privateTargetRefresh.checkForAction();
+        if (!sameDraft() || !isTokenOwnerStillCurrent(token)) return;
+        if (!checked || !privateKey || checked.owner.uid !== token.uid || checked.target.owner_id !== token.uid
+          || checked.target.id !== opportunityId || privateEmailKey(checked.target) !== checked.key || checked.key !== privateKey) {
+          setSendError('private-target'); return;
+        }
+      }
       const input = await createContactEventInput(token.uid!, opportunityId, {
         recipient: recipient.trim(), subject, body, actualSentAt: sentTime?.toISOString() ?? null,
         materialRefs,
@@ -1954,7 +1965,7 @@ export default function ColdEmailModal({
         setConfirming(false);
       }
     }
-  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, restoredSources, setSendError, contactedHere, contactedContentKey, confirmedHere]);
+  }, [opportunityId, onContactConfirmed, actualSentAt, recipient, subject, body, restoredSources, setSendError, contactedHere, contactedContentKey, confirmedHere, privateTargetRefresh, privateContext]);
 
   // Only asked once a reminder actually exists, so nobody is prompted about
   // notifications for a thing they have not done. 'subscribed' hides the offer;
@@ -2750,12 +2761,13 @@ export default function ColdEmailModal({
                           ? t('coldEmail.confirmRetry')
                           : t('coldEmail.confirmSent')}
                     </button>
-                    {(sendError === 'confirm' || sendError === 'owner-changed' || sendError === 'invalid-contact' || sendError === 'contact-conflict') && (
+                    {(sendError === 'confirm' || sendError === 'owner-changed' || sendError === 'invalid-contact' || sendError === 'contact-conflict' || sendError === 'private-target') && (
                       <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
                         <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                         {t(sendError === 'confirm' ? 'coldEmail.confirmFailed'
                           : sendError === 'invalid-contact' ? 'coldEmail.contactInvalid'
                           : sendError === 'contact-conflict' ? 'coldEmail.contactConflict'
+                          : sendError === 'private-target' ? 'coldEmail.privateTargetUnconfirmed'
                           : 'coldEmail.confirmOwnerChanged')}
                       </span>
                     )}
