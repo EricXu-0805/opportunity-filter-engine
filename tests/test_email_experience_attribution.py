@@ -621,3 +621,32 @@ def test_every_common_collaboration_phrase_keeps_team_credit(collaboration):
     source = f'Built a Python parser {collaboration}.'
     assert check('I built a Python parser.', [source])
     assert check(f'I built a Python parser {collaboration}.', [source]) == []
+
+
+SURVEY = ('As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory '
+          'and cleaned the 212 responses in R.')
+
+
+@pytest.mark.parametrize('claim', [
+    SURVEY,
+    'In PSYC 238, as part of a four-person team, I helped design an online survey on sleep and memory.',
+    'I helped design an online survey on sleep and memory.',
+])
+def test_a_source_sentence_that_opens_with_its_context_still_supports_its_own_action(claim):
+    # Real drafts restated this entry almost verbatim and were rejected: the
+    # source's "As part of ..., I helped design" was skipped entirely.
+    assert check(claim, [SURVEY]) == []
+
+
+def test_the_contextual_source_keeps_its_team_and_help_limits():
+    assert check('I designed an online survey on sleep and memory.', [SURVEY])
+
+
+@pytest.mark.parametrize('source', ['In CS 446, I built a Python parser.', 'During Spring 2026, I built a Python parser.'])
+def test_a_prepositional_context_before_the_subject_is_not_a_reason_to_drop_the_fact(source):
+    assert check('I built a Python parser.', [source]) == []
+
+
+@pytest.mark.parametrize('source', ['My advisor said I should build a Python parser.', 'If I built a Python parser, I could test it.'])
+def test_a_reported_or_conditional_prefix_still_supports_nothing(source):
+    assert check('I built a Python parser.', [source])

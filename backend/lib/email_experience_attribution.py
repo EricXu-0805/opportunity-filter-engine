@@ -68,6 +68,11 @@ _MODIFIER = re.compile(r'^(personally|successfully|only|independently|solely|alo
 _OBJECT_NEGATION = re.compile(r'\s*,?\s+\b(?:but\s+not|not|rather\s+than|instead\s+of)\s+', re.I)
 _TOKEN = re.compile(r'[+-]?\d+(?:\.\d+)?|[a-z][a-z0-9_+#]*|%', re.I)
 _TEAM_PREFIX = re.compile(r'^(?:working\s+)?with\s+(?:my|our|the)\s+team,?$', re.I)
+# "In PSYC 238, as part of a four-person team, I helped design ..." states its
+# setting before the subject. Only prepositional settings qualify; a reported
+# or conditional prefix ("My advisor said I ...", "If I ...") never does.
+_CONTEXT_PREFIX = re.compile(
+    r'(?:(?:at|in|for|on|during|within|through|while|with|as\s+part\s+of|as\s+a\s+member\s+of)\s+[^,]+,?\s*)+', re.I)
 # Collaboration, wherever it sits in the clause, qualifies the whole fact. It is
 # not an object detail a shortened claim may drop. "for my team" is a
 # beneficiary, not a collaborator, and stays an ordinary object phrase.
@@ -76,8 +81,8 @@ _TEAM_CONTEXT = re.compile(
     r'(?:(?:my|our|the|other|a|an|another|fellow|several|one|two|three|four|five|six|\d+)\s+)?'
     r'(?:(?:research|lab|project|fellow)\s+)?'
     r'(?:team(?:mates?)?|colleagues?|classmates?|lab\s*mates?|lab\s+partners?|partners?|students?|peers?|group)'
-    r'|as\s+(?:part\s+of\s+)?(?:a|my|our|the)\s+(?:team|group)'
-    r'|in\s+a\s+(?:team|group)(?:\s+of\s+\w+)?'
+    r'|(?:with|as\s+(?:part\s+of\s+)?|as\s+a\s+member\s+of\s+)(?:a|an|my|our|the)\s+(?:[\w-]+\s+){0,3}(?:team|group)'
+    r'|in\s+a\s+(?:[\w-]+\s+){0,2}(?:team|group)(?:\s+of\s+\w+)?'
     r'|collaboratively|in\s+collaboration\s+with\s+[^,;.!?]+)\b', re.I)
 _CARE_QUALIFIER = re.compile(r'\b(not|never|without|only|hardly|barely|rarely)\b[^.!?;\n]*\bcarefully\s*$', re.I)
 _BOUND = re.compile(r'\b(?:at\s+(?:most|least)|or\s+(?:less|more)|roughly|approximately|about|up\s+to|more\s+than|less\s+than)\b', re.I)
@@ -245,6 +250,7 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                     continue
                 before = clause[:subject.start()].strip()
                 if _CONDITIONAL.search(before) or (source and before and not _TEAM_PREFIX.fullmatch(before)
+                        and not _CONTEXT_PREFIX.fullmatch(before)
                         and not (activity_aliases is not None and (
                             _without_activity_suffix("fact " + before, activity_aliases) == "fact"
                             or re.fullmatch(r"(?:at|in|for|on|during)\s+[^,]+,?", before, re.I)))):
@@ -323,10 +329,12 @@ def _same_actor(source: _Fact, claim: _Fact) -> bool:
 
 def _qualifiers_supported(source: _Fact, claim: _Fact) -> bool:
     # A claim may understate: add a collaboration qualifier, or say "I helped
-    # build" for a confirmed "built". It may never drop a qualifier, and every
-    # other one must match exactly.
+    # build" for a confirmed "built". It may not drop a qualifier, except that
+    # "helped" already says the work was shared and so keeps a team credit.
+    # Every other qualifier must match exactly.
     added = {*claim.qualifiers} - {*source.qualifiers}
-    return ({*source.qualifiers} <= {*claim.qualifiers}
+    required = {*source.qualifiers} - ({'team'} if 'help' in claim.qualifiers else set())
+    return (required <= {*claim.qualifiers}
             and added <= ({'team', 'help'} if not claim.negative else {'team'}))
 
 
