@@ -12,6 +12,13 @@ application_wait_event() {
   done
   return 1
 }
+application_wait_lock() {
+  for _attempt in {1..200}; do
+    if "${PSQL[@]}" -At -c "SELECT 1 FROM pg_stat_activity WHERE application_name='$1' AND wait_event_type='Lock'" | grep -q 1; then return 0; fi
+    sleep 0.02
+  done
+  return 1
+}
 PGAPPNAME=ofe_application_writer_a "${PSQL[@]}" -At -c "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL test.uid='$APPLICATION_UID'; $APPLICATION_CALL; SELECT pg_sleep(3); COMMIT" >"$WORK/application-a.log" 2>&1 &
 APPLICATION_A=$!
 if ! application_wait_event ofe_application_writer_a PgSleep; then wait "$APPLICATION_A" || true; cat "$WORK/application-a.log"; exit 1; fi
@@ -59,7 +66,7 @@ APPLICATION_A=$!
 if ! application_wait_event ofe_application_delete_writer PgSleep; then wait "$APPLICATION_A" || true; cat "$WORK/application-delete-writer.log"; exit 1; fi
 PGAPPNAME=ofe_application_deleter "${PSQL[@]}" -At -c "DELETE FROM auth.users WHERE id='$APPLICATION_UID'" >"$WORK/application-deleter.log" 2>&1 &
 APPLICATION_B=$!
-if ! application_wait_event ofe_application_deleter advisory; then wait "$APPLICATION_B" || true; cat "$WORK/application-deleter.log"; exit 1; fi
+if ! application_wait_lock ofe_application_deleter; then wait "$APPLICATION_B" || true; cat "$WORK/application-deleter.log"; exit 1; fi
 wait "$APPLICATION_A"; wait "$APPLICATION_B"
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM public.application_events WHERE device_id='$APPLICATION_UID') THEN RAISE EXCEPTION 'delete race retained application PII'; END IF; END \$\$"
 printf '%s\n' 'PASS application real concurrent account deletion waits for writer and removes the snapshot'
@@ -79,3 +86,28 @@ if ! application_wait_event ofe_application_merger advisory; then wait "$APPLICA
 wait "$APPLICATION_A"; wait "$APPLICATION_B"
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM public.application_events WHERE device_id='$APPLICATION_UID') OR NOT EXISTS(SELECT 1 FROM public.application_events WHERE device_id='$APPLICATION_DEST' AND opportunity_id='merge-race') OR NOT EXISTS(SELECT 1 FROM public.interactions WHERE device_id='$APPLICATION_DEST' AND opportunity_id='merge-race') THEN RAISE EXCEPTION 'merge race stranded event or summary'; END IF; END \$\$"
 printf '%s\n' 'PASS application real concurrent Flow B waits for source writer and transfers its event and summary'
+
+# Account deletion locks its auth.users row (and, by cascade, the owner's
+# private import rows) before its triggers take the owner advisory lock. A
+# confirmation queued on that advisory lock (held here by a third session) must
+# already hold the auth row, or it takes the advisory lock and then waits on the
+# deleter's cascaded private import row while the deleter waits back.
+APPLICATION_UID='32000000-0000-4000-8000-000000000012'
+APPLICATION_TARGET='private-import:32000000-0000-4000-8000-000000000012'
+"${PSQL[@]}" -c "INSERT INTO auth.users(id) VALUES ('$APPLICATION_UID');
+ INSERT INTO public.private_import_targets(id,owner_id,revision,opportunity) VALUES ('$APPLICATION_TARGET','$APPLICATION_UID',1,'{}'::jsonb)"
+PGAPPNAME=ofe_application_order_holder "${PSQL[@]}" -At -c "BEGIN; SELECT pg_advisory_xact_lock(hashtext('ofe-profile:$APPLICATION_UID')); SELECT pg_sleep(3); COMMIT" >"$WORK/application-order-holder.log" 2>&1 &
+APPLICATION_H=$!
+if ! application_wait_event ofe_application_order_holder PgSleep; then wait "$APPLICATION_H" || true; cat "$WORK/application-order-holder.log"; exit 1; fi
+PGAPPNAME=ofe_application_order_writer "${PSQL[@]}" -At -c "SET ROLE authenticated; SET test.uid='$APPLICATION_UID'; SELECT public.confirm_application_event('$APPLICATION_UID','32000000-0000-8000-8000-000000000012','$APPLICATION_TARGET','other','Lock order office')" >"$WORK/application-order-writer.log" 2>&1 &
+APPLICATION_A=$!
+if ! application_wait_event ofe_application_order_writer advisory; then wait "$APPLICATION_A" || true; cat "$WORK/application-order-writer.log"; exit 1; fi
+PGAPPNAME=ofe_application_order_delete "${PSQL[@]}" -At -c "DELETE FROM auth.users WHERE id='$APPLICATION_UID'" >"$WORK/application-order-delete.log" 2>&1 &
+APPLICATION_B=$!
+if ! application_wait_lock ofe_application_order_delete; then wait "$APPLICATION_B" || true; cat "$WORK/application-order-delete.log"; exit 1; fi
+wait "$APPLICATION_H"
+if ! wait "$APPLICATION_A"; then wait "$APPLICATION_B" || true; cat "$WORK/application-order-writer.log"; exit 1; fi
+if ! wait "$APPLICATION_B"; then cat "$WORK/application-order-delete.log"; exit 1; fi
+if ! grep -q '"replayed": false' "$WORK/application-order-writer.log"; then cat "$WORK/application-order-writer.log"; exit 1; fi
+"${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM auth.users WHERE id='$APPLICATION_UID') OR EXISTS(SELECT 1 FROM public.application_events WHERE device_id='$APPLICATION_UID') OR EXISTS(SELECT 1 FROM public.private_import_targets WHERE owner_id='$APPLICATION_UID') THEN RAISE EXCEPTION 'deletion after application confirmation did not complete'; END IF; END \$\$"
+printf '%s\n' 'PASS application confirmation takes the auth row before the owner advisory lock, so account deletion cannot deadlock it'

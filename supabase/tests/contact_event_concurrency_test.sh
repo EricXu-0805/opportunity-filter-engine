@@ -12,6 +12,13 @@ contact_wait_event() {
   done
   return 1
 }
+contact_wait_lock() {
+  for _attempt in {1..200}; do
+    if "${PSQL[@]}" -At -c "SELECT 1 FROM pg_stat_activity WHERE application_name='$1' AND wait_event_type='Lock'" | grep -q 1; then return 0; fi
+    sleep 0.02
+  done
+  return 1
+}
 PGAPPNAME=ofe_contact_writer_a "${PSQL[@]}" -At -c "BEGIN; SET LOCAL ROLE authenticated; SET LOCAL test.uid='$CONTACT_UID'; $CONTACT_CALL; SELECT pg_sleep(3); COMMIT" >"$WORK/contact-a.log" 2>&1 &
 CONTACT_A=$!
 if ! contact_wait_event ofe_contact_writer_a PgSleep; then wait "$CONTACT_A" || true; cat "$WORK/contact-a.log"; exit 1; fi
@@ -59,7 +66,7 @@ CONTACT_A=$!
 if ! contact_wait_event ofe_contact_delete_writer PgSleep; then wait "$CONTACT_A" || true; cat "$WORK/contact-delete-writer.log"; exit 1; fi
 PGAPPNAME=ofe_contact_deleter "${PSQL[@]}" -At -c "DELETE FROM auth.users WHERE id='$CONTACT_UID'" >"$WORK/contact-deleter.log" 2>&1 &
 CONTACT_B=$!
-if ! contact_wait_event ofe_contact_deleter advisory; then wait "$CONTACT_B" || true; cat "$WORK/contact-deleter.log"; exit 1; fi
+if ! contact_wait_lock ofe_contact_deleter; then wait "$CONTACT_B" || true; cat "$WORK/contact-deleter.log"; exit 1; fi
 wait "$CONTACT_A"; wait "$CONTACT_B"
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM public.contact_events WHERE device_id='$CONTACT_UID') THEN RAISE EXCEPTION 'delete race retained email PII'; END IF; END \$\$"
 printf '%s\n' 'PASS contact real concurrent account deletion waits for writer and removes the snapshot'
@@ -79,3 +86,28 @@ if ! contact_wait_event ofe_contact_merger advisory; then wait "$CONTACT_B" || t
 wait "$CONTACT_A"; wait "$CONTACT_B"
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM public.contact_events WHERE device_id='$CONTACT_UID') OR NOT EXISTS(SELECT 1 FROM public.contact_events WHERE device_id='$CONTACT_DEST' AND opportunity_id='merge-race') OR NOT EXISTS(SELECT 1 FROM public.interactions WHERE device_id='$CONTACT_DEST' AND opportunity_id='merge-race') THEN RAISE EXCEPTION 'merge race stranded event or summary'; END IF; END \$\$"
 printf '%s\n' 'PASS contact real concurrent Flow B waits for source writer and transfers its event and summary'
+
+# Account deletion locks its auth.users row (and, by cascade, the owner's
+# private import rows) before its triggers take the owner advisory lock. A
+# confirmation queued on that advisory lock (held here by a third session) must
+# already hold the auth row, or it takes the advisory lock and then waits on the
+# deleter's cascaded private import row while the deleter waits back.
+CONTACT_UID='31000000-0000-4000-8000-000000000012'
+CONTACT_TARGET='private-import:31000000-0000-4000-8000-000000000012'
+"${PSQL[@]}" -c "INSERT INTO auth.users(id) VALUES ('$CONTACT_UID');
+ INSERT INTO public.private_import_targets(id,owner_id,revision,opportunity) VALUES ('$CONTACT_TARGET','$CONTACT_UID',1,'{}'::jsonb)"
+PGAPPNAME=ofe_contact_order_holder "${PSQL[@]}" -At -c "BEGIN; SELECT pg_advisory_xact_lock(hashtext('ofe-profile:$CONTACT_UID')); SELECT pg_sleep(3); COMMIT" >"$WORK/contact-order-holder.log" 2>&1 &
+CONTACT_H=$!
+if ! contact_wait_event ofe_contact_order_holder PgSleep; then wait "$CONTACT_H" || true; cat "$WORK/contact-order-holder.log"; exit 1; fi
+PGAPPNAME=ofe_contact_order_writer "${PSQL[@]}" -At -c "SET ROLE authenticated; SET test.uid='$CONTACT_UID'; SELECT public.confirm_contact_event('$CONTACT_UID','31000000-0000-8000-8000-000000000012','$CONTACT_TARGET','a@b.c','s','lock order')" >"$WORK/contact-order-writer.log" 2>&1 &
+CONTACT_A=$!
+if ! contact_wait_event ofe_contact_order_writer advisory; then wait "$CONTACT_A" || true; cat "$WORK/contact-order-writer.log"; exit 1; fi
+PGAPPNAME=ofe_contact_order_delete "${PSQL[@]}" -At -c "DELETE FROM auth.users WHERE id='$CONTACT_UID'" >"$WORK/contact-order-delete.log" 2>&1 &
+CONTACT_B=$!
+if ! contact_wait_lock ofe_contact_order_delete; then wait "$CONTACT_B" || true; cat "$WORK/contact-order-delete.log"; exit 1; fi
+wait "$CONTACT_H"
+if ! wait "$CONTACT_A"; then wait "$CONTACT_B" || true; cat "$WORK/contact-order-writer.log"; exit 1; fi
+if ! wait "$CONTACT_B"; then cat "$WORK/contact-order-delete.log"; exit 1; fi
+if ! grep -q '"replayed": false' "$WORK/contact-order-writer.log"; then cat "$WORK/contact-order-writer.log"; exit 1; fi
+"${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM auth.users WHERE id='$CONTACT_UID') OR EXISTS(SELECT 1 FROM public.contact_events WHERE device_id='$CONTACT_UID') OR EXISTS(SELECT 1 FROM public.private_import_targets WHERE owner_id='$CONTACT_UID') THEN RAISE EXCEPTION 'deletion after contact confirmation did not complete'; END IF; END \$\$"
+printf '%s\n' 'PASS contact confirmation takes the auth row before the owner advisory lock, so account deletion cannot deadlock it'

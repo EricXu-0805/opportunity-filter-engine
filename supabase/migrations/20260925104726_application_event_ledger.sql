@@ -102,10 +102,13 @@ BEGIN
     END IF;
   END LOOP;
   -- Same lock as profile CAS, account merge and auth deletion; source writes
-  -- cannot land after their owner was transferred or deleted.
+  -- cannot land after their owner was transferred or deleted. The auth row is
+  -- locked first: deletion holds it while its triggers take the advisory key,
+  -- so the reverse order would deadlock with a concurrent account deletion.
+  PERFORM 1 FROM auth.users WHERE id=uid FOR KEY SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501'; END IF;
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
-  IF EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=uid::text)
-    OR NOT EXISTS(SELECT 1 FROM auth.users WHERE id=uid) THEN
+  IF EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=uid::text) THEN
     RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501';
   END IF;
   stamp := clock_timestamp();

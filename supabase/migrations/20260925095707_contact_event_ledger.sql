@@ -127,11 +127,16 @@ BEGIN
      (SELECT count(DISTINCT value) FROM jsonb_array_elements(p_materials)) THEN
     RAISE EXCEPTION 'invalid_contact_event' USING ERRCODE = '22023';
   END IF;
-  -- Shared with profile CAS and Flow B, preventing a write racing an ownership
-  -- merge from stranding a new event on the retired source account.
+  -- Lock order: auth row, owner advisory. Account deletion holds its auth row
+  -- (and its cascaded private import rows) while its triggers take the advisory
+  -- key, so taking the row first makes deletion wait for this write instead of
+  -- deadlocking with it. The advisory key is shared with profile CAS and Flow B,
+  -- preventing a write racing an ownership merge from stranding a new event on
+  -- the retired source account.
+  PERFORM 1 FROM auth.users WHERE id = uid FOR KEY SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501'; END IF;
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
-  IF EXISTS (SELECT 1 FROM public.merged_devices WHERE source_device_id = uid::text)
-    OR NOT EXISTS (SELECT 1 FROM auth.users WHERE id = uid) THEN
+  IF EXISTS (SELECT 1 FROM public.merged_devices WHERE source_device_id = uid::text) THEN
     RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501';
   END IF;
   stamp := clock_timestamp();

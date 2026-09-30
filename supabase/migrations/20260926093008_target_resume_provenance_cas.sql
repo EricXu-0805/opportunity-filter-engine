@@ -175,7 +175,10 @@ BEGIN
   IF NOT private.target_resume_provenance_valid(p_doc, p_provenance) THEN
     RAISE EXCEPTION 'invalid_target_resume_provenance' USING ERRCODE = '22023';
   END IF;
-  -- Shared with Flow B, which holds both owner keys in sorted order.
+  -- Same auth row -> owner advisory order as commit_target_resume_cas, so
+  -- account deletion waits for this save instead of deadlocking with it.
+  PERFORM 1 FROM auth.users WHERE id = uid FOR KEY SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501'; END IF;
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
   IF EXISTS (SELECT 1 FROM public.merged_devices WHERE source_device_id = uid::text) THEN
     RETURN jsonb_build_object('status', 'missing');

@@ -112,7 +112,12 @@ BEGIN
     OR private.target_resume_json_bytes(p_doc) > 2097152 THEN
     RAISE EXCEPTION 'invalid_target_resume' USING ERRCODE = '22023';
   END IF;
-  -- Shared with Flow B, which holds both owner keys in sorted order.
+  -- Lock order: auth row, then the owner advisory key shared with Flow B
+  -- (which holds both owner keys in sorted order). Account deletion holds its
+  -- auth row while its triggers take the advisory key, so taking the row first
+  -- makes deletion wait for this save instead of deadlocking with it.
+  PERFORM 1 FROM auth.users WHERE id = uid FOR KEY SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501'; END IF;
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
   IF EXISTS (SELECT 1 FROM public.merged_devices WHERE source_device_id = uid::text) THEN
     RETURN jsonb_build_object('status', 'missing');
