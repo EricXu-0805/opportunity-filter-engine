@@ -3,7 +3,9 @@
 The finite claim locks proved only verbatim retention, so faithful rewrites of
 a team/help clause were thrown away. They now go to one batched review call;
 every protection that changes who did what, adds a fact or appends a relevance
-clause stays a hard gate that no reviewer can overrule. Provider-free.
+clause stays a hard gate that no reviewer can overrule. A changed rewrite no
+hard gate rejects always goes to that review: the regexes seeing nothing is
+not evidence. Provider-free.
 """
 from __future__ import annotations
 
@@ -230,10 +232,11 @@ class TestFindingsSplit:
 class TestFaithfulnessCorpus:
     """Hard findings must be exactly as wide as the unfaithfulness they name.
 
-    On 4ba1aabb 14 of the faithful rewrites carried a hard finding (a preposition
-    swap read as a new setting, "app"/"application" or a bracket read as a new
-    object) and 7 unfaithful ones carried none (a team result or denial claimed
-    behind 不断/不同, a dropped head noun the parser accepts as dropped detail).
+    Recall is backed by the review, which sees every changed rewrite that no
+    hard finding rejects; a hard finding on a faithful rewrite cannot be undone.
+    On c5538d7e a changed rewrite with no finding passed unreviewed, so an open
+    不 + three-character gap read 不到一周开发 as a denial and let a team result
+    through; the Chinese team cases below passed with no finding at all.
     """
 
     def test_the_corpus_covers_both_languages_and_both_sides(self):
@@ -241,27 +244,88 @@ class TestFaithfulnessCorpus:
         for side in ("faithful", "unfaithful"):
             texts = [case["rewrite"] for case in CORPUS[side]]
             assert any(text.isascii() for text in texts) and not all(text.isascii() for text in texts)
+        assert any(case.get("caught") == "review" for case in CORPUS["unfaithful"])
 
     @pytest.mark.parametrize("case", CORPUS["faithful"], ids=lambda case: case["rewrite"])
     def test_faithful_rewrite_has_no_hard_finding(self, case):
         assert claim_upgrade_findings(case["rewrite"], case["original"])[0] == []
-        assert tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0] != "reject"
+        assert tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0] == "review"
+
+    @pytest.mark.parametrize("case", CORPUS["faithful"], ids=lambda case: case["rewrite"])
+    def test_faithful_rewrite_is_accepted_on_a_faithful_verdict(self, endpoint, monkeypatch, case):
+        pair = (case["original"], case["rewrite"])
+        body, reviews = run(endpoint, monkeypatch, "/api/tailor/bullet", [pair], _review_reply(True))
+        assert accepted_texts("/api/tailor/bullet", body) == [case["rewrite"]]
+        assert len(reviews) == 1
 
     @pytest.mark.parametrize("case", CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
-    def test_unfaithful_rewrite_is_rejected_before_review(self, case):
-        assert tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0] == "reject"
-        if case["kind"] not in GROUNDING_ONLY:
-            assert claim_upgrade_findings(case["rewrite"], case["original"])[0]
+    def test_unfaithful_rewrite_is_hard_rejected_or_reviewed(self, case):
+        verdict = tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0]
+        hard = claim_upgrade_findings(case["rewrite"], case["original"])[0]
+        if case.get("caught") == "review":
+            assert (verdict, hard) == ("review", [])
+        else:
+            assert verdict == "reject"
+            if case["kind"] not in GROUNDING_ONLY:
+                assert hard
 
-    @pytest.mark.parametrize(("original", "proposed"), [
-        # "Assembly" is the head noun; "jointly" is shared credit. Neither is on
-        # the when/how list, so a dropped "-ly" word goes to the review.
-        ("Built a PCB assembly.", "Built a PCB."),
-        ("Wrote a report jointly.", "Wrote a report."),
+    @pytest.mark.parametrize("case", CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
+    def test_unfaithful_rewrite_is_never_accepted_without_the_review(self, endpoint, monkeypatch, case):
+        pair = (case["original"], case["rewrite"])
+        # A reviewer that accepts everything: anything shown must have been reviewed.
+        body, reviews = run(endpoint, monkeypatch, "/api/tailor/bullet", [pair], _review_reply(True))
+        if accepted_texts("/api/tailor/bullet", body) != [None]:
+            assert reviews == [{"pairs": [{"index": 1, "original": pair[0], "rewrite": pair[1]}]}]
+        else:
+            assert reviews == []
+        body, _ = run(endpoint, monkeypatch, "/api/tailor/bullet", [pair], _review_reply(False))
+        assert accepted_texts("/api/tailor/bullet", body) == [None]
+
+    @pytest.mark.parametrize(("original", "proposed", "finding"), [
+        # "Assembly" is the head noun, not a manner adverb.
+        ("Built a PCB assembly.", "Built a PCB.", "object_changed"),
+        ("Built a power supply.", "Built a power.", "object_changed"),
+        # Shared credit, like "together".
+        ("Wrote a report jointly.", "Wrote a report.", "team_qualifier_dropped"),
+        ("Analyzed the survey data collectively.", "Analyzed the survey data.", "team_qualifier_dropped"),
+        ("Cooperatively built a rover.", "Built a rover.", "team_qualifier_dropped"),
     ])
-    def test_a_dropped_unlisted_ly_word_goes_to_the_review(self, original, proposed):
-        assert claim_upgrade_findings(proposed, original) == ([], ["object_shortened"])
-        assert tailor._validate_bullet_rewrite(proposed, original)[0] == "review"
+    def test_a_dropped_ly_noun_or_shared_credit_is_hard(self, original, proposed, finding):
+        assert finding in claim_upgrade_findings(proposed, original)[0]
+        assert tailor._validate_bullet_rewrite(proposed, original)[0] == "reject"
+
+    def test_a_dropped_manner_adverb_goes_to_the_review(self):
+        assert claim_upgrade_findings("Tested the code.", "Tested the code thoroughly.") == ([], ["object_shortened"])
+        assert tailor._validate_bullet_rewrite("Tested the code.", "Tested the code thoroughly.")[0] == "review"
+
+    @pytest.mark.parametrize(("text", "denial"), [
+        ("本人不到一周开发了解析器", False), ("本人用不到两周开发了解析器", False),
+        ("毫不犹豫地设计了实验", False), ("针对不足搭建了平台", False), ("不定期检查了代码", False),
+        ("不得不开发了测试", False), ("不断完善测试", False),
+        ("不牵头项目", True), ("不直接开发解析器", True), ("不再负责部署", True), ("不亲自设计实验", True),
+        ("不再直接负责部署", True), ("不太参与开发", True), ("不单独开发", True), ("不常检查代码", True),
+    ])
+    def test_chinese_denial_is_a_closed_form(self, text, denial):
+        from backend.lib.target_resume_ai_grounding import DENIAL
+
+        assert bool(DENIAL.search(text)) is denial
+
+
+@pytest.mark.parametrize("path", PATHS)
+class TestEveryChangedRewriteIsReviewed:
+    # No rule names a problem in this one; on c5538d7e it was shown unreviewed.
+    UNFLAGGED = ("Analyzed measurements with PyTorch across 88 samples.", "Analyzed 88 samples with PyTorch.")
+
+    def test_a_rewrite_no_rule_flags_still_needs_a_faithful_verdict(self, endpoint, monkeypatch, path):
+        assert claim_upgrade_findings(self.UNFLAGGED[1], self.UNFLAGGED[0]) == ([], ["wording_changed"])
+        body, reviews = run(endpoint, monkeypatch, path, [self.UNFLAGGED], _review_reply(False))
+        assert reviews == [{"pairs": [{"index": 1, "original": self.UNFLAGGED[0], "rewrite": self.UNFLAGGED[1]}]}]
+        assert accepted_texts(path, body) == [None]
+        assert rejection_warnings(path, body)
+
+    def test_a_faithful_verdict_shows_it(self, endpoint, monkeypatch, path):
+        body, reviews = run(endpoint, monkeypatch, path, [self.UNFLAGGED], _review_reply(True))
+        assert len(reviews) == 1 and accepted_texts(path, body) == [self.UNFLAGGED[1]]
 
 
 @pytest.mark.parametrize("path", PATHS)
@@ -396,12 +460,15 @@ def test_one_review_call_covers_every_paraphrase_in_the_request(endpoint, monkey
     assert len(rejection_warnings(path, body)) == 2
 
 
-def test_deterministic_pass_costs_no_review(endpoint, monkeypatch):
+@pytest.mark.parametrize("proposed", ["Cleaned 212 survey responses in R.",
+                                      "cleaned  212 Survey responses in r."])
+def test_deterministic_pass_costs_no_review(endpoint, monkeypatch, proposed):
+    # Only the original itself, whitespace and case aside, passes without the review.
     body, reviews = run(endpoint, monkeypatch, "/api/tailor",
-                        [("Cleaned 212 survey responses in R.", "Cleaned 212 survey responses in R.")],
-                        _review_reply(False))
+                        [("Cleaned 212 survey responses in R.", proposed)], _review_reply(False))
     assert reviews == []
     assert body["warnings"] == []
+    assert accepted_texts("/api/tailor", body) == [proposed]
 
 
 @pytest.mark.parametrize(("path", "feature"), [("/api/tailor/renovate", "renovation"),

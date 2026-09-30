@@ -41,6 +41,14 @@ from src.evidence import is_actionable_target
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def _faithful_review(monkeypatch):
+    """Every changed rewrite now goes to the faithfulness review, which
+    tests/test_tailor_review.py covers. These fakes answer every model call with
+    one rewrite reply, so the review verdict is given here: faithful."""
+    monkeypatch.setattr(tailor_module, "_ai_review_rewrites", lambda pairs: [True] * len(pairs))
+
+
 @pytest.fixture
 def real_opp_id() -> str:
     by_id = data_loader.load_opportunities_by_id()

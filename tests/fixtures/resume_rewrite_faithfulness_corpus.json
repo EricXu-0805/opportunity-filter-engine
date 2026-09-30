@@ -1,5 +1,5 @@
 {
- "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or append a relevance or quality claim; each must be rejected before any review.",
+ "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding and are rejected by an unfaithful verdict.",
  "faithful": [
   {
    "original": "I built a Python parser for the course project.",
@@ -275,6 +275,51 @@
    "original": "针对不稳定的开发环境，本人搭建了测试框架。",
    "rewrite": "本人搭建了测试框架，用于不稳定的开发环境。",
    "kind": "reordered; 不稳定的 is not a denial"
+  },
+  {
+   "original": "Labeled 500 images carefully.",
+   "rewrite": "Labeled 500 images.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Answered lab emails promptly.",
+   "rewrite": "Answered lab emails.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Calibrated the sensors manually.",
+   "rewrite": "Calibrated the sensors.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Ran simulations overnight.",
+   "rewrite": "Ran simulations.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Cleaned the survey data weekly.",
+   "rewrite": "Cleaned the survey data.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Tested the code thoroughly.",
+   "rewrite": "Tested the code.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "本人不到一周开发了解析器。",
+   "rewrite": "本人在不到一周内开发了解析器。",
+   "kind": "不到一周 (in under a week) is not a denial"
+  },
+  {
+   "original": "毫不犹豫地承担了数据清洗。",
+   "rewrite": "承担了数据清洗。",
+   "kind": "dropped 毫不犹豫地; not a denial"
+  },
+  {
+   "original": "针对不足搭建了测试框架。",
+   "rewrite": "搭建了测试框架。",
+   "kind": "dropped 针对不足; not a denial"
   }
  ],
  "unfaithful": [
@@ -492,6 +537,69 @@
    "original": "我编写了测试，不再参与项目。",
    "rewrite": "我编写了测试，参与项目。",
    "kind": "denied to affirmed (不再参与)"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人不到一周开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo behind 不到"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人用不到两周开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo behind 用不到"
+  },
+  {
+   "original": "团队设计了实验。本人设计了问卷。",
+   "rewrite": "本人毫不犹豫地设计了实验和问卷。团队设计了实验。",
+   "kind": "team to solo behind 毫不犹豫"
+  },
+  {
+   "original": "团队搭建了平台。本人搭建了测试环境。",
+   "rewrite": "本人针对不足搭建了平台和测试环境。团队搭建了平台。",
+   "kind": "team to solo behind 针对不足"
+  },
+  {
+   "original": "团队检查了代码。本人检查了文档。",
+   "rewrite": "本人不定期检查了代码和文档。团队检查了代码。",
+   "kind": "team to solo behind 不定期"
+  },
+  {
+   "original": "本人未参与论文撰写。",
+   "rewrite": "本人不到一周参与了论文撰写。",
+   "kind": "denied to affirmed behind 不到"
+  },
+  {
+   "original": "Wrote a report jointly.",
+   "rewrite": "Wrote a report.",
+   "kind": "dropped shared credit (jointly)"
+  },
+  {
+   "original": "Analyzed the survey data collectively.",
+   "rewrite": "Analyzed the survey data.",
+   "kind": "dropped shared credit (collectively)"
+  },
+  {
+   "original": "Built a PCB assembly.",
+   "rewrite": "Built a PCB.",
+   "kind": "dropped head noun (-ly noun)"
+  },
+  {
+   "original": "Analyzed EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB to study sleep disorders.",
+   "kind": "new purpose",
+   "caught": "review"
+  },
+  {
+   "original": "本人开发了解析器。",
+   "rewrite": "本人开发了解析器，已部署到公司生产系统。",
+   "kind": "new deployment claim",
+   "caught": "review"
+  },
+  {
+   "original": "本人整理了实验记录。",
+   "rewrite": "本人整理并分析了实验记录。",
+   "kind": "new action",
+   "caught": "review"
   }
  ]
 }

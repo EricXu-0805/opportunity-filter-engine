@@ -225,13 +225,13 @@ def _validate_bullet_rewrite(proposed: str, original: str) -> tuple[str, list[st
     """Same local evidence boundary as full-target suggestions, not a truth proof.
 
     A listed skill/course or another project's result does not establish its use
-    in this bullet. Keep the existing permissive prose policy. New terms or
-    numbers, a new action, status or relevance clause, or a dropped team, help,
-    negation or publication qualifier reject outright. A rewrite that fails only
-    the verbatim clause lock or the finite attribution parser is a paraphrase
-    this checker cannot prove, so it goes to one faithfulness review instead of
-    being thrown away (measured on the real model, 23 of 30 responses lost
-    bullet 1 to the verbatim lock, several of them faithful rewrites).
+    in this bullet. Keep the existing permissive prose policy. Three outcomes:
+    text identical to the original (whitespace/case aside) passes; new terms or
+    numbers or a hard claim finding (a new action, status or relevance clause, a
+    dropped team, help, negation or publication qualifier, ...) reject outright;
+    every other changed rewrite goes to the one batched faithfulness review.
+    There is no pass without review for changed text: the finite EN/ZH checks
+    see nothing in syntax they do not parse, and that is not evidence.
     """
     passed, fabricated = _validate_no_fabrication(proposed, original, policy=LENIENT_PROSE_NUMERIC)
     hard, soft = claim_upgrade_findings(proposed, original)

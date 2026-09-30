@@ -135,15 +135,15 @@ SETTING = re.compile(
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 # "did not build", "never led", "没有主导": a denial of the action that follows.
 # A bare 不/未 is not one: 不断 (keep on), 不同 (different), 不少 (many), 未来.
-# 不 denies an action verb up to three characters on (不牵头, 不再负责, 不再直接负责),
-# unless it starts a compound that asserts: 不断/不停 (keep on), 不仅/不但/不光/不单
-# (not only), 不得不 (had to). A 的 in between makes the verb a noun (不规则的设计).
+# 不 denies only an action verb it directly precedes (不牵头, 不负责), or one after
+# a closed set of adverbs (不再负责, 不亲自设计, 不再直接负责, 不太参与). Anything else
+# between them is not a denial: 不到一周开发 (in under a week), 毫不犹豫地设计,
+# 针对不足搭建, 不定期检查. 不得不 (had to) asserts.
 _ZH_ACTIONS = "|".join(re.findall(r"[一-鿿]+", "|".join(ACTIONS.values())))
+_ZH_DENIAL_ADVERB = r"(?:再|直接|亲自|太|常|曾|单独|独立)"
 DENIAL = re.compile(
     r"\b(?:not|never|no)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未(?!来|知)"
-    r"|(?<!得)不(?:曾|会|能|是"
-    r"|(?!断|停|懈|时|同|少|乏|但|仅|只|止|光|单(?!独)|久|错|过|管|论|等|一|得不)(?:(?!的)[一-鿿]){0,3}?(?:参与|接受|录用|发表|"
-    + _ZH_ACTIONS + r"))", re.I)
+    r"|(?<!得)不(?:曾|会|能|是|" + _ZH_DENIAL_ADVERB + r"{0,3}(?:参与|接受|录用|发表|" + _ZH_ACTIONS + r"))", re.I)
 _TEAM_OWNER = re.compile(r"\b(?:my|our)\s+(?:team|teammates?|group|colleagues?)\b", re.I)
 _OBJECT_END = re.compile(
     r"\s+(?:and|then|while|as|in|for|with|using|on|at|during|to)\b|[,，、;；。.!?！？:：]|并|和|及|以及", re.I)
@@ -154,10 +154,13 @@ _OBJECT_TAIL = frozenset({"in", "for", "on", "with", "without", "during", "at", 
 _OBJECT_BREAK = re.compile(r"(?<!\d)[,，]|[,，](?!\d)|[;；:：()（）\[\]]")
 _SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s+)?|[在为于])")
 LEADERSHIP = ("lead", "own", "independent")
+# Shared credit said with an adverb ("wrote a report jointly"). Only the claim
+# locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
+_SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b", re.I)
 
 
 def _team_marked(text):
-    return bool(TEAM.search(text) or _TEAM_CONTEXT.search(text))
+    return bool(TEAM.search(text) or _TEAM_CONTEXT.search(text) or _SHARED_CREDIT.search(text))
 
 
 def _team_attributed(clause):
@@ -253,13 +256,22 @@ def _same_object(core, cores):
 
 
 # Words after an object that say when or how, not what: "a report independently",
-# "Python scripts daily", "a dashboard last summer". "Together" and "jointly" are
-# left out: dropping them can drop shared credit, so the review sees those.
+# "Python scripts daily", "a dashboard last summer". "Together", "jointly" and the
+# like are left out: dropping them drops shared credit (team_qualifier_dropped).
 _ADVERBIAL = frozenset({"daily", "weekly", "monthly", "yearly", "annually", "nightly", "alone", "independently",
                         "remotely", "overnight", "quickly", "manually", "automatically", "locally", "again",
                         "onsite", "online", "offline", "abroad", "recently", "previously", "today", "yesterday",
                         "once", "twice", "regularly", "frequently", "occasionally", "individually"})
 _TIME_LEAD = frozenset({"last", "this", "next", "every", "each", "past"})
+# Nouns that end in "-ly": a dropped one is a dropped head noun, not a manner adverb.
+_LY_NOUNS = frozenset({"ally", "anomaly", "assembly", "belly", "bully", "butterfly", "dragonfly", "family",
+                       "firefly", "folly", "gully", "holly", "homily", "italy", "jelly", "july", "lily",
+                       "monopoly", "panoply", "poly", "rally", "reply", "supply", "tally"})
+
+
+def _manner_adverb(word):
+    return (len(word) > 4 and word.endswith("ly") and word not in _LY_NOUNS
+            and not word.endswith(("assembly", "supply", "family")))
 
 
 def _adverbial(words):
@@ -282,8 +294,8 @@ def _source_cores(core):
 def _head_dropped(core, cores):
     """"a web app mockup" -> "a web app" is "hard": the shortened object ends before the source's head.
 
-    An unlisted "-ly" tail ("a report jointly", but also "a PCB assembly") is
-    "soft", for the review.
+    A dropped tail of unlisted manner adverbs ("500 images carefully") is
+    "soft", for the review; an "-ly" noun ("a PCB assembly") is a head noun.
     """
     if not core or core in cores:
         return None
@@ -291,7 +303,7 @@ def _head_dropped(core, cores):
              if len(other) > len(core) and other[:len(core)] == core and not _participle(other[len(core)])]
     if not tails:
         return None
-    if all(len(word) > 4 and word.endswith("ly") for tail in tails for word in tail):
+    if all(_manner_adverb(word) for tail in tails for word in tail):
         return "soft"
     return "hard"
 
@@ -372,11 +384,13 @@ def claim_upgrade_findings(proposed, original):
     Hard findings change who did what, add an action, status, leadership,
     setting, quality or relevance clause, move a number or name a different
     object, or drop a team/help/negation/publication qualifier entirely; no
-    reviewer may overrule them. Soft findings are the paraphrase-level
-    failures of this finite checker (a locked clause reworded while its
-    qualifier words survive, an object reworded or a setting moved), which a
-    faithfulness review may accept. ``claim_upgrade_detected`` is unchanged:
-    whenever it rejects, at least one finding is returned here.
+    reviewer may overrule them, so each must stay silent on faithful
+    rewrites. Soft findings go to a faithfulness review, which may accept them.
+    Every changed rewrite gets at least one finding: when no rule names a
+    problem, ``wording_changed`` still sends it to the review, because a regex
+    that sees nothing (Chinese syntax, an unknown verb) proves nothing. Only
+    text identical after whitespace/case normalization has none.
+    ``claim_upgrade_detected`` is unchanged.
     """
     if normalized(proposed) == normalized(original):
         return [], []
@@ -388,7 +402,8 @@ def claim_upgrade_findings(proposed, original):
     if HELP.search(original) and not HELP.search(proposed) and not (
             _team_marked(original) and _team_marked(proposed)):
         hard.append("help_qualifier_dropped")
-    # DENIAL also sees 不 a few characters before its verb (不太参与, 不再负责).
+    # DENIAL also sees 不 + a closed adverb before its verb (不太参与, 不再负责); an open
+    # gap would let 不到一周参与 stand in for a dropped 未参与.
     if (NEGATION.search(original) or DENIAL.search(original)) and not (
             NEGATION.search(proposed) or DENIAL.search(proposed)):
         hard.append("negation_dropped")
@@ -424,6 +439,8 @@ def claim_upgrade_findings(proposed, original):
         soft.append("locked_clause_reworded")
     if experience_attribution_violations(proposed, [original], allow_subjectless_claims=True):
         soft.append("attribution_unverified")
+    if not soft:
+        soft.append("wording_changed")
     return hard, soft
 
 

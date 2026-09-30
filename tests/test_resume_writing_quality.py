@@ -148,8 +148,10 @@ def test_other_project_technology_and_number_cannot_be_transferred(endpoint, mon
     ("我没有主导团队。本人审阅文档。", "本人审阅文档。我没有主导团队。"),
 ])
 def test_local_evidence_and_truthful_reordering_still_work(endpoint, monkeypatch, path, original, proposed):
-    result, _ = write(endpoint, monkeypatch, path, original, proposed)
+    result, calls = write(endpoint, monkeypatch, path, original, proposed)
     assert result["warnings"] == []
+    # Changed text is shown only after the faithfulness review, even when no rule objects.
+    assert any(messages[0]["content"].startswith("FAITHFULNESS REVIEW") for messages in calls)
     if path.endswith("/renovate"):
         assert result["sections"][0]["bullets"][0]["variants"][0]["text"] == proposed
     elif path.endswith("/bullet"):
