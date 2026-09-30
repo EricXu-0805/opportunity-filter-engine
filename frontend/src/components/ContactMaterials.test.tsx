@@ -5,11 +5,13 @@ import { translate } from '@/i18n/translate';
 import type { AuthState } from '@/lib/supabase';
 import type { ContactMaterialAttempt, ContactMaterialDeletion, ContactMaterialRecord } from '@/lib/contact-material';
 const mocks = vi.hoisted(() => ({
-  locale: 'en' as 'en' | 'zh', auth: vi.fn(), authChange: vi.fn(), openModal: vi.fn(), events: vi.fn(), confirmContact: vi.fn(),
+  locale: 'en' as 'en' | 'zh', auth: vi.fn(), authChange: vi.fn(), openModal: vi.fn(), events: vi.fn(),
+  trackInteraction: vi.fn(), confirmInteractionContact: vi.fn(), confirmContactEvent: vi.fn(), confirmApplicationEvent: vi.fn(),
   list: vi.fn(), get: vi.fn(), upload: vi.fn(), download: vi.fn(), remove: vi.fn(),
   attempts: vi.fn(), deletions: vi.fn(), prepare: vi.fn(), settle: vi.fn(), settleDeletion: vi.fn(),
 }));
-vi.mock('@/lib/supabase', () => ({ getAuthState: mocks.auth, onAuthChange: mocks.authChange, getContactEvents: mocks.events, confirmContact: mocks.confirmContact }));
+vi.mock('@/lib/supabase', () => ({ getAuthState: mocks.auth, onAuthChange: mocks.authChange, getContactEvents: mocks.events, trackInteraction: mocks.trackInteraction,
+  confirmInteractionContact: mocks.confirmInteractionContact, confirmContactEvent: mocks.confirmContactEvent, confirmApplicationEvent: mocks.confirmApplicationEvent }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: mocks.openModal }) }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: mocks.locale, t: (key: string, vars?: Record<string, string | number>) => translate(mocks.locale, key, vars) }) }));
 vi.mock('@/lib/contact-material-api', () => ({ getContactMaterials: mocks.list, getContactMaterial: mocks.get,
@@ -40,6 +42,9 @@ const label = (key: string) => translate(mocks.locale, `${contactKeys.has(key) ?
 const button = (key: string) => screen.getByRole('button', { name: label(key) });
 async function open() { fireEvent.click(button('open')); await screen.findByRole('region', { name: label('title') }); await waitFor(() => expect(mocks.list).toHaveBeenCalled()); }
 function selectFile(name = 'selected.pdf') { const file = new File(['%PDF-data'], name, { type: 'application/pdf' }); fireEvent.change(screen.getByLabelText(label('fileLabel')), { target: { files: [file] } }); return file; }
+function expectNoContactWrite() {
+  for (const writer of [mocks.trackInteraction, mocks.confirmInteractionContact, mocks.confirmContactEvent, mocks.confirmApplicationEvent]) expect(writer).not.toHaveBeenCalled();
+}
 function submit() { fireEvent.click(screen.getByRole('checkbox', { name: label('attestation') })); fireEvent.click(button('save')); }
 beforeEach(async () => {
   vi.resetAllMocks(); localStorage.clear(); advanceOwnerEpoch(uid); await syncLocalIdentityOwner(uid); mocks.locale = 'en'; attempts = []; deletions = []; records = [];
@@ -57,7 +62,7 @@ it.each(['en', 'zh'] as const)('shows the %s contact attachment scope and requir
   await open(); expect(screen.getByText(label('hint'))).toBeInTheDocument(); expect(button('save')).toBeDisabled();
   const selected = selectFile(); expect(button('save')).toBeDisabled(); submit(); await screen.findByText(label('saved'));
   expect(mocks.prepare).toHaveBeenCalledWith(captureOwnerToken(), scope, selected, true, expect.any(AbortSignal));
-  expect(mocks.upload).toHaveBeenCalledWith(attempt, selected, expect.objectContaining({ owner: captureOwnerToken() })); expect(mocks.confirmContact).not.toHaveBeenCalled();
+  expect(mocks.upload).toHaveBeenCalledWith(attempt, selected, expect.objectContaining({ owner: captureOwnerToken() })); expectNoContactWrite();
 });
 it('shows original file size and separate archive/link times, and downloads only on request', async () => {
   records = [record({ byteLength: 2048 })]; render(<ContactMaterials {...scope} />); await open();
@@ -130,5 +135,5 @@ it('keeps source summaries separate from attachments and binds the selected conf
   expect(screen.getAllByText('resume-source-only')).toHaveLength(2); expect(mocks.list).not.toHaveBeenCalled();
   const second = screen.getByText('Second email').closest('details')!; fireEvent.click(second.querySelector('summary')!); fireEvent.click(within(second).getByText(label('open')));
   await waitFor(() => expect(mocks.list).toHaveBeenCalledWith({ opportunityId: scope.opportunityId, contactEventId: secondId }, expect.any(Object)));
-  expect(mocks.list).toHaveBeenCalledOnce(); expect(mocks.confirmContact).not.toHaveBeenCalled();
+  expect(mocks.list).toHaveBeenCalledOnce(); expectNoContactWrite();
 });

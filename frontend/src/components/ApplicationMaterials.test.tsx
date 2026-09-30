@@ -252,8 +252,13 @@ describe('ApplicationMaterials — paginated, isolated reads', () => {
   it('does not allow an older list response to overwrite a newly verified receipt', async () => {
     attempts = [attempt]; const oldRead = deferred<ReturnType<typeof page>>(); records = [record()];
     mocks.getApplicationMaterials.mockReturnValueOnce(oldRead.promise).mockImplementation(async () => page());
+    // Settling can wait on another tab's lock; accept() reloads only after it,
+    // so the old read must resolve inside that window to test updateRecord.
+    const settled = deferred<boolean>(); mocks.settle.mockReturnValueOnce(settled.promise);
     render(<ApplicationMaterials {...scope} />); await open(); fireEvent.click(button('check')); await screen.findByText(label('saved')); await screen.findByText(attempt.input.filename);
-    await act(async () => oldRead.resolve(page([]))); expect(screen.getByText(attempt.input.filename)).toBeInTheDocument();
+    await waitFor(() => expect(mocks.settle).toHaveBeenCalledOnce()); expect(mocks.getApplicationMaterials).toHaveBeenCalledOnce();
+    await act(async () => oldRead.resolve(page([]))); expect(screen.getByText(attempt.input.filename)).toBeInTheDocument(); expect(screen.queryByText(label('empty'))).not.toBeInTheDocument();
+    await act(async () => { attempts = []; settled.resolve(true); }); expect(screen.getByTestId('application-material-record')).toHaveTextContent(attempt.input.filename);
   });
   it.each(['opportunity', 'application'] as const)('unmounts private state on %s change and ignores a late read', async changed => {
     const oldRead = deferred<ReturnType<typeof page>>(); mocks.getApplicationMaterials.mockReturnValueOnce(oldRead.promise).mockResolvedValueOnce(page([]));

@@ -185,15 +185,16 @@ describe('TailorModal', () => {
     const generate = screen.getByRole('button', { name: /tailor\.generate/ });
     fireEvent.click(generate);
 
-    await waitFor(() =>
-      // R71-D: locale flows from useT().locale ('en' in the test env)
-      // through tailorResume's options arg.
-      expect(mockTailorResume).toHaveBeenCalledWith(
-        expect.objectContaining({ major: 'CS' }),
-        'opp-123',
-        ['Worked on Python projects in CS 225'],
-        { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` },
-      ),
+    // Argument checks stay outside waitFor so a changed call shape fails with
+    // the argument diff instead of a polling timeout.
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+    // R71-D: locale flows from useT().locale ('en' in the test env)
+    // through tailorResume's options arg.
+    expect(mockTailorResume).toHaveBeenCalledWith(
+      expect.objectContaining({ major: 'CS' }),
+      'opp-123',
+      ['Worked on Python projects in CS 225'],
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
 
     await waitFor(() => {
@@ -718,13 +719,12 @@ describe('TailorModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
-    await waitFor(() =>
-      expect(mockTailorResume).toHaveBeenCalledWith(
-        expect.any(Object),
-        'opp-123',
-        ['first bullet', 'second bullet', 'third bullet'],
-        { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` },
-      ),
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+    expect(mockTailorResume).toHaveBeenCalledWith(
+      expect.any(Object),
+      'opp-123',
+      ['first bullet', 'second bullet', 'third bullet'],
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
   });
 

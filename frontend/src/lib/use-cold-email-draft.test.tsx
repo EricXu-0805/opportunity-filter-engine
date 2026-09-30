@@ -20,6 +20,7 @@ function locks(gate?: Promise<void>) {
     const run = tail.then(async () => { await gate; return fn(); }); tail = run.then(() => undefined, () => undefined); return run;
   } } });
 }
+function storedText() { return Array.from({ length: localStorage.length }, (_, i) => localStorage.getItem(localStorage.key(i)!) ?? '').join('\n'); }
 async function drain() { await act(async () => { for (let i = 0; i < 20; i += 1) await Promise.resolve(); }); }
 async function owner(id: string) { await act(async () => { advanceOwnerEpoch(id); await syncLocalIdentityOwner(id); }); }
 function mount(id = `hook-target-${++target}`, strict = false) {
@@ -137,10 +138,15 @@ it('retired late callbacks cannot remove or replace a new session with the same 
 it('owner switch and logout block pending callbacks from populating another owner session', async () => {
   const gate = deferred<void>(); locks(gate.promise); const hook = mount();
   act(() => hook.result.current.persist(payload('private A'))); act(() => advanceOwnerEpoch(null));
-  await act(async () => { gate.resolve(); }); await drain(); await owner(B);
+  await act(async () => { gate.resolve(); }); await drain();
+  // B's slot differs by key, so B opening nothing proves little. Check every
+  // stored value before B's namespace transition can sweep a late A write.
+  expect(storedText()).not.toContain('private A'); expect(hook.result.current.status).toBe('idle');
+  await owner(B);
   let opened!: ReturnType<typeof hook.result.current.open>; act(() => { opened = hook.result.current.open(hook.id); });
   expect(opened).toEqual({ draft: null, restored: false }); await persist(hook, payload('private B'));
   expect(readColdEmailDraft(captureOwnerToken(), hook.id)).toMatchObject({ draft: { body: 'private B' } });
+  expect(storedText()).not.toContain('private A');
 });
 it('clear removes the old payload and starts subsequent explicit edits from the tombstone revision', async () => {
   const hook = mount(); await persist(hook); let cleared = false;

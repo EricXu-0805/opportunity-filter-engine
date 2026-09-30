@@ -29,13 +29,32 @@ def source_policy(monkeypatch):
     return policy
 
 
+def trip_every_generator(monkeypatch, message):
+    # Each endpoint has its own generator: /cold-email and /stream use
+    # _run_engine, /variants uses generate_variants, /refine uses
+    # _refine_email_snapshot. A configured provider makes a late policy check
+    # reach chat_completion instead of silently falling back to a template.
+    def fail(*_a, **_k):
+        pytest.fail(message)
+
+    async def fail_async(*_a, **_k):
+        pytest.fail(message)
+
+    monkeypatch.setattr(ce, '_run_engine', fail)
+    monkeypatch.setattr(ce, 'generate_variants', fail)
+    monkeypatch.setattr(ce, '_refine_email_snapshot', fail_async)
+    monkeypatch.setattr(ce, 'is_configured', lambda: True)
+    monkeypatch.setattr(ce, 'chat_completion', fail)
+    monkeypatch.setattr(ce, 'authenticated_uid', fail_async)
+
+
 @pytest.mark.parametrize('path', ['', 'variants', 'stream', 'refine'])
 @pytest.mark.parametrize('policy', ['not_accepted', 'form_only', 'conflicting'])
 def test_restricted_contact_stops_before_any_generator(client, monkeypatch, source_policy, path, policy):
     source_policy['email_policy'] = policy
     if policy == 'conflicting':
         source_policy['status'] = 'conflicting'
-    monkeypatch.setattr(ce, '_run_engine', lambda *_a, **_k: pytest.fail('restricted source reached generator'))
+    trip_every_generator(monkeypatch, 'restricted source reached generator')
     response = post(client, path, FIRST, engine='ai')
     assert response.status_code == 409
     assert response.json()['detail']['code'] == 'EMAIL_CONTACT_INSTRUCTIONS'
@@ -83,7 +102,7 @@ def test_source_snapshots_do_not_leak_in_public_detail():
 @pytest.mark.parametrize('path', ['', 'stream', 'variants', 'refine'])
 def test_source_overflow_is_refused_before_generation(client, source_policy, monkeypatch, path):
     source_policy.update(review_required=True, reason='too_many_requirements')
-    monkeypatch.setattr(ce, '_run_engine', lambda *_a, **_k: pytest.fail('incomplete source reached generator'))
+    trip_every_generator(monkeypatch, 'incomplete source reached generator')
     response = post(client, path, FIRST)
     assert response.status_code == 409
     assert response.json()['detail']['code'] == 'EMAIL_CONTACT_INSTRUCTIONS'

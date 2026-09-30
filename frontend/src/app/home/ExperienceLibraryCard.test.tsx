@@ -53,6 +53,22 @@ describe('experience library review', () => {
     const button = within(editorFor('Old source')).getByRole('button', { name: 'home.experience.confirm' });
     expect(button).toBeDisabled(); fireEvent.click(button); expect(onChange).not.toHaveBeenCalled();
   });
+  it('cannot confirm a quote whose text still matches a replaced resume at the same offsets', async () => {
+    const [entry] = await evidence.createResumeCandidates('Old source'); const onChange = vi.fn(() => true);
+    const digest = vi.spyOn(evidence, 'sourceDigest');
+    // Same text at 0-10, different resume: only the signature check can refuse it.
+    render(<ExperienceLibraryCard ready profile={{ ...DEFAULT_PROFILE, resume_text: 'Old source, revised', experience_entries: [entry] }} onChange={onChange} t={t} />);
+    await act(async () => { await digest.mock.results.at(-1)!.value; });
+    const button = within(editorFor('Old source')).getByRole('button', { name: 'home.experience.confirm' });
+    expect(button).toBeDisabled(); fireEvent.click(button); expect(onChange).not.toHaveBeenCalled();
+  });
+  it('confirms the same quote once the digest of its own resume resolves', async () => {
+    const [entry] = await evidence.createResumeCandidates('Old source'); const onChange = vi.fn(() => true);
+    render(<ExperienceLibraryCard ready profile={{ ...DEFAULT_PROFILE, resume_text: 'Old source', experience_entries: [entry] }} onChange={onChange} t={t} />);
+    const button = within(editorFor('Old source')).getByRole('button', { name: 'home.experience.confirm' });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button); expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: entry.id, status: 'confirmed' })], expect.any(Object));
+  });
   it('keeps an over-limit correction for editing without truncating or submitting it', () => {
     const onChange = vi.fn(() => true);
     render(<ExperienceLibraryCard ready profile={{ ...DEFAULT_PROFILE, experience_entries: [manual()] }} onChange={onChange} t={t} />);

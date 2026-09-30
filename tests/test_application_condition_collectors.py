@@ -355,3 +355,22 @@ def test_shared_configuration_page_equivalence_is_symmetric():
     config["sources"][0]["programs"][0]["url"] = "http://example.edu/summer"
     assert cg._ambiguous_program_url(config, "http://example.edu/summer") is True
     assert cg._ambiguous_program_url(config, "https://example.edu/summer") is True
+
+
+def test_failed_capture_update_leaves_sibling_page_of_same_source_alone():
+    from src.contact_instructions import capture_failure
+    config = school()
+    source = config['sources'][0]
+    other_url = 'https://example.edu/winter'
+    target = cg._normalize_program(config, source, source['programs'][0])
+    sibling = cg._normalize_program(config, source, cg.program('winter', 'Winter research program', other_url, 'Curated'))
+    for record, url in ((target, URL), (sibling, other_url)):
+        record['metadata'].update(capture_metadata(capture_from_html(HTML, source_url=url, checked_at=STAMP)))
+    sibling_before = deepcopy(sibling)
+    update = {'school': 'example', 'collector_source': 'example_programs', 'requested_url': URL,
+              'capture': capture_failure(source_url='https://example.edu/other', record_source_url=URL, reason='redirect_mismatch')}
+    assert cg.apply_condition_capture_updates([target, sibling], [update]) == 1
+    assert target['metadata'][SOURCE_KEY] == []
+    assert target['metadata'][CAPTURE_KEY]['reason'] == 'redirect_mismatch'
+    assert sibling == sibling_before
+    assert sibling['metadata'][SOURCE_KEY]
