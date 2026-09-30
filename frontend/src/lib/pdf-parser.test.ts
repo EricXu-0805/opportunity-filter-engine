@@ -614,6 +614,37 @@ describe('positioned text items', () => {
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text).toBe('- Compared Grad-CAM and integrated-gradients saliency maps.');
   });
+
+  it('keeps apart two lines that a paragraph gap separates', async () => {
+    const full = 'the first paragraph wraps here and its words run to the edge';
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at(`Summary: ${full}`, 50, 500, 700, { hasEOL: true }),
+      at(full, 50, 500, 688, { hasEOL: true }),
+      at('and this line opens the next paragraph', 50, 180, 670),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      `Summary: ${full} ${full}`,
+      'and this line opens the next paragraph',
+    ]);
+  });
+
+  it('never continues a line that ends a sentence, even into a lowercase line', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Reached 0.87 AUC on a held-out split of the chest X-ray images.', 50, 500, 700, { hasEOL: true }),
+      at('iOS app for tracking lab inventory', 50, 160, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Reached 0.87 AUC on a held-out split of the chest X-ray images.',
+      'iOS app for tracking lab inventory',
+    ]);
+  });
+
+  it('separates two runs on one line by a tab when a column gap lies between them', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Biomechanics Lab', 50, 160), at('Jun 2025 - Aug 2025', 450, 90),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text).toBe('Research Intern, Biomechanics Lab\tJun 2025 - Aug 2025');
+  });
 });
 
 describe('positioned CJK text', () => {
