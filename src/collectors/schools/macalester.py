@@ -1,15 +1,16 @@
 """Macalester College campus opportunity-graph config.
 
 Curated seed records of Macalester's undergraduate-research and fellowship
-landscape, centered on the college's Office of Student Research and Creativity
-and the Jan Serie Center for Scholarship and Teaching. Covers the flagship
-Collaborative Summer Research (CSR) program and its named summer-research and
-fellowship tracks: the Young Researchers in STEM program, the Beckman Scholars
-Program, the Serie Center student-faculty summer collaborations, the Mellon
-Mays Undergraduate Fellowship, the national "Fellowships to Go Anywhere"
-portal, the extended/longer-term research programs, and the on-campus/special
-summer research opportunities hub. URLs curl-verified live (HTTP 200) on
-2026-07-22.
+landscape, centered on the college's Office of Student Research and Creativity.
+Covers the flagship Collaborative Summer Research (CSR) program and its named
+summer-research and fellowship tracks: the Young Researchers in STEM program,
+the Beckman Scholars Program, the Mellon Mays Undergraduate Fellowship, the
+national "Fellowships to Go Anywhere" portal, the extended/longer-term research
+programs, and the on-campus/special summer research opportunities hub. URLs
+curl-verified live (HTTP 200) on 2026-07-22. The Serie Center's student-research
+funding page went 404 by 2026-09-27 and its site now lists faculty funding only,
+so that program was dropped; CSR is the college's faculty-student summer
+collaboration fund.
 
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -39,7 +40,6 @@ SCHOOL: dict = {
             "seeds": [
                 f"{_OSR}/summer-research-opportunities/",
                 f"{_OSR}/",
-                "https://www.macalester.edu/serie-center/funding/studentresearch/",
             ],
             "programs": [
                 program(
@@ -93,23 +93,6 @@ SCHOOL: dict = {
                     international_friendly="unknown",
                     keywords=["chemistry", "biology", "mentored research",
                               "multi-year fellowship"],
-                ),
-                program(
-                    "macalester_serie_collaboration",
-                    "Student-Faculty Collaborations & Summer Research (Serie Center)",
-                    "https://www.macalester.edu/serie-center/funding/studentresearch/",
-                    "The Jan Serie Center for Scholarship and Teaching funds "
-                    "teams of Macalester faculty and students to engage in "
-                    "significant projects over a four- to ten-week period during "
-                    "the summer, related to the faculty member's curricular, "
-                    "pedagogical, scholarly, or creative interests.",
-                    lab_or_program="Jan Serie Center",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="yes",
-                    keywords=["student-faculty collaboration", "summer research",
-                              "any discipline", "faculty mentor"],
                 ),
                 program(
                     "macalester_mmuf",
