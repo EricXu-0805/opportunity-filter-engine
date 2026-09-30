@@ -230,6 +230,51 @@
    "original": "团队开发了解析器。本人开发了不少测试用例。",
    "rewrite": "本人开发了不少测试用例。团队开发了解析器。",
    "kind": "不少 is not a denial"
+  },
+  {
+   "original": "Wrote a report independently.",
+   "rewrite": "Wrote a report.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Wrote Python scripts daily.",
+   "rewrite": "Wrote Python scripts.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Built a dashboard last summer.",
+   "rewrite": "Built a dashboard.",
+   "kind": "dropped time phrase"
+  },
+  {
+   "original": "Built a website alone.",
+   "rewrite": "Built a website.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Maintained the lab server remotely.",
+   "rewrite": "Maintained the lab server.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "我开发了测试，不再负责部署。",
+   "rewrite": "开发了测试，不再负责部署。",
+   "kind": "dropped 我; denial kept"
+  },
+  {
+   "original": "本人开发了解析器，不断完善测试。",
+   "rewrite": "开发了解析器，不断完善测试。",
+   "kind": "dropped 本人; 不断 before an action verb is not a denial"
+  },
+  {
+   "original": "Built a web app quickly for the club.",
+   "rewrite": "Built a web app for the club.",
+   "kind": "dropped trailing adverb before a setting"
+  },
+  {
+   "original": "针对不稳定的开发环境，本人搭建了测试框架。",
+   "rewrite": "本人搭建了测试框架，用于不稳定的开发环境。",
+   "kind": "reordered; 不稳定的 is not a denial"
   }
  ],
  "unfaithful": [
@@ -407,6 +452,46 @@
    "original": "Wrote documentation for a class project",
    "rewrite": "Wrote clear documentation for a class project",
    "kind": "quality claim"
+  },
+  {
+   "original": "我开发了测试，不牵头项目。",
+   "rewrite": "我开发了测试，牵头项目。",
+   "kind": "denied to affirmed (不牵头)"
+  },
+  {
+   "original": "我开发了测试，不直接开发解析器。",
+   "rewrite": "我开发了测试，开发了解析器。",
+   "kind": "denied to affirmed (不直接开发)"
+  },
+  {
+   "original": "我编写了测试，不再负责部署。",
+   "rewrite": "我编写了测试，负责部署。",
+   "kind": "denied to affirmed (不再负责)"
+  },
+  {
+   "original": "我编写了测试，不亲自设计实验。",
+   "rewrite": "我编写了测试，设计了实验。",
+   "kind": "denied to affirmed (不亲自设计)"
+  },
+  {
+   "original": "我开发了测试，不再直接负责部署。",
+   "rewrite": "我开发了测试，负责部署。",
+   "kind": "denied to affirmed (不再直接负责)"
+  },
+  {
+   "original": "Wrote Python daily reports.",
+   "rewrite": "Wrote Python.",
+   "kind": "dropped head noun"
+  },
+  {
+   "original": "我编写了测试，不太参与开发。",
+   "rewrite": "我编写了测试，参与开发。",
+   "kind": "denied to affirmed (不太参与)"
+  },
+  {
+   "original": "我编写了测试，不再参与项目。",
+   "rewrite": "我编写了测试，参与项目。",
+   "kind": "denied to affirmed (不再参与)"
   }
  ]
 }

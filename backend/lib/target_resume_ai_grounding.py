@@ -135,9 +135,15 @@ SETTING = re.compile(
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 # "did not build", "never led", "没有主导": a denial of the action that follows.
 # A bare 不/未 is not one: 不断 (keep on), 不同 (different), 不少 (many), 未来.
+# 不 denies an action verb up to three characters on (不牵头, 不再负责, 不再直接负责),
+# unless it starts a compound that asserts: 不断/不停 (keep on), 不仅/不但/不光/不单
+# (not only), 不得不 (had to). A 的 in between makes the verb a noun (不规则的设计).
+_ZH_ACTIONS = "|".join(re.findall(r"[一-鿿]+", "|".join(ACTIONS.values())))
 DENIAL = re.compile(
     r"\b(?:not|never|no)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未(?!来|知)"
-    r"|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|开发|构建|实现|搭建|设计|审阅|检查|独自|单独)", re.I)
+    r"|(?<!得)不(?:曾|会|能|是"
+    r"|(?!断|停|懈|时|同|少|乏|但|仅|只|止|光|单(?!独)|久|错|过|管|论|等|一|得不)(?:(?!的)[一-鿿]){0,3}?(?:参与|接受|录用|发表|"
+    + _ZH_ACTIONS + r"))", re.I)
 _TEAM_OWNER = re.compile(r"\b(?:my|our)\s+(?:team|teammates?|group|colleagues?)\b", re.I)
 _OBJECT_END = re.compile(
     r"\s+(?:and|then|while|as|in|for|with|using|on|at|during|to)\b|[,，、;；。.!?！？:：]|并|和|及|以及", re.I)
@@ -246,15 +252,52 @@ def _same_object(core, cores):
     return False
 
 
+# Words after an object that say when or how, not what: "a report independently",
+# "Python scripts daily", "a dashboard last summer". "Together" and "jointly" are
+# left out: dropping them can drop shared credit, so the review sees those.
+_ADVERBIAL = frozenset({"daily", "weekly", "monthly", "yearly", "annually", "nightly", "alone", "independently",
+                        "remotely", "overnight", "quickly", "manually", "automatically", "locally", "again",
+                        "onsite", "online", "offline", "abroad", "recently", "previously", "today", "yesterday",
+                        "once", "twice", "regularly", "frequently", "occasionally", "individually"})
+_TIME_LEAD = frozenset({"last", "this", "next", "every", "each", "past"})
+
+
+def _adverbial(words):
+    i = 0
+    while i < len(words):
+        if words[i] in _TIME_LEAD and i + 1 < len(words):
+            i += 2
+        elif words[i] in _ADVERBIAL:
+            i += 1
+        else:
+            return False
+    return True
+
+
+def _source_cores(core):
+    """``core`` and, if it ends by saying when or how, the object alone ("python scripts daily")."""
+    return {core} | {core[:i] for i in range(1, len(core)) if _adverbial(core[i:])}
+
+
 def _head_dropped(core, cores):
-    """"a web app mockup" -> "a web app": the shortened object ends before the source's head."""
-    return bool(core) and core not in cores and any(
-        len(other) > len(core) and other[:len(core)] == core and not _participle(other[len(core)])
-        for other in cores)
+    """"a web app mockup" -> "a web app" is "hard": the shortened object ends before the source's head.
+
+    An unlisted "-ly" tail ("a report jointly", but also "a PCB assembly") is
+    "soft", for the review.
+    """
+    if not core or core in cores:
+        return None
+    tails = [other[len(core):] for other in cores
+             if len(other) > len(core) and other[:len(core)] == core and not _participle(other[len(core)])]
+    if not tails:
+        return None
+    if all(len(word) > 4 and word.endswith("ly") for tail in tails for word in tail):
+        return "soft"
+    return "hard"
 
 
 def _parsed_claim_findings(proposed, original):
-    """Hard findings among EN claims the attribution parser reads but cannot support.
+    """(hard, soft) findings among EN claims the attribution parser reads but cannot support.
 
     The parser names actor, action, polarity and ordered object for both texts,
     so a claim whose object the original denies, gives to the team, attaches a
@@ -262,14 +305,18 @@ def _parsed_claim_findings(proposed, original):
     the parser cannot relate to any source fact stays with the review.
     """
     sources = _facts(original, entry=0, source=True, allow_subjectless_claims=True)
-    found = []
+    found, soft = [], []
     # The parser accepts a shortened object as dropped detail; dropping the
     # head noun ("a web app mockup" -> "a web app") names a different thing.
     for claim in _facts(proposed, entry=-1, source=False, allow_subjectless_claims=True):
-        cores = {_object_core(fact) for fact in sources
-                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative}
-        if not claim.negative and _head_dropped(_object_core(claim), cores):
+        cores = {variant for fact in sources
+                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative
+                 for variant in _source_cores(_object_core(fact))}
+        dropped = None if claim.negative else _head_dropped(_object_core(claim), cores)
+        if dropped == "hard":
             found.append("object_changed")
+        elif dropped == "soft":
+            soft.append("object_shortened")
     for claim in _unsupported_claims(proposed, [original], True, None):
         if claim.negative:
             continue
@@ -287,12 +334,13 @@ def _parsed_claim_findings(proposed, original):
         if placed and numbers & {token for fact in sources for token in fact.objects} - {
                 token for fact in placed for token in fact.objects}:
             found.append("quantity_moved")
-        cores = {_object_core(fact) for fact in sources
-                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative}
+        cores = {variant for fact in sources
+                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative
+                 for variant in _source_cores(_object_core(fact))}
         # A spelled-out or abbreviated head is a paraphrase for the review.
         if cores and not _same_object(core, cores):
             found.append("object_changed")
-    return found
+    return found, soft
 
 
 def _setting_in(setting, original_normal):
@@ -340,7 +388,9 @@ def claim_upgrade_findings(proposed, original):
     if HELP.search(original) and not HELP.search(proposed) and not (
             _team_marked(original) and _team_marked(proposed)):
         hard.append("help_qualifier_dropped")
-    if NEGATION.search(original) and not NEGATION.search(proposed):
+    # DENIAL also sees 不 a few characters before its verb (不太参与, 不再负责).
+    if (NEGATION.search(original) or DENIAL.search(original)) and not (
+            NEGATION.search(proposed) or DENIAL.search(proposed)):
         hard.append("negation_dropped")
     if PUBLICATION.search(original) and not PUBLICATION.search(proposed):
         hard.append("publication_qualifier_dropped")
@@ -366,8 +416,8 @@ def claim_upgrade_findings(proposed, original):
         hard.append("setting_added")
     if any(match.re is QUALITY and normalized(match.group(0)) not in original_normal for match in comparable):
         hard.append("quality_claim_added")
-    hard.extend(dict.fromkeys(_moved_claims(proposed, original) + _parsed_claim_findings(proposed, original)))
-    soft = []
+    parsed_hard, soft = _parsed_claim_findings(proposed, original)
+    hard.extend(dict.fromkeys(_moved_claims(proposed, original) + parsed_hard))
     proposed_normal = normalized(proposed)
     if any((NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause))
            and normalized(clause) not in proposed_normal for clause in clauses(original)):

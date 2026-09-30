@@ -253,6 +253,16 @@ class TestFaithfulnessCorpus:
         if case["kind"] not in GROUNDING_ONLY:
             assert claim_upgrade_findings(case["rewrite"], case["original"])[0]
 
+    @pytest.mark.parametrize(("original", "proposed"), [
+        # "Assembly" is the head noun; "jointly" is shared credit. Neither is on
+        # the when/how list, so a dropped "-ly" word goes to the review.
+        ("Built a PCB assembly.", "Built a PCB."),
+        ("Wrote a report jointly.", "Wrote a report."),
+    ])
+    def test_a_dropped_unlisted_ly_word_goes_to_the_review(self, original, proposed):
+        assert claim_upgrade_findings(proposed, original) == ([], ["object_shortened"])
+        assert tailor._validate_bullet_rewrite(proposed, original)[0] == "review"
+
 
 @pytest.mark.parametrize("path", PATHS)
 class TestReviewDecidesParaphrases:
