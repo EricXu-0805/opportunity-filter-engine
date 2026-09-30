@@ -1,0 +1,412 @@
+{
+ "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or append a relevance or quality claim; each must be rejected before any review.",
+ "faithful": [
+  {
+   "original": "I built a Python parser for the course project.",
+   "rewrite": "Built a Python parser for the course project.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "I analyzed 120 EEG recordings in MATLAB.",
+   "rewrite": "Analyzed 120 EEG recordings in MATLAB.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments at the Smith Lab.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Wrote unit tests for a class project.",
+   "rewrite": "Wrote unit tests in a class project.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Collected soil samples in the field course.",
+   "rewrite": "Collected soil samples during the field course.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Collected 300 water samples during the summer internship.",
+   "rewrite": "Collected 300 water samples in the summer internship.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Built a web app for the club.",
+   "rewrite": "Built a web application for the club.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Wrote docs for the parser.",
+   "rewrite": "Wrote documentation for the parser.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Implemented a CNN in PyTorch.",
+   "rewrite": "Implemented a convolutional neural network in PyTorch.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built a GUI for the lab microscope.",
+   "rewrite": "Built a graphical user interface for the lab microscope.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Trained an ML model on 5,000 images.",
+   "rewrite": "Trained a machine learning model on 5,000 images.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built the lab stats pipeline in R.",
+   "rewrite": "Built the lab statistics pipeline in R.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Implemented an LSTM model in PyTorch.",
+   "rewrite": "Implemented a long short-term memory model in PyTorch.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built a dashboard; not deployed to production.",
+   "rewrite": "Built a dashboard (not deployed to production).",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Built a prototype with no external funding.",
+   "rewrite": "Built a prototype without external funding.",
+   "kind": "without"
+  },
+  {
+   "original": "Analyzed survey data: 212 responses in R.",
+   "rewrite": "Analyzed survey data (212 responses) in R.",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Built a Flask API; I did not write the frontend.",
+   "rewrite": "Built a Flask API (did not write the frontend).",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Paper submitted to CHI 2026, not yet accepted.",
+   "rewrite": "Paper submitted to CHI 2026; not yet accepted.",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Tested 3 sensor boards, recording failures.",
+   "rewrite": "Tested 3 sensor boards and recorded failures.",
+   "kind": "tense change"
+  },
+  {
+   "original": "Analyze EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "tense change"
+  },
+  {
+   "original": "Analyzed EEG data in MATLAB.",
+   "rewrite": "Analysed EEG data in MATLAB.",
+   "kind": "spelling"
+  },
+  {
+   "original": "Cleaned survey data in R and wrote the codebook.",
+   "rewrite": "Wrote the codebook and cleaned survey data in R.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Presented a poster at the undergraduate research symposium in 2025.",
+   "rewrite": "In 2025, presented a poster at the undergraduate research symposium.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Did not lead the project; I wrote the data loader.",
+   "rewrite": "Wrote the data loader; did not lead the project.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Helped design an online survey as part of a four-person team.",
+   "rewrite": "As part of a four-person team, helped design an online survey.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Reviewed 40 papers on sleep and memory.",
+   "rewrite": "Reviewed 40 papers on memory and sleep.",
+   "kind": "reordered objects"
+  },
+  {
+   "original": "Used Python to analyze 120 EEG recordings.",
+   "rewrite": "Analyzed 120 EEG recordings using Python.",
+   "kind": "reordered method"
+  },
+  {
+   "original": "Built the drivetrain with two teammates.",
+   "rewrite": "Built the drivetrain as part of a three-person team.",
+   "kind": "team size restated"
+  },
+  {
+   "original": "Built the Illini Robotics rover drivetrain with two teammates.",
+   "rewrite": "As part of a three-person team, built the Illini Robotics rover drivetrain.",
+   "kind": "team size restated"
+  },
+  {
+   "original": "Collaborated with two teammates to build a robot arm.",
+   "rewrite": "Built a robot arm in collaboration with two teammates.",
+   "kind": "team restated"
+  },
+  {
+   "original": "Built a sentiment classifier with 91% accuracy.",
+   "rewrite": "Built a sentiment classifier achieving 91% accuracy.",
+   "kind": "reworded result"
+  },
+  {
+   "original": "Tutored 15 students in calculus.",
+   "rewrite": "Tutored 15 students in calculus each week.",
+   "kind": "detail kept"
+  },
+  {
+   "original": "Organized weekly reading group meetings.",
+   "rewrite": "Organized the weekly reading-group meetings.",
+   "kind": "hyphenation"
+  },
+  {
+   "original": "Programmed an Arduino to log temperature every 10 minutes.",
+   "rewrite": "Programmed an Arduino to log the temperature every 10 minutes.",
+   "kind": "article"
+  },
+  {
+   "original": "我用 Python 分析了脑电数据。",
+   "rewrite": "用 Python 分析了脑电数据。",
+   "kind": "dropped 我"
+  },
+  {
+   "original": "本人开发了测试脚本。",
+   "rewrite": "开发了测试脚本。",
+   "kind": "dropped 本人"
+  },
+  {
+   "original": "在张老师实验室整理了实验记录。",
+   "rewrite": "于张老师实验室整理了实验记录。",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了测试。团队开发了解析器。",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "本人开发了解析器，并不断改进。",
+   "rewrite": "本人开发了解析器并不断改进。",
+   "kind": "punctuation"
+  },
+  {
+   "original": "与两名队友共同搭建了机器人底盘。",
+   "rewrite": "作为三人小组成员，共同搭建了机器人底盘。",
+   "kind": "team size restated"
+  },
+  {
+   "original": "论文已投稿，尚未录用。",
+   "rewrite": "论文已投稿；尚未录用。",
+   "kind": "punctuation"
+  },
+  {
+   "original": "我没有主导项目，但负责了数据清洗。",
+   "rewrite": "负责了数据清洗，但没有主导项目。",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "在 CS 225 课程中实现了哈希表。",
+   "rewrite": "在 CS 225 课程里实现了哈希表。",
+   "kind": "reworded setting"
+  },
+  {
+   "original": "本人设计了三种不同的实验条件。",
+   "rewrite": "设计了三种不同的实验条件。",
+   "kind": "dropped 本人; 不同 is not a denial"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了不少测试用例。",
+   "rewrite": "本人开发了不少测试用例。团队开发了解析器。",
+   "kind": "不少 is not a denial"
+  }
+ ],
+ "unfaithful": [
+  {
+   "original": "My team built a Python parser. I wrote parser tests.",
+   "rewrite": "Built a Python parser and wrote parser tests.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "Our team trained a model reaching 90% accuracy.",
+   "rewrite": "Trained a model reaching 90% accuracy.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "My team built a Python parser. I wrote parser tests.",
+   "rewrite": "I built a Python parser and wrote parser tests. My team built a Python parser.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和测试，不断改进。团队开发了解析器。",
+   "kind": "team to solo behind 不断"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和不同的测试。团队开发了解析器。",
+   "kind": "team to solo behind 不同"
+  },
+  {
+   "original": "Built the drivetrain with two teammates.",
+   "rewrite": "Independently built the drivetrain.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "作为四人小组成员，本人协助设计问卷。",
+   "rewrite": "本人设计问卷。",
+   "kind": "team to solo"
+  },
+  {
+   "original": "I did not run the statistics; I cleaned the data.",
+   "rewrite": "Ran the statistics and cleaned the data.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "I built a Python parser. I did not build the compiler.",
+   "rewrite": "I built a compiler. I did not build the compiler.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "我主导了测试。我没有主导项目。",
+   "rewrite": "我主导了项目。我没有主导项目。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "我主导了测试。我没有主导项目。",
+   "rewrite": "我主导了项目，不断推进。我没有主导项目。",
+   "kind": "denied to affirmed behind 不断"
+  },
+  {
+   "original": "我没有开发解析器，但开发了测试。",
+   "rewrite": "我开发了解析器，但没有开发测试。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "Paper submitted to CHI 2026, not yet accepted.",
+   "rewrite": "Paper accepted at CHI 2026.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "论文已投稿，尚未录用。",
+   "rewrite": "论文已录用。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "As part of a four-person team, I helped design the survey.",
+   "rewrite": "As part of a four-person team, led the design of the survey.",
+   "kind": "new lead"
+  },
+  {
+   "original": "Helped organize the reading group.",
+   "rewrite": "Led the reading group.",
+   "kind": "new lead"
+  },
+  {
+   "original": "作为四人小组成员，本人协助设计问卷。",
+   "rewrite": "作为四人小组成员，负责设计问卷。",
+   "kind": "new own"
+  },
+  {
+   "original": "Wrote the data loader.",
+   "rewrite": "Owned the data pipeline, writing the data loader.",
+   "kind": "new own"
+  },
+  {
+   "original": "Implemented machine learning experiments in Python",
+   "rewrite": "Built machine learning models in Python for a research project",
+   "kind": "new setting"
+  },
+  {
+   "original": "用 Python 分析了脑电数据。",
+   "rewrite": "为课题组的项目用 Python 分析了脑电数据。",
+   "kind": "new setting"
+  },
+  {
+   "original": "Implemented a hash table in C++.",
+   "rewrite": "Implemented a hash table in C++ during CS 225 coursework.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments in the Smith Lab for a research project.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Wrote unit tests for the parser.",
+   "rewrite": "Wrote unit tests for the parser during a summer internship.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments in the Jones Lab.",
+   "kind": "different setting"
+  },
+  {
+   "original": "Implemented Python ML exercises in CS 225",
+   "rewrite": "Implemented Python ML in CS 225",
+   "kind": "dropped head noun"
+  },
+  {
+   "original": "Built a web app mockup.",
+   "rewrite": "Built a web app.",
+   "kind": "dropped head noun"
+  },
+  {
+   "original": "Wrote a parser test.",
+   "rewrite": "Wrote a parser.",
+   "kind": "dropped head noun"
+  },
+  {
+   "original": "I improved parser throughput by 45% and reduced parser latency by 12%.",
+   "rewrite": "I improved parser throughput by 12% and reduced parser latency by 45%.",
+   "kind": "number moved"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 250 survey responses in R.",
+   "kind": "new number"
+  },
+  {
+   "original": "Tested 3 sensor boards.",
+   "rewrite": "Tested 3 sensor boards across 5 prototypes.",
+   "kind": "new number"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R, applying computational modeling.",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R, supporting human factors research.",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "清洗了212份问卷数据。",
+   "rewrite": "清洗了212份问卷数据，培养了严谨态度。",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "Wrote documentation for a class project",
+   "rewrite": "Wrote clear documentation for a class project",
+   "kind": "quality claim"
+  }
+ ]
+}

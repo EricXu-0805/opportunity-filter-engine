@@ -12,6 +12,7 @@ from backend.lib.email_experience_attribution import (
     _TEAM_CONTEXT,
     _facts,
     _objects_overlap,
+    _tokens,
     _unsupported_claims,
     experience_attribution_violations,
 )
@@ -133,12 +134,19 @@ SETTING = re.compile(
     r"|(?:在|为|于)[^，,。；;在为于]{0,20}?(?:项目|课题|实验室|课程|课堂|公司|实习|比赛|竞赛)", re.I)
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 # "did not build", "never led", "没有主导": a denial of the action that follows.
-DENIAL = re.compile(r"\b(?:not|never|no)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未|不", re.I)
+# A bare 不/未 is not one: 不断 (keep on), 不同 (different), 不少 (many), 未来.
+DENIAL = re.compile(
+    r"\b(?:not|never|no)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未(?!来|知)"
+    r"|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|开发|构建|实现|搭建|设计|审阅|检查|独自|单独)", re.I)
 _TEAM_OWNER = re.compile(r"\b(?:my|our)\s+(?:team|teammates?|group|colleagues?)\b", re.I)
 _OBJECT_END = re.compile(
     r"\s+(?:and|then|while|as|in|for|with|using|on|at|during|to)\b|[,，、;；。.!?！？:：]|并|和|及|以及", re.I)
-_OBJECT_TAIL = frozenset({"in", "for", "on", "with", "during", "at", "as", "of", "using", "via", "by", "from",
-                          "to", "across", "into", "within", "through", "under", "and", "reaching"})
+_OBJECT_TAIL = frozenset({"in", "for", "on", "with", "without", "during", "at", "as", "of", "using", "via", "by",
+                          "from", "to", "across", "into", "within", "through", "under", "and", "reaching",
+                          "achieving", "not", "no", "never", "did", "which", "that", "including", "except"})
+# Commas and brackets end an object; the parser's tokens have lost them.
+_OBJECT_BREAK = re.compile(r"(?<!\d)[,，]|[,，](?!\d)|[;；:：()（）\[\]]")
+_SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s+)?|[在为于])")
 LEADERSHIP = ("lead", "own", "independent")
 
 
@@ -151,12 +159,12 @@ def _team_attributed(clause):
     return _team_marked(clause) and not PERSONAL.search(_TEAM_OWNER.sub(" ", clause))
 
 
-def _action_objects(clause, after=0):
+def _action_objects(clause, after=0, before=None):
     """(action family, object words) for each ACTIONS verb in ``clause``, EN or ZH."""
     pairs = set()
     for name, pattern in ACTIONS.items():
         for match in re.finditer(pattern, clause, re.I):
-            if match.start() < after:
+            if match.start() < after or (before is not None and match.start() >= before):
                 continue
             rest = re.sub(r"^\s*(?:了|过)?", "", clause[match.end():])
             words = re.sub(r"\b(?:a|an|the|its|their)\b", " ", _OBJECT_END.split(rest, maxsplit=1)[0].lower())
@@ -172,13 +180,13 @@ def _moved_claims(proposed, original):
         denial = DENIAL.search(clause)
         if denial:
             denied |= _action_objects(clause, after=denial.start())
-        else:
-            (team if _team_attributed(clause) else affirmed).update(_action_objects(clause))
+        # What a clause says before its denial is still asserted.
+        (team if _team_attributed(clause) else affirmed).update(
+            _action_objects(clause, before=denial.start() if denial else None))
     found = []
     for clause in clauses(proposed):
-        if DENIAL.search(clause):
-            continue
-        pairs = _action_objects(clause)
+        denial = DENIAL.search(clause)
+        pairs = _action_objects(clause, before=denial.start() if denial else None)
         if not _team_attributed(clause) and pairs & (team - affirmed):
             found.append("team_result_claimed")
         if pairs & (denied - affirmed):
@@ -186,14 +194,63 @@ def _moved_claims(proposed, original):
     return found
 
 
-def _object_head(objects):
+def _object_core(fact):
+    """The object noun phrase before its first comma, bracket or tail word."""
+    objects, limit = fact.objects, len(fact.objects)
+    stream = _tokens(fact.clause)
+    start = next((i for i in range(len(stream) - limit + 1) if stream[i:i + limit] == objects), None)
+    if start is not None:
+        count = 0
+        for segment in _OBJECT_BREAK.split(fact.clause)[:-1]:
+            count += len(_tokens(segment))
+            if start < count < start + limit:
+                limit = count - start
+                break
     core = []
-    for token in objects:
+    for token in objects[:limit]:
         if token in _OBJECT_TAIL:
             break
         core.append(token)
+    return tuple(core)
+
+
+def _object_head(core):
     head = core[-1] if core else ""
     return head[:-1] if len(head) > 3 and head.endswith("s") else head
+
+
+def _participle(token):
+    return len(token) > 4 and token.endswith(("ing", "ed"))
+
+
+def _heads(core):
+    # Without its comma, "a sensor rig supporting 4 experiments" may end at "rig".
+    return {_object_head(core)} | {_object_head(core[:i]) for i in range(1, len(core)) if _participle(core[i])}
+
+
+def _abbreviates(core, other):
+    head = _object_head(core)
+    return len(head) >= 2 and head.isalpha() and "".join(token[0] for token in other).endswith(head)
+
+
+def _same_object(core, cores):
+    """A head the source names, spells out ("app"/"application") or abbreviates ("CNN")."""
+    for other in cores:
+        for head in _heads(core):
+            for source_head in _heads(other):
+                short, long = sorted((head, source_head), key=len)
+                if head == source_head or (len(short) >= 3 and long.startswith(short)):
+                    return True
+        if _abbreviates(core, other) or _abbreviates(other, core):
+            return True
+    return False
+
+
+def _head_dropped(core, cores):
+    """"a web app mockup" -> "a web app": the shortened object ends before the source's head."""
+    return bool(core) and core not in cores and any(
+        len(other) > len(core) and other[:len(core)] == core and not _participle(other[len(core)])
+        for other in cores)
 
 
 def _parsed_claim_findings(proposed, original):
@@ -206,6 +263,13 @@ def _parsed_claim_findings(proposed, original):
     """
     sources = _facts(original, entry=0, source=True, allow_subjectless_claims=True)
     found = []
+    # The parser accepts a shortened object as dropped detail; dropping the
+    # head noun ("a web app mockup" -> "a web app") names a different thing.
+    for claim in _facts(proposed, entry=-1, source=False, allow_subjectless_claims=True):
+        cores = {_object_core(fact) for fact in sources
+                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative}
+        if not claim.negative and _head_dropped(_object_core(claim), cores):
+            found.append("object_changed")
     for claim in _unsupported_claims(proposed, [original], True, None):
         if claim.negative:
             continue
@@ -216,17 +280,28 @@ def _parsed_claim_findings(proposed, original):
                 not fact.negative and (fact.actor in {"team", "the team"} or "team" in fact.qualifiers)
                 for fact in same):
             found.append("team_result_claimed")
-        head = _object_head(claim.objects)
+        core = _object_core(claim)
+        head = _object_head(core)
         numbers = {token for token in claim.objects if token[0].isdigit()}
-        placed = [fact for fact in sources if fact.action == claim.action and _object_head(fact.objects) == head]
+        placed = [fact for fact in sources if fact.action == claim.action and _object_head(_object_core(fact)) == head]
         if placed and numbers & {token for fact in sources for token in fact.objects} - {
                 token for fact in placed for token in fact.objects}:
             found.append("quantity_moved")
-        heads = {_object_head(fact.objects) for fact in sources
+        cores = {_object_core(fact) for fact in sources
                  if fact.action == claim.action and fact.actor == claim.actor and not fact.negative}
-        if heads and head not in heads:
+        # A spelled-out or abbreviated head is a paraphrase for the review.
+        if cores and not _same_object(core, cores):
             found.append("object_changed")
     return found
+
+
+def _setting_in(setting, original_normal):
+    """"at the Smith Lab" restates "in the Smith Lab": same setting, another preposition."""
+    if setting in original_normal:
+        return True
+    place = _SETTING_LEAD.sub("", setting)
+    return bool(re.search(r"(?:\b(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s+)?|[在为于])"
+                          + re.escape(place) + r"(?![a-z0-9_])", original_normal))
 
 
 def _appended_relevance(proposed, original):
@@ -286,7 +361,8 @@ def claim_upgrade_findings(proposed, original):
     # word comparison cannot judge; Chinese words are compared with Chinese only.
     comparable = [match for pattern in (SETTING, QUALITY) for match in pattern.finditer(proposed)
                   if not _CJK.search(match.group(0)) or _CJK.search(original)]
-    if any(match.re is SETTING and normalized(match.group(0)) not in original_normal for match in comparable):
+    if any(match.re is SETTING and not _setting_in(normalized(match.group(0)), original_normal)
+           for match in comparable):
         hard.append("setting_added")
     if any(match.re is QUALITY and normalized(match.group(0)) not in original_normal for match in comparable):
         hard.append("quality_claim_added")

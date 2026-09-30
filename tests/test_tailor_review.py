@@ -8,6 +8,7 @@ clause stays a hard gate that no reviewer can overrule. Provider-free.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -103,6 +104,9 @@ APPENDED = [PAD_BASE[:-1] + f", {word} human factors research." for word in (
     PAD_BASE[:-1] + " with a focus on human factors research."]
 APPENDED_ZH = [PAD_BASE_ZH[:-1] + tail for tail in (
     "，培养了严谨态度。", "，提升了科研素养。", "，锻炼了科研思维。", "，为后续研究打下基础。", "，与人因研究相关。")]
+CORPUS = json.loads((Path(__file__).parent / "fixtures" / "resume_rewrite_faithfulness_corpus.json").read_text())
+# The numeric grounding step, not the claim locks, rejects a number the original never states.
+GROUNDING_ONLY = {"new number"}
 
 
 def _review_reply(faithful: bool, count: int = 1) -> str:
@@ -221,6 +225,33 @@ class TestFindingsSplit:
 
     def test_identical_text_has_no_findings(self):
         assert claim_upgrade_findings(SURVEY, SURVEY) == ([], [])
+
+
+class TestFaithfulnessCorpus:
+    """Hard findings must be exactly as wide as the unfaithfulness they name.
+
+    On 4ba1aabb 14 of the faithful rewrites carried a hard finding (a preposition
+    swap read as a new setting, "app"/"application" or a bracket read as a new
+    object) and 7 unfaithful ones carried none (a team result or denial claimed
+    behind 不断/不同, a dropped head noun the parser accepts as dropped detail).
+    """
+
+    def test_the_corpus_covers_both_languages_and_both_sides(self):
+        assert len(CORPUS["faithful"]) >= 40 and len(CORPUS["unfaithful"]) >= 30
+        for side in ("faithful", "unfaithful"):
+            texts = [case["rewrite"] for case in CORPUS[side]]
+            assert any(text.isascii() for text in texts) and not all(text.isascii() for text in texts)
+
+    @pytest.mark.parametrize("case", CORPUS["faithful"], ids=lambda case: case["rewrite"])
+    def test_faithful_rewrite_has_no_hard_finding(self, case):
+        assert claim_upgrade_findings(case["rewrite"], case["original"])[0] == []
+        assert tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0] != "reject"
+
+    @pytest.mark.parametrize("case", CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
+    def test_unfaithful_rewrite_is_rejected_before_review(self, case):
+        assert tailor._validate_bullet_rewrite(case["rewrite"], case["original"])[0] == "reject"
+        if case["kind"] not in GROUNDING_ONLY:
+            assert claim_upgrade_findings(case["rewrite"], case["original"])[0]
 
 
 @pytest.mark.parametrize("path", PATHS)
