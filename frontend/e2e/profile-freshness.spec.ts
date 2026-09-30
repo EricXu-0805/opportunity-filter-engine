@@ -81,7 +81,7 @@ function mutationLog(context: BrowserContext) {
     if (request.method() !== 'POST') return;
     const path = new URL(request.url()).pathname;
     if (path.endsWith('/commit_profile_patch_cas')) profileWrites.push(request.postDataJSON());
-    if (path.endsWith('/commit_target_resume_cas')) targetWrites.push(request.postDataJSON());
+    if (/\/commit_target_resume(?:_with_provenance)?_cas$/.test(path)) targetWrites.push(request.postDataJSON());
     if (/\/(?:confirm_interaction_contact|confirm_contact_event)$|\/interactions$/.test(path)) contactWrites.push(path);
   });
   return { profileWrites, targetWrites, contactWrites };

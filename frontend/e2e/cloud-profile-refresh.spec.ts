@@ -81,7 +81,7 @@ function logBrowserWrites(context: BrowserContext) {
   const writes: string[] = [];
   context.on('request', request => {
     const path = new URL(request.url()).pathname;
-    if (request.method() === 'POST' && /commit_profile_patch_cas|commit_target_resume_cas|(?:confirm_interaction_contact|confirm_contact_event)|\/interactions$/.test(path)) writes.push(path);
+    if (request.method() === 'POST' && /commit_profile_patch_cas|commit_target_resume(?:_with_provenance)?_cas|(?:confirm_interaction_contact|confirm_contact_event)|\/interactions$/.test(path)) writes.push(path);
   });
   return writes;
 }

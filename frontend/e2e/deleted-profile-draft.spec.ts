@@ -87,7 +87,7 @@ function mutations(context: BrowserContext) {
   context.on('request', request => {
     if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method())) return;
     const path = new URL(request.url()).pathname;
-    if (/\/profiles$|\/commit_profile_patch_cas$|\/commit_target_resume_cas$|\/(?:confirm_interaction_contact|confirm_contact_event)$|\/interactions$/.test(path)) writes.push(`${request.method()} ${path}`);
+    if (/\/profiles$|\/commit_profile_patch_cas$|\/commit_target_resume(?:_with_provenance)?_cas$|\/(?:confirm_interaction_contact|confirm_contact_event)$|\/interactions$/.test(path)) writes.push(`${request.method()} ${path}`);
   });
   return writes;
 }
