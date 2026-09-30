@@ -447,6 +447,13 @@ describe('résumé master candidates proposed from the résumé text', () => {
     ]);
   });
 
+  it('skips a link that names no usable host instead of failing the whole proposal', async () => {
+    const raw = [`Jordan Lee | https:///weird | www.${'a'.repeat(130)}.com | github.com/jlee`, 'SKILLS', 'Python'].join('\n');
+    const master = proposeResumeMaster(null, raw, await sourceDigest(raw));
+    expect(values(master).links).toEqual([['github.com', 'github.com/jlee']]);
+    expect(values(master).skills).toEqual(['Python']);
+  });
+
   it('keeps what the master already holds and never re-proposes a span, even one the student excluded', async () => {
     const signature = await sourceDigest(persona);
     const own = empty();

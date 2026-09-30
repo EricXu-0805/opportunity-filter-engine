@@ -614,8 +614,10 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   for (const key of BASIC_FIELDS) if (!holds(next.basics[key]) && fresh(basics[key])) next.basics[key] = basics[key];
   const linked = new Set(next.basics.links.filter((link) => holds(link.url)).map((link) => link.url.value));
   for (const url of links) {
-    if (!fresh(url) || linked.has(url.value)) continue;
-    next.basics.links.push({ id: globalThis.crypto.randomUUID(), label: url.value.replace(/^(?:https?:\/\/)?(?:www\.)?/iu, '').split('/')[0], url });
+    const label = url.value.replace(/^(?:https?:\/\/)?(?:www\.)?/iu, '').split('/')[0];
+    // "https:///x" names no host, so it is no profile link to offer.
+    if (!fresh(url) || linked.has(url.value) || !label.trim() || resumeTextCharacters(label) > 120) continue;
+    next.basics.links.push({ id: globalThis.crypto.randomUUID(), label, url });
     linked.add(url.value);
   }
   // An item proposed before (any of its spans taken) is not proposed again.
