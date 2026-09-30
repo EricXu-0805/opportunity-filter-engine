@@ -204,7 +204,7 @@ test.describe('Feedback entry and neighboring controls', () => {
   for (const layout of layouts) test(`inline footer and reachable controls at ${layout.name}`, async ({ page }, info) => {
     const owner = await account();
     try {
-      await page.setViewportSize({ width: layout.width, height: layout.height }); await seed(page, owner); await page.goto('/about'); await reachableHeader(page);
+      await page.setViewportSize({ width: layout.width, height: layout.height }); await seed(page, owner); await page.goto('/about'); await ownerReady(page, owner); await reachableHeader(page);
       const opener = page.getByTestId('feedback-open'); await expect(page.locator('footer').getByTestId('feedback-open')).toHaveCount(1);
       await expect(panel(page)).toHaveCount(0); await inlineOnly(opener);
       if (layout.width < 1024) {
