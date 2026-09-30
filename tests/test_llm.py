@@ -114,6 +114,47 @@ class TestModelOverride:
         assert "extra_body" not in _CAPTURED
 
 
+class TestOpenRouterReasoningBudget:
+    """Reasoning tokens count against max_tokens on OpenRouter. A caller's
+    max_tokens is sized for the visible answer; without an explicit effort and
+    headroom, a model that thinks by default (Sonnet 5 at 'high') spent the
+    whole 1,500-token draft budget on thinking and returned an empty, length-
+    truncated body — the draft was then discarded as unavailable."""
+
+    def test_caller_effort_reaches_openrouter_with_headroom_for_thinking(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=1500,
+                            reasoning_effort="low", model="anthropic/claude-sonnet-5",
+                            provider_id="openrouter")
+        assert _CAPTURED["extra_body"] == {"reasoning": {"effort": "low", "exclude": True}}
+        assert _CAPTURED["max_tokens"] == 1500 + llm._REASONING_HEADROOM["low"]
+
+    def test_none_is_sent_as_low_because_new_models_cannot_disable_thinking(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=100,
+                            model="anthropic/claude-opus-5.5", provider_id="openrouter")
+        assert _CAPTURED["extra_body"]["reasoning"]["effort"] == "low"
+        assert _CAPTURED["max_tokens"] == 100 + llm._REASONING_HEADROOM["low"]
+
+    def test_stream_path_gets_the_same_budget(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        with pytest.raises(TypeError):  # the fake response is not a stream; only the request matters
+            list(llm.chat_completion_stream([{"role": "user", "content": "hi"}], max_tokens=400,
+                                            reasoning_effort="medium", model="anthropic/claude-sonnet-5.5",
+                                            provider_id="openrouter"))
+        assert _CAPTURED["extra_body"] == {"reasoning": {"effort": "medium", "exclude": True}}
+        assert _CAPTURED["max_tokens"] == 400 + llm._REASONING_HEADROOM["medium"]
+
+    def test_direct_providers_and_gemini_are_unchanged(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=300, model="gpt-5.5")
+        assert "extra_body" not in _CAPTURED and _CAPTURED["max_tokens"] == 300
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=300,
+                            model="google/gemini-3.8-flash", provider_id="openrouter")
+        assert _CAPTURED["extra_body"] == {"reasoning_effort": "none"} and _CAPTURED["max_tokens"] == 300
+
+
 class TestProviderTargeting:
     def test_provider_id_targets_openrouter(self, monkeypatch):
         # GEMINI is first in the chain, but provider_id="openrouter" must route

@@ -223,6 +223,28 @@ def model_for(task: str) -> dict:
     return {"model": strong_model()}
 
 
+# Reasoning tokens count against max_tokens on OpenRouter. Callers size
+# max_tokens for the visible answer, so a thinking model needs room on top of
+# it: Sonnet 5 thinks by default at 'high' and spent an entire 1,500-token
+# draft budget on thinking, returning an empty length-truncated body. The
+# newer Claude, GPT and Gemini generations cannot turn thinking off at all,
+# so "none" is sent as the lowest effort they accept.
+_REASONING_HEADROOM = {"low": 3072, "medium": 6144, "high": 12288, "xhigh": 16384, "max": 24576}
+
+
+def _provider_request_options(
+    provider_pid: str, effective_model: str, reasoning_effort: str, max_tokens: int,
+) -> tuple[dict | None, int]:
+    """(extra_body, max_tokens) for one request."""
+    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
+        return {"reasoning_effort": reasoning_effort}, max_tokens
+    if provider_pid != "openrouter":
+        return None, max_tokens
+    effort = reasoning_effort if reasoning_effort in _REASONING_HEADROOM else "low"
+    return ({"reasoning": {"effort": effort, "exclude": True}},
+            max_tokens + _REASONING_HEADROOM[effort])
+
+
 def chat_completion(
     messages: list[dict],
     *,
@@ -279,17 +301,19 @@ def chat_completion(
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
+    extra_body, request_max_tokens = _provider_request_options(
+        provider.pid, effective_model, reasoning_effort, max_tokens)
     call_kwargs: dict = {
         "model": effective_model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": request_max_tokens,
     }
     # Gemini needs reasoning_effort in extra_body whether it's reached directly
-    # ("gemini-2.5-flash") or via OpenRouter ("google/gemini-2.0-flash-lite-001",
-    # incl. the Ask-AI picker default and the chain's OpenRouter default).
-    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
-        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+    # or via OpenRouter; other OpenRouter models get an explicit reasoning
+    # effort and thinking headroom (see _provider_request_options).
+    if extra_body is not None:
+        call_kwargs["extra_body"] = extra_body
 
     last_error: Optional[Exception] = None
     for attempt in range(1, _MAX_ATTEMPTS + 1):
@@ -381,16 +405,17 @@ def chat_completion_stream(
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
+    extra_body, request_max_tokens = _provider_request_options(
+        provider.pid, effective_model, reasoning_effort, max_tokens)
     call_kwargs: dict = {
         "model": effective_model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": request_max_tokens,
         "stream": True,
     }
-    # Same guard as chat_completion: OpenRouter can serve google/gemini slugs.
-    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
-        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+    if extra_body is not None:
+        call_kwargs["extra_body"] = extra_body
 
     stream = None
     last_error: Optional[Exception] = None
