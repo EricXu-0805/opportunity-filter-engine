@@ -156,7 +156,8 @@ jobs:
     # Headroom over the typical run; the suite now boots a production server
     # (see the build step below + playwright.config webServer) instead of the
     # slow on-demand-compiling dev server, so it completes well inside this.
-    timeout-minutes: 30
+    # 45 since the MVP integration: 61 spec files instead of 22.
+    timeout-minutes: 45
     needs: [backend, frontend]
     defaults:
       run:
