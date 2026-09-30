@@ -24,6 +24,7 @@ import { targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
 import { readDetailFields } from '@/lib/detail-fields';
+import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
@@ -151,7 +152,8 @@ export default function OpportunityDetail({
   const isActionableFaculty = recordKind === 'faculty_contact' && actionable;
   const showsProfileOrOffer = isCurrentListing || isActionableFaculty;
 
-  const description = opp.description_raw || opp.description_clean || '';
+  const sourceDescription = opp.description_raw || opp.description_clean || '';
+  const description = localizedFacultyDescription(opp, sourceDescription, t) ?? sourceDescription;
   // M03: the server's per-field source / inference / unknown classification.
   // Null on an older backend or a cached payload — then the legacy sections
   // render with their own hedges, exactly as before.

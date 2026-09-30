@@ -63,7 +63,9 @@ vi.mock('./ContactRevealSection', () => ({
 // would have noticed. Each sentinel is the section's real name, so a gate
 // that stops gating shows up as an element that should not be on the page.
 vi.mock('./DetailSections', () => ({
-  DescriptionSection: () => <div data-testid="section-description" />,
+  DescriptionSection: (props: { description: string }) => (
+    <div data-testid="section-description" data-description={props.description} />
+  ),
   RecentWorksSection: () => <div data-testid="section-recent-works" />,
   AtAGlanceSection: () => <div data-testid="section-at-a-glance" />,
   EligibilitySection: () => <div data-testid="section-eligibility" />,
@@ -630,6 +632,30 @@ describe('OpportunityDetail target-truth postures', () => {
   });
 });
 
+
+describe('OpportunityDetail — a faculty profile described in the UI language', () => {
+  // Under a Chinese 描述 heading the page printed the server's English
+  // "Faculty research profile for ... Contact this faculty member ..." prose.
+  it('passes the description re-said through t(), keeping the source research areas', () => {
+    const faculty: Record<string, unknown> = {
+      id: 'faculty-bioe-1', title: 'Ada Lovelace', pi_name: 'Ada Lovelace',
+      department: 'Bioengineering', organization: 'Example University',
+      source_type: 'faculty_research', record_kind: 'faculty_contact',
+      description_raw: 'Faculty research profile for Ada Lovelace in Bioengineering at Example University. '
+        + 'Research areas: Computational imaging Contact this faculty member to ask whether undergraduate '
+        + 'research opportunities are currently available.',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: true,
+        accepting_state: 'unknown', reason_code: null,
+        verified_at: null, expires_at: null,
+      },
+    };
+    render(<OpportunityDetail opp={faculty as never} />);
+    expect(screen.getByTestId('section-description')).toHaveAttribute('data-description',
+      'detail.facultyProfile.headFull:Ada Lovelace|Bioengineering|Example University '
+      + 'detail.facultyProfile.researchAreas:Computational imaging detail.facultyProfile.askAvailability');
+  });
+});
 
 describe('detail return link before private hydration', () => {
   afterEach(() => window.history.replaceState({}, '', '/'));

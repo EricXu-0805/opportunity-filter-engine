@@ -3227,6 +3227,20 @@ export const en = {
     trackSaveError: "Couldn't save your status.",
     favoriteAdd: 'Add to favorites',
     favoriteRemove: 'Remove from favorites',
+    // The server's English sentences around a faculty profile's research
+    // areas, re-said here (lib/faculty-profile-copy.ts). English must stay
+    // word for word what the server writes.
+    facultyProfile: {
+      headFull: 'Faculty research profile for {name} in {department} at {organization}.',
+      headDepartment: 'Faculty research profile for {name} in {department}.',
+      headOrganization: 'Faculty research profile for {name} at {organization}.',
+      head: 'Faculty research profile for {name}.',
+      unnamed: 'this faculty member',
+      researchAreas: 'Research areas: {areas}',
+      notAccepting: 'The source profile states that this faculty contact is not currently accepting undergraduate students or researchers.',
+      inactive: 'The source profile reports that this faculty member is not currently conducting active research.',
+      askAvailability: 'Contact this faculty member to ask whether undergraduate research opportunities are currently available.',
+    },
     source: 'Source: {source}',
     lastVerified: 'Last verified: {date}',
     loading: 'Loading opportunity...',
@@ -4080,6 +4094,12 @@ export const en = {
       warm: 'Warm',
       friendly: 'Friendly',
       lively: 'Lively',
+    },
+    variantLabels: {
+      balanced: 'Balanced',
+      skills: 'Skills Focus',
+      concise: 'Concise',
+      privateFirstContact: 'First contact',
     },
     quickActions: {
       formal: 'More formal',
@@ -8368,6 +8388,17 @@ export const zh = {
     trackSaveError: '状态保存失败。',
     favoriteAdd: '添加到收藏',
     favoriteRemove: '从收藏移除',
+    facultyProfile: {
+      headFull: '{name}的研究档案（{organization}，{department}）。',
+      headDepartment: '{name}的研究档案（{department}）。',
+      headOrganization: '{name}的研究档案（{organization}）。',
+      head: '{name}的研究档案。',
+      unnamed: '这位教师',
+      researchAreas: '研究方向：{areas}',
+      notAccepting: '来源页面注明，这位教师目前不接收本科生或研究人员。',
+      inactive: '来源页面注明，这位教师目前没有开展研究。',
+      askAvailability: '可以联系这位教师，询问目前是否有本科生研究机会。',
+    },
     source: '来源：{source}',
     lastVerified: '上次校验：{date}',
     loading: '正在加载机会…',
@@ -9190,6 +9221,12 @@ export const zh = {
       warm: '亲切',
       friendly: '友好',
       lively: '活泼',
+    },
+    variantLabels: {
+      balanced: '均衡',
+      skills: '突出技能',
+      concise: '简洁',
+      privateFirstContact: '首次联系',
     },
     quickActions: {
       formal: '更正式',

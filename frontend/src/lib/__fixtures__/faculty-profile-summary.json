@@ -1,0 +1,90 @@
+{
+  "provenance": "Generated from src/evidence.py _faculty_profile_summary; tests/test_faculty_profile_summary_contract.py checks every server_text against it.",
+  "cases": [
+    {
+      "name": "name, department and organization, stated research areas",
+      "record": {
+        "source_type": "faculty_research",
+        "pi_name": "Yoram Bresler",
+        "department": "Bioengineering",
+        "organization": "University of Illinois Urbana-Champaign",
+        "metadata": {
+          "research_areas_raw": "Computational imaging; medical imaging; signal processing"
+        }
+      },
+      "server_text": "Faculty research profile for Yoram Bresler in Bioengineering at University of Illinois Urbana-Champaign. Research areas: Computational imaging; medical imaging; signal processing Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "research_areas": "Computational imaging; medical imaging; signal processing"
+    },
+    {
+      "name": "department only, keyword areas, not accepting undergraduates",
+      "record": {
+        "source_type": "faculty_research",
+        "pi_name": "Ada Lovelace",
+        "department": "Computer Science",
+        "keywords": [
+          "machine learning",
+          " robotics ",
+          "",
+          "vision"
+        ],
+        "metadata": {
+          "faculty_availability_status": "not_accepting_undergraduates"
+        }
+      },
+      "server_text": "Faculty research profile for Ada Lovelace in Computer Science. Research areas: machine learning, robotics, vision The source profile states that this faculty contact is not currently accepting undergraduate students or researchers.",
+      "research_areas": "machine learning, robotics, vision"
+    },
+    {
+      "name": "organization only, no research areas, research inactive",
+      "record": {
+        "source_type": "faculty_research",
+        "pi_name": "Grace Hopper",
+        "organization": "Example University",
+        "metadata": {
+          "faculty_availability_status": "research_inactive"
+        }
+      },
+      "server_text": "Faculty research profile for Grace Hopper at Example University. The source profile reports that this faculty member is not currently conducting active research.",
+      "research_areas": null
+    },
+    {
+      "name": "no name and no affiliation",
+      "record": {
+        "source_type": "faculty_research",
+        "metadata": {
+          "research_areas_raw": "Soil microbiology"
+        }
+      },
+      "server_text": "Faculty research profile for this faculty member. Research areas: Soil microbiology Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "research_areas": "Soil microbiology"
+    },
+    {
+      "name": "research areas cut at 300 characters",
+      "record": {
+        "source_type": "faculty_research",
+        "pi_name": "Jane Doe",
+        "department": "ECE",
+        "organization": "Example University",
+        "metadata": {
+          "research_areas_raw": "Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, "
+        }
+      },
+      "server_text": "Faculty research profile for Jane Doe in ECE at Example University. Research areas: Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "research_areas": "Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational"
+    },
+    {
+      "name": "research areas that repeat the closing sentence",
+      "record": {
+        "source_type": "faculty_research",
+        "pi_name": "Pat Lee",
+        "department": "Physics",
+        "organization": "Example University",
+        "metadata": {
+          "research_areas_raw": "Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available."
+        }
+      },
+      "server_text": "Faculty research profile for Pat Lee in Physics at Example University. Research areas: Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+      "research_areas": "Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available."
+    }
+  ]
+}

@@ -577,3 +577,30 @@ describe('OpportunityCard — type badge', () => {
     expect(screen.queryByText('research')).toBeNull();
   });
 });
+
+describe('OpportunityCard — faculty profile description', () => {
+  it('says the server-written profile sentences through t(), keeping the source research areas', () => {
+    const tWithVars = ((key: string, vars?: Record<string, string | number>) =>
+      vars ? `${key}:${Object.values(vars).join('|')}` : key) as TFunc;
+    render(
+      <OpportunityCard
+        opp={{
+          id: 'faculty-ada', title: 'Ada Lovelace', pi_name: 'Ada Lovelace', department: 'CS',
+          source_type: 'faculty_research', record_kind: 'faculty_contact',
+          description_clean: 'Faculty research profile for Ada Lovelace in CS. Research areas: Vision '
+            + 'Contact this faculty member to ask whether undergraduate research opportunities are currently available.',
+          target_truth: {
+            listing_state: 'unknown', reference_only: false, actionable: true,
+            accepting_state: 'unknown', reason_code: null, verified_at: null, expires_at: null,
+          },
+        } as never}
+        selectionMode={false} isSelected={false} selectedSize={0} isExpanded hasProfile
+        onToggleExpand={noop} onToggleSelect={noop} onRemove={noop} onOpenEmailModal={noop}
+        tailorDisabled={false} t={tWithVars}
+      />,
+    );
+    expect(screen.getByText('detail.facultyProfile.headDepartment:Ada Lovelace|CS| '
+      + 'detail.facultyProfile.researchAreas:Vision detail.facultyProfile.askAvailability')).toBeInTheDocument();
+    expect(screen.queryByText(/Faculty research profile for/)).toBeNull();
+  });
+});

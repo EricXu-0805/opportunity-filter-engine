@@ -17,6 +17,7 @@ import {
 import Badge from '@/components/Badge';
 import ImportSourceText from '@/components/ImportSourceText';
 import { importSourceInfo } from '@/lib/import-source';
+import { localizedFacultyDescription } from '@/lib/faculty-profile-copy';
 import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
@@ -138,9 +139,10 @@ export function OpportunityCard({
   // A faculty profile's description is profile text, already projected
   // server-side; a listing's is a pitch for something on offer. Both are
   // withheld once we can no longer vouch for the target.
-  const desc = showsOfferTerms || isActionableFaculty
+  const sourceDesc = showsOfferTerms || isActionableFaculty
     ? (opp.description_clean || opp.description_raw || '')
     : '';
+  const desc = localizedFacultyDescription(opp, sourceDesc, t) ?? sourceDesc;
   // Comparing is a decision aid for targets you could still choose between, so
   // it uses the server's answer and NOT the custom-import escape: a record we
   // never verified must not reach an AI comparison just because the user typed

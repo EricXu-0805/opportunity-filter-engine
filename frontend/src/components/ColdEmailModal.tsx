@@ -247,6 +247,19 @@ const STAGE_LABEL_KEYS: Record<ColdEmailStage, string> = {
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
+// The server names its template variants in English. Name the ones this build
+// knows by id so the tabs follow the UI language; any other keeps its label.
+const VARIANT_LABEL_KEYS: Record<string, string> = {
+  balanced: 'coldEmail.variantLabels.balanced',
+  skills: 'coldEmail.variantLabels.skills',
+  concise: 'coldEmail.variantLabels.concise',
+  'private-first-contact': 'coldEmail.variantLabels.privateFirstContact',
+};
+
+function variantLabel(variant: { id: string; label: string }, t: Replier): string {
+  return Object.hasOwn(VARIANT_LABEL_KEYS, variant.id) ? t(VARIANT_LABEL_KEYS[variant.id]) : variant.label;
+}
+
 // The backend 422s every cold-email entry point with this error code when the
 // profile has no name (emails must never go out addressed from "Student").
 // Structured API errors retain the Pydantic error code without exposing the
@@ -1529,7 +1542,7 @@ export default function ColdEmailModal({
     setRecipient((prev) => prev || v.recipient_email);
     setChatMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: t('coldEmail.switched', { label: v.label }) },
+      { role: 'assistant', content: t('coldEmail.switched', { label: variantLabel(v, t) }) },
     ]);
     });
   }
@@ -2387,7 +2400,7 @@ export default function ColdEmailModal({
                           : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
                       }`}
                     >
-                      {v.label}
+                      {variantLabel(v, t)}
                     </button>
                   ))}
                   {!privateMode && <button
