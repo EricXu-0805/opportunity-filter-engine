@@ -904,7 +904,7 @@ def extract_email_from_profile(soup: BeautifulSoup, config: dict) -> str | None:
     cleaned = [e.lower() for e in candidates if e.lower() not in NOISE_EMAILS]
     if not cleaned:
         return None
-    berkeley = [e for e in cleaned if e.endswith("berkeley.edu")]
+    berkeley = [e for e in cleaned if e.endswith(("@berkeley.edu", ".berkeley.edu"))]
     return (berkeley or cleaned)[0]
 
 

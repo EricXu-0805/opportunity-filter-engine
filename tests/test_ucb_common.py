@@ -801,3 +801,15 @@ class TestChromeIsNotAWall:
             "<html><body><h1>Jane Roe</h1><p>Professor of Physics. "
             + ("Research in condensed matter. " * 60) + "</p></body></html>")
         assert profile_page_is_denial(plain) is False
+
+
+def test_profile_email_prefers_berkeley_over_a_lookalike_domain():
+    from bs4 import BeautifulSoup
+
+    from src.collectors.ucb_common import extract_email_from_profile
+
+    soup = BeautifulSoup(
+        '<a href="mailto:pi@notberkeley.edu">a</a> <a href="mailto:pi@eecs.berkeley.edu">b</a>',
+        "html.parser",
+    )
+    assert extract_email_from_profile(soup, {}) == "pi@eecs.berkeley.edu"
