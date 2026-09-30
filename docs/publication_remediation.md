@@ -203,6 +203,12 @@ the part that means production does not depend on anyone remembering a CLI:
 It is a dict lookup per faculty record, no network, and idempotent: a clean
 corpus reports zero and writes nothing.
 
+CI holds committed data to the same line. The backend job assembles the corpus
+from the shards, and `tests/test_opportunity_data_quality.py::TestPublicationTrust`
+fails while `population_summary(corpus)["old_gate_professors"]` is above zero.
+A PR whose shards were regenerated from data older than the remediation fails
+there, instead of serving gate-1 papers until a refresh withdraws them again.
+
 `POST /api/cron/ops-scan` closes the loop for a human. While any professor
 remains withdrawn it files a `data_drift` incident (a remediation nobody
 finishes is indistinguishable, from outside, from one nobody started), and any

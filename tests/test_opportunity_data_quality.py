@@ -1194,3 +1194,27 @@ class TestTwoWaysACitationGoesWrong:
             {"id": "g", "pi_name": "Ada Lovelace", "metadata": {"publication_author_id": "A4"}},
         ]
         assert ambiguous_author_ids(records) == {"A1"}
+
+
+class TestPublicationTrust:
+    def test_no_paper_is_trusted_on_a_superseded_gate(self):
+        """refresh_all withdraws superseded-gate trust on every refresh, but a
+        PR that regenerates shards from data older than the remediation (a
+        refresh branch cut before it merged, a shard restore) can put the
+        verified_author_id stamps back, and nothing else fails: every consumer
+        reads the stamp alone, so gate 1's department-field-family papers go
+        straight back onto match cards and into cold emails.
+
+        Fix a failure with `python3 scripts/remediate_publications.py
+        invalidate --save` and commit the shards and the ledger it writes.
+        """
+        from src.publication_remediation import population_summary, remediation_population
+
+        data = _load_data()
+        summary = population_summary(data)
+        assert summary["old_gate_professors"] == 0, (
+            f"{summary['old_gate_professors']} professors / "
+            f"{summary['old_gate_relationships']} papers are trusted on a "
+            f"superseded works gate. First 3: "
+            f"{[u['professor_id'] for u in remediation_population(data)[:3]]}"
+        )
