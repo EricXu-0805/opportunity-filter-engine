@@ -313,6 +313,14 @@ IMUNIFY_WEBSHIELD = (
                  '<script src="https://ct.captcha-delivery.com/c.js"></script></head>'
                  '<body><iframe src="https://geo.captcha-delivery.com/captcha/?initialCid=AHrlq" '
                  'title="DataDome CAPTCHA"></iframe></body></html>', id='datadome'),
+    # DataDome's block page as public reports quote it (ahivert/tgtg-python#205):
+    # the site's name as title, one notice, and the captcha loader.
+    pytest.param('<html><head><title>example.edu</title><style>#cmsg{animation: A 1.5s;}</style></head>'
+                 '<body style="margin:0"><p id="cmsg">Please enable JS and disable any ad blocker</p>'
+                 "<script data-cfasync=\"false\">var dd={'cid':'AHrlqAAAAAMA','t':'bv','r':'b',"
+                 "'host':'geo.captcha-delivery.com'}</script>"
+                 '<script data-cfasync="false" src="https://ct.captcha-delivery.com/c.js"></script></body></html>',
+                 id='datadome-block-page'),
     # Cloudflare's current challenge, with its "Just a moment..." title removed.
     pytest.param(page('<main><h1>example.edu</h1><p>Verify you are human by completing the action below.</p>'
                       '<p>example.edu needs to review the security of your connection before proceeding.</p>'

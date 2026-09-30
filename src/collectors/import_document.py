@@ -62,7 +62,7 @@ _CHALLENGE_TEXT = re.compile(
     r'checking (?:your browser|if the site connection is secure)|'
     r'needs to review the security of your connection|performing security verification|'
     r'this may take a few seconds|press (?:&|and) hold|(?:incapsula|imperva) incident|request unsuccessful|'
-    r'protected by anubis|ddos protection by)\b',
+    r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
     re.I,
 )
 _CHALLENGE_SOURCE = re.compile(r'/cdn-cgi/challenge-platform/|captcha-delivery\.com', re.I)
