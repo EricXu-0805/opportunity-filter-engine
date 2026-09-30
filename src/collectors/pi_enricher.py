@@ -384,7 +384,7 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
                          max_scrapes: int | None = None) -> dict:
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
-             "skipped_program": 0}
+             "skipped_program": 0, "skipped_tombstoned": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -398,6 +398,13 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         # gate, and is the wrong contact for a portal application anyway.
         if _is_ucb_program_record(opp):
             stats["skipped_program"] += 1
+            continue
+        # ``identity_bound: False`` is the tombstone for an address that was
+        # reviewed and rejected (clear_contact_claim nulls it). Scraping the
+        # page again would put an address back beside the tombstone, which
+        # test_no_record_holds_an_address_and_a_tombstone refuses on the data PR.
+        if (opp.get("metadata") or {}).get("identity_bound") is False:
+            stats["skipped_tombstoned"] += 1
             continue
 
         enriched = False
