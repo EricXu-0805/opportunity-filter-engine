@@ -320,8 +320,13 @@ describe('match-cache', () => {
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
     const raw = localStorage.getItem(MATCH_KEY)!;
+    // Pinned as a literal on purpose: this version string is what invalidates
+    // seven-day local payloads when the record-visibility contract moves, so
+    // moving it has to be a deliberate edit here too. `-pubtrust-v3` is the
+    // historical publication remediation — a page cached before it holds
+    // citations the server has since withdrawn.
     expect(JSON.parse(raw).version).toBe(
-      'mvp-core-close-v1-contact-trust-v1-target-truth-v2',
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3',
     );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');

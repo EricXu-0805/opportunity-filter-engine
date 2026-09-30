@@ -27,7 +27,16 @@ const KEY = STORAGE_KEYS.MATCH_RESULTS;
 // Bumped with target-truth-v2: a page cached before this build can contain
 // rows whose kind was never reviewed, which this build refuses to present as
 // listings. Reusing it would serve exactly the records the change removed.
-const CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1-target-truth-v2';
+//
+// Bumped again with pubtrust-v3. A cached match page carries `recent_works`
+// and `publication_attribution_status` copied off the card, so a page written
+// before the historical remediation holds citations stamped verified by a gate
+// that has since been retired — including, for one UIUC professor, three
+// papers that are not his. The server has stopped serving them; a seven-day
+// local payload would keep rendering them under "Recent work" and keep feeding
+// them to a cold-email draft, which is the same false claim by a slower route.
+const CACHE_VERSION =
+  'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3';
 // Exactly the wire this backend speaks — `MATCH_VIEW_CONTRACT_VERSION` in
 // backend/routes/matches.py — and nothing else. A version string nobody
 // emits is not forward compatibility; it is a promise accepted in advance

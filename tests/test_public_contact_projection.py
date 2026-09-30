@@ -425,6 +425,17 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "research_refresh",
     "lab_snapshot",
     "lab_refresh",
+    # The publication remediation's audit trail: when trust in a record's
+    # papers was withdrawn, and the OpenAlex author id the retired gate had
+    # resolved — an identity claim we have specifically stopped standing
+    # behind. `publication_attribution_status` is already stripped whenever it
+    # is not verified, and this block must not become the door that
+    # re-publishes what that strip removed.
+    "publication_remediation",
+    # Which gate version chose the papers. Real provenance, but a client can
+    # neither re-derive nor act on it, and branching on our internal rule
+    # version is reading the implementation rather than the contract.
+    "works_gate",
 })
 
 _LIVE_LISTING = {
