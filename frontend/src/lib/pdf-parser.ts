@@ -168,7 +168,7 @@ const NARROW = 20;
 const SLACK = 1.3;
 const PITCH_SLACK = 1.15;
 
-const SENTENCE_END = /[.!?]["'”’)\]]*$/u;
+const SENTENCE_END = /[.!?。！？]["'”’)\]）」』]*$/u;
 const BULLET_GLYPH = /^[•●▪◦‣∙·*–—\-■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]$/u;
 // A wrapped "Aug 2024 - May 2028" puts the range dash at the start of the next
 // line, where it reads like a bullet. A dash before words stays a bullet.
@@ -176,6 +176,8 @@ const DASH_CONTINUATION = /^[-–—]\s+(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug
 const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,;:&/(+]|\s[-–—]|(?:^|\s)(?:and|or|of|the|a|an|to|for|in|on|with|by|at|from|as|into|via|using|including|across|between|than|that|which|while|over|under|per))$/u;
 const CONTINUES_BEFORE = /^(?:\p{Ll}|[&()%]|\d(?!\d{3}\b))/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+// CJK text and its full-width punctuation wrap with no space at the break.
+const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
 const WRAPPABLE = /\S\s+\S|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]./u;
 // Fonts that map CJK glyphs to Kangxi radicals instead of the ideographs
 // ("使⽤" for "使用") print correctly but extract as different characters.
@@ -187,7 +189,7 @@ function positioned(item: PdfTextItem): Run | null {
   const t = item.transform;
   if (!Array.isArray(t) || t.length < 6 || typeof item.width !== 'number' || item.dir === 'rtl') return null;
   const [a, b, c, , x, y] = t as number[];
-  if (!(a > 0) || b !== 0 || c !== 0 || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  if (!(a > 0) || Math.abs(b) > 1e-6 || Math.abs(c) > 1e-6 || !Number.isFinite(x) || !Number.isFinite(y)) return null;
   const size = item.height || Math.abs(t[3] as number);
   return size > 0 ? { x, y, width: item.width, size, font: item.fontName, str: item.str } : null;
 }
@@ -268,8 +270,8 @@ function wrapSeparator(
     // a paragraph, unless the text itself says it goes on.
     if (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left) || !evidence || space + word * SLACK <= room) return null;
   } else if (space + word <= room && !(evidence && space + word * SLACK > room)) return null;
-  if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^\p{L}/u.test(after)) return '';
-  return CJK.test(Array.from(before).pop()!) && CJK.test(head) ? '' : ' ';
+  if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^[\p{L}\p{N}]/u.test(after)) return '';
+  return CJK_BREAK.test(Array.from(before).pop()!) && CJK_BREAK.test(head) ? '' : ' ';
 }
 
 /** Page text in PDF.js reading order. Runs are spaced by their geometry, so a

@@ -631,3 +631,26 @@ describe('positioned CJK text', () => {
     expect((await parseResumePDF(fakeFile())).raw_text).toBe('- 基于深度学习的医学影像分割系统：使用模型复现文档。');
   });
 });
+
+describe('wrap joins that depend on the characters at the break', () => {
+  const line = (str: string, width: number, y: number, hasEOL = true) => ({
+    str, width, height: 10, transform: [10, 0, 0, 10, 50, y], fontName: 'f1', dir: 'ltr', hasEOL,
+  });
+  const parse = async (items: unknown[]) => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: items as never }) }),
+    } as MockPdf) });
+    return (await parseResumePDF(fakeFile())).raw_text;
+  };
+
+  it('rejoins a hyphen break before a number without a space', async () => {
+    expect(await parse([line('- Trained a baseline convolutional model called ResNet-', 500, 700), line('18 on chest X-rays.', 90, 688, false)]))
+      .toBe('- Trained a baseline convolutional model called ResNet-18 on chest X-rays.');
+  });
+
+  it('joins a Chinese wrap after full-width punctuation without a space, and stops at a Chinese full stop', async () => {
+    expect(await parse([line('负责后端接口设计与数据库建模，', 500, 700), line('并编写部署文档。', 80, 688), line('校园二手交易平台', 80, 676, false)]))
+      .toBe('负责后端接口设计与数据库建模，并编写部署文档。\n校园二手交易平台');
+  });
+});
