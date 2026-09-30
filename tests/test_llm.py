@@ -104,7 +104,7 @@ class TestModelOverride:
         # must get reasoning_effort:none — the "gemini-" prefix alone missed it.
         _use_provider(monkeypatch, "OPENROUTER_API_KEY")
         llm.chat_completion([{"role": "user", "content": "hi"}],
-                            model="google/gemini-2.0-flash-lite-001")
+                            model="google/gemini-2.5-flash-lite")
         assert _CAPTURED.get("extra_body", {}).get("reasoning_effort") == "none"
 
     def test_non_gemini_override_sends_no_extra_body(self, monkeypatch):

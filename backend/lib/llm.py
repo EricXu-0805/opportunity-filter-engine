@@ -10,7 +10,7 @@ Provider chain (same as the historical inline copies):
   1. ``OPENAI_API_KEY``     → ``gpt-4o-mini`` against api.openai.com
   2. ``GEMINI_API_KEY``     → ``gemini-2.5-flash`` via Google's
                               OpenAI-compatible v1beta endpoint
-  3. ``OPENROUTER_API_KEY`` → ``google/gemini-2.0-flash-lite-001``
+  3. ``OPENROUTER_API_KEY`` → ``google/gemini-2.5-flash-lite``
                               via openrouter.ai
 
 Gemini models need ``reasoning_effort: none`` in ``extra_body`` or they
@@ -95,7 +95,7 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
         "openrouter",
         "OPENROUTER_API_KEY",
         "https://openrouter.ai/api/v1",
-        "google/gemini-2.0-flash-lite-001",
+        "google/gemini-2.5-flash-lite",
     ),
 )
 
