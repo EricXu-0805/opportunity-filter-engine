@@ -154,6 +154,23 @@ def test_skill_category_lines_keep_their_own_rows():
         assert [paragraph.text for paragraph in Document(io.BytesIO(renderer.render_export(value, 'docx'))).paragraphs] == expected
 
 
+@pytest.mark.parametrize('start,end,rows', [
+    ('Jan\n2026', 'Present', ['RA · Jan', '2026 – Present']),
+    ('Jan 2026', 'Present\r\nnow', ['RA · Jan 2026 – Present', 'now']),
+])
+def test_dates_with_a_line_break_stay_in_the_entry_row(start, end, rows):
+    # A PDF cell at the right margin drops the break: 'RA Jan2026 – Present'.
+    from docx import Document
+    value = {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': 'letter', 'sections': [
+        {'kind': 'activities', 'heading': '', 'blocks': [{'lines': [
+            {'role': role, 'label': '', 'text': text} for role, text in
+            [('title', 'RA'), ('start', start), ('end', end), ('experience', 'Did a thing.')]]}]}]}
+    assert pdf_reader(renderer.render_export(value, 'pdf')).pages[0].extract_text().splitlines() == ['Experience', *rows, 'Did a thing.']
+    entry = Document(io.BytesIO(renderer.render_export(value, 'docx'))).paragraphs[1]
+    assert entry.text == '\n'.join(rows)
+    assert not entry.paragraph_format.tab_stops
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)
