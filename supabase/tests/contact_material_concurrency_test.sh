@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sourced by run_contact_material_test.sh after contact_material_archive_test.sql.
+# Sourced by run_flow_b_test.sh (CI) and run_contact_material_test.sh after contact_material_archive_test.sql.
 set -euo pipefail
 material_wait_event() {
   local app="$1" expected="$2"

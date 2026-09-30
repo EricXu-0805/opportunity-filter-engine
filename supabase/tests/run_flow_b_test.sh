@@ -176,4 +176,44 @@ echo "==> run application_material_archive_test.sql"
 echo "==> run application_material_concurrency_test.sh"
 source "$HERE/application_material_concurrency_test.sh"
 
+# The contact suite is written against Supabase's real claim GUC names;
+# _stubs.sql reads test.uid/test.jwt, so translate only those two names.
+echo "==> run contact_material_archive_test.sql"
+sed -e 's/request.jwt.claim.sub/test.uid/g' -e 's/request.jwt.claims/test.jwt/g' \
+  "$HERE/contact_material_archive_test.sql" > "$WORK/contact_material_archive_test.sql"
+"${PSQL[@]}" -f "$WORK/contact_material_archive_test.sql"
+
+echo "==> run contact_material_concurrency_test.sh"
+source "$HERE/contact_material_concurrency_test.sh"
+
+for suite in target_resume_provenance_test.sql target_resume_research_provenance_test.sql \
+             target_resume_lab_provenance_test.sql; do
+  echo "==> run $suite"
+  { printf 'BEGIN;\n'; cat "$HERE/$suite"; printf '\nROLLBACK;\n'; } \
+    | "${PSQL[@]}" -v fixture_path="$HERE/target_resume_provenance_fixtures.sql"
+done
+
+echo "==> run target_resume_provenance_security_test.sql"
+"${PSQL[@]}" -f "$HERE/target_resume_provenance_security_test.sql"
+
+echo "==> run private_import_targets_test.sql"
+"${PSQL[@]}" -f "$HERE/private_import_targets_test.sql"
+
+# The upgrade suite needs the schema as it stood right before the contact
+# archive migration (it applies that migration itself, then rolls back), so
+# it gets its own database migrated only up to that point.
+CONTACT_MIGRATION="20260925151438_contact_material_archive.sql"
+echo "==> run contact_material_migration_upgrade_test.sql (pre-$CONTACT_MIGRATION database)"
+"${PSQL[@]}" -c "CREATE DATABASE contact_material_upgrade"
+UPGRADE_PSQL=(psql -v ON_ERROR_STOP=1 -h "$SOCK" -U postgres -d contact_material_upgrade -q)
+"${UPGRADE_PSQL[@]}" -f "$HERE/_stubs.sql"
+for f in "$MIGRATIONS"/*.sql; do
+  base="$(basename "$f")"
+  [[ "$base" == 004_* ]] && continue
+  [[ "$base" < "$CONTACT_MIGRATION" ]] || continue
+  "${UPGRADE_PSQL[@]}" -f "$f"
+done
+"${UPGRADE_PSQL[@]}" -v contact_migration="$MIGRATIONS/$CONTACT_MIGRATION" \
+  -f "$HERE/contact_material_migration_upgrade_test.sql"
+
 echo "==> OK"

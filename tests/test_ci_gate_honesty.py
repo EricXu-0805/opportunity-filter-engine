@@ -19,6 +19,7 @@ tests/test_ops_plumbing.py.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -270,6 +271,87 @@ def test_corpus_assemble_is_a_gating_step():
     )
     # A floor of 0/1 would restore the hole while looking configured.
     assert MIN_ASSEMBLED_RECORDS >= 1000
+
+
+# ------------------------------------------------- suites CI never runs
+
+_SUPABASE = _REPO / "supabase"
+
+
+def _required_sql_runner_code() -> str:
+    """Non-comment lines of every supabase/tests runner a required job runs."""
+    runners = sorted({
+        runner
+        for job_id in REQUIRED_CI_JOBS
+        for step in _jobs("ci.yml")[job_id]["steps"]
+        for runner in re.findall(r"supabase/tests/[\w.-]+\.sh", str(step.get("run", "")))
+    })
+    assert runners, "no required CI step runs a supabase/tests runner"
+    return "\n".join(
+        line
+        for runner in runners
+        for line in (_REPO / runner).read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
+
+
+def test_every_sql_suite_is_run_by_a_required_ci_step():
+    """A SQL suite that only a hand-run runner reaches guards nothing.
+
+    The contact-material, target-resume provenance and private-import suites
+    were written and passed locally, but only manual runners (TLS clusters,
+    `supabase db advisors`, a DB-name guard) ever executed them, so a later
+    migration could break contact-attachment RLS or the provenance CHECK with
+    CI green. Every suite must be named by a runner a required job executes.
+    """
+    tests_dir = _SUPABASE / "tests"
+    suites = sorted(
+        p.name
+        for pattern in ("*_test.sql", "*_test.sh")
+        for p in tests_dir.glob(pattern)
+        if not p.name.startswith("run_")
+    )
+    assert suites, "found no SQL suites — the glob no longer matches"
+    code = _required_sql_runner_code()
+    unreached = [name for name in suites if name not in code]
+    assert not unreached, f"SQL suites no required CI step runs: {unreached}"
+
+
+def test_migration_history_contract_names_every_migration():
+    """The real-CLI history check only proves the versions it lists.
+
+    It stopped at 20260925115022 while five later migrations shipped, so a
+    missing or renamed one of those still produced a green history contract.
+    """
+    versions = sorted(
+        p.name.split("_", 1)[0] for p in (_SUPABASE / "migrations").glob("*.sql")
+    )
+    contract = (_SUPABASE / "tests" / "migration_history_contract_test.sql").read_text(
+        encoding="utf-8"
+    )
+    block = re.search(r"FOREACH v_version IN ARRAY ARRAY\[(.*?)\]", contract, re.S)
+    assert block, "migration_history_contract_test.sql: version array not found"
+    listed = re.findall(r"'([^']+)'", block.group(1))
+    assert len(listed) == len(set(listed)), "duplicate version in the contract"
+    assert sorted(listed) == versions, (
+        f"missing from contract: {sorted(set(versions) - set(listed))}; "
+        f"not a migration: {sorted(set(listed) - set(versions))}"
+    )
+
+
+def test_no_test_module_lives_outside_the_ci_pytest_root():
+    """CI collects `pytest tests/` only; a test module in scripts/ never runs.
+
+    The guard tests for the destructive local material verifiers (loopback-only
+    endpoint, candidate project, batch-namespace account) sat in scripts/, so
+    loosening those guards would have left every required check green.
+    """
+    run = str(_named_step("ci.yml", "Run pytest", job_id="backend").get("run", ""))
+    assert run.split()[:2] == ["pytest", "tests/"], run
+    stray = sorted(
+        str(p.relative_to(_REPO)) for p in (_REPO / "scripts").rglob("test_*.py")
+    )
+    assert not stray, f"test modules CI never collects: {stray}"
 
 
 # ------------------------------------------------------------------- crons

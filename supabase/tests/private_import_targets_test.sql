@@ -1,11 +1,11 @@
--- Fresh scratch fixture only; all sources are synthetic and no HTTP occurs.
+-- Runs against the full migration chain inside its own rollback; all sources
+-- are synthetic and no HTTP occurs.
 \set ON_ERROR_STOP on
 BEGIN;
-DO $$ BEGIN IF current_database() NOT LIKE 'ofe_b60_%' THEN RAISE EXCEPTION 'scratch database required'; END IF; END $$;
 INSERT INTO auth.users(id,is_anonymous) VALUES
  ('a1000000-0000-4000-8000-000000000001',false),('a1000000-0000-4000-8000-000000000002',false),
  ('a1000000-0000-4000-8000-000000000003',true),('a1000000-0000-4000-8000-000000000004',false);
-INSERT INTO auth.sessions(id,user_id) SELECT replace(id::text,'a1000000','a3000000')::uuid,id FROM auth.users;
+INSERT INTO auth.sessions(id,user_id) SELECT replace(id::text,'a1000000','a3000000')::uuid,id FROM auth.users WHERE id::text LIKE 'a1000000-%';
 CREATE FUNCTION pg_temp.set_owner(n text) RETURNS void LANGUAGE sql AS $$
  SELECT set_config('test.uid','a1000000-0000-4000-8000-'||lpad(n,12,'0'),false);
  SELECT set_config('test.jwt',jsonb_build_object('session_id','a3000000-0000-4000-8000-'||lpad(n,12,'0'),'exp',extract(epoch from now()+interval '1 hour')::bigint)::text,false);

@@ -1,11 +1,16 @@
 """No-network checks for destructive local verifier boundaries."""
 import json
+import sys
 from copy import deepcopy
+from pathlib import Path
 
 import httpx
 import pytest
-from verify_contact_material_lifecycle_local import verify_candidate_database_info
-from verify_material_archive_local import candidate_target, loopback, verify_fixture_identity
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from verify_contact_material_lifecycle_local import verify_candidate_database_info  # noqa: E402
+from verify_material_archive_local import candidate_target, loopback, verify_fixture_identity  # noqa: E402
 
 
 @pytest.mark.parametrize('value', [
