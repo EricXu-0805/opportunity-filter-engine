@@ -88,6 +88,17 @@ async function setup(page: Page, info: TestInfo) {
     if (path.endsWith('/refine')) return route.fulfill({ json: { ...draft, method: 'llm' } });
     throw new Error('Unexpected writing request ' + path);
   });
+  // The E2E backend has no Supabase service key, so the saved private-import list that /favorites loads
+  // would answer 503. This spec does not test private imports: serve the real empty list, and only to a
+  // request that carries the listed owner's own token.
+  await page.route(url => url.pathname === '/api/private-import-targets', route => {
+    const request = route.request(); if (request.method() !== 'GET') return route.fallback();
+    if (state.offline) return abortOffline(route);
+    const match = owners.find(item => item.session.user.id === new URL(request.url()).searchParams.get('expected_owner_id'));
+    expect(match, 'The list must be scoped to a signed-in fixture account').toBeTruthy();
+    expect(request.headers().authorization).toBe(`Bearer ${match!.session.access_token}`);
+    return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
+  });
   const open = async (navigate = true) => { if (navigate) await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
   const ready = async () => { await expect(page.locator('#cold-email-body')).toHaveValue(BODY); await expect.poll(() => state.calls.filter(path => path.endsWith('/stream')).length).toBe(1); };
   const edit = async () => {

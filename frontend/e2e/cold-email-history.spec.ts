@@ -162,6 +162,15 @@ async function setup(page: Page, info: TestInfo, sharedOwner?: Fixture) {
     }
     throw new Error('Unexpected writing request ' + path);
   });
+  // The E2E backend has no Supabase service key, so the saved private-import list that /favorites loads
+  // would answer 503. This spec does not test private imports: serve the real empty list for this owner only.
+  await page.route(url => url.pathname === '/api/private-import-targets', route => {
+    const request = route.request(); if (request.method() !== 'GET') return route.fallback();
+    if (state.offline) return abortOffline(route);
+    expect(new URL(request.url()).searchParams.get('expected_owner_id')).toBe(owner.session.user.id);
+    expect(request.headers().authorization).toBe(`Bearer ${owner.session.access_token}`);
+    return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
+  });
   const body = page.locator('#cold-email-body');
   const request = page.getByRole('textbox', { name: copy.requestLabel, exact: true });
   const submit = page.getByRole('button', { name: copy.submitRequest, exact: true });
