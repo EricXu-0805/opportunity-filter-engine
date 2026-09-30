@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupOwner, deferred, owner as changeOwner, OTHER, OWNER } from '@/lib/application-material.test-utils';
 import { captureOwnerToken } from '@/lib/identity-owner';
+import { ContactEventError } from '@/lib/contact-ledger';
 import { privateEmailKey, type PrivateEmailContext } from '@/lib/private-email';
 import type { PrivateEmailActionReceipt, PrivateEmailTargetState } from '@/lib/use-private-email-target';
 import type { ProfileData } from '@/lib/types';
@@ -75,6 +76,13 @@ describe('private email in the shared editor', () => {
     fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
     await waitFor(() => expect(api.confirm).toHaveBeenCalledOnce()); expect(view.check).toHaveBeenCalledTimes(2);
     expect(view.check.mock.invocationCallOrder[1]).toBeLessThan(api.confirm.mock.invocationCallOrder[0]);
+  });
+  it('explains a server refusal of a private target deleted after the re-check', async () => {
+    const view = await harness(); enterRecipient(); review();
+    fireEvent.click(compose()); await waitFor(() => expect(view.popup.location.href).toContain('person%40example.edu'));
+    api.confirm.mockRejectedValueOnce(new ContactEventError('target_unavailable'));
+    fireEvent.click(screen.getByTestId('cold-email-confirm-sent'));
+    await screen.findByText('coldEmail.privateTargetUnconfirmed'); expect(view.onContactConfirmed).not.toHaveBeenCalled();
   });
   it('refuses to record a sent email against a private target that changed since it was shown', async () => {
     const view = await harness(); enterRecipient(); review();

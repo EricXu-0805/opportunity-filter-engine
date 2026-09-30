@@ -183,17 +183,24 @@ DO $$DECLARE src text:=pg_temp.login(8);dst text:='36000000-0000-4000-8000-00000
  BEGIN PERFORM public.stage_contact_material(auth.uid()::text,'36000000-0000-4000-9000-000000000008',gen_random_uuid(),auth.uid(),'opp','new.pdf',123,repeat('a',64)); RAISE EXCEPTION 'erased key reused'; EXCEPTION WHEN unique_violation THEN NULL; END;
  RAISE WARNING 'PASS Flow B preserves ready archive, revokes unfinished stage, account deletion cleans only current owner and never reuses revoked key';
 END$$;
-DO $$DECLARE src text:=pg_temp.login(10);dst text:='36000000-0000-4000-8000-000000000011';tok uuid;before jsonb;r jsonb;BEGIN
+-- A same-ID contact collision no longer blocks the merge (the ledger re-keys
+-- the source snapshot); the archived PDF moves intact and is never cleaned up.
+DO $$DECLARE src text:=pg_temp.login(10);dst text:='36000000-0000-4000-8000-000000000011';tok uuid;before jsonb;source_event jsonb;target_event jsonb;r jsonb;BEGIN
  r:=pg_temp.archive(10,10);before:=r->'artifact';
+ SELECT to_jsonb(e) INTO source_event FROM public.contact_events e WHERE device_id=src AND event_id=src::uuid;
  PERFORM set_config('request.jwt.claims','{"is_anonymous":true}',false);tok:=public.mint_merge_grant('materials-collision@example.invalid');
- PERFORM pg_temp.login(11);PERFORM public.confirm_contact_event(dst,src::uuid,'opp','faculty@example.invalid','Collision','Collision body');
+ PERFORM pg_temp.login(11);target_event:=public.confirm_contact_event(dst,src::uuid,'opp','faculty@example.invalid','Collision','Collision body')->'event';
  PERFORM set_config('request.jwt.claims',(auth.jwt()||'{"email":"materials-collision@example.invalid"}'::jsonb)::text,false);
- BEGIN PERFORM public.redeem_merge_grant(tok); RAISE EXCEPTION 'event collision merge accepted'; EXCEPTION WHEN unique_violation THEN NULL; END;
- IF (SELECT private.material_json(a) FROM public.material_artifacts a WHERE material_id='36000000-0000-4000-9000-000000000010')<>before
+ PERFORM public.redeem_merge_grant(tok);
+ IF (SELECT private.material_json(a) FROM public.material_artifacts a WHERE material_id='36000000-0000-4000-9000-000000000010')-'owner_id'<>before-'owner_id'
+   OR (SELECT owner_id::text FROM public.material_artifacts WHERE material_id='36000000-0000-4000-9000-000000000010')<>dst
    OR EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='36000000-0000-4000-9000-000000000010')
-   OR EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src)
-   OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NOT NULL THEN RAISE EXCEPTION 'collision partially committed'; END IF;
- RAISE WARNING 'PASS merge collision rolls back artifact/association/event/grant together';
+   OR NOT EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src)
+   OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NULL
+   OR (SELECT to_jsonb(e) FROM public.contact_events e WHERE device_id=dst AND event_id=src::uuid)<>target_event
+   OR (SELECT to_jsonb(e)-'device_id'-'event_id' FROM public.contact_events e WHERE device_id=dst AND event_id=private.contact_event_merge_key(src,src::uuid))
+      <>source_event-'device_id'-'event_id' THEN RAISE EXCEPTION 'collision merge lost material or snapshot'; END IF;
+ RAISE WARNING 'PASS same-ID contact collision merges, keeping both snapshots and the archived material';
 END$$;
 -- Tie-safe keyset pagination uses the association timestamp, never the mutable
 -- source resume revision, upload time, or filename.

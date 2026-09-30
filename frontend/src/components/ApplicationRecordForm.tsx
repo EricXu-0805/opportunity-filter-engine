@@ -137,7 +137,7 @@ function ApplicationRecordEditor({ opportunityId, ownerReady, onConfirmed, verif
       if (stage === 'wire' && attempt && cause instanceof ApplicationEventError && cause.code === 'invalid_input') {
         setRejected(true); setError(attempt.input.submittedAt ? 'rejectedTime' : 'rejected'); return;
       }
-      setError(stage === 'verify' ? 'targetUnavailable'
+      setError(stage === 'verify' || (cause instanceof ApplicationEventError && cause.code === 'target_unavailable') ? 'targetUnavailable'
         : cause instanceof ApplicationEventError && cause.code === 'invalid_input' ? 'invalid'
           : cause instanceof ApplicationEventError && cause.code === 'conflict' ? 'conflict'
             : stage === 'prepare' ? 'storageError' : 'unavailable');

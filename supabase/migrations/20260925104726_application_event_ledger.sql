@@ -124,17 +124,24 @@ BEGIN
     RETURN jsonb_build_object('event',to_jsonb(saved),'interaction',
       CASE WHEN summary.id IS NULL THEN NULL ELSE to_jsonb(summary) END,'replayed',true);
   END IF;
+  -- Same private-import guard as confirm_contact_event, after exact replay.
+  IF p_opportunity_id LIKE 'private-import:%' THEN
+    PERFORM 1 FROM public.private_import_targets
+      WHERE id=p_opportunity_id AND owner_id=uid AND deleted_at IS NULL FOR SHARE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'private_target_unavailable' USING ERRCODE = 'P0002'; END IF;
+  END IF;
   INSERT INTO public.application_events(device_id,event_id,opportunity_id,channel,destination,
     actual_submitted_at,confirmed_at,notes,result_note,next_step)
     VALUES(uid::text,p_event_id,p_opportunity_id,p_channel,p_destination,p_actual_submitted_at,stamp,p_notes,p_result_note,p_next_step)
     RETURNING * INTO saved;
-  -- Only a prior contact is promoted to an application. Later status, notes,
+  -- A confirmed submission supersedes contacted, dismissed and an earlier
+  -- rejection; replied/interviewing are further along and stay. Notes,
   -- reminder and contact date remain untouched. Result/next-step text stays in
   -- the event snapshot: it is not a command to rewrite the Tracker's state.
   INSERT INTO public.interactions(device_id,opportunity_id,interaction_type,updated_at)
     VALUES(uid::text,p_opportunity_id,'applied',stamp)
     ON CONFLICT(device_id,opportunity_id) DO UPDATE SET
-      interaction_type=CASE WHEN public.interactions.interaction_type='contacted' THEN 'applied' ELSE public.interactions.interaction_type END,
+      interaction_type=CASE WHEN public.interactions.interaction_type IN('contacted','dismissed','rejected') THEN 'applied' ELSE public.interactions.interaction_type END,
       updated_at=greatest(public.interactions.updated_at,EXCLUDED.updated_at)
     RETURNING * INTO summary;
   RETURN jsonb_build_object('event',to_jsonb(saved),'interaction',to_jsonb(summary),'replayed',false);

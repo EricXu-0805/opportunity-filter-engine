@@ -2270,6 +2270,7 @@ export async function confirmContactEvent(opportunityId: string, input: ContactE
         if (error.code === '23505' && error.message === 'contact_event_conflict') throw new ContactEventError('conflict');
         if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
         if (error.code === '22023' && error.message === 'invalid_contact_event') throw new ContactEventError('invalid_input');
+        if (error.code === 'P0002' && error.message === 'private_target_unavailable') throw new ContactEventError('target_unavailable');
         throw new ContactEventError('unavailable');
       }
       if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ContactEventError('invalid_receipt');
@@ -2376,6 +2377,7 @@ export async function confirmApplicationEvent(opportunityId: string, input: Appl
         if (error.code === '23505' && error.message === 'application_event_conflict') throw new ApplicationEventError('conflict');
         if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
         if (error.code === '22023' && error.message === 'invalid_application_event') throw new ApplicationEventError('invalid_input');
+        if (error.code === 'P0002' && error.message === 'private_target_unavailable') throw new ApplicationEventError('target_unavailable');
         throw new ApplicationEventError('unavailable');
       }
       if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ApplicationEventError('invalid_receipt');

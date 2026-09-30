@@ -24,9 +24,11 @@ export interface ApplicationEventsPage {
   hasMore: boolean;
 }
 export class ApplicationEventError extends Error {
-  constructor(readonly code: 'invalid_input' | 'unavailable' | 'invalid_receipt' | 'conflict') {
+  constructor(readonly code: 'invalid_input' | 'unavailable' | 'invalid_receipt' | 'conflict' | 'target_unavailable') {
     super(code === 'conflict' ? 'This application identifier belongs to a different submission.'
-      : code === 'invalid_input' ? 'The application record is invalid.' : 'Could not confirm whether this application was saved.');
+      : code === 'invalid_input' ? 'The application record is invalid.'
+        : code === 'target_unavailable' ? 'This private target is no longer available, so nothing was recorded.'
+          : 'Could not confirm whether this application was saved.');
     this.name = 'ApplicationEventError';
   }
 }

@@ -210,6 +210,12 @@ describe('target re-check before an application write', () => {
     expect(m.prepare).not.toHaveBeenCalled(); expect(m.confirm).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'applicationRecord.save' })).toBeEnabled();
   });
+  it('shows the target as unavailable when the server refuses a deleted private target', async () => {
+    m.confirm.mockRejectedValue(new ApplicationEventError('target_unavailable'));
+    const { onConfirmed } = open(); fillAndAttest();
+    await submit(); await screen.findByText('applicationRecord.targetUnavailable');
+    expect(onConfirmed).not.toHaveBeenCalled(); expect(m.settle).not.toHaveBeenCalled();
+  });
   it('a failed re-check is a refusal, and a pending retry is re-checked too', async () => {
     const verifyTarget = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(true);
     m.read.mockReturnValue([{ opportunityId: 'target-a', input }]);

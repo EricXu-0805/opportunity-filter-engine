@@ -54,13 +54,13 @@ BEGIN
     VALUES(u,'state-'||state,state,'Keep notes','2026-12-21','2026-01-03','2027-01-01');
   SELECT count(*) INTO count_before FROM public.interaction_status_changes WHERE device_id=u AND opportunity_id='state-'||state;
   r:=public.confirm_application_event(u,gen_random_uuid(),'state-'||state,'other','Paper submission');
-  IF r#>>'{interaction,interaction_type}'<>(CASE WHEN state='contacted' THEN 'applied' ELSE state END)
+  IF r#>>'{interaction,interaction_type}'<>(CASE WHEN state IN('contacted','dismissed','rejected') THEN 'applied' ELSE state END)
     OR r#>>'{interaction,notes}'<>'Keep notes' OR r#>>'{interaction,remind_at}'<>'2026-12-21'
     OR (r#>>'{interaction,last_contacted_at}')::timestamptz<>'2026-01-03'
     OR (r#>>'{interaction,updated_at}')::timestamptz<>'2027-01-01'
     OR r#>'{event,actual_submitted_at}'<>'null'::jsonb THEN RAISE EXCEPTION 'state preservation failed %',state; END IF;
   IF (SELECT count(*) FROM public.interaction_status_changes WHERE device_id=u AND opportunity_id='state-'||state)
-    <>count_before+(CASE WHEN state='contacted' THEN 1 ELSE 0 END) THEN RAISE EXCEPTION 'fabricated status history %',state; END IF;
+    <>count_before+(CASE WHEN state IN('contacted','dismissed','rejected') THEN 1 ELSE 0 END) THEN RAISE EXCEPTION 'fabricated status history %',state; END IF;
  END LOOP;
  SELECT count(*) INTO count_before FROM public.application_events WHERE device_id=u;
  INSERT INTO public.interactions(device_id,opportunity_id,interaction_type) VALUES(u,'manual-status','applied');
@@ -216,4 +216,32 @@ BEGIN
  IF EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src) OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NOT NULL
    OR NOT EXISTS(SELECT 1 FROM public.application_events WHERE device_id=src) THEN RAISE EXCEPTION 'dead target transfer lost source'; END IF;
  RAISE WARNING 'PASS application merge into deleted/unknown auth owner is rejected atomically';
+END $$;
+
+-- A private import target must still be the caller's live import. An exact
+-- retry of an already recorded event replays even after the import is deleted.
+DO $$
+DECLARE u text:='32000000-0000-4000-8000-000000000026'; other text:='32000000-0000-4000-8000-000000000027';
+ live text:='private-import:a2000000-0000-4000-8000-00000000d001'; gone text:='private-import:a2000000-0000-4000-8000-00000000d002';
+ foreign_target text:='private-import:a2000000-0000-4000-8000-00000000d003'; missing text:='private-import:a2000000-0000-4000-8000-00000000d004';
+ recorded uuid:='32000000-0000-4000-8000-000000000026'; first jsonb; r jsonb; t text;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(u::uuid),(other::uuid);
+ INSERT INTO public.private_import_targets(id,owner_id,revision,opportunity) VALUES
+   (live,u::uuid,1,'{"source":"text_parser","title":"Live","description_raw":"d"}'),
+   (gone,u::uuid,1,'{"source":"text_parser","title":"Gone","description_raw":"d"}'),
+   (foreign_target,other::uuid,1,'{"source":"text_parser","title":"Other","description_raw":"d"}');
+ PERFORM set_config('test.uid',u,false);
+ PERFORM public.confirm_application_event(u,gen_random_uuid(),live,'other','Office');
+ first:=public.confirm_application_event(u,recorded,gone,'other','Office');
+ UPDATE public.private_import_targets SET opportunity=NULL,revision=2,deleted_at=clock_timestamp() WHERE id=gone;
+ r:=public.confirm_application_event(u,recorded,gone,'other','Office');
+ IF r->>'replayed'<>'true' OR r->'event'<>first->'event' THEN RAISE EXCEPTION 'recorded application on deleted import did not replay'; END IF;
+ FOREACH t IN ARRAY ARRAY[gone,foreign_target,missing] LOOP
+  BEGIN PERFORM public.confirm_application_event(u,gen_random_uuid(),t,'other','Office'); RAISE EXCEPTION 'unavailable private target accepted %',t;
+  EXCEPTION WHEN no_data_found THEN IF SQLERRM<>'private_target_unavailable' THEN RAISE; END IF; END;
+ END LOOP;
+ IF (SELECT count(*) FROM public.application_events WHERE device_id=u)<>2
+   OR EXISTS(SELECT 1 FROM public.interactions WHERE device_id=u AND opportunity_id IN(foreign_target,missing)) THEN RAISE EXCEPTION 'refused private target still wrote'; END IF;
+ RAISE WARNING 'PASS application refuses deleted/other-owner/unknown private import targets after exact replay';
 END $$;

@@ -156,18 +156,72 @@ BEGIN
  RESET ROLE;
  RAISE WARNING 'PASS contact real Flow B ownership transfer preserves payload/time; stale source denied';
 END $$;
+-- Event IDs omit the owner so a transferred event stays retryable, so two
+-- accounts can hold the same ID. The same snapshot is one contact: keep the
+-- earlier confirmation. A different snapshot keeps both under a new source ID.
+-- Neither may make the merge fail forever.
 DO $$
-DECLARE src text := '31000000-0000-4000-8000-000000000005'; dst text := '31000000-0000-4000-8000-000000000006'; id uuid := '31000000-0000-8000-8000-000000000005'; tok uuid;
+DECLARE id uuid := '31000000-0000-8000-8000-000000000021'; other_id uuid := '31000000-0000-8000-8000-000000000031';
+ mats jsonb := '[{"kind":"profile","version":"same"}]'; pair text[]; src text; dst text; tok uuid; earlier jsonb; later jsonb; moved jsonb; r jsonb;
 BEGIN
- PERFORM set_config('test.uid',src,false); PERFORM public.confirm_contact_event(src,id,'merge-conflict','a@b.c','s','source');
+ INSERT INTO auth.users(id) SELECT ('31000000-0000-4000-8000-' || lpad(n::text,12,'0'))::uuid FROM generate_series(21,25) n;
+ FOREACH pair SLICE 1 IN ARRAY ARRAY[['source-first','31000000-0000-4000-8000-000000000021','31000000-0000-4000-8000-000000000022'],
+                                     ['target-first','31000000-0000-4000-8000-000000000023','31000000-0000-4000-8000-000000000024']] LOOP
+   src := pair[2]; dst := pair[3];
+   PERFORM set_config('test.uid',CASE WHEN pair[1]='source-first' THEN src ELSE dst END,false);
+   earlier := public.confirm_contact_event(current_setting('test.uid'),id,'dup','a@b.c','Same subject','Same body',mats)->'event';
+   PERFORM set_config('test.uid',CASE WHEN pair[1]='source-first' THEN dst ELSE src END,false);
+   later := public.confirm_contact_event(current_setting('test.uid'),id,'dup','a@b.c','Same subject','Same body',mats)->'event';
+   IF (later->>'confirmed_at')::timestamptz <= (earlier->>'confirmed_at')::timestamptz THEN RAISE EXCEPTION 'fixture timestamps not ordered'; END IF;
+   PERFORM set_config('test.uid',src,false);
+   moved := public.confirm_contact_event(src,other_id,'dup-other','a@b.c','s','unrelated')->'event';
+   PERFORM set_config('test.jwt','{"is_anonymous":true}',false); tok := public.mint_merge_grant('contact-dup-' || pair[1] || '@example.invalid');
+   PERFORM set_config('test.uid',dst,false); PERFORM set_config('test.jwt',jsonb_build_object('email','contact-dup-' || pair[1] || '@example.invalid')::text,false);
+   r := public.redeem_merge_grant(tok);
+   IF r->>'merged' <> 'true' OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NULL
+     OR EXISTS(SELECT 1 FROM public.contact_events WHERE device_id=src)
+     OR (SELECT count(*) FROM public.contact_events WHERE device_id=dst) <> 2
+     OR (SELECT to_jsonb(e)-'device_id' FROM public.contact_events e WHERE device_id=dst AND event_id=id) <> earlier-'device_id'
+     OR (SELECT to_jsonb(e)-'device_id' FROM public.contact_events e WHERE device_id=dst AND event_id=other_id) <> moved-'device_id' THEN
+     RAISE EXCEPTION 'identical % snapshot did not merge into one earliest confirmation',pair[1];
+   END IF;
+   r := public.confirm_contact_event(dst,id,'dup','a@b.c','Same subject','Same body',mats);
+   IF r->>'replayed' <> 'true' OR (r->'event')-'device_id' <> earlier-'device_id' THEN RAISE EXCEPTION 'merged duplicate not replayable %',pair[1]; END IF;
+ END LOOP;
+ RAISE WARNING 'PASS identical contact snapshot on both accounts merges into the earlier confirmation; rest of merge commits';
+END $$;
+DO $$
+DECLARE src text := '31000000-0000-4000-8000-000000000005'; dst text := '31000000-0000-4000-8000-000000000006'; id uuid := '31000000-0000-8000-8000-000000000005';
+ tok uuid; source_event jsonb; target_event jsonb; rekeyed jsonb;
+BEGIN
+ PERFORM set_config('test.uid',src,false); source_event := public.confirm_contact_event(src,id,'merge-conflict','a@b.c','s','source')->'event';
  PERFORM set_config('test.jwt','{"is_anonymous":true}',false); tok:=public.mint_merge_grant('contact-collision@example.invalid');
- PERFORM set_config('test.uid',dst,false); PERFORM public.confirm_contact_event(dst,id,'merge-conflict','a@b.c','s','target');
+ PERFORM set_config('test.uid',dst,false); target_event := public.confirm_contact_event(dst,id,'merge-conflict','a@b.c','s','target')->'event';
  PERFORM set_config('test.jwt','{"email":"contact-collision@example.invalid"}',false);
- BEGIN PERFORM public.redeem_merge_grant(tok); RAISE EXCEPTION 'merge collision accepted'; EXCEPTION WHEN unique_violation THEN IF SQLERRM <> 'contact_event_merge_conflict' THEN RAISE; END IF; END;
- IF EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src) OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NOT NULL
-   OR (SELECT count(*) FROM public.contact_events WHERE device_id IN(src,dst)) <> 2
-   OR (SELECT count(*) FROM public.interactions WHERE device_id IN(src,dst)) <> 2 THEN RAISE EXCEPTION 'collision partially committed merge'; END IF;
- RAISE WARNING 'PASS contact collision aborts entire merge, preserving both owners and unconsumed grant';
+ PERFORM public.redeem_merge_grant(tok);
+ SELECT to_jsonb(e) INTO rekeyed FROM public.contact_events e WHERE device_id=dst AND event_id<>id;
+ IF NOT EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=src) OR (SELECT consumed_at FROM public.merge_grants WHERE token=tok) IS NULL
+   OR EXISTS(SELECT 1 FROM public.contact_events WHERE device_id=src)
+   OR (SELECT count(*) FROM public.contact_events WHERE device_id=dst) <> 2
+   OR (SELECT to_jsonb(e) FROM public.contact_events e WHERE device_id=dst AND event_id=id) <> target_event
+   OR rekeyed-'device_id'-'event_id' <> source_event-'device_id'-'event_id' THEN
+   RAISE EXCEPTION 'different same-ID snapshot was not kept under a new ID %',rekeyed;
+ END IF;
+ RAISE WARNING 'PASS different same-ID contact snapshot is kept under a new ID and the merge commits';
+END $$;
+-- Only a merge's own duplicate/collision may be removed or re-keyed: identical
+-- rows in unrelated accounts, or a merge target whose source is already empty,
+-- stay immutable even to the table owner.
+DO $$
+DECLARE loner text := '31000000-0000-4000-8000-000000000025'; merged_target text := '31000000-0000-4000-8000-000000000022';
+BEGIN
+ PERFORM set_config('test.uid',loner,false);
+ PERFORM public.confirm_contact_event(loner,'31000000-0000-8000-8000-000000000021','dup','a@b.c','Same subject','Same body','[{"kind":"profile","version":"same"}]');
+ BEGIN DELETE FROM public.contact_events WHERE device_id=loner; RAISE EXCEPTION 'unrelated duplicate deleted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN DELETE FROM public.contact_events WHERE device_id=merged_target; RAISE EXCEPTION 'merge target history deleted'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN UPDATE public.contact_events SET event_id=gen_random_uuid() WHERE device_id=loner; RAISE EXCEPTION 'unrelated event re-keyed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN UPDATE public.contact_events SET event_id=gen_random_uuid() WHERE device_id=merged_target; RAISE EXCEPTION 'merged event re-keyed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ RAISE WARNING 'PASS merge dedupe/re-key exceptions do not open deletion or re-keying outside a merge';
 END $$;
 
 -- Account deletion cleans new email PII; a source already merged into another
@@ -201,4 +255,34 @@ BEGIN
    OR NOT EXISTS(SELECT 1 FROM public.contact_events WHERE device_id=src AND opportunity_id='dead-target')
    OR EXISTS(SELECT 1 FROM public.contact_events WHERE device_id=dst) THEN RAISE EXCEPTION 'missing target transfer partially committed'; END IF;
  RAISE WARNING 'PASS real Flow B rejects missing/deleted target auth owner without moving events or consuming grant';
+END $$;
+
+-- A private import target must still be the caller's live import. An exact
+-- retry of an already recorded event replays even after the import is deleted.
+DO $$
+DECLARE u text := '31000000-0000-4000-8000-000000000026'; other text := '31000000-0000-4000-8000-000000000027';
+ live text := 'private-import:a2000000-0000-4000-8000-00000000c001'; gone text := 'private-import:a2000000-0000-4000-8000-00000000c002';
+ foreign_target text := 'private-import:a2000000-0000-4000-8000-00000000c003'; missing text := 'private-import:a2000000-0000-4000-8000-00000000c004';
+ recorded uuid := '31000000-0000-8000-8000-000000000026'; first jsonb; r jsonb; t text;
+BEGIN
+ INSERT INTO auth.users(id) VALUES (u::uuid),(other::uuid);
+ INSERT INTO public.private_import_targets(id,owner_id,revision,opportunity) VALUES
+   (live,u::uuid,1,'{"source":"text_parser","title":"Live","description_raw":"d"}'),
+   (gone,u::uuid,1,'{"source":"text_parser","title":"Gone","description_raw":"d"}'),
+   (foreign_target,other::uuid,1,'{"source":"text_parser","title":"Other","description_raw":"d"}');
+ PERFORM set_config('test.uid',u,false);
+ PERFORM public.confirm_contact_event(u,gen_random_uuid(),live,'a@b.c','s','live body');
+ first := public.confirm_contact_event(u,recorded,gone,'a@b.c','s','recorded body');
+ UPDATE public.private_import_targets SET opportunity=NULL,revision=2,deleted_at=clock_timestamp() WHERE id=gone;
+ r := public.confirm_contact_event(u,recorded,gone,'a@b.c','s','recorded body');
+ IF r->>'replayed' <> 'true' OR r->'event' <> first->'event' THEN RAISE EXCEPTION 'recorded event on deleted import did not replay'; END IF;
+ FOREACH t IN ARRAY ARRAY[gone,foreign_target,missing] LOOP
+   BEGIN PERFORM public.confirm_contact_event(u,gen_random_uuid(),t,'a@b.c','s','new body'); RAISE EXCEPTION 'unavailable private target accepted %',t;
+   EXCEPTION WHEN no_data_found THEN IF SQLERRM <> 'private_target_unavailable' THEN RAISE; END IF; END;
+ END LOOP;
+ IF (SELECT count(*) FROM public.contact_events WHERE device_id=u) <> 2
+   OR EXISTS(SELECT 1 FROM public.interactions WHERE device_id=u AND opportunity_id IN (foreign_target,missing)) THEN
+   RAISE EXCEPTION 'refused private target still wrote';
+ END IF;
+ RAISE WARNING 'PASS contact refuses deleted/other-owner/unknown private import targets after exact replay';
 END $$;

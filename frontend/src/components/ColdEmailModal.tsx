@@ -1958,6 +1958,7 @@ export default function ColdEmailModal({
       // identity boundary without painting a U1 outcome into U2's session.
       setSendError(!isTokenOwnerStillCurrent(token) ? 'owner-changed'
         : error instanceof ContactEventError && error.code === 'conflict' ? 'contact-conflict'
+          : error instanceof ContactEventError && error.code === 'target_unavailable' ? 'private-target'
           : error instanceof ContactEventError && error.code === 'invalid_input' ? 'invalid-contact' : 'confirm');
     } finally {
       if (stillCurrent()) {

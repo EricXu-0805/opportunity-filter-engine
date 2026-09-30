@@ -67,6 +67,10 @@ describe('exact immutable contact confirmation', () => {
     await expect(confirmContactEvent(O, input(), captureOwnerToken())).rejects.toBeInstanceOf(OwnerMismatchError);
     api.rpc.mockResolvedValueOnce({ data: null, error: { code: '22023', message: 'invalid_contact_event' } });
     await expect(confirmContactEvent(O, input(), captureOwnerToken())).rejects.toMatchObject({ code: 'invalid_input' });
+    api.rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0002', message: 'private_target_unavailable' } });
+    await expect(confirmContactEvent(O, input(), captureOwnerToken())).rejects.toMatchObject({ code: 'target_unavailable' });
+    api.rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0002', message: 'private detail' } });
+    await expect(confirmContactEvent(O, input(), captureOwnerToken())).rejects.toMatchObject({ code: 'unavailable' });
   });
   it('only the documented conflict is distinguishable; errors never leak server text or call legacy RPC', async () => {
     api.rpc.mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'contact_event_conflict' } });

@@ -24,12 +24,13 @@ export interface ContactEventsPage {
   nextCursor: ContactEventsCursor | null;
   hasMore: boolean;
 }
-export type ContactEventFailure = 'invalid_input' | 'unavailable' | 'invalid_receipt' | 'conflict';
+export type ContactEventFailure = 'invalid_input' | 'unavailable' | 'invalid_receipt' | 'conflict' | 'target_unavailable';
 export class ContactEventError extends Error {
   constructor(readonly code: ContactEventFailure) {
     super(code === 'conflict' ? 'This contact identifier already belongs to a different snapshot.'
       : code === 'invalid_input' ? 'The contact snapshot is invalid.'
-        : 'Could not confirm whether this contact was saved.');
+        : code === 'target_unavailable' ? 'This private target is no longer available, so nothing was recorded.'
+          : 'Could not confirm whether this contact was saved.');
     this.name = 'ContactEventError';
   }
 }
@@ -112,8 +113,8 @@ export function snapshotContactEventInput(value: unknown): ContactEventInput {
  * refreshes, devices and an ownership transfer. The database owner/event
  * primary key and owner checks provide isolation; the owner is validated here
  * but excluded from the digest so a transferred event remains retryable.
- * Two accounts may have the same ID in separate private rows. Merging those
- * rows must report a collision, never guess which confirmation to preserve.
+ * Two accounts may have the same ID in separate private rows. A merge keeps
+ * the earlier of identical snapshots and re-keys a different source snapshot.
  * Provenance is deliberately excluded so a changed
  * source conflicts with an uncertain earlier save instead of adding a row.
  * A genuine repeat of identical content needs a distinct declared send time.

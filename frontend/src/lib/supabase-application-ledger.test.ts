@@ -117,6 +117,7 @@ describe('application event confirmation', () => {
   });
   it.each([
     ['23505', 'application_event_conflict', 'conflict'], ['22023', 'invalid_application_event', 'invalid_input'],
+    ['P0002', 'private_target_unavailable', 'target_unavailable'], ['P0002', 'private detail', 'unavailable'],
     ['23505', 'private detail', 'unavailable'], ['42501', 'not authorized private detail', 'unavailable'],
   ])('maps only documented failures safely %s %s', async (code, message, expected) => {
     api.rpc.mockResolvedValue({ data: null, error: { code, message } });
