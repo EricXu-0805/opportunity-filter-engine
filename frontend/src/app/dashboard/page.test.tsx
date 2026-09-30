@@ -29,6 +29,15 @@ vi.mock('@/lib/api', () => ({
   getStats: (...args: unknown[]) => mockGetStats(...args),
 }));
 
+// Opportunities imported and saved in this browser count as saved, exactly as
+// /favorites counts them. Default: storage readable, nothing imported.
+const customStorageFeed = vi.hoisted(() => ({
+  state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState,
+}));
+vi.mock('@/lib/custom-imports', () => ({
+  useCustomImportStorageState: () => customStorageFeed.state,
+}));
+
 vi.mock('@/components/PushToggle', () => ({
   default: () => <div data-testid="push-toggle" />,
 }));
@@ -126,6 +135,7 @@ const FUNNEL_CARDS = [
 ] as const;
 
 beforeEach(() => {
+  customStorageFeed.state = { status: 'ready', entries: [] };
   mockGetFavorites.mockResolvedValue(new Set());
   mockGetInteractionsFull.mockResolvedValue(new Map());
   mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
@@ -301,6 +311,44 @@ describe('DashboardPage — an identity switch clears the lists in the transitio
     await act(async () => {});
     expect(screen.queryByText('Tracked Lab')).toBeNull();
     expect(screen.queryByText('dashboard.reminders.inDays {"days":2}')).toBeNull();
+  });
+});
+
+describe('DashboardPage — one saved count with /favorites', () => {
+  function browserImport(id: string) {
+    return {
+      id, imported_at: '2026-09-30T16:00:00Z',
+      opportunity: {
+        source: 'text_parser', source_url: '', url: '', title: `Imported ${id}`,
+        description_raw: 'Pasted posting text.', extra_fields: {},
+      },
+    };
+  }
+
+  // /favorites said "2 saved" (two imports saved in this browser) while the
+  // dashboard said "0 SAVED" and "No saved opportunities yet".
+  it('counts opportunities saved in this browser, as /favorites does', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a'), browserImport('b')] };
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'ready'));
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('2');
+    expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
+    expect(screen.getByText('dashboard.deadlines.emptyTitle')).toBeInTheDocument();
+  });
+
+  it('adds browser saves to account favorites', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a')] };
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'fav-2']));
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('3'));
+  });
+
+  it('does not state a count it cannot read', async () => {
+    customStorageFeed.state = { status: 'damaged', entries: [browserImport('a')] };
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'unknown'));
+    expect(screen.getByTestId('saved-summary').textContent).not.toMatch(/\d/);
   });
 });
 

@@ -23,6 +23,7 @@ import PushToggle from '@/components/PushToggle';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getShortlistOpportunities, getStats } from '@/lib/api';
+import { useCustomImportStorageState } from '@/lib/custom-imports';
 import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
@@ -121,6 +122,7 @@ function sortDeadlines(a: FavoriteDeadline, b: FavoriteDeadline): number {
 
 export default function DashboardPage() {
   const { t } = useT();
+  const customStorage = useCustomImportStorageState();
   const [saved, setSaved] = useState<SavedState>({ status: 'loading', count: 0 });
   const [deadlines, setDeadlines] = useState<DeadlineState>({
     status: 'loading',
@@ -418,6 +420,9 @@ export default function DashboardPage() {
     if (item.status in statusCounts) statusCounts[item.status] += 1;
   }
   const trackerReady = tracker.status === 'ready';
+  // /favorites counts opportunities imported and saved in this browser beside
+  // account favorites, and hides its count while that storage is unreadable.
+  const browserSaved = customStorage.status === 'ready' ? customStorage.entries.length : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
@@ -447,7 +452,7 @@ export default function DashboardPage() {
           <StatCard
             testId="saved-summary"
             state={saved.status}
-            value={saved.count}
+            value={browserSaved === null ? null : saved.count + browserSaved}
             label={t('dashboard.summary.saved')}
             color="text-amber-600"
             t={t}
@@ -486,7 +491,7 @@ export default function DashboardPage() {
           title={t('dashboard.deadlines.title')}
           subtitle={t('dashboard.deadlines.subtitle')}
         >
-          <DeadlineContent state={deadlines} savedCount={saved} onRetry={retry} t={t} />
+          <DeadlineContent state={deadlines} savedCount={saved} browserSaved={browserSaved} onRetry={retry} t={t} />
         </DashboardSection>
 
         <DashboardSection
@@ -808,11 +813,14 @@ function ErrorRow({
 function DeadlineContent({
   state,
   savedCount,
+  browserSaved,
   onRetry,
   t,
 }: {
   state: DeadlineState;
   savedCount: SavedState;
+  /** Opportunities saved in this browser; null while that storage is unreadable. */
+  browserSaved: number | null;
   onRetry: () => void;
   t: Replier;
 }) {
@@ -848,7 +856,7 @@ function DeadlineContent({
     );
   }
   if (state.items.length === 0) {
-    const noSaves = savedCount.status === 'ready' && savedCount.count === 0;
+    const noSaves = savedCount.status === 'ready' && savedCount.count === 0 && browserSaved === 0;
     return (
       <div className="px-6 py-9 text-center">
         <BookOpenCheck className="mx-auto h-7 w-7 text-gray-300" aria-hidden="true" />
