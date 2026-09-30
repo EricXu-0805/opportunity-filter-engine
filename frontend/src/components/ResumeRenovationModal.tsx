@@ -855,6 +855,8 @@ export default function ResumeRenovationModal({
     const workRevision = scope.workRevision;
     const lines: string[] = [];
     for (const s of doc.sections) {
+      // A section with no bullets has nothing to paste under its heading.
+      if (s.bullets.length === 0) continue;
       if (s.heading) lines.push(s.heading.toUpperCase());
       // "demote" is defined for the model as "kept but de-emphasized (placed
       // lower)", and the chip a student reads says "De-emphasized". This used
