@@ -281,6 +281,17 @@ test.describe('Complete target résumé export', () => {
     await masterUnchanged(page, value);
   });
 
+  test('on a phone, Save and the unsaved status stay in view after editing the last field', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openDraft(page);
+    // The 2026-09-30 walk found Save about 20 screens above the last field.
+    await dialog(page).getByRole('textbox', { name: 'Edit Additional notes 补充说明', exact: true }).last().fill(`${LAST_ITEM} — edited`);
+    await expect(dialog(page).getByRole('button', { name: 'Save target draft', exact: true })).toBeInViewport();
+    await expect(dialog(page).getByRole('button', { name: 'Save target draft', exact: true })).toBeEnabled();
+    await expect(dialog(page).getByText('Unsaved local edits', { exact: true })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
   test('an export failure keeps the draft and starts no download or hidden retry; the student can explicitly retry a real export', async ({ page }, info) => {
     const net = traffic(page); const downloads: Download[] = [];
     page.on('download', download => downloads.push(download));

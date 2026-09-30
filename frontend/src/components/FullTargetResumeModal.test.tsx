@@ -120,6 +120,14 @@ describe('full target résumé modal', () => {
     expect(preview().queryByText('Measured robot trials; did not lead the team.')).toBeNull();
     expect(storage.save).not.toHaveBeenCalled();
   });
+  it('keeps Save and the save status outside the scrolling editor, so they stay reachable from its last field', async () => {
+    await createUI(); editName('Edited in the editor');
+    const editor = screen.getByRole('textbox', { name: 'Edit Full name' }).closest('.overflow-y-auto');
+    expect(editor).not.toBeNull();
+    expect(editor!.contains(screen.getByRole('button', { name: 'Save target draft' }))).toBe(false);
+    expect(editor!.contains(screen.getByText('Unsaved local edits'))).toBe(false);
+    expect(screen.getByRole('dialog').contains(screen.getByRole('button', { name: 'Save target draft' }))).toBe(true);
+  });
   it('keeps focus through multi-character typing and preserves edits made while a save is pending', async () => {
     const user = userEvent.setup(); await createUI();
     const input = screen.getByRole('textbox', { name: 'Edit Full name' });
@@ -318,6 +326,18 @@ describe('full target résumé modal', () => {
     expect(screen.getAllByRole('button', { name: /^View version / })).toHaveLength(30);
     expect(storage.history.mock.calls[2]).toEqual([opportunity.id, captureOwnerToken(), 11, { signal: expect.any(AbortSignal) }]);
     expect(screen.queryByRole('button', { name: 'Load older versions' })).toBeNull(); expect(storage.version).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['en', 'Edit Full name', 'Version history', 'Load latest 20 versions', /^View version 2 · /, /^View version 2 · Sep 30, 2026, \d{1,2}:22\s[AP]M$/],
+    ['zh', '编辑 姓名', '版本历史', '读取最近 20 个版本', /^查看版本 2 · /, /^查看版本 2 · 2026年9月30日 \d{2}:22$/],
+  ] as const)('shows saved version times as a local date and time, not raw UTC timestamps (%s)', async (locale, field, summary, load, button, label) => {
+    i18n.locale = locale; const p = profile(); storage.load.mockResolvedValue(loaded(await docFor(p), 2));
+    storage.history.mockResolvedValueOnce([{ revision: 2, updated_at: '2026-09-30T12:22:24.741331+00:00' }]);
+    renderModal(p); await screen.findByRole('textbox', { name: field }); screen.getByText(summary).closest('details')!.open = true;
+    fireEvent.click(screen.getByRole('button', { name: load }));
+    const version = await screen.findByRole('button', { name: button });
+    expect(version.textContent).toMatch(label);
+    expect(version.textContent).not.toMatch(/741331|\+00:00|T12:22/);
   });
   it('ignores out-of-order history bodies and restores the selected immutable version through a new CAS save', async () => {
     const p = profile(); const original = await docFor(p); const oldOne = loaded(withName(original, 'Version one hand edit'), 1); const oldTwo = loaded(withName(original, 'Version two hand edit'), 2);
