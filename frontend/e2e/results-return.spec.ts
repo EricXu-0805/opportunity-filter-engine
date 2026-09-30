@@ -491,7 +491,7 @@ test.describe('Results return context', () => {
     await expect(title(page)).toBeInViewport();
     expect(page.url()).toBe(url); expect(net.requests).toHaveLength(count);
     expectPublicFilters(page.url());
-    expect(net.writes.filter(write => /commit_profile_patch_cas|commit_target_resume_cas/.test(write))).toEqual([]);
+    expect(net.writes.filter(write => /commit_profile_patch_cas|commit_target_resume(?:_with_provenance)?_cas/.test(write))).toEqual([]);
   });
 
   for (const failure of ['read failure', 'invalid saved document'] as const) {
