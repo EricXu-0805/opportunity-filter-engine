@@ -1164,7 +1164,10 @@ async def _scan_collectors(rec: _Recorder, summary: dict) -> dict | None:
                 },
                 scope=name,
                 priority="high",
-                failure_state="suspicious_zero",
+                # 031's CHECK allows five states; the rest is a 400 that drops
+                # the incident. The zero itself is in title/detail.zero_class,
+                # and 'partial' would claim some records arrived.
+                failure_state="failed",
             )
         elif state == "ok":
             ok_sources += 1
@@ -1511,7 +1514,8 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
             },
             scope=row["source"],
             priority="high" if row["consecutive_failures"] >= 2 else "normal",
-            failure_state="stale",
+            # Staleness is in the dedup_key and detail; 031 has no 'stale'.
+            failure_state="failed",
         )
 
     report = source_health.corpus_report(ledger, now)
@@ -1528,7 +1532,7 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
             detail={"school": school, "report": report},
             scope=school,
             priority="urgent",
-            failure_state="stale",
+            failure_state="failed",
         )
 
     summary["detectors"]["source_health"] = {
