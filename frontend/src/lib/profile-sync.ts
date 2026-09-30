@@ -4304,6 +4304,10 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
     // caller must still be told about the collision rather than seeing a
     // plain success.
     let deferredConflict: { keys: string[]; remote: ProfileData } | null = null;
+    // Passes that settled a revision-0 write against the row this device
+    // already knows. They cost no round trip and must not use up the rebase
+    // that another device's save may still need.
+    let localPasses = 0;
     for (let rebases = 0; ; rebases += 1) {
       if (!isOwnerTokenValid(token, token.uid)) return { status: 'abandoned' } as ProfileSaveResult;
       const env = readProfileSyncEnvelope();
@@ -4369,6 +4373,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       const onKnownRow = pending.baseRevision === 0 && !!known
         && !isCompleteDocument(patch as unknown as ProfileData)
         && resolveConflict({ ...pending, dirtyKeys: sendKeys as string[] }, known.profile).conflictKeys.length === 0;
+      if (onKnownRow) localPasses += 1;
       const outcome: ProfilePatchOutcome = onKnownRow && known
         ? { status: 'conflict', revision: known.revision, profile: known.profile as unknown as Record<string, unknown> }
         : await commitProfilePatch({
@@ -4485,7 +4490,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
           return { status: 'already-saved', revision: outcome.revision, profile: remote };
         }
 
-        if (resolution.conflictKeys.length === 0 && rebases < MAX_AUTO_REBASES) {
+        if (resolution.conflictKeys.length === 0 && rebases - localPasses < MAX_AUTO_REBASES) {
           // Disjoint edits: nobody touched the fields this write is about, so
           // it can be replayed onto the newer revision without asking.
           // Exactly once — a second conflict means the row is moving faster
@@ -4521,7 +4526,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         }
 
         if (resolution.conflictKeys.length > 0 && resolution.applyKeys.length > 0
-          && rebases < MAX_AUTO_REBASES) {
+          && rebases - localPasses < MAX_AUTO_REBASES) {
           // A PARTIAL disagreement. The fields nobody else touched are still
           // safe against the new revision, and holding them back because one
           // other field collided would tell the user nothing saved when most

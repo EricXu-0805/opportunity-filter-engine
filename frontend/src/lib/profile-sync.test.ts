@@ -5241,6 +5241,11 @@ describe('an edit made while this device\'s first create is unanswered', () => {
       get row() { return row; },
       get rev() { return rev; },
       seen,
+      /** Another device saves `patch` onto the row. */
+      elsewhere(patch: Record<string, unknown>) {
+        row = { ...row, ...patch };
+        rev += 1;
+      },
       handle(intent: { expectedRevision: number; patch: Record<string, unknown> }): ProfilePatchOutcome {
         seen.push({ expected: intent.expectedRevision, keys: Object.keys(intent.patch).sort() });
         const complete = ['home_school', 'college', 'major', 'grade', 'search_weight'].every((k) => k in intent.patch);
@@ -5301,5 +5306,41 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     // The résumé went out as a patch on revision 1, never as a partial create.
     expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'] }]);
     expect(journalOps()).toEqual([]);
+  });
+
+  it('still rebases once onto another device\'s disjoint save that lands after the create', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+
+    // Before this device flushes the résumé, another one saves a field the
+    // résumé does not touch. Taking revision 1 as the base is this device's
+    // own bookkeeping; the one rebase a real disagreement may use is left.
+    server.elsewhere({ research_interests: 'medical imaging' });
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next.status).toBe('saved');
+    expect(server.rev).toBe(3);
+    expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', research_interests: 'medical imaging' });
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: resumeKeys }]);
   });
 });
