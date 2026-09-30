@@ -726,6 +726,61 @@ class TestOptimizeBullet:
         assert body["changed"] is True
         assert "fMRI" in body["text"]
 
+    @pytest.mark.parametrize("length", [501, 700])
+    def test_bullet_over_the_rewrite_limit_is_refused_by_name(
+        self, python_profile, real_opp_id, monkeypatch, length,
+    ):
+        """The rewrite limit is 500 characters everywhere a bullet is rewritten.
+        A longer bullet is refused with the limit named, before any provider
+        work or usage, instead of a generic validation error or a cut."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        calls: list[object] = []
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature))
+        text = ("Ran assays " * 80)[:length]
+        assert len(text) == length
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id, current_text=text, base_text=text,
+        ))
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BULLET_TOO_LONG_TO_OPTIMIZE"
+        assert detail["max_characters_per_bullet"] == 500
+        assert detail["retryable"] is False
+        assert calls == []
+
+    def test_limit_counts_characters_not_bytes(self, python_profile, real_opp_id, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        text = "\U0001f9ea" * 500
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id, current_text=text, base_text=text,
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["warnings"] == ["llm_not_configured"]
+
+    def test_long_source_is_evidence_shown_whole(self, python_profile, real_opp_id, monkeypatch):
+        """A long base bullet the student shortened by hand stays optimizable:
+        only the wording being rewritten has the limit, and the whole source
+        reaches the prompt as evidence."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        prompts: list[str] = []
+
+        def _fake(messages, *a, **k):
+            prompts.append(messages[1]["content"])
+            return json.dumps({"text": "Designed and ran a laboratory protocol.", "source_evidence": "x"})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", _fake)
+        assert len(_LONG_BULLET) > 700
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id,
+            current_text="Designed and ran a laboratory protocol",
+            base_text=_LONG_BULLET,
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["changed"] is True
+        assert prompts and "stage079" in prompts[0]
+
 
 # --------------------------------------------------------------------------- #
 # metering scaffold (OFF by default)

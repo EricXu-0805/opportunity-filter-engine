@@ -155,18 +155,34 @@ async function profileSignature(fingerprint: string): Promise<string | undefined
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
-function pickRenovationWarning(warnings: string[], t: Replier): string | null {
-  if (warnings.length === 0) return null;
+// The server rewrites a bullet of up to 500 characters (Python len: code
+// points) in renovation and re-optimize alike, and refuses rather than cuts.
+const REWRITE_MAX_BULLET_CHARACTERS = 500;
+const characterCount = (text: string) => [...text].length;
+
+/** The limit a BULLET_TOO_LONG_TO_OPTIMIZE refusal names, else null. */
+function refusedOptimizeLimit(err: unknown): number | null {
+  if (!err || typeof err !== 'object' || !('code' in err) || err.code !== 'BULLET_TOO_LONG_TO_OPTIMIZE') return null;
+  const detail = 'detail' in err ? err.detail as Record<string, unknown> | null : null;
+  const max = detail?.max_characters_per_bullet;
+  return Number.isSafeInteger(max) ? Number(max) : REWRITE_MAX_BULLET_CHARACTERS;
+}
+
+// A fabrication catch leads; a bullet left as written because it was too long
+// is named alongside it, since the two can happen in the same pass.
+function pickRenovationWarnings(warnings: string[], t: Replier): string[] {
+  const tooLong = warnings.some((w) => /^bullet_.+_too_long_to_rewrite$/.test(w))
+    ? [t('renovate.warnings.tooLongToRewrite', { max: REWRITE_MAX_BULLET_CHARACTERS })] : [];
   if (warnings.some((w) => w.includes('rejected_fabrication'))) {
-    return t('renovate.warnings.fabricationCaught');
+    return [t('renovate.warnings.fabricationCaught'), ...tooLong];
   }
   if (warnings.includes('llm_not_configured')) {
-    return t('renovate.warnings.llmUnavailable');
+    return [t('renovate.warnings.llmUnavailable')];
   }
   if (warnings.some((w) => w.startsWith('plan_') || w === 'macro_plan_failed')) {
-    return t('renovate.warnings.planFailed');
+    return [t('renovate.warnings.planFailed')];
   }
-  return null;
+  return tooLong;
 }
 
 /** The text a bullet currently shows: its selected variant, or the base. */
@@ -750,13 +766,15 @@ export default function ResumeRenovationModal({
     const editRevision = userEditRef.current;
     const current = () => sourceRef.current.ready && sourceRef.current.epoch === epoch && userEditRef.current === editRevision && isCurrentWork(scope, workRevision);
     const isSameBullet = () => docRef.current?.sections.some((s) => s.bullets.some((cur) => cur === b));
+    const text = bulletCurrentText(b);
+    if (characterCount(text) > REWRITE_MAX_BULLET_CHARACTERS) return;
     setOptimizingId(b.id);
     setBulletNotices((prev) => ({ ...prev, [b.id]: '' }));
     try {
       const resp = await optimizeBullet(
         profileSnapshot,
         opportunityId,
-        bulletCurrentText(b),
+        text,
         b.base_text,
         { locale, expectedTargetVersion },
       );
@@ -780,8 +798,11 @@ export default function ResumeRenovationModal({
       }
     } catch (err) {
       if (!current() || !isSameBullet()) return;
+      const refusedLimit = refusedOptimizeLimit(err);
       if (err && typeof err === 'object' && 'status' in err && err.status === 409 && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') setTargetVersionIssue('changed');
-      else setBulletNotices((prev) => ({ ...prev, [b.id]: profileInputMessage(err, t) ?? t('renovate.bulletFailed') }));
+      else if (refusedLimit !== null) {
+        setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.limits.tooLongToOptimize', { actual: characterCount(text), max: refusedLimit }) }));
+      } else setBulletNotices((prev) => ({ ...prev, [b.id]: profileInputMessage(err, t) ?? t('renovate.bulletFailed') }));
     } finally {
       if (current()) setOptimizingId(null);
     }
@@ -855,7 +876,7 @@ export default function ResumeRenovationModal({
 
   if (!isOpen) return null;
 
-  const warningMessage = doc ? pickRenovationWarning(doc.warnings, t) : null;
+  const warningMessages = doc ? pickRenovationWarnings(doc.warnings, t) : [];
   const hasResume = !!profileSnapshot.resume_text;
   // One provenance/action notice: a stale draft is stronger than unknown
   // provenance or a stopped intent. The shared banner owns read-error retry.
@@ -1055,10 +1076,12 @@ export default function ResumeRenovationModal({
                   {t('renovate.restored')}
                 </p>
               )}
-              {warningMessage && (
+              {warningMessages.length > 0 && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[12.5px] text-amber-800">
                   <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{warningMessage}</span>
+                  <div className="space-y-1">
+                    {warningMessages.map((message) => <p key={message}>{message}</p>)}
+                  </div>
                 </div>
               )}
               <p className="text-[11.5px] text-gray-400">{t('renovate.reviewHint')}</p>
@@ -1076,7 +1099,11 @@ export default function ResumeRenovationModal({
                       const isEditing = editingId === b.id;
                       const isOptimizing = optimizingId === b.id;
                       const action = ACTION_CHIP[b.action] ?? ACTION_CHIP.keep;
-                      const notice = bulletNotices[b.id];
+                      const currentLength = characterCount(current);
+                      const overLimit = currentLength > REWRITE_MAX_BULLET_CHARACTERS;
+                      const notice = overLimit
+                        ? t('renovate.limits.tooLongToOptimize', { actual: currentLength, max: REWRITE_MAX_BULLET_CHARACTERS })
+                        : bulletNotices[b.id];
                       const changed = current.trim() !== b.base_text.trim();
                       return (
                         <li
@@ -1137,7 +1164,7 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => requestOptimization(b)}
-                                  disabled={!sourceReady || !docSourceCurrent || profileAction.busy || isOptimizing || optimizingId !== null}
+                                  disabled={!sourceReady || !docSourceCurrent || profileAction.busy || isOptimizing || optimizingId !== null || overLimit}
                                   className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-fuchsia-500 hover:text-fuchsia-700 hover:bg-fuchsia-50 disabled:opacity-40 transition-colors"
                                   aria-label={t('renovate.reoptimizeAria')}
                                 >

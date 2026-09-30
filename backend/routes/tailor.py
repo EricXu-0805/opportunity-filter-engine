@@ -1544,7 +1544,7 @@ def _ai_optimize_bullet(
         + _keywords_line(opp, keywords)
         + f"- Professor / lab: {professor or '(unspecified)'} / {organization or '(unspecified)'}\n"
         + f"- Description excerpt: {description or '(no description)'}\n"
-        + f"\nSOURCE ORIGINAL (facts for this bullet):\n{_sanitize_field(source, max_len=600)}\n"
+        + f"\nSOURCE ORIGINAL (facts for this bullet):\n{_sanitize_field(source, max_len=None)}\n"
         + f"\nCURRENT WORDING to edit (not new evidence):\n{_sanitize_field(current_text, max_len=600)}\n"
         + (f"\nSTUDENT'S INSTRUCTION (obey if it doesn't require inventing anything): {instr}\n" if instr else "")
         + "\nReturn the JSON object now."
@@ -1575,6 +1575,16 @@ async def optimize_bullet(
     request: BulletOptimizeRequest, authorization: str | None = Header(default=None),
 ) -> BulletOptimizeResponse:
     pipeline_version = TAILOR_PIPELINE_VERSION
+    # The wording being rewritten has the same limit as every other rewrite
+    # path; base_text is evidence only and is shown whole.
+    if len(request.current_text) > _MAX_BULLET_CHARACTERS:
+        raise prework_refusal(422, {
+            "code": "BULLET_TOO_LONG_TO_OPTIMIZE",
+            "message": (f"Re-optimize a bullet of up to {_MAX_BULLET_CHARACTERS} characters. "
+                        "Nothing was shortened."),
+            "max_characters_per_bullet": _MAX_BULLET_CHARACTERS,
+            "retryable": False,
+        })
     resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
     if not resolved:
         raise HTTPException(status_code=404, detail="Opportunity not found")

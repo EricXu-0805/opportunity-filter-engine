@@ -1115,8 +1115,10 @@ class BulletOptimizeRequest(BaseModel):
     )
     profile: ProfileRequest
     opportunity_id: str
-    current_text: str = Field(default="", max_length=600)
-    base_text: str = Field(default="", max_length=600)
+    # Bounded by the résumé itself so an over-limit bullet reaches the route,
+    # which refuses it by name instead of a generic validation error.
+    current_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
+    base_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
     instruction: str | None = Field(default=None, max_length=300)
     locale: str = "en"
 

@@ -522,6 +522,78 @@ function savedDoc(doc = makeDoc()) {
   return { doc, base_snapshot: { sections: [] }, method: 'ai', warnings: [], updated_at: '2026-09-25T00:00:00Z', revision: 1, owner_id: 'renovation-owner-a', opportunity_id: 'opp-1' };
 }
 
+describe('bullet rewrite limits are named, never a generic failure', () => {
+  // The server counts Python code points; 500 emoji are 1,000 UTF-16 units.
+  const longText = (n: number) => `${'Ran assays '.repeat(80)}`.slice(0, n);
+  const docWithFirstBullet = (base_text: string, variants: RenovationDoc['sections'][0]['bullets'][0]['variants'] = []) => {
+    const doc = makeCurrentDoc();
+    doc.sections[0].bullets[0] = { ...doc.sections[0].bullets[0], base_text, variants, current: variants.length - 1 };
+    return doc;
+  };
+  const optimizeButtons = () => screen.getAllByRole('button', { name: 'renovate.reoptimizeAria' });
+
+  it.each([501, 700])('disables re-optimize for a %i-character bullet and says why', async (n) => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(docWithFirstBullet(longText(n))));
+    renderModal();
+    // The short bullet is optimizable, so readiness is not what disables the long one.
+    await waitFor(() => expect(optimizeButtons()[1]).toBeEnabled());
+    expect(optimizeButtons()[0]).toBeDisabled();
+    expect(screen.getByText(`renovate.limits.tooLongToOptimize:${n}|500`)).toBeInTheDocument();
+    fireEvent.click(optimizeButtons()[0]);
+    expect(mockOptimizeBullet).not.toHaveBeenCalled();
+  });
+
+  it('counts characters, not UTF-16 units: 500 emoji are sent whole', async () => {
+    const emoji = '\u{1F9EA}'.repeat(500);
+    mockLoadRenovation.mockResolvedValue(savedDoc(docWithFirstBullet(emoji)));
+    mockOptimizeBullet.mockResolvedValue({ text: emoji, source_evidence: '', changed: false, warnings: [] });
+    renderModal();
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    expect(mockOptimizeBullet.mock.calls[0][2]).toBe(emoji);
+    expect(screen.queryByText(/renovate\.limits\./)).toBeNull();
+  });
+
+  it('a long base the student shortened by hand can be re-optimized, with the whole base as evidence', async () => {
+    const base = longText(700);
+    mockLoadRenovation.mockResolvedValue(savedDoc(docWithFirstBullet(base, [{ source: 'user', text: 'Ran assays', source_evidence: '' }])));
+    mockOptimizeBullet.mockResolvedValue({ text: 'Ran assays', source_evidence: '', changed: false, warnings: [] });
+    renderModal();
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    expect(mockOptimizeBullet.mock.calls[0][2]).toBe('Ran assays');
+    expect(mockOptimizeBullet.mock.calls[0][3]).toBe(base);
+  });
+
+  it('maps the server refusal to the named limit with the server number', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockRejectedValue(Object.assign(new Error('Re-optimize a bullet of up to 40 characters.'), {
+      status: 422, code: 'BULLET_TOO_LONG_TO_OPTIMIZE', retryable: false,
+      detail: { code: 'BULLET_TOO_LONG_TO_OPTIMIZE', max_characters_per_bullet: 40, retryable: false },
+    }));
+    renderModal();
+    await clickOptimize();
+    const sent = 'Built a fault-tolerant data pipeline for ML workloads';
+    await waitFor(() => expect(screen.getByText(`renovate.limits.tooLongToOptimize:${sent.length}|40`)).toBeInTheDocument());
+    expect(screen.queryByText('renovate.bulletFailed')).toBeNull();
+  });
+
+  it('names a bullet the renovation left as written because it was too long', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({ warnings: ['bullet_s1b1_too_long_to_rewrite'] })));
+    renderModal();
+    await waitFor(() => expect(screen.getByText('renovate.warnings.tooLongToRewrite:500')).toBeInTheDocument());
+  });
+
+  it('keeps the fabrication catch and also names the too-long bullet', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc({
+      warnings: ['bullet_s1b2_rejected_fabrication: kubernetes', 'bullet_s1b1_too_long_to_rewrite'],
+    })));
+    renderModal();
+    await waitFor(() => expect(screen.getByText('renovate.warnings.fabricationCaught')).toBeInTheDocument());
+    expect(screen.getByText('renovate.warnings.tooLongToRewrite:500')).toBeInTheDocument();
+  });
+});
+
 describe('renovation owner and request lifecycle', () => {
   it('does not start renovation when structure finishes after unmount', async () => {
     const pending = deferred<typeof structuredResume>();

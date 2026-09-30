@@ -4186,10 +4186,14 @@ export const en = {
       keep: 'Kept',
       demote: 'De-emphasized',
     },
+    limits: {
+      tooLongToOptimize: 'This bullet has {actual} characters. AI can re-optimize a bullet of up to {max}: edit it shorter first. Nothing has been cut.',
+    },
     warnings: {
       fabricationCaught: 'Some rewrites were rejected because they couldn\'t be verified against your résumé — those bullets show your original text.',
       llmUnavailable: 'AI is unavailable right now — showing your résumé as-is.',
       planFailed: 'The AI plan step failed — your résumé structure is unchanged.',
+      tooLongToRewrite: 'AI left bullets over {max} characters as written. Edit them shorter, then re-optimize. Nothing has been cut.',
     },
   },
   tailor: {
@@ -9280,10 +9284,14 @@ export const zh = {
       keep: '保留',
       demote: '已弱化',
     },
+    limits: {
+      tooLongToOptimize: '这条有 {actual} 个字符，AI 最多再优化 {max} 个字符的条目，请先编辑缩短。内容没有被截断。',
+    },
     warnings: {
       fabricationCaught: '部分改写因无法在你的简历中核实而被拒绝 —— 这些条目显示你的原文。',
       llmUnavailable: 'AI 当前不可用 —— 按原样显示你的简历。',
       planFailed: 'AI 规划步骤失败 —— 简历结构保持不变。',
+      tooLongToRewrite: '超过 {max} 个字符的条目 AI 没有改写，保留了原文。请先编辑缩短，再点再优化。内容没有被截断。',
     },
   },
   tailor: {
