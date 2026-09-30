@@ -156,3 +156,23 @@ def test_late_source_requirement_survives_normalization_and_disk_reload(importer
     assert loaded['description_raw'] == normalized['description_raw']
     assert loaded['eligibility']['skills_preferred'] == normalized['eligibility']['skills_preferred']
     assert not calls
+
+
+def test_bot_verification_page_is_refused_before_any_model_call(importer, monkeypatch):
+    # What the production server was served for a real UIUC posting on
+    # 2026-09-30. It came back ok:true, llm_enriched:true, titled
+    # "One moment, please...", and could be saved as an opportunity.
+    client, calls = importer
+    html = ('<!DOCTYPE html><html><head><title>One moment, please...</title></head><body>'
+            '<h1>Please wait while your request is being verified...</h1>'
+            '<form id="wsidchk-form" style="display:none;" action="/z0f76a1d14fd" method="GET">'
+            '<input type="hidden" id="wsidchk" name="wsidchk"/></form>'
+            '<script>(function(){})();</script></body></html>')
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
+    result = client.post('/api/import-url', json={'url': URL})
+    assert result.status_code == 422
+    detail = result.json()['detail']
+    assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'access_page')
+    assert 'opportunity' not in result.json()
+    assert 'private-token-for-test' not in result.text
+    assert not calls

@@ -26,6 +26,8 @@ Only `text/html` and `application/xhtml+xml` are accepted when a nonempty MIME t
 
 A normal paragraph saying “log in to apply”, or a sign-in/CAPTCHA form beside readable opportunity content, is allowed. Real source sentences remain available when a separate login sentence shares their paragraph. Footer/header navigation links do not qualify as independent source for bypassing a login wall, but remain in successful source output. JavaScript skill requirements are not treated as a browser activation instruction. Access detection uses limited HTML and text patterns; it is not a guarantee that every site's gate is recognized.
 
+A site can answer the server with a bot-verification page while the same URL opens normally in the student's browser (researchops.web.illinois.edu did on 2026-09-30, and the page was imported as "One moment, please..."). A known challenge title (Cloudflare, Imunify360, Anubis, SiteGround, Imperva/Distil, PerimeterX, AWS WAF, Vercel, DDoS-Guard) is refused as `access_page` outright. Challenge scripts, frames, redirects and sentences (Cloudflare challenge platform, Incapsula, DataDome, "your request is being verified") refuse the page only when no independent source sentence remains, so a posting with a CAPTCHA widget still imports. The import page words `access_page` separately and asks for the posting text.
+
 ## Scope and remaining work
 
 - The result covers this response's static HTML. Linked pages, PDFs, image text, frames and content created by JavaScript were not read. External CSS, computed visibility, and interactive widgets are not rendered.

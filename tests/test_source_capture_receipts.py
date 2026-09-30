@@ -49,6 +49,7 @@ def test_capture_keeps_full_quote_and_source_time_independent_of_attempt_metadat
 @pytest.mark.parametrize("title", [
     "Sign in", "Log In", "Access denied", "Attention required",
     "Just a moment...", "Page not found", "404", "Service unavailable",
+    "One moment, please...", "Making sure you're not a bot!", "Pardon Our Interruption",
 ])
 def test_access_and_error_pages_are_not_a_successful_empty_check(title):
     result = capture("<h1>" + title + "</h1><p>Please contact the administrator.</p>")

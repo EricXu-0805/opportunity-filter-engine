@@ -252,3 +252,93 @@ def test_large_ordered_list_keeps_every_item_and_number():
     source = '<ol>' + ''.join(f'<li>Complete item {i}</li>' for i in range(3000)) + '</ol>'
     lines = extract_import_document(source)['text'].splitlines()
     assert lines == [f'{i + 1}. Complete item {i}' for i in range(3000)]
+
+
+# Bot-verification interstitials a site served to our fetcher instead of the
+# posting. The first is the page researchops.web.illinois.edu returned to the
+# production server on 2026-09-30, which was imported as an "AI-assisted"
+# opportunity titled "One moment, please...".
+IMUNIFY_WEBSHIELD = (
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><title>One moment, please...</title>'
+    '<style>body{background:#F6F7F8}</style></head><body>'
+    '<h1>Please wait while your request is being verified...</h1>'
+    '<form id="wsidchk-form" style="display:none;" action="/z0f76a1d14fd21a8fb5f" method="GET">'
+    '<input type="hidden" id="wsidchk" name="wsidchk"/></form>'
+    '<script>(function(){var wsidchk=1;})();</script></body></html>'
+)
+
+
+@pytest.mark.parametrize('html', [
+    pytest.param(IMUNIFY_WEBSHIELD, id='imunify360-as-served'),
+    # The same interstitial without the vendor form, title or script: its
+    # sentences alone are not opportunity text.
+    pytest.param(page('<h1>Please wait while your request is being verified...</h1>'
+                      '<script>setTimeout(function(){},1)</script>', '<title>One moment, please...</title>'),
+                 id='imunify360-h1-script'),
+    pytest.param(page('<p>Please wait while your request is being verified...</p>',
+                      '<title>One moment, please...</title>'), id='imunify360-paragraph'),
+    pytest.param(page('<div><h1>Please wait while your request is being verified...</h1><form method="post">'
+                      '<input type="hidden" name="x" value="1"></form></div><noscript>Enable JS</noscript>'),
+                 id='imunify360-untitled-form'),
+    pytest.param(page('<p>Please wait while your request is being verified...</p>'), id='verification-sentence-only'),
+    # Anubis: a blocked title with explanatory prose under it.
+    pytest.param(page('<main><h1 id="title">Making sure you&#39;re not a bot!</h1><p id="status">Loading...</p>'
+                      '<details><summary>Why am I seeing this?</summary><p>You are seeing this because the '
+                      'administrator of this website has set up Anubis to protect the server against the scourge '
+                      'of AI companies aggressively scraping websites.</p></details>'
+                      '<footer><p>Protected by Anubis From Techaro.</p></footer></main>',
+                      '<title>Making sure you&#39;re not a bot!</title>'
+                      '<script id="anubis_challenge" type="application/json">{"challenge":"abc"}</script>'),
+                 id='anubis'),
+    pytest.param(page('<h1>Pardon Our Interruption...</h1><p>As you were browsing something about your browser made '
+                      'us think you were a bot. There are a few reasons this might happen:</p>'
+                      '<ul><li>You have disabled cookies in your web browser.</li></ul>',
+                      '<title>Pardon Our Interruption</title>'), id='imperva-distil'),
+    # Incapsula: the whole page is a challenge frame, or a script and its noscript notice.
+    pytest.param('<html style="height:100%"><head><META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW"></head>'
+                 '<body style="margin:0px;height:100%"><iframe id="main-iframe" '
+                 'src="/_Incapsula_Resource?CWUDNSAI=9&xinfo=1" frameborder=0 width="100%" height="100%">'
+                 'Request unsuccessful. Incapsula incident ID: 123-456</iframe></body></html>', id='incapsula-frame'),
+    pytest.param('<html><head><script src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3"></script>'
+                 '</head><body><noscript>Request unsuccessful. Incapsula incident ID: 470000100123456-123456789'
+                 '</noscript></body></html>', id='incapsula-noscript'),
+    pytest.param(page('<div id="px-captcha"></div><p>Press &amp; Hold to confirm you are a human (and not a bot).</p>'
+                      '<p>Reference ID 5b0f8a10-1234-11ef-9c1a-7a6f1f1c0000</p>',
+                      '<title>Access to this page has been denied</title>'), id='perimeterx'),
+    # DataDome: the site's own name as title, a captcha frame as the body.
+    pytest.param('<html lang="en"><head><title>example.edu</title>'
+                 "<script>var dd={'rt':'c','cid':'AHrlqAAAAAMA','host':'geo.captcha-delivery.com'}</script>"
+                 '<script src="https://ct.captcha-delivery.com/c.js"></script></head>'
+                 '<body><iframe src="https://geo.captcha-delivery.com/captcha/?initialCid=AHrlq" '
+                 'title="DataDome CAPTCHA"></iframe></body></html>', id='datadome'),
+    # Cloudflare's current challenge, with its "Just a moment..." title removed.
+    pytest.param(page('<main><h1>example.edu</h1><p>Verify you are human by completing the action below.</p>'
+                      '<p>example.edu needs to review the security of your connection before proceeding.</p>'
+                      '<script src="/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1"></script></main>'),
+                 id='cloudflare-untitled'),
+    pytest.param(page('<h1>Checking your browser before accessing example.edu</h1>', '<title>DDoS-Guard</title>'),
+                 id='ddos-guard'),
+    pytest.param(page('<p>Verifying you are human. This may take a few seconds.</p>',
+                      '<title>Human Verification</title>'), id='human-verification'),
+    pytest.param(page('<h1>Vercel Security Checkpoint</h1><p>We are verifying your browser.</p>',
+                      '<title>Vercel Security Checkpoint</title>'), id='vercel-checkpoint'),
+    pytest.param(page('<p>Robot Challenge Screen</p>', '<title>Robot Challenge Screen</title>'
+                      '<meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fprogram">'),
+                 id='siteground'),
+])
+def test_bot_verification_interstitial_is_an_access_page_not_a_posting(html):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(html, content_type='text/html')
+    assert raised.value.reason == 'access_page'
+
+
+@pytest.mark.parametrize('extra', [
+    '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>',
+    '<div class="cf-turnstile" data-sitekey="0x4AAA"></div><p>Complete the check below to verify you are human, then submit.</p>',
+    '<iframe src="https://geo.captcha-delivery.com/captcha/?x=1"></iframe>',
+    '<noscript>Please enable JavaScript and cookies to continue.</noscript>',
+])
+def test_challenge_widget_or_script_does_not_hide_a_readable_posting(extra):
+    source = '<main><h1>Research opportunity</h1><p>Undergraduates may apply. Deadline June 1.</p></main>'
+    text = extract_import_document(page(source + extra))['text']
+    assert 'Undergraduates may apply. Deadline June 1.' in text

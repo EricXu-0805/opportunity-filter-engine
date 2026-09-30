@@ -189,7 +189,12 @@ def capture_from_sections(sections, *, source_url: str, record_source_url: str |
 
 _BLOCKED_PAGE_TITLE = re.compile(
     r'^(?:sign[ -]?in|log[ -]?in|access denied|permission denied|forbidden|'
-    r'just a moment|attention required|verify (?:you are|that you are) human|'
+    r'just a moment|attention required|verify (?:you are|that you are) (?:a )?human|'
+    # Bot-check interstitials served in place of the page: Imunify360,
+    # Anubis, SiteGround, Imperva/Distil, PerimeterX, AWS WAF, Vercel, DDoS-Guard.
+    r'one moment,? please|making sure you(?:\'|’)?re not a bot|robot challenge screen|'
+    r'pardon our interruption|access to this page has been denied|(?:human|bot) verification|'
+    r'(?:vercel )?security checkpoint|ddos-guard|checking your browser(?: before (?:accessing|continuing|proceeding)\b.*)?|'
     r'page not found|404(?: error)?|service unavailable)(?:[.!…]+|\s*[-|:–—].*)?$',
     re.I,
 )

@@ -49,6 +49,25 @@ _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
+# A site can answer our server's address with a bot check while the same URL
+# opens normally for the student. These sentences, scripts, frames and element
+# ids belong to the check, never to the posting.
+_CHALLENGE_TEXT = re.compile(
+    r'\b(?:(?:your|the|this) (?:request|browser|connection) (?:is being|will be) (?:verified|checked)|'
+    r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
+    r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
+    r'checking (?:your browser|if the site connection is secure)|'
+    r'needs to review the security of your connection|performing security verification|'
+    r'this may take a few seconds|press (?:&|and) hold|(?:incapsula|imperva) incident|request unsuccessful|'
+    r'protected by anubis|ddos protection by|ray id)\b',
+    re.I,
+)
+_CHALLENGE_SOURCE = re.compile(
+    r'/cdn-cgi/challenge-platform/|/_Incapsula_Resource\b|captcha-delivery\.com|/\.within\.website/|'
+    r'/\.well-known/sgcaptcha\b', re.I,
+)
+_CHALLENGE_IDS = {'challenge-running', 'cf-challenge-running', 'challenge-form', 'anubis_challenge', 'px-captcha',
+                  'wsidchk-form'}
 
 
 class ImportDocumentError(ValueError):
@@ -142,10 +161,25 @@ def _has_independent_source(root: Tag) -> bool:
         # Login instructions can share a paragraph with a real deadline. Assess
         # sentences separately; a gate phrase must not discard adjacent facts.
         for sentence in re.split(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*', line):
-            if _BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence):
+            if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
+                    or _CHALLENGE_TEXT.search(sentence)):
                 continue
             if sum(char.isalpha() for char in sentence) >= 12:
                 return True
+    return False
+
+
+def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
+    """Bot-check scripts, frames, redirects and containers, visible or not."""
+    for tag in soup.find_all(['script', 'iframe', 'form', 'meta', 'div']):
+        if tag.get('id') in _CHALLENGE_IDS:
+            return True
+        if tag.name == 'meta':
+            address = tag.get('content') if str(tag.get('http-equiv', '')).lower() == 'refresh' else None
+        else:
+            address = tag.get('action' if tag.name == 'form' else 'src')
+        if address and _CHALLENGE_SOURCE.search(str(address)):
+            return True
     return False
 
 
@@ -188,7 +222,7 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         # password form is only a wall when no independent source remains.
         if any(not _LOGIN.fullmatch(value) for value in blocked):
             raise ImportDocumentError('access_page')
-        gate = bool(blocked) or any(
+        gate = bool(blocked) or _has_challenge_machinery(soup) or any(
             _visible_in_body(tag) and (
                 (tag.name == 'input' and str(tag.get('type', '')).lower() == 'password')
                 or tag.get('id') in {'challenge-running', 'cf-challenge-running'}
@@ -197,7 +231,7 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         if gate and not _has_independent_source(root):
             raise ImportDocumentError('access_page')
         text = _clean_text(_render(root))
-        if _ACCESS_SHELL.fullmatch(text):
+        if _ACCESS_SHELL.fullmatch(text) or (_CHALLENGE_TEXT.search(text) and not _has_independent_source(root)):
             raise ImportDocumentError('access_page')
         if root.find('script') is not None and _LOADING_SHELL.fullmatch(text):
             raise ImportDocumentError('javascript_required')

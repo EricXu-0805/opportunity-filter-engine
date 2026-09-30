@@ -204,6 +204,24 @@ describe('ImportPage — failure keeps review material', () => {
 
 
 describe('ImportPage — actionable input errors', () => {
+  it('says the site blocked the fetch, keeps the link, and permits retry', async () => {
+    mockImportByUrl.mockResolvedValueOnce({
+      ok: false, error_code: 'import_source_unreadable', error_reason: 'access_page', llm_enriched: false,
+    });
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, opportunity: { title: 'Retried source', extra_fields: {} }, llm_enriched: false });
+    render(<ImportPage />);
+    const input = screen.getByPlaceholderText('import.urlPlaceholder');
+    fireEvent.change(input, { target: { value: 'https://researchops.example.edu/opportunity' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('import.errorSourceBlocked');
+    expect(screen.queryByText('import.errorSourceUnreadable')).toBeNull();
+    expect(screen.queryByText('import.saveToList')).toBeNull();
+    expect(input).toHaveValue('https://researchops.example.edu/opportunity');
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Retried source');
+  });
+
+
   it.each([
     ['url', 'import_input_too_large', 'import.errorPageTooLong'],
     ['url', 'import_source_unreadable', 'import.errorSourceUnreadable'],
