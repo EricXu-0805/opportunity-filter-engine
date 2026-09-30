@@ -127,6 +127,11 @@ async function inlineOnly(locator: Locator) {
 }
 async function entireClickArea(locator: Locator, alignBottom = false) {
   await locator.scrollIntoViewIfNeeded();
+  // That scroll aligns the padding box and snaps to whole pixels, so a control
+  // it reveals at the bottom edge can keep up to ~1.4px of border outside the
+  // viewport, depending on the page's sub-pixel layout above the footer. The
+  // check below measures the border box: bring exactly that into view.
+  await locator.evaluate(element => element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' }));
   if (alignBottom) await locator.evaluate(element => { const r = element.getBoundingClientRect(); window.scrollTo({ top: scrollY + r.bottom - innerHeight + 12, behavior: 'instant' }); });
   await expect(locator).toBeVisible();
   const configured = locator.page().viewportSize(); expect(configured).not.toBeNull();
