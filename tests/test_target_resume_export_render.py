@@ -26,6 +26,84 @@ def sample(text='Student 中文 😀'):
             'sections': [{'kind': 'basics', 'heading': '', 'blocks': [{'lines': [{'role': 'name', 'label': '', 'text': text}]}]}]}
 
 
+SKILLS = ['Python', 'PyTorch', 'SQL', 'C++', 'Git', 'Linux', 'pandas', 'scikit-learn']
+
+
+def resume_draft(locale='en', page_size='letter'):
+    """The 1,210-character 2026-09-30 stranger-walk draft (target: 1 page) that exported as 2 pages."""
+    def block(*lines):
+        return {'lines': [{'role': role, 'label': '', 'text': text} for role, text in lines]}
+    return {'version': 1, 'template': 'standard-v1', 'locale': locale, 'page_size': page_size, 'sections': [
+        {'kind': 'basics', 'heading': '', 'blocks': [block(
+            ('name', 'Jordan Avery Lee'), ('email', 'jordan.lee.test@example.com'), ('location', 'Urbana, IL'))]},
+        {'kind': 'education', 'heading': '', 'blocks': [block(
+            ('school', 'University of Illinois Urbana-Champaign'), ('degree', 'B.S.'), ('field', 'Computer Science'),
+            ('end', 'Expected May 2028'), ('experience', 'GPA 3.7/4.0'),
+            ('experience', 'Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), '
+                           'Linear Algebra (MATH 257), Probability & Statistics (STAT 400).'))]},
+        {'kind': 'activities', 'heading': '', 'blocks': [
+            block(('title', 'Undergraduate Research Assistant'), ('organization', 'Health Imaging Lab (UIUC)'),
+                  ('start', 'Jan 2026'), ('end', 'Present'),
+                  ('experience', '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a '
+                                 'ResNet-18 baseline, reaching 0.87 AUC on a held-out split.'),
+                  ('experience', '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and '
+                                 'integrated-gradients saliency maps; I wrote the evaluation scripts.')),
+            block(('title', 'Software Engineering Intern'), ('organization', 'Prairie Analytics'), ('location', 'Champaign, IL'),
+                  ('start', 'Jun 2026'), ('end', 'Aug 2026'),
+                  ('experience', "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes."),
+                  ('experience', '- Added unit tests (pytest) for 14 data-validation functions.')),
+            block(('title', 'Swahili-English Sentiment Classifier'),
+                  ('experience', 'Swahili-English Sentiment Classifier (course project, CS 446) - fine-tuned a multilingual '
+                                 'BERT on 3,000 labeled tweets; 78% accuracy vs 71% baseline.')),
+            block(('title', 'Campus Bus Tracker'),
+                  ('experience', 'Campus Bus Tracker - React + Flask web app used by about 200 students during Fall 2025.'))]},
+        {'kind': 'skills', 'heading': '', 'blocks': [block(('skill', skill)) for skill in SKILLS]}]}
+
+
+ROLE_LABELS = ('School:', 'Degree:', 'Field:', 'Start:', 'End:', 'Organization:', 'Location:', 'Email:',
+               '学校:', '学位:', '专业:', '开始:', '结束:', '机构:', '地点:', '邮箱:')
+
+
+@pytest.mark.parametrize('locale', ['en', 'zh'])
+@pytest.mark.parametrize('page_size', ['letter', 'a4'])
+def test_short_pdf_reads_as_a_one_page_resume(locale, page_size):
+    value = resume_draft(locale, page_size)
+    pdf = pdf_reader(renderer.render_export(value, 'pdf'))
+    assert len(pdf.pages) == 1
+    rows = pdf.pages[0].extract_text().splitlines()
+    assert not [row for row in rows if any(label in row for label in ROLE_LABELS)]
+    # Title, organization and dates share one row; so do contact details and all skills.
+    for left, right in [('Undergraduate Research Assistant · Health Imaging Lab (UIUC)', 'Jan 2026 – Present'),
+                        ('Software Engineering Intern · Prairie Analytics · Champaign, IL', 'Jun 2026 – Aug 2026'),
+                        ('University of Illinois Urbana-Champaign · B.S. · Computer Science', 'Expected May 2028')]:
+        assert [row for row in rows if left in row and right in row and row.index(left) < row.index(right)], rows
+    assert 'jordan.lee.test@example.com · Urbana, IL' in rows
+    assert (', ' if locale == 'en' else '、').join(SKILLS) in rows
+
+
+def test_short_docx_reads_as_a_compact_resume():
+    from docx import Document
+    from docx.enum.text import WD_TAB_ALIGNMENT
+    from docx.shared import Emu
+    document = Document(io.BytesIO(renderer.render_export(resume_draft(), 'docx')))
+    paragraphs = {paragraph.text: paragraph for paragraph in document.paragraphs}
+    assert not [text for text in paragraphs if text.startswith(ROLE_LABELS)]
+    assert 'jordan.lee.test@example.com · Urbana, IL' in paragraphs
+    assert ', '.join(SKILLS) in paragraphs
+    entry = paragraphs['Undergraduate Research Assistant · Health Imaging Lab (UIUC)\tJan 2026 – Present']
+    stops = entry.paragraph_format.tab_stops
+    page = document.sections[0]
+    right_margin = Emu(page.page_width - page.left_margin - page.right_margin).twips
+    assert [(stop.alignment, stop.position.twips) for stop in stops] == [(WD_TAB_ALIGNMENT.RIGHT, right_margin)]
+    assert entry.paragraph_format.keep_with_next  # A role line never ends a page without its first detail.
+    assert 'Software Engineering Intern · Prairie Analytics · Champaign, IL\tJun 2026 – Aug 2026' in paragraphs
+    assert 'University of Illinois Urbana-Champaign · B.S. · Computer Science\tExpected May 2028' in paragraphs
+    heading = paragraphs['Experience']
+    assert heading.paragraph_format.keep_with_next
+    assert heading._p.pPr.find(f'{{{W}}}pBdr/{{{W}}}bottom') is not None
+    assert len(document.paragraphs) == 19  # Was 37: one paragraph per field and per skill.
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)
@@ -78,7 +156,25 @@ def test_pdf_signed_golden_preserves_selected_order_and_unicode():
     assert '徐同学😀' in extracted
 
 
-def test_docx_full_fonts_relationships_and_editable_unicode():
+def embedded_programs(data):
+    """(fontTable entry, decrypted font bytes) for each embedded font, in fontTable order."""
+    z = zipfile.ZipFile(io.BytesIO(data))
+    fonts = etree.fromstring(z.read('word/fontTable.xml'))
+    by_id = {node.get('Id'): node for node in etree.fromstring(z.read('word/_rels/fontTable.xml.rels'))}
+    result = []
+    for node in fonts.findall(f'{{{W}}}font/{{{W}}}embedRegular'):
+        rel = by_id[node.get(f'{{{R}}}id')]
+        assert rel.get('Type') == R + '/font'
+        assert rel.get('TargetMode') is None
+        encrypted = bytearray(z.read('word/' + rel.get('Target')))
+        key = UUID(node.get(f'{{{W}}}fontKey')).bytes[::-1]
+        for i in range(32):
+            encrypted[i] ^= key[i % 16]
+        result.append((node.getparent(), bytes(encrypted)))
+    return result
+
+
+def test_docx_embedded_font_subsets_relationships_and_editable_unicode():
     from docx import Document
     from fontTools.ttLib import TTFont
     value = sample('  姓名 Student 中文 😀 <script>& text\tline\r\nnext  ')
@@ -94,28 +190,63 @@ def test_docx_full_fonts_relationships_and_editable_unicode():
     document.save(modified)
     assert Document(io.BytesIO(modified.getvalue())).paragraphs[-1].text.endswith('Edited after export 中文.')
     z = zipfile.ZipFile(io.BytesIO(data))
-    fonts = etree.fromstring(z.read('word/fontTable.xml'))
-    relationships = etree.fromstring(z.read('word/_rels/fontTable.xml.rels'))
-    by_id = {node.get('Id'): node for node in relationships}
-    embedded = fonts.findall(f'{{{W}}}font/{{{W}}}embedRegular')
+    embedded = embedded_programs(data)
     assert len(embedded) == 2
-    for node, asset in zip(embedded, renderer.fonts(), strict=True):
-        assert node.get(f'{{{W}}}subsetted') == '0'
-        rel = by_id[node.get(f'{{{R}}}id')]
-        assert rel.get('Type') == R + '/font'
-        assert rel.get('TargetMode') is None
-        encrypted = bytearray(z.read('word/' + rel.get('Target')))
-        key = UUID(node.get(f'{{{W}}}fontKey')).bytes[::-1]
-        for i in range(32):
-            encrypted[i] ^= key[i % 16]
-        assert bytes(encrypted) == asset.data  # Whole programs, not today's text subset.
-        with TTFont(io.BytesIO(encrypted)) as font:
-            assert 'glyf' in font and 'fvar' not in font
-            assert frozenset(font.getBestCmap()) == asset.codepoints
+    assets = renderer.fonts()
+    text = set(map(ord, ''.join(paragraph.text for paragraph in document.paragraphs))) - {9, 10, 13}
+    shown = [{point for point in text if point in assets[0].codepoints}, {point for point in text if point not in assets[0].codepoints}]
+    for (entry, program), asset, characters in zip(embedded, assets, shown, strict=True):
+        assert entry.find(f'{{{W}}}embedRegular').get(f'{{{W}}}subsetted') == '1'
+        with TTFont(io.BytesIO(program)) as font:
+            assert 'glyf' in font and 'fvar' not in font and font['OS/2'].fsType == 0
+            cmap = frozenset(font.getBestCmap())
+            # Every character this file sets in the font, never a glyph outside the pinned font.
+            assert characters <= cmap <= asset.codepoints
+            # OFL: the copyright and licence records travel with the embedded subset.
+            assert font['name'].getDebugName(0) and font['name'].getDebugName(13)
     settings = etree.fromstring(z.read('word/settings.xml'))
     assert settings.find(f'{{{W}}}embedTrueTypeFonts').get(f'{{{W}}}val') == 'true'
     assert settings.find(f'{{{W}}}saveSubsetFonts').get(f'{{{W}}}val') == 'false'
     assert not any(name.endswith(('vbaProject.bin', '.html')) for name in z.namelist())
+
+
+COMMON_HANZI = '的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感'
+
+
+def test_docx_with_one_chinese_line_stays_small_and_keeps_common_characters_editable():
+    from fontTools.ttLib import TTFont
+    value = resume_draft()
+    value['sections'][-1]['blocks'].append({'lines': [{'role': 'skill', 'label': '', 'text': '中文（母语）'}]})
+    data = renderer.render_export(value, 'docx')
+    # 11,595,724 bytes in production: the whole 21.7 MB CJK program rode along.
+    assert len(data) < 1_000_000
+    [(entry, program)] = embedded_programs(data)
+    assert entry.get(f'{{{W}}}name') == renderer.fonts()[0].name
+    with TTFont(io.BytesIO(program)) as font:
+        cmap = frozenset(font.getBestCmap())
+    # Text typed later in Word keeps the same face for Latin, CJK punctuation and common hanzi.
+    assert set(map(ord, '中文（母语）' + COMMON_HANZI + '，。、；：？！“”《》')) | set(range(0x20, 0x7F)) <= cmap
+    assert len(cmap) < len(renderer.fonts()[0].codepoints) / 5
+
+
+def test_docx_font_table_declares_embedded_cjk_font_for_east_asian_text():
+    # Without charset/signature facts Word desktop set the embedded font's CJK
+    # text in SimSun, although it used that font for the Latin text.
+    from fontTools.ttLib import TTFont
+    [(entry, _program)] = embedded_programs(renderer.render_export(sample('张三 Student'), 'docx'))
+    with TTFont(renderer.fonts()[0].path) as font:
+        os2 = font['OS/2']
+    assert [etree.QName(child).localname for child in entry] == ['panose1', 'charset', 'family', 'pitch', 'sig', 'embedRegular']
+    values = {etree.QName(child).localname: child for child in entry}
+    assert values['charset'].get(f'{{{W}}}val') == '86'  # GB2312
+    assert values['family'].get(f'{{{W}}}val') == 'swiss'
+    assert values['pitch'].get(f'{{{W}}}val') == 'variable'
+    assert values['panose1'].get(f'{{{W}}}val') == '020B0200000000000000'
+    signature = {key: values['sig'].get(f'{{{W}}}{key}') for key in ('usb0', 'usb1', 'usb2', 'usb3', 'csb0', 'csb1')}
+    assert signature == {'usb0': f'{os2.ulUnicodeRange1:08X}', 'usb1': f'{os2.ulUnicodeRange2:08X}',
+                         'usb2': f'{os2.ulUnicodeRange3:08X}', 'usb3': f'{os2.ulUnicodeRange4:08X}',
+                         'csb0': f'{os2.ulCodePageRange1:08X}', 'csb1': f'{os2.ulCodePageRange2:08X}'}
+    assert int(signature['csb0'], 16) & (1 << 18)  # Simplified Chinese code page.
 
 
 @pytest.mark.parametrize('output', ['pdf', 'docx'])
