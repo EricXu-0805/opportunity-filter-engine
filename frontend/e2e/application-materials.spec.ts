@@ -70,8 +70,8 @@ function seeded(owner: Owner, name = 'submitted-original.pdf', index = 0): Metad
     material_id: `00000000-0000-4000-8001-${String(index).padStart(12, '0')}`, record_id: `00000000-0000-4000-8002-${String(index).padStart(12, '0')}`,
     filename: name, mime_type: 'application/pdf', byte_length: PDF.byteLength, bytes_sha256: hash(PDF), attested: true };
 }
-async function network(page: Page, owner: Owner, options: { uploadUnknown?: 'ready' | 'staged' | 'absent'; deleteUnknown?: 'deleted' | 'ready'; firstReadFails?: boolean; rejectPdf?: boolean } = {}) {
-  const state = { records: new Map<string, RecordWire>(), files: new Map<string, Buffer>(), uploads: [] as Metadata[], bodies: [] as Buffer[], deletions: [] as string[], reads: 0, lookups: 0, downloads: 0, statusWrites: 0, appWrites: 0, rejectReads: false, pageFails: false, cursorReads: [] as string[] };
+async function network(page: Page, owner: Owner, options: { uploadUnknown?: 'ready' | 'staged' | 'absent'; deleteUnknown?: 'deleted' | 'ready'; readsFail?: boolean; rejectPdf?: boolean } = {}) {
+  const state = { records: new Map<string, RecordWire>(), files: new Map<string, Buffer>(), uploads: [] as Metadata[], bodies: [] as Buffer[], deletions: [] as string[], reads: 0, lookups: 0, downloads: 0, statusWrites: 0, appWrites: 0, rejectReads: false, readsFail: !!options.readsFail, pageFails: false, cursorReads: [] as string[] };
   await page.route('**/rest/v1/application_events?**', route => route.fulfill({ json: [{ event_id: EVENT, device_id: owner.session.user.id, opportunity_id: TARGET,
     channel: 'web_form', destination: 'https://example.edu/application', actual_submitted_at: SUBMITTED, notes: 'I submitted my original PDF.', result_note: null, next_step: null, confirmed_at: CONFIRMED, confirmation_source: 'user_reported' }] }));
   await page.route('**/rest/v1/contact_events?**', route => route.fulfill({ json: [] }));
@@ -118,7 +118,9 @@ async function network(page: Page, owner: Owner, options: { uploadUnknown?: 'rea
     }
     state.reads += 1;
     if (state.rejectReads) { await route.fulfill({ status: 401, json: { detail: { code: 'material_auth_required' } } }); return; }
-    if (options.firstReadFails && state.reads === 1) { await route.fulfill({ status: 500, json: { private: 'not shown' } }); return; }
+    // Fail every list read until the test lifts it: dev StrictMode mounts the
+    // panel's load effect twice, so a fail-once fixture would be consumed by the discarded read.
+    if (state.readsFail) { await route.fulfill({ status: 500, json: { private: 'not shown' } }); return; }
     let rows = [...state.records.values()].filter(row => row.linked_at).sort((a, b) => b.linked_at!.localeCompare(a.linked_at!) || b.record_id.localeCompare(a.record_id));
     const cursor = url.searchParams.get('cursor_record_id');
     if (cursor) {
@@ -257,9 +259,10 @@ test.describe('Submitted application PDF records', () => {
   });
   test('read errors stay distinct from empty history; pagination preserves 21 unique records and retries its cursor', async ({ page }) => {
     const owner = await account(); try {
-      const net = await start(page, owner, { firstReadFails: true }); for (let index = 0; index < 21; index += 1) addRecord(net, seeded(owner, `submitted-${index}.pdf`, index));
-      await open(page); await expect(panel(page).getByRole('alert')).toContainText(copy().loadError); await expect(panel(page)).not.toContainText(copy().empty); await action(panel(page), 'retry').click();
-      await expect(panel(page).getByTestId('application-material-record')).toHaveCount(20); net.pageFails = true; await action(panel(page), 'loadMore').click();
+      const net = await start(page, owner, { readsFail: true }); for (let index = 0; index < 21; index += 1) addRecord(net, seeded(owner, `submitted-${index}.pdf`, index));
+      await open(page); await expect(panel(page).getByRole('alert')).toContainText(copy().loadError); await expect(panel(page)).not.toContainText(copy().empty);
+      const failedReads = net.reads; net.readsFail = false; await action(panel(page), 'retry').click();
+      await expect(panel(page).getByTestId('application-material-record')).toHaveCount(20); expect(net.reads).toBe(failedReads + 1); net.pageFails = true; await action(panel(page), 'loadMore').click();
       await expect(panel(page).getByRole('alert')).toHaveText(copy().moreError); await expect(panel(page).getByTestId('application-material-record')).toHaveCount(20); await action(panel(page), 'loadMore').click();
       await expect(panel(page).getByTestId('application-material-record')).toHaveCount(21); expect(net.cursorReads).toHaveLength(2); expect(net.cursorReads[0]).toBe(net.cursorReads[1]);
       await expect(action(panel(page), 'loadMore')).toHaveCount(0);

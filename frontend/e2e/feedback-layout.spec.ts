@@ -68,6 +68,12 @@ async function seed(page: Page, owner: Owner, locale: Locale = 'en') {
     localStorage.setItem('ofe_auth', JSON.stringify(session)); localStorage.setItem(keys.LOCALE, locale);
     localStorage.setItem(keys.ONBOARDING_SEEN, '1'); localStorage.setItem('feedback-layout-seeded', '1');
   }, { session: owner.session, keys: STORAGE_KEYS, locale });
+  // `next dev` pins its Dev Tools badge (<nextjs-portal>) over the bottom-left
+  // corner and into the Tab order. It does not exist in the production build
+  // users get, so hide it rather than let it cover the controls measured here.
+  await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style'); style.textContent = 'nextjs-portal { display: none !important; }'; document.head.append(style);
+  }));
   await page.route('**/auth/v1/user', route => route.fulfill({ json: owner.session.user }));
   await page.route('**/auth/v1/token?grant_type=refresh_token', route => route.fulfill({ json: owner.session }));
 }
@@ -94,6 +100,12 @@ async function fillFeedback(page: Page, locale: Locale = 'en') {
   await panel(page).getByRole('textbox', { name: copy(locale).messageLabel, exact: true }).fill(DRAFT);
   await page.getByTestId('feedback-subject').fill('Visible entry and clear draft handling');
   await page.getByTestId('feedback-category').selectOption('bug');
+}
+// The widget follows the account boundary: a form opened before the first
+// identity resolves is closed when it does. Wait for this browser's owner.
+async function ownerReady(page: Page, owner: Owner) {
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? 'null'), STORAGE_KEYS.LOCAL_IDENTITY_OWNER))
+    .toMatchObject({ uid: owner.session.user.id, phase: 'ready' });
 }
 async function storedDraft(page: Page) {
   return page.evaluate(key => Object.entries(localStorage).filter(([name]) => name.endsWith(key)).map(([, value]) => JSON.parse(value)), STORAGE_KEYS.FEEDBACK_DRAFT);
@@ -212,14 +224,19 @@ test.describe('Feedback entry and neighboring controls', () => {
   test('keyboard entry, outside Escape, close and reload retain one exact draft', async ({ page }) => {
     const owner = await account();
     try {
-      await seed(page, owner); await page.goto('/about'); const opener = page.getByTestId('feedback-open'); await opener.focus(); await page.keyboard.press('Enter');
+      await seed(page, owner); await page.goto('/about'); await ownerReady(page, owner);
+      const opener = page.getByTestId('feedback-open'); await opener.focus(); await page.keyboard.press('Enter');
       await expect(page.locator('#site-feedback-title')).toBeFocused(); await page.keyboard.press('Tab');
       expect(await panel(page).evaluate(element => element.contains(document.activeElement))).toBe(true); await fillFeedback(page);
       await expect.poll(async () => (await storedDraft(page))[0]?.message).toBe(DRAFT); const before = await storedDraft(page); expect(before).toHaveLength(1); expect(before[0].clientToken).toBeTruthy();
       await page.locator('footer a[href="/privacy"]').focus(); await page.keyboard.press('Escape'); await expect(panel(page)).toBeVisible();
       await panel(page).getByRole('button', { name: en.feedback.close, exact: true }).click(); await expect(opener).toBeFocused();
       await openFeedback(page); await expect(panel(page).getByRole('textbox', { name: en.feedback.messageLabel })).toHaveValue(DRAFT);
-      await page.reload(); await openFeedback(page); await expect(page.getByTestId('feedback-subject')).toHaveValue(before[0].subject); await expect(page.getByTestId('feedback-category')).toHaveValue('bug');
+      // After reload the marker is already ready while the page's own identity is
+      // still resolving, so retry the open until the restored draft is shown.
+      await page.reload(); await expect(async () => {
+        await openFeedback(page); await expect(page.getByTestId('feedback-subject')).toHaveValue(before[0].subject, { timeout: 1_000 });
+      }).toPass(); await expect(page.getByTestId('feedback-category')).toHaveValue('bug');
       expect(await storedDraft(page)).toEqual(before); await expect(panel(page).locator('img')).toHaveCount(0);
     } finally { await owner.http.dispose(); }
   });

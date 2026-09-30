@@ -3,6 +3,7 @@ import { contactReceiptForRequest } from './email-contact-receipt';
 import { contactEventReceiptForRequest, type ContactEventRequest } from './contact-ledger-receipt';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
+import { emailConditionIssueText } from '../src/lib/email-target-conditions';
 
 // Production React + Auth SDK + real HTTP. Only network responses are fixtures.
 // The in-test ledger models persistence/replay; this does not verify PostgreSQL,
@@ -47,6 +48,9 @@ async function network(page: Page, owner: Owner, options: { firstWriteUnknown?: 
   const state = { requests: [] as ContactEventRequest[], records: new Map<string, SavedEvent>(), summary: null as Receipt['interaction'],
     reads: 0, removals: 0, otherWrites: [] as string[] };
   await page.route('**/api/cold-email**', route => route.fulfill({ status: 503, json: {} }));
+  // Copy and Open in Email first run the provider-free condition check; let it
+  // reach the real E2E backend instead of the model-blocking 503 above.
+  await page.route('**/api/cold-email/validate', route => route.continue());
   await page.route('**/api/cold-email/variants', route => {
     const request = route.request().postDataJSON(); const receipt = contactReceiptForRequest(request);
     return route.fulfill({ json: { opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
@@ -195,10 +199,19 @@ test.describe('Contact event snapshots through the real browser', () => {
     try {
       await seed(page, owner); const net = await network(page, owner);
       await page.goto(`/opportunities/${TARGET}`); await openEmail(page);
-      for (const [selector, invalid, restore] of [
-        ['#cold-email-to', 'not-an-email', DRAFT.recipient_email], ['#cold-email-subject', ' ', DRAFT.subject], ['#cold-email-body', ' ', DRAFT.body],
-      ]) {
-        await page.locator(selector).fill(invalid); await copyAndConfirm(page);
+      await page.locator('#cold-email-to').fill('not-an-email'); await copyAndConfirm(page);
+      await expect(page.getByText(en.coldEmail.contactInvalid, { exact: true })).toBeVisible();
+      expect(net.requests).toHaveLength(0); expect(net.records.size).toBe(0);
+      await page.locator('#cold-email-to').fill(DRAFT.recipient_email);
+      // Since 619a6038 Copy runs the pre-send check first, which refuses an empty
+      // draft before any attestation is offered. "Record an email already sent"
+      // skips that check, so it still reaches the ledger writer's own refusal.
+      for (const [selector, restore] of [['#cold-email-subject', DRAFT.subject], ['#cold-email-body', DRAFT.body]]) {
+        await page.locator(selector).fill(' ');
+        await page.getByRole('button', { name: en.coldEmail.copy, exact: true }).click();
+        await expect(page.getByText(emailConditionIssueText('empty_draft', 'en'), { exact: true })).toBeVisible();
+        await expect(page.getByTestId('cold-email-confirm-sent')).toHaveCount(0);
+        await page.getByTestId('record-sent-email').click(); await page.getByTestId('cold-email-confirm-sent').click();
         await expect(page.getByText(en.coldEmail.contactInvalid, { exact: true })).toBeVisible();
         expect(net.requests).toHaveLength(0); expect(net.records.size).toBe(0);
         await page.locator(selector).fill(restore);
