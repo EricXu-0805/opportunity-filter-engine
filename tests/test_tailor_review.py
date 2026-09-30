@@ -535,6 +535,43 @@ def test_review_prompt_treats_both_texts_as_data(monkeypatch):
     assert kwargs["temperature"] == 0.0 and kwargs["reasoning_effort"] == "low"
 
 
+def test_review_prompt_names_every_trap_class_the_calibration_needed():
+    """Under the old rubric Opus 4.8 accepted these trap classes in a live
+    calibration: the student's own part folded into the team's, dropped credit
+    limits, ongoing work shown as finished, and translations that drop a doer.
+    Such rewrites keep the original's words, so no claim lock sees them."""
+    prompt = tailor._REVIEW_SYSTEM_PROMPT
+    for phrase in (
+        "keeps the doer and the share the original gives it",
+        "keeps that marker",
+        "never becomes the student's",
+        "must name that doer as the subject of the same action",
+        "does not excuse dropping the team from the team's action",
+        "must not become finished or done",
+        "does not make a finished verb faithful",
+        "even when the rest is a plain trim",
+        "A narrower or more specific term the original never states",
+        "must be a faithful translation",
+        "Tag each change with the rule it breaks",
+    ):
+        assert phrase in prompt, phrase
+
+
+@pytest.mark.parametrize(("changes", "accepted"), [
+    ("reordered clauses [ok]; dropped 'I' [ok]", True),
+    ("'rover' -> 'robot' [ok broader]", True),
+    ("'Co-authoring' -> 'Co-authored' [2]; status note kept [ok]", False),
+    ("added a species name [4 narrower]", False),
+    ("[Rule 1] the team's action lost its doer", False),
+])
+def test_a_faithful_verdict_counts_only_when_every_listed_change_is_ok(monkeypatch, changes, accepted):
+    # In the calibration Opus 4.8 answered faithful=true beside a change it had
+    # tagged [2] or [4] itself in 3 of 510 verdicts; one was a trap.
+    reply = json.dumps({"verdicts": [{"index": 1, "changes": changes, "faithful": True, "problem": ""}]})
+    monkeypatch.setattr(tailor, "chat_completion", lambda messages, **kwargs: reply)
+    assert tailor._ai_review_rewrites([FAITHFUL[0]]) == [accepted]
+
+
 @pytest.mark.parametrize("prompt", [tailor._SYSTEM_PROMPT_EN, tailor._BULLET_SYSTEM_PROMPT_EN])
 def test_english_prompts_forbid_padding_and_keep_qualifiers(prompt):
     for phrase in ("Change wording, never facts", "never append a clause", "tightened, not padded",
