@@ -328,15 +328,19 @@ describe('full target résumé modal', () => {
     expect(screen.queryByRole('button', { name: 'Load older versions' })).toBeNull(); expect(storage.version).not.toHaveBeenCalled();
   });
   it.each([
-    ['en', 'Edit Full name', 'Version history', 'Load latest 20 versions', /^View version 2 · /, /^View version 2 · Sep 30, 2026, \d{1,2}:22\s[AP]M$/],
-    ['zh', '编辑 姓名', '版本历史', '读取最近 20 个版本', /^查看版本 2 · /, /^查看版本 2 · 2026年9月30日 \d{2}:22$/],
-  ] as const)('shows saved version times as a local date and time, not raw UTC timestamps (%s)', async (locale, field, summary, load, button, label) => {
+    ['en', 'en-US', 'Edit Full name', 'Version history', 'Load latest 20 versions', 'View version 2 · ', /^[A-Z][a-z]{2} \d{1,2}, 2026, \d{1,2}:\d{2}\s[AP]M$/],
+    ['zh', 'zh-CN', '编辑 姓名', '版本历史', '读取最近 20 个版本', '查看版本 2 · ', /^2026年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/],
+  ] as const)('shows saved version times as a local date and time, not raw UTC timestamps (%s)', async (locale, tag, field, summary, load, prefix, shape) => {
     i18n.locale = locale; const p = profile(); storage.load.mockResolvedValue(loaded(await docFor(p), 2));
-    storage.history.mockResolvedValueOnce([{ revision: 2, updated_at: '2026-09-30T12:22:24.741331+00:00' }]);
+    const savedAt = '2026-09-30T12:22:24.741331+00:00';
+    storage.history.mockResolvedValueOnce([{ revision: 2, updated_at: savedAt }]);
     renderModal(p); await screen.findByRole('textbox', { name: field }); screen.getByText(summary).closest('details')!.open = true;
     fireEvent.click(screen.getByRole('button', { name: load }));
-    const version = await screen.findByRole('button', { name: button });
-    expect(version.textContent).toMatch(label);
+    const version = await screen.findByRole('button', { name: new RegExp(`^${prefix}`) });
+    // The runner's own time zone decides the date and minute (Sep 30 or Oct 1, :22 or :52).
+    const local = new Date(savedAt).toLocaleString(tag, { dateStyle: 'medium', timeStyle: 'short' });
+    expect(local).toMatch(shape);
+    expect(version.textContent).toBe(prefix + local);
     expect(version.textContent).not.toMatch(/741331|\+00:00|T12:22/);
   });
   it('ignores out-of-order history bodies and restores the selected immutable version through a new CAS save', async () => {
