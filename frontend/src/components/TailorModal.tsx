@@ -1235,10 +1235,8 @@ export default function TailorModal({
                 </p>
               )}
 
-              {/* R71-G: partial-result coverage. When the anti-fabrication
-                  validator drops some (not all) bullets, method stays "ai"
-                  but fewer cards render — this line makes the gap explicit
-                  instead of leaving the user wondering where a bullet went. */}
+              {/* Coverage: every bullet comes back, either with a reviewed
+                  rewrite or as written with its reason. */}
               {!loading && !error && resp?.method === 'ai' && statused && (
                 <p className="text-xs text-gray-600 px-1">
                   {t('tailor.coverage', { n: rewrittenCount, kept: resp.tailored_bullets.length - rewrittenCount })}
