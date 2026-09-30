@@ -116,6 +116,8 @@ _DRY_LAB_KEYWORDS = frozenset({
     "applied math", "statistics", "operations research", "bioinformatics",
     "computational biology", "computational neuroscience",
     "human-computer interaction", "hci",
+    "medical imaging", "computational imaging", "image processing", "image analysis",
+    "image reconstruction", "signal processing", "inverse problems", "compressed sensing",
     # techniques / tools
     "python", "pytorch", "tensorflow", "jax", "scikit-learn", "pandas",
     "numpy", "kubernetes", "docker", "aws", "gcp", "azure",
@@ -123,6 +125,17 @@ _DRY_LAB_KEYWORDS = frozenset({
     "c++", "cuda", "github", "git", "linux", "command-line", "shell",
     "algorithm", "data structure", "simulation", "modeling",
 })
+
+# Where research is applied, not how it is done: "medical imaging" and "deep
+# learning for clinical decision-making" name computational groups as often as
+# bench ones. Two imaging professors in Bioengineering were told to lead with
+# PCR and cell culture on the strength of these words (faculty-bioe-4156cbf9,
+# faculty-bioe-b4e047a5, walked 2026-09-30). A department name keeps them as the
+# prior it always was ("College of Medicine"); anywhere else they are not bench
+# evidence. "biomedical" stays: discounting it too moved 89 more records, and
+# among them "biomedical research" summer programs and an mRNA-vaccine
+# pharmaceutics group lost their only wet signal.
+_APPLICATION_DOMAIN_WORDS = ("medicine", "medical", "clinical")
 
 # Departments this classifier has no category for. A business school is not
 # a wet lab, not a dry lab and not the humanities, yet every one of its
@@ -190,10 +203,12 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
          getting a "highlight your IRB training" template) would feel
          badly off-target.
     """
-    def _score(text: str, vocab: frozenset[str]) -> int:
+    def _score(text: str, vocab: frozenset[str], ignore: tuple[str, ...] = ()) -> int:
         if not text:
             return 0
         lower = text.lower()
+        for word in ignore:
+            lower = lower.replace(word, "\x00")
         # Longest entry first, blanking each match: nested entries must not
         # stack on one span — "mathematical biology" is ONE wet signal, not
         # two ("biology" + "bio"), and "microbiology" is one, not three.
@@ -244,10 +259,10 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     # (e.g. "Molecular and Cellular Biology" is unambiguously wet).
     wet = (
         3 * _score(department, _WET_LAB_KEYWORDS)
-        + 2 * _score(title, _WET_LAB_KEYWORDS)
-        + 2 * _score(lab, _WET_LAB_KEYWORDS)
-        + 1 * _score(keywords_text, _WET_LAB_KEYWORDS)
-        + 1 * _score(desc, _WET_LAB_KEYWORDS)
+        + 2 * _score(title, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 2 * _score(lab, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 1 * _score(keywords_text, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 1 * _score(desc, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
     )
     dry = (
         3 * _score(department, _DRY_LAB_KEYWORDS)
@@ -271,9 +286,14 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     if wet == 0 and _score(department, _BUSINESS_KEYWORDS):
         return None
 
-    # All-zero (no signal) -> default to dry.
+    # All-zero (no signal) -> default to dry. A record whose only signal was
+    # the field its work serves ("Medical Ethics", "clinical trial
+    # transparency") gets no claim instead: the dry default would tell a
+    # theologian or a nurse to link a GitHub project.
     if wet == 0 and dry == 0 and hum == 0:
-        return "dry"
+        applied = any(word in text for word in _APPLICATION_DOMAIN_WORDS
+                      for text in (title, lab, keywords_text, desc))
+        return None if applied else "dry"
 
     # Pick the leader. Ties resolve in order: wet > humanities > dry,
     # which prevents a wet-lab posting with one "machine learning"

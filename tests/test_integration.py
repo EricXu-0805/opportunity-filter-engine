@@ -495,6 +495,54 @@ class TestLabTypeDetection:
         }
         assert _detect_lab_type(opp) == "dry"
 
+    def test_computational_imaging_in_bioengineering_is_not_a_bench_lab(self):
+        # Byte-real shapes faculty-bioe-4156cbf9 (Yoram Bresler) and
+        # faculty-bioe-b4e047a5 (Hua Li), walked 2026-09-30: both were badged
+        # Wet Lab and a CS student was told to lead with PCR and cell culture.
+        # "medical" and "clinical" say where the work is applied, not that it
+        # happens at a bench, and imaging / signal-processing work had no dry
+        # vocabulary at all to answer the department's "bio".
+        def faculty(keywords, areas):
+            return {"source_type": "faculty_research", "title": "Research with Prof. X",
+                    "department": "Bioengineering", "lab_or_program": "", "keywords": keywords,
+                    "metadata": {"research_areas_raw": areas}, "eligibility": {"skills_required": []}}
+
+        bresler = faculty(
+            ["biomedical imaging systems", "inverse problems", "compressed sensing", "sparse representations",
+             "machine learning", "biomedical", "medical imaging"],
+            "Biomedical imaging systems, inverse problems, compressed sensing, sparse representations, "
+            "machine learning, big data, Statistical signal and image processing")
+        hua_li = faculty(
+            ["image-guided adaptive radiation therapy", "deep learning for clinical decision-making",
+             "medical physicist", "carle cancer center", "urbana",
+             "task-based medical imaging quality assessment", "early cancer detection"],
+            "Image-guided adaptive radiation therapy, Functional image-based tumor response assessment and "
+            "predication, Task-based medical imaging quality assessment, Medical imaging and image analysis "
+            "for diagnosis and radiation therapy, Deep learning for clinical decision-making, Bioimaging at "
+            "Multi-Scale")
+        assert _detect_lab_type(bresler) == "dry"
+        assert _detect_lab_type(hua_li) == "dry"
+        # The same department with bench work in its own research stays wet.
+        tissue = faculty(["tissue engineering", "cell culture", "stem cells"],
+                         "Cell mechanics, tissue engineering, microscopy of live cells")
+        assert _detect_lab_type(tissue) == "wet"
+
+    def test_an_application_domain_alone_makes_no_lab_claim(self):
+        # A theologian of "Medical Ethics" or a nurse studying "clinical trial
+        # transparency" names a field the work serves, not a bench, a code
+        # base or an archive; the dry default would tell them to link GitHub.
+        # A department that is itself the prior keeps it.
+        def faculty(department, keywords):
+            return {"source_type": "faculty_research", "title": "Research with Prof. X",
+                    "department": department, "lab_or_program": "", "keywords": keywords,
+                    "metadata": {}, "eligibility": {"skills_required": []}}
+
+        assert _detect_lab_type(faculty("School of Theology and Ministry",
+                                        ["Moral Theology and Christian Ethics", "Medical Ethics"])) is None
+        assert _detect_lab_type(faculty("College of Nursing",
+                                        ["clinical trial transparency", "informed consent"])) is None
+        assert _detect_lab_type(faculty("Department of Medicine", ["heart failure"])) == "wet"
+
     def test_wet_wins_over_dry_buzzword(self):
         """A wet-lab posting that mentions Python for analysis should
         not be misrouted to dry. Wet-lab signals (cell culture, microscopy)
