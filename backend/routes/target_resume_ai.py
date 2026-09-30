@@ -1,6 +1,8 @@
 """Full-target suggestions: no persistence, whole-unit batches and exact receipts."""
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
@@ -9,16 +11,19 @@ from starlette.responses import JSONResponse
 from backend.data_loader import load_opportunities_by_id
 from backend.lib import target_resume_plan
 from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
+from backend.lib.evidence_map import GENERATION_DEADLINE_SECONDS, review_rewrites, review_window, target_anchors
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     batch_preflight,
     dispatch,
+    finalize,
     parse_output,
     prepare_batch,
     receipt,
     response_envelope,
+    review_pairs,
     unit_too_large,
 )
 from backend.lib.target_resume_ai_schema import FullTargetRequest
@@ -56,6 +61,7 @@ def authoritative_target(opp):
 
 @router.post("/tailor/full-target/suggestions")
 async def full_target_suggestions(request: FullTargetRequest):
+    started = time.monotonic()
     try:
         doc = validate_document(request.draft)
         if doc["target_snapshot"].get("context_version") != 4:
@@ -73,7 +79,11 @@ async def full_target_suggestions(request: FullTargetRequest):
             raise HTTPException(409, detail={"code": "target_changed"})
     except (InvalidTargetResume, InvalidTargetContext, TypeError, KeyError, ValueError):
         raise HTTPException(409, detail={"code": "target_changed"}) from None
-    messages, reason = batch_preflight(doc, processable, request.locale)
+    # A faculty description's "Research areas:" counts only as the authoritative
+    # record's own words; the v4 snapshot cannot tell them from keywords.
+    areas = (opp.get("metadata") or {}).get("research_areas_raw")
+    anchors = target_anchors(doc["target_snapshot"], research_areas=areas if isinstance(areas, str) else None)
+    messages, reason = batch_preflight(doc, processable, request.locale, anchors)
     calls = 0
     if not reason and not is_configured():
         reason = "model_unavailable"
@@ -81,8 +91,11 @@ async def full_target_suggestions(request: FullTargetRequest):
     if reason:
         results = [receipt(unit, reason[unit["unit_id"]] if isinstance(reason, dict) else reason) for unit in processable]
     elif processable:
+        deadline = started + GENERATION_DEADLINE_SECONDS
+        experiences = sum(unit["evidence"]["kind"] == "experience" for unit in processable)
         try:
-            raw, reason, calls = await run_blocking(dispatch, messages)
+            raw, reason, calls = await run_blocking(dispatch, messages, experiences, len(processable) - experiences,
+                                                    deadline, timeout_seconds=max(0.001, deadline - time.monotonic()))
         except BlockingWorkOverloaded:
             reason, calls, raw = "timeout", 0, None
         except BlockingWorkTimeout:
@@ -90,7 +103,15 @@ async def full_target_suggestions(request: FullTargetRequest):
             raw = None
         except Exception:  # No provider or payload text is returned or logged.
             reason, calls, raw = "invalid_model_response", 1, None
-        results = parse_output(raw, processable, doc["target_snapshot"], request.locale) if raw else [receipt(unit, reason or "model_unavailable") for unit in processable]
+        if raw:
+            results, pending = parse_output(raw, processable, anchors, request.locale)
+            if pending:
+                # The review is a second logical call when there is still time to make it.
+                calls += review_window(started) is not None
+                verdicts = await review_rewrites(review_pairs(pending), started)
+                results += finalize(pending, verdicts, request.locale)
+        else:
+            results = [receipt(unit, reason or "model_unavailable") for unit in processable]
     by_id = {row["unit_id"]: row for row in results}
     receipts = [receipt(unit, "unit_too_large") if unit_too_large(unit) else by_id[unit["unit_id"]] for unit in selected]
     return response_envelope(request, doc, units, protected, receipts, calls)

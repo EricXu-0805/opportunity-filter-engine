@@ -9,7 +9,8 @@ import json
 from copy import deepcopy
 
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
-from backend.lib.target_resume_ai import dispatch, target_character_count, valid_quotes, valid_source_quotes
+from backend.lib.target_resume_ai import plan_dispatch as dispatch
+from backend.lib.target_resume_ai import target_character_count, valid_quotes, valid_source_quotes
 from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, supported_claim_upgrade_detected
 from backend.lib.target_resume_ai_schema import (
     MAX_DIRECTION_CHARACTERS,
@@ -35,9 +36,11 @@ from backend.lib.target_resume_support import (
     support_echo,
 )
 
-# Re-export the existing dispatch: it rechecks the spend budget at the worker
-# boundary, uses private provider logging, and reports one logical call. Tests
-# stub its provider; this module never invents a deterministic "AI" plan.
+# The plan has its own dispatch (target_resume_ai.plan_dispatch): it rechecks the
+# spend budget at the worker boundary, uses private provider logging and reports
+# one logical call, with the whole-plan output budget the suggestions call no
+# longer uses. Tests stub its provider; this module never invents a
+# deterministic "AI" plan.
 __all__ = ["dispatch", "prepare_plan", "plan_preflight", "parse_plan_output", "plan_response"]
 
 SYSTEM_PROMPT = REASON_PROMPT + """Propose a selection plan for the entire supplied current resume.

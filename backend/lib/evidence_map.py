@@ -472,15 +472,20 @@ def parse_rows(raw: str, expected_ids: set[str], *, key: str) -> dict[str, objec
 
 @dataclass
 class Unit:
-    """One résumé line. ``evidence`` is its only proof; ``current`` is the wording to rewrite."""
+    """One résumé line. ``evidence`` is its only proof; ``current`` is the wording to rewrite.
+
+    ``support`` holds (unit_id, original) lines of the same activity the
+    student confirmed; ``keyed`` names the unit in every source quote.
+    """
     unit_id: str
     evidence: str
     current: str
     support: tuple[tuple[str, str], ...] = ()
+    keyed: bool = False
 
     @property
     def sources(self) -> list[tuple[str | None, str]]:
-        return [(None if not self.support else self.unit_id, self.evidence), *self.support]
+        return [(self.unit_id if self.keyed or self.support else None, self.evidence), *self.support]
 
 
 @dataclass
@@ -753,7 +758,8 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
     if (personal_markers(text) < personal_markers(unit.current) and _marks_own_part(unit.current)
             and "personal_first" not in names):
         return _keep(unit, "beyond_allowed_edit", "personal_marker_dropped", links=links)
-    if len(text) > 1.25 * len(unit.current) + 12:
+    # A confirmed support line may lend its clauses, so it counts toward the length.
+    if len(text) > 1.25 * (len(unit.current) + sum(len(source) + 1 for _, source in unit.support)) + 12:
         return _keep(unit, "beyond_allowed_edit", "too_long", links=links)
     return Outcome(unit.unit_id, "pending", text=text, links=links, ops=list(dict.fromkeys(names)), relabels=relabels)
 
@@ -796,7 +802,7 @@ def gate(outcome: Outcome, unit: Unit) -> Outcome:
     """Run the claim locks on a pending rewrite. A hard finding keeps the original."""
     corpus = "\n".join(text for _, text in unit.sources)
     passed, fabricated = validate_no_fabrication(outcome.text, corpus, policy=LENIENT_PROSE_NUMERIC)
-    hard = rewrite_findings(outcome.text, unit.evidence, outcome.relabels)
+    hard = rewrite_findings(outcome.text, corpus, outcome.relabels)
     if unit.support and supported_claim_upgrade_detected(outcome.text, [text for _, text in unit.sources]):
         hard.append("supported_claim_changed")
     if passed and not hard:
@@ -1013,6 +1019,12 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
     return ["accepted" if seen.get(i) else "rejected" for i in range(1, len(pairs) + 1)]
 
 
+def review_window(started: float) -> float | None:
+    """Seconds the review may take in the request that began at ``started``, or None when too few are left."""
+    remaining = CLIENT_REQUEST_SECONDS - (time.monotonic() - started) - REVIEW_MARGIN_SECONDS
+    return None if remaining < MIN_REVIEW_SECONDS else min(REVIEW_TIMEOUT_SECONDS, remaining)
+
+
 async def review_rewrites(pairs: list[ReviewPair], started: float) -> list[str]:
     """Review ``pairs`` within the request that began at ``started`` (time.monotonic).
 
@@ -1021,11 +1033,10 @@ async def review_rewrites(pairs: list[ReviewPair], started: float) -> list[str]:
     """
     if not pairs:
         return []
-    remaining = CLIENT_REQUEST_SECONDS - (time.monotonic() - started) - REVIEW_MARGIN_SECONDS
-    if remaining < MIN_REVIEW_SECONDS:
+    timeout = review_window(started)
+    if timeout is None:
         logger.warning("evidence map: no time left for the faithfulness review")
         return ["unavailable"] * len(pairs)
-    timeout = min(REVIEW_TIMEOUT_SECONDS, remaining)
     try:
         verdicts = await run_blocking(ai_review, pairs, deadline=time.monotonic() + timeout,
                                       timeout_seconds=timeout)

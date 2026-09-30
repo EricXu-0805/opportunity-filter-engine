@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 
+from backend.lib import evidence_map as em
 from backend.lib import target_resume_ai as ai
 from backend.lib import target_resume_plan as plan
 from backend.lib.target_resume_ai_schema import FullTargetRequest
@@ -18,6 +19,11 @@ ORIGINAL = 'I wrote parser tests using Python.'
 SUPPORT = 'I ran 12 parser test cases.'
 ATTACK = 'Your independently led CRISPR clinical trials and five first-author Nature papers make you an ideal fit.'
 QUOTE = {'field': 'requirement', 'requirement_index': 0, 'start': 0, 'end': 6, 'quote': 'Python'}
+LINK = {'id': 'L1', 'anchor': 't2', 'term': 'Python', 'source': 'Python', 'relation': 'same'}
+# personal_first may carry a confirmed support clause, word for word, after the student's own part.
+TEAM_ORIGINAL = 'My team built a Python parser; I wrote parser tests.'
+MERGED = 'I wrote parser tests and ran 12 parser test cases; my team built a Python parser.'
+CANDIDATE_OPS = ([{'op': 'personal_first'}], [{'op': 'verb_first'}], [{'op': 'lead_with', 'link': 'L1'}])
 
 
 def document(same_activity=True, originals=None):
@@ -52,9 +58,36 @@ def group(doc):
     return [{'unit_id': ids['exp-0'], 'support_unit_ids': [ids['exp-1']], 'confirmed': True}]
 
 
-def model_unit(unit, reason=ATTACK, proposed=None):
-    return {'unit_id': unit['unit_id'], 'priority': 'high', 'reason': reason,
-            'target_evidence': [deepcopy(QUOTE)], 'proposed_text': proposed}
+def anchors(doc):
+    return em.target_anchors(doc['target_snapshot'])
+
+
+def model_unit(unit, reason=ATTACK, proposed=None, links=None, doc=None):
+    """A v6 row: a keep, or the proposal under the first operations the contract admits (given doc)."""
+    row = {'unit_id': unit['unit_id'], 'priority': 'high', 'reason': reason,
+           'links': [dict(LINK)] if links is None else links, 'decision': 'keep', 'ops': [], 'text': None,
+           'keep_reason': 'already_aligned'}
+    if proposed is None:
+        return row
+    rows = [{**row, 'decision': 'rewrite', 'ops': ops, 'text': proposed, 'keep_reason': None} for ops in CANDIDATE_OPS]
+    if doc is None:
+        return rows[0]
+    em_unit = ai._em_unit(unit)
+    by_id = {anchor.id: anchor for anchor in anchors(doc)}
+    return next((candidate for candidate in rows if em.check_rewrite(
+        em_unit, candidate, by_id, output_language='en', extra_keys=ai.ROW_EXTRA_KEYS).status == 'pending'), rows[0])
+
+
+def outcome(doc, selected, row):
+    """Receipts after the contract, the locks and an accepting review."""
+    results, pending = ai.parse_output(json.dumps({'units': [row]}), selected, anchors(doc))
+    return results + ai.finalize(pending, ['accepted'] * len(pending)), pending
+
+
+def refused(receipt):
+    assert receipt['status'] == 'unchanged', receipt
+    assert receipt['reason_code'] in ('beyond_allowed_edit', 'rewrite_rejected'), receipt
+    assert receipt['suggestion']['proposed_text'] is None
 
 
 def test_direction_is_complete_bound_to_document_and_never_student_fact():
@@ -65,23 +98,25 @@ def test_direction_is_complete_bound_to_document_and_never_student_fact():
     assert validate_document(doc) == doc and fingerprint(doc) != fingerprint(before)
     req = request(doc)
     _, _, selected, _ = ai.prepare_batch(req, doc)
-    payload = json.loads(ai.build_prompt(doc, selected, 'en')[1]['content'])
+    payload = json.loads(ai.build_prompt(doc, selected, 'en', anchors(doc))[1]['content'])
     assert payload['student_direction'] == {'research_interests': direction}
     assert all(direction not in unit['original'] for unit in payload['units'])
     blocks, _, scope = plan.prepare_plan(request(doc, planning=True), doc)
     messages, reason = plan.plan_preflight(doc, blocks, scope, {'target_pages': 1}, 'zh')
     assert reason is None and json.loads(messages[1]['content'])['student_direction'] == {'research_interests': direction}
     assert doc['document'] == before['document']
-    assert 'student_direction' not in json.loads(ai.build_prompt(before, selected, 'en')[1]['content'])
+    assert 'student_direction' not in json.loads(ai.build_prompt(before, selected, 'en', anchors(before))[1]['content'])
 
 
 def test_untrusted_reason_cannot_claim_accomplishments_beside_real_quotes():
     doc = document()
     _, _, selected, _ = ai.prepare_batch(request(doc), doc)
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], proposed='I wrote parser tests.')]}), selected, doc['target_snapshot'])
-    assert result[0]['suggestion']['proposed_text'] == 'I wrote parser tests.'
-    assert ATTACK not in result[0]['suggestion']['reason']
-    assert ORIGINAL in result[0]['suggestion']['reason'] and 'Python' in result[0]['suggestion']['reason']
+    # With a link the reason quotes the linked words; without one, the whole original.
+    for links, quoted in (([LINK], 'Python'), ([], ORIGINAL)):
+        result, _ = outcome(doc, selected, model_unit(selected[0], links=links))
+        reason = result[0]['suggestion']['reason']
+        assert result[0]['status'] == 'unchanged' and ATTACK not in reason
+        assert json.dumps(quoted) in reason
     blocks, _, _ = plan.prepare_plan(request(doc, planning=True), doc)
     line = blocks[0]['lines'][-1]
     row = {'section_id': blocks[0]['section_id'], 'block_id': blocks[0]['block_id'], 'action': 'keep', 'reason': ATTACK,
@@ -92,25 +127,27 @@ def test_untrusted_reason_cannot_claim_accomplishments_beside_real_quotes():
 
 
 def test_confirmed_same_activity_support_can_supply_detail_with_full_receipt():
-    doc = document()
+    doc = document(originals=[TEAM_ORIGINAL, SUPPORT])
     req = request(doc, group(doc))
     _, _, selected, _ = ai.prepare_batch(req, doc)
-    proposed = 'I wrote Python parser tests and ran 12 parser test cases.'
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], reason='method_relevance', proposed=proposed)]}), selected, doc['target_snapshot'])
+    result, pending = outcome(doc, selected, model_unit(selected[0], reason='method_relevance', proposed=MERGED))
     suggestion = result[0]['suggestion']
-    assert suggestion and suggestion['proposed_text'] == proposed
-    assert [q['quote'] for q in suggestion['source_evidence']] == [ORIGINAL, SUPPORT]
+    assert suggestion and suggestion['proposed_text'] == MERGED and suggestion['ops'] == ['personal_first']
+    assert [q['quote'] for q in suggestion['source_evidence']] == [TEAM_ORIGINAL, SUPPORT]
     assert [q['unit_id'] for q in suggestion['source_evidence']] == [group(doc)[0]['unit_id'], *group(doc)[0]['support_unit_ids']]
-    assert SUPPORT in ai.build_prompt(doc, selected, 'en')[1]['content']
+    assert SUPPORT in ai.build_prompt(doc, selected, 'en', anchors(doc))[1]['content']
+    # The review sees the confirmed line it may borrow from.
+    assert ai.review_pairs(pending)[0].original.endswith('Confirmed source for the same activity: ' + SUPPORT)
     envelope = ai.response_envelope(req, doc, units_for(doc)[0], 1, result, 0)
     assert envelope['support_groups'] == group(doc)
 
 
 def test_without_explicit_support_same_activity_cannot_borrow_number():
-    doc = document()
+    doc = document(originals=[TEAM_ORIGINAL, SUPPORT])
     _, _, selected, _ = ai.prepare_batch(request(doc), doc)
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], proposed='I wrote parser tests and ran 12 parser test cases.')]}), selected, doc['target_snapshot'])
-    assert result[0]['reason_code'] == 'ungrounded_rewrite'
+    result, pending = outcome(doc, selected, model_unit(selected[0], proposed=MERGED))
+    refused(result[0])
+    assert pending == [] and result[0]['reason_code'] == 'beyond_allowed_edit'
 
 
 @pytest.mark.parametrize('mutation', ['other_activity', 'self', 'duplicate', 'unknown', 'not_confirmed'])
@@ -135,12 +172,14 @@ def test_invalid_support_is_rejected(mutation):
     (['团队完成了模型。本人没有训练模型。', '本人整理了12条记录。'],
      '团队完成了模型。本人没有训练模型。本人整理了12条记录。'),
 ])
-def test_independent_supported_structure_variants(originals, proposed):
+def test_a_merge_with_no_allowed_move_or_a_new_verb_is_kept_with_its_sources(originals, proposed):
+    """v5 suggested these merges. v6 offers no bare merge and no new verb ("ran" for "executed"),
+    so each is kept as written, with its advice and both confirmed sources."""
     doc = document(originals=originals)
     _, _, selected, _ = ai.prepare_batch(request(doc, group(doc)), doc)
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], reason='transferable_experience', proposed=proposed)]}), selected, doc['target_snapshot'])
-    assert result[0]['suggestion'], result
-    assert result[0]['suggestion']['proposed_text'] == proposed
+    result, _ = outcome(doc, selected, model_unit(selected[0], reason='transferable_experience', proposed=proposed, doc=doc))
+    refused(result[0])
+    assert result[0]['reason_code'] == 'beyond_allowed_edit'
     assert [q['quote'] for q in result[0]['suggestion']['source_evidence']] == originals
 
 
@@ -155,8 +194,8 @@ def test_independent_supported_structure_variants(originals, proposed):
 def test_confirming_source_relationship_never_authorizes_fact_transfer(originals, proposed):
     doc = document(originals=originals)
     _, _, selected, _ = ai.prepare_batch(request(doc, group(doc)), doc)
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], proposed=proposed)]}), selected, doc['target_snapshot'])
-    assert result[0]['reason_code'] == 'ungrounded_rewrite', result
+    result, _ = outcome(doc, selected, model_unit(selected[0], proposed=proposed, doc=doc))
+    refused(result[0])
 
 
 @pytest.mark.parametrize('kind', ['activities', 'education', 'publications'])
@@ -223,7 +262,7 @@ def test_complete_direction_and_support_enter_budget_without_clipping():
     validate_document(doc)
     req = request(doc)
     _, _, selected, _ = ai.prepare_batch(req, doc)
-    assert ai.batch_preflight(doc, selected, 'en') == (None, 'interests_too_large')
+    assert ai.batch_preflight(doc, selected, 'en', anchors(doc)) == (None, 'interests_too_large')
     blocks, _, scope = plan.prepare_plan(request(doc, planning=True), doc)
     assert plan.plan_preflight(doc, blocks, scope, {'target_pages': 1}, 'en') == (None, 'interests_too_large')
     doc = document(originals=['I wrote tests. ' + 'a' * 3000, 'I ran checks. ' + 'b' * 3000])
@@ -239,8 +278,8 @@ def test_direction_invalid_type_or_unicode_rejected(value):
 def test_target_and_interest_cannot_become_student_skills():
     doc = document(); doc['base_snapshot']['research_interests'] = 'CRISPR clinical trials'
     _, _, selected, _ = ai.prepare_batch(request(doc), doc)
-    result = ai.parse_output(json.dumps({'units': [model_unit(selected[0], proposed='I led CRISPR clinical trials.')]}), selected, doc['target_snapshot'])
-    assert result[0]['reason_code'] == 'ungrounded_rewrite'
+    result, _ = outcome(doc, selected, model_unit(selected[0], proposed='I led CRISPR clinical trials.', doc=doc))
+    refused(result[0])
 
 
 def test_grouped_plan_rewrite_uses_combined_length_and_preserves_sources():
@@ -267,8 +306,12 @@ def test_model_cannot_select_unapproved_source_for_unit_reason():
     _, _, selected, _ = ai.prepare_batch(request(doc), doc)
     row = model_unit(selected[0], reason='method_relevance')
     row['source_evidence'] = [{'unit_id': group(doc)[0]['support_unit_ids'][0], 'start': 0, 'end': len(SUPPORT), 'quote': SUPPORT}]
-    result = ai.parse_output(json.dumps({'units': [row]}), selected, doc['target_snapshot'])
+    result, _ = outcome(doc, selected, row)
     assert result[0]['reason_code'] == 'invalid_model_response'
+    # A link may quote only the unit and its confirmed sources; an unconfirmed line is dropped.
+    row = model_unit(selected[0], reason='method_relevance', links=[{**LINK, 'source': 'I ran 12 parser test cases'}])
+    result, _ = outcome(doc, selected, row)
+    assert result[0]['suggestion']['links'] == [] and result[0]['suggestion']['priority'] == 'normal'
 
 
 @pytest.mark.parametrize('planning', [False, True])
@@ -277,13 +320,15 @@ def test_real_route_support_direction_receipts_and_untrusted_reason(monkeypatch,
 
     from backend.main import app
     from backend.routes import target_resume_ai as route
-    doc = document(); doc['base_snapshot']['research_interests'] = '  Computational genomics\n原文🧪  '
+    originals = [ORIGINAL, SUPPORT] if planning else [TEAM_ORIGINAL, SUPPORT]
+    doc = document(originals=originals); doc['base_snapshot']['research_interests'] = '  Computational genomics\n原文🧪  '
     req = request(doc, group(doc), planning=planning)
     before = deepcopy(doc); calls = []
-    proposed = 'I wrote Python parser tests and ran 12 parser test cases.'
+    proposed = 'I wrote Python parser tests and ran 12 parser test cases.' if planning else MERGED
     monkeypatch.setattr(route, 'load_opportunities_by_id', lambda: {OPP['id']: OPP})
     monkeypatch.setattr(route, 'is_configured', lambda: True)
     monkeypatch.setattr(ai.llm_budget, 'exhausted', lambda: False)
+    monkeypatch.setattr(em, 'ai_review', lambda pairs, deadline=None: ['accepted'] * len(pairs))
     def provider(messages, **_kwargs):
         data = json.loads(messages[1]['content']); calls.append(data)
         assert data['student_direction']['research_interests'] == doc['base_snapshot']['research_interests']
@@ -304,8 +349,9 @@ def test_real_route_support_direction_receipts_and_untrusted_reason(monkeypatch,
     assert ATTACK not in response.text
     row = result['items'][0]['rewrites'][0] if planning else result['receipts'][0]['suggestion']
     assert row['proposed_text'] == proposed
-    assert [q['quote'] for q in row['source_evidence']] == [ORIGINAL, SUPPORT]
-    assert result['pipeline_version'] == ('full-target-plan-v4' if planning else 'full-target-v5')
+    assert [q['quote'] for q in row['source_evidence']] == originals
+    assert result['pipeline_version'] == ('full-target-plan-v4' if planning else 'full-target-v6')
+    assert result['logical_calls'] == 1 + (not planning)  # the suggestions' review is a second call
     assert 'private' in response.headers['cache-control']
 
 
@@ -380,6 +426,9 @@ def test_routes_refuse_unrecognized_multi_source_metric_transfer(monkeypatch, pl
     response = TestClient(app).post(path, json=req.model_dump(exclude_none=True))
     assert response.status_code == 200 and len(calls) == 1
     result = response.json()
-    row = result['items'][0]['rewrites'][0] if planning else result['receipts'][0]
-    assert row['status'] == 'skipped' and row['reason_code'] == 'ungrounded_rewrite', result
-    assert (row['proposed_text'] if planning else row['suggestion']) is None
+    if planning:
+        row = result['items'][0]['rewrites'][0]
+        assert row['status'] == 'skipped' and row['reason_code'] == 'ungrounded_rewrite', result
+        assert row['proposed_text'] is None
+    else:
+        refused(result['receipts'][0])

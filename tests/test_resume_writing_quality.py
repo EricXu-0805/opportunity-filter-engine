@@ -238,18 +238,26 @@ def test_reoptimization_prompt_separates_original_facts_from_manual_wording(endp
     ("我没有主导项目，但本人审阅文档。", "本人审阅文档。我没有主导项目。", True),
 ])
 def test_same_claim_rule_covers_full_target_receipts(original, proposed, accepted):
-    from backend.lib.target_resume_ai import parse_output
+    from backend.lib import evidence_map as em
+    from backend.lib.target_resume_ai import finalize, parse_output
 
+    zh = em.language(original) == "zh"
     unit = {"unit_id": "u1", "section_id": "s1", "block_id": "b1", "original": original,
             "before_text": original, "evidence": {"kind": "experience", "id": "entry", "revision": 1}}
-    target = {"description": "Review documents", "requirements": []}
-    raw = json.dumps({"units": [{"unit_id": "u1", "priority": "normal", "reason": "Relevant contribution.",
-        "target_evidence": [{"field": "description", "requirement_index": None,
-                             "start": 0, "end": 16, "quote": "Review documents"}], "proposed_text": proposed}]})
-    row = parse_output(raw, [unit], target)[0]
+    anchors = em.target_anchors({"description": "审阅文档" if zh else "Review documents", "requirements": []})
+    link = {"id": "L1", "anchor": "t1", "term": anchors[0].text, "source": "审阅文档" if zh else "reviewed its documents",
+            "relation": "same"}
+    raw = json.dumps({"units": [{"unit_id": "u1", "priority": "normal", "reason": "method_relevance", "links": [link],
+                                 "decision": "rewrite", "ops": [{"op": "lead_with", "link": "L1"}], "text": proposed,
+                                 "keep_reason": None}]})
+    results, pending = parse_output(raw, [unit], anchors, "zh" if zh else "en")
+    [row] = results + finalize(pending, ["accepted"] * len(pending))
     assert (row["status"] == "suggested") is accepted
     if not accepted:
-        assert row["reason_code"] == "ungrounded_rewrite" and row["suggestion"] is None
+        assert row["status"] == "unchanged" and row["suggestion"]["proposed_text"] is None
+        # The claim locks alone refuse it too, whatever the contract says first.
+        locked = em.gate(em.Outcome("u1", "pending", text=proposed, ops=["lead_with"]), em.Unit("u1", original, original))
+        assert locked.code == "rewrite_rejected"
 
 
 def test_single_bullet_prompt_allows_already_public_raw_description_fallback(monkeypatch):

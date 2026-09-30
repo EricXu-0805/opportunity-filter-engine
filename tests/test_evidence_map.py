@@ -253,6 +253,38 @@ class TestGate:
         assert em.without_terms(outcome, unit, row["ops"]) is None
 
 
+class TestSupport:
+    """Lines of the same activity the student confirmed may lend their own clauses, word for word."""
+    ORIGINAL = "My team built a Python parser; I wrote parser tests."
+    SUPPORT = "I ran 12 parser test cases."
+
+    def check(self, text, support=True, ops=("personal_first",)):
+        unit = em.Unit("b1", self.ORIGINAL, self.ORIGINAL, support=(("b2", self.SUPPORT),) if support else ())
+        row = {"unit_id": "b1", "links": [], "decision": "rewrite", "ops": [{"op": op} for op in ops],
+               "text": text, "keep_reason": None}
+        outcome = em.check_rewrite(unit, row, {}, output_language="en")
+        return em.gate(outcome, unit) if outcome.status == "pending" else outcome
+
+    def test_a_confirmed_clause_may_join_an_allowed_move_and_counts_toward_the_length(self):
+        merged = "I wrote parser tests and ran 12 parser test cases; my team built a Python parser."
+        assert len(merged) > 1.25 * len(self.ORIGINAL) + 12
+        assert self.check(merged).status == "pending"
+        assert self.check(merged, support=False).detail.startswith("added:")
+
+    def test_a_merge_still_needs_an_allowed_move(self):
+        merged = "My team built a Python parser; I wrote parser tests. I ran 12 parser test cases."
+        assert (self.check(merged, ops=()).code, self.check(merged, ops=()).detail) == (
+            "beyond_allowed_edit", "no_substantive_op")
+
+    @pytest.mark.parametrize("text", [
+        "I wrote 12 parser tests; my team built a Python parser.",  # the support's number on the unit's action
+        "I wrote parser tests and ran 12 parser test cases; I built a Python parser.",  # the team's work as mine
+    ])
+    def test_a_fact_moved_between_confirmed_lines_is_rejected(self, text):
+        assert self.check(text).code in ("rewrite_rejected", "beyond_allowed_edit")
+        assert self.check(text).status == "kept"
+
+
 def _reply(verdicts):
     return json.dumps({"verdicts": verdicts})
 
