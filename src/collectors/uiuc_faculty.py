@@ -1303,6 +1303,23 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
                 md["recent_works"] = [{"title": work["title"], "year": work["year"]} for work in snapshot["works"]]
                 if "research_refresh" not in md and type(prior_metadata.get("research_refresh")) is dict:
                     md["research_refresh"] = deepcopy(prior_metadata["research_refresh"])
+    # An applied official-website lab source (scripts/lab_candidate.py) is never
+    # produced by a directory scrape, so the wholesale metadata replace would
+    # erase it. The refresh record carries unconditionally: it holds any
+    # identity revocation. The snapshot carries only while it is still bound to
+    # the incoming identity; a carried revocation keeps withholding it from use.
+    incoming_metadata = incoming.get("metadata") or {}
+    if not {"lab_snapshot", "lab_refresh"} & set(incoming_metadata):
+        from copy import deepcopy
+
+        from ..lab_context import validate_lab_snapshot
+
+        if type(prior_metadata.get("lab_refresh")) is dict:
+            incoming.setdefault("metadata", {})["lab_refresh"] = deepcopy(prior_metadata["lab_refresh"])
+        if "lab_snapshot" in prior_metadata:
+            probe = {**incoming, "metadata": {k: v for k, v in incoming_metadata.items() if k != "lab_refresh"}}
+            if validate_lab_snapshot(prior_metadata["lab_snapshot"], probe) is not None:
+                incoming.setdefault("metadata", {})["lab_snapshot"] = deepcopy(prior_metadata["lab_snapshot"])
     works = prior_metadata.get("recent_works")
     if "research_snapshot" not in prior_metadata and works and not (incoming.get("metadata") or {}).get("recent_works"):
         md = incoming.setdefault("metadata", {})

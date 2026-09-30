@@ -167,3 +167,44 @@ def test_hash_covers_complete_content_binding_and_check_time():
 def test_url_punycode_and_encoded_path_match_browser_canonical_rules(url,valid):
     from src.lab_context import canonical_lab_url
     assert (canonical_lab_url(url)==url) is valid
+
+
+def _rescrape(existing, **changes):
+    from src.collectors.uiuc_faculty import _carry_forward_enrichment
+    incoming = {**record(), 'metadata': {'first_seen_at': '2026-09-27T00:00:00'}, **changes}
+    _carry_forward_enrichment(existing, incoming)
+    return incoming
+
+
+def test_rescrape_carries_applied_lab_source_through_ucb_merge(monkeypatch, tmp_path):
+    import json
+
+    from src.collectors import ucb_common
+    existing = sourced_record()
+    existing['metadata']['lab_refresh'] = {'checked_at': snapshot()['checked_at'], 'status': 'success', 'reason': None}
+    path = tmp_path / 'opportunities.json'; path.write_text(json.dumps([existing]))
+    monkeypatch.setattr(ucb_common, 'PROCESSED_FILE', path)
+    ucb_common.merge_into_processed([{**record(), 'metadata': {'first_seen_at': '2026-09-27T00:00:00'}}])
+    [saved] = json.loads(path.read_text())
+    assert saved['metadata']['lab_snapshot'] == existing['metadata']['lab_snapshot']
+    assert saved['metadata']['lab_refresh'] == existing['metadata']['lab_refresh']
+    assert lab_context_for(saved, now=NOW)['status'] == 'available'
+
+
+def test_rescrape_of_changed_identity_keeps_refresh_but_not_snapshot():
+    existing = sourced_record()
+    existing['metadata']['lab_refresh'] = {'checked_at': snapshot()['checked_at'], 'status': 'success', 'reason': None}
+    incoming = _rescrape(existing, pi_name='Other Ding')
+    assert 'lab_snapshot' not in incoming['metadata']
+    assert incoming['metadata']['lab_refresh'] == existing['metadata']['lab_refresh']
+
+
+def test_rescrape_keeps_revocation_with_withheld_snapshot():
+    later = (NOW + timedelta(days=1)).isoformat().replace('+00:00', 'Z')
+    existing = sourced_record()
+    existing['metadata']['lab_refresh'] = {'checked_at': later, 'status': 'failed', 'reason': 'identity_mismatch',
+                                           'identity_revoked_at': later}
+    incoming = _rescrape(existing)
+    assert incoming['metadata']['lab_refresh'] == existing['metadata']['lab_refresh']
+    assert incoming['metadata']['lab_snapshot'] == existing['metadata']['lab_snapshot']
+    assert lab_context_for(incoming, now=NOW + timedelta(days=2))['status'] == 'unavailable'

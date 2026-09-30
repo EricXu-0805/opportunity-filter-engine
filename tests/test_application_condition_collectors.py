@@ -171,6 +171,50 @@ def test_sro_failed_detail_merge_preserves_prior_detail_and_checked_time(monkeyp
     assert saved['metadata'][SOURCE_KEY] == before['metadata'][SOURCE_KEY]
     assert saved['metadata'][CAPTURE_KEY]['status'] == 'failed'
 
+def _list_only_refresh(before, path, deadline_raw=''):
+    item = raw(); item.extra_fields['deadline_raw'] = deadline_raw
+    incoming = sro.raw_to_normalized(item)
+    path.write_text(json.dumps([before]))
+    sro.merge_into_processed([incoming], str(path))
+    return json.loads(path.read_text())[0]
+
+
+def test_sro_list_only_merge_keeps_fresh_list_deadline(tmp_path):
+    before = sro.raw_to_normalized(raw())
+    before.update(deadline='2026-03-01', is_rolling=False, organization='True lab')
+    saved = _list_only_refresh(before, tmp_path / 'records.json', 'March 1, 2027')
+    assert saved['deadline'] == '2027-03-01'
+    assert saved['is_rolling'] is False
+    assert saved['organization'] == 'True lab'
+
+
+def test_sro_list_only_merge_carries_inference_stamps_with_values(tmp_path):
+    from src.evidence import is_inferred
+    item = raw(); item.extra_fields['research_area'] = 'Data Science'
+    before = sro.raw_to_normalized(item)
+    before['eligibility'].update(skills_required=['Python', 'PyTorch'], majors=['Chemistry'])
+    before.update(paid='yes', pi_name='Dr. Guess')
+    before['metadata']['skill_mentions'] = ['python']
+    before['metadata']['inferred_fields'] = {
+        'eligibility.skills_required': 'llm:tagger', 'paid': 'rule:paid', 'pi_name': 'rule:pi',
+        'metadata.skill_mentions': 'rule:opportunity_terms', 'keywords': 'rule:keywords'}
+    item = raw(); item.extra_fields['research_area'] = 'Data Science'
+    incoming = sro.raw_to_normalized(item)
+    assert incoming['metadata']['inferred_fields'] == {'eligibility.majors': sro.MAJORS_METHOD}
+    path = tmp_path / 'records.json'; path.write_text(json.dumps([before]))
+    sro.merge_into_processed([incoming], str(path))
+    saved = json.loads(path.read_text())[0]
+    assert saved['eligibility']['skills_required'] == ['Python', 'PyTorch']
+    for field in ('eligibility.skills_required', 'paid', 'pi_name', 'metadata.skill_mentions'):
+        assert is_inferred(saved, field), field
+    assert saved['metadata']['skill_mentions'] == ['python']
+    # The carried eligibility has no majors stamp, so the fresh list stamp
+    # must not attach to the prior value; unrelated fresh fields keep theirs.
+    assert saved['eligibility']['majors'] == ['Chemistry']
+    assert 'eligibility.majors' not in saved['metadata']['inferred_fields']
+    assert 'keywords' not in saved['metadata']['inferred_fields']
+
+
 @pytest.mark.parametrize('missing', ['all', 'final_url', 'requested_url', 'checked_at', 'wrong_request', 'naive_time', 'future_time'])
 def test_campus_missing_transport_observation_cannot_verify(monkeypatch, missing):
     page = soup()

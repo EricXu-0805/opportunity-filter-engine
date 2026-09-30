@@ -660,6 +660,34 @@ def fetch_and_normalize(deep: bool = False) -> list[dict]:
     return records
 
 
+def _carry_inference_stamps(prior: dict, opp: dict, carried: list[str]) -> None:
+    """Move inference stamps with the values carried from ``prior``.
+
+    A carried value keeps exactly the stamps it had, so an inferred skill or
+    paid flag never becomes a stated one, and a fresh stamp never lands on a
+    value this refresh did not produce.
+    """
+    paths = list(carried)
+    prior_meta = prior.get("metadata") if isinstance(prior.get("metadata"), dict) else {}
+    if "description_raw" in carried and "skill_mentions" in prior_meta:
+        opp["metadata"]["skill_mentions"] = deepcopy(prior_meta["skill_mentions"])
+        paths.append("metadata.skill_mentions")
+
+    def owned(path: str) -> bool:
+        return any(path == key or path.startswith(key + ".") for key in paths)
+
+    prior_stamps = prior_meta.get(INFERRED_FIELDS_KEY)
+    fresh_stamps = opp["metadata"].get(INFERRED_FIELDS_KEY)
+    stamps = {path: method for path, method in (fresh_stamps if isinstance(fresh_stamps, dict) else {}).items()
+              if not owned(path)}
+    stamps.update({path: deepcopy(method) for path, method in
+                   (prior_stamps if isinstance(prior_stamps, dict) else {}).items() if owned(path)})
+    if stamps:
+        opp["metadata"][INFERRED_FIELDS_KEY] = stamps
+    else:
+        opp["metadata"].pop(INFERRED_FIELDS_KEY, None)
+
+
 def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[int, int]:
     """Merge new opportunities into the processed data file."""
     filepath = filepath or str(PROCESSED_DIR / "opportunities.json")
@@ -681,11 +709,17 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             # A list refresh cannot prove that previously fetched detail facts
             # disappeared. Retain them without advancing their verification time.
             if opp["metadata"].get("detail_page_verified") is not True:
-                for key in ("organization", "department", "lab_or_program", "pi_name", "contact_email",
-                            "eligibility", "application", "deadline", "is_rolling", "paid",
-                            "compensation_details", "description_raw", "description_clean"):
-                    if key in prior:
-                        opp[key] = deepcopy(prior[key])
+                carried = [key for key in ("organization", "department", "lab_or_program", "pi_name",
+                                           "contact_email", "eligibility", "application", "deadline",
+                                           "is_rolling", "paid", "compensation_details", "description_raw",
+                                           "description_clean") if key in prior]
+                # The list row is itself a current deadline observation; only
+                # an absent one falls back to the prior detail-page value.
+                if opp.get("deadline") is not None:
+                    carried = [key for key in carried if key not in ("deadline", "is_rolling")]
+                for key in carried:
+                    opp[key] = deepcopy(prior[key])
+                _carry_inference_stamps(prior, opp, carried)
                 if "last_verified" in prior.get("metadata", {}):
                     opp["metadata"]["last_verified"] = prior["metadata"]["last_verified"]
             from .uiuc_faculty import carry_forward_contact_instruction_sources

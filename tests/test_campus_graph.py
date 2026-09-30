@@ -371,6 +371,55 @@ class TestSeedNormalization:
         assert merged["metadata"]["last_verified"] != "2026-06-01T00:00:00"
         assert merged["title"].endswith("(applications closed)")
 
+    def test_div_only_closed_page_still_closes_prior_open_seed(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        from bs4 import BeautifulSoup
+
+        url = "https://example.edu/summer"
+        source = {
+            "source_name": "example_programs",
+            "source_type": cg.PROGRAM,
+            "emit": "campus",
+            "crawl": cg.STATIC,
+            "seeds": [url],
+            "programs": [cg.program("summer", "Summer Research Program", url, "Curated")],
+        }
+        school = {
+            "school_slug": "example",
+            "organization": "Example University",
+            "location": "Example, EX",
+            "emit": {"campus": ("example_programs", "example", "campus")},
+            "sources": [source],
+        }
+        prior = cg._normalize_program(
+            school, source, source["programs"][0], status="open", seed_page_verified=True,
+        )
+        processed = tmp_path / "opportunities.json"
+        processed.write_text(json.dumps([prior]), encoding="utf-8")
+        monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
+        page = BeautifulSoup(
+            "<body><h1>Summer Research Program</h1>"
+            "<div>The 2026 cohort has been selected.</div></body>",
+            "html.parser",
+        )
+        monkeypatch.setattr(cg, "_fetch", lambda u, **_: _observed(page, u))
+
+        records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True)
+        assert records[0]["metadata"]["seed_page_verified"] is True
+        assert records[0]["metadata"]["status"] == "closed"
+        assert evidence["crawl_errors"] == []
+        assert evidence["condition_capture_counts"]["unsupported"] == 1
+        assert evidence["condition_capture_complete"] is False
+        cg.merge_into_processed(records)
+
+        [merged] = json.loads(processed.read_text(encoding="utf-8"))
+        assert merged["metadata"]["status"] == "closed"
+        assert merged["metadata"]["is_active"] is False
+        assert merged["metadata"]["contact_instruction_capture"]["reason"] == "no_supported_content"
+
     def test_discovered_anchor_requires_its_own_page_before_emission(
         self,
         monkeypatch,
@@ -396,7 +445,7 @@ class TestSeedNormalization:
             "sources": [source],
         }
         seed = BeautifulSoup(
-            f'<body><p>Programs</p><a href="{detail_url}">Summer Research Fellowship 2026</a></body>',
+            f'<a href="{detail_url}">Summer Research Fellowship 2026</a>',
             "html.parser",
         )
         monkeypatch.setattr(
@@ -409,7 +458,7 @@ class TestSeedNormalization:
         assert evidence["degraded_page_errors"] == [detail_url]
 
         detail = BeautifulSoup(
-            "<main><p>Applications are now open for undergraduate researchers.</p></main>",
+            "<main>Applications are now open for undergraduate researchers.</main>",
             "html.parser",
         )
         monkeypatch.setattr(
@@ -417,11 +466,17 @@ class TestSeedNormalization:
             "_fetch",
             lambda url, **_: _observed(seed if url == seed_url else detail, url),
         )
-        _status, discovered, _evidence = cg._crawl_source(school, source)
+        _status, discovered, evidence = cg._crawl_source(school, source)
         assert len(discovered) == 1
         assert discovered[0]["metadata"]["discovered_page_verified"] is True
         assert discovered[0]["metadata"]["status"] == "open"
         assert discovered[0]["metadata"]["is_active"] is True
+        # Neither page has condition-capture DOM; that gap is a capture
+        # receipt, not a failed page load.
+        assert evidence["seed_page_errors"] == []
+        assert evidence["degraded_page_errors"] == []
+        assert evidence["live_pages_loaded"] == 2
+        assert evidence["condition_capture_counts"]["unsupported"] == 2
 
     def test_absent_discovery_retires_only_for_complete_recursive_source(
         self,

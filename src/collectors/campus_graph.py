@@ -536,7 +536,10 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
                                       checked_at=capture["attempted_at"], status="unsupported",
                                       reason="ambiguous_program_scope")
         captures[url] = capture
-        if capture["status"] == "failed" or capture.get("reason") in {"access_page", "no_supported_content", "invalid_html"}:
+        # A page with no heading/paragraph/list DOM (link-card hubs, div-only
+        # CMS bodies) still loaded: its condition capture is unsupported, but
+        # its status and links remain observed.
+        if capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}:
             (seed_page_errors if url in seed_urls else degraded_page_errors).append(url)
             continue
         try:
