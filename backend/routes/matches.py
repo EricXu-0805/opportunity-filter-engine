@@ -9,7 +9,6 @@ import logging
 import math
 import os
 import re
-import secrets
 import threading
 import time
 from collections.abc import Callable
@@ -680,6 +679,54 @@ def _snapshot_key(
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _result_set_id(
+    key: str,
+    visible: list[MatchResult],
+    opportunities_by_id: dict[str, dict],
+    buckets: dict[str, int],
+    field_relevant_count: int,
+    refined: bool,
+) -> str:
+    """Name one materialized result set by what it serves, not by the process.
+
+    Production answers /api from two worker processes, each with its own
+    snapshot store. A random id per materialization made every cursor a claim
+    about one process's memory: a production walk on 2026-09-30 saw 11 of 30
+    Next clicks refused with MATCH_CURSOR_EXPIRED, because the page-2 request
+    reached the other worker, which had ranked the identical list under
+    another id.
+
+    The id covers the snapshot key (scoring profile, llm flag, corpus
+    generation, matcher and snapshot versions) and everything a page is cut
+    from: each visible result in order, its card, and the counts. A process
+    that materializes the same list names it the same, so a cursor survives a
+    worker switch, a TTL expiry or an eviction. A list that moved (a calendar
+    day or a responsiveness signal reordering the same key, an LLM blend) gets
+    a new id, so its old cursors still fail closed instead of skipping or
+    repeating rows. The key's corpus token is per process, but workers of one
+    deploy agree on it: each loads the same shards once.
+    """
+    digest = hashlib.sha256(
+        json.dumps(
+            [key, refined, buckets, field_relevant_count],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    )
+    for result in visible:
+        digest.update(
+            json.dumps(
+                # vars, not dataclasses.asdict: asdict deep-copies every list
+                # and doubled the cost (135 ms vs 70 ms for 4,090 results).
+                [vars(result), opportunities_by_id.get(result.opportunity_id)],
+                sort_keys=True,
+                default=str,
+                separators=(",", ":"),
+            ).encode()
+        )
+    return digest.hexdigest()
+
+
 def _cursor_signature(result_set_id: str, offset: int) -> str:
     return hashlib.sha256(
         f"{MATCH_CONTRACT_VERSION}|{result_set_id}|{offset}".encode()
@@ -879,22 +926,25 @@ def _compute_rule_snapshot(
             responsiveness=responsiveness,
         )
     visible_ids = {result.opportunity_id for result in universe.visible}
+    opportunities_by_id = {
+        opportunity["id"]: _match_card(opportunity)
+        for opportunity in opportunities
+        if opportunity.get("id") in visible_ids
+    }
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
-        # A result-set id identifies this concrete materialized snapshot, not
-        # merely its input key. If the entry expires/is evicted (or the process
-        # restarts), an old cursor must fail closed: calendar- and accepted
-        # responsiveness-based signals can legitimately reorder an otherwise
-        # identical profile+corpus+matcher key.
-        result_set_id=secrets.token_hex(32),
+        result_set_id=_result_set_id(
+            key,
+            universe.visible,
+            opportunities_by_id,
+            universe.buckets,
+            universe.field_relevant_count,
+            refined=False,
+        ),
         visible=universe.visible,
         by_id={result.opportunity_id: result for result in universe.visible},
-        opportunities_by_id={
-            opportunity["id"]: _match_card(opportunity)
-            for opportunity in opportunities
-            if opportunity.get("id") in visible_ids
-        },
+        opportunities_by_id=opportunities_by_id,
         buckets=universe.buckets,
         field_relevant_count=universe.field_relevant_count,
     )
@@ -1128,17 +1178,25 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
                 field_relevant_count += 1
 
     visible_ids = {result.opportunity_id for result in visible_results}
+    opportunities_by_id = {
+        opportunity_id: _match_card(opportunity)
+        for opportunity_id, opportunity in opp_lookup.items()
+        if opportunity_id in visible_ids
+    }
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
-        result_set_id=secrets.token_hex(32),
+        result_set_id=_result_set_id(
+            key,
+            visible_results,
+            opportunities_by_id,
+            buckets,
+            field_relevant_count,
+            refined=refined,
+        ),
         visible=visible_results,
         by_id={r.opportunity_id: r for r in visible_results},
-        opportunities_by_id={
-            opportunity_id: _match_card(opportunity)
-            for opportunity_id, opportunity in opp_lookup.items()
-            if opportunity_id in visible_ids
-        },
+        opportunities_by_id=opportunities_by_id,
         buckets=buckets,
         field_relevant_count=field_relevant_count,
         refined=refined,

@@ -18,6 +18,7 @@ matcher version, llm flag):
 
 import json
 import os
+import subprocess
 import sys
 from datetime import date
 
@@ -174,6 +175,66 @@ def snapshot_env(monkeypatch):
         ) = ranker_state
         ranker._kw_word_res.clear()
         ranker._kw_word_res.update(old_keyword_res)
+
+
+def _serve_from(monkeypatch, worker: dict) -> None:
+    """Send the next request to one simulated API worker process.
+
+    Production answers /api from two uvicorn workers (two /api/health
+    started_at values on 2026-09-30), each with its own snapshot store, and
+    consecutive requests from one browser land on either. An empty store is
+    also what a TTL expiry or a capacity eviction leaves behind.
+    """
+    monkeypatch.setattr(m_module, "_match_snapshots", worker)
+
+
+# One API worker in its own interpreter: the fixture corpus from argv[1], the
+# /matches/view body from argv[2], then argv[3] pages following next_cursor.
+_VIEW_WORKER_PROCESS = """
+import json
+import sys
+
+from fastapi.testclient import TestClient
+
+import backend.routes.matches as matches
+from backend.main import app
+from src.matcher import ranker
+
+with open(sys.argv[1]) as handle:
+    corpus = json.load(handle)
+with open(sys.argv[2]) as handle:
+    request = json.load(handle)
+ranker.register_corpus(corpus)
+matches.load_opportunities_generation = lambda: (corpus, "two-process-fixture")
+matches.load_opportunities_by_id = lambda: {item["id"]: item for item in corpus}
+client = TestClient(app)
+pages = []
+for _ in range(int(sys.argv[3])):
+    response = client.post("/api/matches/view", json=request)
+    pages.append({"status": response.status_code, "body": response.json()})
+    if response.status_code != 200 or not response.json()["has_more"]:
+        break
+    request["cursor"] = response.json()["next_cursor"]
+print(json.dumps(pages))
+"""
+
+
+def _promote_last_result(monkeypatch) -> None:
+    """Make every later materialization rank the current last result first.
+
+    Stands in for what the snapshot key cannot see: a calendar day turning
+    or an accepted responsiveness signal arriving reorders an otherwise
+    identical profile + corpus + matcher key.
+    """
+    rank = m_module.rank_visible_universe
+
+    def reordered(*args, **kwargs):
+        universe = rank(*args, **kwargs)
+        universe.visible[-1].final_score = universe.visible[0].final_score + 1.0
+        universe.visible.sort(key=ranker.canonical_sort_key)
+        return universe
+
+    monkeypatch.setattr(m_module, "rank_visible_universe", reordered)
 
 
 class TestExplainServesTheListConclusion:
@@ -412,9 +473,42 @@ class TestSnapshotPagination:
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
 
-    def test_cursor_rejects_evicted_snapshot_even_when_inputs_match(
+    def test_cursor_pages_across_workers_that_never_saw_its_snapshot(
         self,
         snapshot_env,
+        monkeypatch,
+    ):
+        profile = _profile()
+        expected = [
+            result["opportunity_id"]
+            for result in client.post("/api/matches", json=profile).json()["results"]
+        ]
+        workers = ({}, {})
+        pages = []
+        seen: list[str] = []
+        cursor = None
+        for turn in range(len(expected)):
+            _serve_from(monkeypatch, workers[turn % 2])
+            params = {"limit": 3} if cursor is None else {"limit": 3, "cursor": cursor}
+            response = client.post("/api/matches", params=params, json=profile)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            pages.append(page)
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                break
+            cursor = page["next_cursor"]
+
+        assert len(pages) >= 3, "both workers must serve a cursor page"
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+        assert {page["result_set_id"] for page in pages} == {pages[0]["result_set_id"]}
+        assert all(len(worker) == 1 for worker in workers)
+
+    def test_cursor_rejects_a_recomputed_snapshot_whose_order_moved(
+        self,
+        snapshot_env,
+        monkeypatch,
     ):
         first = client.post(
             "/api/matches?limit=3",
@@ -422,10 +516,11 @@ class TestSnapshotPagination:
         ).json()
         assert first["next_cursor"]
 
-        # Simulate TTL eviction, process restart, or capacity eviction. The
-        # profile/corpus/matcher key is unchanged, but a newly materialized
-        # snapshot is a new generation and must not accept the old offset.
-        m_module._match_snapshots.clear()
+        # Same profile/corpus/matcher key, but the worker that recomputes it
+        # (another process, or this one after TTL or capacity eviction) now
+        # ranks a different list. The old offset would skip or repeat rows.
+        _promote_last_result(monkeypatch)
+        _serve_from(monkeypatch, {})
         response = client.post(
             f"/api/matches?limit=3&cursor={first['next_cursor']}",
             json=_profile(),
@@ -883,6 +978,100 @@ class TestServerMatchView:
         response = client.post("/api/matches/view", json=changed)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_view_cursor_pages_across_workers_that_never_saw_its_snapshot(
+        self, snapshot_env, monkeypatch
+    ):
+        # RN-1 / F1: production answered about half of all Next clicks with
+        # 409 MATCH_CURSOR_EXPIRED, because the page-2 request reached the
+        # other worker, which had ranked the identical list under its own id.
+        profile = _profile()
+        expected = [
+            result.opportunity_id
+            for result in ranker.rank_all(profile, snapshot_env["corpus"])
+            if result.bucket != "low_fit"
+        ]
+        request = self._request(profile)
+        workers = ({}, {})
+        pages = []
+        seen: list[str] = []
+        for turn in range(len(expected)):
+            _serve_from(monkeypatch, workers[turn % 2])
+            response = client.post("/api/matches/view", json=request)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            pages.append(page)
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                break
+            request["cursor"] = page["next_cursor"]
+
+        assert len(pages) >= 3, "both workers must serve a cursor page"
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+        assert [page["view_start"] for page in pages] == list(range(0, len(expected), 4))
+        assert {page["result_set_id"] for page in pages} == {pages[0]["result_set_id"]}
+        assert all(len(worker) == 1 for worker in workers)
+
+    def test_view_cursor_rejects_a_recomputed_snapshot_whose_order_moved(
+        self, snapshot_env, monkeypatch
+    ):
+        request = self._request(_profile())
+        first = client.post("/api/matches/view", json=request).json()
+        assert first["next_cursor"]
+
+        _promote_last_result(monkeypatch)
+        _serve_from(monkeypatch, {})
+        request["cursor"] = first["next_cursor"]
+        response = client.post("/api/matches/view", json=request)
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_view_cursor_minted_in_one_process_pages_in_another(
+        self, snapshot_env, tmp_path
+    ):
+        """Two real interpreters with different hash seeds, one corpus.
+
+        The simulated workers above share one interpreter. This one does not:
+        process B has never seen process A's snapshot and hashes strings with
+        another seed, which is what the second production worker looks like.
+        """
+        corpus_path = tmp_path / "corpus.json"
+        corpus_path.write_text(json.dumps(snapshot_env["corpus"]))
+        request = self._request(_profile())
+
+        def run(seed: str, body: dict, pages: int) -> list[dict]:
+            request_path = tmp_path / f"request-{seed}.json"
+            request_path.write_text(json.dumps(body))
+            completed = subprocess.run(
+                [
+                    sys.executable, "-c", _VIEW_WORKER_PROCESS,
+                    str(corpus_path), str(request_path), str(pages),
+                ],
+                cwd=os.path.join(os.path.dirname(__file__), ".."),
+                env={
+                    **os.environ,
+                    "PYTHONHASHSEED": seed,
+                    "OFE_MATCH_SNAPSHOT_TTL": "600",
+                },
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+            return json.loads(completed.stdout.strip().splitlines()[-1])
+
+        minted = run("1", request, 2)
+        assert [page["status"] for page in minted] == [200, 200]
+        followed = run("2", {**request, "cursor": minted[0]["body"]["next_cursor"]}, 1)
+
+        assert followed[0]["status"] == 200, followed[0]["body"]
+        page_two = followed[0]["body"]
+        assert page_two["result_set_id"] == minted[0]["body"]["result_set_id"]
+        assert page_two["view_start"] == minted[1]["body"]["view_start"] == 4
+        assert [row["opportunity_id"] for row in page_two["results"]] == [
+            row["opportunity_id"] for row in minted[1]["body"]["results"]
+        ]
 
     def test_paid_filter_and_bucket_counts_match_full_snapshot(self, snapshot_env):
         profile = _profile()
@@ -1699,16 +1888,16 @@ class TestMatchResponsesAttestToTheirOwnContract:
             # Structurally unreadable: not our encoding at all. A malformed
             # request is 400 — the server rejects it, nothing conflicts.
             ("invalid", "not-a-real-cursor", 400),
-            # Well-formed and correctly signed, but naming a result set this
-            # process no longer holds — the shape a client gets after a backend
-            # restart or a snapshot TTL expiry. 409, because the request is
-            # fine and the state it refers to is what moved.
+            # Well-formed and correctly signed, but naming a result set that no
+            # longer exists — the shape a client gets after a data refresh.
+            # 409, because the request is fine and the state it refers to is
+            # what moved.
             ("expired", None, 409),
         ],
     )
     @pytest.mark.parametrize("path", ["/api/matches", "/api/matches/view"])
     def test_a_dead_cursor_never_asks_the_client_to_retry_it(
-        self, path, label, cursor, status, mixed_corpus,
+        self, path, label, cursor, status, mixed_corpus, monkeypatch,
     ):
         """Asserted on the real response, not on the constant in the source.
 
@@ -1718,10 +1907,12 @@ class TestMatchResponsesAttestToTheirOwnContract:
         frontend does once — so the flag has to say "do not repeat this".
         """
         if cursor is None:
-            # Mint a real signed cursor, then drop the snapshot it points at.
+            # Mint a real signed cursor, then refresh the data it points at.
             # page_size 1 on both endpoints: the mixed fixture holds two live
             # records, so a default page would return everything and there
-            # would be no next_cursor to expire.
+            # would be no next_cursor to expire. Dropping the snapshot alone
+            # no longer kills it: any worker re-ranks the identical list under
+            # the identical id and pages on.
             live = (
                 client.post(path, json={**_view_body(), "page_size": 1}).json()
                 if path.endswith("/view")
@@ -1729,7 +1920,11 @@ class TestMatchResponsesAttestToTheirOwnContract:
             )
             cursor = live["next_cursor"]
             assert cursor, f"{path}: fixture must produce a second page"
-            m_module._match_snapshots.clear()
+            monkeypatch.setattr(
+                m_module,
+                "load_opportunities_generation",
+                lambda: (mixed_corpus, "mixed-fixture-refreshed"),
+            )
 
         if path.endswith("/view"):
             body = {**_view_body(), "page_size": 1, "cursor": cursor}
