@@ -257,8 +257,15 @@ describe('confirmed contact context and editable email lifetime', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
     open(); await ready();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    // Copy runs through several promise hops (profile/target checks, dispatch,
+    // recipient check, clipboard). Drain them without moving the fake clock,
+    // so the 2 s feedback timings below stay exact.
+    const click = async (name: string) => {
+      await act(async () => fireEvent.click(screen.getByRole('button', { name })));
+      for (let i = 0; i < 20; i += 1) await act(async () => { await Promise.resolve(); });
+    };
     try {
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' })));
+      await click('coldEmail.copy');
       expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
       fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Temporary body B' } });
       await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
@@ -266,9 +273,9 @@ describe('confirmed contact context and editable email lifetime', () => {
       expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeInTheDocument();
       expect(screen.queryByText('coldEmail.copied')).toBeNull();
 
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' })));
+      await click('coldEmail.copy');
       await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
-      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copied' })));
+      await click('coldEmail.copied');
       await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
       expect(screen.getByRole('button', { name: 'coldEmail.copied' })).toBeInTheDocument();
       await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
