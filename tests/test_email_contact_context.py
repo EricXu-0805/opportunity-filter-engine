@@ -2,6 +2,7 @@
 import hashlib
 import json
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -512,3 +513,18 @@ def test_first_contact_ai_draft_is_not_rejected_as_contact_history(client, monke
     assert out["method"] == "ai", out
     assert sentence in out["body"]
     assert out.get("fallback_reason") is None
+
+
+_CONTACT_SENTENCES = json.loads((Path(__file__).parent / "fixtures" / "contact_history_sentences.json").read_text())
+
+
+@pytest.mark.parametrize("sentence", _CONTACT_SENTENCES["claims_prior_contact"])
+def test_labelled_prior_contact_claims_are_flagged(sentence):
+    from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == ["unsupported contact history claim"]
+
+
+@pytest.mark.parametrize("sentence", _CONTACT_SENTENCES["first_contact"])
+def test_labelled_first_contact_sentences_are_not_flagged(sentence):
+    from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == []
