@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ExperienceEntry } from './types';
 import {
   activeExperienceEntries, createManualCandidate, createResumeCandidates,
@@ -174,6 +176,37 @@ describe('local proposals and confirmed eligibility', () => {
     const quotes = entries.map((entry) => entry.text);
     expect(quotes).toContain("• Built parser 7 for the lab's EEG\nrecordings and documented it");
     expect(quotes.join('\n')).toBe(raw);
+  });
+  it('offers no section heading, contact line or name as an experience, and keeps every other line whole', async () => {
+    const raw = readFileSync(join(__dirname, '__fixtures__/resume-pdf/persona.txt'), 'utf8');
+    const entries = await createResumeCandidates(raw);
+    const kept = raw.split('\n').filter((line) => !/^(?:[A-Z]+|JORDAN AVERY LEE \|.*)$/.test(line));
+    expect(entries.map((entry) => entry.text)).toEqual(kept);
+    expect(kept).toHaveLength(11);
+    for (const entry of entries) {
+      if (entry.source.kind !== 'resume') throw new Error('expected resume');
+      expect(Array.from(raw).slice(entry.source.start, entry.source.end).join('')).toBe(entry.source.quote);
+    }
+  });
+  it('drops the header block of a sidebar résumé but not a summary sentence above the first heading', async () => {
+    const raw = ['Priya Natarajan', 'priya.natarajan.test@example.com', '(217) 555-0142', 'Champaign, IL',
+      'github.com/priya-test', 'Bioengineering student who builds low-cost medical sensors.', 'Education',
+      'University of Illinois Urbana-Champaign', 'Skills', 'Python, MATLAB'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Bioengineering student who builds low-cost medical sensors.', 'University of Illinois Urbana-Champaign', 'Python, MATLAB',
+    ]);
+  });
+  it('keeps a stored bullet together with its wrapped lowercase rows', async () => {
+    const raw = ['EXPERIENCE', 'Research Assistant, Imaging Lab - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline,', 'reaching 0.87 AUC on a held-out split.',
+      '- Compared Grad-CAM and integrated-gradients', 'saliency maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Research Assistant, Imaging Lab - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline,\nreaching 0.87 AUC on a held-out split.',
+      '- Compared Grad-CAM and integrated-gradients\nsaliency maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics',
+    ]);
   });
   it('keeps one proposal per line when a line-per-row résumé fits the cap', async () => {
     const raw = ['Built a robot', 'wrote a report', 'Led a team'].join('\n');

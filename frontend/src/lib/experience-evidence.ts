@@ -1,5 +1,7 @@
 import type { ExperienceEntry } from './types';
-import { MAX_RESUME_TEXT_CHARACTERS, resumeTextCharacters } from './resume-input';
+import {
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, resumeContactLine, resumeSectionHeading, resumeTextCharacters,
+} from './resume-input';
 
 export const MAX_EXPERIENCE_ENTRIES = 100;
 export const MAX_EXPERIENCE_ENTRY_CHARACTERS = 6_000;
@@ -132,15 +134,22 @@ export function activeExperienceEntries(value: unknown, context: ExperienceSourc
   return checked.ok ? checked.value.filter((entry) => isActiveExperience(entry, context)) : [];
 }
 
-const BULLET_LINE = /^[\t ]*(?:[•●▪◦‣∙·*–—-]|\(?\d{1,2}[.)])\s/u;
+/** Not experience: a section heading, contact details, or a short line (a
+ *  name, a place) above the first section heading. */
+function notExperience(line: string, header: boolean): boolean {
+  const text = line.trim();
+  return !text || resumeSectionHeading(text) !== null || resumeContactLine(text)
+    || (header && text.split(/\s+/u).length <= 4);
+}
 
-/** PDF text has one row per line and no blank lines, so a two-page résumé can
- *  exceed the entry cap line by line. Only then, a bullet absorbs its wrapped
- *  lowercase continuation rows, and the non-bullet rows directly before a
- *  bullet (heading, title, dates) form one context entry. Rows that no bullet
- *  follows stay one per line, so a bullet-free résumé is still refused whole
- *  when it is over the cap. Every span stays a contiguous slice of the text. */
-function bulletSpans(points: string[], lines: Array<[number, number]>): Array<[number, number]> {
+/** PDF text has one row per line and no blank lines. A bullet absorbs its
+ *  wrapped lowercase continuation rows. A two-page résumé can exceed the entry
+ *  cap line by line; only then, the non-bullet rows directly before a bullet
+ *  (title, dates) also form one context entry. Rows that no bullet follows
+ *  stay one per line, so a bullet-free résumé is still refused whole when it
+ *  is over the cap. Headings and contact rows are dropped and end a context.
+ *  Every span stays a contiguous slice of the text. */
+function lineSpans(points: string[], lines: Array<[number, number]>, mergeContext: boolean): Array<[number, number]> {
   const grouped: Array<[number, number]> = [];
   let context: Array<[number, number]> = [];
   let inBullet = false;
@@ -149,10 +158,15 @@ function bulletSpans(points: string[], lines: Array<[number, number]>): Array<[n
     else grouped.push(...context);
     context = [];
   };
-  for (const [from, to] of lines) {
-    const text = points.slice(from, to).join('');
-    if (BULLET_LINE.test(text)) {
-      flush(true);
+  const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
+  const firstHeading = texts.findIndex((text) => resumeSectionHeading(text) !== null);
+  for (const [index, [from, to]] of lines.entries()) {
+    const text = texts[index];
+    if (notExperience(text, index < firstHeading)) {
+      flush(false);
+      inBullet = false;
+    } else if (BULLET_LINE.test(text)) {
+      flush(mergeContext);
       grouped.push([from, to]);
       inBullet = true;
     } else if (inBullet && /^[\t ]*\p{Ll}/u.test(text)) {
@@ -185,7 +199,14 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   }
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
-  for (const [from, to] of hasParagraphBreak || spans.length <= MAX_EXPERIENCE_ENTRIES ? spans : bulletSpans(points, spans)) {
+  const firstHeading = spans.find(([from, to]) => points.slice(from, to).join('').split(/\r?\n/u)
+    .some((line) => resumeSectionHeading(line) !== null))?.[0] ?? -1;
+  const proposals = hasParagraphBreak
+    // A paragraph is dropped only when none of its lines is experience.
+    ? spans.filter(([from, to]) => !points.slice(from, to).join('').split(/\r?\n/u)
+      .every((line) => notExperience(line, from < firstHeading)))
+    : lineSpans(points, spans, spans.length > MAX_EXPERIENCE_ENTRIES);
+  for (const [from, to] of proposals) {
     let left = from;
     let right = to;
     while (left < right && /\s/u.test(points[left])) left += 1;

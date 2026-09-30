@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import type { createPdfResourceLoaders } from './pdf-resources';
 type Loaders = ReturnType<typeof createPdfResourceLoaders>;
@@ -481,5 +483,150 @@ describe('PDF resource failures cannot become a partial successful upload', () =
       expect(result.message).not.toContain('/pdfjs');
       expect(destroy).toHaveBeenCalledTimes(1);
     } finally { vi.unstubAllGlobals(); }
+  });
+});
+
+
+// Chromium-printed résumés (see __fixtures__/resume-pdf/generate.mjs), read by
+// the real PDF.js. Only the worker and resource loading differ from the
+// browser: the legacy build runs in Node and reads fonts from node_modules.
+describe('real résumé PDFs keep every word and bullet intact', () => {
+  const FIXTURES = join(__dirname, '__fixtures__/resume-pdf');
+  const PDFJS = join(__dirname, '../../node_modules/pdfjs-dist');
+  const PERSONA = readFileSync(join(FIXTURES, 'persona.txt'), 'utf8');
+  let pdfjs: typeof import('pdfjs-dist');
+
+  beforeAll(async () => {
+    const worker = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+    const library = 'pdfjs-dist/legacy/build/pdf.mjs';
+    (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = await import(/* @vite-ignore */ worker);
+    pdfjs = await import(/* @vite-ignore */ library) as typeof import('pdfjs-dist');
+  });
+
+  async function parseFixture(name: string) {
+    const bytes = readFileSync(join(FIXTURES, name));
+    mockGetDocument.mockImplementation((options) => pdfjs.getDocument({
+      data: new Uint8Array(options.data), cMapUrl: `${PDFJS}/cmaps/`, cMapPacked: true,
+      standardFontDataUrl: `${PDFJS}/standard_fonts/`, useSystemFonts: false, isEvalSupported: false,
+    }) as unknown as { promise: Promise<MockPdf> });
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const file = new File([buffer], name, { type: 'application/pdf' });
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => buffer.slice(0) });
+    const result = await parseResumePDF(file);
+    expect(result.success).toBe(true);
+    return result.raw_text;
+  }
+
+  // One file per stranger-walk report. Each wraps different lines: after
+  // "baseline," and "(MATH" (CE-2), before "AUC", "& Statistics", "maps;" and
+  // "78%" (TR-04), and inside "integrated-gradients" (tailor-renovate-02).
+  // Helvetica also prints "fi" as a separate ligature glyph run.
+  it.each(['resume-ce2.pdf', 'resume-tr04.pdf', 'resume-renovate.pdf'])(
+    '%s reads back line for line as the résumé text it was printed from', async (name) => {
+      expect(await parseFixture(name)).toBe(PERSONA);
+    });
+
+  it('offers the tailor prefill the four complete bullets', async () => {
+    const bullets = (await parseFixture('resume-renovate.pdf')).split('\n')
+      .filter((line) => /^\s*([•\-*–—+]|\d+[.)])\s+/.test(line));
+    expect(bullets).toEqual(PERSONA.split('\n').filter((line) => line.startsWith('- ')));
+  });
+
+  it('keeps sidebar and main columns, graphic list bullets, right-aligned rows and one-item lists apart', async () => {
+    expect((await parseFixture('resume-layouts.pdf')).split('\n')).toEqual([
+      'Priya Natarajan',
+      'priya.natarajan.test@example.com',
+      '(217) 555-0142',
+      'Champaign, IL',
+      'github.com/priya-test',
+      'EDUCATION',
+      'University of Illinois Urbana-Champaign',
+      'B.S. in Bioengineering, Aug 2024 - May 2028',
+      'Relevant coursework: Signals and Systems, Biomedical Imaging, Fluid Mechanics, Differential Equations',
+      'SKILLS',
+      'Python, MATLAB, NumPy, SolidWorks, LabVIEW, Git',
+      'RESEARCH EXPERIENCE',
+      'Undergraduate Researcher, Tissue Mechanics Lab Sep 2025 - Present',
+      'University of Illinois Urbana-Champaign Urbana, IL',
+      'Designed an efficient finite-element workflow that reduced the fluid-flow simulation time of affine tissue models from six hours to forty minutes.',
+      'Profiled official offline benchmarks and flagged five configuration files with conflicting boundary conditions.',
+      'WORK EXPERIENCE',
+      'Engineering Intern, Midwest Medical Devices May 2025 - Aug 2025',
+      'Automated the calibration log for twelve flow sensors and cut the weekly review from three hours to thirty minutes.',
+      'Wrote first-draft test fixtures.',
+      'TOOLS',
+      'Python',
+      'SolidWorks',
+      'LabVIEW',
+      'MATLAB',
+      'Git',
+      'LANGUAGES',
+      'English',
+      'Spanish',
+      'EXPERIENCE',
+      'Research Intern, Biomechanics Lab Jun 2025 - Aug 2025',
+      'University of Illinois Urbana, IL',
+      'Built a gait-analysis toolkit in Python used by eleven graduate students across two labs and three',
+      'Collected force-plate recordings from twenty volunteers under an approved protocol with the lab manager',
+      'Presented weekly results',
+      'SUMMARY',
+      'Mechanical engineering student who compares wearable sensors for rehabilitation robotics and reports calibration, robustness and interpretability results with counterfactual checks for every study.',
+      'Seeking a research position for Summer 2026',
+    ]);
+  });
+});
+
+describe('positioned text items', () => {
+  const at = (str: string, x: number, width: number, y = 700, extra: Record<string, unknown> = {}) => ({
+    str, width, height: 10, transform: [10, 0, 0, 10, x, y], fontName: 'f1', dir: 'ltr', hasEOL: false, ...extra,
+  });
+  function pdfOf(items: unknown[]): MockPdf {
+    return {
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: items as never }) }),
+    };
+  }
+
+  it('joins glyph runs that touch and spaces runs that a gap separates', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Classi', 50, 30), at('fi', 80, 5), at('er', 85, 10), at('for', 100, 15),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text).toBe('Classifier for');
+  });
+
+  it('never joins a line into a bullet, a heading or a line in another font', async () => {
+    const wide = 'x '.repeat(40).trim();
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at(wide, 50, 500, 700, { hasEOL: true }), at('- next bullet', 50, 60, 688, { hasEOL: true }),
+      at(wide, 50, 500, 676, { hasEOL: true }), at('EXPERIENCE', 50, 60, 664, { hasEOL: true }),
+      at(wide, 50, 500, 652, { hasEOL: true }), at('bold words', 50, 50, 640, { fontName: 'f2' }),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      wide, '- next bullet', wide, 'EXPERIENCE', wide, 'bold words',
+    ]);
+  });
+
+  it('rejoins a word broken at its own hyphen without a space', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Compared Grad-CAM and integrated-', 50, 500, 700, { hasEOL: true }),
+      at('gradients saliency maps.', 50, 120, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text).toBe('- Compared Grad-CAM and integrated-gradients saliency maps.');
+  });
+});
+
+describe('positioned CJK text', () => {
+  it('joins a wrapped Chinese line without a space, across font subsets, and reads Kangxi radicals as ideographs', async () => {
+    const run = (str: string, x: number, width: number, y: number, fontName: string, hasEOL = false) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, x, y], fontName, dir: 'ltr', hasEOL,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        run('- 基于深度学习的医学影像', 50, 120, 700, 'f1'), run('分割系统：使⽤', 170, 380, 700, 'f2', true),
+        run('模型复现', 50, 40, 686, 'f3'), run('⽂档。', 90, 30, 686, 'f2'),
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text).toBe('- 基于深度学习的医学影像分割系统：使用模型复现文档。');
   });
 });

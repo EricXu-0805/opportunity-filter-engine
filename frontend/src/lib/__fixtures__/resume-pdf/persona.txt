@@ -1,0 +1,16 @@
+JORDAN AVERY LEE | jordan.lee.test@example.com | Urbana, IL
+EDUCATION
+University of Illinois Urbana-Champaign - B.S. Computer Science, expected May 2028. GPA 3.7/4.0.
+Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear Algebra (MATH 257), Probability & Statistics (STAT 400).
+EXPERIENCE
+Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present
+- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87 AUC on a held-out split.
+- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency maps; I wrote the evaluation scripts.
+Software Engineering Intern, Prairie Analytics (Champaign, IL) - Jun 2026 - Aug 2026
+- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.
+- Added unit tests (pytest) for 14 data-validation functions.
+PROJECTS
+Swahili-English Sentiment Classifier (course project, CS 446) - fine-tuned a multilingual BERT on 3,000 labeled tweets; 78% accuracy vs 71% baseline.
+Campus Bus Tracker - React + Flask web app used by about 200 students during Fall 2025.
+SKILLS
+Python, PyTorch, SQL, C++, Git, Linux, pandas, scikit-learn

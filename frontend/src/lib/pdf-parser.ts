@@ -1,5 +1,8 @@
 import type { ResumeParseResponse } from './types';
-import { MAX_RESUME_TEXT_CHARACTERS, resumeTextCharacters } from './resume-input';
+import {
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_PHONE, RESUME_URL,
+  resumeSectionHeading, resumeTextCharacters,
+} from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
 const KNOWN_SKILLS = [
@@ -132,6 +135,195 @@ function extractResearchInterests(text: string): string {
   return '';
 }
 
+interface PdfTextItem {
+  str: string;
+  dir?: string;
+  width?: number;
+  height?: number;
+  transform?: unknown[];
+  fontName?: string;
+  hasEOL?: boolean;
+}
+interface Run { x: number; y: number; width: number; size: number; font?: string; str: string }
+interface VisualLine { runs: Run[]; gaps: number[]; positioned: boolean }
+interface LineShape {
+  left: number; right: number; textLeft: number; baseline: number; size: number;
+  fonts: Set<string | undefined>; tabular: boolean;
+  /** Has a break opportunity: a space, or CJK text, which wraps between characters. */
+  wrappable: boolean;
+}
+
+// Distances are in ems of the line's font size. PDF.js itself starts a space
+// at a 0.102 em gap, so runs closer than TOUCH are one word split into glyph
+// runs (a ligature, a soft-hyphen break point) and take no space between them.
+const TOUCH = 0.1;
+const SPACE = 0.25;
+const TAB_GAP = 1.5;
+const ALIGN = 1;
+const COLUMN = 2;
+const NARROW = 20;
+const SLACK = 1.3;
+const PITCH_SLACK = 1.15;
+
+const SENTENCE_END = /[.!?]["'”’)\]]*$/u;
+const BULLET_GLYPH = /^[•●▪◦‣∙·*–—\-■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]$/u;
+// A wrapped "Aug 2024 - May 2028" puts the range dash at the start of the next
+// line, where it reads like a bullet. A dash before words stays a bullet.
+const DASH_CONTINUATION = /^[-–—]\s+(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?|spring|summer|fall|autumn|winter)\s+\d{4}|present\b|current\b)/iu;
+const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,;:&/(+]|\s[-–—]|(?:^|\s)(?:and|or|of|the|a|an|to|for|in|on|with|by|at|from|as|into|via|using|including|across|between|than|that|which|while|over|under|per))$/u;
+const CONTINUES_BEFORE = /^(?:\p{Ll}|[&()%]|\d(?!\d{3}\b))/u;
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+const WRAPPABLE = /\S\s+\S|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]./u;
+// Fonts that map CJK glyphs to Kangxi radicals instead of the ideographs
+// ("使⽤" for "使用") print correctly but extract as different characters.
+const KANGXI_RADICAL = /[\u2f00-\u2fd5]/gu;
+
+/** Where an item sits, for horizontal left-to-right text only. Rotated,
+ *  vertical or right-to-left runs keep the positionless joining rules. */
+function positioned(item: PdfTextItem): Run | null {
+  const t = item.transform;
+  if (!Array.isArray(t) || t.length < 6 || typeof item.width !== 'number' || item.dir === 'rtl') return null;
+  const [a, b, c, , x, y] = t as number[];
+  if (!(a > 0) || b !== 0 || c !== 0 || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const size = item.height || Math.abs(t[3] as number);
+  return size > 0 ? { x, y, width: item.width, size, font: item.fontName, str: item.str } : null;
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((p, q) => p - q);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+function shapeOf(line: VisualLine, text: string): LineShape | null {
+  const { runs } = line;
+  if (!line.positioned || !runs.length) return null;
+  const size = runs[0].size;
+  // A right-aligned date or location leaves one gap far wider than the
+  // line's word spaces; justified text widens every space alike.
+  const spaces = line.gaps.filter((gap) => gap > TOUCH * size && gap <= TAB_GAP * size);
+  const reference = spaces.length ? median(spaces) : line.gaps.length >= 3 ? median(line.gaps) : SPACE * size;
+  return {
+    left: Math.min(...runs.map((run) => run.x)),
+    right: Math.max(...runs.map((run) => run.x + run.width)),
+    textLeft: runs.length > 1 && BULLET_GLYPH.test(runs[0].str.trim()) ? runs[1].x : runs[0].x,
+    baseline: runs[0].y,
+    size,
+    // A PDF may split one style across many font subsets (CJK glyphs are
+    // spread over dozens), so a style change shows as fonts with no overlap.
+    fonts: new Set(runs.map((run) => run.font)),
+    tabular: line.gaps.some((gap) => gap > TAB_GAP * size && gap > 3 * reference),
+    wrappable: WRAPPABLE.test(text.trim()),
+  };
+}
+
+/** The separator for a visual line break that is only a wrap, or null for a
+ *  real one. A wrap continues the same paragraph: same style, size and
+ *  alignment, ordinary line pitch, and the previous line stops where the next
+ *  line's first word could not have fitted. Bullets, headings, table-like
+ *  rows, contact details and finished sentences always start a new line. */
+function wrapSeparator(
+  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>,
+): string | null {
+  const prev = shapes[index - 1];
+  const next = shapes[index];
+  const before = texts[index - 1].trim();
+  const after = texts[index].trim();
+  if (!prev || !next || !before || !after || prev.tabular || next.tabular) return null;
+  if ((BULLET_LINE.test(after) && !DASH_CONTINUATION.test(after))
+    || resumeSectionHeading(before) || resumeSectionHeading(after)
+    || ![...next.fonts].some((font) => prev.fonts.has(font))
+    || Math.abs(prev.size - next.size) > 0.05 * prev.size) return null;
+  const step = prev.baseline - next.baseline;
+  if (step < 0.8 * prev.size || step > PITCH_SLACK * (pitch.get(Math.round(prev.size * 2)) ?? Infinity)) return null;
+  if (Math.abs(next.left - prev.left) > ALIGN * prev.size && Math.abs(next.left - prev.textLeft) > ALIGN * prev.size) return null;
+  const lastWord = before.split(/\s+/u).pop()!;
+  const head = Array.from(after)[0];
+  const firstWord = CJK.test(head) ? head : after.split(/\s+/u)[0];
+  if (SENTENCE_END.test(before) || RESUME_EMAIL.test(lastWord) || RESUME_URL.test(lastWord)
+    || RESUME_EMAIL.test(firstWord) || RESUME_URL.test(firstWord) || RESUME_PHONE.exec(after)?.index === 0) return null;
+  // The column's right edge, from the lines aligned with this one. A line
+  // with no space in it cannot wrap and may overflow (a long email address).
+  let left = prev.left;
+  let right = -Infinity;
+  for (const other of shapes) {
+    if (!other) continue;
+    const tolerance = COLUMN * Math.max(other.size, prev.size);
+    if (Math.abs(other.left - prev.left) > tolerance && Math.abs(other.left - prev.textLeft) > tolerance) continue;
+    left = Math.min(left, other.left);
+    if (other.wrappable || other.tabular) right = Math.max(right, other.right);
+  }
+  if (right === -Infinity) right = prev.right;
+  // Glyph widths are unknown, so the first word's width is estimated from
+  // the next line's average character width. Where the text itself says it
+  // goes on, a generous estimate decides; otherwise the plain one must.
+  const room = right - prev.right;
+  const space = SPACE * next.size;
+  const word = Array.from(firstWord).length * (next.right - next.left) / Array.from(after).length;
+  const evidence = CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || /,\s/u.test(before);
+  if (right - left < NARROW * prev.size) {
+    // A narrow column of short items ("Python" / "SolidWorks") is a list, not
+    // a paragraph, unless the text itself says it goes on.
+    if (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left) || !evidence || space + word * SLACK <= room) return null;
+  } else if (space + word <= room && !(evidence && space + word * SLACK > room)) return null;
+  if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^\p{L}/u.test(after)) return '';
+  return CJK.test(Array.from(before).pop()!) && CJK.test(head) ? '' : ' ';
+}
+
+/** Page text in PDF.js reading order. Runs are spaced by their geometry, so a
+ *  word printed as several glyph runs ("Classi" "fi" "er") stays one word, and
+ *  a line that only wraps is joined back into its paragraph. Items without a
+ *  usable position keep the positionless rules: a space between items, a
+ *  newline at every PDF.js line end. This does not reorder multi-column text. */
+function pageText(items: readonly unknown[]): string {
+  let text = '';
+  const breaks: number[] = [];
+  const lines: VisualLine[] = [];
+  let line: VisualLine = { runs: [], gaps: [], positioned: true };
+  for (const entry of items) {
+    if (!entry || typeof entry !== 'object' || !('str' in entry)) continue;
+    const item = entry as PdfTextItem;
+    const run = positioned(item);
+    const last = line.runs[line.runs.length - 1];
+    const gap = run && last && Math.abs(run.y - last.y) <= Math.max(run.size, last.size) / 2
+      ? run.x - (last.x + last.width) : null;
+    const touching = gap !== null && gap <= TOUCH * Math.max(run!.size, last.size);
+    if (text && !/\s$/.test(text) && item.str && !/^\s/.test(item.str) && !touching) text += ' ';
+    text += item.str.replace(KANGXI_RADICAL, (radical) => radical.normalize('NFKC'));
+    if (item.str.trim()) {
+      if (!run) line.positioned = false;
+      else {
+        if (gap !== null) line.gaps.push(gap);
+        line.runs.push(run);
+      }
+    }
+    if (item.hasEOL && !text.endsWith('\n')) {
+      breaks.push(text.length);
+      text += '\n';
+      lines.push(line);
+      line = { runs: [], gaps: [], positioned: true };
+    }
+  }
+  lines.push(line);
+  const texts = lines.map((_, index) => text.slice(index ? breaks[index - 1] + 1 : 0, breaks[index] ?? text.length));
+  const shapes = lines.map((visual, index) => shapeOf(visual, texts[index]));
+  // The ordinary baseline step per font size: a larger step is a paragraph gap.
+  const pitch = new Map<number, number>();
+  for (let index = 1; index < shapes.length; index++) {
+    const prev = shapes[index - 1];
+    const next = shapes[index];
+    if (!prev || !next || Math.abs(prev.size - next.size) > 0.05 * prev.size) continue;
+    const step = prev.baseline - next.baseline;
+    const key = Math.round(prev.size * 2);
+    if (step >= 0.8 * prev.size && step < (pitch.get(key) ?? Infinity)) pitch.set(key, step);
+  }
+  let out = texts[0];
+  for (let index = 1; index < texts.length; index++) {
+    out += wrapSeparator(shapes, index, texts, pitch) ?? '\n';
+    out += texts[index];
+  }
+  return out;
+}
+
 function resourceFailure(): ResumeParseResponse {
   return {
     extracted_skills: [], skill_evidence: [], extracted_coursework: [], raw_text: '',
@@ -170,17 +362,9 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
       try {
         const content = await page.getTextContent();
         if (resources.hasFailure()) return resourceFailure();
-        // PDF.js includes marked-content objects without str. Preserve its
-        // line endings instead of flattening every page into one paragraph.
-        // This does not infer reading order for arbitrary multi-column PDFs.
-        let pageText = '';
-        for (const item of content.items) {
-          if (!('str' in item)) continue;
-          if (pageText && !/\s$/.test(pageText) && item.str && !/^\s/.test(item.str)) pageText += ' ';
-          pageText += item.str;
-          if (item.hasEOL && !pageText.endsWith('\n')) pageText += '\n';
-        }
-        characterCount += resumeTextCharacters(pageText) + (i > 1 ? 1 : 0);
+        // PDF.js includes marked-content objects without str.
+        const text = pageText(content.items);
+        characterCount += resumeTextCharacters(text) + (i > 1 ? 1 : 0);
         if (characterCount > MAX_RESUME_TEXT_CHARACTERS) {
           return {
             extracted_skills: [], skill_evidence: [], extracted_coursework: [], raw_text: '',
@@ -188,8 +372,8 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
             message: 'The PDF exceeds the supported 60,000 text characters. The saved resume has not been replaced.',
           };
         }
-        if (!pageText.trim()) pagesWithoutText.push(i);
-        textParts.push(pageText);
+        if (!text.trim()) pagesWithoutText.push(i);
+        textParts.push(text);
       } finally {
         page.cleanup();
       }
