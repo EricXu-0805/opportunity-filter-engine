@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import date
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
@@ -835,6 +835,16 @@ class TailorRequest(BaseModel):
     # whether the LLM output is English or Chinese, which is the
     # high-priority fabrication risk we care about.
     locale: str = "en"
+    # Optional. When present, source_bullets[i] is the only evidence for bullet
+    # i and original_bullets[i] is just its current wording. The modal sends it
+    # after "Use kept as new originals", so accepted AI text never becomes
+    # the next request's evidence.
+    source_bullets: list[str] | None = None
+
+    @field_validator("source_bullets")
+    @classmethod
+    def stringify_sources(cls, v: list | None) -> list[str] | None:
+        return None if v is None else [str(source) for source in v]
 
     @field_validator("original_bullets")
     @classmethod
@@ -856,6 +866,20 @@ class TailorRequest(BaseModel):
         return "zh" if primary == "zh" else "en"
 
 
+class EvidenceLink(BaseModel):
+    """A résumé phrase tied to a literal target quote, both with server offsets.
+
+    ``entailed`` is true only when the faithfulness review confirmed that the
+    phrase names the quoted thing; otherwise the quote is related text only.
+    """
+    id: str
+    relation: Literal["same", "broader"]
+    entailed: bool = False
+    target_evidence: dict[str, Any]
+    source_evidence: dict[str, Any]
+    written_as: str | None = None
+
+
 class TailoredBullet(BaseModel):
     text: str
     source_evidence: str = ""
@@ -873,6 +897,14 @@ class TailoredBullet(BaseModel):
     #   - Fallback path: equals the bullet's index in original_bullets
     #     verbatim, since fallback is positional passthrough.
     source_index: int = 0
+    # w14.0: every submitted bullet comes back once, in order. "rewritten" is a
+    # reviewed rewrite; "kept" is the bullet as written with reason_code.
+    status: Literal["rewritten", "kept"] = "kept"
+    reason_code: str | None = None
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    # The rewrite with the posting's terms taken back out, when that passes too.
+    alternative: str | None = None
 
 
 class TailorStatusResponse(BaseModel):
@@ -1077,6 +1109,9 @@ class RenovatedVariant(BaseModel):
     source: str  # "macro" | "ai" | "user"
     text: str
     source_evidence: str = ""
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    alternative: str | None = None
 
 
 class RenovatedBullet(BaseModel):
@@ -1086,6 +1121,8 @@ class RenovatedBullet(BaseModel):
     # Index into ``variants``; -1 == show base_text. Rollback moves this back.
     current: int = -1
     action: str = "keep"                           # "foreground" | "keep" | "demote"
+    # Why a foregrounded bullet stayed as written (a TailoredBullet reason_code).
+    note: str | None = None
 
 
 class RenovatedSection(BaseModel):
@@ -1136,6 +1173,11 @@ class BulletOptimizeResponse(BaseModel):
     source_evidence: str = ""
     changed: bool = False
     warnings: list[str] = Field(default_factory=list)
+    status: Literal["rewritten", "kept"] = "kept"
+    reason_code: str | None = None
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    alternative: str | None = None
     # W13 target binding + provenance (mirrors the W12 cold-email stamps):
     # which target this suggestion set was generated for, when, and by what
     # pipeline — the client pairs suggestions to targets by the echo instead

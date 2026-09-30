@@ -213,7 +213,10 @@ def test_every_legacy_resume_fallback_and_success_is_stamped(path, mode, monkeyp
         text = 'Deployed Kubernetes services' if mode == 'rejected' else TEXT
         if fn is tailor._ai_renovation_plan:
             return {'order': ['s'], 'sections': {'s': [('b', 'foreground')]}}
-        if fn is tailor._ai_tailor_bullets: return [{'text': text, 'source_evidence': TEXT}]
+        if fn is tailor._ai_tailor_bullets:
+            ident = kwargs['units'][0].unit_id
+            return {ident: {'unit_id': ident, 'links': [], 'decision': 'rewrite', 'ops': [{'op': 'verb_first'}],
+                            'text': text, 'keep_reason': None}}
         return {'text': text, 'source_evidence': TEXT}
     monkeypatch.setattr(tailor, 'run_blocking', work)
     result = receipt(client.post('/api' + path, json=body), path)

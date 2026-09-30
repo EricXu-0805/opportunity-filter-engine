@@ -9,6 +9,8 @@ paths, not just the centralized helper.
 """
 from __future__ import annotations
 
+import json
+
 from src.publication_trust import (
     NAME_MATCH,
     PENDING_REMEDIATION,
@@ -214,11 +216,10 @@ class TestColdEmailSurface:
 
 
 class TestResumeSurface:
-    def test_tailor_prompt_never_contains_paper_titles(self, monkeypatch):
-        # Resume tailoring reads no publication data by design; pin it so a
-        # future prompt change cannot quietly re-introduce paper titles —
-        # verified or not, papers are not resume-personalization evidence
-        # (they never describe the STUDENT's work).
+    def test_tailor_quotes_only_verified_titles_and_only_as_target_text(self, monkeypatch):
+        # A paper title can be target text a rewrite links to (the professor's
+        # own words), never evidence of the student's work. Only a verified
+        # author id admits it; name matches and legacy records never do.
         from backend.routes import tailor
 
         captured = {}
@@ -232,12 +233,17 @@ class TestResumeSurface:
                    "hard_skills": [{"name": "Python", "level": "expert"}],
                    "coursework": ["ECE 385"],
                    "research_interests_text": "brain-computer interfaces"}
-        for opp in (_opp(VERIFIED_AUTHOR_ID), _opp(NAME_MATCH), _opp()):
+        for status, admitted in ((VERIFIED_AUTHOR_ID, True), (NAME_MATCH, False), ("__absent__", False)):
+            opp = _opp(status)
             captured.clear()
-            tailor._ai_tailor_bullets(profile, opp, ["Built a Python EEG parser"])
-            joined = " ".join(m["content"] for m in captured["messages"])
-            assert "NeuroFlow" not in joined
-            assert "Cortical Signal Denoising" not in joined
+            anchors = tailor._snapshot_anchors(opp, opp)
+            assert any(anchor.evidence["field"] == "paper_title" for anchor in anchors) is admitted
+            tailor._ai_tailor_bullets(profile, opp, ["Built a Python EEG parser"], anchors=anchors)
+            system, user = (m["content"] for m in captured["messages"])
+            assert ("NeuroFlow" in user) is admitted and "NeuroFlow" not in system
+            data = json.loads(user.split("DATA (JSON):\n", 1)[1])
+            # The student's only evidence is their own line.
+            assert data["units"] == [{"unit_id": "b1", "original": "Built a Python EEG parser"}]
 
     def test_gap_analysis_ignores_publication_data(self):
         from src.recommender.resume_advisor import analyze_gaps

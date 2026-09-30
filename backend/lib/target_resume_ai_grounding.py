@@ -311,10 +311,13 @@ _NOT_PREPOSITION = r"(?!(?:for|in|during|at|within|on|with|to)\b)"
 SETTING = re.compile(
     r"\b(?:for|in|during|at|within)\s+(?:(?:a|an|the|my|our)\s+)?(?:" + _NOT_PREPOSITION + r"[\w'’-]+\s+){0,4}?"
     r"(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program|company"
-    r"|research)\b"
+    # "research" as a setting ("for aging research"), not a role or skill word.
+    r"|research(?!\s+(?:assistants?|associates?|aides?|interns?|technicians?|fellows?|fellowships?|scholars?"
+    r"|volunteers?|coordinators?|experiences?|methods?|skills?|interests?|papers?|articles?)\b))\b"
     # A Chinese setting phrase stops at a bracket and at 并/和/及/、: "为认知测验评分并
     # 安排被试（认知老化实验室" is two actions and an aside, not a setting.
-    r"|(?:在|为|于)[^，,。；;在为于（）()并和及、]{0,20}?(?:项目|课题|实验室|课程|课堂|公司|实习|比赛|竞赛|研究)", re.I)
+    r"|(?:在|为|于)[^，,。；;在为于（）()并和及、]{0,20}?(?:项目|课题|实验室|课程|课堂|公司|实习|比赛|竞赛"
+    r"|研究(?!助理|生|员|方法|兴趣|经历|经验|能力))", re.I)
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 # "did not build", "never led", "没有主导": a denial of the action that follows.
 # A bare 不/未 is not one: 不断 (keep on), 不同 (different), 不少 (many), 未来.

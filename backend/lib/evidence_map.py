@@ -165,7 +165,9 @@ def _pieces(text: str, spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
             # A URL or an email is cut out; the words around it stay quotable.
             for piece_start, piece_end in _split(text, part_start, part_end, _URL_OR_EMAIL):
                 trimmed = _trim(text, piece_start, piece_end)
-                if trimmed and not _BOILERPLATE.search(text[trimmed[0]:trimmed[1]]):
+                # A run with no sentence or clause break at all is not prose.
+                if (trimmed and trimmed[1] - trimmed[0] <= 2 * MAX_ANCHOR_CHARACTERS
+                        and not _BOILERPLATE.search(text[trimmed[0]:trimmed[1]])):
                     out.append(trimmed)
     return out
 
@@ -320,10 +322,10 @@ def source_span(text: str, phrase: str) -> tuple[int, int] | None:
 _FUNCTION_EN = frozenset(
     "a an the and or of in on at for with to from by as into onto during via was were is are be been being have "
     "has had do does which that who whom whose this these those it its also then so just while where when part "
-    "i me my mine myself".split())
+    "but however i me my mine myself".split())
 # Aspect, status and personal characters (中 已 着 过 本 人 我) are content: "撰写中" ->
 # "已撰写" and a dropped 本人 must be visible to the vocabulary checks.
-_FUNCTION_ZH = frozenset("的了并在为与和及于对将把被由等其该以从向所之也都且或而地得个这那")
+_FUNCTION_ZH = frozenset("的了并在为与和及于对将把被由等其该以从向所之也都且或而地得个这那但却")
 _TOKEN = re.compile(r"[一-鿿]|\d+(?:[.,]\d+)*%?|[A-Za-z]+(?:'[a-z]+)?")
 _PERSONAL_MARKER = re.compile(r"\b(?:I|me|my|mine|myself)\b|本人|我(?!们)")
 
@@ -440,6 +442,30 @@ def verify_links(raw: object, sources: list[tuple[str | None, str]], anchors: di
         same = item["relation"] == "same" and _shares_content(quote["quote"], target["quote"])
         links.append(Link(ident, "same" if same else "broader", target["quote"], quote["quote"], target, quote))
     return links
+
+
+def parse_rows(raw: str, expected_ids: set[str], *, key: str) -> dict[str, object] | None:
+    """{unit_id: row} from a model reply whose only top-level key is ``key``.
+
+    None for an unusable envelope. A row with a missing, unknown or repeated
+    unit_id is dropped, so only its own unit keeps the original.
+    """
+    try:
+        parsed = json.loads(strip_json_fence(raw))
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict) or set(parsed) != {key} or not isinstance(parsed[key], list):
+        return None
+    rows: dict[str, object] = {}
+    repeated: set[str] = set()
+    for row in parsed[key]:
+        ident = row.get("unit_id") if isinstance(row, dict) else None
+        if not isinstance(ident, str) or ident not in expected_ids:
+            continue
+        if ident in rows:
+            repeated.add(ident)
+        rows[ident] = row
+    return {ident: row for ident, row in rows.items() if ident not in repeated}
 
 
 # ------------------------------------------------------------------- contract

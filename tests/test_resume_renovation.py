@@ -32,13 +32,16 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
-from backend.lib import metering
+from backend.lib import evidence_map, metering
 from backend.lib.release_scope import opportunity_visible_in_release
 from backend.main import app
 from backend.routes import tailor as tailor_module
 from src.evidence import is_actionable_target
 
 client = TestClient(app)
+REWRITE = "EVIDENCE-MAPPED RESUME ADAPTATION"
+RA = "Research assistant in the Fluids Lab, analyzing Python simulation data for CS 225"
+RA_VERB_FIRST = "Analyzed Python simulation data for CS 225 as a research assistant in the Fluids Lab"
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +49,21 @@ def _faithful_review(monkeypatch):
     """Every changed rewrite now goes to the faithfulness review, which
     tests/test_tailor_review.py covers. These fakes answer every model call with
     one rewrite reply, so the review verdict is given here: faithful."""
-    monkeypatch.setattr(tailor_module, "_ai_review_rewrites", lambda pairs: [True] * len(pairs))
+    def accept(pairs, deadline=None):
+        for pair in pairs:
+            for link in pair.links:
+                link.entailed = True
+        return ["accepted"] * len(pairs)
+
+    monkeypatch.setattr(evidence_map, "ai_review", accept)
+
+
+def rows(**rewrites):
+    """The model's evidence-map rows by bullet id: a rewrite (verb first) or, for None, a keep."""
+    return json.dumps({"bullets": [
+        {"unit_id": ident, "links": [], "decision": "rewrite" if text else "keep",
+         "ops": [{"op": "verb_first"}] if text else [], "text": text, "keep_reason": None if text else "no_link"}
+        for ident, text in rewrites.items()]})
 
 
 @pytest.fixture
@@ -208,7 +225,7 @@ def _sections_payload():
         "heading": "Research",
         "kind": "research",
         "bullets": [
-            {"id": "s1b1", "text": "Implemented machine learning experiments in Python for CS 225"},
+            {"id": "s1b1", "text": RA},
             {"id": "s1b2", "text": "Wrote documentation for a class project"},
         ],
     }]
@@ -273,14 +290,10 @@ class TestRenovate:
             {"id": "s1b1", "action": "foreground"},
             {"id": "s1b2", "action": "demote"},
         ]}]})
-        # Rewrite stays within the student's material (Python, machine learning, CS 225).
-        rewrite = json.dumps({"bullets": [{
-            "text": "Implemented machine learning experiments in Python for CS 225.",
-            "source_evidence": "machine learning experiments in Python for CS 225",
-        }]})
+        # The rewrite reorders the student's own words, verb first.
         monkeypatch.setattr(
             tailor_module, "chat_completion",
-            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+            _chat_router([("REORGANIZE", plan), (REWRITE, rows(s1b1=RA_VERB_FIRST))]),
         )
         resp = client.post("/api/tailor/renovate", json={
             "profile": python_profile,
@@ -298,7 +311,8 @@ class TestRenovate:
         assert fg["current"] == 0
         assert len(fg["variants"]) == 1
         assert fg["variants"][0]["source"] == "macro"
-        assert "Python" in fg["variants"][0]["text"]
+        assert fg["variants"][0]["text"] == RA_VERB_FIRST
+        assert fg["variants"][0]["ops"] == ["verb_first"] and fg["note"] is None
         # Demoted bullet stays at base (no rewrite requested).
         assert by_id["s1b2"]["current"] == -1
         assert by_id["s1b2"]["variants"] == []
@@ -313,13 +327,10 @@ class TestRenovate:
             {"id": "s1b1", "action": "foreground"},
         ]}]})
         # Rewrite smuggles in Rust + Kubernetes — the student lists neither.
-        rewrite = json.dumps({"bullets": [{
-            "text": "Deployed Kubernetes clusters and wrote Rust services for the lab",
-            "source_evidence": "fabricated",
-        }]})
         monkeypatch.setattr(
             tailor_module, "chat_completion",
-            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+            _chat_router([("REORGANIZE", plan),
+                          (REWRITE, rows(s1b1="Deployed Kubernetes clusters and wrote Rust services for the lab"))]),
         )
         resp = client.post("/api/tailor/renovate", json={
             "profile": python_profile,
@@ -329,12 +340,12 @@ class TestRenovate:
         assert resp.status_code == 200
         body = resp.json()
         # The AI plan WAS applied (reorder/actions), so method stays "ai"; the
-        # rejected rewrite is reported in warnings and the foreground bullet
-        # sits safely at its base_text.
+        # refused rewrite leaves the foreground bullet at its base_text, with
+        # the reason in its note.
         assert body["method"] == "ai"
-        assert any("rejected_fabrication" in w for w in body["warnings"])
         fg = next(b for s in body["sections"] for b in s["bullets"] if b["id"] == "s1b1")
         assert fg["current"] == -1 and fg["variants"] == []
+        assert fg["note"] in ("beyond_allowed_edit", "rewrite_rejected")
         # The fabricated tokens must not reach any bullet content (base_text or
         # variant text). They legitimately appear in the rejection *warning*,
         # which is exactly the point — so scan only the rendered bullets.
@@ -412,24 +423,19 @@ class TestRenovate:
         assert body["method"] == "ai"
         assert [s["id"] for s in body["sections"]] == ["s2", "s1"]
 
-    def test_rewrite_count_mismatch_drops_batch(
+    def test_a_missing_row_keeps_only_its_own_bullet(
         self, python_profile, real_opp_id, monkeypatch,
     ):
-        """Positional pairing is the only rewrite↔bullet-id link; if the model
-        returns fewer rewrites than foregrounded bullets, the whole batch is
-        dropped (base_text floor) instead of mis-attaching rewrites."""
+        """Rewrites are paired to bullets by id. A row the model leaves out
+        keeps that bullet at base, with the reason, and nothing else."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         plan = json.dumps({"sections": [{"id": "s1", "bullets": [
             {"id": "s1b1", "action": "foreground"},
             {"id": "s1b2", "action": "foreground"},
         ]}]})
-        rewrite = json.dumps({"bullets": [{  # ONE rewrite for TWO foregrounded
-            "text": "Built machine learning experiments in Python during CS 225 coursework",
-            "source_evidence": "machine learning experiments in Python",
-        }]})
         monkeypatch.setattr(
             tailor_module, "chat_completion",
-            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
+            _chat_router([("REORGANIZE", plan), (REWRITE, rows(s1b1=RA_VERB_FIRST))]),
         )
         resp = client.post("/api/tailor/renovate", json={
             "profile": python_profile,
@@ -439,9 +445,9 @@ class TestRenovate:
         assert resp.status_code == 200
         body = resp.json()
         assert body["method"] == "ai"  # plan applied
-        assert "rewrite_count_mismatch" in body["warnings"]
-        bullets = [b for s in body["sections"] for b in s["bullets"]]
-        assert all(b["current"] == -1 and b["variants"] == [] for b in bullets)
+        by_id = {b["id"]: b for b in body["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["current"] == 0 and by_id["s1b1"]["variants"][0]["text"] == RA_VERB_FIRST
+        assert by_id["s1b2"]["current"] == -1 and by_id["s1b2"]["note"] == "model_unavailable"
 
     def test_duplicate_bullet_ids_rejected(self, python_profile, real_opp_id):
         sections = [{"id": "s1", "heading": "A", "kind": "other", "bullets": [
@@ -524,66 +530,27 @@ class TestRenovate:
         assert s.id == "s1"
         assert "\n" not in s.kind and len(s.kind) <= 24
 
-    def test_empty_item_padding_cannot_shift_rewrites(
+    def test_rows_in_any_order_stay_with_their_own_bullets(
         self, python_profile, real_opp_id, monkeypatch,
     ):
-        """A model response padded with an empty item (3 items for 2 foreground
-        bullets) must trip the count guard — with slots preserved, the raw item
-        count is compared, so padding can't sneak a shifted pairing through."""
+        """Rows out of order, an unknown id and a keep: each result lands on its
+        own bullet, never a shifted one."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         plan = json.dumps({"sections": [{"id": "s1", "bullets": [
             {"id": "s1b1", "action": "foreground"},
             {"id": "s1b2", "action": "foreground"},
         ]}]})
-        rewrite = json.dumps({"bullets": [
-            {"text": "", "source_evidence": ""},  # padding
-            {"text": "Wrote clear documentation for a class project", "source_evidence": "x"},
-            {"text": "Built machine learning experiments in Python", "source_evidence": "y"},
-        ]})
-        monkeypatch.setattr(
-            tailor_module, "chat_completion",
-            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
-        )
+        reply = rows(ghost="Wrote documentation for a class project today", s1b2=None, s1b1=RA_VERB_FIRST)
+        monkeypatch.setattr(tailor_module, "chat_completion", _chat_router([("REORGANIZE", plan), (REWRITE, reply)]))
         resp = client.post("/api/tailor/renovate", json={
             "profile": python_profile,
             "opportunity_id": real_opp_id,
             "sections": _sections_payload(),
         })
         assert resp.status_code == 200
-        body = resp.json()
-        assert "rewrite_count_mismatch" in body["warnings"]
-        bullets = [b for s in body["sections"] for b in s["bullets"]]
-        assert all(b["current"] == -1 and b["variants"] == [] for b in bullets)
-
-    def test_empty_slot_keeps_its_own_bullet_at_base(
-        self, python_profile, real_opp_id, monkeypatch,
-    ):
-        """Matching count with one empty slot: that bullet stays at base while
-        the OTHER bullet gets its own (not a shifted) rewrite."""
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
-            {"id": "s1b1", "action": "foreground"},
-            {"id": "s1b2", "action": "foreground"},
-        ]}]})
-        rewrite = json.dumps({"bullets": [
-            {"text": "", "source_evidence": ""},  # slot for s1b1: no rewrite
-            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
-        ]})
-        monkeypatch.setattr(
-            tailor_module, "chat_completion",
-            _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)]),
-        )
-        resp = client.post("/api/tailor/renovate", json={
-            "profile": python_profile,
-            "opportunity_id": real_opp_id,
-            "sections": _sections_payload(),
-        })
-        assert resp.status_code == 200
-        body = resp.json()
-        by_id = {b["id"]: b for b in body["sections"][0]["bullets"]}
-        assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
-        assert by_id["s1b2"]["current"] == 0
-        assert "documentation" in by_id["s1b2"]["variants"][0]["text"].lower()
+        by_id = {b["id"]: b for b in resp.json()["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["current"] == 0 and by_id["s1b1"]["variants"][0]["text"] == RA_VERB_FIRST
+        assert by_id["s1b2"]["current"] == -1 and by_id["s1b2"]["note"] == "no_link"
 
     def test_long_bullet_keeps_its_whole_base_text(self, python_profile, real_opp_id, monkeypatch):
         """ResumeBullet used to cut text at 600 characters, so a renovated
@@ -612,14 +579,11 @@ class TestRenovate:
             {"id": "s1b1", "action": "foreground"},
             {"id": "s1b2", "action": "foreground"},
         ]}]})
-        rewrite = json.dumps({"bullets": [
-            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
-        ]})
         rewrite_prompts: list[str] = []
-        route = _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)])
+        route = _chat_router([("REORGANIZE", plan), (REWRITE, rows(s1b2=None))])
 
         def _fake(messages, *a, **k):
-            if "rewrite a student" in messages[0]["content"]:
+            if REWRITE in messages[0]["content"]:
                 rewrite_prompts.append(messages[1]["content"])
             return route(messages, *a, **k)
 
@@ -633,7 +597,7 @@ class TestRenovate:
         assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
         assert by_id["s1b1"]["base_text"] == _LONG_BULLET
         assert "bullet_s1b1_too_long_to_rewrite" in body["warnings"]
-        assert by_id["s1b2"]["current"] == 0
+        assert by_id["s1b2"]["note"] == "no_link"
         assert rewrite_prompts and all("stage000" not in p for p in rewrite_prompts)
 
 
@@ -678,30 +642,24 @@ class TestOptimizeBullet:
 
     def test_grounded_rewrite_changes(self, python_profile, real_opp_id, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "text": "Implemented machine learning experiments in Python.",
-            "source_evidence": "machine learning experiments in Python",
-        })
-        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
-        resp = client.post("/api/tailor/bullet", json=self._payload(python_profile, real_opp_id))
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: rows(b1=RA_VERB_FIRST))
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id, current_text=RA, base_text=RA))
         assert resp.status_code == 200
         body = resp.json()
         assert body["changed"] is True
-        assert "Python" in body["text"]
+        assert (body["text"], body["status"], body["ops"]) == (RA_VERB_FIRST, "rewritten", ["verb_first"])
 
     def test_fabrication_returns_unchanged(self, python_profile, real_opp_id, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "text": "Deployed Kubernetes clusters and trained PyTorch models",
-            "source_evidence": "fabricated",
-        })
-        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        monkeypatch.setattr(tailor_module, "chat_completion",
+                            lambda *a, **k: rows(b1="Deployed Kubernetes clusters and trained PyTorch models"))
         resp = client.post("/api/tailor/bullet", json=self._payload(python_profile, real_opp_id))
         assert resp.status_code == 200
         body = resp.json()
         assert body["changed"] is False
         assert body["text"] == "Implemented machine learning experiments in Python"
-        assert any("rejected_fabrication" in w for w in body["warnings"])
+        assert body["status"] == "kept" and body["reason_code"] in ("beyond_allowed_edit", "rewrite_rejected")
 
     def test_malformed_json_returns_unchanged(self, python_profile, real_opp_id, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
@@ -716,23 +674,28 @@ class TestOptimizeBullet:
         self, python_profile, real_opp_id, monkeypatch,
     ):
         """Re-optimizing an already-tailored bullet (current ≠ base) may reuse a
-        concrete term that survives only in base_text — the corpus includes the
-        base floor, so it passes the gate."""
+        concrete term that survives only in base_text: base_text is the
+        evidence, so its words pass the vocabulary check and the gate."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "text": "Analyzed fMRI datasets in Python.",
-            "source_evidence": "fMRI datasets in Python",
-        })
-        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
+        base = "Analyzed fMRI datasets in Python for the sleep study"
+        anchors = [evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                              "end": 19, "quote": "Sleep study methods"})]
+        monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: anchors)
+        reply = json.dumps({"bullets": [{
+            "unit_id": "b1", "decision": "rewrite", "keep_reason": None,
+            "links": [{"id": "L1", "anchor": "t1", "term": "Sleep study", "source": "sleep study", "relation": "same"}],
+            "ops": [{"op": "lead_with", "link": "L1"}], "text": "Sleep study: analyzed fMRI datasets in Python"}]})
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: reply)
         resp = client.post("/api/tailor/bullet", json=self._payload(
             python_profile, real_opp_id,
-            current_text="Analyzed datasets in Python",
-            base_text="Analyzed fMRI datasets in Python",
+            current_text="Analyzed datasets in Python for the sleep study",
+            base_text=base,
         ))
         assert resp.status_code == 200
         body = resp.json()
         assert body["changed"] is True
-        assert "fMRI" in body["text"]
+        assert body["text"] == "Sleep study: analyzed fMRI datasets in Python"
+        assert body["links"][0]["entailed"] is True
 
     @pytest.mark.parametrize("length", [501, 700])
     def test_bullet_over_the_rewrite_limit_is_refused_by_name(
@@ -776,7 +739,7 @@ class TestOptimizeBullet:
 
         def _fake(messages, *a, **k):
             prompts.append(messages[1]["content"])
-            return json.dumps({"text": "Designed and ran a laboratory protocol.", "source_evidence": "x"})
+            return rows(b1=None)
 
         monkeypatch.setattr(tailor_module, "chat_completion", _fake)
         assert len(_LONG_BULLET) > 700
@@ -786,7 +749,7 @@ class TestOptimizeBullet:
             base_text=_LONG_BULLET,
         ))
         assert resp.status_code == 200
-        assert resp.json()["changed"] is True
+        assert resp.json()["source_evidence"] == _LONG_BULLET
         assert prompts and "stage079" in prompts[0]
 
     def test_source_longer_than_one_experience_is_refused_by_name(

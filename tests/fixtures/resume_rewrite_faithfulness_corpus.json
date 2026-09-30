@@ -635,6 +635,11 @@
    "original": "2025年秋季起在认知老化实验室担任研究助理，负责安排被试并为认知测验评分。",
    "rewrite": "为认知测验评分并安排被试（认知老化实验室研究助理，2025年秋季起）。",
    "kind": "zh reorder with 为…评分"
+  },
+  {
+   "original": "Research assistant in the Fluids Lab, analyzing Python simulation data for CS 225.",
+   "rewrite": "Analyzed Python simulation data for CS 225 as a research assistant in the Fluids Lab.",
+   "kind": "verb first; 'research assistant' is a role, not a setting"
   }
  ],
  "unfaithful": [
