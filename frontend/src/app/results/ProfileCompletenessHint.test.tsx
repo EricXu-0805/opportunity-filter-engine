@@ -55,6 +55,20 @@ describe('ProfileCompletenessHint', () => {
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
+  it('does not ask for a type when the untouched default types are selected', () => {
+    render(
+      <ProfileCompletenessHint
+        profile={makeProfile({ research_interests: 'ML', seeking_types: undefined })}
+        onEdit={() => {}}
+        t={t}
+      />,
+    );
+    expect(
+      screen.getByText(/results\.completeness\.summary\{complete=3,total=5/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/results\.completeness\.fields\.type/)).toBeNull();
+  });
+
   it('never asks for coursework, which the profile form cannot enter', () => {
     // Three of five testers walking production reported this independently:
     // "Profile 2/4 complete — add coursework, résumé" with an Edit profile
