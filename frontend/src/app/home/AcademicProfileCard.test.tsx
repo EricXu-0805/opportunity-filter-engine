@@ -372,3 +372,16 @@ describe('AcademicProfileCard — private controls reset independently of text i
     expect(screen.getByText('universitySwitcher.confirm')).not.toBeDisabled();
   });
 });
+
+describe('AcademicProfileCard — international status switch', () => {
+  // A screen reader announced an unnamed switch: the visible label sat in a
+  // separate span with nothing tying it to the control.
+  it('is named by its label and describes its hint', () => {
+    const { update } = renderCard({ is_international: false });
+    const toggle = screen.getByRole('switch', { name: 'home.form.internationalLabel' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(toggle).toHaveAccessibleDescription('home.form.internationalHint');
+    fireEvent.click(toggle);
+    expect(update).toHaveBeenCalledWith('is_international', true);
+  });
+});
