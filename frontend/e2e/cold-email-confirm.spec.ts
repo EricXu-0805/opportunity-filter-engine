@@ -15,6 +15,9 @@ import { en, zh } from '../src/i18n/dictionaries';
  * Only the network is stubbed, and only at its outermost edge:
  *   - the draft source (/api/cold-email/variants), so the test does not depend
  *     on an LLM or on which faculty rows the corpus happens to hold;
+ *   - the provider-free draft check (/api/cold-email/validate) that Copy runs
+ *     before it copies, answered as a clean "ready" receipt: the check's own
+ *     rules are covered by cold-email-conditions.spec.ts, not here;
  *   - Supabase auth + the confirm RPC, so no hosted project is touched and the
  *     success / failure / still-in-flight cases are all reachable.
  * Everything between the click and that edge is the shipped code.
@@ -66,12 +69,14 @@ function session() {
 interface Tracker {
   confirms: string[];
   otherWrites: string[];
+  /** Draft checks Copy ran before copying. */
+  checks: number;
   /** Resolve/reject the confirm RPC that is currently parked. */
   release: (mode: 'ok' | 'fail') => void;
 }
 
 async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry'; body?: string; recipient?: string } = {}): Promise<Tracker> {
-  const state: Tracker = { confirms: [], otherWrites: [], release: () => {} };
+  const state: Tracker = { confirms: [], otherWrites: [], checks: 0, release: () => {} };
   let parked: Route | null = null;
 
   // Playwright matches routes in REVERSE registration order, so the broad
@@ -101,6 +106,16 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
     contentType: 'application/json',
     body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), variants: [{ ...VARIANT, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: opts.body ?? VARIANT.body, recipient_email: opts.recipient ?? VARIANT.recipient_email }], recipient_status: opts.recipient === '' ? 'unavailable' : 'revealed', lab_type: opts.labType ?? null }),
   }));
+
+  await page.route('**/api/cold-email/validate', (route) => {
+    const request = route.request().postDataJSON();
+    state.checks += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ opportunity_id: request.opportunity_id, target_version: request.expected_target_version, contact_context_receipt: contactReceiptForRequest(request), pipeline_version: 'e2e-confirm-fixture', target_conditions: { version: 1, record_kind: 'listing', conditions: [], template_request: null }, outcome: 'ready', issues: [] }),
+    });
+  });
 
   await page.route('**/rest/v1/rpc/confirm_contact_event', async (route) => {
     state.confirms.push(route.request().postData() ?? '');
@@ -192,9 +207,10 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     const net = await installNetwork(page);
     await openModal(page);
 
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
     await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeVisible();
+    expect(net.checks, 'Copy checks the draft before copying it').toBe(1);
     expect(net.confirms, 'Copy is not evidence of a send').toHaveLength(0);
     expect(net.otherWrites, 'no tracker write of any kind').toHaveLength(0);
     await expect(remindPrompt(page)).toBeHidden();
@@ -204,7 +220,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     const net = await installNetwork(page, { hold: true });
     const { supabaseConfigured } = await openModal(page);
     test.skip(!supabaseConfigured, 'a successful confirmation needs a reachable Supabase');
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
     await confirmButton(page).click();
     await expect(confirmButton(page)).toHaveText('Recording…');
@@ -226,7 +242,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     // explicitly retry after checking Tracker; do not assert a nonexistent write.
     const net = await installNetwork(page, { hold: true });
     const { supabaseConfigured } = await openModal(page);
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
     await confirmButton(page).click();
     if (supabaseConfigured) {
@@ -257,7 +273,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
   test('closing and reopening starts a clean, unconfirmed session', async ({ page }) => {
     await installNetwork(page);
     const { supabaseConfigured } = await openModal(page);
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
     await confirmButton(page).click();
     // Whatever the outcome was — confirmed, or a visible failure — none of it
     // may survive the close.
@@ -266,15 +282,15 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     ).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('button', { name: 'Copy' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeHidden();
 
     await page.getByRole('button', { name: 'Draft Email' }).click();
-    await expect(page.getByRole('button', { name: 'Copy' })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(remindPrompt(page), 'the previous confirmation did not survive').toBeHidden();
     await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true }), 'nor the previous error').toBeHidden();
     await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true }), 'strip starts hidden').toBeHidden();
 
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
     await expect(confirmButton(page), 'asked again, not shown as already recorded')
       .toHaveText('Yes — mark as contacted');
   });
@@ -296,7 +312,7 @@ test.describe('Cold Email — a clipboard that refuses', () => {
     });
     await openModal(page);
 
-    await page.getByRole('button', { name: 'Copy' }).click();
+    await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
     await expect(page.getByText(/select the text above and copy it manually/)).toBeVisible();
     await expect(page.getByText('Copied'), 'nothing was copied').toBeHidden();
@@ -359,11 +375,15 @@ test.describe('Cold Email reachable editing workspace', () => {
   test('long AI history follows replies without scrolling the editor or workspace', async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 900 });
     await installNetwork(page, { labType: 'dry', body: VARIANT.body.repeat(20) });
-    await page.route('**/api/cold-email/refine', (route) => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: VARIANT.body.repeat(20), method: 'llm' }),
-    }));
+    let refinements = 0;
+    await page.route('**/api/cold-email/refine', (route) => {
+      refinements += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: VARIANT.body.repeat(20), method: 'llm' }),
+      });
+    });
     await openModal(page);
     const workspace = page.getByTestId('cold-email-workspace');
     const editor = page.getByTestId('cold-email-editor-fields');
@@ -375,10 +395,15 @@ test.describe('Cold Email reachable editing workspace', () => {
     await guidelines.evaluate((el) => { el.scrollTop = 30; });
     const before = await Promise.all([workspace, editor, guidelines].map((el) => el.evaluate((node) => node.scrollTop)));
     for (let i = 0; i < 3; i += 1) {
-      await request.fill(`Request ${i}: preserve each source fact. `.repeat(20));
+      // Long, but under the 500-unit request limit so each one reaches refine.
+      const instruction = `Request ${i}: preserve each source fact. `.repeat(12);
+      await request.fill(instruction);
       await submit.click();
-      await expect(request).toHaveValue('');
+      await expect.poll(() => refinements).toBe(i + 1);
+      await expect(history.getByText('The body is unchanged. Your request is kept.', { exact: true })).toHaveCount(i + 1);
       await expect(history.getByText('Editing...', { exact: true })).toBeHidden();
+      // A typed request stays in the box until an accepted edit uses it (72ae2f64).
+      await expect(request).toHaveValue(instruction);
     }
     await expect.poll(() => history.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     expect(await Promise.all([workspace, editor, guidelines].map((el) => el.evaluate((node) => node.scrollTop)))).toEqual(before);

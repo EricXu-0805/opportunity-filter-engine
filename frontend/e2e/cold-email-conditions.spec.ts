@@ -6,9 +6,9 @@ import type { EmailTargetConditions } from '../src/lib/email-target-conditions';
 
 // Production UI, synthetic source/profile/auth data and controlled writing responses.
 // No provider, external navigation, mail or tracking write is allowed.
-const STUB = `http://127.0.0.1:${process.env.E2E_SUPABASE_PORT ?? 55054}`;
-const FRONT = `http://127.0.0.1:${process.env.E2E_PORT ?? 3340}`;
-const BACK = `http://127.0.0.1:${process.env.E2E_BACKEND_PORT ?? 8340}`;
+const STUB = `http://127.0.0.1:${Number(process.env.E2E_SUPABASE_PORT ?? 54321)}`;
+const FRONT = `http://127.0.0.1:${Number(process.env.E2E_PORT ?? 3100)}`;
+const BACK = `http://127.0.0.1:${Number(process.env.E2E_BACKEND_PORT ?? 8100)}`;
 const ID = 'uiuc-siebel-ugresearch';
 const VERSION = 'wt1:' + 'd'.repeat(64);
 const BODY = 'Dear Professor,\n\nI am interested in the sensor project. Could we discuss the current application requirements?\n\nBest,\nTest student 王';
