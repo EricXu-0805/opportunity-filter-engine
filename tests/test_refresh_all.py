@@ -928,6 +928,22 @@ def test_national_run_touches_no_faculty(monkeypatch, tmp_path):
     assert saved["metadata"]["is_active"] is True
 
 
+def test_run_summary_reports_tombstoned_contacts_the_enricher_skipped(monkeypatch, tmp_path):
+    """A tombstoned contact is never re-scraped; the run summary says how many
+    were held back, so a refresh shows the guard working rather than hiding it."""
+    _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
+    monkeypatch.setattr(
+        refresh_all, "enrich_pi",
+        lambda opps, save=True, max_scrapes=None: {
+            "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0,
+            "skipped_tombstoned": 3})
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+
+    summary = refresh_all.refresh_all(deep=True)
+    assert summary["sources"]["pi_enricher"]["skipped_tombstoned"] == 3
+
+
 def test_pi_enrichment_pool_scoped_to_shard_and_never_truncates(monkeypatch, tmp_path):
     """Sharded runs must call enrich_pi with save=False: enrich_pi(save=True)
     writes its INPUT list to PROCESSED_FILE, so a shard-scoped subset would

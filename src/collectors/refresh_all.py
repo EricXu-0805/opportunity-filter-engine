@@ -1493,6 +1493,7 @@ def refresh_all(
             "enriched": pi_stats["enriched"],
             "already_had": pi_stats["already_has_email"],
             "skipped_budget": pi_stats["skipped_budget"],
+            "skipped_tombstoned": pi_stats.get("skipped_tombstoned", 0),
             "status": "ok",
         }
         logger.info(
