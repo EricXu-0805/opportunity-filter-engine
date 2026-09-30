@@ -194,24 +194,60 @@ def contact_context_brief(parts: dict) -> str:
     )
 
 
-_CONTACT_CLAIM = re.compile(
+# A claim that contact already happened: a referral, an earlier message, a
+# reply, a meeting, or an offer or agreement the recipient made. First-contact
+# courtesy ("I look forward to following up", "Thank you in advance for your
+# response", "the program you offered") is not one. Judged per sentence.
+_PRIOR_CONTACT = re.compile(
     r"\b(?:referred\s+me|introduced\s+me|(?:suggested|recommended|encouraged|told)\s+(?:that\s+)?i?\s*"
-    r"(?:me\s+to\s+)?(?:contact|write|reach)|(?:on|at)\s+(?:the\s+)?(?:recommendation|suggestion)\s+of|"
-    # Past contact only: "I look forward to following up", "thank you in advance
-    # for your response" and "the program you offered" are first-contact wording.
-    r"(?:\bam|i['’]m|just)\s+following\s+up|(?:writing|wanted)\s+to\s+follow\s+up|"
-    r"follow(?:ing)?[- ]?up\s+(?:on|to|regarding|about)\s+(?:my|our)|"
-    r"my\s+(?:previous|earlier|last)\s+(?:email|message)|"
-    r"i\s+(?:emailed|contacted|wrote\s+to)\s+you|i\s+sent\s+(?:you\s+)?(?:an?\s+)?(?:email|message)|"
-    r"(?<!in\sadvance\s)(?:thank\s+you|thanks)\s+(?:so\s+much\s+|very\s+much\s+)?for\s+(?:your\s+)?"
-    r"(?:kind\s+|quick\s+|prompt\s+)?(?:reply|response)(?!\s+in\s+advance)|"
+    r"(?:me\s+to\s+)?(?:contact|write|reach)|(?:on|at)\s+(?:the\s+)?(?:recommendation|suggestion|advice)\s+of|"
+    r"my\s+(?:previous|earlier|last|prior)\s+(?:email|message|note|letter)|"
+    r"i\s+(?:emailed|contacted|wrote\s+to|messaged|called)\s+you|i\s+sent\s+(?:you\s+)?(?:an?\s+)?(?:email|message|note)|"
     r"(?:have\s+not|haven['’]t|not\s+yet)\s+(?:yet\s+)?(?:received\s+a\s+reply|heard\s+back)|"
     r"in\s+your\s+(?:reply|response)|your\s+(?:reply|response)\s+(?:said|stated|asked|offered|was|mentioned)|"
-    r"you\s+(?:kindly\s+)?(?:offered|promised|accepted)\s+(?:me|us|my|our)|you\s+(?:kindly\s+)?agreed\s+to|"
-    r"you\s+(?:kindly\s+)?(?:offered|promised)\s+to\s+(?:meet|speak|talk|chat|review|read|consider|share|send|"
-    r"forward|introduce|connect|discuss|look)|as\s+(?:we\s+agreed|you\s+requested))\b",
+    r"(?:getting|get)\s+back\s+to\s+me|"
+    r"as\s+(?:you|we)\s+(?:kindly\s+)?(?:agreed|offered|promised|requested|suggested|mentioned|discussed|asked)|"
+    r"you\s+(?:kindly\s+|previously\s+|already\s+)?(?:offered|promised|accepted|invited)\s+(?:\w+\s+){0,2}?(?:me|us|my|our)|"
+    r"you\s+(?:kindly\s+|previously\s+|already\s+)?(?:agreed|offered|promised)\s+(?:(?:last|this)\s+\w+\s+)?to|"
+    r"you\s+agreed\s+that|"
+    r"we\s+(?:met|spoke|talked|discussed|chatted)|"
+    r"our\s+(?:recent\s+|previous\s+|earlier\s+|last\s+)?(?:conversation|meeting|call|chat|discussion))\b",
     re.I,
 )
+# Sentence-initial "You offered/agreed/..." states the recipient's own past act.
+_RECIPIENT_ACT = re.compile(
+    r"^\s*(?:and\s+|so\s+)?you\s+(?:kindly\s+|previously\s+|already\s+)?"
+    r"(?:offered|agreed|promised|accepted|invited|suggested)\b", re.I)
+_THANKS_FOR_REPLY = re.compile(
+    r"\b(?:thank\s+you|thanks)\s+(?:so\s+much\s+|very\s+much\s+)?(?:again\s+)?for\s+(?:your|the)\s+"
+    r"(?:kind\s+|quick\s+|prompt\s+|helpful\s+|thoughtful\s+)?(?:reply|response|email|note|message)\b", re.I)
+_FOLLOW_UP = re.compile(r"\bfollow(?:ing|ed)?[- ]?ups?\b", re.I)
+# Words before "follow(ing) up" that only introduce the act of following up now.
+_FOLLOW_UP_LEAD = re.compile(
+    r"^\s*(?:just\s+|so\s+|and\s+)?(?:(?:i\s+am|i['’]m|we\s+are|this\s+is)\s+(?:just\s+)?)?"
+    r"(?:(?:writing|wanted|want|reaching\s+out)\s+to\s+)?(?:(?:a|an|my)\s+(?:quick\s+|brief\s+|short\s+)?|as\s+a\s+)?$",
+    re.I)
+# What a follow-up is about when it continues an earlier exchange.
+_EARLIER_EXCHANGE = re.compile(
+    r"\b(?:again|e-?mail|message|note|letter|application|conversation|meeting|call|reply|response|visit|"
+    r"talk|discussion|chat|yesterday|earlier|previous|prior|last\s+(?:week|month|time|term|semester|year)|"
+    r"we\s+(?:discussed|spoke|talked|met|chatted)|i\s+(?:sent|wrote|emailed|mentioned|submitted))\b", re.I)
+_SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
+
+
+def _claims_prior_contact(sentence: str) -> bool:
+    if _PRIOR_CONTACT.search(sentence) or _RECIPIENT_ACT.search(sentence):
+        return True
+    if _THANKS_FOR_REPLY.search(sentence) and not re.search(r"\bin\s+advance\b", sentence, re.I):
+        return True
+    for match in _FOLLOW_UP.finditer(sentence):
+        # "Following up on ...", "I'm writing to follow up ...", "As a follow-up
+        # to ..." assert a follow-up now; any follow-up about an earlier
+        # message, reply or conversation does too. "I look forward to
+        # following up" and "a paper following up on a 2023 study" do not.
+        if _FOLLOW_UP_LEAD.fullmatch(sentence[:match.start()]) or _EARLIER_EXCHANGE.search(sentence[match.end():match.end() + 80]):
+            return True
+    return False
 
 
 def contact_claim_violations(text: str, parts: dict) -> list[str]:
@@ -229,7 +265,7 @@ def contact_claim_violations(text: str, parts: dict) -> list[str]:
         if remaining.count(sentence) != 1:
             findings.append("missing or repeated confirmed contact sentence")
         remaining = remaining.replace(sentence, "")
-    if _CONTACT_CLAIM.search(remaining):
+    if any(_claims_prior_contact(sentence) for sentence in _SENTENCE.findall(remaining)):
         findings.append("unsupported contact history claim")
     return findings
 

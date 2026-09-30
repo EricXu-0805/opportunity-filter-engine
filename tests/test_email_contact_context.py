@@ -446,6 +446,16 @@ def test_future_offers_in_availability_remain_usable(client, availability):
     "I read about the positions you offered in 2025.",
     "I noticed the students you accepted last year came from many majors.",
     "Could we schedule a follow-up to discuss the project?",
+    "In advance, thank you for your response.",
+    "I would welcome the chance to follow up on any suggestions you have.",
+    "I would follow up to ask about next steps.",
+    "Your recent paper, following up on the 2023 study, caught my attention.",
+    "I am reaching out for the first time.",
+    "I have not contacted you before.",
+    "I recently came across your work.",
+    "I look forward to hearing back.",
+    "I would be glad to follow up with a short summary of my project.",
+    "Your group followed up the 2021 trial with a larger cohort.",
 ])
 def test_first_contact_wording_is_not_a_prior_contact_claim(sentence):
     from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
@@ -467,6 +477,23 @@ def test_first_contact_wording_is_not_a_prior_contact_claim(sentence):
     "Janet Rowan referred me to you.",
     "I emailed you last week.",
     "I have not yet received a reply.",
+    # Real prior-contact claims the first narrowing let through (verifier, 09-30).
+    "Following up on the position we discussed.",
+    "Just a quick follow-up on the email I sent last week.",
+    "As a follow-up to the email I sent in August, I wanted to share my transcript.",
+    "As you offered, I have attached my CV.",
+    "As you promised, I am sending my availability.",
+    "As you agreed, I will join on Monday.",
+    "You agreed that I could join the lab meeting.",
+    "You offered last week to review my resume.",
+    "You accepted the invitation I sent.",
+    "Following up on your email from last week.",
+    "As a follow-up to your reply, here is my schedule.",
+    "Following up regarding our conversation.",
+    "I will follow up again next week.",
+    "We met at the research fair last month.",
+    "Thank you for getting back to me so quickly.",
+    "I enjoyed our conversation after your seminar.",
 ])
 def test_prior_contact_claims_are_still_flagged(sentence):
     from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
