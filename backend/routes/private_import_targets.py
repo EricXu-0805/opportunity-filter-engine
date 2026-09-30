@@ -14,6 +14,8 @@ from starlette.responses import JSONResponse
 from backend.lib.private_email_context import resolve_private_email_context
 from backend.lib.private_import_targets import PrivateTargetService, new_client, settings
 from backend.lib.private_import_targets_schema import (
+    MAX_BODY_BYTES,
+    MAX_PAYLOAD_BYTES,
     PRIVATE,
     DeleteRequest,
     PrivateTargetError,
@@ -26,6 +28,33 @@ from backend.lib.private_target_resolution import project_private_target, resolv
 
 TRACKER_BATCH_LIMIT = 100
 _TRACKER_BATCH_CONCURRENCY = 4
+# Only a save carries an import. A delete or a tracker batch is an owner id, a
+# revision and at most 100 ids, so the 8 MiB allowance the body middleware
+# grants this whole prefix is never a legitimate size for them.
+_SMALL_BODY_BYTES = MAX_BODY_BYTES - MAX_PAYLOAD_BYTES
+
+
+async def _screen_body(request: Request) -> None:
+    """Size, then credential shape, before FastAPI parses the JSON.
+
+    Parsing and validating an 8 MiB import is real event-loop work, and it used
+    to run for callers with no credential at all, ahead of the 401. The shape
+    check mirrors the first gate of PrivateTargetService.authenticate, which
+    still runs afterwards; the token itself can only be verified over the
+    network, so a caller with a well-formed but invalid token is still parsed.
+    """
+    limit = MAX_BODY_BYTES if request.method == "PUT" else _SMALL_BODY_BYTES
+    declared = request.headers.get("content-length", "")
+    if (declared.isdecimal() and int(declared) > limit) or len(await request.body()) > limit:
+        raise PrivateTargetError("private_target_too_large", 413)
+    authorization = request.headers.get("authorization")
+    if (
+        not authorization
+        or not authorization.startswith("Bearer ")
+        or not authorization[7:].strip()
+        or len(authorization) > 16384
+    ):
+        raise PrivateTargetError("private_target_auth_required", 401)
 
 
 class PrivateTargetRoute(APIRoute):
@@ -34,6 +63,8 @@ class PrivateTargetRoute(APIRoute):
 
         async def handler(request: Request):
             try:
+                if request.method in ("PUT", "DELETE", "POST"):
+                    await _screen_body(request)
                 return await original(request)
             except PrivateTargetError as exc:
                 return JSONResponse({"detail": {"code": exc.code}}, status_code=exc.status, headers=PRIVATE)

@@ -376,12 +376,47 @@ def _release_reservation(bucket: list, slot: _RateSlot) -> None:
         pass
 
 
+def _llm_dispatch_reserver(bucket_key: str, max_requests: int, window: int):
+    """A handler's way to pay for each further provider dispatch it fans out.
+
+    Admission reserves one per-IP slot and one global LLM slot per request. A
+    route that splits one request into several provider calls (the chunked
+    résumé extraction) would otherwise reach the provider eight times on one
+    reservation, so each call after the first takes one more slot in BOTH
+    buckets, or is not made. Taken just before the dispatch and never refunded:
+    by then the call is being paid for.
+    """
+    def reserve() -> bool:
+        now = time.time()
+        with _rate_lock:
+            own = [t for t in _rate_buckets[bucket_key] if _slot_time(t) > now - window]
+            shared = [t for t in _global_buckets["llm"] if _slot_time(t) > now - 60]
+            _rate_buckets[bucket_key] = own
+            _global_buckets["llm"] = shared
+            if len(own) >= max_requests or len(shared) >= GLOBAL_LLM_PER_MIN:
+                return False
+            own.append(now)
+            shared.append(_RateSlot(now))
+            return True
+
+    return reserve
+
+
+def _refuse_llm_dispatch() -> bool:
+    return False
+
+
+def _allow_llm_dispatch() -> bool:
+    return True
+
+
 RATE_LIMIT_DISABLED = os.environ.get("OFE_DISABLE_RATE_LIMIT") == "1"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if RATE_LIMIT_DISABLED:
+            request.state.reserve_llm_dispatch = _allow_llm_dispatch
             # Still consume the marker. It is an internal signal between the
             # truth guard and this middleware; leaking it to clients when rate
             # limiting happens to be off would publish an undocumented field
@@ -465,6 +500,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     _global_buckets[klass].append(global_slot)
                     global_reserved = True
 
+        request.state.reserve_llm_dispatch = (
+            _llm_dispatch_reserver(bucket_key, max_requests, window)
+            if klass == "llm" and global_reserved else _refuse_llm_dispatch
+        )
         response = await call_next(request)
         # Refund the GLOBAL ceiling only, and only when nothing was spent. The
         # two buckets measure different things and must not be refunded alike:
@@ -857,7 +896,9 @@ app.add_middleware(
     # cross-origin admin call from a first-party origin fails preflight, so the
     # route would look broken in exactly the NEXT_PUBLIC_API_URL → Render
     # configuration the X-Admin-Token grant below already anticipates.
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    # PUT is the private-import save (savePrivateImportTarget); without it that
+    # save fails preflight in the same cross-origin configuration.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # X-Admin-Actor is the self-declared operator label (see admin.require_admin).
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Admin-Actor"],
     expose_headers=["x-ofe-export-request", "x-ofe-document-signature", "x-ofe-export-signature", "x-ofe-export-template", "Content-Disposition", "x-ofe-material-id", "x-ofe-material-record", "x-ofe-material-sha256"],

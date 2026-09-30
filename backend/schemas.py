@@ -828,8 +828,8 @@ class TailorRequest(BaseModel):
     # R71-D: caller-declared output language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
     # to pick between the EN and ZH system prompts; everything else (the
-    # anti-fabrication validator, the evidence corpus, the cap_bullets
-    # field validator) is locale-agnostic by design — the ASCII hard-claim
+    # anti-fabrication validator, the evidence corpus, the bullet
+    # limits) is locale-agnostic by design — the ASCII hard-claim
     # regex still catches Python / PyTorch / Kubernetes regardless of
     # whether the LLM output is English or Chinese, which is the
     # high-priority fabrication risk we care about.
@@ -837,11 +837,12 @@ class TailorRequest(BaseModel):
 
     @field_validator("original_bullets")
     @classmethod
-    def cap_bullets(cls, v: list) -> list:
-        # Cap at 12 bullets × 500 chars each so a malicious / oversized
-        # paste cannot blow past the LLM context budget. Mirrors the
-        # ``ProfileRequest`` field-validator pattern.
-        return [str(b)[:500] for b in v[:12] if str(b).strip()]
+    def drop_blank_bullets(cls, v: list) -> list:
+        # Blank lines are layout, not input. The 12 × 500 limit is enforced by
+        # the /tailor route as a refusal that names it: slicing here used to
+        # rewrite the first 500 characters of the first 12 bullets and say
+        # nothing about the rest.
+        return [str(b) for b in v if str(b).strip()]
 
     @field_validator("locale")
     @classmethod

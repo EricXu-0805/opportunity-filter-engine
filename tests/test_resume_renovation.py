@@ -487,6 +487,23 @@ class TestRenovate:
         })
         assert resp.status_code == 422
 
+    def test_sixteen_sections_rejected_not_silently_truncated(
+        self, python_profile, real_opp_id,
+    ):
+        """cap_sections would keep the first 15; the raw-payload validator
+        must refuse first so a 16th section is never renovated away unseen."""
+        sections = [
+            {"id": f"s{i}", "heading": f"H{i}", "kind": "other",
+             "bullets": [{"id": f"s{i}b1", "text": f"Did course project number {i} for a class"}]}
+            for i in range(16)
+        ]
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 422
+
     def test_ids_are_stripped_and_capped(self):
         """IDs can't smuggle newlines into the plan prompt or blow the prompt
         budget — whitespace is stripped and length capped at the schema."""

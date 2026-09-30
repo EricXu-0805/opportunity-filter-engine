@@ -30,12 +30,13 @@ import logging
 import os
 import re
 import unicodedata
+from collections.abc import Callable
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
 from backend.data_loader import load_opportunities_by_id
 from backend.lib import llm_budget
@@ -87,12 +88,13 @@ router = APIRouter()
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 # Every layer above this accepts 12: the modal prefills 12
-# (extractBulletLines), /extract-bullets returns 12, and TailorRequest.cap_bullets
-# keeps 12. At 8 the last four were silently never sent, and the modal then told
+# (extractBulletLines), /extract-bullets returns 12, and /tailor refuses a
+# 13th. At 8 the last four were silently never sent, and the modal then told
 # the student "Rewrote 8 of 12 bullets — the rest couldn't be grounded in your
 # profile", which named a grounding failure that never happened to bullets the
 # model never saw. Four more rewrites is a few hundred output tokens.
 _DEFAULT_BULLETS_PER_REQUEST = 12
+_MAX_BULLET_CHARACTERS = 500
 
 
 # Bumped whenever tailoring logic changes materially — stamped on every
@@ -595,10 +597,13 @@ def _bullet_grounded(bullet: str, resume_text: str) -> bool:
     return len(candidate) >= 4 and candidate in source
 
 
-def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | None:
+def _ai_extract_bullets(resume_text: str) -> list[str] | None:
     """LLM-extract bullet lines; return None on any failure (caller falls
     back to the heuristic). Each returned bullet must be grounded in the
-    resume so the model can't smuggle in fabricated experience."""
+    resume so the model can't smuggle in fabricated experience.
+
+    Returns every grounded bullet of the chunk. The review cap belongs to the
+    cross-chunk selection, which can only report what it was shown."""
     if len(resume_text) > RESUME_AI_CHUNK_CHARACTERS:
         raise ValueError("model extraction requires a bounded resume chunk")
     raw = chat_completion(
@@ -642,12 +647,12 @@ def _ai_extract_bullets(resume_text: str, *, limit: int = 12) -> list[str] | Non
             continue
         seen.add(key)
         out.append(text)
-        if len(out) >= limit:
-            break
     return out or None
 
 
-async def _process_resume_chunks(text: str, extractor, **kwargs) -> tuple[list, ResumeProcessingCoverage]:
+async def _process_resume_chunks(
+    text: str, extractor, *, reserve_dispatch: Callable[[], bool], **kwargs,
+) -> tuple[list, ResumeProcessingCoverage]:
     """Use one deadline and two workers for the entire extraction request.
 
     Every chunk uses the existing chat_completion provider boundary, so each
@@ -655,6 +660,11 @@ async def _process_resume_chunks(text: str, extractor, **kwargs) -> tuple[list, 
     Blocking executor capacity remains shared across routes. A timed-out
     provider thread may finish later, but no replacement chunk is submitted
     after the shared deadline; queued futures are cancelled by run_blocking.
+
+    The request's admission paid for its first dispatch only. Each later chunk
+    must win ``reserve_dispatch`` (one more per-IP and global per-minute slot)
+    before it reaches the provider; a refusal leaves it, and every chunk after
+    it, to the local extraction with an explicit reason.
     """
     chunks = resume_chunks(text)
     results: list = [None] * len(chunks)
@@ -678,6 +688,11 @@ async def _process_resume_chunks(text: str, extractor, **kwargs) -> tuple[list, 
                 if llm_budget.exhausted():
                     for pending in range(next_index, len(chunks)):
                         reasons[pending] = "daily_budget_exhausted"
+                    next_index = len(chunks)
+                    return
+                if next_index > 0 and not reserve_dispatch():
+                    for pending in range(next_index, len(chunks)):
+                        reasons[pending] = "rate_limited"
                     next_index = len(chunks)
                     return
                 index = next_index
@@ -710,6 +725,15 @@ async def _process_resume_chunks(text: str, extractor, **kwargs) -> tuple[list, 
         ],
     )
     return results, coverage
+
+
+def _dispatch_reserver(http_request: Request) -> Callable[[], bool]:
+    """The rate limiter's per-dispatch reservation for this request.
+
+    Absent means no limiter admitted the request, so no further provider
+    capacity was granted and it keeps its single dispatch.
+    """
+    return getattr(http_request.state, "reserve_llm_dispatch", lambda: False)
 
 
 def _processing_method(coverage: ResumeProcessingCoverage) -> str:
@@ -748,7 +772,7 @@ def _select_bullets_across_chunks(groups: list[list[str]], limit: int = 12) -> t
 
 
 @router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
-async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsResponse:
+async def extract_bullets(request: ExtractBulletsRequest, http_request: Request) -> ExtractBulletsResponse:
     """Select reviewable bullets from every accepted part of the resume."""
     version = _require_pipeline_version(request.expected_pipeline_version)
     text = request.resume_text or ""
@@ -757,7 +781,9 @@ async def extract_bullets(request: ExtractBulletsRequest) -> ExtractBulletsRespo
             bullets=[], method="heuristic", pipeline_version=version,
             generated_at=datetime.now(UTC).isoformat(),
         )
-    results, coverage = await _process_resume_chunks(text, _ai_extract_bullets)
+    results, coverage = await _process_resume_chunks(
+        text, _ai_extract_bullets, reserve_dispatch=_dispatch_reserver(http_request),
+    )
     groups = [result or _heuristic_bullets(chunk, limit=1000)
               for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
     bullets, limited = _select_bullets_across_chunks(groups)
@@ -790,6 +816,16 @@ async def tailor_status() -> TailorStatusResponse:
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
     """Apply the optional rule precondition and stamp every accepted outcome."""
     version = _require_pipeline_version(request.expected_pipeline_version)
+    if (len(request.original_bullets) > _DEFAULT_BULLETS_PER_REQUEST
+            or any(len(b) > _MAX_BULLET_CHARACTERS for b in request.original_bullets)):
+        raise prework_refusal(422, {
+            "code": "TAILOR_INPUT_TOO_LARGE",
+            "message": (f"Tailor at most {_DEFAULT_BULLETS_PER_REQUEST} bullets of up to "
+                        f"{_MAX_BULLET_CHARACTERS} characters each. Nothing was shortened or dropped."),
+            "max_bullets": _DEFAULT_BULLETS_PER_REQUEST,
+            "max_characters_per_bullet": _MAX_BULLET_CHARACTERS,
+            "retryable": False,
+        })
     resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
     if not resolved:
         raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -1020,18 +1056,27 @@ def _strip_json_fence(raw: str) -> str:
 
 
 def _heuristic_structure(resume_text: str) -> list[ResumeSection]:
-    """No-LLM fallback: all glyph bullets under a single Experience section."""
-    bullets = _heuristic_bullets(resume_text, limit=20)
+    """No-LLM fallback: all glyph bullets under a single Experience section.
+
+    Uncapped here for the same reason as extraction: the merge applies the tree
+    limits and says when it had to."""
+    bullets = _heuristic_bullets(resume_text, limit=1000)
     if not bullets:
         return []
-    return [
-        ResumeSection(
-            id="s1",
-            heading="Experience",
-            kind="experience",
-            bullets=[ResumeBullet(id=f"s1b{i}", text=b) for i, b in enumerate(bullets, 1)],
-        )
-    ]
+    return [_uncapped_section("s1", "Experience", "experience",
+                              [ResumeBullet(id=f"s1b{i}", text=b) for i, b in enumerate(bullets, 1)])]
+
+
+def _uncapped_section(sid: str, heading: str, kind: str, bullets: list[ResumeBullet]) -> ResumeSection:
+    """A per-chunk section carrying every bullet it found.
+
+    ResumeSection's validator silently keeps the first 40. Attaching the list
+    after construction lets _merge_structure_chunks see the overflow, apply the
+    same 40 and add bullet_selection_limited instead of losing it unannounced.
+    """
+    section = ResumeSection(id=sid, heading=heading, kind=kind)
+    section.bullets.extend(bullets)
+    return section
 
 
 def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[ResumeSection] | None:
@@ -1062,7 +1107,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
 
     resume_lower = resume_text.lower()
     sections: list[ResumeSection] = []
-    for si, sec in enumerate(parsed["sections"][:15], 1):
+    for si, sec in enumerate(parsed["sections"], 1):
         if not isinstance(sec, dict):
             continue
         heading = str(sec.get("heading", "")).strip()[:120]
@@ -1073,7 +1118,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         if not isinstance(raw_bullets, list):
             raw_bullets = []
         bullets: list[ResumeBullet] = []
-        for bi, b in enumerate(raw_bullets[:40], 1):
+        for bi, b in enumerate(raw_bullets, 1):
             text = str(b).strip()[:600]
             if len(text) < 10 or not _bullet_grounded(text, resume_lower):
                 continue
@@ -1081,7 +1126,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         # Keep a section even if bullet-less only when it's a labelled skills
         # section; otherwise an empty section is noise.
         if bullets or (heading and kind == "skills"):
-            sections.append(ResumeSection(id=f"s{si}", heading=heading or "Section", kind=kind, bullets=bullets))
+            sections.append(_uncapped_section(f"s{si}", heading or "Section", kind, bullets))
     return sections or None
 
 
@@ -1135,12 +1180,14 @@ def _merge_structure_chunks(groups: list[list[ResumeSection]]) -> tuple[list[Res
 
 
 @router.post("/tailor/structure", response_model=StructureResumeResponse)
-async def structure_resume(request: StructureResumeRequest) -> StructureResumeResponse:
+async def structure_resume(request: StructureResumeRequest, http_request: Request) -> StructureResumeResponse:
     """Build a bounded experience projection while retaining the full source."""
     text = request.resume_text or ""
     if not text.strip():
         return StructureResumeResponse(sections=[], method="heuristic", warnings=["empty_resume"])
-    results, coverage = await _process_resume_chunks(text, _ai_structure_resume, locale=request.locale)
+    results, coverage = await _process_resume_chunks(
+        text, _ai_structure_resume, reserve_dispatch=_dispatch_reserver(http_request), locale=request.locale,
+    )
     groups = [result or _heuristic_structure(chunk)
               for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
     sections, limited = _merge_structure_chunks(groups)

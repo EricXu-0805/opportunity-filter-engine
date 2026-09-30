@@ -265,7 +265,9 @@ def test_invalid_body_privacy_and_zero_network(storage, mutate):
 )
 def test_nonfinite_private_json_rejected(storage, body):
     response = TestClient(app).put(
-        f"/api/private-import-targets/{ID}", content=body, headers={"content-type": "application/json"}
+        f"/api/private-import-targets/{ID}",
+        content=body,
+        headers={"content-type": "application/json", "Authorization": "Bearer fixture-token"},
     )
     assert response.status_code == 422 and storage["calls"] == []
 
@@ -405,3 +407,52 @@ def test_receipt_chronology_is_checked(storage, mode):
         response = request(TestClient(app), "GET", params={"expected_owner_id": OWNER})
     assert response.status_code == 502
     assert response.json() == {"detail": {"code": "private_target_invalid_receipt"}}
+
+
+def test_cors_preflight_allows_the_save_method():
+    response = TestClient(app).options(f"/api/private-import-targets/{ID}", headers={
+        "Origin": "https://joinalab.com", "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "authorization,content-type",
+    })
+    assert response.status_code == 200
+    assert "PUT" in response.headers["access-control-allow-methods"]
+
+
+@pytest.mark.parametrize(
+    "authorization",
+    [None, "", "Bearer ", "Basic fixture-token", "Bearer " + "x" * 16384],
+    ids=["absent", "empty", "blank-bearer", "not-bearer", "oversized"],
+)
+@pytest.mark.parametrize("method", ["PUT", "DELETE"])
+def test_missing_credentials_refused_before_the_body_is_parsed(storage, method, authorization):
+    import json
+
+    # Invalid on purpose: were the body parsed first, this would be a 422.
+    headers = {"content-type": "application/json"}
+    if authorization is not None:
+        headers["Authorization"] = authorization
+    response = TestClient(app).request(
+        method, f"/api/private-import-targets/{ID}",
+        content=json.dumps({"expected_owner_id": "PRIVATE_SECRET", "expected_revision": True}), headers=headers,
+    )
+    assert response.status_code == 401
+    assert response.json() == {"detail": {"code": "private_target_auth_required"}}
+    assert storage["calls"] == [] and "no-store" in response.headers["cache-control"]
+
+
+@pytest.mark.parametrize("streamed", [False, True])
+@pytest.mark.parametrize("path", [ID, "resolved"])
+def test_small_bodies_are_bounded_before_parsing(storage, path, streamed):
+    import json
+
+    method = "DELETE" if path == ID else "POST"
+    body = json.dumps({"expected_owner_id": OWNER, "expected_revision": 1, "ids": [ID],
+                       "padding": "PRIVATE_SECRET" * 5000}).encode()
+    response = TestClient(app).request(
+        method, f"/api/private-import-targets/{path}",
+        content=iter([body[:1000], body[1000:]]) if streamed else body,
+        headers={"content-type": "application/json", "Authorization": "Bearer fixture-token"},
+    )
+    assert response.status_code == 413
+    assert response.json() == {"detail": {"code": "private_target_too_large"}}
+    assert storage["calls"] == [] and "PRIVATE_SECRET" not in response.text

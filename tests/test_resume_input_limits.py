@@ -166,7 +166,8 @@ def test_chunk_scheduler_shares_one_deadline_and_never_exceeds_two_calls(monkeyp
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "run_blocking", slow_call)
     monkeypatch.setattr(tailor, "RESUME_AI_TIME_BUDGET_SECONDS", 0.02)
-    results, coverage = asyncio.run(tailor._process_resume_chunks("x" * 60_000, lambda _: None))
+    results, coverage = asyncio.run(tailor._process_resume_chunks(
+        "x" * 60_000, lambda _: None, reserve_dispatch=lambda: True))
     assert state == {"active": 0, "peak": 2, "calls": 2}
     assert all(0 < timeout <= 0.02 for timeout in timeouts)
     assert results == [None] * 8
@@ -180,7 +181,8 @@ def test_no_provider_never_schedules_blocking_work(monkeypatch):
         raise AssertionError("no provider must not schedule calls")
 
     monkeypatch.setattr(tailor, "run_blocking", forbidden)
-    results, coverage = asyncio.run(tailor._process_resume_chunks("x" * 60_000, lambda _: None))
+    results, coverage = asyncio.run(tailor._process_resume_chunks(
+        "x" * 60_000, lambda _: None, reserve_dispatch=lambda: True))
     assert results == [None] * 8
     assert all(c.reason == "llm_not_configured" for c in coverage.chunks)
 
@@ -195,7 +197,8 @@ def test_budget_exhaustion_stops_new_chunks_and_marks_every_omitted_ai_range(mon
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "run_blocking", first_call)
     monkeypatch.setattr(tailor.llm_budget, "exhausted", lambda: bool(calls))
-    results, coverage = asyncio.run(tailor._process_resume_chunks("x" * 60_000, lambda _: None))
+    results, coverage = asyncio.run(tailor._process_resume_chunks(
+        "x" * 60_000, lambda _: None, reserve_dispatch=lambda: True))
     assert len(calls) == 1
     assert results[0] == ["Existing grounded evidence"]
     assert results[1:] == [None] * 7
@@ -210,7 +213,8 @@ def test_exhausted_budget_never_dispatches_even_the_first_chunk(monkeypatch):
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "run_blocking", forbidden)
     monkeypatch.setattr(tailor.llm_budget, "exhausted", lambda: True)
-    results, coverage = asyncio.run(tailor._process_resume_chunks("x" * 60_000, lambda _: None))
+    results, coverage = asyncio.run(tailor._process_resume_chunks(
+        "x" * 60_000, lambda _: None, reserve_dispatch=lambda: True))
     assert results == [None] * 8
     assert all(c.reason == "daily_budget_exhausted" for c in coverage.chunks)
 
@@ -249,3 +253,151 @@ def test_each_chunk_and_provider_retry_uses_the_existing_attempt_counter(monkeyp
     assert body["processing"]["ai_chunks"] == 8
     assert len(calls) == sum(spends) == 9  # eight chunks plus one provider retry
     assert all(options["max_retries"] == 0 for options in sdk_options)
+
+
+@pytest.fixture
+def live_rate_limits(monkeypatch):
+    from backend import main as main_mod
+
+    monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+    main_mod._rate_buckets.clear()
+    main_mod._global_buckets.clear()
+    main_mod._last_purge = 1e18
+    yield main_mod
+    main_mod._rate_buckets.clear()
+    main_mod._global_buckets.clear()
+    main_mod._last_purge = 0.0
+
+
+def _counting_extractor(monkeypatch):
+    calls = []
+
+    def completion(messages, **_kw):
+        calls.append(messages)
+        return None
+
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", completion)
+    return calls
+
+
+@pytest.mark.parametrize("endpoint", ["extract-bullets", "structure"])
+def test_each_dispatched_chunk_takes_its_own_global_llm_slot(endpoint, monkeypatch, live_rate_limits):
+    # One free global slot: the request's own admission takes it, so a single
+    # admitted request must not fan out into eight provider dispatches.
+    calls = _counting_extractor(monkeypatch)
+    main_mod = live_rate_limits
+    import time as _time
+    main_mod._global_buckets["llm"] = [_time.time()] * (main_mod.GLOBAL_LLM_PER_MIN - 1)
+    response = client.post(f"/api/tailor/{endpoint}", json={"resume_text": "x" * 60_000},
+                           headers={"x-forwarded-for": "7.7.7.1"})
+    assert response.status_code == 200
+    body = response.json()
+    assert len(calls) == 1
+    assert len(main_mod._global_buckets["llm"]) == main_mod.GLOBAL_LLM_PER_MIN
+    assert [c["reason"] for c in body["processing"]["chunks"][1:]] == ["rate_limited"] * 7
+    assert body["processing"]["ai_chunks"] == 0
+    assert "local_extraction_only" in body["warnings"]
+
+
+@pytest.mark.parametrize("endpoint", ["extract-bullets", "structure"])
+def test_each_dispatched_chunk_takes_its_own_per_ip_slot(endpoint, monkeypatch, live_rate_limits):
+    calls = _counting_extractor(monkeypatch)
+    main_mod = live_rate_limits
+    limit = main_mod.RATE_LIMITS["/api/tailor"][0]
+    key = "7.7.7.2:/api/tailor"
+    import time as _time
+    main_mod._rate_buckets[key] = [_time.time()] * (limit - 3)
+    response = client.post(f"/api/tailor/{endpoint}", json={"resume_text": "x" * 60_000},
+                           headers={"x-forwarded-for": "7.7.7.2"})
+    assert response.status_code == 200
+    # The request's own slot plus the two left in this client's window.
+    assert len(calls) == 3
+    assert len(main_mod._rate_buckets[key]) == limit
+    assert len(main_mod._global_buckets["llm"]) == 3
+    reasons = [c["reason"] for c in response.json()["processing"]["chunks"]]
+    assert reasons[3:] == ["rate_limited"] * 5
+    follow_up = client.post(f"/api/tailor/{endpoint}", json={"resume_text": "short"},
+                            headers={"x-forwarded-for": "7.7.7.2"})
+    assert follow_up.status_code == 429
+
+
+def test_single_chunk_request_uses_only_its_admission_slot(monkeypatch, live_rate_limits):
+    calls = _counting_extractor(monkeypatch)
+    main_mod = live_rate_limits
+    response = client.post("/api/tailor/extract-bullets", json={"resume_text": "x" * 7_000},
+                           headers={"x-forwarded-for": "7.7.7.3"})
+    assert response.status_code == 200
+    assert len(calls) == 1
+    assert len(main_mod._global_buckets["llm"]) == 1
+    assert len(main_mod._rate_buckets["7.7.7.3:/api/tailor"]) == 1
+
+
+def test_scheduler_refuses_extra_chunks_when_no_capacity_is_granted(monkeypatch):
+    dispatched = []
+
+    async def call(_fn, text, *, timeout_seconds, **kwargs):
+        dispatched.append(text)
+        return ["Existing grounded evidence"]
+
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "run_blocking", call)
+    grants = iter([True, False])
+    results, coverage = asyncio.run(tailor._process_resume_chunks(
+        "x" * 60_000, lambda _: None, reserve_dispatch=lambda: next(grants)))
+    assert len(dispatched) == 2
+    assert coverage.ai_chunks == 2
+    assert all(c.reason == "rate_limited" for c in coverage.chunks[2:])
+
+
+def _glyph_resume(count):
+    return "\n".join(f"• Ran laboratory experiment number {i:02d} for the group" for i in range(count))
+
+
+def test_local_structure_keeps_every_bullet_of_a_chunk_below_the_tree_limits():
+    body = client.post("/api/tailor/structure", json={"resume_text": _glyph_resume(35)}).json()
+    bullets = [b["text"] for s in body["sections"] for b in s["bullets"]]
+    assert len(bullets) == 35
+    assert "bullet_selection_limited" not in body["warnings"]
+
+
+def test_local_structure_reports_bullets_past_the_section_limit():
+    body = client.post("/api/tailor/structure", json={"resume_text": _glyph_resume(45)}).json()
+    bullets = [b["text"] for s in body["sections"] for b in s["bullets"]]
+    assert len(bullets) == 40
+    assert "bullet_selection_limited" in body["warnings"]
+
+
+def test_ai_extraction_reports_chunk_bullets_past_the_review_limit(monkeypatch):
+    text = _glyph_resume(30)
+    lines = [line.removeprefix("• ") for line in text.splitlines()]
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps({"bullets": lines}))
+    body = client.post("/api/tailor/extract-bullets", json={"resume_text": text}).json()
+    assert body["method"] == "ai"
+    assert len(body["bullets"]) == 12
+    assert "bullet_selection_limited" in body["warnings"]
+
+
+def test_ai_structure_reports_sections_past_the_tree_limit(monkeypatch):
+    text = _glyph_resume(16)
+    lines = [line.removeprefix("• ") for line in text.splitlines()]
+    sections = [{"heading": f"Group {i}", "kind": "research", "bullets": [line]} for i, line in enumerate(lines)]
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps({"sections": sections}))
+    body = client.post("/api/tailor/structure", json={"resume_text": text}).json()
+    assert body["method"] == "ai"
+    assert len(body["sections"]) == 15
+    assert "bullet_selection_limited" in body["warnings"]
+
+
+def test_ai_structure_reports_bullets_past_the_section_limit(monkeypatch):
+    text = _glyph_resume(45)
+    lines = [line.removeprefix("• ") for line in text.splitlines()]
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps(
+        {"sections": [{"heading": "Research", "kind": "research", "bullets": lines}]}))
+    body = client.post("/api/tailor/structure", json={"resume_text": text}).json()
+    assert body["method"] == "ai"
+    assert sum(len(s["bullets"]) for s in body["sections"]) == 40
+    assert "bullet_selection_limited" in body["warnings"]
