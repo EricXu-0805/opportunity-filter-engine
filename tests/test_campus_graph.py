@@ -686,12 +686,13 @@ def _program_id(school, bucket, key):
     return cg._hash_id(school["school_slug"], school["emit"][bucket][0], key)
 
 
-def _refresh_school(school):
-    """One quick refresh of ``school``, merged the way refresh_all merges it."""
-    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=False)
+def _refresh_school(school, deep=False):
+    """One refresh of ``school``, quick by default, merged the way refresh_all merges it."""
+    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=deep)
     cg.merge_into_processed(
         records,
         complete_recursive_sources=set(evidence["complete_recursive_sources"]),
+        condition_capture_updates=evidence["condition_capture_updates"],
         listed_program_keys=set(evidence["listed_program_keys"]),
         school_slug=school["school_slug"],
     )
@@ -840,6 +841,78 @@ class TestDroppedProgramRetirement:
         old = saved[_program_id(before, "campus", "old_key")]["metadata"]
         assert old["deactivation_reason"] == "no_longer_listed"
         assert saved[_program_id(after, "campus", "new_key")]["metadata"]["is_active"] is True
+
+    def test_other_retired_rows_keep_their_page_against_a_new_program(self, processed):
+        """Only this school's own program rows retired as no longer listed give
+        up their page. Other collectors retire rows with the same reason
+        (simplify_internships does), and another school's retired program is
+        no replacement of this one's: both keep the claim every stored row has
+        against a new near-duplicate."""
+        _refresh_school(_listing_school("kept"))
+        retired = {"is_active": False, "deactivated_at": "2026-09-01", "deactivation_reason": "no_longer_listed"}
+        internship = {"id": "simplify-0001", "source": "simplify_internships", "source_type": "internship",
+                      "school": None, "title": "Data Internship", "url": "https://example.edu/internship/",
+                      "metadata": dict(retired)}
+        other_school = {**_listing_school(), "school_slug": "other",
+                        "emit": {"campus": ("other_programs", "other", "campus")}}
+        theirs = cg._normalize_program(other_school, other_school["sources"][0], cg.program(
+            "theirs", "Their Fellowship", "https://example.edu/theirs/", "Curated"))
+        theirs["metadata"].update(retired)
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, internship, theirs]), encoding="utf-8")
+
+        after = _listing_school("kept", "new_a", "new_b",
+                                urls={"new_a": internship["url"], "new_b": theirs["url"]})
+        _refresh_school(after)
+
+        saved = _stored(processed)
+        assert _program_id(after, "campus", "new_a") not in saved
+        assert _program_id(after, "campus", "new_b") not in saved
+
+    def test_a_retired_row_keeps_its_page_against_a_discovery(self, monkeypatch, processed):
+        """A crawl that finds a link to a dropped program's page has found the
+        page, not the program's replacement."""
+        before = _listing_school("kept", "dropped")
+        dropped_id = _program_id(before, "campus", "dropped")
+        dropped_url = "https://example.edu/dropped/"
+        _refresh_school(before)
+        after = _listing_school("kept")
+        after["sources"][0]["crawl"] = cg.RECURSIVE
+        hub_url = after["sources"][0]["seeds"][0]
+        hub = f'<body><p>Programs</p><a href="{dropped_url}">Dropped Summer Research Fellowship</a></body>'
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: (
+            _observed(BeautifulSoup(hub, "html.parser"), url) if url == hub_url else _StaticSoup(url)))
+
+        evidence = _refresh_school(after, deep=True)
+
+        assert evidence["discovered_records"] == 1
+        saved = _stored(processed)
+        assert [row["id"] for row in saved.values() if row["url"] == dropped_url] == [dropped_id]
+        assert saved[dropped_id]["metadata"]["deactivation_reason"] == "no_longer_listed"
+
+    def test_a_stored_discovery_on_a_retired_rows_page_still_updates(self, monkeypatch, processed):
+        """Holding the retired row's page against discoveries stops a new one
+        landing there; one already stored is an upsert, not a near-duplicate."""
+        before = _listing_school("kept", "dropped")
+        _refresh_school(before)
+        after = _listing_school("kept")
+        after["sources"][0]["crawl"] = cg.RECURSIVE
+        hub_url, dropped_url = after["sources"][0]["seeds"][0], "https://example.edu/dropped/"
+        anchor = "Dropped Summer Research Fellowship"
+        stored = cg._normalize_discovered(after, after["sources"][0], anchor, dropped_url, anchor)
+        stored["metadata"].update({"discovered_page_verified": True, "status": "open", "is_active": True,
+                                   "last_verified": "2026-09-01T00:00:00"})
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, stored]), encoding="utf-8")
+        hub = f'<body><p>Programs</p><a href="{dropped_url}">{anchor}</a></body>'
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: (
+            _observed(BeautifulSoup(hub, "html.parser"), url) if url == hub_url else _StaticSoup(url)))
+
+        _refresh_school(after, deep=True)
+
+        saved = _stored(processed)
+        assert saved[_program_id(before, "campus", "dropped")]["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert saved[stored["id"]]["metadata"]["last_verified"] != "2026-09-01T00:00:00"
 
     def test_a_listed_program_the_fetch_drops_as_a_duplicate_stays(self, processed):
         """Listing is the config's, not the dedupe's: a configured program

@@ -786,6 +786,12 @@ def _configured_program_row(opp: dict, school_slug: str) -> bool:
     )
 
 
+def _program_record(opp: dict) -> bool:
+    """Whether ``opp`` was made from a program(...) entry, not discovered."""
+    metadata = opp.get("metadata")
+    return isinstance(metadata, dict) and bool(metadata.get("collector_key")) and not metadata.get("discovered")
+
+
 def _retired_as_unlisted(opp: dict) -> bool:
     metadata = opp.get("metadata")
     return (
@@ -872,15 +878,31 @@ def merge_into_processed(
             school_slug,
             retired_programs,
         )
-    # A row retired as no longer listed keeps no claim on its URL or title.
-    # Held against incoming records, it would suppress whatever replaced it (a
-    # renamed key), and the program would vanish instead of moving.
+    # This school's program rows retired as no longer listed keep no claim on
+    # their URL or title against its incoming program(...) records: held
+    # against them, a retired row would suppress whatever replaced it (a
+    # renamed key), and the program would vanish instead of moving. Every
+    # other row keeps its claim, and so do these against discoveries, which
+    # find a page rather than a replacement.
     incoming_ids = {opp.get("id") for opp in new_opps}
-    claimants = [
+    released = [
         row for row in existing
-        if row.get("id") in incoming_ids or not _retired_as_unlisted(row)
+        if school_slug
+        and row.get("id") not in incoming_ids
+        and _retired_as_unlisted(row)
+        and _configured_program_row(row, school_slug)
     ]
-    new_opps, dropped = _dedupe_with_program_scope(new_opps, claimants)
+    released_ids = {row.get("id") for row in released}
+    new_opps, dropped = _dedupe_with_program_scope(
+        new_opps, [row for row in existing if row.get("id") not in released_ids])
+    if released:
+        # A discovery already stored is an upsert, never a near-duplicate.
+        stored_ids = {row.get("id") for row in existing}
+        found = [opp for opp in new_opps if not _program_record(opp) and opp.get("id") not in stored_ids]
+        survivors, lost = dedupe_against_existing(found, released)
+        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
+        new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
+        dropped += lost
     if dropped:
         logger.info("campus_graph: suppressed %d near-duplicate(s) vs corpus", dropped)
     index = {o.get("id"): o for o in existing if o.get("id")}
