@@ -1247,6 +1247,72 @@ def test_b55_campus_failure_receipts_reach_merge_without_report_content(monkeypa
     assert proof["condition_capture_updates"] == updates
 
 
+def test_listed_program_ids_reach_the_campus_merge_without_report_content(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    listed = ["uw-000000000001", "uw-000000000002"]
+    proof = {"condition_capture_counts": {"captured": 0, "empty": 0, "unsupported": 0, "failed": 0},
+             "condition_capture_complete": False, "listed_program_ids": listed}
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([], proof))
+    calls = []
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
+
+    summary = refresh_all.refresh_all(deep=False, schools={"uw"})
+
+    assert [call["listed_program_ids"] for call in calls] == [set(listed)]
+    assert calls[0]["school_slug"] == "uw"
+    assert "listed_program_ids" not in summary["sources"]["campus_graph:uw"]
+    assert proof["listed_program_ids"] == listed
+
+
+def test_a_campus_refresh_retires_dropped_programs_only_where_it_completed(monkeypatch, tmp_path):
+    """Each school drops its "dropped" program. uw's refresh completes, duke's
+    fetch fails and wisc is outside the shard, so only uw's row retires."""
+    from src.collectors import campus_graph
+
+    real = {config["school_slug"]: config for config in refresh_all.SCHOOL_CONFIGS}
+
+    def school(slug, *keys):
+        return {
+            **{field: real[slug][field] for field in ("school_slug", "organization", "location", "emit")},
+            "sources": [{
+                "source_name": f"{slug}_fixture_programs", "source_type": campus_graph.PROGRAM,
+                "emit": "campus", "crawl": campus_graph.STATIC,
+                "seeds": [f"https://{slug}.example.edu/"],
+                "programs": [campus_graph.program(key, f"{slug} {key} fellowship",
+                                                  f"https://{slug}.example.edu/{key}/", "Curated")
+                             for key in keys],
+            }],
+        }
+
+    def dropped_id(slug):
+        return campus_graph._hash_id(slug, real[slug]["emit"]["campus"][0], "dropped")
+
+    slugs = ("uw", "duke", "wisc")
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [])
+    monkeypatch.setattr(campus_graph, "PROCESSED_FILE", processed)
+    for slug in slugs:
+        campus_graph.merge_into_processed(campus_graph.fetch_and_normalize(school(slug, "kept", "dropped")))
+
+    def fetch(config, deep=False):
+        if config["school_slug"] == "duke":
+            raise RuntimeError("synthetic duke fetch failure")
+        return campus_graph.fetch_and_normalize_with_evidence(config, deep=deep)
+
+    monkeypatch.setattr(refresh_all, "SCHOOL_CONFIGS", [school(slug, "kept") for slug in slugs])
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", fetch)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+
+    summary = refresh_all.refresh_all(deep=False, schools={"uw", "duke"})
+
+    assert summary["sources"]["campus_graph:uw"]["status"] == "ok"
+    assert summary["sources"]["campus_graph:duke"]["status"] == "error"
+    assert "campus_graph:wisc" not in summary["sources"]
+    stored = {row["id"]: row["metadata"] for row in json.loads(processed.read_text(encoding="utf-8"))}
+    assert stored[dropped_id("uw")]["deactivation_reason"] == "no_longer_listed"
+    assert stored[dropped_id("duke")]["is_active"] is True
+    assert stored[dropped_id("wisc")]["is_active"] is True
+
+
 @pytest.mark.parametrize("scenario", ["captured", "empty", "detail_failed", "unsupported", "list_failed"])
 def test_b55_real_sro_evidence_flows_to_health_and_safe_publish(monkeypatch, tmp_path, scenario):
     import socket

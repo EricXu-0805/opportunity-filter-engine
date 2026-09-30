@@ -652,6 +652,205 @@ class TestSeedNormalization:
         assert record["metadata"]["is_active"] is False
 
 
+# --- A program dropped from a config retires its stored row -----------------
+
+def _listing_school(*keys, open_keys=(), titles=None, urls=None):
+    """One school: ``keys`` in a campus source, ``open_keys`` in an open one."""
+    titles, urls = titles or {}, urls or {}
+
+    def programs(names):
+        return [
+            cg.program(key, titles.get(key, f"{key.title()} Fellowship"),
+                       urls.get(key, f"https://example.edu/{key}/"), "Curated")
+            for key in names
+        ]
+
+    def source(name, emit, names):
+        return {"source_name": name, "source_type": cg.PROGRAM, "emit": emit,
+                "crawl": cg.STATIC, "seeds": [f"https://example.edu/{name}/"],
+                "programs": programs(names)}
+
+    return {
+        "school_slug": "example",
+        "organization": "Example University",
+        "location": "Example, EX",
+        "emit": {"campus": ("example_programs", "example", "campus"),
+                 "open": ("example_external", None, "open")},
+        "sources": [source("example_programs", "campus", keys),
+                    source("example_external", "open", open_keys)],
+    }
+
+
+def _program_id(school, bucket, key):
+    return cg._hash_id(school["school_slug"], school["emit"][bucket][0], key)
+
+
+def _refresh_school(school):
+    """One quick refresh of ``school``, merged the way refresh_all merges it."""
+    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=False)
+    cg.merge_into_processed(
+        records,
+        complete_recursive_sources=set(evidence["complete_recursive_sources"]),
+        listed_program_ids=set(evidence["listed_program_ids"]),
+        school_slug=school["school_slug"],
+    )
+    return evidence
+
+
+def _stored(processed):
+    return {row["id"]: row for row in json.loads(processed.read_text(encoding="utf-8"))}
+
+
+@pytest.fixture
+def processed(monkeypatch, tmp_path):
+    path = tmp_path / "opportunities.json"
+    path.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(cg, "PROCESSED_FILE", path)
+    return path
+
+
+class TestDroppedProgramRetirement:
+    """Merge only upserts, so a program dropped from a school config used to
+    keep its stored row active for good. Duke's Program II and Macalester's
+    Serie Center kept sending students to 404s until fba47cb6 retired them by
+    hand, and Duke's two dead Data+/Climate+ duplicates needed the same."""
+
+    def test_a_dropped_program_is_retired_not_deleted(self, processed):
+        before = _listing_school("kept", "dropped")
+        _refresh_school(before)
+
+        _refresh_school(_listing_school("kept"))
+
+        saved = _stored(processed)
+        assert len(saved) == 2
+        kept = saved[_program_id(before, "campus", "kept")]["metadata"]
+        dropped = saved[_program_id(before, "campus", "dropped")]["metadata"]
+        assert kept["is_active"] is True
+        assert dropped["is_active"] is False
+        assert dropped["deactivation_reason"] == "no_longer_listed"
+        assert dropped["deactivated_at"] == datetime.now(UTC).date().isoformat()
+
+    def test_an_empty_or_failed_enumeration_retires_nothing(self, monkeypatch, processed):
+        school = _listing_school("first", "second")
+        _refresh_school(school)
+
+        assert _refresh_school(_listing_school())["listed_program_ids"] == []
+
+        normalize = cg._normalize_program
+
+        def fail_second(school, source, spec, **kwargs):
+            if spec["key"] == "second":
+                raise RuntimeError("synthetic normalization failure")
+            return normalize(school, source, spec, **kwargs)
+
+        monkeypatch.setattr(cg, "_normalize_program", fail_second)
+        evidence = _refresh_school(school)
+        assert evidence["normalization_failed"] == 1
+        assert evidence["listed_program_ids"] == []
+
+        assert [row["metadata"]["is_active"] for row in _stored(processed).values()] == [True, True]
+
+    def test_other_sources_other_schools_and_inactive_rows_are_left_alone(self, processed):
+        school = _listing_school("kept", "dropped", "closed", open_keys=("open_dropped",))
+        _refresh_school(school)
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        closed_id = _program_id(school, "campus", "closed")
+        for row in rows:
+            if row["id"] == closed_id:
+                row["metadata"].update({"status": "closed", "is_active": False})
+        source = school["sources"][0]
+        discovery = cg._normalize_discovered(
+            school, source, "Summer Lab Fellowship", "https://example.edu/lab/", "lab")
+        discovery["metadata"].update(
+            {"discovered_page_verified": True, "status": "open", "is_active": True})
+        # Same source name and key, another school: only the id tells them apart.
+        other_school = {**school, "school_slug": "other",
+                        "emit": {"campus": ("other_programs", "other", "campus")}}
+        other = cg._normalize_program(other_school, source, source["programs"][1])
+        faculty = {"id": "faculty-example-1", "source": "example_faculty",
+                   "source_type": "faculty_research", "school": "example",
+                   "metadata": {"is_active": True}}
+        processed.write_text(json.dumps([*rows, discovery, other, faculty]), encoding="utf-8")
+
+        _refresh_school(_listing_school("kept"))
+
+        saved = _stored(processed)
+        assert saved[_program_id(school, "campus", "dropped")]["metadata"]["is_active"] is False
+        # An "open" row has no school; its id still ties it to this config.
+        open_row = saved[_program_id(school, "open", "open_dropped")]
+        assert open_row["school"] is None
+        assert open_row["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert saved[closed_id]["metadata"]["is_active"] is False
+        assert "deactivation_reason" not in saved[closed_id]["metadata"]
+        for row in (discovery, other, faculty):
+            assert saved[row["id"]]["metadata"]["is_active"] is True
+            assert "deactivation_reason" not in saved[row["id"]]["metadata"]
+
+    def test_a_program_listed_again_comes_back(self, processed):
+        school = _listing_school("kept", "back")
+        back_id = _program_id(school, "campus", "back")
+        _refresh_school(school)
+        _refresh_school(_listing_school("kept"))
+        assert _stored(processed)[back_id]["metadata"]["is_active"] is False
+
+        _refresh_school(school)
+
+        metadata = _stored(processed)[back_id]["metadata"]
+        assert metadata["is_active"] is True
+        assert "deactivated_at" not in metadata
+        assert "deactivation_reason" not in metadata
+
+    def test_a_second_run_changes_nothing_it_already_retired(self, processed):
+        before = _listing_school("kept", "dropped")
+        dropped_id = _program_id(before, "campus", "dropped")
+        _refresh_school(before)
+        _refresh_school(_listing_school("kept"))
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        for row in rows:
+            if row["id"] == dropped_id:
+                row["metadata"]["deactivated_at"] = "2026-09-01"
+        processed.write_text(json.dumps(rows), encoding="utf-8")
+        retired = _stored(processed)[dropped_id]
+
+        _refresh_school(_listing_school("kept"))
+
+        assert _stored(processed)[dropped_id] == retired
+
+    def test_a_renamed_key_takes_over_the_page_of_its_retired_row(self, processed):
+        """The new record shares the old row's URL and title, which the
+        near-duplicate filter would otherwise hold against it: the program
+        would vanish, its old row retired and its new one suppressed."""
+        url = "https://example.edu/summer/"
+        before = _listing_school("old_key", titles={"old_key": "Summer Fellowship"},
+                                 urls={"old_key": url})
+        after = _listing_school("new_key", titles={"new_key": "Summer Fellowship"},
+                                urls={"new_key": url})
+        _refresh_school(before)
+
+        _refresh_school(after)
+
+        saved = _stored(processed)
+        old = saved[_program_id(before, "campus", "old_key")]["metadata"]
+        assert old["deactivation_reason"] == "no_longer_listed"
+        assert saved[_program_id(after, "campus", "new_key")]["metadata"]["is_active"] is True
+
+    def test_a_listed_program_the_fetch_drops_as_a_duplicate_stays(self, processed):
+        """Listing is the config's, not the dedupe's: a configured program
+        whose record lost a near-duplicate tie this run is still listed."""
+        _refresh_school(_listing_school(
+            "first", "second", titles={"first": "Summer Fellowship", "second": "Winter Fellowship"}))
+        clash = _listing_school(
+            "first", "second", titles={"first": "Summer Fellowship", "second": "Summer Fellowship"})
+        second_id = _program_id(clash, "campus", "second")
+        records, evidence = cg.fetch_and_normalize_with_evidence(clash, deep=False)
+        assert second_id not in {record["id"] for record in records}
+        assert second_id in evidence["listed_program_ids"]
+
+        _refresh_school(clash)
+
+        assert _stored(processed)[second_id]["metadata"]["is_active"] is True
+
+
 # --- Per-school: Princeton (the reference config) ---------------------------
 
 class TestPrinceton:

@@ -672,6 +672,7 @@ def fetch_and_normalize_with_evidence(
         "crawl_errors": [],
         "degraded_page_errors": [],
     }
+    listed_program_ids: list[str] = []
     for source in school.get("sources", []):
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
@@ -738,12 +739,20 @@ def fetch_and_normalize_with_evidence(
                 if spec["url"] in captures:
                     record["metadata"].update(capture_metadata(captures[spec["url"]]))
                 records.append(record)
+                listed_program_ids.append(record["id"])
                 evidence["seed_records"] += 1
             except Exception:  # noqa: BLE001
                 evidence["normalization_failed"] += 1
                 logger.warning("campus_graph: program normalization failed")
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
+    # Every program(...) entry of the config, taken before the dedupe below can
+    # drop one as a near-duplicate: merge retires stored program rows missing
+    # from it. An entry that failed to normalize is still configured, and an
+    # empty list proves nothing, so either one authorizes no retirement.
+    evidence["listed_program_ids"] = (
+        sorted(listed_program_ids) if not evidence["normalization_failed"] else []
+    )
     counts = evidence["condition_capture_counts"]
     evidence["condition_capture_complete"] = bool(sum(counts.values()) and not counts["failed"] and not counts["unsupported"])
     records, dropped = _dedupe_with_program_scope(records, [])
@@ -757,18 +766,56 @@ def fetch_and_normalize(school: dict, deep: bool = False) -> list[dict]:
     return records
 
 
+NO_LONGER_LISTED = "no_longer_listed"
+
+
+def _configured_program_row(opp: dict, school_slug: str) -> bool:
+    """Whether ``opp`` is a stored row made from this school's program(...) entries.
+
+    The id derives from (school slug, emitted source, program key), so it names
+    the owner even for an "open" row, whose ``school`` is None, and for rows
+    written before ``collector_school`` existed. Discoveries carry no
+    ``collector_key``, so they never match.
+    """
+    metadata = opp.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+    key, source = metadata.get("collector_key"), opp.get("source")
+    return (
+        isinstance(key, str) and bool(key)
+        and isinstance(source, str) and bool(source)
+        and opp.get("id") == _hash_id(school_slug, source, key)
+    )
+
+
+def _retired_as_unlisted(opp: dict) -> bool:
+    metadata = opp.get("metadata")
+    return (
+        isinstance(metadata, dict)
+        and metadata.get("is_active") is False
+        and metadata.get("deactivation_reason") == NO_LONGER_LISTED
+    )
+
+
 def merge_into_processed(
     new_opps: list[dict],
     *,
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
     school_slug: str | None = None,
     condition_capture_updates: list[dict] | None = None,
+    listed_program_ids: set[str] | frozenset[str] = frozenset(),
 ) -> tuple[int, int]:
-    """Upsert records and retire safely absent recursive discoveries.
+    """Upsert records and retire what this run proves is gone.
 
     Absence is authoritative only for source names whose complete deep crawl
     was explicitly supplied by ``fetch_and_normalize_with_evidence``. The
     default empty set preserves all old records, as do partial/failed crawls.
+
+    ``listed_program_ids`` holds that evidence's record ids for every
+    program(...) entry in the school's config. A stored active program row of
+    the school whose id is missing from it was dropped from the config, and is
+    retired as ``no_longer_listed``, never deleted. The empty default retires
+    nothing. A retired row whose program is listed again comes back.
     """
 
     if not PROCESSED_FILE.exists():
@@ -780,6 +827,8 @@ def merge_into_processed(
         raise ValueError("complete recursive source names must be nonempty strings")
     if complete_recursive_sources and not school_slug:
         raise ValueError("school_slug is required for discovery retirement")
+    if listed_program_ids and not school_slug:
+        raise ValueError("school_slug is required for program retirement")
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
     apply_condition_capture_updates(existing, condition_capture_updates)
@@ -797,7 +846,36 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
-    new_opps, dropped = _dedupe_with_program_scope(new_opps, existing)
+    retired_programs = 0
+    if listed_program_ids:
+        deactivated_on = datetime.now(UTC).date().isoformat()
+        for opp in existing:
+            if (
+                opp.get("id") in listed_program_ids
+                or not _configured_program_row(opp, school_slug)
+                or opp["metadata"].get("is_active") is False
+            ):
+                continue
+            opp["metadata"]["is_active"] = False
+            opp["metadata"]["deactivated_at"] = deactivated_on
+            opp["metadata"]["deactivation_reason"] = NO_LONGER_LISTED
+            retired_programs += 1
+    if retired_programs:
+        logger.info(
+            "campus_graph: %s: retired %d program record(s) no longer in its config",
+            school_slug,
+            retired_programs,
+        )
+    # A row retired as no longer listed keeps no claim on its URL or title.
+    # Held against incoming records, it would suppress whatever replaced it (a
+    # renamed key, a program moved to another emit bucket), and the program
+    # would vanish instead of moving.
+    incoming_ids = {opp.get("id") for opp in new_opps}
+    claimants = [
+        row for row in existing
+        if row.get("id") in incoming_ids or not _retired_as_unlisted(row)
+    ]
+    new_opps, dropped = _dedupe_with_program_scope(new_opps, claimants)
     if dropped:
         logger.info("campus_graph: suppressed %d near-duplicate(s) vs corpus", dropped)
     index = {o.get("id"): o for o in existing if o.get("id")}
@@ -807,6 +885,12 @@ def merge_into_processed(
             existing_opp = index[opp["id"]]
             opp["metadata"]["first_seen_at"] = existing_opp.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            existing_metadata = existing_opp.get("metadata", {})
+            if _retired_as_unlisted(existing_opp):
+                # Listed again, which disproves the absence that retired it.
+                # Carry forward the state it was retired from, which was
+                # active; the retirement stamps leave with the old metadata.
+                existing_metadata = {**existing_metadata, "is_active": True}
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
@@ -815,7 +899,6 @@ def merge_into_processed(
             if unverified_seed or ambiguous_status:
                 # Quick/failed fetches, and loaded pages with no explicit
                 # status signal, cannot prove a prior closed record reopened.
-                existing_metadata = existing_opp.get("metadata", {})
                 for key in ("status", "is_active"):
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
