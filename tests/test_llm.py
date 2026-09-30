@@ -199,8 +199,8 @@ class TestChatModelOptions:
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("auto") == "anthropic/claude-sonnet-5"
-        assert llm.chat_model_slug("thinking") == "openai/gpt-5.6-terra-pro"
+        assert llm.chat_model_slug("auto") == "anthropic/claude-sonnet-5.5"
+        assert llm.chat_model_slug("thinking") == "openai/gpt-6.1-sol-pro"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -244,16 +244,16 @@ class TestModelFor:
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         assert llm.model_for("cold_email") == {
             "provider_id": "openrouter",
-            "model": "anthropic/claude-sonnet-5",
+            "model": "anthropic/claude-sonnet-5.5",
         }
 
-    def test_writing_tasks_default_to_sonnet_5(self, monkeypatch):
+    def test_writing_tasks_default_to_sonnet_5_5(self, monkeypatch):
         self._clear(monkeypatch)
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         for task in ("cold_email", "tailor", "extract"):
             assert llm.model_for(task) == {
                 "provider_id": "openrouter",
-                "model": "anthropic/claude-sonnet-5",
+                "model": "anthropic/claude-sonnet-5.5",
             }
 
     def test_per_task_env_override(self, monkeypatch):

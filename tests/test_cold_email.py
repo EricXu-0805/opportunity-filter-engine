@@ -1543,7 +1543,7 @@ class TestNDraftJudgeTier:
         models = dict(seen)
         assert models["judge"] == "anthropic/claude-opus-4.8"
         assert models["critique"] == "anthropic/claude-opus-4.8"
-        assert models["draft_angle1"] == "anthropic/claude-sonnet-5"
+        assert models["draft_angle1"] == "anthropic/claude-sonnet-5.5"
 
     def test_ndraft_count_clamps(self, monkeypatch):
         import backend.routes.cold_email as ce

@@ -113,8 +113,8 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("auto", "Auto", "anthropic/claude-sonnet-5"),
-    ("thinking", "Thinking", "openai/gpt-5.6-terra-pro"),
+    ("auto", "Auto", "anthropic/claude-sonnet-5.5"),
+    ("thinking", "Thinking", "openai/gpt-6.1-sol-pro"),
 )
 
 
@@ -181,14 +181,14 @@ def strong_model() -> Optional[str]:
     return os.environ.get("OFE_STRONG_MODEL", "").strip() or None
 
 
-# Best-fit model per quality-sensitive task ("right tool for each job"), chosen
-# against 2026-07 writing evaluations: Sonnet 5 WINS the writing-quality and
-# instruction-following categories outright ("sounds the most human, needs the
-# least cleanup" — EQ-Bench-adjacent leaderboards put the Claude family a full
-# tier above GPT-5.5 on writing Elo), so the PROSE tasks stay on it — an
-# "upgrade" there would be a downgrade. Opus 4.8 leads deliberate editorial
-# REASONING, which is exactly the judge/critique lens, so that one task rides
-# the premium tier:
+# Best-fit model per quality-sensitive task ("right tool for each job"). The
+# prose tasks moved from Sonnet 5 to Sonnet 5.5 on 2026-09-30 after a run of
+# the real pipeline (3 student profiles x 3 targets, same grounding gates):
+# same AI-draft rate as Sonnet 5 and GPT-6.1 Sol, same $2/$10 price, 10.6 s vs
+# 14.6 s per email, and the résumé rewrite endpoint answered in 3 s vs 24 s.
+# Nine emails is a small sample, so this is a latency-and-currency move, not a
+# measured quality gain. Opus 4.8 stays the judge/critique lens: Opus 5.5 in
+# that seat was slower (18 s per email) and rescued no more drafts.
 #   * cold_email — highest-stakes personalized writing (draft + revise).
 #   * cold_email_review — the critique rubric + N-draft judge (judgment, not
 #     prose: which email would a professor answer, what reads templated).
@@ -197,12 +197,12 @@ def strong_model() -> Optional[str]:
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
-    "cold_email": "anthropic/claude-sonnet-5",
+    "cold_email": "anthropic/claude-sonnet-5.5",
     # NB: OpenRouter's slug is dotted ("4.8") — the hyphenated "opus-4-8" does
     # not exist in the catalog and 404s, silently degrading the review tier.
     "cold_email_review": "anthropic/claude-opus-4.8",
-    "tailor": "anthropic/claude-sonnet-5",
-    "extract": "anthropic/claude-sonnet-5",
+    "tailor": "anthropic/claude-sonnet-5.5",
+    "extract": "anthropic/claude-sonnet-5.5",
 }
 
 
