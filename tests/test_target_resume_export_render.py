@@ -154,18 +154,21 @@ def test_skill_category_lines_keep_their_own_rows():
         assert [paragraph.text for paragraph in Document(io.BytesIO(renderer.render_export(value, 'docx'))).paragraphs] == expected
 
 
-@pytest.mark.parametrize('start,end,rows', [
-    ('Jan\n2026', 'Present', ['RA · Jan', '2026 – Present']),
-    ('Jan 2026', 'Present\r\nnow', ['RA · Jan 2026 – Present', 'now']),
-])
-def test_dates_with_a_line_break_stay_in_the_entry_row(start, end, rows):
+@pytest.mark.parametrize('lines,rows', [
     # A PDF cell at the right margin drops the break: 'RA Jan2026 – Present'.
+    ([('title', 'RA'), ('start', 'Jan\n2026'), ('end', 'Present')], ['RA · Jan', '2026 – Present']),
+    ([('title', 'RA'), ('start', 'Jan 2026'), ('end', 'Present\r\nnow')], ['RA · Jan 2026 – Present', 'now']),
+    # A DOCX tab in the head jumped to the right-margin stop and pushed the dates past the margin.
+    ([('title', 'RA'), ('organization', 'Org\tLab'), ('start', 'Jan 2026'), ('end', 'Present')], ['RA · Org\tLab · Jan 2026 – Present']),
+    ([('title', 'Line one\nLine two'), ('start', 'Jan 2026'), ('end', 'Present')], ['Line one', 'Line two · Jan 2026 – Present']),
+])
+def test_a_tab_or_line_break_in_an_entry_row_keeps_its_dates_in_the_row(lines, rows):
     from docx import Document
     value = {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': 'letter', 'sections': [
         {'kind': 'activities', 'heading': '', 'blocks': [{'lines': [
-            {'role': role, 'label': '', 'text': text} for role, text in
-            [('title', 'RA'), ('start', start), ('end', end), ('experience', 'Did a thing.')]]}]}]}
-    assert pdf_reader(renderer.render_export(value, 'pdf')).pages[0].extract_text().splitlines() == ['Experience', *rows, 'Did a thing.']
+            {'role': role, 'label': '', 'text': text} for role, text in [*lines, ('experience', 'Did a thing.')]]}]}]}
+    assert pdf_reader(renderer.render_export(value, 'pdf')).pages[0].extract_text().splitlines() == \
+        ['Experience', *[row.replace('\t', '    ') for row in rows], 'Did a thing.']
     entry = Document(io.BytesIO(renderer.render_export(value, 'docx'))).paragraphs[1]
     assert entry.text == '\n'.join(rows)
     assert not entry.paragraph_format.tab_stops
