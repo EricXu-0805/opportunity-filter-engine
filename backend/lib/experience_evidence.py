@@ -7,6 +7,7 @@ resume; they are not authentication tokens. No cloud profile is read here.
 from __future__ import annotations
 
 import hashlib
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 
@@ -16,6 +17,15 @@ from src.recommender.cold_email import resume_bullet_relevance
 PROMPT_CHARACTER_BUDGET = 4000
 MAX_SELECTED_ENTRIES = 8
 TEMPLATE_CHARACTER_BUDGET = 220
+
+# A PDF prints one bullet over several lines and the import proposes each line
+# as its own entry, so "reaching 0.87 AUC ..." sits one entry below the action
+# it completes and every entry-local fact check rejects the student's own
+# sentence. A line break is a wrap when the line before it has not ended a
+# sentence and the next line continues in lower case, or with a number that is
+# not a list marker ("2." / "3)"). A heading, a new bullet or a capitalised line
+# is never a continuation.
+_WRAP = re.compile(r"(?<=[^\s.!?])[ \t]*\r?\n[ \t]*(?=[a-z]|\d(?!\d*[.)]\s))")
 
 
 def _within_budget(entries: list[ExperienceEntry], contexts: dict | None = None) -> list[dict]:
@@ -41,9 +51,15 @@ class ExperienceSelection:
     legacy_ignored: bool
     contexts: dict | None = None
     context_notices: tuple[str, ...] = ()
+    resume_text: str = ""
 
     def materials(self) -> list[dict]:
-        return [_receipt(entry, self.contexts) for entry in self.eligible]
+        """The facts every deterministic check reads: one per printed bullet.
+
+        Receipts and the prompt keep the entries exactly as confirmed.
+        """
+        return [_fact_receipt(bullet, self.contexts)
+                for bullet in _printed_bullets(self.eligible, self.resume_text, self.contexts)]
 
     def usage(self, selected: list[dict] | None = None, *, mode: str = "ai") -> dict:
         review = any(item["reason"] in {
@@ -87,6 +103,48 @@ def _receipt(entry: ExperienceEntry, contexts: dict | None = None) -> dict:
               "excerpt": entry.text, "source": source}
     if contexts is not None:
         result["context"] = deepcopy(contexts.get(entry.id))
+    return result
+
+
+def _continues(above: ExperienceEntry, below: ExperienceEntry, resume_text: str, contexts: dict | None) -> bool:
+    """``below`` is the next printed line of the bullet ``above`` starts.
+
+    Both are confirmed lines of the current resume with only a line break
+    between them, and neither belongs to an activity the other does not.
+    """
+    if above.source.kind != "resume" or below.source.kind != "resume":
+        return False
+    head = above.text.rstrip()
+    return (re.fullmatch(r"[ \t]*\r?\n[ \t]*", resume_text[above.source.end:below.source.start]) is not None
+            and _WRAP.match(head + "\n" + below.text.lstrip(), len(head)) is not None
+            and (contexts or {}).get(above.id) == (contexts or {}).get(below.id))
+
+
+def _printed_bullets(entries: list[ExperienceEntry], resume_text: str,
+                     contexts: dict | None) -> list[list[ExperienceEntry]]:
+    lines = sorted((entry for entry in entries if entry.source.kind == "resume"), key=lambda entry: entry.source.start)
+    below = {above.id: line for above, line in zip(lines, lines[1:], strict=False)
+             if _continues(above, line, resume_text, contexts)}
+    continuations = {entry.id for entry in below.values()}
+    bullets = []
+    for entry in entries:
+        if entry.id in continuations:
+            continue
+        bullet = [entry]
+        while bullet[-1].id in below:
+            bullet.append(below[bullet[-1].id])
+        bullets.append(bullet)
+    return bullets
+
+
+def _fact_receipt(bullet: list[ExperienceEntry], contexts: dict | None) -> dict:
+    result = _receipt(bullet[0], contexts)
+    text = "\n".join(entry.text for entry in bullet)
+    # A wrap kept inside one resume entry is not a sentence boundary either. A
+    # line break the student typed into a manual entry is theirs and stays.
+    result["excerpt"] = _WRAP.sub(" ", text) if bullet[0].source.kind == "resume" else text
+    if len(bullet) > 1:
+        result["source"]["end"] = bullet[-1].source.end
     return result
 
 
@@ -164,4 +222,5 @@ def select_experience(
     template = next((_receipt(entry, contexts) for entry in ranked
                      if len(entry.text) <= TEMPLATE_CHARACTER_BUDGET
                      and resume_bullet_relevance(parts, entry.text) >= 2), None)
-    return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices)
+    return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices,
+                               evidence.resume_text if evidence is not None else "")

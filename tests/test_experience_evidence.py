@@ -12,7 +12,7 @@ from backend.lib.experience_evidence import select_experience
 from backend.routes import cold_email as ce
 from backend.schemas import ColdEmailRequest, ExperienceEvidence
 from src.recommender.cold_email import _common_parts
-from tests.experience_fixtures import confirmed_experience
+from tests.experience_fixtures import confirmed_experience, resume_line_experience
 
 PROFILE = {"name": "Audit Student", "school": "UIUC", "year": "sophomore",
            "major": "Computer Science", "hard_skills": [], "coursework": []}
@@ -232,6 +232,99 @@ def test_full_eligible_originals_stay_in_fact_corpus_without_upgrading_skill_lev
     assert parts["resume_bullets"] == [evidence["entries"][0]["text"]]
     assert parts["skill_levels"]["Python"] == "beginner"
     assert any(ce._email_grounding_findings("I am an expert in Python.", parts, OPP))
+
+
+PRINTED = (
+    "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present\n"
+    "- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline,\n"
+    "reaching 0.87 AUC on a held-out split.\n"
+    "- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients\n"
+    "saliency maps; I wrote the evaluation scripts.\n"
+    "Software Engineering Intern, Prairie Analytics (Champaign, IL) - Jun 2026 - Aug 2026\n"
+    "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.\n"
+)
+XRAY_BULLET = ("- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 "
+               "baseline, reaching 0.87 AUC on a held-out split.")
+
+
+def test_fact_checks_read_a_pdf_wrapped_bullet_as_the_one_bullet_it_prints():
+    # The import confirms each printed line as its own entry. Receipts keep
+    # those entries; the facts behind every check are the printed bullets.
+    result = selected(resume_line_experience(PRINTED))
+    assert len(result.eligible) == 7
+    assert [item["excerpt"] for item in result.materials()] == [
+        "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present",
+        XRAY_BULLET,
+        "- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and "
+        "integrated-gradients saliency maps; I wrote the evaluation scripts.",
+        "Software Engineering Intern, Prairie Analytics (Champaign, IL) - Jun 2026 - Aug 2026",
+        "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+    ]
+    assert {item["excerpt"] for item in result.selected} <= {entry.text for entry in result.eligible}
+    request = ColdEmailRequest(profile=PROFILE, opportunity_id=OPP["id"],
+                               experience_evidence=resume_line_experience(PRINTED))
+    parts, _ = ce._experience_parts(request, PROFILE, OPP)
+    assert XRAY_BULLET in parts["resume_bullets"]
+
+
+@pytest.mark.parametrize("change", ["unconfirmed", "blank-line-between", "capitalised", "new-bullet", "numbered-item"])
+def test_only_a_confirmed_printed_continuation_joins_the_line_above(change):
+    head = "- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline,"
+    tail = {"unconfirmed": "reaching 0.87 AUC on a held-out split.",
+            "blank-line-between": "reaching 0.87 AUC on a held-out split.",
+            "capitalised": "Reached 0.87 AUC on a held-out split.",
+            "new-bullet": "- reaching 0.87 AUC on a held-out split.",
+            "numbered-item": "2. reached 0.87 AUC on a held-out split."}[change]
+    printed = head + ("\n\n" if change == "blank-line-between" else "\n") + tail
+    result = selected(resume_line_experience(printed, unconfirmed=[tail] if change == "unconfirmed" else []))
+    excerpts = [item["excerpt"] for item in result.materials()]
+    assert excerpts == ([head] if change == "unconfirmed" else [head, tail])
+
+
+def test_a_wrapped_course_number_is_a_continuation():
+    printed = ("Relevant coursework: Data Structures (CS 225), Linear Algebra (MATH\n"
+               "257), Probability & Statistics (STAT 400).")
+    assert [item["excerpt"] for item in selected(resume_line_experience(printed)).materials()] == [
+        "Relevant coursework: Data Structures (CS 225), Linear Algebra (MATH 257), Probability & Statistics (STAT 400)."]
+
+
+def test_a_resume_entry_that_kept_its_wrap_newline_is_one_sentence():
+    printed = XRAY_BULLET.replace("baseline, reaching", "baseline,\nreaching") + "\n"
+    evidence = resume_line_experience(printed)
+    whole = printed.rstrip("\n")
+    evidence["entries"] = [dict(evidence["entries"][0], text=whole, source=dict(
+        evidence["entries"][0]["source"], quote=whole, end=len(whole)))]
+    result = selected(evidence)
+    assert [item["excerpt"] for item in result.materials()] == [XRAY_BULLET]
+    assert [entry.text for entry in result.eligible] == [whole]
+
+
+def test_a_line_break_typed_into_a_manual_entry_stays_a_boundary():
+    typed = "built a parser for the lab\ntested it with 20 users"
+    result = selected(confirmed_experience([typed]))
+    assert [item["excerpt"] for item in result.materials()] == [typed]
+
+
+def test_wrapped_lines_assigned_to_different_activities_stay_apart():
+    def fact(id, value):
+        return {"id": id, "revision": 1, "status": "confirmed", "value": value, "source": {"kind": "manual"}}
+
+    evidence = resume_line_experience(PRINTED)
+    head, tail = evidence["entries"][1], evidence["entries"][2]
+    evidence.update(version=2, resume_master={
+        "version": 1, "id": "master", "revision": 1, "source_signature": None,
+        "basics": {"links": []}, "education": [], "publications": [], "skills": [], "other_sections": [],
+        "section_order": ["basics", "education", "activities", "publications", "skills"], "unmapped_ranges": [],
+        "activities": [
+            {"id": "alpha", "kind": "research", "title": fact("alpha-title", "Imaging pipeline"),
+             "details": [{"id": head["id"], "revision": 1}]},
+            {"id": "beta", "kind": "project", "title": fact("beta-title", "Held-out study"),
+             "details": [{"id": tail["id"], "revision": 1}]},
+        ],
+    })
+    excerpts = [item["excerpt"] for item in selected(evidence).materials()]
+    assert head["text"] in excerpts and tail["text"] in excerpts
+    assert XRAY_BULLET not in excerpts
 
 
 @pytest.mark.parametrize("path", ["", "variants", "refine"])

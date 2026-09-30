@@ -2172,12 +2172,14 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
     parts["source_research_text"] = _source_research_text_for_selection(safe_opp)
     parts.update(contact_context_parts(context))
     selection = select_experience(request.experience_evidence, parts, legacy_bullets=request.resume_bullets)
-    # Full eligible originals remain available to deterministic fact checks.
-    # Only the smaller, source-bound projection may enter a provider prompt.
-    parts["resume_bullets"] = [entry.text for entry in selection.eligible]
+    # Full eligible originals remain available to deterministic fact checks,
+    # read as the bullets they print. Only the smaller, source-bound
+    # projection may enter a provider prompt.
+    facts = selection.materials()
+    parts["resume_bullets"] = [item["excerpt"] for item in facts]
     if selection.contexts is not None:
         parts["experience_materials"] = selection.selected
-        parts["experience_materials_all"] = selection.materials()
+        parts["experience_materials_all"] = facts
     parts["experience_excerpts"] = [item["excerpt"] for item in selection.selected]
     parts["experience_template_excerpt"] = selection.template["excerpt"] if selection.template else ""
     return parts, selection

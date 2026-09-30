@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
-from tests.experience_fixtures import confirmed_experience
+from tests.experience_fixtures import confirmed_experience, resume_line_experience
 
 PROFILE = {"name": "Audit Student", "school": "UIUC", "year": "sophomore",
            "major": "Computer Science", "hard_skills": [], "coursework": [],
@@ -77,7 +77,7 @@ def client(monkeypatch):
 
 def request(client, endpoint, evidence, *, claim=None):
     payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "engine": "ai",
-               "experience_evidence": confirmed_experience(evidence)}
+               "experience_evidence": evidence if isinstance(evidence, dict) else confirmed_experience(evidence)}
     if endpoint == "refine":
         payload.update(current_body=draft(claim or "I am interested in Python parser research."),
                        instruction="Make it clearer")
@@ -111,6 +111,49 @@ def test_attributed_work_and_equivalent_numbers_remain_usable(client, monkeypatc
     assert result["method"] == ("llm" if endpoint == "refine" else "ai"), result
     assert claim in result["body"]
     assert result["experience_usage"]["selected"]
+
+
+# A PDF import confirms each printed line as its own entry, so a bullet's
+# result sits one entry below the action it completes. The student's own
+# sentence must pass, and the printed bullet must not lend its result or its
+# collaborators to anything it does not say.
+PRINTED = (
+    "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present\n"
+    "- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline,\n"
+    "reaching 0.87 AUC on a held-out split.\n"
+    "- Built a Python parser\n"
+    "with my team.\n"
+    "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.\n"
+)
+XRAY = ("I built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains "
+        "a ResNet-18 baseline, reaching 0.87 AUC on a held-out split.")
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "refine"])
+def test_a_wrapped_bullet_restated_in_first_person_is_usable(client, monkeypatch, endpoint):
+    body = draft(XRAY)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body if endpoint == "refine" else f"Subject: Research inquiry\n\n{body}")
+    result = request(client, endpoint, resume_line_experience(PRINTED))
+    assert result["method"] == ("llm" if endpoint == "refine" else "ai"), result
+    assert result.get("fallback_reason") is None
+    assert XRAY in result["body"]
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "refine"])
+@pytest.mark.parametrize("unconfirmed,claim", [
+    pytest.param(["reaching 0.87 AUC on a held-out split."], XRAY, id="result-line-not-confirmed"),
+    pytest.param([], XRAY.replace("0.87", "0.95"), id="result-changed"),
+    pytest.param([], "I built a Python parser.", id="wrapped-team-qualifier-dropped"),
+    pytest.param([], "I wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes "
+                     "to 9 minutes, reaching 0.87 AUC on a held-out split.", id="result-moved-to-next-bullet"),
+])
+def test_a_wrapped_bullet_lends_nothing_it_does_not_print(client, monkeypatch, endpoint, unconfirmed, claim):
+    body = draft(claim)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body if endpoint == "refine" else f"Subject: Research inquiry\n\n{body}")
+    result = request(client, endpoint, resume_line_experience(PRINTED, unconfirmed=unconfirmed), claim=claim)
+    assert result["method"] in ("template", "local"), result
+    assert result["fallback_reason"] == "fabrication", result
+    assert claim not in result["body"], result
 
 
 @pytest.mark.parametrize("failure", ["unconfigured", "no-output", "timeout"])
