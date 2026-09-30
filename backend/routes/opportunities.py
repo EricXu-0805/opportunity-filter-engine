@@ -181,8 +181,10 @@ def _list_card(opp: dict) -> dict:
     return project_public_opportunity_payload(out, opp)
 
 
+# Plain def, like /similar and /upcoming below: every call filters the full
+# corpus, which on the event loop stalled every other request on the worker.
 @router.get("/opportunities")
-async def list_opportunities(
+def list_opportunities(
     opportunity_type: str | None = None,
     paid: str | None = None,
     international_friendly: str | None = None,
@@ -332,7 +334,7 @@ async def get_opportunities_batch(request: dict):
 
 
 @router.get("/opportunities/upcoming")
-async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
+def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     """Opportunities with deadlines within the next ``days`` days, sorted ascending.
 
     Useful for building a calendar / "what's due soon" widget without
