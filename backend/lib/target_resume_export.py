@@ -43,6 +43,7 @@ HEAD_ROLES = frozenset(('title', 'organization', 'location', 'school', 'degree',
 DATE_ROLES = frozenset(('start', 'end', 'date'))
 SEPARATOR = ' · '
 LIST_SEPARATOR = {'en': ', ', 'zh': '、'}
+LIST_MARKS = re.compile(r'[:：,，、;；\r\n\t]')  # A skill line with these is a list of its own.
 DATE_COLUMNS = 36  # Longer date text stays in its row instead of the right margin.
 PDF_STYLES = {'name': (18, 8), 'heading': (12, 6), 'body': (10.5, 5.3)}
 DOCX_SIZES = {'name': 18, 'heading': 12, 'body': 10.5}
@@ -195,14 +196,16 @@ def entry(lines, locale, title):
     return result[:-1] + [replace(result[-1], end=True)] if result else []
 
 
-def section_units(section):
-    """Contact details and skill-only blocks join one row; other blocks are entries."""
+def section_units(section, locale, title):
+    """Contact details and single skills join one row; other blocks are entries.
+    A skill line that is itself a list ('Tools: Git, Docker') keeps its own row."""
     for block in section['blocks']:
         if section['kind'] == 'basics':
             yield from (('name' if line['role'] == 'name' else 'row', line) for line in block['lines']
                         if line['role'] == 'name' or not blank(line['text']))
         elif section['kind'] == 'skills' and all(line['role'] == 'skill' for line in block['lines']):
-            yield from (('row', line) for line in block['lines'] if not blank(line['text']))
+            yield from (('line' if LIST_MARKS.search(line_text(line, locale, title)) else 'row', line)
+                        for line in block['lines'] if not blank(line['text']))
         else:
             yield 'entry', block['lines']
 
@@ -215,13 +218,16 @@ def layout(projection):
         if title:
             result.append(Paragraph('heading', ((title, None),), keep=True))
         separator = LIST_SEPARATOR[locale] if section['kind'] == 'skills' else SEPARATOR
-        for kind, group in groupby(section_units(section), key=itemgetter(0)):
+        for kind, group in groupby(section_units(section, locale, title), key=itemgetter(0)):
             items = [item for _kind, item in group]
             if kind == 'row':
                 pieces = [(line_text(line, locale, title), safe_link(line)) for line in items]
                 result.append(Paragraph('body', joined(pieces, separator), end=True))
             elif kind == 'name':
                 result += [Paragraph('name', ((line_text(line, locale, title), None),)) for line in items]
+            elif kind == 'line':
+                result += [Paragraph('body', ((line_text(line, locale, title), None),)) for line in items]
+                result[-1] = replace(result[-1], end=True)
             else:
                 for lines in items:
                     result += entry(lines, locale, title)

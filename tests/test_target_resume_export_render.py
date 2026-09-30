@@ -138,6 +138,22 @@ def test_pdf_contact_row_wraps_between_whole_items_and_keeps_their_links(page_si
     assert wrapped >= 5
 
 
+def test_skill_category_lines_keep_their_own_rows():
+    # Joining 'Languages: Python, C++' and 'Tools: Git' with ', ' blurred which skill belongs to which list.
+    from docx import Document
+    for locale, skills, expected in [
+        ('en', ['Python', 'SQL', 'Languages: Python, C++, Java', 'Tools: Git, Docker, Linux',
+                'Spoken: English (fluent), Mandarin (native)', 'Git', 'Docker'],
+         ['Skills', 'Python, SQL', 'Languages: Python, C++, Java', 'Tools: Git, Docker, Linux',
+          'Spoken: English (fluent), Mandarin (native)', 'Git, Docker']),
+        ('zh', ['编程语言：Python、C++', '工具：Git、Docker', 'Python', 'SQL'], ['技能', '编程语言：Python、C++', '工具：Git、Docker', 'Python、SQL']),
+    ]:
+        value = {'version': 1, 'template': 'standard-v1', 'locale': locale, 'page_size': 'letter', 'sections': [
+            {'kind': 'skills', 'heading': '', 'blocks': [{'lines': [{'role': 'skill', 'label': '', 'text': skill}]} for skill in skills]}]}
+        assert pdf_reader(renderer.render_export(value, 'pdf')).pages[0].extract_text().splitlines() == expected
+        assert [paragraph.text for paragraph in Document(io.BytesIO(renderer.render_export(value, 'docx'))).paragraphs] == expected
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)
