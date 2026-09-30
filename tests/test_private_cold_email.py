@@ -363,3 +363,27 @@ def test_template_and_manual_repeat_real_auth_and_storage_reads(storage):
     data.update(subject='Question', body='Could you tell me how to apply?', recipient='a@example.edu', contact_requirements_reviewed=True)
     assert post(data, 'validate').status_code == 200
     assert [item[1] for item in storage['calls']] == ['/auth/v1/user', '/rest/v1/rpc/read_private_import_target'] * 2
+
+
+@pytest.mark.parametrize('path', ['variants', 'validate'])
+def test_invalid_bearer_refused_over_the_network_before_the_draft_is_parsed(storage, path):
+    storage['calls'].clear()
+    # Not JSON at all: were it parsed before the token check, this would be 422.
+    response = TestClient(app).post(f'/api/private-import-targets/{ID}/cold-email/{path}',
+        content=b'{"profile": "' + b'x' * (4 * 1024 * 1024),
+        headers={'Authorization': 'Bearer forged-token', 'Content-Type': 'application/json'})
+    assert response.status_code == 401
+    assert response.json() == {'detail': {'code': 'private_target_auth_required'}}
+    assert storage['calls'] == [('GET', '/auth/v1/user', 'Bearer forged-token')]
+    assert 'no-store' in response.headers['cache-control']
+
+
+@pytest.mark.parametrize('path', ['variants', 'validate'])
+def test_verified_caller_with_malformed_draft_keeps_the_fixed_error(storage, path):
+    storage['calls'].clear()
+    response = TestClient(app).post(f'/api/private-import-targets/{ID}/cold-email/{path}',
+        content=b'{"profile": PRIVATE_SECRET',
+        headers={'Authorization': 'Bearer fixture-token', 'Content-Type': 'application/json'})
+    assert response.status_code == 422
+    assert response.json() == {'detail': {'code': 'private_email_invalid_request'}}
+    assert [call[1] for call in storage['calls']] == ['/auth/v1/user']

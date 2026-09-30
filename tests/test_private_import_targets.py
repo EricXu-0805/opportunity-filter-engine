@@ -13,6 +13,7 @@ OWNER = "a1000000-0000-4000-8000-000000000001"
 OTHER = "a1000000-0000-4000-8000-000000000002"
 ID = "private-import:a2000000-0000-4000-8000-000000000001"
 STAMP = "2026-09-28T12:00:00+00:00"
+AUTH_LOOKUP = ("GET", "/auth/v1/user", "Bearer fixture-token")
 OPPORTUNITY = {
     "source": "text_parser",
     "title": "Private research note",
@@ -66,6 +67,8 @@ def storage(monkeypatch):
 
         state["calls"].append((request.method, request.url.path, request.headers.get("authorization")))
         if request.url.path == "/auth/v1/user":
+            if request.headers.get("authorization") != "Bearer fixture-token":
+                return httpx.Response(401, json={"message": "invalid JWT"})
             return httpx.Response(200, json=state["user"])
         data = json.loads(request.content)
         assert request.headers["authorization"] == "Bearer fixture-token"
@@ -237,7 +240,7 @@ def test_safe_storage_errors(storage, sqlstate, status, code):
         lambda p: p["opportunity"]["extra_fields"].update(value="PRIVATE_SECRET\x00"),
     ],
 )
-def test_invalid_body_privacy_and_zero_network(storage, mutate):
+def test_invalid_body_privacy_and_no_storage_call(storage, mutate):
     import json
 
     body = save_body()
@@ -249,7 +252,8 @@ def test_invalid_body_privacy_and_zero_network(storage, mutate):
     )
     assert response.status_code == 422
     assert response.json() == {"detail": {"code": "private_target_invalid_request"}}
-    assert storage["calls"] == [] and "no-store" in response.headers["cache-control"]
+    # The token is verified before the body is parsed; nothing reaches storage.
+    assert storage["calls"] == [AUTH_LOOKUP] and "no-store" in response.headers["cache-control"]
 
 
 @pytest.mark.parametrize(
@@ -269,7 +273,7 @@ def test_nonfinite_private_json_rejected(storage, body):
         content=body,
         headers={"content-type": "application/json", "Authorization": "Bearer fixture-token"},
     )
-    assert response.status_code == 422 and storage["calls"] == []
+    assert response.status_code == 422 and storage["calls"] == [AUTH_LOOKUP]
 
 
 def test_deep_and_metadata_budget(storage):
@@ -285,7 +289,7 @@ def test_deep_and_metadata_budget(storage):
     body["opportunity"]["extra_fields"] = {"secret": "x" * (256 * 1024)}
     response = request(TestClient(app), "PUT", body)
     assert response.status_code == 413 and response.json()["detail"]["code"] == "private_target_too_large"
-    assert storage["calls"] == []
+    assert storage["calls"] == [AUTH_LOOKUP, AUTH_LOOKUP]
 
 
 def test_complete_over_default_middleware_limit_and_explicit_storage_budget(storage):
@@ -456,3 +460,46 @@ def test_small_bodies_are_bounded_before_parsing(storage, path, streamed):
     assert response.status_code == 413
     assert response.json() == {"detail": {"code": "private_target_too_large"}}
     assert storage["calls"] == [] and "PRIVATE_SECRET" not in response.text
+
+
+
+def test_invalid_bearer_refused_over_the_network_before_the_save_is_parsed(storage):
+    # Not JSON at all: were it parsed before the token check, this would be 422.
+    body = b'{"opportunity": "' + b"x" * (4 * 1024 * 1024)
+    response = TestClient(app).put(
+        f"/api/private-import-targets/{ID}", content=body,
+        headers={"content-type": "application/json", "Authorization": "Bearer forged-token"},
+    )
+    assert response.status_code == 401
+    assert response.json() == {"detail": {"code": "private_target_auth_required"}}
+    assert storage["calls"] == [("GET", "/auth/v1/user", "Bearer forged-token")]
+    assert "no-store" in response.headers["cache-control"]
+
+
+def test_verified_save_asks_supabase_for_the_user_once(storage):
+    response = request(TestClient(app), "PUT", save_body())
+    assert response.status_code == 200, response.text
+    assert storage["calls"] == [AUTH_LOOKUP, ("POST", "/rest/v1/rpc/save_private_import_target", "Bearer fixture-token")]
+
+
+def test_pre_parse_verification_vouches_only_for_its_own_header_and_request(storage):
+    import asyncio
+
+    from backend.lib import private_import_targets as lib
+
+    def service(authorization):
+        return lib.PrivateTargetService(route.new_client(), "https://supabase.invalid", "fixture-only", authorization)
+
+    async def scenario():
+        async with lib.caller_verified_before_parsing("Bearer fixture-token", route.new_client):
+            assert await service("Bearer fixture-token").authenticate(lib.Scope(expected_owner_id=OWNER)) == OWNER
+            with pytest.raises(lib.PrivateTargetError) as other_owner:
+                await service("Bearer fixture-token").authenticate(lib.Scope(expected_owner_id=OTHER))
+            assert other_owner.value.code == "private_target_owner_changed"
+            with pytest.raises(lib.PrivateTargetError) as other_token:
+                await service("Bearer forged-token").verify_user()
+            assert other_token.value.code == "private_target_auth_required"
+        assert await service("Bearer fixture-token").verify_user() == OWNER
+
+    asyncio.run(scenario())
+    assert storage["calls"] == [AUTH_LOOKUP, ("GET", "/auth/v1/user", "Bearer forged-token"), AUTH_LOOKUP]

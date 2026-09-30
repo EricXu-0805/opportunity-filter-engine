@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import datetime
 
 import httpx
@@ -78,6 +80,28 @@ def target_receipt(raw: object, expected_owner: str, target_id: str | None = Non
     }
 
 
+# (exact Authorization header, verified user id) for the current request only.
+_verified_caller: ContextVar[tuple[str, str] | None] = ContextVar("private_verified_caller", default=None)
+
+
+@asynccontextmanager
+async def caller_verified_before_parsing(authorization: str | None, client_factory):
+    """Verify the bearer over the network before a private body is parsed.
+
+    The owner comparison needs the parsed expected_owner_id, so it stays in
+    authenticate(); within this block authenticate() reuses this lookup for the
+    same header instead of asking Supabase a second time.
+    """
+    url, key = settings()
+    async with client_factory() as client:
+        uid = await PrivateTargetService(client, url, key, authorization).verify_user()
+    token = _verified_caller.set((authorization, uid))
+    try:
+        yield
+    finally:
+        _verified_caller.reset(token)
+
+
 class PrivateTargetService:
     def __init__(self, client, url: str, key: str, authorization: str | None):
         self.client, self.url, self.key, self.authorization = client, url, key, authorization
@@ -85,7 +109,8 @@ class PrivateTargetService:
     def headers(self):
         return {"apikey": self.key, "Authorization": self.authorization}
 
-    async def authenticate(self, scope: Scope):
+    async def verify_user(self) -> str:
+        """Supabase's own answer for this bearer token; no owner comparison."""
         if (
             not self.authorization
             or not self.authorization.startswith("Bearer ")
@@ -93,6 +118,9 @@ class PrivateTargetService:
             or len(self.authorization) > 16384
         ):
             raise PrivateTargetError("private_target_auth_required", 401)
+        verified = _verified_caller.get()
+        if verified is not None and verified[0] == self.authorization:
+            return verified[1]
         response = await self.client.get(f"{self.url}/auth/v1/user", headers=self.headers())
         if response.status_code in (401, 403, 404):
             raise PrivateTargetError("private_target_auth_required", 401)
@@ -105,6 +133,10 @@ class PrivateTargetService:
                 raise ValueError
         except (ValueError, TypeError, KeyError, AttributeError):
             raise PrivateTargetError("private_target_auth_required", 401) from None
+        return uid
+
+    async def authenticate(self, scope: Scope):
+        uid = await self.verify_user()
         if uid != scope.expected_owner_id:
             raise PrivateTargetError("private_target_owner_changed", 409)
         return uid

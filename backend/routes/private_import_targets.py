@@ -12,7 +12,12 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
 from backend.lib.private_email_context import resolve_private_email_context
-from backend.lib.private_import_targets import PrivateTargetService, new_client, settings
+from backend.lib.private_import_targets import (
+    PrivateTargetService,
+    caller_verified_before_parsing,
+    new_client,
+    settings,
+)
 from backend.lib.private_import_targets_schema import (
     MAX_BODY_BYTES,
     MAX_PAYLOAD_BYTES,
@@ -39,9 +44,9 @@ async def _screen_body(request: Request) -> None:
 
     Parsing and validating an 8 MiB import is real event-loop work, and it used
     to run for callers with no credential at all, ahead of the 401. The shape
-    check mirrors the first gate of PrivateTargetService.authenticate, which
-    still runs afterwards; the token itself can only be verified over the
-    network, so a caller with a well-formed but invalid token is still parsed.
+    check mirrors the first gate of PrivateTargetService.authenticate. A save
+    additionally has its token verified over the network before parsing (see
+    the route handler); the small delete and batch bodies keep this screen only.
     """
     limit = MAX_BODY_BYTES if request.method == "PUT" else _SMALL_BODY_BYTES
     declared = request.headers.get("content-length", "")
@@ -65,6 +70,9 @@ class PrivateTargetRoute(APIRoute):
             try:
                 if request.method in ("PUT", "DELETE", "POST"):
                     await _screen_body(request)
+                if request.method == "PUT":
+                    async with caller_verified_before_parsing(request.headers.get("authorization"), new_client):
+                        return await original(request)
                 return await original(request)
             except PrivateTargetError as exc:
                 return JSONResponse({"detail": {"code": exc.code}}, status_code=exc.status, headers=PRIVATE)

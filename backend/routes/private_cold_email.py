@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
 
+from backend.lib import private_import_targets as storage
 from backend.lib.private_email_context import resolve_private_email_context
 from backend.lib.private_email_drafting import template_variants, validate_manual
 from backend.lib.private_email_schema import (
@@ -30,7 +31,11 @@ class PrivateEmailRoute(APIRoute):
 
         async def handler(request: Request):
             try:
-                return await original(request)
+                # A draft body is parsed only for a caller Supabase recognises;
+                # the owner check after parsing reuses this one lookup.
+                async with storage.caller_verified_before_parsing(
+                        request.headers.get('authorization'), storage.new_client):
+                    return await original(request)
             except PrivateTargetError as exc:
                 return JSONResponse({'detail': {'code': exc.code}}, status_code=exc.status, headers=PRIVATE)
             except RequestValidationError as exc:
