@@ -37,12 +37,13 @@ BEGIN
   IF uid IS NULL OR p_expected_owner IS DISTINCT FROM uid::text THEN
     RAISE EXCEPTION 'renovation_owner_unavailable' USING ERRCODE = '42501';
   END IF;
-  -- Match the merge lock order: owner advisory, auth row, material rows.
-  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
-  -- A stale JWT cannot outlive its deleted auth account. The row lock also
-  -- serializes this transaction with actual account deletion.
+  -- Lock order: auth row, owner advisory, material rows. Account deletion holds
+  -- its auth row while its triggers take the owner advisory lock, so taking the
+  -- row first makes deletion wait for this transaction instead of deadlocking.
+  -- A stale JWT cannot outlive its deleted auth account.
   PERFORM 1 FROM auth.users WHERE id = uid FOR KEY SHARE;
   IF NOT FOUND THEN RAISE EXCEPTION 'renovation_owner_unavailable' USING ERRCODE = '42501'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || uid::text));
   IF EXISTS (SELECT 1 FROM public.merged_devices WHERE source_device_id = uid::text) THEN
     RAISE EXCEPTION 'renovation_owner_unavailable' USING ERRCODE = '42501';
   END IF;
@@ -227,14 +228,15 @@ BEGIN
     OR NOT EXISTS(SELECT 1 FROM auth.users WHERE id=target_uid) THEN
     RAISE EXCEPTION 'renovation_owner_unavailable' USING ERRCODE='42501';
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || least(p_source,p_target)));
-  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || greatest(p_source,p_target)));
-  -- The same advisory -> auth -> material order as every new RPC. Lock both
-  -- accounts before touching either material so auth deletion cannot cascade
-  -- between preserving source history and moving the current row.
+  -- The same auth -> advisory -> material order as every new RPC (the caller
+  -- already holds all of them). Lock both accounts before touching either
+  -- material so auth deletion cannot cascade between preserving source history
+  -- and moving the current row.
   PERFORM id FROM auth.users WHERE id IN (p_source::uuid,target_uid) ORDER BY id FOR KEY SHARE;
   GET DIAGNOSTICS locked_accounts = ROW_COUNT;
   IF locked_accounts <> 2 THEN RAISE EXCEPTION 'renovation_owner_unavailable' USING ERRCODE='42501'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || least(p_source,p_target)));
+  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || greatest(p_source,p_target)));
   FOR s IN SELECT * FROM public.resume_renovations WHERE device_id=p_source ORDER BY opportunity_id FOR UPDATE LOOP
     -- Preserve even old best-effort saves with no matching history. Avoid a
     -- duplicate if a complete after-image already exists for this current.
@@ -269,7 +271,8 @@ END;
 $$;
 REVOKE ALL ON FUNCTION private.merge_legacy_renovations(text,text) FROM PUBLIC, anon, authenticated;
 
--- Effective 034 merge copied exactly except its legacy renovation block.
+-- Effective 034 merge copied exactly except its legacy renovation block and
+-- the auth-row locks taken before its profile advisory locks.
 CREATE OR REPLACE FUNCTION public.redeem_merge_grant(p_token uuid, p_secret text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -362,6 +365,13 @@ BEGIN
   -- account is either fully applied before this point or fully blocked until
   -- the merge commits and its own merged-away check can see the tombstone.
   -- Sorted so a merge of A->B and a merge of B->A cannot deadlock each other.
+  -- Account deletion holds its auth.users row while its triggers take this
+  -- key, so both accounts' auth rows are locked first, sorted by id (a legacy
+  -- device id that is not a UUID has no auth row to lock).
+  PERFORM 1 FROM auth.users
+    WHERE id = ANY (ARRAY(SELECT d::uuid FROM unnest(ARRAY[v_source, v_target]) d
+      WHERE d ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))
+    ORDER BY id FOR KEY SHARE;
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || least(v_source, v_target)));
   PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || greatest(v_source, v_target)));
 
