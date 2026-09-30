@@ -53,7 +53,7 @@ def body(version=None):
 
 def canonical_token(public):
     fields = {key: value for key, value in public.items()
-              if key not in {"writing_target_version", "contact_email_status", "contact_email", "pi_email", "professor_id"}}
+              if key not in {"writing_target_version", "contact_email_status", "detail_fields", "contact_email", "pi_email", "professor_id"}}
     encoded = json.dumps(fields, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
     return "wt1:" + hashlib.sha256(encoded).hexdigest()
 
@@ -181,7 +181,7 @@ def test_snapshot_is_public_and_fully_detached_before_the_first_await(corpus, mo
     assert response.status_code == 200
     assert response.json()["target_version"] == public["writing_target_version"]
     assert seen == [{key: value for key, value in public.items()
-                     if key not in {"writing_target_version", "contact_email_status"}}]
+                     if key not in {"writing_target_version", "contact_email_status", "detail_fields"}}]
     assert seen[0]["eligibility"] == original["eligibility"]
     assert "private@example.edu" not in json.dumps(seen)
     assert detail()["writing_target_version"] != public["writing_target_version"]

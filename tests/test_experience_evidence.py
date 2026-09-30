@@ -167,7 +167,10 @@ def test_every_public_route_uses_confirmed_current_evidence_and_returns_receipt(
     payload = payload_for(endpoint, resume_evidence())
     payload.pop("resume_bullets")
     if endpoint == "refine":
-        payload["current_body"] = "Dear Pat Lee,\n\nI have attached my resume."
+        # A borrowed-competence claim, not an application-condition claim: it
+        # fails grounding, so refine recovers through the evidence-backed
+        # template (an unconfirmed attachment claim now keeps the draft instead).
+        payload["current_body"] = "Dear Pat Lee,\n\nI have three years of experience with Kubernetes."
     out = response_body(client.post('/api/cold-email' + (f'/{endpoint}' if endpoint else ''), json=payload), endpoint)
     assert out["experience_usage"]["eligible_count"] == 1
     assert len(out["experience_usage"]["selected"]) == 1
@@ -337,7 +340,9 @@ def test_templates_do_not_turn_negative_tail_into_positive_experience(client, en
                 "Renaissance cultural history projects.")
     payload = payload_for(endpoint, confirmed_experience([negative]))
     if endpoint == "refine":
-        payload["current_body"] = "Dear Pat Lee, I have attached my resume."
+        # Fails grounding (borrowed competence), not an application
+        # condition, so refine recovers through the evidence template.
+        payload["current_body"] = "Dear Pat Lee, I have three years of experience with Kubernetes."
     out = response_body(client.post('/api/cold-email' + (f'/{endpoint}' if endpoint else ''), json=payload), endpoint)
     outputs = out["variants"] if endpoint == "variants" else [out]
     assert out["experience_usage"]["selected"] == []

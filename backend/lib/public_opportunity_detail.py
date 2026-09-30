@@ -22,7 +22,9 @@ REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
 _UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status", "publication_author_id")
 # These are response decorations, never source material. Drop poisoned corpus
 # values as well as declining to hash values later attached by a reveal route.
-_NON_VERSIONED_FIELDS = {"writing_target_version", "contact_email_status"} | REDACTED_FIELDS
+# detail_fields (M03) is a display projection derived from this same payload;
+# the writing generators never read it, so it must not move the version.
+_NON_VERSIONED_FIELDS = {"writing_target_version", "contact_email_status", "detail_fields"} | REDACTED_FIELDS
 
 
 def project_public_detail(opp: dict) -> dict:

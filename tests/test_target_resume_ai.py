@@ -357,6 +357,24 @@ def test_worker_timeout_preserves_all_receipts(endpoint, monkeypatch):
     assert not calls
 
 
+def test_saturated_worker_pool_is_a_timeout_receipt_not_a_500(endpoint, monkeypatch):
+    # The overloaded branch unpacked two values into three names, so a full
+    # blocking pool turned into an unhandled ValueError and a 500 for every
+    # student asking for suggestions while the pool was busy.
+    from backend.lib.blocking import BlockingWorkOverloaded
+    client, doc, _, calls = endpoint
+
+    async def overloaded(*args, **kwargs):
+        raise BlockingWorkOverloaded()
+
+    monkeypatch.setattr(route, "run_blocking", overloaded)
+    response = client.post(PATH, json=payload(doc))
+    assert response.status_code == 200
+    body = response.json()
+    assert all(row["reason_code"] == "timeout" and row["suggestion"] is None for row in body["receipts"])
+    assert body["logical_calls"] == 0 and not calls
+
+
 def test_closed_feature_refuses_new_path_with_no_store(endpoint, monkeypatch):
     import backend.main as main
     client, doc, _, calls = endpoint

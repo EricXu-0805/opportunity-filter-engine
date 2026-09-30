@@ -84,7 +84,7 @@ async def full_target_suggestions(request: FullTargetRequest):
         try:
             raw, reason, calls = await run_blocking(dispatch, messages)
         except BlockingWorkOverloaded:
-            reason, calls, raw = "timeout", 0
+            reason, calls, raw = "timeout", 0, None
         except BlockingWorkTimeout:
             reason, calls = "timeout", 1  # dispatch may have started; honest upper bound, not billed count
             raw = None

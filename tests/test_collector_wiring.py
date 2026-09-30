@@ -45,6 +45,9 @@ KNOWN_UNWIRED = {
     "application_status",  # shared fail-closed status parser used by campus collectors
     "base",  # vestigial ABC interface; real convention is fetch_and_normalize/merge_into_processed
     # -- deliberately manual / CLI / API-driven (never on the weekly refresh) --
+    "import_document",  # library behind the user URL-import route (backend/routes/import_url.py)
+    "lab_website",  # lab-page candidates; run via scripts/lab_candidate.py + lab_refresh.py (not yet scheduled)
+    "research_queue",  # research-refresh queue; run via scripts/research_candidate.py + research_refresh.py (not yet scheduled)
     "handshake",  # per-school login cookies expire in days; manual --school runs only
     "manual_importer",  # CLI import of hand-curated JSON/CSV entries
     "llm_enrich",  # run-once-per-school LLM keyword mining (cost-controlled)
