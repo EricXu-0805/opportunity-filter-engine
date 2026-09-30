@@ -2728,6 +2728,10 @@ def _local_refine_fallback(
         else:
             candidate = normalized
     result["body"] = redact_embedded_emails(candidate)
+    if not use_template and result["body"].split() == safe_body.split():
+        # No rule changed a word. Greeting normalization alone (the blank line
+        # after "Dear ...,") is not an edit to offer the student.
+        result["body"], result["applied"] = safe_body, []
     result["experience_usage"] = (
         (context["experience_selection"].quoted_usage(result["body"]) if use_template
          else context["experience_selection"].local_usage(source_body)) if context is not None

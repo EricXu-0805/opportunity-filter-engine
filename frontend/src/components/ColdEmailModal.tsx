@@ -1783,7 +1783,7 @@ export default function ColdEmailModal({
       const proposed: EmailEditProposal = { ...edit, id: requestId, afterBody,
         usage: result.experience_usage ?? null, conditions: readEmailTargetConditions(result), ...(typed ? { instruction } : {}) };
       proposalRef.current = proposed; setEditProposal(proposed);
-      reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabrication')
+      reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabricationSuggestion')
         : result.fallback_reason === 'insufficient_evidence' ? aiFallbackMessage('insufficient_evidence', t)
         : locale === 'zh' ? (result.method === 'llm' ? '建议已准备好，请比较后接受或拒绝。' : '已生成基础修改建议，请比较后接受或拒绝。')
           : result.method === 'llm' ? 'Suggestion ready. Compare it, then accept or reject.' : 'Basic edit suggestion ready. Compare it, then accept or reject.');

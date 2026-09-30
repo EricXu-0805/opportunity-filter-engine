@@ -156,6 +156,31 @@ def test_a_wrapped_bullet_lends_nothing_it_does_not_print(client, monkeypatch, e
     assert claim not in result["body"], result
 
 
+@pytest.mark.parametrize("instruction,changed", [
+    pytest.param("Make it shorter and mention my parser tests first.", False, id="no-local-rule-changes-anything"),
+    pytest.param("Make it more formal.", True, id="formal-rule-changes-a-phrase"),
+])
+def test_a_rejected_edit_suggests_only_what_the_local_rules_changed(client, monkeypatch, instruction, changed):
+    # Walked 2026-09-30: the AI edit failed the fact check, the "shorter"
+    # rule had no filler to drop, and the student was still offered a
+    # "suggestion" that differed only by the blank line after the greeting.
+    original = draft("I would love to discuss my parser tests.")
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: draft("I built a Python parser."))
+    response = client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience([TEAM]),
+        "current_body": original, "instruction": instruction})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["fallback_reason"] == "fabrication"
+    assert "I built a Python parser." not in result["body"]
+    if changed:
+        assert "I would greatly appreciate to discuss my parser tests." in result["body"]
+        assert result["applied"] == ["formal"]
+    else:
+        assert result["body"] == original
+        assert result["applied"] == []
+
+
 @pytest.mark.parametrize("failure", ["unconfigured", "no-output", "timeout"])
 def test_local_recovery_does_not_authenticate_an_existing_false_draft(client, monkeypatch, failure):
     if failure == "unconfigured":

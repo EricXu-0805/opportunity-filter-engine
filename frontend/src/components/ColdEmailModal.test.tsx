@@ -1120,6 +1120,36 @@ describe('ColdEmailModal', () => {
       expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     });
 
+    it('offers the safe version of a rejected edit as a suggestion, not as an applied edit', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ body: 'I would love to join.' })],
+      });
+      mockRefineEmail.mockResolvedValue({
+        body: 'I would greatly appreciate to join.',
+        method: 'local',
+        fallback_reason: 'fabrication',
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile()}
+          opportunityId="opp"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('I would love to join.')).toBeInTheDocument());
+      const input = screen.getByPlaceholderText('coldEmail.refinePlaceholder');
+      fireEvent.change(input, { target: { value: 'Make it formal and say I know Rust' } });
+      await act(async () => {
+        fireEvent.submit(input.closest('form')!);
+      });
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('I would greatly appreciate to join.');
+      expect(screen.getByText('coldEmail.refineFabricationSuggestion')).toBeInTheDocument();
+      expect(screen.queryByText('coldEmail.refineFabrication')).toBeNull();
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would love to join.');
+    });
+
     it('reports an evidence-gated safe-template replacement instead of a basic tone edit', async () => {
       mockGetVariants.mockResolvedValue({
         variants: [makeVariant({ body: 'Original body.' })],
