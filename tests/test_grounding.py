@@ -344,3 +344,13 @@ def test_a_slash_compound_is_grounded_when_every_part_is():
     assert competence_violations("I have worked in a yeast lab since January 2026 (10 hours/week).",
                                  "worked 10 hours per week in a yeast genetics lab since january 2026") == []
     assert competence_violations("I have experience with Python/Rust.", "python") == ["python/rust"]
+
+
+def test_an_ing_form_is_grounded_by_the_same_verb_in_the_evidence():
+    # A real Opus draft wrote "data cleaning in R" for the confirmed "cleaned
+    # the 212 responses in R" and was rejected as borrowed competence.
+    from backend.lib.grounding import competence_violations
+
+    corpus = "as part of a four-person team i helped design an online survey and cleaned the 212 responses in r"
+    assert competence_violations("I have experience with data cleaning in R.", corpus) == []
+    assert competence_violations("I have experience with protein folding in R.", corpus) == ["folding", "protein"]
