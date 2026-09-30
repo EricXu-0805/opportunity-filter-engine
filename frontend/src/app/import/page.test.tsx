@@ -221,6 +221,17 @@ describe('ImportPage — actionable input errors', () => {
     await screen.findByText('Retried source');
   });
 
+  // access_page also covers a posting that is gone: a site answering 200 with
+  // "Page not found", "404 Error" or "Service Unavailable". The message has to
+  // name that case and ask for the text only if the posting opens.
+  it('words the blocked-page message for a removed or unavailable posting too', async () => {
+    const { translate } = await import('@/i18n/translate');
+    expect(translate('en', 'import.errorSourceBlocked')).toMatch(/sign-in, bot-check or error page/);
+    expect(translate('en', 'import.errorSourceBlocked')).toMatch(/If the posting opens in your browser/);
+    expect(translate('zh', 'import.errorSourceBlocked')).toMatch(/登录页、人机验证页或错误页/);
+    expect(translate('zh', 'import.errorSourceBlocked')).toMatch(/如果这条职位在你的浏览器里能正常打开/);
+  });
+
 
   it.each([
     ['url', 'import_input_too_large', 'import.errorPageTooLong'],

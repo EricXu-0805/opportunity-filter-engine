@@ -62,7 +62,7 @@ test.describe('Import by URL', () => {
     await page.goto('/import');
     await page.getByPlaceholder('https://...').fill(link);
     await page.getByRole('button', { name: /Fetch & parse/i }).click();
-    await expect(page.getByText(/sign-in or bot-check page instead of the posting/i)).toBeVisible();
+    await expect(page.getByText(/sign-in, bot-check or error page instead of the posting/i)).toBeVisible();
     await expect(page.getByPlaceholder('https://...')).toHaveValue(link);
     await expect(page.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
   });

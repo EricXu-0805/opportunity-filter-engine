@@ -1600,7 +1600,7 @@ export interface ImportedOpportunity {
 export interface ImportUrlResponse {
   ok: boolean;
   error_code?: 'import_input_too_large' | 'import_source_unreadable';
-  /** The one unreadable-source reason the page words differently: a sign-in or bot-check page. */
+  /** The one unreadable-source reason the page words differently: a sign-in, bot-check or error page. */
   error_reason?: 'access_page';
   opportunity?: ImportedOpportunity;
   error?: string;
