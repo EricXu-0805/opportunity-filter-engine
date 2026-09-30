@@ -80,10 +80,13 @@ BEGIN
    INSERT INTO public.material_artifacts(material_id,record_id,owner_id,artifact_kind,application_event_id,contact_event_id,opportunity_id,status,filename,byte_length,
      declared_sha256,created_at,expires_at,stage_token,stage_session_id,authorized_until)
      VALUES(p_material_id,p_record_id,uid,p_kind,CASE WHEN p_kind='application' THEN p_event_id END,CASE WHEN p_kind='contact' THEN p_event_id END,p_opportunity_id,'staged',p_filename,p_byte_length,p_sha256,
-       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,to_timestamp((auth.jwt()->>'exp')::double precision)) RETURNING * INTO a;
+       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,stamp+interval '10 minutes') RETURNING * INTO a;
  END IF;
+ -- Server time bounds the upload and readback, which the backend finishes within
+ -- its request timeout. The caller's access token may expire and be refreshed
+ -- meanwhile; finalize still requires the stage session to be active.
  UPDATE public.material_artifacts SET stage_token=gen_random_uuid(),stage_session_id=(auth.jwt()->>'session_id')::uuid,
-   authorized_until=least(expires_at,to_timestamp((auth.jwt()->>'exp')::double precision)) WHERE material_id=p_material_id RETURNING * INTO a;
+   authorized_until=least(expires_at,clock_timestamp()+interval '10 minutes') WHERE material_id=p_material_id RETURNING * INTO a;
  RETURN jsonb_build_object('artifact',private.material_json(a),'upload',jsonb_build_object('bucket','application-materials',
    'object_key',a.object_key,'stage_token',a.stage_token,'session_id',a.stage_session_id,'authorized_until',a.authorized_until),'replayed',existed);
 EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION USING MESSAGE=p_kind || '_material_conflict', ERRCODE='23505';
@@ -255,11 +258,15 @@ BEGIN
  PERFORM private.material_event_for_kind(p_kind,p_verified_owner,CASE WHEN p_kind='contact' THEN a.contact_event_id ELSE a.application_event_id END,a.opportunity_id);
  IF a.status='deleted' THEN RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
  IF a.status='staged' AND a.expires_at<=clock_timestamp() THEN a:=private.revoke_material(a.material_id); RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
- IF a.stage_token IS DISTINCT FROM p_stage_token OR a.stage_session_id IS DISTINCT FROM p_verified_session_id OR a.authorized_until<=clock_timestamp() THEN
-   RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
  IF p_verified_byte_length IS DISTINCT FROM a.byte_length OR p_verified_sha256 IS DISTINCT FROM a.declared_sha256 THEN
    RAISE EXCEPTION USING MESSAGE=p_kind || '_material_conflict', ERRCODE='23505'; END IF;
+ -- A retried stage rotates the token; the request that lost that race verified
+ -- the same bytes, so once ready it is a replay whatever token it holds.
  IF a.status='ready' THEN RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
+ -- Superseded or past its window: retryable by staging again, not an auth failure.
+ IF a.stage_token IS DISTINCT FROM p_stage_token OR a.authorized_until<=clock_timestamp() THEN
+   RAISE EXCEPTION 'material_stage_superseded' USING ERRCODE='55006'; END IF;
+ IF a.stage_session_id IS DISTINCT FROM p_verified_session_id THEN RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
  stamp:=clock_timestamp();
  UPDATE public.material_artifacts SET status='ready',sha256=p_verified_sha256,archived_at=stamp WHERE material_id=p_material_id RETURNING * INTO a;
  IF p_kind='contact' THEN

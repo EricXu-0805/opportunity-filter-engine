@@ -26,6 +26,7 @@ from backend.lib.material_archive_schema import (
 from backend.lib.release_scope import session_provider_accepted
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_PIPE_CHUNK_BYTES = 1024 * 1024
 
 
 def settings() -> tuple[str, str]:
@@ -53,7 +54,7 @@ async def validate_pdf(data: bytes) -> None:
         stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
     )
     try:
-        await asyncio.wait_for(process.communicate(data), timeout=10)
+        await asyncio.wait_for(_feed_then_wait(process, data), timeout=10)
     except BaseException:
         if process.returncode is None:
             process.kill()
@@ -61,6 +62,21 @@ async def validate_pdf(data: bytes) -> None:
         raise
     if process.returncode != 0:
         raise MaterialError("material_invalid_pdf", 422)
+
+
+async def _feed_then_wait(process: asyncio.subprocess.Process, data: bytes) -> None:
+    # communicate() would copy everything the pipe cannot take at once into its
+    # own buffer: a second full PDF in this process. Bounded writes keep one.
+    view = memoryview(data)
+    try:
+        for start in range(0, len(view), _PIPE_CHUNK_BYTES):
+            process.stdin.write(view[start:start + _PIPE_CHUNK_BYTES])
+            await process.stdin.drain()
+        process.stdin.close()
+        await process.stdin.wait_closed()
+    except (BrokenPipeError, ConnectionResetError):
+        pass  # The child stopped reading; its exit status decides.
+    await process.wait()
 
 
 class MaterialService:
@@ -104,6 +120,9 @@ class MaterialService:
                 "23505": ("material_conflict", 409),
                 "P0002": ("material_not_found", 404),
                 "55000": ("material_not_ready", 409),
+                # Another request re-staged this upload, or its window closed:
+                # staging again succeeds, so this is not a sign-in failure.
+                "55006": ("material_expired", 409),
                 "54000": ("material_quota_exceeded", 409),
             }
             code, status = errors.get(sqlstate, ("material_unavailable", 503))
@@ -166,22 +185,27 @@ class MaterialService:
         return expected
 
     async def object_bytes(self, key: str, expected_length: int, expected_sha: str) -> bytes:
+        chunks: list[bytes] = []
+        await self.verify_object(key, expected_length, expected_sha, chunks.append)
+        return b"".join(chunks)
+
+    async def verify_object(self, key: str, expected_length: int, expected_sha: str, keep=None) -> None:
         async with self.client.stream("GET", f"{self.url}/storage/v1/object/{BUCKET}/{key}", headers=self.headers()) as response:
             if response.status_code != 200:
                 raise MaterialError()
             length = response.headers.get("content-length")
             if length is not None and (not length.isdigit() or int(length) != expected_length):
                 raise MaterialError("material_invalid_receipt", 502)
-            chunks, size, digest = [], 0, hashlib.sha256()
+            size, digest = 0, hashlib.sha256()
             async for chunk in response.aiter_bytes():
                 size += len(chunk)
                 if size > expected_length or size > MAX_FILE_BYTES:
                     raise MaterialError("material_invalid_receipt", 502)
                 digest.update(chunk)
-                chunks.append(chunk)
+                if keep is not None:
+                    keep(chunk)
             if size != expected_length or digest.hexdigest() != expected_sha:
                 raise MaterialError("material_invalid_receipt", 502)
-        return b"".join(chunks)
 
     async def archive(self, data: ArchiveInput, contents: bytes) -> dict:
         stage = await self.rpc(f"stage_{data.material_kind}_material", {
@@ -228,7 +252,8 @@ class MaterialService:
             except (ValueError, TypeError, AttributeError):
                 raise MaterialError() from None
         # Always hash the bytes read from Storage, not an upload acknowledgement.
-        await self.object_bytes(key, data.byte_length, data.bytes_sha256)
+        # The caller already holds the upload; keep no second copy of it.
+        await self.verify_object(key, data.byte_length, data.bytes_sha256)
         result = await self.rpc(f"finalize_{data.material_kind}_material", {
             "p_verified_owner": data.expected_owner_id, "p_verified_session_id": upload["session_id"],
             "p_material_id": data.material_id, "p_stage_token": upload["stage_token"],

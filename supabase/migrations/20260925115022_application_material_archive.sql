@@ -59,8 +59,10 @@ CREATE TABLE private.material_cleanup_outbox(
  claimed_until timestamptz,
  attempts bigint NOT NULL DEFAULT 0,
  last_removed_at timestamptz,
+ completed_at timestamptz,
  CHECK(object_key='pdf/' || material_id::text || '.pdf')
 );
+CREATE INDEX material_cleanup_outbox_due_idx ON private.material_cleanup_outbox(next_attempt_at,material_id) WHERE completed_at IS NULL;
 ALTER TABLE public.material_artifacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_material_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE private.material_cleanup_outbox ENABLE ROW LEVEL SECURITY;
@@ -97,13 +99,17 @@ CREATE FUNCTION private.material_owner_session(p_owner uuid,p_session uuid) RETU
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
  IF p_owner IS NULL OR p_session IS NULL THEN RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
+ -- Account deletion holds its auth.users row while its triggers take the owner
+ -- advisory lock, so take the row first too: deletion then waits for this
+ -- transaction instead of each waiting on the other. KEY SHARE lets token
+ -- refreshes still update the row.
+ PERFORM 1 FROM auth.users WHERE id=p_owner AND is_anonymous IS FALSE FOR KEY SHARE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
  PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || p_owner::text));
- IF NOT EXISTS(SELECT 1 FROM auth.users WHERE id=p_owner AND is_anonymous IS FALSE)
-   OR EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=p_owner::text) THEN
+ IF EXISTS(SELECT 1 FROM public.merged_devices WHERE source_device_id=p_owner::text) THEN
    RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501';
  END IF;
- -- Hold the validated session against concurrent logout until this transaction
- -- completes. The auth-users BEFORE DELETE fence below preserves lock order.
+ -- Hold the validated session against concurrent logout until this transaction completes.
  PERFORM id FROM auth.sessions WHERE id=p_session AND user_id=p_owner
    AND (not_after IS NULL OR not_after>clock_timestamp()) FOR KEY SHARE;
  IF NOT FOUND THEN RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
@@ -182,10 +188,13 @@ BEGIN
    INSERT INTO public.material_artifacts(material_id,record_id,owner_id,application_event_id,opportunity_id,status,filename,byte_length,
      declared_sha256,created_at,expires_at,stage_token,stage_session_id,authorized_until)
      VALUES(p_material_id,p_record_id,uid,p_application_event_id,p_opportunity_id,'staged',p_filename,p_byte_length,p_sha256,
-       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,to_timestamp((auth.jwt()->>'exp')::double precision)) RETURNING * INTO a;
+       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,stamp+interval '10 minutes') RETURNING * INTO a;
  END IF;
+ -- Server time bounds the upload and readback, which the backend finishes within
+ -- its request timeout. The caller's access token may expire and be refreshed
+ -- meanwhile; finalize still requires the stage session to be active.
  UPDATE public.material_artifacts SET stage_token=gen_random_uuid(),stage_session_id=(auth.jwt()->>'session_id')::uuid,
-   authorized_until=least(expires_at,to_timestamp((auth.jwt()->>'exp')::double precision)) WHERE material_id=p_material_id RETURNING * INTO a;
+   authorized_until=least(expires_at,clock_timestamp()+interval '10 minutes') WHERE material_id=p_material_id RETURNING * INTO a;
  RETURN jsonb_build_object('artifact',private.material_json(a),'upload',jsonb_build_object('bucket','application-materials',
    'object_key',a.object_key,'stage_token',a.stage_token,'session_id',a.stage_session_id,'authorized_until',a.authorized_until),'replayed',existed);
 EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'application_material_conflict' USING ERRCODE='23505';
@@ -271,11 +280,15 @@ BEGIN
  PERFORM private.material_event(p_verified_owner,a.application_event_id,a.opportunity_id);
  IF a.status='deleted' THEN RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
  IF a.status='staged' AND a.expires_at<=clock_timestamp() THEN a:=private.revoke_material(a.material_id); RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
- IF a.stage_token IS DISTINCT FROM p_stage_token OR a.stage_session_id IS DISTINCT FROM p_verified_session_id OR a.authorized_until<=clock_timestamp() THEN
-   RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
  IF p_verified_byte_length IS DISTINCT FROM a.byte_length OR p_verified_sha256 IS DISTINCT FROM a.declared_sha256 THEN
    RAISE EXCEPTION 'application_material_conflict' USING ERRCODE='23505'; END IF;
+ -- A retried stage rotates the token; the request that lost that race verified
+ -- the same bytes, so once ready it is a replay whatever token it holds.
  IF a.status='ready' THEN RETURN jsonb_build_object('artifact',private.material_json(a),'replayed',true); END IF;
+ -- Superseded or past its window: retryable by staging again, not an auth failure.
+ IF a.stage_token IS DISTINCT FROM p_stage_token OR a.authorized_until<=clock_timestamp() THEN
+   RAISE EXCEPTION 'material_stage_superseded' USING ERRCODE='55006'; END IF;
+ IF a.stage_session_id IS DISTINCT FROM p_verified_session_id THEN RAISE EXCEPTION 'material_identity_unavailable' USING ERRCODE='42501'; END IF;
  stamp:=clock_timestamp();
  UPDATE public.material_artifacts SET status='ready',sha256=p_verified_sha256,archived_at=stamp WHERE material_id=p_material_id RETURNING * INTO a;
  INSERT INTO public.application_material_records(record_id,material_id,owner_id,application_event_id,opportunity_id,recorded_at)
@@ -294,7 +307,7 @@ BEGIN
      IF FOUND THEN PERFORM private.revoke_material(a.material_id); END IF;
    END IF;
  END LOOP;
- WITH due AS (SELECT material_id FROM private.material_cleanup_outbox WHERE next_attempt_at<=clock_timestamp()
+ WITH due AS (SELECT material_id FROM private.material_cleanup_outbox WHERE completed_at IS NULL AND next_attempt_at<=clock_timestamp()
      AND (claimed_until IS NULL OR claimed_until<=clock_timestamp()) ORDER BY next_attempt_at,material_id LIMIT p_limit FOR UPDATE SKIP LOCKED),
  claimed AS (UPDATE private.material_cleanup_outbox o SET claim_token=gen_random_uuid(),claimed_until=clock_timestamp()+interval '5 minutes',attempts=attempts+1
    FROM due WHERE o.material_id=due.material_id RETURNING o.*)
@@ -308,7 +321,12 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE n integer;
 BEGIN
  IF p_success IS NULL THEN RAISE EXCEPTION 'invalid_application_material' USING ERRCODE='22023'; END IF;
- UPDATE private.material_cleanup_outbox SET next_attempt_at=clock_timestamp()+CASE WHEN p_success THEN interval '24 hours' ELSE interval '5 minutes' END,
+ -- A late upload can only land while a request that staged the key is still
+ -- running. One confirmed absence 24 hours after revocation completes the
+ -- tombstone; the row stays as the key reservation but is not claimed again.
+ UPDATE private.material_cleanup_outbox SET next_attempt_at=CASE WHEN NOT p_success THEN clock_timestamp()+interval '5 minutes'
+     ELSE greatest(clock_timestamp(),created_at+interval '24 hours') END,
+   completed_at=CASE WHEN p_success AND clock_timestamp()>=created_at+interval '24 hours' THEN clock_timestamp() END,
    last_removed_at=CASE WHEN p_success THEN clock_timestamp() ELSE last_removed_at END,claim_token=NULL,claimed_until=NULL
    WHERE material_id=p_material_id AND claim_token=p_claim_token AND claimed_until>clock_timestamp();
  GET DIAGNOSTICS n=ROW_COUNT;
@@ -343,11 +361,6 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER merged_devices_application_materials AFTER INSERT ON public.merged_devices FOR EACH ROW EXECUTE FUNCTION private.merge_application_materials();
-CREATE FUNCTION private.material_auth_delete_fence() RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-BEGIN PERFORM pg_advisory_xact_lock(hashtext('ofe-profile:' || OLD.id::text)); RETURN OLD; END;
-$$;
-CREATE TRIGGER auth_user_material_delete_fence BEFORE DELETE ON auth.users FOR EACH ROW EXECUTE FUNCTION private.material_auth_delete_fence();
 CREATE FUNCTION private.delete_materials_with_auth_user() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
@@ -367,7 +380,6 @@ REVOKE ALL ON FUNCTION private.material_json(public.material_artifacts) FROM PUB
 REVOKE ALL ON FUNCTION private.revoke_material(uuid) FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION private.protect_application_material_record() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION private.merge_application_materials() FROM PUBLIC,anon,authenticated,service_role;
-REVOKE ALL ON FUNCTION private.material_auth_delete_fence() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION private.delete_materials_with_auth_user() FROM PUBLIC,anon,authenticated,service_role;
 CREATE FUNCTION public.stage_application_material(p_expected_owner text,p_material_id uuid,p_record_id uuid,p_application_event_id uuid,p_opportunity_id text,p_filename text,p_byte_length bigint,p_sha256 text) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$ SELECT private.stage_application_material(p_expected_owner,p_material_id,p_record_id,p_application_event_id,p_opportunity_id,p_filename,p_byte_length,p_sha256); $$;
 REVOKE ALL ON FUNCTION private.stage_application_material(text,uuid,uuid,uuid,text,text,bigint,text),public.stage_application_material(text,uuid,uuid,uuid,text,text,bigint,text) FROM PUBLIC,anon,authenticated,service_role;
@@ -394,4 +406,4 @@ CREATE FUNCTION public.ack_material_cleanup(p_material_id uuid,p_claim_token uui
 REVOKE ALL ON FUNCTION private.ack_material_cleanup(uuid,uuid,boolean),public.ack_material_cleanup(uuid,uuid,boolean) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION private.ack_material_cleanup(uuid,uuid,boolean),public.ack_material_cleanup(uuid,uuid,boolean) TO service_role;
 COMMENT ON TABLE public.application_material_records IS 'Later user-reported PDF association; not proof of institutional delivery. Original application event is unchanged.';
-COMMENT ON TABLE private.material_cleanup_outbox IS 'Permanent opaque revoked-key tombstones. Storage API deletion is retried even after success to catch extremely late uploads; no personal metadata retained.';
+COMMENT ON TABLE private.material_cleanup_outbox IS 'Permanent opaque revoked-key tombstones. Storage API deletion is confirmed once more after the late-upload window, then completed; no personal metadata retained.';

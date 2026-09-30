@@ -55,10 +55,13 @@ BEGIN
    INSERT INTO public.material_artifacts(material_id,record_id,owner_id,artifact_kind,application_event_id,contact_event_id,opportunity_id,status,filename,byte_length,
      declared_sha256,created_at,expires_at,stage_token,stage_session_id,authorized_until)
      VALUES(p_material_id,p_record_id,uid,p_kind,CASE WHEN p_kind='application' THEN p_event_id END,CASE WHEN p_kind='contact' THEN p_event_id END,p_opportunity_id,'staged',p_filename,p_byte_length,p_sha256,
-       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,to_timestamp((auth.jwt()->>'exp')::double precision)) RETURNING * INTO a;
+       stamp,stamp+interval '24 hours',gen_random_uuid(),(auth.jwt()->>'session_id')::uuid,stamp+interval '10 minutes') RETURNING * INTO a;
  END IF;
+ -- Server time bounds the upload and readback, which the backend finishes within
+ -- its request timeout. The caller's access token may expire and be refreshed
+ -- meanwhile; finalize still requires the stage session to be active.
  UPDATE public.material_artifacts SET stage_token=gen_random_uuid(),stage_session_id=(auth.jwt()->>'session_id')::uuid,
-   authorized_until=least(expires_at,to_timestamp((auth.jwt()->>'exp')::double precision)) WHERE material_id=p_material_id RETURNING * INTO a;
+   authorized_until=least(expires_at,clock_timestamp()+interval '10 minutes') WHERE material_id=p_material_id RETURNING * INTO a;
  RETURN jsonb_build_object('artifact',private.material_json(a),'upload',jsonb_build_object('bucket','application-materials',
    'object_key',a.object_key,'stage_token',a.stage_token,'session_id',a.stage_session_id,'authorized_until',a.authorized_until),'replayed',existed);
 EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION USING MESSAGE=p_kind || '_material_conflict', ERRCODE='23505';

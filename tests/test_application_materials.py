@@ -5,14 +5,16 @@ import asyncio
 import hashlib
 import io
 import json
+import tracemalloc
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfWriter
+from pypdf.generic import NameObject, StreamObject
 
 from backend.lib import material_archive as lib
-from backend.lib.material_archive_schema import MAX_BODY_BYTES, MaterialError
+from backend.lib.material_archive_schema import MAX_BODY_BYTES, MaterialError, MaterialInput
 from backend.main import RequestBodyLimitMiddleware, _material_body_limit_from_env, app
 from backend.routes import application_materials as route
 
@@ -177,6 +179,75 @@ def test_encrypted_pdf_rejected():
     writer.write(out)
     with pytest.raises(MaterialError):
         asyncio.run(lib.validate_pdf(out.getvalue()))
+
+
+LARGE_BYTES = 16 * 1024 * 1024
+
+
+def large_pdf():
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=100, height=100)
+    content = StreamObject()
+    content.set_data(b" " * LARGE_BYTES)
+    page[NameObject("/Contents")] = writer._add_object(content)
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def traced_peak(run):
+    tracemalloc.start()
+    try:
+        run()
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+
+
+def test_pdf_check_does_not_buffer_a_second_copy_for_the_child():
+    data = large_pdf()
+    assert len(data) > LARGE_BYTES
+    peak = traced_peak(lambda: asyncio.run(lib.validate_pdf(data)))
+    assert peak < LARGE_BYTES // 4, peak
+
+
+class ChunkedBody(httpx.AsyncByteStream):
+    def __init__(self, data):
+        self.data = data
+
+    async def __aiter__(self):
+        for start in range(0, len(self.data), 1024 * 1024):
+            yield self.data[start:start + 1024 * 1024]
+
+
+def test_upload_readback_is_verified_without_holding_the_object():
+    contents = b"%PDF-" + bytes(LARGE_BYTES)
+    digest = hashlib.sha256(contents).hexdigest()
+    state = Provider()
+    state.rpc_overrides["stage_application_material"] = {
+        "artifact": artifact("staged", byte_length=len(contents)), "replayed": False,
+        "upload": {"bucket": "application-materials", "object_key": f"pdf/{MATERIAL}.pdf", "stage_token": TOKEN,
+                   "session_id": SESSION, "authorized_until": "2026-09-25T13:00:00Z"}}
+    state.rpc_overrides["finalize_application_material"] = {
+        "artifact": artifact("ready", byte_length=len(contents), sha256=digest), "replayed": False}
+
+    def handle(request):
+        response = state.handle(request)
+        if request.method == "GET" and "/storage/" in request.url.path:
+            return httpx.Response(200, stream=ChunkedBody(state.object))
+        return response
+
+    data = MaterialInput.model_validate(metadata(byte_length=len(contents), bytes_sha256=digest))
+
+    async def archive():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            service = lib.MaterialService(client, "https://storage.invalid", "service-secret", "Bearer user-token")
+            return await service.archive(data, contents)
+
+    results = []
+    peak = traced_peak(lambda: results.append(asyncio.run(archive())))
+    assert results[0]["record"]["status"] == "ready" and state.object is contents
+    assert peak < LARGE_BYTES // 4, peak
 
 
 def test_archive_download_and_delete_keep_original_bytes(endpoint):
@@ -482,6 +553,15 @@ def test_storage_size_rejection_is_reported_as_too_large(endpoint, rejection):
     response = upload(client)
     assert response.status_code == 413 and response.json()["detail"]["code"] == "material_too_large"
     assert not any(path.endswith("finalize_application_material") for _, path, _, _ in state.calls)
+
+
+def test_finalize_that_lost_to_a_restage_is_retryable_not_sign_in(endpoint):
+    client, state = endpoint
+    state.rpc_overrides["finalize_application_material"] = httpx.Response(
+        409, json={"code": "55006", "message": "material_stage_superseded"})
+    response = upload(client)
+    assert response.status_code == 409 and response.json()["detail"]["code"] == "material_expired"
+    assert "55006" not in response.text
 
 
 def test_other_storage_rejection_stays_unavailable(endpoint):

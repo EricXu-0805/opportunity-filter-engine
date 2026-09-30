@@ -33,12 +33,18 @@ RESET ROLE;
 SET ROLE service_role;
 DO $$DECLARE r jsonb; BEGIN
  SELECT v INTO r FROM public.material_test_receipts WHERE k='first';
- BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'old token finalized'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'old token finalized'; EXCEPTION WHEN object_in_use THEN NULL; END;
  SELECT v INTO r FROM public.material_test_receipts WHERE k='rotated';
  BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('b',64)); RAISE EXCEPTION 'false hash finalized'; EXCEPTION WHEN unique_violation THEN NULL; END;
  INSERT INTO public.material_test_receipts VALUES('final',public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)));
  r:=public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
  IF r->>'replayed'<>'true' OR r->'artifact'<>(SELECT v->'artifact' FROM public.material_test_receipts WHERE k='final') THEN RAISE EXCEPTION 'final replay changed receipt'; END IF;
+ -- The request that lost the stage race verified the same bytes: a replay, not an auth failure.
+ SELECT v INTO r FROM public.material_test_receipts WHERE k='first';
+ BEGIN PERFORM public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('b',64)); RAISE EXCEPTION 'superseded false hash replayed'; EXCEPTION WHEN unique_violation THEN NULL; END;
+ r:=public.finalize_application_material('33000000-0000-4000-8000-000000000001','33000000-0000-4000-8000-000000000001','33000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
+ IF r->>'replayed'<>'true' OR r->'artifact'<>(SELECT v->'artifact' FROM public.material_test_receipts WHERE k='final') THEN RAISE EXCEPTION 'superseded stage not replayed as ready'; END IF;
+ RAISE WARNING 'PASS superseded stage is retryable while staged and a ready replay once finalized';
 END$$;
 RESET ROLE;
 SET ROLE authenticated;
@@ -102,6 +108,18 @@ DO $$DECLARE u text:=pg_temp.login(3);claims text:=current_setting('test.jwt');B
  INSERT INTO auth.sessions(id,user_id) VALUES(u::uuid,u::uuid);
  RAISE WARNING 'PASS formal owner, JWT expiry, session owner/existence/not_after and logout checks';
 END$$;
+DO $$DECLARE u text:=pg_temp.login(3);r jsonb;BEGIN
+ -- An access token near expiry is refreshed by the browser mid-upload; it must
+ -- not shorten the server's stage-to-finalize window.
+ PERFORM set_config('test.jwt',jsonb_build_object('session_id',u,'exp',floor(extract(epoch FROM clock_timestamp()))+2)::text,false);
+ r:=public.stage_application_material(u,'33000000-0000-4000-9000-000000000031','33000000-0000-4000-a000-000000000031',u::uuid,'opp','late.pdf',123,repeat('a',64));
+ IF (r#>>'{upload,authorized_until}')::timestamptz<clock_timestamp()+interval '5 minutes' THEN RAISE EXCEPTION 'upload window bound to access-token life'; END IF;
+ PERFORM pg_sleep(2.5);
+ r:=public.finalize_application_material(u::uuid,u::uuid,'33000000-0000-4000-9000-000000000031',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
+ IF r#>>'{artifact,status}'<>'ready' THEN RAISE EXCEPTION 'expired access token failed a verified upload'; END IF;
+ PERFORM pg_temp.login(3);
+ RAISE WARNING 'PASS stage-to-finalize window is server time, not the caller access-token life';
+END$$;
 -- Broad inherited Storage grants/policies must not expose the new bucket.
 GRANT USAGE ON SCHEMA storage TO authenticated,anon;
 GRANT SELECT,INSERT,UPDATE,DELETE ON storage.objects TO authenticated,anon;
@@ -155,7 +173,16 @@ DO $$DECLARE u text:=pg_temp.login(5);r jsonb;j jsonb;token uuid;BEGIN
  UPDATE private.material_cleanup_outbox SET next_attempt_at=clock_timestamp()-interval '1 second';
  r:=public.claim_material_cleanup(100);
  IF jsonb_array_length(r->'jobs')<4 THEN RAISE EXCEPTION 'successful removal lost late-upload recheck'; END IF;
- RAISE WARNING 'PASS expiry commit, deleted-stage no revival, cleanup lease fencing and permanent late-upload rechecks';
+ -- Past the late-upload window, a confirmed absence completes the tombstone;
+ -- it stays as the revoked-key reservation but is never claimed again.
+ UPDATE private.material_cleanup_outbox SET created_at=created_at-interval '2 days';
+ FOR j IN SELECT value FROM jsonb_array_elements(r->'jobs') LOOP
+  IF public.ack_material_cleanup((j->>'material_id')::uuid,(j->>'claim_token')::uuid,true)->>'accepted'<>'true' THEN RAISE EXCEPTION 'recheck ack absent'; END IF;
+ END LOOP;
+ UPDATE private.material_cleanup_outbox SET next_attempt_at=clock_timestamp()-interval '1 second';
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.claim_material_cleanup(100)->'jobs') c JOIN jsonb_array_elements(r->'jobs') d ON c.value->>'material_id'=d.value->>'material_id') THEN RAISE EXCEPTION 'confirmed-absent tombstone claimed forever'; END IF;
+ IF (SELECT count(*) FROM private.material_cleanup_outbox o JOIN jsonb_array_elements(r->'jobs') d ON o.material_id=(d.value->>'material_id')::uuid)<>jsonb_array_length(r->'jobs') THEN RAISE EXCEPTION 'completed tombstone lost key reservation'; END IF;
+ RAISE WARNING 'PASS expiry commit, deleted-stage no revival, cleanup lease fencing, one late-upload recheck then completion';
 END$$;
 -- Complete Flow B: keep immutable ready content; revoke unfinished uploads.
 DO $$DECLARE src text:=pg_temp.login(8);dst text:='33000000-0000-4000-8000-000000000009';tok uuid;before jsonb;r jsonb;BEGIN

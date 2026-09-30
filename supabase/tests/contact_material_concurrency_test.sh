@@ -9,6 +9,13 @@ material_wait_event() {
   done
   return 1
 }
+material_wait_lock() {
+  for _attempt in {1..200}; do
+    if "${PSQL[@]}" -At -c "SELECT 1 FROM pg_stat_activity WHERE application_name='$1' AND wait_event_type='Lock'" | grep -q 1; then return 0; fi
+    sleep 0.02
+  done
+  return 1
+}
 material_fixture() {
   printf -v MATERIAL_OWNER '36000000-0000-4000-8000-%012d' "$1"
   printf -v MATERIAL_ID '37000000-0000-4000-9000-%012d' "$1"
@@ -25,7 +32,7 @@ PGAPPNAME=ofe_material_stage_b "${PSQL[@]}" -At -c "$MATERIAL_AUTH; INSERT INTO 
 MATERIAL_B=$!
 if ! material_wait_event ofe_material_stage_b advisory; then wait "$MATERIAL_B" || true; cat "$WORK/material-stage-b.log"; exit 1; fi
 wait "$MATERIAL_A"; wait "$MATERIAL_B"
-"${PSQL[@]}" -c "SET ROLE service_role; DO \$\$ BEGIN BEGIN PERFORM public.finalize_contact_material('$MATERIAL_OWNER','$MATERIAL_OWNER','$MATERIAL_ID',(SELECT (v#>>'{upload,stage_token}')::uuid FROM public.contact_material_test_receipts WHERE k='race-old-13'),123,repeat('a',64)); RAISE EXCEPTION 'old parallel upload finalized'; EXCEPTION WHEN insufficient_privilege THEN NULL; END; END \$\$; SELECT $MATERIAL_FINAL" >"$WORK/material-stage-verify.log" 2>&1
+"${PSQL[@]}" -c "SET ROLE service_role; DO \$\$ BEGIN BEGIN PERFORM public.finalize_contact_material('$MATERIAL_OWNER','$MATERIAL_OWNER','$MATERIAL_ID',(SELECT (v#>>'{upload,stage_token}')::uuid FROM public.contact_material_test_receipts WHERE k='race-old-13'),123,repeat('a',64)); RAISE EXCEPTION 'old parallel upload finalized'; EXCEPTION WHEN object_in_use THEN NULL; END; END \$\$; SELECT $MATERIAL_FINAL" >"$WORK/material-stage-verify.log" 2>&1
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF (SELECT count(*) FROM public.contact_material_records WHERE material_id='$MATERIAL_ID')<>1 THEN RAISE EXCEPTION 'parallel stage duplicated association'; END IF; END \$\$"
 printf '%s\n' 'PASS material concurrent stage retry waits, rotates capability and fences old finalize'
 
@@ -60,7 +67,7 @@ MATERIAL_A=$!
 if ! material_wait_event ofe_material_auth_writer PgSleep; then wait "$MATERIAL_A" || true; cat "$WORK/material-auth-writer.log"; exit 1; fi
 PGAPPNAME=ofe_material_auth_delete "${PSQL[@]}" -At -c "DELETE FROM auth.users WHERE id='$MATERIAL_OWNER'" >"$WORK/material-auth-delete.log" 2>&1 &
 MATERIAL_B=$!
-if ! material_wait_event ofe_material_auth_delete advisory; then wait "$MATERIAL_B" || true; cat "$WORK/material-auth-delete.log"; exit 1; fi
+if ! material_wait_lock ofe_material_auth_delete; then wait "$MATERIAL_B" || true; cat "$WORK/material-auth-delete.log"; exit 1; fi
 wait "$MATERIAL_A"; wait "$MATERIAL_B"
 "${PSQL[@]}" -c "DO \$\$ BEGIN IF EXISTS(SELECT 1 FROM public.material_artifacts WHERE owner_id='$MATERIAL_OWNER') OR EXISTS(SELECT 1 FROM public.contact_material_records WHERE owner_id='$MATERIAL_OWNER') OR NOT EXISTS(SELECT 1 FROM private.material_cleanup_outbox WHERE material_id='$MATERIAL_ID') THEN RAISE EXCEPTION 'auth deletion orphaned private material'; END IF; END \$\$"
 printf '%s\n' 'PASS material account deletion waits before session cascade and preserves only opaque cleanup intent'

@@ -36,12 +36,15 @@ RESET ROLE;
 SET ROLE service_role;
 DO $$DECLARE r jsonb; BEGIN
  SELECT v INTO r FROM public.contact_material_test_receipts WHERE k='first';
- BEGIN PERFORM public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'old token finalized'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ BEGIN PERFORM public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)); RAISE EXCEPTION 'old token finalized'; EXCEPTION WHEN object_in_use THEN NULL; END;
  SELECT v INTO r FROM public.contact_material_test_receipts WHERE k='rotated';
  BEGIN PERFORM public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('b',64)); RAISE EXCEPTION 'false hash finalized'; EXCEPTION WHEN unique_violation THEN NULL; END;
  INSERT INTO public.contact_material_test_receipts VALUES('final',public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64)));
  r:=public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
  IF r->>'replayed'<>'true' OR r->'artifact'<>(SELECT v->'artifact' FROM public.contact_material_test_receipts WHERE k='final') THEN RAISE EXCEPTION 'final replay changed receipt'; END IF;
+ SELECT v INTO r FROM public.contact_material_test_receipts WHERE k='first';
+ r:=public.finalize_contact_material('36000000-0000-4000-8000-000000000001','36000000-0000-4000-8000-000000000001','36000000-0000-4000-9000-000000000001',(r#>>'{upload,stage_token}')::uuid,123,repeat('a',64));
+ IF r->>'replayed'<>'true' OR r->'artifact'<>(SELECT v->'artifact' FROM public.contact_material_test_receipts WHERE k='final') THEN RAISE EXCEPTION 'superseded stage not replayed as ready'; END IF;
 END$$;
 RESET ROLE;
 SET ROLE authenticated;
@@ -158,7 +161,7 @@ DO $$DECLARE u text:=pg_temp.login(5);r jsonb;j jsonb;token uuid;BEGIN
  UPDATE private.material_cleanup_outbox SET next_attempt_at=clock_timestamp()-interval '1 second';
  r:=public.claim_material_cleanup(100);
  IF jsonb_array_length(r->'jobs')<4 THEN RAISE EXCEPTION 'successful removal lost late-upload recheck'; END IF;
- RAISE WARNING 'PASS expiry commit, deleted-stage no revival, cleanup lease fencing and permanent late-upload rechecks';
+ RAISE WARNING 'PASS expiry commit, deleted-stage no revival, cleanup lease fencing and a late-upload recheck';
 END$$;
 -- Complete Flow B: keep immutable ready content; revoke unfinished uploads.
 DO $$DECLARE src text:=pg_temp.login(8);dst text:='36000000-0000-4000-8000-000000000009';tok uuid;before jsonb;r jsonb;BEGIN
