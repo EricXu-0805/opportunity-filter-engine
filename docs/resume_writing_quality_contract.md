@@ -1,6 +1,17 @@
-# Résumé writing quality: local evidence contract (w13.5)
+# Résumé writing quality: local evidence contract (w14.0)
 
 Scope: `/api/tailor`, `/api/tailor/renovate`, and `/api/tailor/bullet`. This supplements the historical `tailor_boundary_report.md`; that report describes an earlier implementation, not the current storage/export system.
+
+## w14.0: evidence-mapped rewrites
+
+`backend/lib/evidence_map.py` holds the contract these routes and full-target v6 share.
+
+- The server cuts numbered anchors from the target: the description (a faculty directory template only through its source-stated `metadata.research_areas_raw`), requirements unless inferred, and recent-works titles that pass the publication trust gate. URLs, e-mail addresses and posting boilerplate are cut out. A target with no quotable text gets no model call; every bullet comes back kept with `target_has_no_text`.
+- One generation call per request, ending at most 40 s into it. The model links phrases of each bullet to anchor words and declares its moves: `lead_with`, `relabel` (a "same" link only), `verb_first`, `personal_first`, `tighten`, or `translate` when the bullet is not in the UI locale's language. Broader and cross-language relabels and trimming are not offered (calibration, 2026-09-30).
+- A rewrite may add only words of its own evidence plus a declared relabel's term; it passes the relabel-term filters, the claim locks (actor, qualifier, intent, status, setting, quantity, denial, team, publication) and one fail-closed faithfulness review that also judges each used link. Only an accepted rewrite is shown; every other bullet comes back as written with its reason (`no_link`, `already_aligned`, `no_safe_change`, `cosmetic_only`, `beyond_allowed_edit`, `rewrite_rejected`, `review_rejected`, `review_unavailable`, `model_unavailable`).
+- The student's profile, confirmed skills and interests stay in the prompt as direction, never evidence. After "Use kept as new originals", `source_bullets` carries each line's evidence so reviewed wording never becomes evidence; the saved draft keeps those sources across a reload.
+
+The sections below describe the w13.5 evidence rules; where they differ from the list above (rejection behaviour, `source_evidence`), the list above applies.
 
 ## What changed
 
