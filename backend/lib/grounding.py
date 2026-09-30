@@ -38,6 +38,9 @@ _COMMON_FILLER: frozenset[str] = frozenset({
     "another", "below", "between", "during", "every", "other",
     "their", "there", "these", "those", "throughout", "through",
     "together", "under", "until", "where", "which", "while", "would",
+    "along", "among", "amongst", "beside", "beneath", "beyond", "toward",
+    "towards", "underneath", "without", "including", "regarding",
+    "concerning", "except", "inside", "unlike", "versus", "whereas", "whose",
     # Common verbs
     "achieved", "acquired", "added", "adapted", "addressed", "adjusted",
     "advised", "analyzed", "applied", "approved", "assembled",

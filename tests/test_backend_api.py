@@ -5404,6 +5404,15 @@ class TestBillableClass:
         assert _billable_class(self._req(), "/api/email/send-matches") == "email"
         assert _billable_class(self._req(), "/api/opportunities/abc123/chat") == "llm"
 
+    def test_provider_free_cold_email_routes_are_not_billed_as_llm(self):
+        from backend.main import _billable_class
+
+        # Manual-draft checks and deterministic variants never reach a provider.
+        assert _billable_class(self._req(), "/api/cold-email/validate") is None
+        assert _billable_class(self._req(), "/api/cold-email/variants") is None
+        for path in ("/api/cold-email", "/api/cold-email/stream", "/api/cold-email/refine"):
+            assert _billable_class(self._req(), path) == "llm", path
+
 
 class TestClientIpTrustAndGlobalCeiling:
     """SEC: the per-IP limiter must key on the trusted-proxy-appended client IP
@@ -5636,6 +5645,27 @@ class TestLlmDayCeilingAndDegrade:
         # states the mode outright, so assert that instead.
         assert r.json()["ai_refined"] is False
         assert all(item.get("ai_reason") is None for item in r.json()["results"])
+
+    def test_a_spent_day_never_blocks_provider_free_cold_email_work(
+        self, monkeypatch, sample_profile_req
+    ):
+        from backend.lib import llm_budget
+
+        self._arm(monkeypatch)
+        request = {"profile": sample_profile_req, "opportunity_id": EMAIL_TARGET_ID}
+        draft = client.post("/api/cold-email", json=request)
+        assert draft.status_code == 200, draft.text
+        monkeypatch.setenv("OFE_GLOBAL_LLM_PER_DAY", "0")
+        assert llm_budget.exhausted()
+
+        variants = client.post("/api/cold-email/variants", json=request)
+        assert variants.status_code == 200, variants.text
+        checked = client.post("/api/cold-email/validate", json={
+            **request, "expected_target_version": draft.json()["target_version"],
+            "subject": draft.json()["subject"], "body": draft.json()["body"],
+        })
+        assert checked.status_code == 200, checked.text
+        assert client.post("/api/cold-email", json=request).status_code == 429
 
     def test_a_spent_day_still_refuses_the_endpoints_that_have_no_fallback(
         self, monkeypatch

@@ -217,6 +217,10 @@ def _llm_degradable(path: str) -> bool:
     )
 
 _LLM_COST_PREFIXES = ("/api/cold-email", "/api/import-url", "/api/import-text")
+# Under the cold-email prefix but provider-free: the manual-draft check and the
+# deterministic template variants. They keep their per-IP bucket; billing them
+# would 429 a student's own draft whenever the AI budget is spent.
+_PROVIDER_FREE_PATHS = frozenset({"/api/cold-email/validate", "/api/cold-email/variants"})
 _EMAIL_SEND_PATHS = frozenset(
     {
         "/api/email/send-matches",
@@ -266,6 +270,8 @@ def _billable_class(request: Request, path: str) -> str | None:
         return "email"
     if path.startswith("/api/tailor") and not path.startswith("/api/tailor/status"):
         return "llm"
+    if path in _PROVIDER_FREE_PATHS:
+        return None
     if path.startswith(_LLM_COST_PREFIXES):
         return "llm"
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):

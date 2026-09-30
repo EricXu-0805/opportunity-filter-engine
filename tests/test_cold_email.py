@@ -1681,6 +1681,30 @@ class TestStudentCompetenceProvenanceEG2:
         )
         assert violations == []
 
+    def test_prepositions_in_a_grounded_claim_are_not_borrowed_skills(self):
+        """A real draft was rejected with borrowed competence ['along']."""
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import competence_violations
+        p = ce._common_parts(
+            self._profile(), self._opp(),
+            resume_bullets=["Worked 10 hours per week in a yeast genetics lab since January 2026, "
+                            "running PCR genotyping and maintaining strain stocks."],
+        )
+        student_corpus = ce._student_email_corpus(p)
+        grounded = competence_violations(
+            "I have worked in a yeast genetics lab, running PCR genotyping along with "
+            "maintaining strain stocks, among other tasks, toward a lab routine.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert grounded == []
+        borrowed = competence_violations(
+            "I have worked on hypersonics along with PCR genotyping.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert borrowed == ["hypersonics"]
+
     def test_engine_rejects_borrowing_draft(self, monkeypatch):
         """End to end through _run_engine: an AI draft claiming professor-side
         competence falls back to the grounded template as a fabrication."""

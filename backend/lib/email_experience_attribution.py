@@ -68,6 +68,14 @@ _MODIFIER = re.compile(r'^(personally|successfully|only|independently|solely|alo
 _OBJECT_NEGATION = re.compile(r'\s*,?\s+\b(?:but\s+not|not|rather\s+than|instead\s+of)\s+', re.I)
 _TOKEN = re.compile(r'[+-]?\d+(?:\.\d+)?|[a-z][a-z0-9_+#]*|%', re.I)
 _TEAM_PREFIX = re.compile(r'^(?:working\s+)?with\s+(?:my|our|the)\s+team,?$', re.I)
+# Collaboration, wherever it sits in the clause, qualifies the whole fact. It is
+# not an object detail a shortened claim may drop. "for my team" is a
+# beneficiary, not a collaborator, and stays an ordinary object phrase.
+_TEAM_CONTEXT = re.compile(
+    r'\b(?:(?:together\s+)?(?:with|alongside)\s+(?:my|our|the|other)\s+'
+    r'(?:team(?:mates?)?|colleagues?|classmates?|lab\s*mates?|partners?)'
+    r'|with\s+(?:teammates|colleagues|classmates|a\s+team|a\s+partner)'
+    r'|as\s+(?:part\s+of\s+)?(?:a|my|our|the)\s+team|in\s+a\s+team(?:\s+of\s+\w+)?)\b', re.I)
 _CARE_QUALIFIER = re.compile(r'\b(not|never|without|only|hardly|barely|rarely)\b[^.!?;\n]*\bcarefully\s*$', re.I)
 _BOUND = re.compile(r'\b(?:at\s+(?:most|least)|or\s+(?:less|more)|roughly|approximately|about|up\s+to|more\s+than|less\s+than)\b', re.I)
 _UNITS = {'samples': 'sample', 'records': 'record', 'users': 'user', 'participants': 'participant',
@@ -217,6 +225,7 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             clause = clause.strip(' ,\t“”\"')
             contextual_scope = _activity_scope(clause, activity_aliases) if activity_aliases is not None else ()
             actor = None
+            team_context = False
             parsed = _action(clause, True) if allow_subjectless_claims and carried else None
             if parsed:
                 actor = carried
@@ -232,7 +241,7 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                             _without_activity_suffix("fact " + before, activity_aliases) == "fact"
                             or re.fullmatch(r"(?:at|in|for|on|during)\s+[^,]+,?", before, re.I)))):
                     continue
-                actor = _actor(subject[0]); parsed = candidate; break
+                actor = _actor(subject[0]); parsed = candidate; team_context = bool(_TEAM_CONTEXT.search(before)); break
             if not parsed and carried:
                 actor = carried; parsed = _action(clause, allow_subjectless_claims)
             if not parsed:
@@ -243,6 +252,10 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
             carried = actor
             lemma = (_RESUME_VERBS if allow_subjectless_claims else _VERBS)[action[1].casefold()]
             objects = action[2].strip()
+            # Collaboration anywhere in the clause qualifies every part of it,
+            # so neither the whole object nor a split part can shed it.
+            if team_context or _TEAM_CONTEXT.search(objects):
+                qualifiers = [*qualifiers, 'team']
             shape = (actor, negative, scope, contextual_scope, activity_aliases, allow_subjectless_claims, entry, clause)
             main, denied = _object_facts(objects, lemma, qualifiers, *shape)
             trailing = _trailing_phrases(objects)
@@ -273,6 +286,7 @@ def _object_facts(objects: str, lemma: str, qualifiers: list[str], actor: str, n
         local_scope = contextual_scope or _tokens(suffix[1]); objects = objects[:suffix.start()]
     if contextual_scope:
         objects = _without_activity_suffix(objects, activity_aliases)
+    objects = _TEAM_CONTEXT.sub(' ', objects)
     # The one neutral editorial suffix used by legacy resume rewrites
     # must not erase a local restriction, including "never carefully"
     # or "without working carefully". A nearby retained source sentence
@@ -297,6 +311,15 @@ def _object_facts(objects: str, lemma: str, qualifiers: list[str], actor: str, n
 
 def _same_actor(source: _Fact, claim: _Fact) -> bool:
     return source.actor == claim.actor or (claim.actor == 'the team' and source.actor == 'team')
+
+
+def _qualifiers_supported(source: _Fact, claim: _Fact) -> bool:
+    # A claim may understate: add a collaboration qualifier, or say "I helped
+    # build" for a confirmed "built". It may never drop a qualifier, and every
+    # other one must match exactly.
+    added = {*claim.qualifiers} - {*source.qualifiers}
+    return ({*source.qualifiers} <= {*claim.qualifiers}
+            and added <= ({'team', 'help'} if not claim.negative else {'team'}))
 
 
 # Only the established computational-tool/artifact structures below have an
@@ -565,10 +588,7 @@ def experience_attribution_violations(
         candidates = [fact for fact in sources if _same_actor(fact, claim)
                       and (within is None or fact.entry in within)
                       and fact.action == claim.action and fact.negative == claim.negative
-                      # "I helped build" understates a confirmed "built"; the
-                      # reverse and every other qualifier change still fail.
-                      and (fact.qualifiers == claim.qualifiers
-                           or (not claim.negative and claim.qualifiers == ('help',) and not fact.qualifiers))
+                      and _qualifiers_supported(fact, claim)
                       and (not claim.scope or fact.scope == claim.scope)
                       # An unclassified proper suffix may be a method/object,
                       # not an activity ("in Rust", "for Open Source"). Its exact

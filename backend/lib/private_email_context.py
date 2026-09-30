@@ -9,8 +9,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from bisect import bisect_left, bisect_right
 from copy import deepcopy
 
+from backend.lib.blocking import LOCAL_WORK_TIMEOUT_SECONDS, run_blocking
 from backend.lib.private_import_targets_schema import PrivateTargetError
 from backend.lib.private_target_resolution import PrivateResolvedTarget, resolve_private_import_target
 
@@ -37,8 +39,36 @@ _FORM_ONLY = re.compile(
     r'\b(?:apply|submit\s+(?:your\s+|an?\s+|the\s+)?applications?)\s+only\s+(?:via|through|using|by)\s+(?:the\s+|our\s+|an?\s+)?(?:online\s+|application\s+)?(?:form|portal)\b'
     r'|\bapplications?\s+(?:(?:must|may|can)\s+)?(?:only\s+be\s+submitted|must\s+be\s+submitted\s+only|(?:are\s+)?accepted\s+only|(?:are\s+)?only\s+accepted)\s+(?:via|through|using|by)\s+(?:the\s+|our\s+|an?\s+)?(?:online\s+|application\s+)?(?:form|portal)\b'
     r'|\b(?:we\s+)?only\s+accept\s+applications?\s+(?:via|through|using|by)\s+(?:the\s+|our\s+|an?\s+)?(?:online\s+|application\s+)?(?:form|portal)\b'
-    r'|仅(?:能|可|允许)?通过(?:线上|在线)?(?:申请)?(?:表格|系统|门户)[^。！？\r\n]{0,60}(?:申请|提交)'
-    r'|(?:申请|材料)[^。！？\r\n]{0,60}(?:仅限|只能|必须)[^。！？\r\n]{0,60}(?:表格|系统|门户)', re.I)
+    r'|仅(?:能|可|允许)?通过(?:线上|在线)?(?:申请)?(?:表格|系统|门户)[^。！？\r\n]{0,60}(?:申请|提交)', re.I)
+# (申请|材料) gap{0,60} (仅限|只能|必须) gap{0,60} (表格|系统|门户) with no 。！？ or
+# line break in a gap. As one regex its nested gaps backtrack ~3,600 steps per
+# anchor, about 12 s on a 5 MiB punctuation-free import; this finds the same
+# matches from keyword offsets in linear time.
+_CJK_SENTENCE = re.compile(r'[^。！？\r\n]+')
+_CJK_APPLICATION = re.compile(r'(?=申请|材料)')
+_CJK_ONLY = re.compile(r'(?=仅限|只能|必须)')
+_CJK_CHANNEL = re.compile(r'(?=表格|系统|门户)')
+_CJK_GAP = 60
+
+
+def _cjk_application_only(text: str) -> bool:
+    if not _CJK_ONLY.search(text):
+        return False
+    for part in _CJK_SENTENCE.finditer(text):
+        sentence = part.group()
+        firsts = [m.start() for m in _CJK_APPLICATION.finditer(sentence)]
+        lasts = [m.start() for m in _CJK_CHANNEL.finditer(sentence)]
+        if not firsts or not lasts:
+            continue
+        for middle in (m.start() for m in _CJK_ONLY.finditer(sentence)):
+            first = bisect_right(firsts, middle - 2) - 1
+            last = bisect_left(lasts, middle + 2)
+            if (first >= 0 and firsts[first] >= middle - 2 - _CJK_GAP
+                    and last < len(lasts) and lasts[last] <= middle + 2 + _CJK_GAP):
+                return True
+    return False
+
+
 _NEGATED_RULE = re.compile(r"\b(?:not\s+(?:prohibited|forbidden)|no\s+longer|do\s+not\s+need|don't\s+need|not\s+required)\b|并非|不是|不必|无需|不再", re.I)
 
 
@@ -76,7 +106,7 @@ def private_contact_policy(text: str) -> dict:
         kinds = []
         if _NO_EMAIL.search(quote):
             kinds.append('no_email')
-        if _FORM_ONLY.search(quote):
+        if _FORM_ONLY.search(quote) or _cjk_application_only(quote):
             kinds.append('form_only')
         if not kinds:
             needs_review = needs_review or bool(_RESTRICTIVE.search(quote))
@@ -131,7 +161,9 @@ async def resolve_private_email_context(
         raise PrivateTargetError('private_target_invalid_request', 422)
     target = await resolve_private_import_target(target_id, authorization=authorization,
                                                expected_owner_id=expected_owner_id)
-    context = build_private_email_context(target)
+    # A 5 MiB stored import is a multi-second local scan; keep it off the
+    # single-worker event loop. Timeout/overload surface as a 503, never empty.
+    context = await run_blocking(build_private_email_context, target, timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS)
     if expected_writing_version is not None and expected_writing_version != context['writing_version']:
         raise PrivateTargetError('private_target_changed', 409)
     return context

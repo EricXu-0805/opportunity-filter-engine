@@ -104,6 +104,7 @@ from tests.test_cold_email_writing_quality import OPP as WRITING_OPP
 from tests.test_cold_email_writing_quality import PROFILE
 from tests.test_email_contact_context import post, result
 
+NEUTRAL_ASK = "Could I ask whether you have any current or upcoming research openings?"
 
 @pytest.fixture
 def writing_client(monkeypatch):
@@ -127,7 +128,12 @@ def test_every_endpoint_keeps_exact_attested_reading_level(writing_client, path,
     client, _ = writing_client
     value = context(level=level)
     out = result(post(client, path, value), path)
+    if path in ("", "stream"):
+        assert out["fallback_reason"] is None, out
     for variant in out.get("variants", [out]):
+        # The finite neutral fallback also carries the sentence, so the count
+        # alone cannot tell a kept template from a rejected one.
+        assert NEUTRAL_ASK not in variant["body"]
         assert variant["body"].count(paper_reading_sentence(value)) == 1
         assert variant["contact_context_receipt"] == contact_context_receipt(value)
         assert "I understand" not in variant["body"]
@@ -177,6 +183,7 @@ def test_confirmed_reading_keeps_lawful_availability_in_template(writing_client,
     value["availability"] = {"text": "I am available on Tuesdays.", "confirmed": True}
     out = result(post(client, path, value), path)
     for variant in out.get("variants", [out]):
+        assert NEUTRAL_ASK not in variant["body"]
         assert variant["body"].count(value["availability"]["text"]) == 1
         assert variant["body"].count(paper_reading_sentence(value)) == 1
         assert variant["contact_context_receipt"] == contact_context_receipt(value)

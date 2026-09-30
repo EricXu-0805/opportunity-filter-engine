@@ -110,6 +110,25 @@ def test_contextual_team_prefix_cannot_hide_later_unsupported_i_action(prefix):
     assert check(prefix + 'I built a Python parser.', [prefix + 'I built a Python parser.']) == []
 
 
+@pytest.mark.parametrize('evidence,solo,shared', [
+    ('With my team, I improved accuracy by 20%.', 'I improved accuracy by 20%.', 'With my team, I improved accuracy by 20%.'),
+    ('Built a Python parser with my team.', 'I built a Python parser.', 'I built a Python parser with my team.'),
+    ('I built a Python parser with my teammates.', 'I built a Python parser.', 'I built a Python parser with my teammates.'),
+    ('I improved accuracy with our team by 20%.', 'I improved accuracy.', 'I improved accuracy by 20% with our team.'),
+    ('I built a Python parser as part of a team.', 'I built a Python parser.', 'As part of a team, I built a Python parser.'),
+])
+def test_team_collaboration_qualifier_cannot_be_dropped_into_a_solo_claim(evidence, solo, shared):
+    assert check(solo, [evidence])
+    assert check(shared, [evidence]) == []
+
+
+@pytest.mark.parametrize('mode', [False, True])
+def test_team_qualifier_is_kept_in_resume_mode_and_beneficiary_is_not_collaboration(mode):
+    claim = 'Built a Python parser.' if mode else 'I built a Python parser.'
+    assert check(claim, ['Built a Python parser with my team.'], allow_subjectless_claims=mode)
+    assert check('I built a Python parser.', ['I built a Python parser for my team.'], allow_subjectless_claims=mode) == []
+
+
 def test_coordinated_modifier_keeps_each_action_separate_and_preserves_valid_controls():
     assert check('I wrote parser tests and successfully built a Python parser.', [TEAM])
     assert check('I wrote parser tests and successfully built a Python parser.', ['I wrote parser tests. I built a Python parser.']) == []

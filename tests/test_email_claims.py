@@ -42,6 +42,24 @@ def test_negation_future_and_metadata_reference_are_not_completed_actions(text):
     assert unsupported_action_claims(text) == []
 
 
+READ = "I have read the full text of your paper “Grounded Models” (2025)."
+
+
+def test_confirmed_reading_sentence_is_exempt_only_as_its_single_exact_occurrence():
+    body = f"Dear Pat Lee,\n\n{READ}\n\nCould we talk?"
+    assert unsupported_action_claims(body) == ["unsupported completed-reading claim"]
+    assert unsupported_action_claims(body, confirmed_reading_sentence=READ) == []
+    assert unsupported_action_claims(READ + " " + READ, confirmed_reading_sentence=READ)
+    other = READ.replace("Grounded Models", "Another Paper")
+    assert unsupported_action_claims(other, confirmed_reading_sentence=READ)
+    assert unsupported_action_claims(READ + " I read your recent articles.", confirmed_reading_sentence=READ)
+
+
+def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
+    exempted = READ + " I have attached my CV."
+    assert unsupported_action_claims(exempted, confirmed_reading_sentence=exempted) == ["unsupported attachment claim"]
+
+
 @pytest.mark.parametrize("text,levels", [
     ("I have experience with Python.", {"Python": "beginner"}),
     ("I have hands-on experience with Python.", {"Python": "beginner"}),

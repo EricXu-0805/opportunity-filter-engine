@@ -110,6 +110,71 @@ def test_multiple_restrictions_stay_blocked():
     assert policy['state'] == 'blocked' and policy['reason'] == 'multiple_restrictions'
 
 
+def test_max_size_punctuation_free_cjk_policy_scan_is_linear():
+    import time
+
+    from backend.lib.private_email_context import MAX_SOURCE_CHARACTERS, private_contact_policy
+    text = '申请仅限' * (MAX_SOURCE_CHARACTERS // 4)
+    started = time.perf_counter()
+    policy = private_contact_policy(text)
+    # The nested 60x60 gap regex took about 12 s here; the linear scan ~0.3 s.
+    assert time.perf_counter() - started < 4
+    assert policy == {'state': 'unknown', 'reason': 'policy_review_required', 'quotes': []}
+    assert private_contact_policy('申请仅限' * 1000 + '表格。')['state'] == 'blocked'
+
+
+def test_cjk_application_only_matches_the_bounded_gap_rule_exactly():
+    import random
+    import re
+
+    from backend.lib.private_email_context import _cjk_application_only
+    oracle = re.compile(r'(?:申请|材料)[^。！？\r\n]{0,60}(?:仅限|只能|必须)[^。！？\r\n]{0,60}(?:表格|系统|门户)')
+    assert _cjk_application_only('申请' + 'x' * 60 + '必须' + 'x' * 60 + '表格')
+    assert not _cjk_application_only('申请' + 'x' * 61 + '必须' + '表格')
+    assert not _cjk_application_only('申请' + '必须' + 'x' * 61 + '表格')
+    assert not _cjk_application_only('申请必须。表格')
+    rng = random.Random(20260930)
+    pieces = ['申请', '材料', '仅限', '只能', '必须', '表格', '系统', '门户', '申', '限', 'x' * 7, 'xx', '。', '\n', '！']
+    for _ in range(3000):
+        text = ''.join(rng.choice(pieces) for _ in range(rng.randint(0, 40)))
+        assert _cjk_application_only(text) == bool(oracle.search(text)), text
+
+
+def test_policy_scan_runs_off_the_event_loop(storage, monkeypatch):
+    import asyncio
+    import time
+
+    import backend.lib.private_email_context as context_module
+    storage['row'] = raw_record()
+    real = context_module.private_contact_policy
+
+    def slow_policy(text):
+        time.sleep(0.3)
+        return real(text)
+
+    monkeypatch.setattr(context_module, 'private_contact_policy', slow_policy)
+
+    async def scenario():
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            while True:
+                await asyncio.sleep(0.01)
+                ticks += 1
+
+        task = asyncio.create_task(ticker())
+        await asyncio.sleep(0)
+        result = await context_module.resolve_private_email_context(
+            ID, authorization='Bearer fixture-token', expected_owner_id=OWNER)
+        task.cancel()
+        return ticks, result
+
+    ticks, result = asyncio.run(scenario())
+    assert result['purpose'] == 'first_contact'
+    assert ticks >= 10
+
+
 def test_complete_context_is_private_local_and_not_public_authority(storage, monkeypatch):
     import json
 
