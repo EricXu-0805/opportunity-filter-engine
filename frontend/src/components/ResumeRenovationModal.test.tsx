@@ -1794,3 +1794,37 @@ it('does not label a newer inline draft Saved when an earlier write finishes', a
   expect(screen.queryByText('renovate.saved')).toBeNull();
   expect(mockSaveRenovation).toHaveBeenCalledOnce();
 });
+
+describe('evidence-mapped renovation (w14.0)', () => {
+  const link = { id: 'L1', relation: 'same' as const, entailed: true, written_as: null,
+    target_evidence: { field: 'description', start: 0, end: 13, quote: 'data pipeline' }, source_evidence: { start: 6, end: 19, quote: 'data pipeline' } };
+  it('shows what a rewrite changed and can take the posting terms back out', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { ops: ['relabel', 'lead_with'], links: [link], alternative: 'Built a data pipeline for ML workloads' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    await waitFor(() => expect(screen.getByText('tailor.ops.relabel')).toBeInTheDocument());
+    expect(screen.getByText('tailor.whyMatch:data pipeline|data pipeline')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithoutTerms' }));
+    await waitFor(() => expect(screen.getByText(fullText('Built a data pipeline for ML workloads'))).toBeInTheDocument());
+    // The tailored wording stays one rollback away.
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    await waitFor(() => expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument());
+  });
+  it('says why a foregrounded bullet stayed as written', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0], { variants: [], current: -1, note: 'no_link' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByTestId('renovation-kept-note')).toHaveTextContent('tailor.keptNoChange — tailor.keep.no_link');
+  });
+  it('gives the reason when re-optimize keeps the wording', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockResolvedValue({ text: 'Built a fault-tolerant data pipeline for ML workloads', source_evidence: 'Built a data pipeline',
+      changed: false, warnings: ['rejected_fabrication: review'], status: 'kept', reason_code: 'review_rejected', ops: [], links: [], alternative: null });
+    renderModal();
+    await clickOptimize();
+    expect(await screen.findByText('tailor.keptYourWording — tailor.keep.review_rejected')).toBeInTheDocument();
+    expect(screen.queryByText('renovate.source.ai')).toBeNull();
+  });
+});

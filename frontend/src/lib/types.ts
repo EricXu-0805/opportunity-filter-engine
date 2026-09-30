@@ -672,10 +672,34 @@ export interface EmailVariantsResponse {
  * next to its source for side-by-side comparison even when some
  * bullets were dropped by the anti-fabrication validator.
  */
+export type RewriteOp = 'lead_with' | 'relabel' | 'verb_first' | 'personal_first' | 'tighten' | 'translate';
+/**
+ * Mirrors `backend.schemas.EvidenceLink`: a phrase of the student's line tied
+ * to a literal quote of the opportunity, both with server offsets. `entailed`
+ * is true only when the faithfulness review confirmed the phrase names the
+ * quoted thing; otherwise the quote is the opportunity's own words, nothing more.
+ */
+export interface EvidenceLink {
+  id: string;
+  relation: 'same' | 'broader';
+  entailed: boolean;
+  target_evidence: { quote: string; start: number; end: number; field?: string };
+  source_evidence: { quote: string; start: number; end: number; unit_id?: string };
+  written_as: string | null;
+}
 export interface TailoredBullet {
   text: string;
   source_evidence: string;
   source_index: number;
+  /** w14.0: every submitted bullet comes back once, in order. "rewritten" is a
+   * reviewed rewrite; "kept" is the bullet as written, with reason_code. Older
+   * responses omit these fields. */
+  status?: 'rewritten' | 'kept';
+  reason_code?: string | null;
+  ops?: RewriteOp[];
+  links?: EvidenceLink[];
+  /** The rewrite with the posting's terms taken back out, when that passed too. */
+  alternative?: string | null;
 }
 
 /**
@@ -748,6 +772,9 @@ export interface RenovatedVariant {
   source: RenovatedVariantSource;
   text: string;
   source_evidence: string;
+  ops?: RewriteOp[];
+  links?: EvidenceLink[];
+  alternative?: string | null;
 }
 
 export type RenovationAction = 'foreground' | 'keep' | 'demote';
@@ -758,6 +785,8 @@ export interface RenovatedBullet {
   variants: RenovatedVariant[];
   current: number;
   action: RenovationAction | string;
+  /** Why a foregrounded bullet stayed as written (a TailoredBullet reason_code). */
+  note?: string | null;
 }
 
 export interface RenovatedSection {
@@ -784,6 +813,11 @@ export interface BulletOptimizeResponse {
   source_evidence: string;
   changed: boolean;
   warnings: string[];
+  status?: 'rewritten' | 'kept';
+  reason_code?: string | null;
+  ops?: RewriteOp[];
+  links?: EvidenceLink[];
+  alternative?: string | null;
 }
 
 /** The working document the modal edits and supabase persists (doc jsonb). */

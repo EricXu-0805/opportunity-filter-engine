@@ -32,7 +32,7 @@ const type = (value: string) => fireEvent.change(input(), { target: { value } })
 function raw(): string | null { const entry = readUserScopedEntry(KEY); return entry.status === 'present' ? entry.value : null; }
 function saved() {
   const decoded = decodeDraft(raw() ?? '', OWNER, OPP);
-  if (decoded.status !== 'v2') throw new Error('Expected a v2 draft in the confirmed owner namespace');
+  if (decoded.status !== 'stored') throw new Error('Expected a stored draft in the confirmed owner namespace');
   return decoded.draft;
 }
 function seed(value: string) { expect(writeUserScopedRaw(KEY, value, captureOwnerToken())).toBe(true); }

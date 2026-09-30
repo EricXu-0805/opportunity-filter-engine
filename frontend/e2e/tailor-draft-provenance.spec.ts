@@ -18,7 +18,7 @@ const profile = (): ProfileData => ({ name: 'Tailor provenance student 王', ins
 interface Session { access_token: string; user: { id: string }; [key: string]: unknown }
 interface Owner { http: APIRequestContext; session: Session; uid: string; revision: number }
 interface Binding { profile_sig: string; target_sig: string; resume_sig: string; pipeline_version: string; rule_version: string }
-interface SavedDraft { version: 2; owner_id: string; opportunity_id: string; text: string;
+interface SavedDraft { version: 2 | 3; owner_id: string; opportunity_id: string; text: string;
   origin: { kind: string; binding: Binding | null }; review: null | { text_sig: string; binding: Binding } }
 interface ModelRequest { path: string; original_bullets?: string[]; expected_pipeline_version?: string; expected_target_version?: string; resume_text?: string; profile?: unknown }
 async function commit(owner: Owner, patch: Partial<ProfileData>) {
@@ -87,7 +87,7 @@ async function saved(page: Page, owner: Owner): Promise<{ key: string; value: Sa
   return page.evaluate(({ prefix, uid, target }) => {
     for (const [key, raw] of Object.entries(localStorage)) {
       if (!key.endsWith(`${prefix}${uid}:${target}`)) continue;
-      try { const value = JSON.parse(raw); if (value.version === 2 && value.owner_id === uid && value.opportunity_id === target) return { key, value }; } catch { /* another draft format */ }
+      try { const value = JSON.parse(raw); if ((value.version === 2 || value.version === 3) && value.owner_id === uid && value.opportunity_id === target) return { key, value }; } catch { /* another draft format */ }
     } return null;
   }, { prefix: STORAGE_KEYS.TAILOR_DRAFT_PREFIX, uid: owner.uid, target: TARGET });
 }

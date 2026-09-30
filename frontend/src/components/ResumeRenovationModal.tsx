@@ -27,6 +27,7 @@ import { writingTargetVersion } from '@/lib/writing-target-version';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
+import RewriteWhy, { keptExplanation } from './RewriteWhy';
 import { saveRenovation, loadRenovation, type RenovationPayload, type StoredRenovation } from '@/lib/supabase';
 import { RenovationSaveQueue, type RenovationQueueState } from '@/lib/renovation-save-queue';
 import RenovationHistory from './RenovationHistory';
@@ -739,6 +740,19 @@ export default function ResumeRenovationModal({
     updateBullet(b.id, (cur) => ({ ...cur, current: cur.current + 1 }));
   }
 
+  // The shown rewrite without the posting's terms becomes the next variant; rollback returns to it.
+  function applyWithoutTerms(b: RenovatedBullet) {
+    const shown = b.current >= 0 ? b.variants[b.current] : null;
+    if (!shown?.alternative) return;
+    markUserEdit();
+    updateBullet(b.id, (cur) => ({
+      ...cur,
+      variants: [...cur.variants, { source: shown.source, text: shown.alternative!, source_evidence: shown.source_evidence,
+        ops: (shown.ops ?? []).filter((op) => op !== 'relabel'), links: shown.links ?? [], alternative: null }],
+      current: cur.variants.length,
+    }));
+  }
+
   function startEdit(b: RenovatedBullet) {
     markUserEdit();
     setEditingId(b.id);
@@ -788,13 +802,15 @@ export default function ResumeRenovationModal({
           ...cur,
           variants: [
             ...cur.variants,
-            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence },
+            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence,
+              ...(resp.status ? { ops: resp.ops ?? [], links: resp.links ?? [], alternative: resp.alternative ?? null } : {}) },
           ],
           current: cur.variants.length,
         }));
       } else {
-        // Backend declined (validation or no improvement) — honest no-op.
-        setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
+        // Backend declined (validation or no improvement) — honest no-op, with the reason when it gave one.
+        const kept = keptExplanation(resp.reason_code, t);
+        setBulletNotices((prev) => ({ ...prev, [b.id]: kept ? `${kept.label} — ${kept.reason}` : t('renovate.bulletUnchanged') }));
       }
     } catch (err) {
       if (!current() || !isSameBullet()) return;
@@ -1222,6 +1238,23 @@ export default function ResumeRenovationModal({
                             </p>
                           )}
 
+                          {showingVariant && !isEditing && (
+                            <RewriteWhy links={showingVariant.links} ops={showingVariant.ops} t={t} />
+                          )}
+                          {showingVariant?.alternative && showingVariant.alternative !== current && !isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => applyWithoutTerms(b)}
+                              className="mt-1.5 text-[11px] font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+                            >
+                              {t('tailor.useWithoutTerms')}
+                            </button>
+                          )}
+                          {!showingVariant && b.note && !isEditing && keptExplanation(b.note, t) && (
+                            <p className="mt-1.5 text-[11.5px] text-gray-500" data-testid="renovation-kept-note">
+                              {keptExplanation(b.note, t)!.label} — {keptExplanation(b.note, t)!.reason}
+                            </p>
+                          )}
                           {showingVariant?.source_evidence && !isEditing && (
                             <p className="mt-1.5 text-[11.5px] text-gray-500 italic">
                               <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">

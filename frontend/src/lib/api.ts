@@ -1169,7 +1169,7 @@ export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
-  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string } = {},
+  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string; sourceBullets?: string[] } = {},
 ): Promise<TailorResponse> {
   void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
@@ -1177,6 +1177,8 @@ export async function tailorResume(
     opportunity_id: opportunityId,
     original_bullets: originalBullets,
   };
+  // sourceBullets[i] is bullet i's evidence when its text is reviewed wording.
+  if (options.sourceBullets) body.source_bullets = options.sourceBullets;
   if (options.locale) body.locale = options.locale;
   if (options.expectedPipelineVersion) body.expected_pipeline_version = options.expectedPipelineVersion;
   if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;

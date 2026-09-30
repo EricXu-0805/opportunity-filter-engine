@@ -188,7 +188,7 @@ describe('Tailor profile preflight', () => {
     render(<TailorModal {...base} profileRefresh={refresh(async () => receipt())} />); await drain();
     expect(textarea()).toHaveValue('Unknown old source'); type('An explicit manual edit'); await drain();
     const saved = JSON.parse(savedRaw(key)!);
-    expect(saved).toMatchObject({ version: 2, owner_id: 'tailor-owner', opportunity_id: 'target-one',
+    expect(saved).toMatchObject({ version: 3, owner_id: 'tailor-owner', opportunity_id: 'target-one',
       text: 'An explicit manual edit', origin: { kind: 'unknown', binding: null }, review: null });
     expect(api.tailor).not.toHaveBeenCalled();
   });
