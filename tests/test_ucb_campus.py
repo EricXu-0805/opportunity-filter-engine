@@ -473,3 +473,14 @@ class TestCrawlDiscoverySpecificity:
                   "Amgen Scholars Program at UC Berkeley",
                   "Biology Scholars Program research"]:
             assert ucb_campus._is_noise_discovered(a) is False, a
+
+
+def test_ucb_crawl_domain_boundary_rejects_suffix_spoofing():
+    assert ucb_campus._same_site(
+        "https://research.berkeley.edu/program",
+        "https://apply.berkeley.edu/program",
+    )
+    assert not ucb_campus._same_site(
+        "https://research.berkeley.edu/program",
+        "https://evilberkeley.edu/program",
+    )

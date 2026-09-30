@@ -913,3 +913,20 @@ def test_a_cycle_that_opens_on_a_future_date_is_not_open_now():
 def test_a_present_tense_open_page_still_reads_open():
     assert cg.detect_application_status("Applications are now open. Apply now.") == "open"
     assert cg.detect_application_status("Applications are closed for this year.") == "closed"
+
+
+def test_crawl_domain_boundary_rejects_suffix_spoofing():
+    assert cg._same_site(
+        "https://research.princeton.edu/program",
+        "https://apply.princeton.edu/program",
+    )
+    assert not cg._same_site(
+        "https://research.princeton.edu/program",
+        "https://evilprinceton.edu/program",
+    )
+
+
+def test_crawl_domain_boundary_keeps_the_bare_root_and_rejects_other_schools():
+    assert cg._same_site("https://research.princeton.edu/program", "https://princeton.edu/research")
+    # bu.edu is a string suffix of cbu.edu, a different university.
+    assert not cg._same_site("https://www.bu.edu/urop/", "https://www.cbu.edu/research/")

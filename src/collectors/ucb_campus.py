@@ -381,7 +381,9 @@ def _same_site(seed: str, candidate: str) -> bool:
         return False
     if not ch:
         return False
-    return ch == sh or (ch.endswith("berkeley.edu") and sh.endswith("berkeley.edu"))
+    ch_berkeley = ch == "berkeley.edu" or ch.endswith(".berkeley.edu")
+    sh_berkeley = sh == "berkeley.edu" or sh.endswith(".berkeley.edu")
+    return ch == sh or (ch_berkeley and sh_berkeley)
 
 
 _NAV_TITLE_RE = re.compile(r"^(home|menu|skip to|search|login|apply now|contact|about)$", re.IGNORECASE)
