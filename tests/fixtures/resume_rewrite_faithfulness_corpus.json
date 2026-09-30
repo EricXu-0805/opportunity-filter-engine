@@ -605,6 +605,36 @@
    "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
    "rewrite": "Only made the logo for a campus bike-share app that our 5-person team designed.",
    "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Reached 0.87 AUC on the NIH ChestX-ray14 validation split with a PyTorch image classifier for chest X-ray triage built in a CS 446 course project.",
+   "kind": "result-first reorder"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch chest X-ray triage classifier (CS 446 course project) that reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "course parenthesized"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks and, with two teammates, built the drivetrain for the Illini Robotics club rover in 2025.",
+   "kind": "personal part first"
+  },
+  {
+   "original": "Responsible for building the lab's data pipeline in Python.",
+   "rewrite": "Built the lab's data pipeline in Python.",
+   "kind": "Responsible for -> verb"
+  },
+  {
+   "original": "In charge of designing the club's poster templates in Canva.",
+   "rewrite": "Designed the club's poster templates in Canva.",
+   "kind": "verb first from gerund"
+  },
+  {
+   "original": "2025年秋季起在认知老化实验室担任研究助理，负责安排被试并为认知测验评分。",
+   "rewrite": "为认知测验评分并安排被试（认知老化实验室研究助理，2025年秋季起）。",
+   "kind": "zh reorder with 为…评分"
   }
  ],
  "unfaithful": [
@@ -1008,8 +1038,7 @@
   {
    "original": "Co-authoring a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
    "rewrite": "Co-authored a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "Currently building a Flask dashboard for the lab's sample inventory.",
@@ -1019,26 +1048,22 @@
   {
    "original": "Training a CNN on 5,000 labeled leaf images (in progress).",
    "rewrite": "Trained a CNN on 5,000 labeled leaf images.",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "正在开发一个课程选课小程序。",
    "rewrite": "开发了一个课程选课小程序。",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "毕业论文撰写中，研究校园雨水径流的浊度变化。",
    "rewrite": "撰写了毕业论文，研究校园雨水径流的浊度变化。",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "Hoping to build a robot arm for the club next semester.",
    "rewrite": "Built a robot arm for the club.",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "Interested in building autonomous robots.",
@@ -1048,26 +1073,22 @@
   {
    "original": "Plan to analyze the sleep survey data in R this fall.",
    "rewrite": "Analyzed the sleep survey data in R.",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "计划下学期用 Python 复现该论文的实验。",
    "rewrite": "用 Python 复现了该论文的实验。",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "Learning ROS to program the club rover's navigation.",
    "rewrite": "Programmed the club rover's navigation in ROS.",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "希望参与机器人社团的机械臂设计。",
    "rewrite": "参与了机器人社团的机械臂设计。",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
@@ -1221,8 +1242,7 @@
   {
    "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
    "rewrite": "Ran PCR genotyping for aging research and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
-   "kind": "new claim",
-   "caught": "review"
+   "kind": "new claim"
   },
   {
    "original": "Worked in the Beckman building on sensor calibration.",
@@ -1286,26 +1306,22 @@
   {
    "original": "Drafting a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
    "rewrite": "Drafted a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "目前在做一个基于 Arduino 的土壤湿度监测装置。",
    "rewrite": "做了一个基于 Arduino 的土壤湿度监测装置。",
-   "kind": "ongoing to finished",
-   "caught": "review"
+   "kind": "ongoing to finished"
   },
   {
    "original": "Applying to run a pilot study on study-app usage next semester.",
    "rewrite": "Ran a pilot study on study-app usage.",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "打算用 MATLAB 分析这批心电数据。",
    "rewrite": "用 MATLAB 分析了这批心电数据。",
-   "kind": "intent to done",
-   "caught": "review"
+   "kind": "intent to done"
   },
   {
    "original": "Stained tissue sections for a histology course.",
@@ -1363,6 +1379,36 @@
    "rewrite": "Member of a 5-person team: designed a campus bike-share app; only made the logo.",
    "kind": "team's action left without its doer",
    "caught": "review"
+  },
+  {
+   "original": "Worked in the Beckman building, testing circuit boards.",
+   "rewrite": "Built circuit boards in the Beckman building.",
+   "kind": "verb-position guard: 'building' is a noun, not a build"
+  },
+  {
+   "original": "Participated in building the club rover.",
+   "rewrite": "Built the club rover.",
+   "kind": "verb-position guard: a participation is not a build"
+  },
+  {
+   "original": "My team built a Python parser.",
+   "rewrite": "I built a Python parser.",
+   "kind": "team result as personal behind 'my team'"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R for aging research.",
+   "kind": "purpose added (research setting)"
+  },
+  {
+   "original": "用 Python 清洗了问卷数据。",
+   "rewrite": "熟练使用 Python 清洗了问卷数据。",
+   "kind": "proficiency claim"
+  },
+  {
+   "original": "Used Python to clean survey data.",
+   "rewrite": "Used advanced Python to clean survey data.",
+   "kind": "proficiency claim"
   }
  ]
 }

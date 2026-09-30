@@ -18,7 +18,7 @@ from backend.lib.email_experience_attribution import (
 )
 
 # Bump independently of the wire/pipeline version when source checks change.
-SOURCE_CHECK_VERSION = "target-resume-source-checks-v3"
+SOURCE_CHECK_VERSION = "target-resume-source-checks-v4"
 
 NEGATION = re.compile(r"\b(?:not|never|no|without|only)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未经|仅|只|未|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|接受|录用|发表)", re.I)
 TEAM = re.compile(r"\b(?:team|teammates?|we|our|collaborat\w*)\b|团队|小组|我们|共同|协作|合作", re.I)
@@ -36,6 +36,171 @@ STAGES = {
     "accepted": r"\b(?:accepted|acceptance)\b|录用",
     "published": r"\b(?:published|publication)\b|发表|出版",
 }
+# "Responsible for building" states build. A gerund counts only where it is the
+# clause's own action: first in the clause, after a comma, or after one of these
+# openers. "Interested in building", "participated in building" and "the Beckman
+# building" state no build.
+ACTION_GERUNDS = {
+    "lead": r"leading|managing|heading",
+    "build": r"building|developing|implementing|creating",
+    "design": r"designing",
+    "review": r"reviewing",
+}
+_GERUND_POSITION = re.compile(
+    r"(?:^|[,，]\s*|\b(?:responsible\s+for|in\s+charge\s+of|helped(?:\s+with)?|assisted\s+(?:with|in))\s+)"
+    r"(?:(?:also|currently|still|personally|independently|jointly|actively)\s+)?(?P<word>[a-z]+ing)\b", re.I)
+# Hoped-for, planned or tried work. Dropping the word turns it into work done.
+INTENT = re.compile(
+    r"\b(?:aim(?:s|ed|ing)?|hop(?:e|es|ed|ing)|plan(?:s|ned|ning)?|tr(?:y|ies|ied|ying)|attempt(?:s|ed|ing)?"
+    r"|intend(?:s|ed|ing)?|want(?:s|ed|ing)?|seek(?:s|ing)?|sought|looking|eager|applying|would\s+like)\s+to\b"
+    r"|\binterest(?:ed)?\s+in\b|\bgoal\s+(?:is|was)\s+to\b"
+    r"|希望|计划|打算|拟|想要|有意|期望|期待|感兴趣|志在", re.I)
+# Work the original says is unfinished. A past-tense verb for it, or a Chinese
+# rewrite without any such word, states it finished.
+UNFINISHED = re.compile(
+    r"\b(?:in\s+preparation|in\s+progress|ongoing|on-going|currently|not\s+yet|pending|forthcoming|upcoming"
+    r"|expected|anticipated|under\s+(?:review|revision|development)|drafting)\b", re.I)
+UNFINISHED_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|计划|打算|希望|拟|预计|想要")
+
+# Résumé verbs and their forms. Inflection only, not synonyms: every form maps
+# back to one base, so "writing", "wrote" and "writes" are the same verb.
+_REGULAR_VERBS = """
+accelerate accept achieve acquire adapt add address adjust administer advise advocate aid align allocate analyse
+analyze annotate answer apply appraise arrange assemble assess assign assist attend audit author automate balance
+benchmark brainstorm budget calculate calibrate capture catalog categorize chair characterize chart check clarify
+classify clean code collaborate collect communicate compare compile complete compose compute conceive conduct
+configure consolidate construct consult contribute convert coordinate correct count create culture curate
+customize cycle decrease define delegate deliver demonstrate deploy design detect determine develop devise
+diagnose digitize direct discover dissect distribute document draft educate edit eliminate enable encourage
+engineer enhance enroll ensure establish estimate evaluate examine execute expand experiment explain explore
+extract fabricate facilitate file filter fix forecast format formulate gather generate genotype grade graph
+guide handle help host identify illustrate image implement improve increase influence inform initiate inspect
+install instruct integrate interpret interview introduce investigate isolate launch learn lecture maintain manage
+manufacture market measure mentor merge migrate moderate modify monitor motivate negotiate observe obtain operate
+optimize organize outline participate perform pilot position prepare present prioritize process produce promote
+propose prototype provide publish purify quantify query raise rank reach recommend reconcile record recruit
+redesign reduce refactor refine register reorganize repair report represent research resolve respond restructure
+review revise sample scale schedule score screen sequence serve shadow simulate sketch solder solve sort source
+spearhead standardize stain streamline strengthen study summarize supervise support survey synthesize tabulate
+teach test titrate track train transcribe transform translate troubleshoot tutor update upgrade use validate verify
+visualize volunteer walk work
+"""
+# Doubled final consonant before -ed/-ing ("planned", "debugging").
+_DOUBLING_VERBS = """
+admit ban chat clip commit compel control debug drop equip fit flip grab jog log map occur omit pat patrol permit
+pin plan plot prefer prep program refer regret scan ship skim slip spot step stop strip submit sum tag tap tip
+transfer transmit trim wrap zip
+"""
+# Both spellings of a doubled -l ("modeled", "modelled").
+_L_VERBS = "cancel channel counsel fuel label level model signal travel total"
+_IRREGULAR_VERBS = {
+    "begin": ("began", "begun"), "bring": ("brought",), "build": ("built",), "buy": ("bought",), "catch": ("caught",),
+    "choose": ("chose", "chosen"), "co-write": ("co-wrote", "co-written"), "cut": ("cut",), "deal": ("dealt",),
+    "do": ("did", "done"), "draw": ("drew", "drawn"), "drive": ("drove", "driven"), "feed": ("fed",),
+    "find": ("found",), "fly": ("flew", "flown"), "forget": ("forgot", "forgotten"), "get": ("got", "gotten"),
+    "give": ("gave", "given"), "go": ("went", "gone"), "grow": ("grew", "grown"), "hold": ("held",),
+    "keep": ("kept",), "know": ("knew", "known"), "lead": ("led",), "lend": ("lent",), "lose": ("lost",),
+    "make": ("made",), "meet": ("met",), "oversee": ("oversaw", "overseen"), "pay": ("paid",), "put": ("put",),
+    "read": ("read",), "rebuild": ("rebuilt",), "rewrite": ("rewrote", "rewritten"), "run": ("ran",),
+    "say": ("said",), "seek": ("sought",), "sell": ("sold",), "send": ("sent",), "set": ("set",),
+    "show": ("showed", "shown"), "speak": ("spoke", "spoken"), "spend": ("spent",), "stand": ("stood",),
+    "take": ("took", "taken"), "teach": ("taught",), "tell": ("told",), "think": ("thought",),
+    "undergo": ("underwent", "undergone"), "understand": ("understood",), "undertake": ("undertook", "undertaken"),
+    "win": ("won",), "write": ("wrote", "written"),
+}
+_DOUBLED_IRREGULAR = {"begin", "cut", "forget", "get", "put", "run", "set", "win"}
+
+
+def _third_person(base):
+    if re.search(r"[^aeiou]y$", base):
+        return base[:-1] + "ies"
+    return base + ("es" if re.search(r"(?:s|x|z|ch|sh|o)$", base) else "s")
+
+
+def _ing(base, doubled):
+    if doubled:
+        return base + base[-1] + "ing"
+    if base.endswith("ie"):
+        return base[:-2] + "ying"
+    if base.endswith("e") and not base.endswith(("ee", "ye", "oe")):
+        return base[:-1] + "ing"
+    return base + "ing"
+
+
+def _past(base, doubled):
+    if doubled:
+        return base + base[-1] + "ed"
+    if base.endswith("e"):
+        return base + "d"
+    if re.search(r"[^aeiou]y$", base):
+        return base[:-1] + "ied"
+    return base + "ed"
+
+
+def _verb_forms():
+    forms: dict[str, tuple[str, str]] = {}
+    for base, past in _IRREGULAR_VERBS.items():
+        for form in past:
+            forms[form] = (base, "past")
+        forms[_ing(base, base in _DOUBLED_IRREGULAR)] = (base, "ing")
+        forms[_third_person(base)] = (base, "s")
+    doubling = set(_DOUBLING_VERBS.split())
+    for base in _REGULAR_VERBS.split() + sorted(doubling) + _L_VERBS.split():
+        variants = [base in doubling] + ([True] if base in _L_VERBS.split() else [])
+        for doubled in variants:
+            forms.setdefault(_past(base, doubled), (base, "past"))
+            forms.setdefault(_ing(base, doubled), (base, "ing"))
+        forms.setdefault(_third_person(base), (base, "s"))
+    for base in list(_IRREGULAR_VERBS) + _REGULAR_VERBS.split() + sorted(doubling) + _L_VERBS.split():
+        # A form spelled like its base ("read", "set") is read as the base.
+        forms[base] = (base, "base")
+    return forms
+
+
+RESUME_VERB_FORMS = _verb_forms()
+_WORD = re.compile(r"[A-Za-z]+(?:-[A-Za-z]+)*")
+
+
+def verb_use(word):
+    """(base, kind) for a résumé verb form, kind one of base/past/ing/s; else None.
+
+    A hyphenated compound is read by its last part ("co-authored" -> author).
+    """
+    word = word.casefold()
+    return RESUME_VERB_FORMS.get(word) or RESUME_VERB_FORMS.get(word.rsplit("-", 1)[-1])
+
+
+def _verb_uses(text):
+    return [use for word in _WORD.findall(text) if (use := verb_use(word))]
+
+
+def _progressive_clause(clause):
+    words = [word.casefold() for word in _WORD.findall(clause)]
+    while words and (words[0] in {"also", "still", "now", "currently"} or words[0].endswith("ly")):
+        words.pop(0)
+    return bool(words) and (verb_use(words[0]) or ("", ""))[1] == "ing"
+
+
+def status_upgraded(proposed, original):
+    """Planned, hoped-for or unfinished work now stated as done.
+
+    English: the original marks the work as unfinished or intended (a status
+    word, an intent phrase, or a clause led by an -ing verb) and the rewrite
+    uses the past tense of a verb the original only has in another form
+    ("Co-authoring ... (in preparation)" -> "Co-authored ..."). Chinese: the
+    original's unfinished or intent word is gone from a Chinese rewrite
+    ("正在开发" -> "开发了"). A kept "(in preparation)" does not make a
+    finished verb faithful.
+    """
+    if UNFINISHED_ZH.search(original) and _CJK.search(proposed) and not UNFINISHED_ZH.search(proposed):
+        return True
+    if not (UNFINISHED.search(original) or INTENT.search(original)
+            or any(_progressive_clause(clause) for clause in clauses(original))):
+        return False
+    uses = _verb_uses(original)
+    past = {base for base, kind in uses if kind == "past"}
+    other = {base for base, kind in uses if kind != "past"}
+    return any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed))
 
 
 def normalized(text):
@@ -57,15 +222,28 @@ def clauses(text):
     return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
 
-def personal_actions(text):
+def _guarded_gerunds(clause):
+    """Action families of the gerunds that are this clause's own action."""
+    found = set()
+    for match in _GERUND_POSITION.finditer(clause.strip()):
+        for name, pattern in ACTION_GERUNDS.items():
+            if re.fullmatch(pattern, match["word"], re.I):
+                found.add(name)
+    return found
+
+
+def personal_actions(text, gerunds=False):
     found = set()
     for clause in clauses(text):
-        if NEGATION.search(clause) or (TEAM.search(clause) and not PERSONAL.search(clause)):
+        # "My team built" names the team as the actor; "my" there is not the student.
+        if NEGATION.search(clause) or _team_attributed(clause):
             continue
         # Résumé fragments with no subject are personal claims too.
         for name, pattern in ACTIONS.items():
             if re.search(pattern, clause, re.I):
                 found.add(name)
+        if gerunds:
+            found |= _guarded_gerunds(clause)
     return found
 
 
@@ -123,15 +301,20 @@ APPENDED_RELEVANCE = re.compile(
 QUALITY = re.compile(
     r"\b(?:clear(?:ly)?|robust(?:ly)?|efficient(?:ly)?|effective(?:ly)?|comprehensive(?:ly)?|successful(?:ly)?"
     r"|significant(?:ly)?|substantial(?:ly)?|novel|innovative|rigorous(?:ly)?|thorough(?:ly)?|high-quality"
-    r"|scalable|reliable|sophisticated|state-of-the-art|cutting-edge|extensive(?:ly)?|impactful)\b"
-    r"|高质量|高效|清晰|全面|深入|创新|显著|成功|出色|优秀|严谨", re.I)
+    r"|scalable|reliable|sophisticated|state-of-the-art|cutting-edge|extensive(?:ly)?|impactful"
+    # A proficiency is a skill level the original never states.
+    r"|proficient(?:ly)?|proficiency|expert|expertise|advanced|fluent(?:ly)?|skilled|skillful(?:ly)?|adept)\b"
+    r"|高质量|高效|清晰|全面|深入|创新|显著|成功|出色|优秀|严谨|熟练|精通|擅长", re.I)
 _NOT_PREPOSITION = r"(?!(?:for|in|during|at|within|on|with|to)\b)"
 # A named setting the student worked in ("for a research project", "during CS
 # 225 coursework", "为课题组的项目"). A new one is a new fact about the work.
 SETTING = re.compile(
     r"\b(?:for|in|during|at|within)\s+(?:(?:a|an|the|my|our)\s+)?(?:" + _NOT_PREPOSITION + r"[\w'’-]+\s+){0,4}?"
-    r"(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program|company)\b"
-    r"|(?:在|为|于)[^，,。；;在为于]{0,20}?(?:项目|课题|实验室|课程|课堂|公司|实习|比赛|竞赛)", re.I)
+    r"(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program|company"
+    r"|research)\b"
+    # A Chinese setting phrase stops at a bracket and at 并/和/及/、: "为认知测验评分并
+    # 安排被试（认知老化实验室" is two actions and an aside, not a setting.
+    r"|(?:在|为|于)[^，,。；;在为于（）()并和及、]{0,20}?(?:项目|课题|实验室|课程|课堂|公司|实习|比赛|竞赛|研究)", re.I)
 _CJK = re.compile(r"[\u4e00-\u9fff]")
 # "did not build", "never led", "没有主导": a denial of the action that follows.
 # A bare 不/未 is not one: 不断 (keep on), 不同 (different), 不少 (many), 未来.
@@ -308,6 +491,48 @@ def _head_dropped(core, cores):
     return "hard"
 
 
+_COURSE_CODE = re.compile(r"\b([A-Z]{2,5})\s?(\d{2,4})\b")
+_YEAR = re.compile(r"(?<![\d.])((?:19|20)\d{2})(?![\d.%])")
+_CONTEXT_WORD = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?|%", re.I)
+
+
+def _year_contexts(text, value):
+    words = [word.casefold() for word in _CONTEXT_WORD.findall(text)]
+    found = set()
+    for i, word in enumerate(words):
+        if word == value:
+            if i >= 2:
+                found.add(("L", *words[i - 2:i]))
+            if i + 2 < len(words):
+                found.add(("R", *words[i + 1:i + 3]))
+    return found
+
+
+def identifier_numbers(proposed, original):
+    """Numbers that name something and kept their name in the rewrite.
+
+    A course number travels with its code ("CS 446"), and a year with the two
+    words on one side of it, so moving either with its phrase is not moving a
+    quantity. A year that changes neighbours ("lab in 2024; rig in 2025" ->
+    "lab in 2025; rig in 2024") is still a moved number.
+    """
+    found = set()
+    for match in _COURSE_CODE.finditer(original):
+        if re.search(r"\b" + re.escape(match[1]) + r"\s?" + match[2] + r"\b", proposed):
+            found.add(match[2])
+    for match in _YEAR.finditer(original):
+        if _year_contexts(original, match[1]) & _year_contexts(proposed, match[1]):
+            found.add(match[1])
+    return found
+
+
+def _moved_numbers(claim, sources, head, identifiers):
+    numbers = {token for token in claim.objects if token[0].isdigit()} - identifiers
+    placed = [fact for fact in sources if fact.action == claim.action and _object_head(_object_core(fact)) == head]
+    return bool(placed and numbers & {token for fact in sources for token in fact.objects} - {
+        token for fact in placed for token in fact.objects})
+
+
 def _parsed_claim_findings(proposed, original):
     """(hard, soft) findings among EN claims the attribution parser reads but cannot support.
 
@@ -317,6 +542,7 @@ def _parsed_claim_findings(proposed, original):
     the parser cannot relate to any source fact stays with the review.
     """
     sources = _facts(original, entry=0, source=True, allow_subjectless_claims=True)
+    identifiers = identifier_numbers(proposed, original)
     found, soft = [], []
     # The parser accepts a shortened object as dropped detail; dropping the
     # head noun ("a web app mockup" -> "a web app") names a different thing.
@@ -341,10 +567,10 @@ def _parsed_claim_findings(proposed, original):
             found.append("team_result_claimed")
         core = _object_core(claim)
         head = _object_head(core)
-        numbers = {token for token in claim.objects if token[0].isdigit()}
-        placed = [fact for fact in sources if fact.action == claim.action and _object_head(_object_core(fact)) == head]
-        if placed and numbers & {token for fact in sources for token in fact.objects} - {
-                token for fact in placed for token in fact.objects}:
+        # "X that reached Y" is checked part by part, each against its own action.
+        parts = claim.split or (claim,)
+        if any(_moved_numbers(part, sources, _object_head(_object_core(part)) if claim.split else head, identifiers)
+               for part in parts):
             found.append("quantity_moved")
         cores = {variant for fact in sources
                  if fact.action == claim.action and fact.actor == claim.actor and not fact.negative
@@ -378,6 +604,10 @@ def _appended_relevance(proposed, original):
     return False
 
 
+def _leadership(text, name):
+    return bool(re.search(ACTIONS[name], text, re.I)) or any(name in _guarded_gerunds(clause) for clause in clauses(text))
+
+
 def claim_upgrade_findings(proposed, original):
     """Split the single-bullet claim locks into (hard, soft) findings.
 
@@ -409,18 +639,21 @@ def claim_upgrade_findings(proposed, original):
         hard.append("negation_dropped")
     if PUBLICATION.search(original) and not PUBLICATION.search(proposed):
         hard.append("publication_qualifier_dropped")
-    if personal_actions(proposed) - personal_actions(original):
+    if personal_actions(proposed, gerunds=True) - personal_actions(original, gerunds=True):
         hard.append("personal_action_added")
     if publication_stages(proposed) - publication_stages(original):
         hard.append("publication_stage_added")
+    if INTENT.search(original) and not INTENT.search(proposed):
+        hard.append("intent_dropped")
+    if status_upgraded(proposed, original):
+        hard.append("status_upgraded")
     original_normal = normalized(original)
     if any(normalized(match.group(0)).strip(",，;； ") not in original_normal
            for match in RELEVANCE_PADDING.finditer(proposed)) or _appended_relevance(proposed, original):
         hard.append("relevance_clause_added")
     # Inside a team clause too: personal_actions skips those, and "helped design"
     # as part of a team must not become "led the design".
-    if any(re.search(ACTIONS[name], proposed, re.I) and not re.search(ACTIONS[name], original, re.I)
-           for name in LEADERSHIP):
+    if any(_leadership(proposed, name) and not _leadership(original, name) for name in LEADERSHIP):
         hard.append("leadership_claim_added")
     # A Chinese rewrite of an English original (locale zh) is a translation this
     # word comparison cannot judge; Chinese words are compared with Chinese only.

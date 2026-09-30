@@ -229,6 +229,120 @@ class TestFindingsSplit:
         assert claim_upgrade_findings(SURVEY, SURVEY) == ([], [])
 
 
+CSML = ("Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC "
+        "on the NIH ChestX-ray14 validation split.")
+
+
+class TestLockChangesForEvidenceMappedRewrites:
+    """Evidence-mapped rewrites reorder, put the student's verb first and put their
+    own part first. Each change below removes a measured false positive on one of
+    those moves or closes a gap the moves open; none may accept an upgrade."""
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        (CSML, "Reached 0.87 AUC on the NIH ChestX-ray14 validation split with a PyTorch image classifier for "
+               "chest X-ray triage built in a CS 446 course project."),
+        (CSML, "Built a PyTorch chest X-ray triage classifier (CS 446 course project) that reached 0.87 AUC on "
+               "the NIH ChestX-ray14 validation split."),
+        (ROVER, "Designed the motor mount in SolidWorks and, with two teammates, built the drivetrain for the "
+                "Illini Robotics club rover in 2025."),
+        ("Responsible for building the lab's data pipeline in Python.", "Built the lab's data pipeline in Python."),
+        ("2025年秋季起在认知老化实验室担任研究助理，负责安排被试并为认知测验评分。",
+         "为认知测验评分并安排被试（认知老化实验室研究助理，2025年秋季起）。"),
+    ])
+    def test_result_first_course_aside_own_part_first_and_verb_first_go_to_the_review(self, original, proposed):
+        hard, soft = claim_upgrade_findings(proposed, original)
+        assert hard == [] and soft
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Interested in building autonomous robots.", "Built autonomous robots."),
+        ("Participated in building the club rover.", "Built the club rover."),
+        ("Worked in the Beckman building, testing circuit boards.", "Built circuit boards in the Beckman building."),
+    ])
+    def test_a_gerund_counts_as_the_action_only_in_its_own_position(self, original, proposed):
+        assert "personal_action_added" in claim_upgrade_findings(proposed, original)[0]
+
+    def test_a_leading_gerund_is_a_new_leadership_claim(self):
+        hard, _ = claim_upgrade_findings("Leading the club's weekly meetings.", "Organized the club's weekly meetings.")
+        assert "leadership_claim_added" in hard
+
+    def test_the_plan_path_still_reads_responsible_for_building_as_a_changed_claim(self):
+        assert claim_upgrade_detected("Built the lab's data pipeline in Python.",
+                                      "Responsible for building the lab's data pipeline in Python.")
+
+    def test_my_team_is_the_teams_action_not_the_students(self):
+        hard, _ = claim_upgrade_findings("I built a Python parser.", "My team built a Python parser.")
+        assert "personal_action_added" in hard
+
+    def test_a_course_number_or_year_kept_with_its_words_is_not_a_moved_quantity(self):
+        from backend.lib.target_resume_ai_grounding import identifier_numbers
+
+        assert identifier_numbers("Built a classifier (CS 446 course project).", CSML) == {"446"}
+        swapped = claim_upgrade_findings("Built the lab in 2025; tested the rig in 2024.",
+                                         "Built the lab in 2024; tested the rig in 2025.")[0]
+        assert "quantity_moved" in swapped
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Cleaned 212 survey responses in R.", "Cleaned 212 survey responses in R for aging research."),
+        ("清洗了212份问卷数据。", "为人因研究清洗了212份问卷数据。"),
+    ])
+    def test_research_is_a_setting(self, original, proposed):
+        assert "setting_added" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Used Python to clean survey data.", "Used advanced Python to clean survey data."),
+        ("Wrote survey analysis scripts in R.", "Wrote survey analysis scripts in R, which I am fluent in."),
+        ("用 Python 清洗了问卷数据。", "熟练使用 Python 清洗了问卷数据。"),
+        ("用 Python 清洗了问卷数据。", "用精通的 Python 清洗了问卷数据。"),
+    ])
+    def test_a_proficiency_is_a_quality_claim(self, original, proposed):
+        assert "quality_claim_added" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Hoping to build a robot arm for the club next semester.", "Built a robot arm for the club."),
+        ("Plan to analyze the sleep survey data in R this fall.", "Analyzed the sleep survey data in R."),
+        ("计划下学期用 Python 复现该论文的实验。", "用 Python 复现了该论文的实验。"),
+        ("希望参与机器人社团的机械臂设计。", "参与了机器人社团的机械臂设计。"),
+    ])
+    def test_intended_work_stated_as_done_is_hard(self, original, proposed):
+        assert "intent_dropped" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Co-authoring a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
+         "Co-authored a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published)."),
+        ("Currently building a Flask dashboard for the lab's sample inventory.",
+         "Built a Flask dashboard for the lab's sample inventory."),
+        ("Learning ROS to program the club rover's navigation.", "Programmed the club rover's navigation in ROS."),
+        ("正在开发一个课程选课小程序。", "开发了一个课程选课小程序。"),
+        ("毕业论文撰写中，研究校园雨水径流的浊度变化。", "撰写了毕业论文，研究校园雨水径流的浊度变化。"),
+    ])
+    def test_unfinished_work_stated_as_finished_is_hard(self, original, proposed):
+        assert "status_upgraded" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Currently building a Flask dashboard for the lab's sample inventory.",
+         "Building a Flask dashboard for the lab's sample inventory."),
+        ("Planning to test the app with 10 classmates in October.", "Plan to test the app with 10 classmates in October."),
+        ("Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring "
+         "cognitive tests.", "Scheduled participants and scored cognitive tests as a research assistant in the "
+                             "Cognitive Aging Lab since Fall 2025."),
+        ("目前在做一个基于 Arduino 的土壤湿度监测装置。", "正在制作一个基于 Arduino 的土壤湿度监测装置。"),
+    ])
+    def test_status_kept_in_another_form_is_not_an_upgrade(self, original, proposed):
+        hard = claim_upgrade_findings(proposed, original)[0]
+        assert "status_upgraded" not in hard and "intent_dropped" not in hard
+
+    def test_every_resume_verb_form_maps_to_its_base(self):
+        from backend.lib.target_resume_ai_grounding import RESUME_VERB_FORMS, verb_use
+
+        bases = {base for base, _ in RESUME_VERB_FORMS.values()}
+        assert len(bases) >= 150
+        for word, expected in [("wrote", "write"), ("writing", "write"), ("writes", "write"), ("made", "make"),
+                               ("making", "make"), ("studied", "study"), ("studying", "study"), ("ran", "run"),
+                               ("running", "run"), ("debugging", "debug"), ("modelled", "model"),
+                               ("modeling", "model"), ("co-authored", "author"), ("tutoring", "tutor")]:
+            assert verb_use(word)[0] == expected, word
+
+
 class TestFaithfulnessCorpus:
     """Hard findings must be exactly as wide as the unfaithfulness they name.
 
