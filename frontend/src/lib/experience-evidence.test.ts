@@ -196,6 +196,10 @@ describe('local proposals and confirmed eligibility', () => {
       'Bioengineering student who builds low-cost medical sensors.', 'University of Illinois Urbana-Champaign', 'Python, MATLAB',
     ]);
   });
+  it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
+    const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);
+  });
   it('keeps a stored bullet together with its wrapped lowercase rows', async () => {
     const raw = ['EXPERIENCE', 'Research Assistant, Imaging Lab - Jan 2026 - Present',
       '- Built a PyTorch pipeline that trains a ResNet-18 baseline,', 'reaching 0.87 AUC on a held-out split.',

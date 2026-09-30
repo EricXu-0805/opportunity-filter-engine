@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { webcrypto } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as evidence from '@/lib/experience-evidence';
 import { createEmptyResumeMaster, resumeMasterEditBase } from '@/lib/resume-master';
@@ -40,6 +42,33 @@ describe('complete résumé master editor', () => {
     expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'View profile save status' })).toHaveAttribute('href', '#profile-save-status');
     expect(onChange).not.toHaveBeenCalled();
+  });
+  it('fills unconfirmed candidates from the résumé on request and shows each only once confirmed', async () => {
+    const raw = readFileSync(join(__dirname, '../../lib/__fixtures__/resume-pdf/persona.txt'), 'utf8');
+    render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: raw }} />); open();
+    const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
+    await waitFor(() => expect(propose).toBeEnabled());
+    fireEvent.click(propose);
+    expect(screen.getByText(/^Added 26 candidates quoted from your résumé/)).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('textbox', { name: 'Full name' })).toHaveValue('JORDAN AVERY LEE');
+    expect(screen.getByRole('textbox', { name: 'School' })).toHaveValue('University of Illinois Urbana-Champaign');
+    expect(screen.getAllByRole('textbox', { name: 'Role / project title' }).map((box) => (box as HTMLTextAreaElement).value)).toEqual([
+      'Undergraduate Research Assistant', 'Software Engineering Intern', 'Swahili-English Sentiment Classifier', 'Campus Bus Tracker',
+    ]);
+    expect(screen.getByRole('textbox', { name: 'Skill 8' })).toHaveValue('scikit-learn');
+    expect(screen.getAllByText(/^Needs confirmation · Résumé source/)).toHaveLength(26);
+    expect(preview().getByText('No confirmed content to preview yet.')).toBeVisible();
+    confirm('Full name');
+    expect(preview().getByText('JORDAN AVERY LEE')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }));
+    expect(stored().basics.name).toMatchObject({ status: 'confirmed', value: 'JORDAN AVERY LEE', source: { kind: 'resume', quote: 'JORDAN AVERY LEE', start: 0, end: 16 } });
+    expect(stored().skills.every((skill) => skill.status === 'candidate')).toBe(true);
+    fireEvent.click(propose);
+    expect(screen.getByText('No new candidates found in your résumé.')).toBeVisible();
+  });
+  it('offers no résumé candidates without a résumé', () => {
+    render(<Harness />); open();
+    expect(screen.queryByRole('button', { name: 'Add candidates from my résumé' })).toBeNull();
   });
   it('keeps candidate input out of the preview until confirmed and excludes it explicitly', () => {
     render(<Harness />); open();

@@ -159,7 +159,9 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
     context = [];
   };
   const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
-  const firstHeading = texts.findIndex((text) => resumeSectionHeading(text) !== null);
+  // The first line is the name even when it is set in capitals.
+  const first = texts.findIndex((text) => text.trim());
+  const firstHeading = texts.findIndex((text, index) => index > first && resumeSectionHeading(text) !== null);
   for (const [index, [from, to]] of lines.entries()) {
     const text = texts[index];
     if (notExperience(text, index < firstHeading)) {
@@ -199,7 +201,7 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   }
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
-  const firstHeading = spans.find(([from, to]) => points.slice(from, to).join('').split(/\r?\n/u)
+  const firstHeading = spans.find(([from, to], index) => index > 0 && points.slice(from, to).join('').split(/\r?\n/u)
     .some((line) => resumeSectionHeading(line) !== null))?.[0] ?? -1;
   const proposals = hasParagraphBreak
     // A paragraph is dropped only when none of its lines is experience.

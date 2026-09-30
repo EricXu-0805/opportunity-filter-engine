@@ -1,10 +1,12 @@
 import { resumeMasterEditBase } from './resume-master';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ExperienceEntry, ResumeFact, ResumeMasterV1 } from './types';
 import { sourceDigest } from './experience-evidence';
 import {
-  buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact,
+  buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, proposeResumeMaster,
   removeResumeMasterSources, resumeMasterFacts, validateResumeMaster, withdrawResumeMaster,
 } from './resume-master';
 
@@ -322,5 +324,97 @@ describe('resume editor comparison snapshot', () => {
     expect(resumeMasterEditBase({ ...profile, resume_text: 'Exact raw\n🧪' })).not.toEqual(resumeMasterEditBase(profile));
     const order = { ...master, section_order: [...master.section_order].reverse() };
     expect(resumeMasterEditBase({ ...profile, resume_master: order })).not.toEqual(resumeMasterEditBase(profile));
+  });
+});
+
+describe('résumé master candidates proposed from the résumé text', () => {
+  const persona = readFileSync(join(__dirname, '__fixtures__/resume-pdf/persona.txt'), 'utf8');
+  const values = (master: ResumeMasterV1) => ({
+    basics: Object.fromEntries((['name', 'email', 'phone', 'location'] as const)
+      .flatMap((key) => master.basics[key] ? [[key, master.basics[key]!.value]] : [])),
+    links: master.basics.links.map((link) => [link.label, link.url.value]),
+    education: master.education.map(({ id: _id, details: _details, ...fields }) =>
+      Object.fromEntries(Object.entries(fields).map(([key, item]) => [key, (item as ResumeFact).value]))),
+    activities: master.activities.map(({ id: _id, details: _details, kind, ...fields }) => ({ kind,
+      ...Object.fromEntries(Object.entries(fields).map(([key, item]) => [key, (item as ResumeFact).value])) })),
+    skills: master.skills.map((skill) => skill.value),
+  });
+
+  it('offers every contact, education, role, date and skill fact of the persona as an exact, unconfirmed quote', async () => {
+    const signature = await sourceDigest(persona);
+    const master = proposeResumeMaster(null, persona, signature);
+    expect(values(master)).toEqual({
+      basics: { name: 'JORDAN AVERY LEE', email: 'jordan.lee.test@example.com', location: 'Urbana, IL' },
+      links: [],
+      education: [{ school: 'University of Illinois Urbana-Champaign', degree: 'B.S.', field: 'Computer Science', end: 'expected May 2028' }],
+      activities: [
+        { kind: 'research', title: 'Undergraduate Research Assistant', organization: 'Health Imaging Lab (UIUC)', start: 'Jan 2026', end: 'Present' },
+        { kind: 'employment', title: 'Software Engineering Intern', organization: 'Prairie Analytics', location: 'Champaign, IL', start: 'Jun 2026', end: 'Aug 2026' },
+        { kind: 'project', title: 'Swahili-English Sentiment Classifier' },
+        { kind: 'project', title: 'Campus Bus Tracker' },
+      ],
+      skills: ['Python', 'PyTorch', 'SQL', 'C++', 'Git', 'Linux', 'pandas', 'scikit-learn'],
+    });
+    const facts = resumeMasterFacts(master);
+    expect(facts).toHaveLength(26);
+    for (const item of facts) {
+      expect(item.status).toBe('candidate');
+      if (item.source.kind !== 'resume') throw new Error('expected a résumé source');
+      expect(item.source.signature).toBe(signature);
+      expect(Array.from(persona).slice(item.source.start, item.source.end).join('')).toBe(item.source.quote);
+      expect(item.value).toBe(item.source.quote);
+      expect(isActiveResumeFact(item, { rawText: persona, expectedDigest: signature })).toBe(false);
+      expect(isActiveResumeFact({ ...item, status: 'confirmed' }, { rawText: persona, expectedDigest: signature })).toBe(true);
+    }
+    expect(master.source_signature).toBe(signature);
+    expect(validateResumeMaster(master).ok).toBe(true);
+  });
+
+  it('reads a sidebar résumé: phone, profile link, a degree line under the school and right-aligned rows', async () => {
+    const raw = ['Priya Natarajan', 'priya.natarajan.test@example.com', '(217) 555-0142', 'Champaign, IL', 'github.com/priya-test',
+      'EDUCATION', 'University of Illinois Urbana-Champaign', 'B.S. in Bioengineering, Aug 2024 - May 2028',
+      'Relevant coursework: Signals and Systems, Biomedical Imaging', 'SKILLS', 'Python, MATLAB, NumPy',
+      'RESEARCH EXPERIENCE', 'Undergraduate Researcher, Tissue Mechanics Lab\tSep 2025 - Present',
+      'University of Illinois Urbana-Champaign\tUrbana, IL',
+      'Designed an efficient finite-element workflow that reduced the simulation time from six hours to forty minutes.',
+      'Wrote first-draft test fixtures.', 'PROJECTS', 'Affordable Spirometer\tSpring 2025',
+      'Built a low-cost flow meter and validated it against a clinical spirometer within five percent.'].join('\n');
+    expect(values(proposeResumeMaster(null, raw, await sourceDigest(raw)))).toEqual({
+      basics: { name: 'Priya Natarajan', email: 'priya.natarajan.test@example.com', phone: '(217) 555-0142', location: 'Champaign, IL' },
+      links: [['github.com', 'github.com/priya-test']],
+      education: [{ school: 'University of Illinois Urbana-Champaign', degree: 'B.S.', field: 'Bioengineering', start: 'Aug 2024', end: 'May 2028' }],
+      activities: [
+        { kind: 'research', title: 'Undergraduate Researcher', organization: 'Tissue Mechanics Lab', location: 'Urbana, IL', start: 'Sep 2025', end: 'Present' },
+        { kind: 'project', title: 'Affordable Spirometer', start: 'Spring 2025' },
+      ],
+      skills: ['Python', 'MATLAB', 'NumPy'],
+    });
+  });
+
+  it('reads this product\'s labelled export, a name in capitals and a skills list of acronyms', async () => {
+    const raw = ['JORDAN AVERY LEE', 'Email: jordan.lee.test@example.com', 'Location: Urbana, Illinois', 'Education',
+      'School: University of Illinois Urbana-Champaign', 'Degree: B.S.', 'Field: Computer Science', 'End: Expected May 2028',
+      'Experience', 'Undergraduate Research Assistant', 'Organization: Health Imaging Lab (UIUC)', 'Start: Jan 2026', 'End: Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images.', 'Skills', 'Python', 'SQL', 'MATLAB'].join('\n');
+    expect(values(proposeResumeMaster(null, raw, await sourceDigest(raw)))).toEqual({
+      basics: { name: 'JORDAN AVERY LEE', email: 'jordan.lee.test@example.com', location: 'Urbana, Illinois' },
+      links: [],
+      education: [{ school: 'University of Illinois Urbana-Champaign', degree: 'B.S.', field: 'Computer Science', end: 'Expected May 2028' }],
+      activities: [{ kind: 'research', title: 'Undergraduate Research Assistant', organization: 'Health Imaging Lab (UIUC)', start: 'Jan 2026', end: 'Present' }],
+      skills: ['Python', 'SQL', 'MATLAB'],
+    });
+  });
+
+  it('keeps what the master already holds and never re-proposes a span, even one the student excluded', async () => {
+    const signature = await sourceDigest(persona);
+    const own = empty();
+    own.basics.name = fact('own-name', 'Jordan Lee');
+    own.skills = [fact('own-skill', 'python')];
+    const first = proposeResumeMaster(own, persona, signature);
+    expect(first.basics.name).toEqual(own.basics.name);
+    expect(first.skills.map((skill) => skill.value)).not.toContain('Python');
+    const excluded = { ...first, skills: first.skills.map((skill) => ({ ...skill, status: 'rejected' as const, revision: 2 })) };
+    expect(proposeResumeMaster(excluded, persona, signature)).toEqual(excluded);
+    expect(proposeResumeMaster(first, persona, signature)).toEqual(first);
   });
 });

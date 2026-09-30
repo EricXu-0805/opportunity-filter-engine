@@ -158,6 +158,9 @@ interface LineShape {
 // runs (a ligature, a soft-hyphen break point) and take no space between them.
 const TOUCH = 0.1;
 const SPACE = 0.25;
+// Wider than any word space: a right-aligned date or a column gap, kept as a
+// tab so "Organization<tab>Urbana, IL" stays two fields.
+const WIDE = 2;
 const TAB_GAP = 1.5;
 const ALIGN = 1;
 const COLUMN = 2;
@@ -286,9 +289,13 @@ function pageText(items: readonly unknown[]): string {
     const last = line.runs[line.runs.length - 1];
     const gap = run && last && Math.abs(run.y - last.y) <= Math.max(run.size, last.size) / 2
       ? run.x - (last.x + last.width) : null;
-    const touching = gap !== null && gap <= TOUCH * Math.max(run!.size, last.size);
-    if (text && !/\s$/.test(text) && item.str && !/^\s/.test(item.str) && !touching) text += ' ';
-    text += item.str.replace(KANGXI_RADICAL, (radical) => radical.normalize('NFKC'));
+    const size = run && last ? Math.max(run.size, last.size) : 0;
+    const touching = gap !== null && gap <= TOUCH * size;
+    if (text && !/\s$/.test(text) && item.str && !/^\s/.test(item.str) && !touching) {
+      text += gap !== null && gap > WIDE * size ? '\t' : ' ';
+    }
+    const wideSpace = !item.str.trim() && run && run.width > WIDE * run.size;
+    text += wideSpace ? '\t' : item.str.replace(KANGXI_RADICAL, (radical) => radical.normalize('NFKC'));
     if (item.str.trim()) {
       if (!run) line.positioned = false;
       else {

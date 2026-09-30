@@ -533,6 +533,7 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
   });
 
   it('keeps sidebar and main columns, graphic list bullets, right-aligned rows and one-item lists apart', async () => {
+    // A right-aligned date or location is separated by a tab, not a space.
     expect((await parseFixture('resume-layouts.pdf')).split('\n')).toEqual([
       'Priya Natarajan',
       'priya.natarajan.test@example.com',
@@ -546,12 +547,12 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       'SKILLS',
       'Python, MATLAB, NumPy, SolidWorks, LabVIEW, Git',
       'RESEARCH EXPERIENCE',
-      'Undergraduate Researcher, Tissue Mechanics Lab Sep 2025 - Present',
-      'University of Illinois Urbana-Champaign Urbana, IL',
+      'Undergraduate Researcher, Tissue Mechanics Lab\tSep 2025 - Present',
+      'University of Illinois Urbana-Champaign\tUrbana, IL',
       'Designed an efficient finite-element workflow that reduced the fluid-flow simulation time of affine tissue models from six hours to forty minutes.',
       'Profiled official offline benchmarks and flagged five configuration files with conflicting boundary conditions.',
       'WORK EXPERIENCE',
-      'Engineering Intern, Midwest Medical Devices May 2025 - Aug 2025',
+      'Engineering Intern, Midwest Medical Devices\tMay 2025 - Aug 2025',
       'Automated the calibration log for twelve flow sensors and cut the weekly review from three hours to thirty minutes.',
       'Wrote first-draft test fixtures.',
       'TOOLS',
@@ -564,8 +565,8 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       'English',
       'Spanish',
       'EXPERIENCE',
-      'Research Intern, Biomechanics Lab Jun 2025 - Aug 2025',
-      'University of Illinois Urbana, IL',
+      'Research Intern, Biomechanics Lab\tJun 2025 - Aug 2025',
+      'University of Illinois\tUrbana, IL',
       'Built a gait-analysis toolkit in Python used by eleven graduate students across two labs and three',
       'Collected force-plate recordings from twenty volunteers under an approved protocol with the lab manager',
       'Presented weekly results',
