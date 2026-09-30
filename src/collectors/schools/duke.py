@@ -80,21 +80,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     keywords=["interdisciplinary research", "team science"],
                 ),
-                program(
-                    "data_plus",
-                    "Data+ — Summer Data Research (Duke)",
-                    "https://bigdata.duke.edu/data-summer-program/",
-                    "A 10-week summer program where undergraduates work in small teams on "
-                    "data-driven research projects with faculty and graduate mentors. Pays "
-                    "a stipend; open to Duke students from any major.",
-                    lab_or_program="Data+",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    eligibility_majors=["Data Science", "Statistics", "Computer Science"],
-                    preferred_year=["freshman", "sophomore", "junior"],
-                    international_friendly="yes",
-                    keywords=["data science", "summer research", "stipend"],
-                ),
             ],
         },
         {
@@ -501,7 +486,7 @@ SCHOOL: dict = {
                 "https://undergraduateresearch.duke.edu/opportunity/deans-summer-research-fellowships",
                 "https://undergraduateresearch.duke.edu/honors-theses",
                 "https://focus.duke.edu/",
-                "https://bigdata.duke.edu/participate/data-plus/",
+                "https://iid.duke.edu/iid/data/",
                 "https://fhi.duke.edu/education/story/",
                 "https://iid.duke.edu/iid/climate/",
                 "https://codeplus.duke.edu/",
@@ -776,7 +761,7 @@ SCHOOL: dict = {
                 program(
                     "data_plus_x",
                     "Data+ Summer Research Program \u2014 Duke University",
-                    "https://bigdata.duke.edu/participate/data-plus/",
+                    "https://iid.duke.edu/iid/data/",
                     "Data+ is a 10-week full-time summer program where undergraduates work in "
                     "small teams on data-driven research projects across many fields, guided by "
                     "faculty and graduate mentors. Open to Duke undergraduates from any major; "
@@ -958,7 +943,6 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://undergraduateresearch.duke.edu/opportunity/rachel-carson-scholars-program",
-                "https://nicholasinstitute.duke.edu/climate-plus",
                 "https://bassconnections.duke.edu/summer-programs/summer-neuroscience-program/",
             ],
             "crawl": STATIC,
@@ -983,28 +967,6 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     deadline_note="Duke undergraduates; spring application. Requires at least one term at the Marine Lab.",
                     keywords=["marine science", "conservation", "Duke Marine Lab", "Beaufort", "scholars"],
-                ),
-                program(
-                    "climate_plus_x",
-                    "Duke Climate+ Summer Research Program",
-                    "https://nicholasinstitute.duke.edu/climate-plus",
-                    "A 10-week summer program (a Bass Connections/Nicholas Institute-affiliated "
-                    "data experience) in which small teams of Duke undergraduates tackle "
-                    "interdisciplinary climate-related research projects with faculty and "
-                    "project sponsors. Suited to students across majors interested in climate, "
-                    "energy, sustainability, and data. Provides a stipend; runs late May to "
-                    "late July alongside Data+.",
-                    organization="Duke University",
-                    department="Nicholas Institute for Energy, Environment & Sustainability",
-                    lab_or_program="Climate+",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="Stipend (10 weeks)",
-                    eligibility_majors=["all", "environmental science", "data science", "engineering", "economics", "public policy"],
-                    preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    international_friendly="yes",
-                    deadline_note="Duke undergraduates; application deadline in February (aligned with Data+).",
-                    keywords=["climate", "sustainability", "energy", "data science", "Bass Connections"],
                 ),
                 program(
                     "summer_neuroscience",

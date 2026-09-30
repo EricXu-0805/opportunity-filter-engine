@@ -102,3 +102,40 @@ class TestSeedInventory:
         assert not (set(programs.values()) & dead)
         assert programs[("duke", "climate_plus")] == "https://iid.duke.edu/iid/climate/"
         assert programs[("duke", "climate_plus")] in seeds
+
+    def test_duke_lists_data_plus_and_climate_plus_once_each(self):
+        """Each program had a second record pointing at a dead page.
+
+        data_plus sent students to bigdata.duke.edu/data-summer-program/,
+        which now redirects to a 404 on iid.duke.edu; it was never a seed,
+        so the canary never probed it. climate_plus_x sent them to the
+        Nicholas Institute's climate-plus page, which answers curl and
+        python-requests with a 404 but a browser user agent, the canary's
+        included, with a 200 bot challenge, so the canary read the seed as
+        ok. Both duplicates go, along with the dead seed.
+
+        data_plus_x stays and moves to iiD's Data+ page. Its old bigdata URL
+        301s to /participate/data-plus/, which answers 200 but is only a
+        meta refresh to the iiD+ landing page, so curl -L calls it live
+        while a student sees no Data+ page at all.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://bigdata.duke.edu/data-summer-program/",
+            "https://nicholasinstitute.duke.edu/climate-plus",
+        }
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (seeds & dead)
+        assert not (set(programs.values()) & dead)
+        assert ("duke", "data_plus") not in programs
+        assert ("duke", "climate_plus_x") not in programs
+        assert programs[("duke", "data_plus_x")] == "https://iid.duke.edu/iid/data/"
+        assert programs[("duke", "data_plus_x")] in seeds
