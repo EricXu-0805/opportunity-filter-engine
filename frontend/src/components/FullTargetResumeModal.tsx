@@ -4,6 +4,7 @@ import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
+import { translate } from '@/i18n/translate';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { appendTargetResumeProvenance, type TargetResumeProvenance } from '@/lib/target-resume-provenance';
@@ -27,7 +28,7 @@ import { buildResumeMasterPreview, validateResumeMaster } from '@/lib/resume-mas
 import {
   createTargetResume, suggestTargetResumeOrder, targetResumeContextFromOpportunity,
   targetResumeContextSignature, targetResumeProfileSignature, validateTargetResume, isCurrentTargetResumeContext,
-  type LoadedTargetResume, type TargetResumeLine, type TargetResumeV1,
+  TARGET_RESUME_SAVED_TARGET_LIMITS, type LoadedTargetResume, type TargetResumeLine, type TargetResumeV1,
 } from '@/lib/target-resume';
 import {
   loadTargetResume, loadTargetResumeHistory, loadTargetResumeVersion, saveTargetResume,
@@ -42,6 +43,8 @@ type Session = {
   scope: Scope; phase: 'loading' | 'load-error' | 'idle' | 'creating' | 'doc';
   doc: TargetResumeV1 | null; provenance: TargetResumeProvenance | null; provenanceError: boolean; revision: number; savedJson: string | null; editRevision: number;
   saving: boolean; reloading: boolean; conflict: LoadedTargetResume | null;
+  // The account cap only frees when this owner scope ends, so it outlives edits.
+  quota: 'guest' | 'member' | 'unknown' | null;
   error: 'create' | 'invalid' | 'save' | 'missing' | 'unavailable' | 'reload' | 'context' | 'checking' | 'provenance' | 'timeout' | null;
   history: TargetResumeVersionSummary[] | null; historyBusy: boolean; historyError: boolean; historyHasMore: boolean;
   selectedRevision: number | null; selectedVersion: LoadedTargetResume | null; versionBusy: boolean; versionError: boolean;
@@ -177,7 +180,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     setPlanDirty(false);
     // Opening/retrying/target replacement defines a new private document scope.
     setSession({ scope, phase: 'loading', doc: null, provenance: null, provenanceError: false, revision: 0, savedJson: null, editRevision: 0,
-      saving: false, reloading: false, conflict: null, error: null, history: null, historyBusy: false,
+      saving: false, reloading: false, conflict: null, quota: null, error: null, history: null, historyBusy: false,
       historyError: false, historyHasMore: false, selectedRevision: null, selectedVersion: null, versionBusy: false, versionError: false });
     setLeave(null);
     const unsubscribe = onLocalOwnerStateChange(() => {
@@ -313,7 +316,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     refresh: profileRefresh, target: opportunity, targetRefresh, readiness: createReadiness, execute: () => { void create(); },
   });
   const persist = async (payload: TargetResumeV1, provenance: TargetResumeProvenance | null) => {
-    if (!activeSession || activeSession.provenanceError || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict) return;
+    if (!activeSession || activeSession.provenanceError || !ownerReady || activeSession.saving || activeSession.reloading || activeSession.conflict || activeSession.quota) return;
     const validation = validateTargetResume(payload);
     if (!validation.ok) { update(activeSession.scope, (old) => ({ ...old, error: 'invalid' })); return; }
     const { revision, editRevision } = activeSession;
@@ -335,6 +338,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         conflict: null, error: null, history: null, historyBusy: false, historyHasMore: false, versionBusy: false,
         selectedVersion: null, selectedRevision: null }));
       } else if (result.status === 'conflict') update(scope, (old) => ({ ...old, saving: false, conflict: result.current }));
+      else if (result.status === 'quota') update(scope, (old) => ({ ...old, saving: false, quota: result.account }));
       else update(scope, (old) => ({ ...old, saving: false,
         error: result.status === 'missing' ? 'missing' : result.status === 'unavailable' || result.status === 'abandoned' ? 'unavailable' : 'save' }));
     } catch { update(scope, (old) => ({ ...old, saving: false, error: 'save' })); }
@@ -561,13 +565,16 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
               try { const ordered = suggestTargetResumeOrder(doc); edit((next) => { next.document = ordered.document; }, 'target_order'); }
               catch { update(activeSession.scope, (old) => ({ ...old, error: 'invalid' })); }
             }}>{copy('Suggest order of whole blocks', '建议完整内容块的顺序')}</button>
-            <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.provenanceError || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict} onClick={() => void persist(doc, activeSession.provenance)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
+            <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.provenanceError || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict || !!activeSession.quota} onClick={() => void persist(doc, activeSession.provenance)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
             <p role="status" className="text-sm text-gray-600">{activeSession.saving ? copy('Waiting for the cloud save result.', '正在等待云端保存结果。') : dirty ? copy('Unsaved local edits', '本地编辑尚未保存') : `${copy('Saved version', '已保存版本')} ${activeSession.revision}`}</p>
           </div>
           {activeSession.provenanceError && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
             <p>{copy('Your full draft is kept, but its change record could not be recorded. Saving and AI changes are paused. You can export the draft, or discard local changes and load the saved version.', '全文仍保留，但本次修改记录无法保存。保存和 AI 修改已暂停。可先导出，或放弃本地修改并载入已保存版本。')}</p>
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local changes and reload saved version', '放弃本地修改并重新载入已保存版本')}</button>
           </div>}
+          {activeSession.quota && <p role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">{translate(locale, `tailor.fullTarget.${activeSession.quota === 'guest' ? 'quotaGuest' : activeSession.quota === 'member' ? 'quotaMember' : 'quotaUnknown'}`, {
+            limit: TARGET_RESUME_SAVED_TARGET_LIMITS[activeSession.quota === 'guest' ? 'guest' : 'member'],
+            guestLimit: TARGET_RESUME_SAVED_TARGET_LIMITS.guest, memberLimit: TARGET_RESUME_SAVED_TARGET_LIMITS.member })}</p>}
           {activeSession.conflict && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
             <p>{copy('A newer server version exists. Your local edits are preserved and have not overwritten it. Loading the server version will discard your local edits.', '服务器已有更新版本。本地编辑仍保留，未覆盖服务器；载入服务器版本会放弃本地编辑。')}</p>
             <button type="button" className={`${button} mt-2`} disabled={activeSession.reloading || activeSession.saving || !ownerReady} onClick={() => void reloadServer()}>{copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本')}</button>

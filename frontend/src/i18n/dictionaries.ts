@@ -4266,6 +4266,9 @@ export const en = {
     fullTarget: {
       interestsTooLarge: 'Your research interests are over {limit} characters, so AI suggestions cannot use them in full. Shorten them in your profile, then rebuild this draft. Nothing was cut.',
       batchContextTooLarge: 'This item needs a smaller AI request. Continue to review it.',
+      quotaGuest: 'Guest sessions can save up to {limit} target résumés, and this would be one more, so it was not saved. Saving again will not change that. Your draft stays here and can still be exported, and target résumés you already saved can still be edited. Sign in to keep your work across devices; signed-in accounts can save up to {memberLimit}.',
+      quotaMember: 'This account already holds the maximum of {limit} saved target résumés, so this new one was not saved. Saving again will not change that. Your draft stays here and can still be exported, and target résumés you already saved can still be edited.',
+      quotaUnknown: 'This account has reached its limit of saved target résumés ({guestLimit} for guest sessions, {memberLimit} for signed-in accounts), so this new one was not saved. Saving again will not change that. Your draft stays here and can still be exported, and target résumés you already saved can still be edited.',
     },
   },
   resume: {
@@ -9351,6 +9354,9 @@ export const zh = {
     fullTarget: {
       interestsTooLarge: '研究兴趣超过 {limit} 个字符，AI 建议无法完整使用。请在个人资料中精简后重新生成此稿。内容没有被截断。',
       batchContextTooLarge: '此项需要拆成更小的 AI 请求，点击继续即可核对。',
+      quotaGuest: '访客会话最多保存 {limit} 份目标简历，这份会超出上限，因此未保存，再次保存也不会成功。文稿仍保留在这里，可以导出；已保存的目标简历仍可编辑。登录后可在不同设备上保留你的内容，登录账户最多可保存 {memberLimit} 份。',
+      quotaMember: '此账户已保存 {limit} 份目标简历，达到上限，这份新稿未保存，再次保存也不会成功。文稿仍保留在这里，可以导出；已保存的目标简历仍可编辑。',
+      quotaUnknown: '此账户保存的目标简历已达上限（访客会话 {guestLimit} 份，登录账户 {memberLimit} 份），这份新稿未保存，再次保存也不会成功。文稿仍保留在这里，可以导出；已保存的目标简历仍可编辑。',
     },
   },
   resume: {

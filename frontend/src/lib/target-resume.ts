@@ -94,7 +94,10 @@ export interface LoadedTargetResume { revision: number; doc: TargetResumeV1; upd
 export type TargetResumeSaveResult =
   | { status: 'saved' | 'unchanged'; value: LoadedTargetResume }
   | { status: 'conflict'; current: LoadedTargetResume }
+  | { status: 'quota'; account: 'guest' | 'member' | 'unknown' }
   | { status: 'missing' | 'abandoned' | 'unavailable' | 'failed' };
+/** Mirrors private.target_resume_admit: the most distinct targets one account may save. */
+export const TARGET_RESUME_SAVED_TARGET_LIMITS = { guest: 10, member: 100 } as const;
 export type TargetResumeErrorCode =
   | 'invalid_document' | 'document_too_large' | 'invalid_unicode' | 'invalid_json'
   | 'invalid_master' | 'master_required' | 'confirmed_content_required'

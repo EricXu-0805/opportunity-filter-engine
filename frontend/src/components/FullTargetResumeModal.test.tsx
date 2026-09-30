@@ -23,7 +23,8 @@ vi.mock('@/lib/target-resume-storage', () => ({
   loadTargetResume: (...args: unknown[]) => storage.load(...args), saveTargetResume: (...args: unknown[]) => storage.save(...args),
   loadTargetResumeHistory: (...args: unknown[]) => storage.history(...args), loadTargetResumeVersion: (...args: unknown[]) => storage.version(...args),
 }));
-vi.mock('@/i18n/client', () => ({ useLocale: () => 'en' }));
+const i18n = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh' }));
+vi.mock('@/i18n/client', () => ({ useLocale: () => i18n.locale }));
 const supplement = vi.hoisted(() => ({ props: null as ResumeSupplementPanelProps | null, push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: supplement.push }) }));
 vi.mock('./ResumeSupplementPanel', () => ({ default: (props: ResumeSupplementPanelProps) => {
@@ -83,7 +84,7 @@ beforeEach(async () => {
   vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch('target-resume-owner-a'); await syncLocalIdentityOwner('target-resume-owner-a');
   await waitFor(() => expect(isLocalOwnerReady('target-resume-owner-a')).toBe(true));
-  ai.props = null; plan.props = null; supplement.props = null; supplement.push.mockReset();
+  i18n.locale = 'en'; ai.props = null; plan.props = null; supplement.props = null; supplement.push.mockReset();
   storage.load.mockReset().mockResolvedValue(null); storage.save.mockReset().mockResolvedValue({ status: 'failed' });
   storage.history.mockReset().mockResolvedValue([]); storage.version.mockReset().mockResolvedValue(null);
 });
@@ -135,6 +136,35 @@ describe('full target résumé modal', () => {
     storage.save.mockImplementationOnce(async (doc: TargetResumeV1) => ({ status: 'saved', value: loaded(doc, 2) }));
     fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
     await screen.findByText('Saved version 2'); expect(storage.save.mock.calls[1][1]).toBe(1);
+  });
+  it.each([
+    ['en', 'guest', ['up to 10 target résumés', 'Sign in to keep your work across devices', 'up to 100']],
+    ['en', 'member', ['maximum of 100 saved target résumés']],
+    ['en', 'unknown', ['10 for guest sessions, 100 for signed-in accounts']],
+    ['zh', 'guest', ['最多保存 10 份目标简历', '登录后可在不同设备上保留', '最多可保存 100 份']],
+    ['zh', 'member', ['已保存 100 份目标简历']],
+  ] as const)('explains a %s %s target-résumé cap without offering a save that cannot succeed', async (locale, account, phrases) => {
+    await createUI(); const name = screen.getByRole('textbox', { name: 'Edit Full name' });
+    storage.save.mockResolvedValue({ status: 'quota', account });
+    i18n.locale = locale; editName('Alex 王 at the cap');
+    const saveName = locale === 'zh' ? '保存目标文稿' : 'Save target draft';
+    fireEvent.click(await screen.findByRole('button', { name: saveName }));
+    const alert = await screen.findByRole('alert');
+    for (const phrase of phrases) expect(alert).toHaveTextContent(phrase);
+    expect(alert.textContent).not.toMatch(/retry|try again|重试/i);
+    expect(screen.queryByText(/retry saving|请重试保存/)).toBeNull();
+    expect(screen.getByRole('button', { name: saveName })).toBeDisabled();
+    if (account !== 'guest') expect(alert.textContent).not.toMatch(/Sign in|登录后/);
+    fireEvent.change(name, { target: { value: 'Another edit' } }); expect(name).toHaveValue('Another edit');
+    expect(screen.getByRole('alert')).toBe(alert);
+    expect(screen.getByRole('button', { name: saveName })).toBeDisabled();
+    expect(storage.save).toHaveBeenCalledTimes(1);
+  });
+  it('keeps the generic retryable save message for a failure that is not the cap', async () => {
+    await createUI(); editName('Alex 王 unconfirmed'); storage.save.mockResolvedValue({ status: 'failed' });
+    fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The save was not confirmed. Your local edits remain here; retry saving.');
+    expect(screen.getByRole('button', { name: 'Save target draft' })).toBeEnabled();
   });
   it('shows cloud read failures and retries without treating errors as an absent draft', async () => {
     const p = profile(); const doc = await docFor(p);

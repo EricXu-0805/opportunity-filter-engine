@@ -4,8 +4,8 @@ import legacyGolden from '../../../tests/fixtures/target-resume-ai-golden.json';
 import { appendTargetResumeProvenance, type TargetResumeProvenance } from './target-resume-provenance';
 import { createEmptyResumeMaster } from './resume-master';
 import { createTargetResume, type TargetResumeV1 } from './target-resume';
-const { rpc, from, device } = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), device: vi.fn() }));
-vi.mock('./supabase', () => ({ supabase: { rpc, from }, getDeviceId: device }));
+const { rpc, from, device, getSession } = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), device: vi.fn(), getSession: vi.fn() }));
+vi.mock('./supabase', () => ({ supabase: { rpc, from, auth: { getSession } }, getDeviceId: device }));
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from './identity-owner';
 import { loadTargetResume, loadTargetResumeHistory, loadTargetResumeVersion, saveTargetResume } from './target-resume-storage';
 const UID='77000000-0000-4000-8000-000000000001';
@@ -15,7 +15,7 @@ function deferred<T>() { let resolve!:(value:T)=>void;const promise=new Promise<
 const row=(revision=1,d=doc)=>({revision,doc:d,updated_at:stamp,provenance:null as TargetResumeProvenance|null});
 beforeEach(async()=>{
  vi.stubGlobal('crypto',webcrypto);localStorage.clear();advanceOwnerEpoch(null);advanceOwnerEpoch(UID);await syncLocalIdentityOwner(UID);
- rpc.mockReset();from.mockReset();device.mockReset().mockResolvedValue(UID);filters=[];
+ rpc.mockReset();from.mockReset();device.mockReset().mockResolvedValue(UID);getSession.mockReset().mockResolvedValue({data:{session:null},error:null});filters=[];
  single=vi.fn().mockResolvedValue({data:row(),error:null});limit=vi.fn().mockResolvedValue({data:[],error:null});
  const chain={select:vi.fn(),eq:vi.fn((k,v)=>{filters.push([k,v]);return chain;}),lt:vi.fn((k,v)=>{filters.push(['lt:'+k,v]);return chain;}),order:vi.fn(()=>chain),maybeSingle:single,limit};
  select=chain.select.mockReturnValue(chain);from.mockReturnValue(chain);
@@ -76,6 +76,32 @@ describe('target resume persistence',()=>{
   expect((await saveTargetResume(invalid,0,captureOwnerToken())).status).toBe('failed');
   const huge=JSON.parse(JSON.stringify(doc));huge.document.sections[0].blocks[0].lines[0].text='🧪'.repeat(530000);
   expect((await saveTargetResume(huge,0,captureOwnerToken())).status).toBe('failed');expect(rpc).not.toHaveBeenCalled();
+ });
+ it('reports the per-account target cap as its own status, naming guest or signed-in only when the session says so',async()=>{
+  const quota={data:null,error:{code:'54000',message:'target_resume_quota_exceeded'}};
+  const session=(user:unknown)=>({data:{session:user?{user}:null},error:null});
+  rpc.mockResolvedValue(quota);
+  getSession.mockResolvedValue(session({id:UID,is_anonymous:true}));
+  expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'quota',account:'guest'});
+  getSession.mockResolvedValue(session({id:UID,is_anonymous:false}));
+  expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'quota',account:'member'});
+  for(const unknown of [session({id:UID}),session({id:'someone-else',is_anonymous:false}),session(null),{data:{session:null},error:{message:'down'}}]){
+   getSession.mockResolvedValue(unknown);
+   expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'quota',account:'unknown'});
+  }
+  getSession.mockRejectedValue(new Error('storage blocked'));
+  expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'quota',account:'unknown'});
+  // Other 54000 refusals and unrelated failures keep the retryable generic status.
+  rpc.mockResolvedValue({data:null,error:{code:'54000',message:'private_target_quota_exceeded'}});
+  expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'failed'});
+  rpc.mockResolvedValue({data:null,error:{code:'22023',message:'target_resume_quota_exceeded'}});
+  expect(await saveTargetResume(doc,0,captureOwnerToken())).toEqual({status:'failed'});
+ });
+ it('drops a quota refusal that arrives after the owner changed',async()=>{
+  const gate=deferred<unknown>();rpc.mockResolvedValue({data:null,error:{code:'54000',message:'target_resume_quota_exceeded'}});getSession.mockReturnValue(gate.promise);
+  const result=saveTargetResume(doc,0,captureOwnerToken());await vi.waitFor(()=>expect(getSession).toHaveBeenCalled());
+  advanceOwnerEpoch('other');await syncLocalIdentityOwner('other');gate.resolve({data:{session:{user:{id:UID,is_anonymous:true}}},error:null});
+  expect(await result).toEqual({status:'abandoned'});
  });
  it('does not send after session resolution switches owners',async()=>{
   const gate=deferred<string>();device.mockReturnValue(gate.promise);const token=captureOwnerToken();const result=saveTargetResume(doc,0,token);

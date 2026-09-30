@@ -130,7 +130,8 @@ export async function loadTargetResume(opportunityId: string, token: OwnerToken,
   });
 }
 
-/** Metadata only. The server keeps the newest 20 versions per target, so one page is the whole history. */
+/** Metadata only. Each save keeps the newest 20 versions of its target; a Flow B merge keeps both
+ * owners' histories until the next save prunes them, so more than one page can exist. */
 export async function loadTargetResumeHistory(opportunityId: string, token: OwnerToken, beforeRevision?: number,
   options: TargetResumeReadOptions = {}): Promise<TargetResumeVersionSummary[]> {
   targetId(opportunityId);
@@ -165,6 +166,17 @@ export async function loadTargetResumeVersion(opportunityId: string, revision: n
   });
 }
 
+/** The server decides the cap from its auth row; only a session that says
+ * which kind of account this owner is may pick the guest or signed-in wording. */
+async function quotaAccount(token: OwnerToken): Promise<'guest' | 'member' | 'unknown'> {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    const user = data?.session?.user as { id?: string; is_anonymous?: unknown } | undefined;
+    if (error || !user || user.id !== token.uid) return 'unknown';
+    return user.is_anonymous === true ? 'guest' : user.is_anonymous === false ? 'member' : 'unknown';
+  } catch { return 'unknown'; }
+}
+
 /** One RPC atomically commits current + history. Restore uses this same CAS. */
 export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: number, token: OwnerToken, provenance: TargetResumeProvenance | null = null): Promise<TargetResumeSaveResult> {
   try {
@@ -182,6 +194,11 @@ export async function saveTargetResume(doc: TargetResumeV1, expectedRevision: nu
       p_expected_revision: expectedRevision, p_doc: copy, p_provenance: provenanceCopy,
     });
     owner(token);
+    if (error?.code === '54000' && error.message === 'target_resume_quota_exceeded') {
+      const account = await quotaAccount(token);
+      owner(token);
+      return { status: 'quota', account };
+    }
     if (error || !object(data)) return { status: 'failed' };
     if (data.status === 'missing') return { status: 'missing' };
     if (!['saved', 'unchanged', 'conflict'].includes(String(data.status))) return { status: 'failed' };
