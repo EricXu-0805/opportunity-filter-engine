@@ -95,6 +95,9 @@ _DEFAULT_OPP_TOKEN_BUDGET = 1200
 # model never saw. Four more rewrites is a few hundred output tokens.
 _DEFAULT_BULLETS_PER_REQUEST = 12
 _MAX_BULLET_CHARACTERS = 500
+# One bullet's source is evidence shown whole, so it is bounded by the size of
+# one confirmed experience entry rather than by the résumé.
+_MAX_BULLET_SOURCE_CHARACTERS = 6000
 
 
 # Bumped whenever tailoring logic changes materially — stamped on every
@@ -1583,6 +1586,14 @@ async def optimize_bullet(
             "message": (f"Re-optimize a bullet of up to {_MAX_BULLET_CHARACTERS} characters. "
                         "Nothing was shortened."),
             "max_characters_per_bullet": _MAX_BULLET_CHARACTERS,
+            "retryable": False,
+        })
+    if len(request.base_text) > _MAX_BULLET_SOURCE_CHARACTERS:
+        raise prework_refusal(422, {
+            "code": "BULLET_SOURCE_TOO_LONG",
+            "message": (f"This bullet's original text is over {_MAX_BULLET_SOURCE_CHARACTERS} characters. "
+                        "Nothing was shortened."),
+            "max_characters_per_bullet_source": _MAX_BULLET_SOURCE_CHARACTERS,
             "retryable": False,
         })
     resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)

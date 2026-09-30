@@ -781,6 +781,28 @@ class TestOptimizeBullet:
         assert resp.json()["changed"] is True
         assert prompts and "stage079" in prompts[0]
 
+    def test_source_longer_than_one_experience_is_refused_by_name(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """base_text is one bullet's evidence. One confirmed experience holds at
+        most 6,000 characters, so a longer source is refused by name before any
+        provider call or usage, never cut and never billed as one small call."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        calls: list[object] = []
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature))
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id,
+            current_text="Designed and ran a laboratory protocol",
+            base_text="Ran assays. " * 501,
+        ))
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BULLET_SOURCE_TOO_LONG"
+        assert detail["max_characters_per_bullet_source"] == 6000
+        assert detail["retryable"] is False
+        assert calls == []
+
 
 # --------------------------------------------------------------------------- #
 # metering scaffold (OFF by default)
