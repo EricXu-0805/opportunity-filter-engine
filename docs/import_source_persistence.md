@@ -16,7 +16,7 @@ The new optional field is `metadata.import_source`:
 ```
 
 - `description_source`: `page_text`, `page_excerpt`, `pasted_text`, or `unknown`.
-- `ai_input_scope`: `source_excerpt` or `unknown`. This implementation does not accept `full_source`: the current producer has no authorized full-source model path.
+- `ai_input_scope`: `source_excerpt` or `unknown`. This implementation does not accept `full_source`. The parser stamps it only when a short source reached the model whole; the browser import shows that, and a persisted copy records `unknown` because the stored record cannot show what the model received.
 - `llm_enriched`: literal boolean. `true` records successful enrichment, not accurate interpretation. `false` means successful enrichment was not recorded; it does not prove that no provider was called.
 - `version`: integer `1`; boolean `true` is invalid.
 

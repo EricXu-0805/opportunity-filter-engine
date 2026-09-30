@@ -425,8 +425,21 @@ def _run_llm_extraction(
         return None
 
     result = _merge_llm_into_base(base, parsed)
-    result.extra_fields["ai_input_scope"] = "source_excerpt"
+    result.extra_fields["ai_input_scope"] = (
+        "full_source" if _model_received_all(base.description_raw, body_excerpt) else "source_excerpt"
+    )
     return result
+
+
+def _model_received_all(saved_text: str, body_excerpt: str) -> bool:
+    """Whether every word of the saved source, in order, was in the model input.
+
+    The excerpt is cut at LLM_BODY_EXCERPT_CHARS and, for pages, drops
+    navigation and footers the saved text keeps. Numbers our reader adds to
+    ordered-list items are not source words.
+    """
+    sent = iter(re.findall(r"\w+", body_excerpt))
+    return all(word in sent for word in re.findall(r"\w+", re.sub(r"(?m)^-?\d+\. ", "", saved_text)))
 
 
 EXTRACTION_SYSTEM_PROMPT = """You extract structured data from research / internship / scholarship URLs.
