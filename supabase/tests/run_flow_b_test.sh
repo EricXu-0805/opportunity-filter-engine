@@ -202,6 +202,9 @@ echo "==> run target_resume_provenance_security_test.sql"
 echo "==> run private_import_targets_test.sql"
 "${PSQL[@]}" -f "$HERE/private_import_targets_test.sql"
 
+echo "==> run owner_storage_quota_test.sql"
+"${PSQL[@]}" -f "$HERE/owner_storage_quota_test.sql"
+
 # The upgrade suite needs the schema as it stood right before the contact
 # archive migration (it applies that migration itself, then rolls back), so
 # it gets its own database migrated only up to that point.
