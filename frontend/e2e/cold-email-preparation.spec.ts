@@ -372,15 +372,20 @@ test('B51 supplement draft survives close, reload and storage failure without re
     await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(activity).toHaveValue('project-1');
     const review = panel.getByRole('checkbox', { name: copy('I reviewed the current activity and profile, and confirm the selected information is accurate.', '我已核对当前经历和资料，确认所选内容属实。'), exact: true });
     await expect(review).not.toBeChecked(); await expect(panel.getByRole('button', {name:copy('Confirm and add to my master résumé','确认并加入简历母版'),exact:true})).toBeDisabled();
-    const checkCurrent = async () => {
+    const checkCurrent = async (confirm: boolean) => {
       const refresh = panel.getByRole('button', {name:copy('Review current materials','重新核对当前材料'),exact:true});
-      // Returning profile availability deliberately asks for an explicit review, so wait for the panel to settle first.
-      await expect.poll(async () => await refresh.isVisible() || await review.isEnabled()).toBe(true);
-      if (await refresh.isVisible()) await refresh.click();
-      await expect(activity.locator('option:checked')).toHaveText('Instrument project');
-      await expect(review).toBeEnabled(); await expect(review).not.toBeChecked();
+      // Returning profile availability deliberately asks for an explicit review, and it can republish the
+      // panel as stale after it first looks settled, so settle (and confirm) inside one retry.
+      await expect(async () => {
+        if (await refresh.isVisible()) await refresh.click();
+        await expect(activity.locator('option:checked')).toHaveText('Instrument project', { timeout: 1_000 });
+        await expect(review).toBeEnabled({ timeout: 1_000 });
+        if (confirm && !(await review.isChecked())) await review.check({ timeout: 1_000 });
+        await expect(refresh).toBeHidden({ timeout: 500 });
+        await expect(review).toBeChecked({ checked: confirm, timeout: 500 });
+      }).toPass({ timeout: 15_000 });
     };
-    await checkCurrent(); await review.check();
+    await checkCurrent(true);
     await expect(panel.getByRole('button',{name:copy('Confirm and add to my master résumé','确认并加入简历母版'),exact:true})).toBeEnabled();
     await review.uncheck();
     expect(f.mutations).toEqual([]); await expect(page.locator('#cold-email-body')).toHaveValue('Manual email kept 王');
@@ -389,7 +394,7 @@ test('B51 supplement draft survives close, reload and storage failure without re
     const generationCount = f.state.calls.filter(call=>call.path.endsWith('/stream')).length;
     await page.reload(); await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
     await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(review).not.toBeChecked();
-    await checkCurrent();
+    await checkCurrent(false);
     expect(f.state.calls.filter(call=>call.path.endsWith('/stream'))).toHaveLength(generationCount);
     await page.evaluate(prefix => {
       const original = Storage.prototype.setItem;
