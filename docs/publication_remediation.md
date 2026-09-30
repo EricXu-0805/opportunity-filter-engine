@@ -186,6 +186,17 @@ author resolution**. So the rule is evidence-shaped rather than blanket:
 Otherwise a professor keeps being described by a stranger's research areas after
 the stranger's papers have been taken away.
 
+A withdrawn professor whose school is not going to be re-harvested would keep
+those keywords indefinitely. For ones a person has reviewed,
+
+```bash
+python3 scripts/remediate_publications.py invalidate-keywords --professors <id>,<id> --save
+```
+
+clears the derived keywords through the same function `apply_disposition`
+uses. It exits 2 and writes nothing if any id is absent, has papers that are
+not withdrawn, or has keywords without the `derived:openalex_topics` stamp.
+
 Client-side, `frontend/src/lib/match-cache.ts` caches `recent_works` and
 `publication_attribution_status` copied off the match card for seven days.
 `CACHE_VERSION` carries `-pubtrust-v3` so those payloads are discarded — a stale

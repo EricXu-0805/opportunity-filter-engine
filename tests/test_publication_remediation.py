@@ -44,6 +44,7 @@ from src.publication_remediation import (
     apply_disposition,
     disposition_for,
     idempotency_key,
+    invalidate_derived_keywords,
     invalidate_population,
     invalidate_record,
     pending_population,
@@ -804,6 +805,21 @@ class TestDerivedArtifacts:
         assert record["keywords"] == ["magnetic resonance imaging"]
         assert "publication_remediation" not in record["metadata"]
 
+    def test_invalidating_derived_keywords_keeps_other_inference_stamps(self):
+        record = faculty()
+        record["metadata"]["inferred_fields"]["eligibility.international_friendly"] = \
+            "rule:federal_org"
+        assert invalidate_derived_keywords(record) is True
+        assert record["keywords"] == []
+        assert record["metadata"]["inferred_fields"] == {
+            "eligibility.international_friendly": "rule:federal_org"
+        }
+
+    def test_invalidating_derived_keywords_leaves_stated_keywords_alone(self):
+        record = faculty(keyword_source=None)
+        assert invalidate_derived_keywords(record) is False
+        assert record["keywords"] == ["magnetic resonance imaging"]
+
     # 29 + 31, the client match cache, run where the cache does: "discards a
     # page cached before pubtrust-v3 that cites a verified paper" in
     # frontend/src/lib/match-cache.test.ts.
@@ -946,3 +962,89 @@ class TestApplyDriver:
         assert written == [["uiuc"]]
         entry = Ledger(ledger).index()[unit_for(record)["idempotency_key"]]
         assert (entry["status"], entry["result"]) == (VERIFIED_COMPLETE, DISPOSITION_VERIFIED)
+
+
+class TestInvalidateKeywordsDriver:
+    """`invalidate-keywords` run through the real CLI against in-memory shards.
+
+    For withdrawn professors whose derived topics a reviewer read and found to
+    be someone else's, ahead of a re-harvest that may never reach them.
+    """
+
+    def _run(self, monkeypatch, shards, *args):
+        written: list[str] = []
+        monkeypatch.setattr(driver, "load_shards", lambda: shards)
+        monkeypatch.setattr(
+            driver, "save_shards",
+            lambda _shards, touched: written.extend(sorted(touched)) or sorted(touched),
+        )
+        return driver.main(["invalidate-keywords", *args]), written
+
+    @staticmethod
+    def _withdrawn(rid, **kwargs):
+        record = faculty(rid, **kwargs)
+        invalidate_record(record)
+        return record
+
+    def test_clears_the_named_records_derived_keywords_and_nothing_else(self, monkeypatch):
+        named = self._withdrawn("named")
+        bystander = self._withdrawn("bystander")
+        before = json.dumps(named, sort_keys=True)
+        untouched = json.dumps(bystander, sort_keys=True)
+
+        rc, written = self._run(
+            monkeypatch, {"uiuc": [named, bystander]}, "--professors", "named", "--save",
+        )
+
+        assert rc == 0
+        assert written == ["uiuc"]
+        assert named["keywords"] == []
+        assert "inferred_fields" not in named["metadata"]
+        # Only the keywords and their stamp moved: the withdrawn papers, the
+        # status and the audit block are the re-harvest's, not this command's.
+        named["keywords"] = ["magnetic resonance imaging"]
+        named["metadata"]["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        assert json.dumps(named, sort_keys=True) == before
+        assert json.dumps(bystander, sort_keys=True) == untouched
+
+    @pytest.mark.parametrize("problem", ["stated", "trusted", "absent"])
+    def test_refuses_the_whole_run_over_one_record_it_may_not_clear(self, monkeypatch, problem):
+        """Source-stated keywords share no provenance with the withdrawn papers,
+        and a record whose papers are trusted has a resolution the current gate
+        confirmed. Either way nothing is written, the valid ids included."""
+        records = {
+            "stated": self._withdrawn("problem", keyword_source=None),
+            "trusted": faculty("problem", gate=CURRENT_WORKS_GATE),
+            "absent": faculty("someone-else", gate=CURRENT_WORKS_GATE),
+        }
+        named = self._withdrawn("named")
+        other = records[problem]
+        snapshots = [json.dumps(r, sort_keys=True) for r in (named, other)]
+
+        rc, written = self._run(
+            monkeypatch, {"uiuc": [named, other]},
+            "--professors", "named,problem", "--save",
+        )
+
+        assert rc == 2
+        assert written == []
+        assert [json.dumps(r, sort_keys=True) for r in (named, other)] == snapshots
+
+    def test_without_save_it_reports_and_writes_nothing(self, monkeypatch):
+        rc, written = self._run(
+            monkeypatch, {"uiuc": [self._withdrawn("named")]}, "--professors", "named",
+        )
+        assert rc == 0
+        assert written == []
+
+    def test_a_second_run_changes_nothing(self, monkeypatch):
+        named = self._withdrawn("named")
+        shards = {"uiuc": [named]}
+        self._run(monkeypatch, shards, "--professors", "named", "--save")
+        after_first = json.dumps(named, sort_keys=True)
+
+        rc, written = self._run(monkeypatch, shards, "--professors", "named", "--save")
+
+        assert rc == 0
+        assert written == []
+        assert json.dumps(named, sort_keys=True) == after_first

@@ -58,13 +58,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.collectors.atomic_json import atomic_write_json  # noqa: E402
+from src.evidence import inferred_method  # noqa: E402
 from src.publication_remediation import (  # noqa: E402
+    DERIVED_KEYWORDS,
     HARVEST_SUCCEEDED,
     LEDGER_PATH,
     QUEUED,
     Ledger,
     apply_disposition,
     disposition_for,
+    invalidate_derived_keywords,
     invalidate_population,
     pending_population,
     population_summary,
@@ -212,6 +215,63 @@ def cmd_invalidate(args: argparse.Namespace) -> int:
 
     print(f"queued        : {queued} professor(s)")
     print(f"withdrawn     : {withdrawn_relationships} relationship(s)")
+    print(f"shards touched: {len(touched)} ({', '.join(sorted(touched)) or '-'})")
+    if not args.save:
+        print("\n(dry run — pass --save to write the shards)")
+        return 0
+    written = save_shards(shards, touched)
+    print(f"wrote {len(written)} shard file(s)")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# invalidate-keywords
+# ---------------------------------------------------------------------------
+
+def cmd_invalidate_keywords(args: argparse.Namespace) -> int:
+    """Clear derived keywords from named withdrawn professors now.
+
+    ``apply_disposition`` clears them when the re-harvest settles a unit as
+    anything but verified. A withdrawn professor the re-harvest never reaches
+    keeps them, and a stranger's topics keep ranking him for students who want
+    the stranger's field. This is for records a person has read: it refuses an
+    id that is absent, whose papers are not withdrawn (the current gate stands
+    behind that resolution), or whose keywords a source stated.
+    """
+    wanted = list(dict.fromkeys(p for p in args.professors.split(",") if p))
+    shards = load_shards()
+    found = {
+        record.get("id"): (slug, record)
+        for slug, records in shards.items()
+        for record in records
+        if record.get("id") in wanted
+    }
+    problems = []
+    for pid in wanted:
+        if pid not in found:
+            problems.append(f"{pid}: not in the shards")
+            continue
+        record = found[pid][1]
+        if not is_pending_remediation(record):
+            problems.append(f"{pid}: its papers are not withdrawn")
+        elif record.get("keywords") and inferred_method(record, "keywords") != DERIVED_KEYWORDS:
+            problems.append(f"{pid}: its keywords are not stamped {DERIVED_KEYWORDS}")
+    if problems:
+        print("refusing to invalidate keywords; nothing written:", file=sys.stderr)
+        for problem in problems:
+            print(f"  {problem}", file=sys.stderr)
+        return 2
+
+    touched: set[str] = set()
+    for pid in wanted:
+        slug, record = found[pid]
+        keywords = list(record.get("keywords") or [])
+        if invalidate_derived_keywords(record):
+            touched.add(slug)
+            print(f"{pid} ({record.get('pi_name')}, {record.get('department')}): "
+                  f"cleared {keywords}")
+        else:
+            print(f"{pid}: no derived keywords")
     print(f"shards touched: {len(touched)} ({', '.join(sorted(touched)) or '-'})")
     if not args.save:
         print("\n(dry run — pass --save to write the shards)")
@@ -463,6 +523,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("invalidate", help="withdraw trust corpus-wide (no network)")
     p.add_argument("--save", action="store_true")
     p.set_defaults(func=cmd_invalidate)
+
+    p = sub.add_parser("invalidate-keywords",
+                       help="clear derived keywords from named withdrawn professors")
+    p.add_argument("--professors", required=True, help="comma-separated record ids")
+    p.add_argument("--save", action="store_true")
+    p.set_defaults(func=cmd_invalidate_keywords)
 
     p = sub.add_parser("harvest", help="re-harvest pending units through OpenAlex")
     p.add_argument("--schools")

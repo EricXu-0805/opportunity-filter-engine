@@ -59,7 +59,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .evidence import INFERRED_FIELDS_KEY
+from .evidence import INFERRED_FIELDS_KEY, inferred_method
 from .publication_trust import (
     CURRENT_WORKS_GATE,
     PENDING_REMEDIATION,
@@ -72,6 +72,10 @@ from .publication_trust import (
 
 _PROCESSED = Path(__file__).resolve().parents[1] / "data" / "processed"
 LEDGER_PATH = _PROCESSED / "publication_remediation_ledger.jsonl"
+
+# The inference stamp openalex_enrich.apply_openalex writes on keywords it took
+# from the resolved author's OpenAlex topics.
+DERIVED_KEYWORDS = "derived:openalex_topics"
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -385,7 +389,6 @@ def apply_disposition(record: dict, disposition: str, *, to_gate: int = CURRENT_
     """
     md = record.setdefault("metadata", {})
     removed_relationships = 0
-    keywords_invalidated = False
 
     if disposition in _RESTORING:
         md.pop("publication_remediation", None)
@@ -399,21 +402,7 @@ def apply_disposition(record: dict, disposition: str, *, to_gate: int = CURRENT_
     md.pop("publication_author_id", None)
     md["works_gate"] = to_gate
 
-    stamps = md.get(INFERRED_FIELDS_KEY) or {}
-    if stamps.get("keywords") == "derived:openalex_topics":
-        # Emptied rather than deleted. Every faculty record in the corpus
-        # carries the field, the data-quality gate type-checks it where it is
-        # present, and `[]` and absent are identical to every reader — so the
-        # one that keeps the record's shape intact is the one to write. An
-        # empty list also makes the record a target for the next keyword
-        # harvest, which is where a replacement should come from.
-        record["keywords"] = []
-        stamps.pop("keywords", None)
-        if stamps:
-            md[INFERRED_FIELDS_KEY] = stamps
-        else:
-            md.pop(INFERRED_FIELDS_KEY, None)
-        keywords_invalidated = True
+    keywords_invalidated = invalidate_derived_keywords(record)
 
     md["publication_remediation"] = {
         **(md.get("publication_remediation") or {}),
@@ -427,6 +416,31 @@ def apply_disposition(record: dict, disposition: str, *, to_gate: int = CURRENT_
         "relationships_removed": removed_relationships,
         "keywords_invalidated": keywords_invalidated,
     }
+
+
+def invalidate_derived_keywords(record: dict) -> bool:
+    """Empty keywords stamped ``derived:openalex_topics``. Returns whether it did.
+
+    Keywords without that stamp came from a source, not from the author
+    resolution, and are left alone.
+    """
+    if inferred_method(record, "keywords") != DERIVED_KEYWORDS:
+        return False
+    md = record["metadata"]
+    stamps = md[INFERRED_FIELDS_KEY]
+    # Emptied rather than deleted. Every faculty record in the corpus carries
+    # the field, the data-quality gate type-checks it where it is present, and
+    # `[]` and absent are identical to every reader — so the one that keeps
+    # the record's shape intact is the one to write. An empty list also makes
+    # the record a target for the next keyword harvest, which is where a
+    # replacement should come from.
+    record["keywords"] = []
+    stamps.pop("keywords", None)
+    if stamps:
+        md[INFERRED_FIELDS_KEY] = stamps
+    else:
+        md.pop(INFERRED_FIELDS_KEY, None)
+    return True
 
 
 # ---------------------------------------------------------------------------
