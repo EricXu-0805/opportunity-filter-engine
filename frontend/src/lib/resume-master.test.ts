@@ -405,6 +405,17 @@ describe('résumé master candidates proposed from the résumé text', () => {
     });
   });
 
+  it('lets a replaced résumé\'s withdrawn facts make room for the new résumé\'s candidates', async () => {
+    const old = 'OLD NAME | old@example.com\nSKILLS\nPython';
+    const oldMaster = proposeResumeMaster(null, old, await sourceDigest(old));
+    const confirmedOld = { ...oldMaster, basics: { ...oldMaster.basics, name: { ...oldMaster.basics.name!, status: 'confirmed' as const, revision: 2 } } };
+    const withdrawn = withdrawResumeMaster(confirmedOld)!;
+    expect(withdrawn.basics.name?.status).toBe('withdrawn');
+    const next = proposeResumeMaster(withdrawn, persona, await sourceDigest(persona));
+    expect(next.basics.name).toMatchObject({ value: 'JORDAN AVERY LEE', status: 'candidate' });
+    expect(next.skills.filter((skill) => skill.value === 'Python').map((skill) => skill.status)).toEqual(['withdrawn', 'candidate']);
+  });
+
   it('keeps what the master already holds and never re-proposes a span, even one the student excluded', async () => {
     const signature = await sourceDigest(persona);
     const own = empty();

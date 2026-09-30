@@ -605,8 +605,11 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   const fresh = (item: ResumeFact | undefined): item is ResumeFact => !!item && item.source.kind === 'resume'
     && !taken.has(`${item.source.start}:${item.source.end}`);
   const next: ResumeMasterV1 = JSON.parse(JSON.stringify(master));
-  for (const key of BASIC_FIELDS) if (!next.basics[key] && fresh(basics[key])) next.basics[key] = basics[key];
-  const linked = new Set(next.basics.links.map((link) => link.url.value));
+  // A withdrawn fact quotes a résumé that was replaced; it stays visible in
+  // a list, but it holds no field against the current résumé's candidate.
+  const holds = (item: ResumeFact | undefined) => !!item && item.status !== 'withdrawn';
+  for (const key of BASIC_FIELDS) if (!holds(next.basics[key]) && fresh(basics[key])) next.basics[key] = basics[key];
+  const linked = new Set(next.basics.links.filter((link) => holds(link.url)).map((link) => link.url.value));
   for (const url of links) {
     if (!fresh(url) || linked.has(url.value)) continue;
     next.basics.links.push({ id: globalThis.crypto.randomUUID(), label: url.value.replace(/^(?:https?:\/\/)?(?:www\.)?/iu, '').split('/')[0], url });
@@ -625,7 +628,7 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
     const fields = unseen(item);
     if (fields) next.activities.push({ id: globalThis.crypto.randomUUID(), kind: item.kind!, ...fields, details: [] });
   }
-  const named = new Set(next.skills.map((skill) => skill.value.trim().toLowerCase()));
+  const named = new Set(next.skills.filter(holds).map((skill) => skill.value.trim().toLowerCase()));
   for (const skill of skills) {
     if (!fresh(skill) || named.has(skill.value.toLowerCase())) continue;
     next.skills.push(skill);
