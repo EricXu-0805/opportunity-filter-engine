@@ -485,6 +485,12 @@ export default function AuthModal() {
                       ? t('auth.modal.signin.identityTakenMsg')
                       : outcome.message}
                   </p>
+                  {/* Both recoveries merge this guest session into the
+                      existing account, which moves its rows but not its
+                      tracker files. */}
+                  {(outcome.reason === 'email-taken' || outcome.reason === 'identity-taken') && (
+                    <p>{t('auth.modal.signin.guestFilesStay')}</p>
+                  )}
                   {outcome.reason === 'email-taken' && (
                     <button
                       type="button"

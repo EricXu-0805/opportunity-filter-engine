@@ -41,6 +41,9 @@ function AttachmentFiles({ opportunityId }: Props) {
   const [action, setAction] = useState<{ kind: 'upload' | 'delete' | 'open'; name: string } | null>(null);
   const [error, setError] = useState<Message | null>(null);
   const [notice, setNotice] = useState<Message | null>(null);
+  // Files live under the session's uid. Signing a guest in to an account it
+  // already has merges its rows but not these files, so say so up front.
+  const [guest, setGuest] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const active = useRef(false);
   const pendingAction = useRef(false);
@@ -70,6 +73,8 @@ function AttachmentFiles({ opportunityId }: Props) {
       } else setStatus('error');
     } finally { controllers.current.delete(controller); }
   }, [current, opportunityId, ownerToken]);
+
+  useEffect(() => onAuthChange(state => setGuest(!!state.session && state.isAnonymous)), []);
 
   useEffect(() => {
     active.current = true;
@@ -146,6 +151,7 @@ function AttachmentFiles({ opportunityId }: Props) {
             if (file) void runAction('upload', file.name, file);
           }} />
       </div>
+      {guest && <p data-testid="tracker-attachments-guest" className="text-[11px] text-amber-700 break-words">{t('detail.attachments.guestNotice')}</p>}
       {notice && <p role="status" data-testid="tracker-attachments-notice" className="text-[12px] text-green-700 break-words">{t(`detail.attachments.${notice.key}`, notice.vars)}</p>}
       {error && <p role="alert" className="text-[12px] text-red-700 break-words">{t(`detail.attachments.${error.key}`, error.vars)}</p>}
       {status === 'loading' && <p role="status" data-testid="tracker-attachments-loading" className="text-[12px] text-gray-500">{t('detail.attachments.loading')}</p>}

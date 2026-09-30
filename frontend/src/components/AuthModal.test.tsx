@@ -219,6 +219,19 @@ describe('AuthModal — signin phase', () => {
     });
   });
 
+  // Signing a guest in to an account it already has merges its rows but not
+  // its tracker files; the only notice used to come after the merge.
+  it('says guest tracker files stay behind before offering the existing account', async () => {
+    mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await screen.findByTestId('auth-modal-signin-existing');
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
+  });
+
   it('does NOT render Sign-in-existing button for other error reasons', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'wait' });
     render(<AuthModal />);
@@ -230,6 +243,7 @@ describe('AuthModal — signin phase', () => {
       expect(mockSignIn).toHaveBeenCalled();
     });
     expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
   });
 
   it('Sign-in-existing button calls signInExistingEmail and transitions to sent on ok', async () => {
@@ -408,6 +422,7 @@ describe('AuthModal — OAuth identity-taken fallback', () => {
       expect(screen.getByTestId('auth-modal-oauth-signin-existing')).toBeInTheDocument();
     });
     expect(screen.getByText('auth.modal.signin.identityTakenMsg')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
     expect(screen.queryByText('raw lib message')).toBeNull();
     // The email-taken button is a different recovery path — must not appear.
     expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
