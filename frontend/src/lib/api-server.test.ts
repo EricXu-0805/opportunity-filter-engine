@@ -132,18 +132,37 @@ describe('fetchSimilarServer', () => {
 
   it('returns body.opportunities on success', async () => {
     fetchMock.mockResolvedValue(
-      okJson({ opportunities: [{ id: 'a', _similarity: 0.9 }, { id: 'b', _similarity: 0.8 }] }),
+      okJson({ opportunities: [{ id: 'a', title: 'A', opportunity_type: 'research', _similarity: 0.9 }, { id: 'b', title: 'B', opportunity_type: 'research', _similarity: 0.8 }] }),
     );
     const result = await fetchSimilarServer('seed');
     expect(result).toEqual([
-      { id: 'a', _similarity: 0.9 },
-      { id: 'b', _similarity: 0.8 },
+      { id: 'a', title: 'A', opportunity_type: 'research', _similarity: 0.9 },
+      { id: 'b', title: 'B', opportunity_type: 'research', _similarity: 0.8 },
     ]);
   });
 
   it('returns [] when body has no opportunities key', async () => {
     fetchMock.mockResolvedValue(okJson({ other: 'shape' }));
     expect(await fetchSimilarServer('seed')).toEqual([]);
+  });
+
+  it.each([null, [], 3, { opportunities: {} }, { opportunities: 'bad' }])('leaves the optional rail empty for malformed body %j', async (body) => {
+    fetchMock.mockResolvedValue(okJson(body));
+    expect(await fetchSimilarServer('seed')).toEqual([]);
+  });
+
+  it('drops malformed display rows while preserving valid rows and their truth', async () => {
+    const valid = { id: 'a', title: 'A', opportunity_type: 'research', target_truth: { actionable: false } };
+    fetchMock.mockResolvedValue(okJson({ opportunities: [null, 3, {}, { id: 'x', title: {} },
+      { id: 'y', title: 'Y', organization: {} }, { id: 'z', title: 'Z', opportunity_type: {} }, valid] }));
+    expect(await fetchSimilarServer('seed')).toEqual([valid]);
+  });
+
+  it('drops IDs that cannot form a link while keeping non-ASCII valid IDs', async () => {
+    const row = { title: 'Valid', opportunity_type: 'research' };
+    const good = { ...row, id: '研究-🧪' };
+    fetchMock.mockResolvedValue(okJson({ opportunities: [{ ...row, id: '\ud800' }, { ...row, id: '\udfff' }, good] }));
+    expect(await fetchSimilarServer('seed')).toEqual([good]);
   });
 
   it('returns [] on non-2xx', async () => {
@@ -358,6 +377,7 @@ function record(id: string, truth: unknown, extra: Record<string, unknown> = {})
   return {
     id,
     title: `${id} title`,
+    opportunity_type: 'research',
     source_type: 'campus_program',
     record_kind: 'listing',
     target_truth: truth,

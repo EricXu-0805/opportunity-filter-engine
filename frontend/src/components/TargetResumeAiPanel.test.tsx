@@ -1,0 +1,274 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { webcrypto } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
+import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
+import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
+import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
+import { DEFAULT_PROFILE } from '@/app/home/types';
+import type { PreparedTargetResumeAi, TargetResumeAiRequest, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
+import { ApiError } from '@/lib/api';
+import TargetResumeAiPanel, { type TargetResumeAiPanelProps } from './TargetResumeAiPanel';
+const mocked = vi.hoisted(() => ({ generate: vi.fn(), locale: 'en' }));
+vi.mock('@/i18n/client', () => ({ useLocale: () => mocked.locale }));
+vi.mock('@/lib/api', async (load) => ({ ...await load<typeof import('@/lib/api')>(), generateTargetResumeSuggestions: mocked.generate }));
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((yes) => { resolve = yes; }); return { promise, resolve }; };
+let prepared: PreparedTargetResumeAi;
+const rewrite = 'I built a Python parser 😀 with my teammates. I did not lead the team.';
+function response(payload: TargetResumeAiRequest, structureOnly = false): TargetResumeAiResponse {
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: payload.request_id, document_id: payload.draft.id,
+    opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
+    manifest: { unit_ids: prepared.units.map(unit => unit.unit_id), protected_unit_count: prepared.protected_unit_count }, method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
+    receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => ({
+      unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id, evidence: clone(unit.evidence), before_text: unit.before_text,
+      status: unit.evidence.kind === 'experience' && !structureOnly ? 'suggested' : 'unchanged',
+      reason_code: unit.evidence.kind === 'experience' && !structureOnly ? null : 'no_change',
+      suggestion: { priority: structureOnly ? 'high' : 'normal', reason: 'The opportunity explicitly mentions Python.',
+        target_evidence: [{ field: 'requirement', requirement_index: 0, start: 0, end: 6, quote: 'Python' }],
+        proposed_text: unit.evidence.kind === 'experience' && !structureOnly ? rewrite : null },
+    })) };
+}
+function props(): TargetResumeAiPanelProps {
+  const draft = clone(golden.draft) as TargetResumeV1;
+  return { profile: { ...DEFAULT_PROFILE, ...draft.base_snapshot }, draft, owner: captureOwnerToken()!, contextKey: 'source-and-target-one',
+    currentContext: clone(golden.draft.base), enabled: true, onApply: vi.fn(), onDirtyChange: vi.fn(), onAuthorityRefusal: vi.fn() };
+}
+const generate = async () => { fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' })); await waitFor(() => expect(mocked.generate).toHaveBeenCalled()); };
+const reviewReady = () => waitFor(() => expect(screen.getByRole('checkbox', { name: 'Use suggested section and block order' })).toBeEnabled());
+beforeEach(async () => {
+  vi.stubGlobal('crypto', webcrypto); localStorage.clear(); advanceOwnerEpoch('panel-owner'); await syncLocalIdentityOwner('panel-owner');
+  mocked.locale = 'en'; mocked.generate.mockReset(); const result = await prepareTargetResumeAI(golden.draft); if (!result.ok) throw new Error(result.code); prepared = result.value;
+  mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => response(payload));
+});
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+describe('full résumé AI review workspace', () => {
+  it('requires explicit selection, lets the user reject, and applies only the selected wording to the unchanged baseline', async () => {
+    const p = props(); const original = JSON.stringify(p.draft); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(original);
+    const unit = prepared.units.find((item) => item.evidence.kind === 'experience')!;
+    const checkbox = screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }); expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox); fireEvent.click(screen.getByRole('button', { name: `Dismiss suggestion: ${unit.unit_id}` }));
+    expect(checkbox).toBeDisabled(); expect(checkbox).not.toBeChecked(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: `Dismiss suggestion: ${unit.unit_id}` })); fireEvent.click(checkbox);
+    expect(screen.getByText('Preview complete résumé before applying')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    expect(p.onApply).toHaveBeenCalledTimes(1); const [canonical, next] = vi.mocked(p.onApply).mock.calls[0];
+    expect(canonical).toBe(prepared.canonical_draft); expect(next.base_snapshot).toEqual(p.draft.base_snapshot);
+    const lines = next.document.sections.flatMap((section) => section.blocks.flatMap((block) => block.lines));
+    expect(lines.find((line) => line.id === unit.unit_id)!.text).toBe(rewrite); expect(JSON.stringify(p.draft)).toBe(original);
+  });
+  it.each(['document', 'source'] as const)('discards a late response after the %s changes', async (change) => {
+    const pending = deferred<TargetResumeAiResponse>(); mocked.generate.mockReturnValueOnce(pending.promise);
+    const p = props(); const view = render(<TargetResumeAiPanel {...p} />); await generate();
+    const payload = mocked.generate.mock.calls[0][0]; const next = { ...p, draft: clone(p.draft) };
+    if (change === 'document') next.draft.document.sections[0].blocks[0].lines[0].text = 'Later manual edit';
+    else next.contextKey = 'new-source-revision';
+    view.rerender(<TargetResumeAiPanel {...next} />); await act(async () => pending.resolve(response(payload)));
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/Earlier suggestions were discarded/)).toBeVisible();
+    expect(mocked.generate.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+  it('cancels a pending request and does not show its late output', async () => {
+    const pending = deferred<TargetResumeAiResponse>(); mocked.generate.mockReturnValueOnce(pending.promise);
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); const payload = mocked.generate.mock.calls[0][0];
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel generation' })); await act(async () => pending.resolve(response(payload)));
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(mocked.generate.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+  it('clears an authority-refused run and waits for an explicit fresh generation', async () => {
+    mocked.generate.mockRejectedValueOnce(new ApiError(409, 'target_changed', 'PRIVATE PROVIDER BODY', false));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent('The opportunity changed.'); expect(screen.queryByText('PRIVATE PROVIDER BODY')).toBeNull();
+    expect(mocked.generate).toHaveBeenCalledTimes(1); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' })); await reviewReady(); expect(mocked.generate).toHaveBeenCalledTimes(2);
+  });
+  it('keeps structure-only advice in the unsaved close guard and clears it on owner invalidation', async () => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => response(payload, true));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull(); expect(p.onDirtyChange).toHaveBeenLastCalledWith(true);
+    await act(async () => { advanceOwnerEpoch('other-owner'); });
+    expect(screen.queryByRole('checkbox', { name: 'Use suggested section and block order' })).toBeNull(); expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByRole('button', { name: 'Generate AI suggestions' })).toBeDisabled();
+  });
+  it('rejects a response with a fabricated target quote without presenting it as advice', async () => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => { const result = response(payload); result.receipts[0].suggestion!.target_evidence[0].quote = 'Invented requirement'; return result; });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
+    expect(screen.queryByText('Invented requirement')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('AI action profile checks and partial coverage', () => {
+  const receipt = (p: TargetResumeAiPanelProps): ProfileActionReceipt => ({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: clone(p.profile) });
+  it('retains verified partial receipts during Continue checking, then requests only remaining units', async () => {
+    const p = props(), firstCheck = vi.fn().mockResolvedValue(receipt(p)), refresh = vi.fn().mockResolvedValue(true);
+    const retriedUnit = prepared.units.find((unit) => unit.evidence.kind === 'experience')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); const skipped = result.receipts.find((unit) => unit.unit_id === retriedUnit)!;
+      result.method = 'partial'; skipped.status = 'skipped'; skipped.reason_code = 'budget_exhausted'; skipped.suggestion = null; return result;
+    });
+    const view = render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction: firstCheck }} />);
+    await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('allowance is used up');
+    const coverage = screen.getByText(/Reviewed 8 of 9 items/); expect(coverage).toBeVisible();
+    const wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise);
+    view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1)); expect(mocked.generate).toHaveBeenCalledTimes(1);
+    view.rerender(<TargetResumeAiPanel {...p} enabled={false} readiness="waiting" profileRefresh={{ status: 'checking', refresh, checkForAction }} />);
+    expect(coverage).toBeVisible(); expect(screen.getByRole('checkbox', { name: 'Use suggested section and block order' })).toBeDisabled();
+    await act(async () => wait.resolve(receipt(p))); expect(mocked.generate).toHaveBeenCalledTimes(1);
+    view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await reviewReady(); expect(mocked.generate).toHaveBeenCalledTimes(2);
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([retriedUnit]);
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(p.onApply).not.toHaveBeenCalled();
+  });
+  it('aborts an in-flight batch on a read pause and rejects the late batch even after readiness returns', async () => {
+    const p = props();
+    const wait = deferred<TargetResumeAiResponse>();
+    mocked.generate.mockReturnValueOnce(wait.promise);
+    const view = render(<TargetResumeAiPanel {...p} />); await generate(); const payload = mocked.generate.mock.calls[0][0];
+    view.rerender(<TargetResumeAiPanel {...p} enabled={false} readiness="waiting" />);
+    expect(mocked.generate.mock.calls[0][1].signal.aborted).toBe(true);
+    view.rerender(<TargetResumeAiPanel {...p} />);
+    await act(async () => wait.resolve(response(payload)));
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Continue remaining suggestions' })).toBeEnabled();
+  });
+  it.each(['document', 'source'] as const)('cancels a queued AI intent when the %s changes during the check', async (kind) => {
+    const p = props(), wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise), refresh = vi.fn().mockResolvedValue(true);
+    const view = render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' })); await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1));
+    const changed = clone(p.draft); if (kind === 'document') changed.document.sections[0].blocks[0].lines[0].text = 'Latest hand edit';
+    view.rerender(<TargetResumeAiPanel {...p} draft={changed} contextKey={kind === 'source' ? 'changed-source' : p.contextKey} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
+    await act(async () => wait.resolve(receipt(p))); expect(mocked.generate).not.toHaveBeenCalled(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/changed during the check/)).toBeVisible();
+  });
+  it('keeps existing suggestions on a failed recheck and does not silently retry the model', async () => {
+    const p = props(), checkForAction = vi.fn().mockResolvedValue(receipt(p)), refresh = vi.fn().mockResolvedValue(true);
+    render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />); await generate(); await reviewReady();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Use rewrite:/ }));
+    expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeEnabled();
+    checkForAction.mockResolvedValue(null); fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    await screen.findByText(/Current profile could not be verified/);
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeDisabled(); expect(mocked.generate).toHaveBeenCalledTimes(1); expect(p.onApply).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('request size refusals', () => {
+  const refuse = (payload: TargetResumeAiRequest, reason: (id: string) => 'batch_context_too_large' | 'context_too_large'): TargetResumeAiResponse => {
+    const result = response(payload);
+    for (const item of result.receipts) Object.assign(item, { status: 'skipped', reason_code: reason(item.unit_id), suggestion: null });
+    return { ...result, method: 'unavailable', logical_calls: 0, provider_attempts_upper_bound: 0 };
+  };
+  it('splits a request the server finds too large as a whole and reviews every unit', async () => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => payload.selected_unit_ids.length > 1
+      ? refuse(payload, () => 'batch_context_too_large') : response(payload));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.queryByRole('alert')).toBeNull();
+    const requested = mocked.generate.mock.calls.map(([payload]) => payload.selected_unit_ids as string[]);
+    expect(requested[0]).toEqual(prepared.batches[0]); expect(requested).toHaveLength(2 * prepared.units.length - 1);
+    expect(requested.filter(ids => ids.length === 1).flat().sort()).toEqual(prepared.units.map(unit => unit.unit_id).sort());
+  });
+  it('keeps reviewing the rest when one unit is too large even on its own', async () => {
+    const tooLarge = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => payload.selected_unit_ids.length > 1
+      ? refuse(payload, id => id === tooLarge ? 'context_too_large' : 'batch_context_too_large')
+      : payload.selected_unit_ids[0] === tooLarge ? refuse(payload, () => 'context_too_large') : response(payload));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByText(/Reviewed 8 of 9 items/)).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getByText(/source context is too long/)).toBeVisible();
+    expect(mocked.generate.mock.calls.some(([payload]) => payload.selected_unit_ids.length === 1 && payload.selected_unit_ids[0] === tooLarge)).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+  });
+  it('names over-long research interests as the cause instead of blaming each item', async () => {
+    const p = props(); p.profile = { ...p.profile, research_interests: 'i'.repeat(8001) };
+    p.draft = await createTargetResume(p.profile, p.draft.target_snapshot); p.currentContext = clone(p.draft.base);
+    render(<TargetResumeAiPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('research interests are over 8000 characters');
+    expect(screen.queryByText(/source context is too long/)).toBeNull(); expect(mocked.generate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('authority rejection after partial AI results', () => {
+  const rejections = [['target_changed', 409], ['target_not_found', 404], ['TARGET_NOT_ACTIONABLE', 409], ['legacy_target_context', 409]] as const;
+  const startPartial = async () => {
+    const retryId = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); result.method = 'partial'; const missed = result.receipts.find(item => item.unit_id === retryId)!;
+      missed.status = 'skipped'; missed.reason_code = 'missing_result'; missed.suggestion = null; return result;
+    });
+    await generate(); const checkbox = await screen.findByRole('checkbox', { name: /Use rewrite:/ }); fireEvent.click(checkbox);
+    expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeEnabled();
+    return retryId;
+  };
+  it.each(rejections)('retires earlier selected receipts when Continue returns %s', async (code, status) => {
+    const p = props(), original = JSON.stringify(p.draft); const view = render(<TargetResumeAiPanel {...p} />); const retryId = await startPartial();
+    mocked.generate.mockRejectedValueOnce(new ApiError(status, code, 'PRIVATE PROVIDER MESSAGE', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' })); await screen.findByRole('alert');
+    await waitFor(() => expect(mocked.generate).toHaveBeenCalledTimes(2));
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([retryId]); expect(p.onAuthorityRefusal).toHaveBeenCalledWith(code);
+    const staleApply = screen.queryByRole('button', { name: 'Apply selected suggestions' }); if (staleApply && !staleApply.hasAttribute('disabled')) fireEvent.click(staleApply);
+    expect(p.onApply).not.toHaveBeenCalled(); expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Use suggested section and block order' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+    view.rerender(<TargetResumeAiPanel {...p} enabled={false} readiness="waiting" />); view.rerender(<TargetResumeAiPanel {...p} />);
+    expect(screen.queryByRole('button', { name: 'Apply selected suggestions' })).toBeNull();
+    expect(JSON.stringify(p.draft)).toBe(original); expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
+    expect(screen.queryByText('PRIVATE PROVIDER MESSAGE')).toBeNull();
+  });
+  it.each(rejections)('retires the completed first batch when the next automatic batch returns %s', async (code, status) => {
+    const p = props(); for (let i = 0; i < 26; i += 1) p.profile.resume_master!.skills.push({ id: `extra-${i}`, revision: 1, value: `Skill ${i}`, status: 'confirmed', source: { kind: 'manual' } });
+    p.draft = await createTargetResume(p.profile, p.draft.target_snapshot); p.currentContext = clone(p.draft.base);
+    const result = await prepareTargetResumeAI(p.draft); if (!result.ok) throw new Error(result.code); prepared = result.value;
+    expect(prepared.batches).toHaveLength(2);
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => response(payload));
+    mocked.generate.mockRejectedValueOnce(new ApiError(status, code, 'PRIVATE PROVIDER MESSAGE', false));
+    render(<TargetResumeAiPanel {...p} />); await generate(); await screen.findByRole('alert');
+    expect(mocked.generate).toHaveBeenCalledTimes(2); expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual(prepared.batches[1]); expect(p.onAuthorityRefusal).toHaveBeenCalledWith(code);
+    const staleCheckbox = screen.queryByRole('checkbox', { name: /Use rewrite:/ });
+    if (staleCheckbox) { fireEvent.click(staleCheckbox); fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); }
+    expect(p.onApply).not.toHaveBeenCalled(); expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+    expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
+  it.each([['budget_exhausted', 429], ['REQUEST_TIMEOUT', 504]] as const)('keeps completed receipts and retries only the remaining unit after %s', async (code, status) => {
+    const p = props(); render(<TargetResumeAiPanel {...p} />); const retryId = await startPartial();
+    mocked.generate.mockRejectedValueOnce(new ApiError(status, code, 'PRIVATE PROVIDER MESSAGE', false));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(code === 'budget_exhausted' ? 'allowance is used up' : 'did not finish in time');
+    expect(screen.getByRole('checkbox', { name: /Use rewrite:/ })).toBeChecked(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeEnabled();
+    expect(p.onApply).not.toHaveBeenCalled(); expect(mocked.generate).toHaveBeenCalledTimes(2); expect(p.onAuthorityRefusal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' })); await reviewReady();
+    expect(mocked.generate).toHaveBeenCalledTimes(3); expect(mocked.generate.mock.calls[2][0].selected_unit_ids).toEqual([retryId]);
+    expect(screen.getByRole('checkbox', { name: /Use rewrite:/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' })); expect(p.onApply).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('accepted wording operation records', () => {
+  it.each([undefined, 'target-resume-source-checks-v1'])('captures only accepted wording and the returned check version %s', async checkVersion => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => ({ ...response(payload), ...(checkVersion ? { check_version: checkVersion } : {}) }));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(p.onApply).not.toHaveBeenCalled();
+    const unit = prepared.units.find(item => item.evidence.kind === 'experience')!;
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    const record = appendTargetResumeProvenance(null, p.draft, next, action)!;
+    expect(record.events).toHaveLength(1); expect(record.events[0].kind).toBe('ai_rewrite');
+    expect(record.events[0].changes).toHaveLength(1);
+    const change = record.events[0].changes[0];
+    expect(change.line_id).toBe(unit.unit_id); expect(change.before).toBe(unit.before_text); expect(change.after).toBe(rewrite);
+    expect(change.reason).toBe('The opportunity explicitly mentions Python.'); expect(change.source_evidence[0].quote).toBe(unit.original);
+    expect(change.check?.version ?? null).toBe(checkVersion ?? null);
+    if (checkVersion) expect(change.check).toMatchObject({ request_id: mocked.generate.mock.calls[0][0].request_id, original: unit.original, evidence: unit.evidence });
+  });
+});

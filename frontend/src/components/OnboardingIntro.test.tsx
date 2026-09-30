@@ -8,9 +8,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockTrack = vi.fn();
+let testLocale: 'en' | 'zh' | null = null;
 
 vi.mock('@/lib/analytics', () => ({ track: (...args: unknown[]) => mockTrack(...args) }));
-vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key }) }));
+vi.mock('@/i18n/client', () => ({
+  useT: () => ({
+    locale: testLocale ?? 'en',
+    t: (key: string) => testLocale ? translate(testLocale, key) : key,
+  }),
+}));
 
 // Real profile-sync everywhere except where a test needs to control WHEN the
 // hydration resolves — the bug this file now covers is entirely about that
@@ -42,6 +48,7 @@ vi.mock('@/lib/identity-owner', async (importActual) => {
 });
 
 import OnboardingIntro from './OnboardingIntro';
+import { translate } from '@/i18n/translate';
 import { enterLocalOnlyMode } from '@/lib/identity-owner';
 
 // welcome, generate, favorites, tracker, dashboard, school. Compare and
@@ -78,6 +85,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  testLocale = null;
   vi.clearAllMocks();
   hydrateOverride = null;
   ownerListeners.clear();
@@ -88,6 +96,19 @@ describe('OnboardingIntro', () => {
     render(<OnboardingIntro />);
     await waitFor(() => expect(screen.getByTestId('onboarding-intro')).toBeInTheDocument());
   });
+
+  it.each([['en', 'Records available'], ['zh', '已收录资料']] as const)(
+    'labels UNC as collected records without claiming real-time data (%s)', async (locale, badge) => {
+      testLocale = locale;
+      render(<OnboardingIntro />);
+      await waitFor(() => screen.getByTestId('onboarding-primary'));
+      for (let k = 0; k < SLIDE_COUNT - 1; k += 1) {
+        fireEvent.click(screen.getByTestId('onboarding-primary'));
+      }
+      expect(screen.getByTestId('onboarding-school-unc')).toHaveTextContent(badge);
+      expect(screen.queryByText('Live data')).not.toBeInTheDocument();
+    },
+  );
 
   it('stays hidden once the seen flag is set', async () => {
     localStorage.setItem('ofe_onboarding_seen', '1');

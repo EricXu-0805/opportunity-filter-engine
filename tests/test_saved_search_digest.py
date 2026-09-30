@@ -1154,6 +1154,27 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
         assert "jhu lab" in html
         assert "ucb lab" not in html
 
+    @pytest.mark.parametrize("type_field", ["seeking_types", "seeking_type"])
+    def test_selected_types_stay_filtered_in_the_digest(self, monkeypatch, type_field):
+        research = {**self._campus_opp("opp-research", "jhu"),
+                    "opportunity_type": "research", "title": "Research choice"}
+        internship = {**self._campus_opp("opp-internship", "jhu"),
+                      "opportunity_type": "internship", "title": "Unselected internship"}
+        sends, patches = self._run(
+            monkeypatch,
+            profiles=[{"id": self.DEVICE, "profile_data": {
+                "home_school": "jhu", "major": "Computer Science",
+                type_field: ["research"],
+            }}],
+            queue=["opp-research", "opp-internship"],
+            opportunities=[research, internship],
+        )
+        assert len(sends) == 1
+        assert "Research choice" in sends[0]["html"]
+        assert "Unselected internship" not in sends[0]["html"]
+        cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
+        assert cleanups[0]["json"]["new_match_ids"] == ["opp-research"]
+
     def test_an_id_the_corpus_cannot_see_is_still_left_alone(self, monkeypatch):
         """The exclusion set is positive — built over the corpus — so absence
         from tonight's load is never mistaken for "not for you". A negative
@@ -1181,3 +1202,157 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
         )
         assert len(sends) == 1
         assert "ucb lab" in sends[0]["html"]
+
+
+class TestStoredProfileEligibility:
+    """Use actual persisted frontend keys as well as historical API-shaped data."""
+
+    @staticmethod
+    def _opportunity(kind, restricted=False):
+        marker = "restricted" if restricted else "open"
+        return {
+            "id": f"{kind}-{marker}", "title": f"{kind} {marker} choice",
+            "source_type": "campus_program", "opportunity_type": kind,
+            "school": "jhu", "audience": "campus",
+            "eligibility": {"international_friendly": "no" if restricted else "yes"},
+        }
+
+    @pytest.mark.parametrize("international_field", ["is_international", "international_student"])
+    def test_international_student_does_not_receive_restricted_matches(
+        self, monkeypatch, international_field,
+    ):
+        device = TestTheDigestSendsWhatTheSiteWouldShow.DEVICE
+        corpus = [self._opportunity("research"), self._opportunity("research", True)]
+        sends, patches = TestTheDigestSendsWhatTheSiteWouldShow()._run(
+            monkeypatch,
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "jhu", "seeking_types": ["research"],
+                international_field: True,
+            }}],
+            queue=[opp["id"] for opp in corpus], opportunities=corpus,
+        )
+        assert len(sends) == 1
+        assert "research open choice" in sends[0]["html"]
+        assert "research restricted choice" not in sends[0]["html"]
+        cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
+        assert cleanups[0]["json"]["new_match_ids"] == ["research-open"]
+
+    def test_explicit_frontend_values_override_legacy_values(self, monkeypatch):
+        device = TestTheDigestSendsWhatTheSiteWouldShow.DEVICE
+        corpus = [self._opportunity("research", True), self._opportunity("internship")]
+        sends, _ = TestTheDigestSendsWhatTheSiteWouldShow()._run(
+            monkeypatch,
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "jhu", "seeking_types": ["research"],
+                "seeking_type": ["internship"],
+                "is_international": False, "international_student": True,
+            }}],
+            queue=[opp["id"] for opp in corpus], opportunities=corpus,
+        )
+        assert len(sends) == 1
+        assert "research restricted choice" in sends[0]["html"]
+        assert "internship open choice" not in sends[0]["html"]
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_distinct_type_and_international_contexts_never_share_exclusions(
+        self, monkeypatch, reverse,
+    ):
+        _set_digest_env(monkeypatch)
+        corpus = [self._opportunity(kind, restricted)
+                  for kind in ("research", "internship") for restricted in (False, True)]
+        rows, profiles, expected = [], [], {}
+        for index, (kind, international) in enumerate((
+            ("research", False), ("research", True),
+            ("internship", False), ("internship", True),
+        )):
+            device = f"profile-{index}"
+            address = f"student{index}@example.com"
+            # Both persisted formats enter the same cache. Only the normalized
+            # eligibility context, not the spelling of the fields, may matter.
+            type_field = "seeking_types" if index % 2 == 0 else "seeking_type"
+            international_field = "is_international" if index % 2 == 0 else "international_student"
+            profiles.append({"id": device, "profile_data": {
+                "home_school": "jhu", type_field: [kind], international_field: international,
+            }})
+            rows.append(_digest_row(
+                id=f"search-{index}", device_id=device, digest_email=address,
+                new_match_ids=[opp["id"] for opp in corpus],
+            ))
+            expected[address] = {f"{kind} open choice"}
+            if not international:
+                expected[address].add(f"{kind} restricted choice")
+        if reverse:
+            profiles.reverse()
+            rows.reverse()
+        sends = []
+        _install_stubs(monkeypatch, rows=rows, sends=sends, opportunities=corpus, profiles=profiles)
+        response = client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        assert response.status_code == 200
+        assert response.json()["sent"] == 4
+        titles = {opp["title"] for opp in corpus}
+        assert {message["to"] for message in sends} == set(expected)
+        for message in sends:
+            actual = {title for title in titles if title in message["html"]}
+            assert actual == expected[message["to"]]
+
+    @pytest.mark.parametrize("endpoint", ["refresh", "digest"])
+    @pytest.mark.parametrize("type_field", ["seeking_types", "seeking_type"])
+    @pytest.mark.parametrize("selection", [[], [" ", ""], None, "research", [42]])
+    def test_empty_or_invalid_selection_pauses_without_touching_the_queue(
+        self, monkeypatch, endpoint, type_field, selection,
+    ):
+        _set_digest_env(monkeypatch)
+        device = TestTheDigestSendsWhatTheSiteWouldShow.DEVICE
+        corpus = [self._opportunity("research")]
+        # Include both known and temporarily missing ids. Pausing is not a
+        # statement that either one became ineligible, and must not delete it.
+        row = _digest_row(
+            device_id=device, new_match_ids=["research-open", "not-in-tonights-corpus"],
+            filters_json={}, query="", last_result_ids=["old-result"],
+            last_run_at="2026-07-01T00:00:00+00:00",
+        )
+        original = deepcopy(row)
+        profile = {"home_school": "jhu", type_field: selection}
+        if type_field == "seeking_types":
+            profile["seeking_type"] = ["research"]  # Explicit FE [] must still win.
+        sends, patches = [], []
+        _install_stubs(
+            monkeypatch, rows=[row], sends=sends, patches=patches,
+            opportunities=corpus, profiles=[{"id": device, "profile_data": profile}],
+        )
+        response = client.get(f"/api/cron/saved-searches/{endpoint}", headers=AUTH)
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+        if endpoint == "digest":
+            assert response.json()["skipped"] == 1
+            assert response.json()["sent"] == 0
+        else:
+            assert response.json()["processed"] == 0
+            assert response.json()["new_matches"] == 0
+        assert sends == []
+        assert patches == []
+        assert row == original
+
+    def test_refresh_uses_frontend_type_and_international_choices(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        device = TestTheDigestSendsWhatTheSiteWouldShow.DEVICE
+        corpus = [self._opportunity("research"), self._opportunity("research", True),
+                  self._opportunity("internship")]
+        patches = []
+        _install_stubs(
+            monkeypatch,
+            rows=[_digest_row(
+                device_id=device, new_match_ids=[opp["id"] for opp in corpus] + ["absent"],
+                filters_json={}, query="", last_result_ids=[],
+                last_run_at="2026-07-01T00:00:00+00:00",
+            )],
+            patches=patches, opportunities=corpus,
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "jhu", "seeking_types": ["research"], "is_international": True,
+            }}],
+        )
+        response = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+        assert response.status_code == 200
+        assert response.json()["processed"] == 1
+        assert patches[0]["json"]["last_result_ids"] == ["research-open"]
+        assert patches[0]["json"]["new_match_ids"] == ["research-open", "absent"]

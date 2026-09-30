@@ -402,9 +402,12 @@ class TestCollectorsStopWritingFalse:
         assert stated["eligibility"]["citizenship_required"] is True
 
     def test_normalizer_stamps_keyword_bank_lists(self):
-        out = normalize({"title": "RA", "description_raw": "Python and machine learning.", "url": "https://x.edu"})
+        # A plain mention is not a requirement (it lands in skill_mentions);
+        # only requirement wording fills skills_required, and it is still
+        # stamped as the rule's reading, never as the source's own list.
+        out = normalize({"title": "RA", "description_raw": "Required: Python and machine learning.", "url": "https://x.edu"})
         assert out["eligibility"]["skills_required"]
-        assert inferred_method(out, "eligibility.skills_required") == "rule:normalizer_keyword_bank"
+        assert inferred_method(out, "eligibility.skills_required") == "rule:opportunity_terms"
 
     def test_simplify_other_sponsorship_is_unknown_citizenship(self):
         from src.collectors.simplify_internships import _SPONSORSHIP_MAP

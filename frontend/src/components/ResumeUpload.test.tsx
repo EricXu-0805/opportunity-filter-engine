@@ -487,3 +487,121 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(zhPrivacy).toContain('随档案一起保存');
   });
 });
+
+
+describe('resume input bounds and partial text disclosure', () => {
+  it.each([
+    ['text_too_long', 'resume.errTextTooLong'],
+    ['no_readable_text', 'resume.errNoText'],
+    ['pdf_resources_unavailable', 'resume.errResourcesUnavailable'],
+  ] as const)('does not replace the saved resume after %s', async (errorCode, message) => {
+    mockParse.mockResolvedValue({
+      success: false, error_code: errorCode, message: 'fallback', raw_text: '',
+      extracted_skills: [], skill_evidence: [], extracted_coursework: [],
+    });
+    const onParsed = vi.fn();
+    const onRemove = vi.fn();
+    render(<ResumeUpload alreadyUploaded onParsed={onParsed} onRemove={onRemove} />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [pdfFile()] } });
+    await waitFor(() => expect(screen.getByText(message)).toBeInTheDocument());
+    expect(onParsed).not.toHaveBeenCalled();
+    expect(onRemove).not.toHaveBeenCalled();
+  });
+
+  it('passes all supported text through and discloses unreadable pages', async () => {
+    const text = 'Earlier experience. '.repeat(1200) + 'Final page marker';
+    const parsed = {
+      success: true, message: 'ok', raw_text: text, pages_without_text: [2],
+      extracted_skills: [], skill_evidence: [], extracted_coursework: [],
+    };
+    mockParse.mockResolvedValue(parsed);
+    const onParsed = vi.fn();
+    render(<ResumeUpload onParsed={onParsed} onRemove={vi.fn()} />);
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [pdfFile()] } });
+    await waitFor(() => expect(onParsed).toHaveBeenCalledWith(parsed));
+    expect(screen.getByText('resume.incompletePages')).toBeInTheDocument();
+    expect(onParsed.mock.calls[0][0].raw_text).toBe(text);
+  });
+});
+
+
+describe('ResumeUpload — parent acceptance is required', () => {
+  const parsed = { success: true, message: 'parsed', raw_text: 'Current source',
+    extracted_skills: [], extracted_coursework: [] } as unknown as ResumeParseResponse;
+
+  it('does not claim a successful upload when the parent rejects the parsed result', async () => {
+    mockParse.mockResolvedValue(parsed);
+    const onParsed = vi.fn(() => {
+      expect(screen.queryByText('resume.success')).toBeNull();
+      return false;
+    });
+    render(<ResumeUpload onParsed={onParsed} onRemove={vi.fn()} />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [pdfFile('not-saved.pdf')] } });
+    await screen.findByRole('alert');
+    expect(onParsed).toHaveBeenCalledWith(parsed);
+    expect(screen.getByRole('alert')).toHaveTextContent('resume.errProfileChanged');
+    expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
+    expect(screen.queryByText('resume.success')).toBeNull();
+    expect(screen.queryByText('not-saved.pdf')).toBeNull();
+    expect(input.value).toBe('');
+  });
+
+  it('restores the previous accepted filename and disclosure after a replacement is rejected', async () => {
+    mockParse.mockResolvedValueOnce({ ...parsed, pages_without_text: [2] }).mockResolvedValueOnce(parsed);
+    const onParsed = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+    render(<ResumeUpload onParsed={onParsed} onRemove={vi.fn()} />);
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [pdfFile('accepted.pdf')] } });
+    await screen.findByText('resume.success');
+    fireEvent.change(input, { target: { files: [pdfFile('rejected.pdf')] } });
+    await screen.findByRole('alert');
+    expect(onParsed).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('accepted.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('rejected.pdf')).toBeNull();
+    expect(screen.getByText('resume.incompletePages')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'resume.removeAria' })).toBeEnabled();
+  });
+
+  it('keeps the existing profile badge when a parsed replacement is rejected', async () => {
+    mockParse.mockResolvedValue(parsed);
+    render(<ResumeUpload onParsed={() => false} onRemove={vi.fn()} alreadyUploaded />);
+    await screen.findByText('resume.savedFallback');
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [pdfFile('rejected.pdf')] } });
+    await screen.findByRole('alert');
+    expect(screen.getByText('resume.savedFallback')).toBeInTheDocument();
+    expect(screen.queryByText('rejected.pdf')).toBeNull();
+  });
+
+  it('keeps a rejected removal visible and permits a later accepted removal', async () => {
+    const onRemove = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const onParsed = vi.fn();
+    render(<ResumeUpload onParsed={onParsed} onRemove={onRemove} alreadyUploaded />);
+    await screen.findByText('resume.savedFallback');
+    fireEvent.click(screen.getByRole('button', { name: 'resume.removeAria' }));
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('resume.savedFallback')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('resume.errProfileChanged');
+    expect(screen.queryByText('resume.dropHere')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'resume.removeAria' }));
+    expect(onRemove).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
+    expect(screen.queryByText('resume.savedFallback')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(onParsed).not.toHaveBeenCalled();
+  });
+
+  it('does not resurrect a removed profile badge if the next upload is rejected', async () => {
+    mockParse.mockResolvedValue(parsed);
+    render(<ResumeUpload onParsed={() => false} onRemove={() => true} alreadyUploaded />);
+    await screen.findByText('resume.savedFallback');
+    fireEvent.click(screen.getByRole('button', { name: 'resume.removeAria' }));
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [pdfFile('not-accepted.pdf')] } });
+    await screen.findByRole('alert');
+    expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
+    expect(screen.queryByText('resume.savedFallback')).toBeNull();
+    expect(screen.queryByText('resume.success')).toBeNull();
+  });
+});

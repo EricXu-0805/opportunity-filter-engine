@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import os
 import sys
+from types import SimpleNamespace
+
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -101,7 +104,7 @@ class TestModelOverride:
         # must get reasoning_effort:none — the "gemini-" prefix alone missed it.
         _use_provider(monkeypatch, "OPENROUTER_API_KEY")
         llm.chat_completion([{"role": "user", "content": "hi"}],
-                            model="google/gemini-2.0-flash-lite-001")
+                            model="google/gemini-2.5-flash-lite")
         assert _CAPTURED.get("extra_body", {}).get("reasoning_effort") == "none"
 
     def test_non_gemini_override_sends_no_extra_body(self, monkeypatch):
@@ -109,6 +112,47 @@ class TestModelOverride:
         llm.chat_completion([{"role": "user", "content": "hi"}], model="gpt-5.5")
         assert _CAPTURED["model"] == "gpt-5.5"
         assert "extra_body" not in _CAPTURED
+
+
+class TestOpenRouterReasoningBudget:
+    """Reasoning tokens count against max_tokens on OpenRouter. A caller's
+    max_tokens is sized for the visible answer; without an explicit effort and
+    headroom, a model that thinks by default (Sonnet 5 at 'high') spent the
+    whole 1,500-token draft budget on thinking and returned an empty, length-
+    truncated body — the draft was then discarded as unavailable."""
+
+    def test_caller_effort_reaches_openrouter_with_headroom_for_thinking(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=1500,
+                            reasoning_effort="low", model="anthropic/claude-sonnet-5",
+                            provider_id="openrouter")
+        assert _CAPTURED["extra_body"] == {"reasoning": {"effort": "low", "exclude": True}}
+        assert _CAPTURED["max_tokens"] == 1500 + llm._REASONING_HEADROOM["low"]
+
+    def test_none_is_sent_as_low_because_new_models_cannot_disable_thinking(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=100,
+                            model="anthropic/claude-opus-5.5", provider_id="openrouter")
+        assert _CAPTURED["extra_body"]["reasoning"]["effort"] == "low"
+        assert _CAPTURED["max_tokens"] == 100 + llm._REASONING_HEADROOM["low"]
+
+    def test_stream_path_gets_the_same_budget(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        with pytest.raises(TypeError):  # the fake response is not a stream; only the request matters
+            list(llm.chat_completion_stream([{"role": "user", "content": "hi"}], max_tokens=400,
+                                            reasoning_effort="medium", model="anthropic/claude-sonnet-5.5",
+                                            provider_id="openrouter"))
+        assert _CAPTURED["extra_body"] == {"reasoning": {"effort": "medium", "exclude": True}}
+        assert _CAPTURED["max_tokens"] == 400 + llm._REASONING_HEADROOM["medium"]
+
+    def test_direct_providers_and_gemini_are_unchanged(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=300, model="gpt-5.5")
+        assert "extra_body" not in _CAPTURED and _CAPTURED["max_tokens"] == 300
+        _use_provider(monkeypatch, "OPENROUTER_API_KEY")
+        llm.chat_completion([{"role": "user", "content": "hi"}], max_tokens=300,
+                            model="google/gemini-3.8-flash", provider_id="openrouter")
+        assert _CAPTURED["extra_body"] == {"reasoning_effort": "none"} and _CAPTURED["max_tokens"] == 300
 
 
 class TestProviderTargeting:
@@ -155,8 +199,8 @@ class TestChatModelOptions:
         assert all("label" in o and "id" in o for o in opts)
         # slug is resolvable server-side but never leaked in the public list.
         assert all("slug" not in o for o in opts)
-        assert llm.chat_model_slug("auto") == "anthropic/claude-sonnet-5"
-        assert llm.chat_model_slug("thinking") == "openai/gpt-5.6-terra-pro"
+        assert llm.chat_model_slug("auto") == "anthropic/claude-sonnet-5.5"
+        assert llm.chat_model_slug("thinking") == "openai/gpt-6.1-sol-pro"
 
     def test_unknown_id_has_no_slug(self, monkeypatch):
         monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -200,16 +244,16 @@ class TestModelFor:
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
         assert llm.model_for("cold_email") == {
             "provider_id": "openrouter",
-            "model": "anthropic/claude-sonnet-5",
+            "model": "anthropic/claude-sonnet-5.5",
         }
 
-    def test_writing_tasks_default_to_sonnet_5(self, monkeypatch):
+    def test_resume_tasks_default_to_sonnet_5_5(self, monkeypatch):
         self._clear(monkeypatch)
         monkeypatch.setenv("OPENROUTER_API_KEY", "k")
-        for task in ("cold_email", "tailor", "extract"):
+        for task in ("tailor", "extract"):
             assert llm.model_for(task) == {
                 "provider_id": "openrouter",
-                "model": "anthropic/claude-sonnet-5",
+                "model": "anthropic/claude-sonnet-5.5",
             }
 
     def test_per_task_env_override(self, monkeypatch):
@@ -256,3 +300,50 @@ class TestOneAttemptIsOneBilledRequest:
 
         assert seen, "the client was never constructed"
         assert seen[0]["max_retries"] == 0
+
+
+class TestCompleteTextRequirement:
+    @pytest.mark.parametrize("reason", ["length", "content_filter", "tool_calls", "function_call", "unknown", None, "missing"])
+    def test_incomplete_text_is_discarded_without_a_second_paid_request(self, monkeypatch, reason):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        calls, spends = [], []
+        choice = SimpleNamespace(message=_Msg("A plausible but incomplete draft"))
+        if reason != "missing":
+            choice.finish_reason = reason
+
+        def create(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(choices=[choice])
+
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(create))
+        monkeypatch.setattr(llm.llm_budget, "spend", lambda: spends.append(True))
+        monkeypatch.setattr(llm.time, "sleep", lambda *_: pytest.fail("Incomplete output must not retry"))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) is None
+        assert len(calls) == len(spends) == 1
+        assert "require_complete" not in calls[0]
+
+    @pytest.mark.parametrize("reason", ["stop", "length", "missing"])
+    def test_default_contract_keeps_returning_existing_provider_text(self, monkeypatch, reason):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        choice = SimpleNamespace(message=_Msg(" retained "))
+        if reason != "missing":
+            choice.finish_reason = reason
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(lambda **_: SimpleNamespace(choices=[choice])))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}]) == "retained"
+
+    def test_confirmed_stop_returns_the_text(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        choice = SimpleNamespace(message=_Msg(" complete "), finish_reason="stop")
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(lambda **_: SimpleNamespace(choices=[choice])))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) == "complete"
+
+    def test_empty_choices_do_not_trigger_a_second_paid_request(self, monkeypatch):
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        calls = []
+        def create(**_kwargs):
+            calls.append(True)
+            return SimpleNamespace(choices=[])
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(create))
+        monkeypatch.setattr(llm.time, "sleep", lambda *_: pytest.fail("Empty output must not retry"))
+        assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) is None
+        assert len(calls) == 1

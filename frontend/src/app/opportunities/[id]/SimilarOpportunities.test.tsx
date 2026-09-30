@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { SimilarOpportunities } from './SimilarOpportunities';
+import { translate } from '@/i18n/translate';
 
 const t = (key: string) => key;
 
@@ -38,6 +39,12 @@ describe('the similar rail only recommends what can be acted on', () => {
 
     expect(screen.getByText('A similar record')).toBeInTheDocument();
     expect(screen.getByText('badges.paid')).toBeInTheDocument();
+  });
+
+  it.each(['__proto__', 'constructor', 'toString'])('renders an unknown type %s without treating inherited properties as translation keys', (type) => {
+    render(<SimilarOpportunities similar={[similar({ source_type: 'campus_program', opportunity_type: type })]}
+      t={(key) => translate('en', key)} />);
+    expect(screen.getByRole('link', { name: /A similar record/ })).toHaveAttribute('href', '/opportunities/sim-1');
   });
 
   it('shows a live faculty profile without any offer terms', () => {

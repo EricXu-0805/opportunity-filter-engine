@@ -81,21 +81,24 @@ class TestColdEmailPolish:
         assert "Python" in matched and "C++" in matched
         assert "machine learning" in matched  # multi-word substring still matches
 
-    def test_concise_verb_agreement_singular(self):
+    def test_concise_single_skill_keeps_level_without_claiming_relevance(self):
         body = _build_concise(_parts(matching=["Python"]))
-        assert "which is relevant" in body
+        assert "foundational exposure to Python" in body
+        assert "which is relevant" not in body
         assert "which are relevant" not in body
 
-    def test_concise_verb_agreement_plural(self):
+    def test_concise_multiple_skills_keep_levels_without_claiming_relevance(self):
         body = _build_concise(_parts(matching=["Python", "C++"]))
-        assert "which are relevant" in body
+        assert "foundational exposure to Python and C++" in body
+        assert "which are relevant" not in body
 
     def test_skills_paragraph_does_not_repeat_the_same_list_twice(self):
         p = _parts(matching=["Python", "C++"])
         para = _p2_skills_applied(p)
         # The "In particular, my background in Python, C++ ..." re-list is gone.
         assert "In particular, my background in" not in para
-        assert "directly apply to the work described in your posting" in para
+        assert para.count("Python") == para.count("C++") == 1
+        assert "directly apply" not in para
 
 _LAB = "Prof. Jane Doe's Research Group"
 
@@ -121,9 +124,10 @@ class TestP1ResearchHookCE1:
         assert "resonates with my interest" not in h
         assert "your work on molecular biology" not in h
 
-    def test_specific_area_keeps_the_alignment_hook(self):
+    def test_specific_area_and_student_interest_remain_separate(self):
         h = _hook(research_area="computer vision", lab=_LAB, interests="deep learning")
-        assert "aligns closely with my interest" in h
+        assert "I am interested in deep learning." in h
+        assert "align" not in h
         assert "computer vision" in h
 
 
@@ -148,20 +152,22 @@ class TestP1ResearchHookCE7:
         assert "your work on environmental economics" in h
         assert "would like to learn more" in h
 
-    def test_token_overlap_keeps_the_claim(self):
+    def test_token_overlap_does_not_prove_a_connection(self):
         h = _hook(research_area="machine learning for healthcare", lab=_LAB,
                   interests="machine learning")
-        assert "aligns closely with my interest in machine learning" in h
+        assert "I am interested in machine learning." in h
+        assert "machine learning for healthcare" in h
+        assert "align" not in h
 
     def test_no_topic_signal_keeps_the_lab_hook(self):
         h = _hook(lab=_LAB, interests="machine learning")
         assert _LAB in h
-        assert "student interested in machine learning" in h
+        assert "I am interested in machine learning." in h
         assert "closely related" not in h
 
     def test_no_topic_signal_never_claims_a_cross_domain_relationship(self):
         h = _hook(lab="Smith Chemistry Lab", interests="medieval poetry")
-        assert "student interested in medieval poetry" in h
+        assert "I am interested in medieval poetry." in h
         assert "closely related" not in h
         assert "align" not in h
 
@@ -322,7 +328,7 @@ class TestFacultyContactProfileTruth:
         ):
             assert forbidden not in combined
 
-    def test_non_faculty_ai_prompt_keeps_existing_posting_semantics(self, monkeypatch):
+    def test_non_faculty_ai_prompt_keeps_posting_but_not_unverified_requirements(self, monkeypatch):
         ordinary = {
             **self._FACULTY,
             "source_type": "handshake",
@@ -333,8 +339,19 @@ class TestFacultyContactProfileTruth:
         )
 
         assert "OPPORTUNITY CONTACT:" in user
-        assert "Posting title: Undergraduate Computer Vision Assistant" in user
-        assert "Required skills: Python, PyTorch" in user
+        assert 'Posting title: "Undergraduate Computer Vision Assistant"' in user
+        assert 'Recorded skills (check application-condition evidence): ["Python", "PyTorch"]' in user
+        assert 'Required skills:' not in user
+        # A legacy skills list has no page evidence; retain it as a question,
+        # never promote it to a confirmed application requirement.
+        import json
+        condition_data = next(json.loads(line) for line in user.splitlines()
+                              if line.startswith('{"version":1,"record_kind":'))
+        requirement = next(row for row in condition_data["conditions"]
+                           if row["field"] == "eligibility.skills_required")
+        assert requirement["status"] == "unverified"
+        assert requirement["usage"] == "ask_only"
+        assert requirement["sources"] == []
         assert "posting's required stack" in system
 
     def test_non_faculty_unspecified_recipient_ai_prompt_and_output_fail_closed(
@@ -551,7 +568,7 @@ class TestFacultyContactProfileTruth:
         }
         for variant in variants:
             text = variant["text"].lower()
-            assert "your research" in text
+            assert "your research" in text or "your work on computer vision" in text
             assert "current or upcoming research openings" in text
             for forbidden in (
                 "directly applicable to this position",
@@ -854,8 +871,8 @@ class TestSkillLevelThreading:
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
         system_msg = next(m["content"] for m in captured["messages"] if m["role"] == "system")
 
-        assert "Python (expert)" in user_msg
-        assert "R (beginner)" in user_msg
+        assert '{"name": "Python", "level": "expert"}' in user_msg
+        assert '{"name": "R", "level": "beginner"}' in user_msg
         assert "self-reported level" in system_msg
         assert "never present a beginner skill" in system_msg
 
@@ -887,7 +904,7 @@ class TestSkillLevelThreading:
         out = ce._pipeline_generate(profile, opp, None)
         assert out is not None
         user_msg = next(m["content"] for m in captured["messages"] if m["role"] == "user")
-        assert "MATLAB (beginner)" in user_msg
+        assert '{"name": "MATLAB", "level": "beginner"}' in user_msg
 
 
 class TestRecentWorkGrounding:
@@ -946,18 +963,18 @@ class TestRecentWorkGrounding:
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
         # All stored (≤3, already the most recent) titles are offered with years,
         # and the model is told to cite at most one — the most relevant.
-        assert '"NeuroFlow: Decoding Imagined Speech from ECoG Arrays" (2026)' in user_msg
-        assert '"Cortical Signal Denoising for Implantable BCIs" (2024)' in user_msg
+        assert '"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026' in user_msg
+        assert '"title": "Cortical Signal Denoising for Implantable BCIs", "year": 2024' in user_msg
         assert "cite at most ONE, whichever is most relevant" in user_msg
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
-        assert "within the last three): (none)" in user_msg
+        assert "within the last three): []" in user_msg
 
     def test_prompt_excludes_unverified_works(self, monkeypatch):
         # Publication trust boundary: pipeline-verified works are presented as
         # the professor's own; name-matched / legacy / junk-status works are
-        # EXCLUDED from the prompt entirely — "(none)" is offered instead of a
+        # EXCLUDED from the prompt entirely — [] is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
         assert "Publications by this professor, newest first (cite at most ONE" in user_msg
@@ -975,7 +992,7 @@ class TestRecentWorkGrounding:
             user_msg = self._capture_prompt(
                 monkeypatch, self._opp(self._WORKS, status=status))
             assert "NeuroFlow" not in user_msg
-            assert "within the last three): (none)" in user_msg
+            assert "within the last three): []" in user_msg
 
     def _validate_draft(self, opp):
         from backend.lib.grounding import LENIENT_PROSE, validate_no_fabrication
@@ -1132,7 +1149,7 @@ class TestColdEmailPipeline:
         )
         brief = _render_student_brief(p)
         assert "FAISS retrieval pipeline" in brief
-        assert "Python (expert)" in brief
+        assert '{"name": "Python", "level": "expert"}' in brief
 
     def test_resume_bullet_term_is_grounded(self):
         """A concrete term present ONLY in a resume bullet is in the corpus, so a
@@ -1274,6 +1291,23 @@ class TestColdEmailPipeline:
         notes = ce._revision_notes({"llm": rubric})
         assert isinstance(notes, str)
 
+    def test_revision_notes_explain_gate_findings_instead_of_listing_them_as_terms(self):
+        import backend.routes.cold_email as ce
+
+        notes = ce._revision_notes({
+            "unsupported": ["unsupported experience attribution: personal build",
+                            "unsupported contact history claim", "0.95 auc", "hypersonics"],
+            "borrowed_competence": ["unsupported skill level: PCR", "robotics"],
+        })
+        assert "actor, verb and object" in notes
+        assert "already met" in notes
+        assert "level the student listed: PCR." in notes
+        assert "remove them: 0.95 auc." in notes
+        terms = next(line for line in notes.splitlines() if "These terms" in line)
+        assert terms.endswith(": hypersonics.")
+        topics = next(line for line in notes.splitlines() if "PROFESSOR's own materials" in line)
+        assert topics.endswith(": robotics.")
+
     def test_pipeline_survives_bad_critique_end_to_end(self, monkeypatch):
         """Full pipeline with a wrong-typed critique: no exception, revise still
         runs off the deterministic findings."""
@@ -1295,6 +1329,49 @@ class TestColdEmailPipeline:
         out = ce._pipeline_generate(self._profile(), self._opp(), None)
         assert out is not None
         assert "computer vision" in out.lower()
+
+    def _staged_revisions(self, monkeypatch, verdicts, replies):
+        import backend.routes.cold_email as ce
+
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setattr(ce, "_draft_email", lambda *a, **k: "draft")
+        monkeypatch.setattr(ce, "_deterministic_findings", lambda d, *a: verdicts[d])
+        notes = []
+        pending = iter(replies)
+
+        def revise(draft, findings, *a, **k):
+            notes.append(ce._revision_notes(findings))
+            return next(pending)
+
+        monkeypatch.setattr(ce, "_revise_email", revise)
+        return ce._pipeline_generate(self._profile(), self._opp(), None), notes
+
+    _ATTRIBUTION = {"banned_filler": [], "unsupported": ["unsupported experience attribution: personal build"],
+                    "attribution_clauses": ["I built X using Rust"], "borrowed_competence": [],
+                    "references_professor": True, "has_specific_prof_data": False}
+    _CLEAN = {**_ATTRIBUTION, "unsupported": [], "attribution_clauses": []}
+
+    def test_a_revision_that_still_fails_grounding_gets_one_repair_naming_the_sentence(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._ATTRIBUTION, "repaired": self._CLEAN},
+            ["revised", "repaired"])
+        assert out == "repaired"
+        assert len(notes) == 2
+        assert 'Rewrite: "I built X using Rust"' in notes[1]
+
+    def test_a_repair_that_does_not_improve_is_not_used(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._ATTRIBUTION, "repaired": self._ATTRIBUTION},
+            ["revised", "repaired"])
+        assert out == "revised"
+        assert len(notes) == 2
+
+    def test_a_clean_first_revision_gets_no_repair_call(self, monkeypatch):
+        out, notes = self._staged_revisions(
+            monkeypatch, {"draft": self._ATTRIBUTION, "revised": self._CLEAN}, ["revised"])
+        assert out == "revised"
+        assert len(notes) == 1
 
     def test_surname_only_data_is_no_data_and_boundaries_hold(self):
         """Two contracts in one staging. (1) EG1: the PI surname is no longer
@@ -1509,7 +1586,7 @@ class TestNDraftJudgeTier:
         models = dict(seen)
         assert models["judge"] == "anthropic/claude-opus-4.8"
         assert models["critique"] == "anthropic/claude-opus-4.8"
-        assert models["draft_angle1"] == "anthropic/claude-sonnet-5"
+        assert models["draft_angle1"] == "anthropic/claude-sonnet-5.5"
 
     def test_ndraft_count_clamps(self, monkeypatch):
         import backend.routes.cold_email as ce
@@ -1646,6 +1723,30 @@ class TestStudentCompetenceProvenanceEG2:
             extra_allow=ce._EMAIL_SCAFFOLDING,
         )
         assert violations == []
+
+    def test_prepositions_in_a_grounded_claim_are_not_borrowed_skills(self):
+        """A real draft was rejected with borrowed competence ['along']."""
+        import backend.routes.cold_email as ce
+        from backend.lib.grounding import competence_violations
+        p = ce._common_parts(
+            self._profile(), self._opp(),
+            resume_bullets=["Worked 10 hours per week in a yeast genetics lab since January 2026, "
+                            "running PCR genotyping and maintaining strain stocks."],
+        )
+        student_corpus = ce._student_email_corpus(p)
+        grounded = competence_violations(
+            "I have worked in a yeast genetics lab, running PCR genotyping along with "
+            "maintaining strain stocks, among other tasks, toward a lab routine.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert grounded == []
+        borrowed = competence_violations(
+            "I have worked on hypersonics along with PCR genotyping.",
+            student_corpus,
+            extra_allow=ce._EMAIL_SCAFFOLDING,
+        )
+        assert borrowed == ["hypersonics"]
 
     def test_engine_rejects_borrowing_draft(self, monkeypatch):
         """End to end through _run_engine: an AI draft claiming professor-side
@@ -2822,7 +2923,7 @@ class TestBusinessFacultyGetNoLabType:
         for assumed in ("GitHub", "IRB", "PCR", "bench", "coding challenge", "Zotero"):
             assert assumed not in tone, assumed
         assert "your lab" not in _ask_for_lab_type(None)
-        assert "your research" in _ask_for_lab_type(None)
+        assert "first step" in _ask_for_lab_type(None)
         # the other three are untouched
         assert "GitHub" in _lab_type_tone("dry")
         assert "IRB" in _lab_type_tone("humanities")

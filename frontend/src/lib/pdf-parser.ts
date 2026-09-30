@@ -1,4 +1,6 @@
 import type { ResumeParseResponse } from './types';
+import { MAX_RESUME_TEXT_CHARACTERS, resumeTextCharacters } from './resume-input';
+import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
 const KNOWN_SKILLS = [
   'Python', 'Java', 'C++', 'C#', 'C', 'JavaScript', 'TypeScript',
@@ -130,6 +132,14 @@ function extractResearchInterests(text: string): string {
   return '';
 }
 
+function resourceFailure(): ResumeParseResponse {
+  return {
+    extracted_skills: [], skill_evidence: [], extracted_coursework: [], raw_text: '',
+    success: false, error_code: 'pdf_resources_unavailable',
+    message: 'Required reading resources could not load. Please try again; your saved resume has not been replaced.',
+  };
+}
+
 export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   const pdfjsLib = await import('pdfjs-dist');
   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -138,20 +148,60 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   ).toString();
 
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const resources = createPdfResourceLoaders(window.location.origin);
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    // Copied from the installed PDF.js version before dev/build. CJK PDFs
+    // can otherwise lose glyphs while getTextContent still resolves.
+    cMapUrl: PDF_CMAP_URL,
+    cMapPacked: true,
+    standardFontDataUrl: PDF_STANDARD_FONT_URL,
+    CMapReaderFactory: resources.CMapReaderFactory,
+    StandardFontDataFactory: resources.StandardFontDataFactory,
+    useWorkerFetch: false,
+  }).promise;
 
   const textParts: string[] = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: unknown) => (item as { str: string }).str)
-      .join(' ');
-    textParts.push(pageText);
+  const pagesWithoutText: number[] = [];
+  let characterCount = 0;
+  try {
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      try {
+        const content = await page.getTextContent();
+        if (resources.hasFailure()) return resourceFailure();
+        // PDF.js includes marked-content objects without str. Preserve its
+        // line endings instead of flattening every page into one paragraph.
+        // This does not infer reading order for arbitrary multi-column PDFs.
+        let pageText = '';
+        for (const item of content.items) {
+          if (!('str' in item)) continue;
+          if (pageText && !/\s$/.test(pageText) && item.str && !/^\s/.test(item.str)) pageText += ' ';
+          pageText += item.str;
+          if (item.hasEOL && !pageText.endsWith('\n')) pageText += '\n';
+        }
+        characterCount += resumeTextCharacters(pageText) + (i > 1 ? 1 : 0);
+        if (characterCount > MAX_RESUME_TEXT_CHARACTERS) {
+          return {
+            extracted_skills: [], skill_evidence: [], extracted_coursework: [], raw_text: '',
+            success: false, error_code: 'text_too_long',
+            message: 'The PDF exceeds the supported 60,000 text characters. The saved resume has not been replaced.',
+          };
+        }
+        if (!pageText.trim()) pagesWithoutText.push(i);
+        textParts.push(pageText);
+      } finally {
+        page.cleanup();
+      }
+    }
+  } catch (error) {
+    if (resources.hasFailure()) return resourceFailure();
+    throw error;
+  } finally {
+    await pdf.destroy();
   }
 
   const rawText = textParts.join('\n');
-
   if (!rawText.trim()) {
     return {
       extracted_skills: [],
@@ -159,6 +209,7 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
       extracted_coursework: [],
       raw_text: '',
       success: false,
+      error_code: 'no_readable_text',
       message: 'Could not extract text from PDF. The file may be image-based.',
     };
   }
@@ -171,9 +222,10 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
     extracted_skills: hits.map((h) => h.skill),
     skill_evidence: hits,
     extracted_coursework: coursework,
-    raw_text: rawText.slice(0, 8000),
+    raw_text: rawText,
     success: true,
     message: `Extracted ${hits.length} skills, ${coursework.length} courses from resume.`,
     suggested_interests: interests,
+    pages_without_text: pagesWithoutText,
   };
 }

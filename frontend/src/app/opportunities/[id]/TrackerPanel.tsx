@@ -10,6 +10,8 @@ import type { TFunc } from './types';
 const MarkdownPreview = dynamic(() => import('@/components/MarkdownPreview'), { ssr: false });
 const AttachmentsPanel = dynamic(() => import('@/components/AttachmentsPanel'), { ssr: false });
 const StatusTimeline = dynamic(() => import('@/components/StatusTimeline'), { ssr: false });
+const ApplicationHistory = dynamic(() => import('@/components/ApplicationHistory'), { ssr: false });
+const ContactHistory = dynamic(() => import('@/components/ContactHistory'), { ssr: false });
 
 type NotesPatch = { notes?: string | null; remind_at?: string | null };
 
@@ -31,6 +33,8 @@ export function TrackerPanel({
   onSave,
   opportunityId,
   hasInteraction,
+  contactHistoryRevision = 0,
+  applicationHistoryRevision = 0,
   /** False while the owner/interaction-read state this panel writes
    *  against is not yet trustworthy (owner not primed, read loading/
    *  failed, no status yet, or a status write in flight) — see
@@ -59,11 +63,20 @@ export function TrackerPanel({
   onSave: (patch: NotesPatch) => Promise<SaveDetailsResult>;
   opportunityId: string;
   hasInteraction: boolean;
+  /** A confirmation replay can leave updated_at unchanged while refreshing history. */
+  contactHistoryRevision?: number;
+  applicationHistoryRevision?: number;
   writeReady?: boolean;
   reminderEligible: boolean;
   t: TFunc;
 }) {
   const [open, setOpen] = useState(!!(detail?.notes || detail?.remind_at));
+  useEffect(() => {
+    const openRecords = () => { if (window.location.hash === '#tracker-records') setOpen(true); };
+    openRecords();
+    window.addEventListener('hashchange', openRecords);
+    return () => window.removeEventListener('hashchange', openRecords);
+  }, []);
   const [notes, setNotes] = useState(detail?.notes ?? '');
   const [remindAt, setRemindAt] = useState(detail?.remind_at ?? '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -279,7 +292,7 @@ export function TrackerPanel({
   const hasContent = !!(notes || remindAt);
 
   return (
-    <div className="border-t border-gray-100 px-5 sm:px-8 py-3">
+    <div id="tracker-records" className="scroll-mt-20 border-t border-gray-100 px-5 sm:px-8 py-3">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -338,13 +351,15 @@ export function TrackerPanel({
               </button>
             </p>
           )}
-          {detail?.type && detail?.updated_at && (
+          {detail?.type && (
             <StatusTimeline
               opportunityId={opportunityId}
               fallbackType={detail.type}
               fallbackUpdatedAt={detail.updated_at}
             />
           )}
+          <ApplicationHistory opportunityId={opportunityId} refreshKey={JSON.stringify([detail?.updated_at, applicationHistoryRevision])} />
+          <ContactHistory opportunityId={opportunityId} refreshKey={JSON.stringify([detail?.updated_at, contactHistoryRevision])} />
           <div>
             <div role="tablist" aria-label={t('detail.tracker.notesTabsAria')} className="flex items-center gap-1 mb-1.5">
               <button

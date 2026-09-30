@@ -53,11 +53,13 @@ from __future__ import annotations
 import collections
 import json
 import logging
+import math
 import os
 import re
 import sys
 import time
 import unicodedata
+from email.utils import parsedate_to_datetime
 from typing import NamedTuple
 
 import requests
@@ -71,6 +73,15 @@ from ..publication_trust import (
 )
 from ..publication_trust import (
     works_are_verified,
+)
+from ..research_context import (
+    MAX_RESEARCH_ABSTRACT,
+    MAX_RESEARCH_TITLE,
+    SCHOOL_INST,
+    canonical_doi,
+    normalized_openalex_id,
+    normalized_source_url,
+    validate_research_snapshot,
 )
 from .ucb_common import PROCESSED_FILE
 
@@ -195,136 +206,6 @@ _WORKS_ROUNDS = 4
 # field gate discards some, so asking for exactly `want` would under-serve.
 _WORKS_SLACK = 4
 
-# school slug -> OpenAlex institution id (resolved once via /institutions). The
-# id is matched against each candidate author's full affiliation history, so a
-# professor who has since moved is still matched while a same-name person at a
-# different school is rejected.
-SCHOOL_INST = {
-    "uiuc": "I157725225",
-    "uw": "I201448701",
-    "ucla": "I161318765",
-    "utexas": "I86519309",
-    "stanford": "I97018004",
-    "gatech": "I130701444",
-    "wisc": "I135310074",
-    # Verified 2026-07-05 via GET /institutions?search=… (display_name + ROR):
-    "ucb": "I95457486",        # University of California, Berkeley (ror 01an7q238)
-    "umich": "I27837315",      # University of Michigan [Ann Arbor] (ror 00jmfr291)
-    "princeton": "I20089843",  # Princeton University (ror 00hx57361)
-    "ucsd": "I36258959",       # University of California San Diego (ror 0168r3w48)
-    "uchicago": "I40347166",   # University of Chicago (ror 024mw5h28)
-    "ucd": "I84218800",        # University of California, Davis (API-verified 2026-07-21)
-    "uci": "I204250578",       # University of California, Irvine (ror 04gyf1771)
-    "ucsb": "I154570441",      # University of California, Santa Barbara (ror 02t274463)
-    "boulder": "I188538660",   # University of Colorado Boulder (ror 02ttsq026)
-    "purdue": "I219193219",    # Purdue University West Lafayette (ror 02dqehb95)
-    "duke": "I170897317",      # Duke University (ror 00py81415)
-    "jhu": "I145311948",       # Johns Hopkins University (OpenAlex-API verified)
-    "northwestern": "I111979921",  # Northwestern University (OpenAlex-API verified)
-    "upenn": "I79576946",      # University of Pennsylvania (OpenAlex-API verified)
-    "caltech": "I122411786",   # California Institute of Technology (OpenAlex-API verified)
-    # LAC ranks 11-25 (2026-07-23)
-    "grinnell": "I173288447",  # Grinnell College
-    "colby": "I27504731",  # Colby College
-    "hamilton": "I188592606",  # Hamilton College
-    "vassar": "I126820664",  # Vassar College
-    "smith": "I202524275",  # Smith College
-    "wlu": "I184889055",  # Washington and Lee University
-    "colgate": "I39660569",  # Colgate University
-    "wesleyan": "I100538780",  # Wesleyan University
-    "haverford": "I155707491",  # Haverford College
-    "bates": "I37415318",  # Bates College
-    "barnard": "I98540497",  # Barnard College
-    "coloradocollege": "I189774192",  # Colorado College
-    "macalester": "I5444425",  # Macalester College
-    "kenyon": "I166972335",  # Kenyon College
-    "brynmawr": "I102373834",  # Bryn Mawr College
-    # Top-10 liberal arts colleges (2026-07-21)
-    "amherst": "I177605424",  # Amherst College
-    "swarthmore": "I118020396",  # Swarthmore College
-    "pomona": "I177881444",  # Pomona College
-    "wellesley": "I189731429",  # Wellesley College
-    "bowdoin": "I135474949",  # Bowdoin College
-    "carleton": "I188497080",  # Carleton College
-    "cmc": "I106107269",  # Claremont McKenna College
-    "middlebury": "I195575238",  # Middlebury College
-    "davidson": "I141720752",  # Davidson College
-    # Wave-3 batch 1 (2026-07-20)
-    "bc": "I103531236",  # Boston College
-    "emory": "I150468666",  # Emory University
-    "georgetown": "I184565670",  # Georgetown University
-    "nyu": "I57206974",  # New York University
-    "tufts": "I121934306",  # Tufts University
-    "uva": "I51556381",  # University of Virginia
-    "cornell": "I205783295",   # Cornell University (ror 05bnh6r87, OpenAlex-API verified)
-    "rice": "I74775410",       # Rice University (ror 008zs3103, OpenAlex-API verified)
-    "vanderbilt": "I200719446",  # Vanderbilt University (ror 02vm5rt34, OpenAlex-API verified)
-    "brown": "I27804330",      # Brown University (ror 05gq02987, OpenAlex-API verified)
-    "dartmouth": "I107672454",  # Dartmouth College (ror 049s0rh22, OpenAlex-API verified)
-    "columbia": "I78577930",
-    "mit": "I63966007",        # Massachusetts Institute of Technology (ror 042nb2s44, OpenAlex-API verified)
-    "harvard": "I136199984",   # Harvard University (ror 03vek6s52, OpenAlex-API verified)
-    "yale": "I32971472",       # Yale University (ror 03v76x132, OpenAlex-API verified)
-    "cmu": "I74973139",        # Carnegie Mellon University (ror 05x2bcf33, OpenAlex-API verified)
-    # Verified 2026-07-17 via GET /institutions?search=… (Wave-1 final seven):
-    "usc": "I1174212",         # University of Southern California
-    "umn": "I130238516",       # University of Minnesota [Twin Cities]
-    "osu": "I52357470",        # The Ohio State University
-    "nd": "I107639228",        # University of Notre Dame
-    "rochester": "I5388228",   # University of Rochester
-    "uf": "I33213144",         # University of Florida
-    "umass": "I24603500",      # University of Massachusetts Amherst
-    # Verified 2026-07-18 via GET /institutions?search=… (Wave-2 batch 1):
-    "vt": "I859038795",        # Virginia Tech
-    "tamu": "I91045830",       # Texas A&M University
-    "umd": "I66946132",        # University of Maryland, College Park
-    "neu": "I12912129",        # Northeastern University (US — NOT the CN homonym I9224756)
-    "sbu": "I59553526",        # Stony Brook University
-    "bu": "I111088046",        # Boston University
-    "washu": "I204465549",     # Washington University in St. Louis
-    "rutgers": "I102322142",   # Rutgers, The State University of New Jersey
-    "ncsu": "I137902535",      # North Carolina State University
-    "psu": "I130769515",       # Pennsylvania State University
-    "ucsc": "I185103710",      # University of California, Santa Cruz
-    "arizona": "I138006243",   # University of Arizona
-    "ucr": "I103635307",       # University of California, Riverside
-    "asu": "I55732556",        # Arizona State University
-    "pitt": "I170201317",      # University of Pittsburgh
-    "msu": "I87216513",        # Michigan State University
-    "buffalo": "I63190737",
-    "fsu": "I103163165",
-    "usf": "I2613432",
-    "utk": "I75027704",
-    "clemson": "I8078737",
-    "colostate": "I92446798",
-    "oregonstate": "I131249849",
-    "drexel": "I72816309",
-    # Wave-5 batch 1 (2026-07-20)
-    "stevens": "I108468826",  # Stevens Institute of Technology
-    "njit": "I118118575",  # New Jersey Institute of Technology
-    "wpi": "I107077323",  # Worcester Polytechnic Institute
-    "uky": "I143302722",  # University of Kentucky
-    "lehigh": "I186143895",  # Lehigh University
-    "syracuse": "I70983195",  # Syracuse University
-    "cincinnati": "I63135867",  # University of Cincinnati
-    "unl": "I114395901",  # University of Nebraska-Lincoln
-    "unc": "I114027177",  # University of North Carolina at Chapel Hill (API-verified 2026-07-26)
-    "lsu": "I121820613",  # Louisiana State University
-    "utdallas": "I162577319",  # University of Texas at Dallas
-    "casewestern": "I58956616",
-    "houston": "I44461941",
-    "iastate": "I173911158",
-    "indiana": "I4210119109",
-    "miami": "I145608581",
-    "rpi": "I165799507",
-    "ucf": "I106165777",
-    "uconn": "I140172145",
-    "udel": "I86501945",
-    "uiowa": "I126307644",
-    "utah": "I223532165",
-    # Verified 2026-07-18 via GET /institutions?search=University of Georgia:
-    "uga": "I165733156",       # University of Georgia (US, ~141k works)
-}
 _MIN_WORKS = 5
 _TRAIL = re.compile(r"\s+(research|studies|techniques|applications|methods)$", re.I)
 
@@ -1723,6 +1604,15 @@ def apply_works(opps: list[dict], mapping: dict[str, list | dict]) -> int:
     for o in opps:
         if not _is_faculty(o):
             continue
+        current_metadata = o.get("metadata") or {}
+        refresh = current_metadata.get("research_refresh")
+        if "research_snapshot" in current_metadata or (
+            isinstance(refresh, dict) and refresh.get("reason") == "identity_revoked"
+        ):
+            # The title-only library has neither a fresh author check nor the
+            # source content/time of the newer snapshot. It cannot replace a
+            # successful empty snapshot or restore a deliberately revoked ID.
+            continue
         entry = mapping.get(_person_key(o))
         if not entry and counts.get(_record_url(o), 0) == 1:
             entry = mapping.get(_record_url(o))
@@ -1816,13 +1706,599 @@ def _load_dotenv() -> None:
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
+# New snapshots use a separate bounded refresh path. Legacy title caches retain
+# their original semantics; they are never promoted into abstract provenance.
+_RESEARCH_PAGE_SIZE = 100
+_RESEARCH_RECORD_LIMIT = 25
+_RESEARCH_ROUNDS = 4
+_RESEARCH_RESPONSE_BYTES = 8 * 1024 * 1024
+_RESEARCH_SELECT = ('id,display_name,publication_year,publication_date,doi,'
+                    'abstract_inverted_index,updated_date,primary_topic,authorships')
+
+
+def _research_get(params: dict, *, url: str) -> tuple[dict | None, str | None]:
+    """One metered read, with an explicit failure. Never replay or call it empty."""
+    request_params = dict(params)
+    api_key = os.environ.get('OPENALEX_API_KEY')
+    if api_key:
+        request_params['api_key'] = api_key
+    try:
+        response = requests.get(url, params=request_params, headers=_HEADERS, timeout=20)
+        if response.status_code != 200:
+            return None, 'rate_limited' if response.status_code == 429 else 'http_error'
+        data = response.json()
+        return (data, None) if type(data) is dict else (None, 'invalid_response')
+    except (requests.RequestException, ValueError, TypeError):
+        return None, 'request_failed'
+
+
+def _research_header_number(value) -> float | None:
+    """Keep only finite, nonnegative header numbers, never header text."""
+    if type(value) not in (str, int, float) or type(value) is str and len(value) > 100:
+        return None
+    try:
+        number = float(value)
+    except (ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) and 0 <= number <= 2**53 - 1 else None
+
+
+def _research_retry_after(value) -> float | None:
+    number = _research_header_number(value)
+    if number is not None:
+        return number
+    if type(value) is not str or len(value) > 100:
+        return None
+    try:
+        date = parsedate_to_datetime(value)
+        if date.tzinfo is None:
+            return None
+        return _research_header_number(max(0, date.timestamp() - time.time()))
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def research_http_read(params: dict, *, url: str, timeout=20, session=None) -> tuple[dict | None, str | None, dict]:
+    """One bounded OpenAlex GET for the durable runner, with safe numeric receipts.
+
+    This new transport does not alter legacy ``_research_get`` callers. A real
+    injected Session must also have retries disabled; mock sessions can expose
+    only ``get``. Redirects are always disabled, including same-host redirects.
+    Responses are capped at eight MiB after decoding. Deadline checks stop
+    further reads; they cannot interrupt a currently blocked socket read.
+    Invalid local configuration raises before any request; remote failure is a
+    sanitized reason, and absent accounting headers remain explicitly unknown.
+    """
+    if type(url) is not str or re.fullmatch(r'https://api\.openalex\.org/(?:works|authors/A[1-9][0-9]*)', url) is None:
+        raise ValueError('invalid_research_url')
+    if type(timeout) not in (int, float) or not 0 < timeout <= 20 or not math.isfinite(timeout):
+        raise ValueError('invalid_research_timeout')
+    if type(params) is not dict or any(type(key) is not str or key.lower() == 'api_key' for key in params):
+        raise ValueError('invalid_research_params')
+    if isinstance(session, requests.Session):
+        retries = session.get_adapter(url).max_retries
+        if retries.total not in (0, False):
+            raise ValueError('research_transport_retries')
+    headers = dict(_HEADERS)
+    api_key = os.environ.get('OPENALEX_API_KEY')
+    if api_key:
+        headers['Authorization'] = 'Bearer ' + api_key
+    telemetry = dict.fromkeys(('http_status', 'retry_after_seconds', 'credits_used', 'remaining', 'reset_seconds'))
+    get = requests.get if session is None else session.get
+    response = None
+    deadline = time.monotonic() + timeout
+    try:
+        response = get(url, params=dict(params), headers=headers, timeout=timeout, allow_redirects=False, stream=True)
+        status = response.status_code
+        if type(status) is not int or not 100 <= status <= 599:
+            return None, 'invalid_response', telemetry
+        telemetry['http_status'] = status
+        response_headers = requests.structures.CaseInsensitiveDict(response.headers)
+        telemetry.update(
+            retry_after_seconds=_research_retry_after(response_headers.get('Retry-After')),
+            credits_used=_research_header_number(response_headers.get('X-RateLimit-Credits-Used')),
+            remaining=_research_header_number(response_headers.get('X-RateLimit-Remaining')),
+            reset_seconds=_research_header_number(response_headers.get('X-RateLimit-Reset')),
+        )
+        if status != 200:
+            error = 'rate_limited' if status == 429 else 'server_error' if status >= 500 else 'client_error'
+            return None, error, telemetry
+        # Count decoded bytes, including compressed responses. Do not trust an
+        # absent or incorrect Content-Length, and never read an error body.
+        body = bytearray()
+        chunks = iter(response.iter_content(chunk_size=8192))
+        while True:
+            if time.monotonic() >= deadline:
+                return None, 'request_failed', telemetry
+            try:
+                chunk = next(chunks)
+            except StopIteration:
+                break
+            if time.monotonic() >= deadline:
+                return None, 'request_failed', telemetry
+            if type(chunk) is not bytes or len(body) + len(chunk) > _RESEARCH_RESPONSE_BYTES:
+                return None, 'invalid_response', telemetry
+            body.extend(chunk)
+        try:
+            data = json.loads(body)
+        except (ValueError, TypeError, RecursionError):
+            return None, 'invalid_response', telemetry
+        return (data, None, telemetry) if type(data) is dict else (None, 'invalid_response', telemetry)
+    except requests.RequestException:
+        return None, 'request_failed', telemetry
+    finally:
+        if response is not None:
+            response.close()
+
+
+def reconstruct_research_abstract(value) -> tuple[str | None, str]:
+    """Invert every position, or preserve an explicit absence/error; no prefix."""
+    if value is None:
+        return None, 'missing'
+    if type(value) is not dict or not value:
+        return None, 'invalid'
+    # At most 12,000 characters can be useful, hence more tokens cannot fit.
+    positions: dict[int, str] = {}
+    if len(value) > MAX_RESEARCH_ABSTRACT:
+        return None, 'too_long'
+    for token, indexes in value.items():
+        if type(token) is not str or not token.strip() or '\x00' in token:
+            return None, 'invalid'
+        try:
+            token.encode('utf-8')
+        except UnicodeEncodeError:
+            return None, 'invalid'
+        if type(indexes) is not list or not indexes:
+            return None, 'invalid'
+        if len(token) > MAX_RESEARCH_ABSTRACT or len(indexes) > MAX_RESEARCH_ABSTRACT:
+            return None, 'too_long'
+        for index in indexes:
+            if type(index) is not int or index < 0:
+                return None, 'invalid'
+            if index >= MAX_RESEARCH_ABSTRACT:
+                return None, 'too_long'
+            if index in positions:
+                return None, 'invalid'
+            positions[index] = token
+        if len(positions) > MAX_RESEARCH_ABSTRACT:
+            return None, 'too_long'
+    if set(positions) != set(range(len(positions))):
+        return None, 'invalid'
+    result = ' '.join(positions[i] for i in range(len(positions)))
+    if len(result) > MAX_RESEARCH_ABSTRACT:
+        return None, 'too_long'
+    return result, 'present'
+
+
+def _research_author_matches(author: dict, record: dict, author_id: str) -> bool | None:
+    """Recheck the previously resolved ID; do not search for a replacement."""
+    raw_id = author.get('id')
+    if raw_id in ('https://openalex.org/A9999999999', 'https://openalex.org/A5317838346'):
+        return False
+    if normalized_openalex_id(raw_id, 'A') is None:
+        return None
+    if normalized_openalex_id(raw_id, 'A') != author_id:
+        return False
+    if (type(author.get('display_name')) is not str or not author['display_name'].strip()
+            or type(author.get('affiliations')) is not list or not author['affiliations']
+            or type(author.get('topics')) is not list or not author['topics']):
+        return None
+    if any(type(a) is not dict or type(a.get('institution')) is not dict
+           or normalized_openalex_id(a['institution'].get('id'), 'I') is None
+           for a in author['affiliations']):
+        return None
+    if any(type(t) is not dict or type(t.get('field')) is not dict
+           or type(t['field'].get('display_name')) is not str for t in author['topics']):
+        return None
+    name = record.get('pi_name') or ''
+    other_name = author.get('display_name') or ''
+    if not isinstance(other_name, str) or _surname(name) != _surname(other_name):
+        return False
+    if not _given_names_can_be_one_person(name, other_name):
+        return False
+    inst = normalized_openalex_id(SCHOOL_INST.get(record.get('school')), 'I')
+    affiliations = author.get('affiliations')
+    if type(affiliations) is not list or not any(
+        type(a) is dict and type(a.get('institution')) is dict
+        and normalized_openalex_id(a['institution'].get('id'), 'I') == inst
+        for a in affiliations
+    ):
+        return False
+    topics = author.get('topics')
+    if type(topics) is not list or any(type(t) is not dict or type(t.get('field')) is not dict for t in topics):
+        return False
+    allowed = _dept_fields(record.get('department') or '')
+    if allowed is not None:
+        considered = topics[:6]
+        count = sum(t['field'].get('display_name') in allowed for t in considered)
+        if not (count * 2 >= len(considered) if len(considered) >= 3 else bool(considered) and count == len(considered)):
+            return False
+    return bool(_author_own_fields(author))
+
+
+def _research_work(raw: dict, author_id: str, fields: set[str]) -> dict | None:
+    authorships = raw.get('authorships')
+    if type(authorships) is not list or not any(
+        type(a) is dict and type(a.get('author')) is dict
+        and normalized_openalex_id(a['author'].get('id'), 'A') == author_id
+        for a in authorships
+    ):
+        return None
+    topic = raw.get('primary_topic')
+    field = topic.get('field') if type(topic) is dict else None
+    if type(field) is not dict or field.get('display_name') not in fields:
+        return None
+    title = raw.get('display_name')
+    if type(title) is str:
+        title = re.sub(r'\s+', ' ', title).strip()
+    if type(title) is not str or not title.strip() or len(title) > MAX_RESEARCH_TITLE or _is_front_matter(title):
+        return None
+    work_id = normalized_openalex_id(raw.get('id'), 'W')
+    if work_id is None:
+        return None
+    abstract, status = reconstruct_research_abstract(raw.get('abstract_inverted_index'))
+    doi = canonical_doi(raw.get('doi'))
+    return {'work_id': work_id, 'title': title, 'year': raw.get('publication_year'),
+            'publication_date': raw.get('publication_date'), 'source_url': doi or work_id, 'doi': doi,
+            'abstract': abstract, 'abstract_status': status, 'updated_date': raw.get('updated_date')}
+
+
+def research_works_for_authors(author_fields: dict[str, set[str]], *, rounds: int = _RESEARCH_ROUNDS, request=None) -> dict:
+    """Each author gets success only after three usable works or proven exhaustion.
+
+    A full page with no progress, malformed response, absent/truncated authorships
+    or round exhaustion is incomplete, not a successful empty list. A new query
+    drops served authors; it never pretends one crowded page covers every author.
+    """
+    if not 1 <= rounds <= _RESEARCH_ROUNDS or len(author_fields) > _RESEARCH_RECORD_LIMIT:
+        raise ValueError('research_refresh_limit')
+    if any(normalized_openalex_id(a, 'A') != a or not fields for a, fields in author_fields.items()):
+        raise ValueError('invalid_research_author')
+    read = _research_get if request is None else request
+    if not callable(read):
+        raise ValueError('invalid_research_request')
+    pending = set(author_fields)
+    results = {a: {'status': 'incomplete', 'reason': 'round_limit', 'works': []} for a in pending}
+    for _ in range(rounds):
+        if not pending:
+            break
+        payload, error = read({
+            'filter': 'author.id:' + '|'.join(sorted(a.rsplit('/', 1)[-1] for a in pending)),
+            'sort': 'publication_date:desc', 'per_page': _RESEARCH_PAGE_SIZE,
+            'select': _RESEARCH_SELECT,
+        }, url=_WORKS_API)
+        if error:
+            for a in pending:
+                results[a].update(status='failed', reason=error)
+            break
+        raw_works = payload.get('results') if type(payload) is dict else None
+        meta = payload.get('meta') if type(payload) is dict else None
+        count = meta.get('count') if type(meta) is dict else None
+        if type(raw_works) is not list or len(raw_works) > _RESEARCH_PAGE_SIZE or any(type(w) is not dict for w in raw_works) or type(count) is not int or count < len(raw_works):
+            for a in pending:
+                results[a].update(status='failed', reason='invalid_response')
+            break
+        unsafe_authorships = any(
+            type(w.get('authorships')) is not list or not w['authorships'] or len(w['authorships']) >= 100
+            or any(type(a) is not dict or type(a.get('author')) is not dict
+                   or normalized_openalex_id(a['author'].get('id'), 'A') is None for a in w['authorships'])
+            for w in raw_works
+        )
+        complete = count == len(raw_works) and not unsafe_authorships
+        served = set()
+        for a in pending:
+            works = []
+            seen_ids = set()
+            for raw in raw_works:
+                work = _research_work(raw, a, author_fields[a])
+                if work and work['work_id'] not in seen_ids:
+                    works.append(work)
+                    seen_ids.add(work['work_id'])
+                if len(works) == _MAX_WORKS:
+                    break
+            results[a]['works'] = works
+            if len(works) == _MAX_WORKS or complete:
+                results[a].update(status='success', reason=None)
+                served.add(a)
+        if not served:
+            for a in pending:
+                results[a]['reason'] = 'incomplete_page'
+            break
+        pending -= served
+    return results
+
+
+def _research_binding(record: dict) -> dict:
+    md = record.get('metadata') or {}
+    return {'record_source_url': _record_url(record), 'identity_name': record.get('pi_name'),
+            'institution_id': normalized_openalex_id(SCHOOL_INST.get(record.get('school')), 'I'),
+            'author_id': normalized_openalex_id(md.get('publication_author_id'), 'A'),
+            'gate_version': md.get('works_gate')}
+
+
+def _validate_research_corpus(opps: list[dict]) -> None:
+    if type(opps) is not list or any(type(o) is not dict or type(o.get('metadata', {})) is not dict for o in opps):
+        raise ValueError('invalid_research_corpus')
+    seen_ids = set()
+    for record in opps:
+        rid = record.get('id')
+        if rid is not None:
+            if type(rid) is not str or not rid:
+                raise ValueError('invalid_research_record_id')
+            if rid in seen_ids:
+                raise ValueError('duplicate_research_record_id')
+            seen_ids.add(rid)
+
+
+def _iter_research_targets(opps: list[dict], *, schools: list[str] | None = None):
+    _validate_research_corpus(opps)
+    for record in opps:
+        school = record.get('school')
+        # Normal national programs have nullable school/pi_name. They are not
+        # malformed faculty, and an unrelated school's identity is not this
+        # explicitly selected batch's authority decision.
+        if type(school) is not str or school not in SCHOOL_INST or (schools and school not in schools):
+            continue
+        if not _is_faculty(record) or (record.get('metadata') or {}).get('publication_attribution_status') != ATTRIBUTION_VERIFIED:
+            continue
+        name = record.get('pi_name')
+        if type(name) is not str or not name.strip() or len(name) > 200 or normalized_source_url(_record_url(record)) is None:
+            raise ValueError('invalid_research_target')
+        try:
+            name.encode('utf-8')
+        except UnicodeEncodeError:
+            raise ValueError('invalid_research_target') from None
+        if '\x00' in name:
+            raise ValueError('invalid_research_target')
+        yield record
+
+
+def research_targets(opps: list[dict], *, schools: list[str] | None = None) -> list[dict]:
+    """All eligible faculty for due-time planning, without a first-page cap."""
+    return list(_iter_research_targets(opps, schools=schools))
+
+
+def _research_targets(opps: list[dict], *, limit: int, schools: list[str] | None = None) -> list[dict]:
+    """Keep the legacy bounded selector, including its validation boundary."""
+    if type(limit) is not int or not 1 <= limit <= _RESEARCH_RECORD_LIMIT:
+        raise ValueError('research_refresh_limit')
+    selected = []
+    for record in _iter_research_targets(opps, schools=schools):
+        selected.append(record)
+        if len(selected) == limit:
+            break
+    return selected
+
+
+def harvest_research_snapshots(opps: list[dict], *, limit: int = 10, schools: list[str] | None = None,
+                               now=None, selected_ids: list[str] | None = None, request=None) -> dict:
+    """Explicit small refresh, independent from old permanent misses/run-once gate."""
+    from datetime import UTC, datetime
+
+    if selected_ids is None:
+        targets = _research_targets(opps, limit=limit, schools=schools)
+    else:
+        if (type(selected_ids) is not list or len(selected_ids) > _RESEARCH_RECORD_LIMIT
+                or any(type(rid) is not str or not rid.strip() for rid in selected_ids)
+                or len(set(selected_ids)) != len(selected_ids)):
+            raise ValueError('invalid_research_selected_ids')
+        _validate_research_corpus(opps)
+        records_by_id = {record.get('id'): record for record in opps}
+        if any(rid not in records_by_id for rid in selected_ids):
+            raise ValueError('unavailable_research_selected_id')
+        # Validate only the explicitly authorized target identities. Unselected
+        # legacy source errors belong to the queue's visible review outcomes;
+        # full-corpus duplicate IDs and author collisions still fail closed.
+        selected_records = [records_by_id[rid] for rid in selected_ids]
+        targets = research_targets(selected_records, schools=schools)
+        if len(targets) != len(selected_ids):
+            raise ValueError('unavailable_research_selected_id')
+        # Explicit queue order is authoritative. Never silently fall back to the
+        # corpus prefix or truncate it with the legacy default limit of ten.
+    read = _research_get if request is None else request
+    if not callable(read):
+        raise ValueError('invalid_research_request')
+    current = datetime.now(UTC) if now is None else now
+    if not isinstance(current, datetime) or current.tzinfo is None:
+        raise ValueError('invalid_research_time')
+    stamp = current.astimezone(UTC).isoformat().replace('+00:00', 'Z')
+    # Known cross-person ID collisions are checked across the corpus, including
+    # other schools, without allowing an unrelated malformed identity to crash
+    # this batch. Such a malformed row is never an eligible source itself.
+    ambiguous = ambiguous_author_ids([
+        o for o in opps if type(o.get('pi_name')) is str
+        and type((o.get('metadata') or {}).get('publication_author_id')) is str
+    ])
+    output = {}
+    author_fields = {}
+    for record in targets:
+        binding = _research_binding(record)
+        aid = binding['author_id']
+        entry = {'binding': binding, 'research_refresh': {'checked_at': stamp, 'status': 'failed', 'reason': 'identity_unavailable'}}
+        output[_person_key(record)] = entry
+        gate = binding['gate_version']
+        if aid is None or aid in ambiguous or type(gate) is not int or gate < _WORKS_GATE:
+            if aid in ambiguous or binding['author_id'] is None:
+                entry['research_refresh']['reason'] = 'identity_revoked'
+            continue
+        author, error = read({'select': 'id,display_name,affiliations,topics'}, url=_API + '/' + aid.rsplit('/', 1)[-1])
+        if error:
+            entry['research_refresh']['reason'] = error
+            continue
+        matched = _research_author_matches(author, record, aid) if type(author) is dict else None
+        if matched is not True:
+            entry['research_refresh']['reason'] = 'identity_revoked' if matched is False else 'invalid_response'
+            continue
+        author_fields[aid] = _author_own_fields(author)
+        entry['_eligible'] = True
+    fetched = research_works_for_authors(author_fields, request=read) if author_fields else {}
+    for record in targets:
+        entry = output[_person_key(record)]
+        binding = entry['binding']
+        result = fetched.get(binding['author_id'])
+        # An author shared by equivalent records still has to pass this record's
+        # own identity check. Failure must never borrow another record's success.
+        if entry['research_refresh']['reason'] != 'identity_unavailable' or result is None:
+            continue
+        # Rejected identity and eligible entries are tracked separately below.
+        if not entry.pop('_eligible', False):
+            continue
+        entry['research_refresh'].update(status=result['status'], reason=result['reason'])
+        if result['status'] == 'success':
+            snapshot = {'version': 1, 'source': 'openalex', **binding, 'checked_at': stamp, 'works': result['works']}
+            valid = validate_research_snapshot(snapshot, record, now=current)
+            if valid is not None:
+                entry['research_snapshot'] = valid
+            else:
+                entry['research_refresh'].update(status='failed', reason='invalid_work')
+    return output
+
+
+def apply_research_refresh(opps: list[dict], mapping: dict, *, now=None) -> int:
+    """Apply an explicit refresh patch in memory; failures retain last success."""
+    from datetime import UTC, datetime
+
+    _validate_research_corpus(opps)
+    if type(mapping) is not dict or len(mapping) > _RESEARCH_RECORD_LIMIT:
+        raise ValueError('research_refresh_limit')
+    current = datetime.now(UTC) if now is None else now
+    if not isinstance(current, datetime) or current.tzinfo is None:
+        raise ValueError('invalid_research_time')
+    changed = 0
+    for record in opps:
+        entry = mapping.get(_person_key(record))
+        if type(entry) is not dict or entry.get('binding') != _research_binding(record):
+            continue
+        md = record.get('metadata') or {}
+        if md.get('publication_attribution_status') != ATTRIBUTION_VERIFIED:
+            continue
+        refresh = entry.get('research_refresh')
+        if type(refresh) is not dict or set(refresh) != {'checked_at', 'status', 'reason'}:
+            continue
+        try:
+            stamp = refresh['checked_at']
+            if not isinstance(stamp, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z', stamp):
+                continue
+            refreshed_at = datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+            if refreshed_at > current:
+                continue
+            last_stamp = (md.get('research_refresh') or {}).get('checked_at')
+            if last_stamp and datetime.fromisoformat(last_stamp.replace('Z', '+00:00')) > refreshed_at:
+                continue
+            # Every outcome is ordered against the last success too. Private
+            # attempt metadata may legitimately be absent after an import; an
+            # older failure must not revoke or relabel a newer successful read.
+            previous = md.get('research_snapshot')
+            if type(previous) is dict:
+                if datetime.fromisoformat(previous['checked_at'].replace('Z', '+00:00')) > refreshed_at:
+                    continue
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue
+        reasons = {'rate_limited', 'http_error', 'server_error', 'client_error', 'invalid_response', 'request_failed', 'identity_unavailable',
+                   'identity_revoked', 'incomplete_page', 'round_limit', 'invalid_work'}
+        if type(refresh['status']) is not str or (refresh['reason'] is not None and type(refresh['reason']) is not str):
+            continue
+        if ((refresh['status'] == 'success' and refresh['reason'] is not None)
+                or (refresh['status'] != 'success' and refresh['reason'] not in reasons)):
+            continue
+        snapshot = validate_research_snapshot(entry.get('research_snapshot'), record, now=current)
+        if refresh.get('status') == 'success':
+            if snapshot is None or snapshot['checked_at'] != refresh['checked_at']:
+                continue
+            md['research_snapshot'] = snapshot
+            md['recent_works'] = [{'title': w['title'], 'year': w['year']} for w in snapshot['works']]
+        elif refresh.get('status') not in ('failed', 'incomplete'):
+            continue
+        if refresh['reason'] == 'identity_revoked':
+            md.pop('publication_attribution_status', None)
+        # This is private operational state, never a new success timestamp.
+        md['research_refresh'] = dict(refresh)
+        record['metadata'] = md
+        changed += 1
+    return changed
+
+
+def _research_cli(argv: list[str]) -> int:
+    """No implicit corpus rewrite: refresh produces an explicit bounded patch."""
+    import argparse
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(prog='openalex_enrich refresh-research')
+    parser.add_argument('--input', required=True)
+    parser.add_argument('--out', required=True)
+    parser.add_argument('--limit', required=True, type=int, choices=range(1, _RESEARCH_RECORD_LIMIT + 1))
+    parser.add_argument('--schools')
+    args = parser.parse_args(argv)
+    source, dest = Path(args.input), Path(args.out)
+    if dest.exists():
+        parser.error('--out already exists; choose a new patch file')
+    if source.resolve() == dest.resolve():
+        parser.error('--out must differ from --input')
+    records = json.loads(source.read_text())
+    if type(records) is not list or any(type(record) is not dict for record in records):
+        parser.error('--input must be a corpus array')
+    result = harvest_research_snapshots(records, limit=args.limit, schools=args.schools.split(',') if args.schools else None)
+    # Exclusive create: never erase an earlier diagnostic/success artifact.
+    with dest.open('x') as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    print(f'Refreshed {len(result)} records into {dest}; input corpus unchanged.')
+    return 0
+
+
+def _apply_research_cli(argv: list[str]) -> int:
+    """Explicit local candidate apply; never overwrite the input or an earlier output."""
+    import argparse
+    import tempfile
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(prog='openalex_enrich apply-research')
+    parser.add_argument('--input', required=True)
+    parser.add_argument('--patch', required=True)
+    parser.add_argument('--out', required=True)
+    args = parser.parse_args(argv)
+    source, patch = Path(args.input), Path(args.patch)
+    dest = Path(args.out)
+    if patch.resolve() == source.resolve() or patch.resolve() == dest.resolve():
+        parser.error('patch and corpus paths must differ')
+    if dest.resolve() == source.resolve() or dest.exists():
+        parser.error('--out must be a new file distinct from --input')
+    if patch.stat().st_size > 2 * 1024 * 1024:
+        parser.error('patch exceeds 2 MiB')
+    original = source.read_bytes()
+    records, mapping = json.loads(original), json.loads(patch.read_text())
+    if type(records) is not list or any(type(o) is not dict for o in records):
+        parser.error('--input must be a corpus array')
+    try:
+        applied = apply_research_refresh(records, mapping)
+    except ValueError as error:
+        parser.error(str(error))
+    encoded = json.dumps(records, ensure_ascii=False, indent=2).encode('utf-8')
+    with tempfile.NamedTemporaryFile(dir=dest.parent, prefix='.research-apply-', delete=False) as f:
+        temp = Path(f.name)
+        f.write(encoded)
+        f.flush()
+        os.fsync(f.fileno())
+    try:
+        # A separate reviewable candidate, not an in-place CAS. Other corpus
+        # writers need not cooperate with a new lock or lose their latest work.
+        os.link(temp, dest)
+    finally:
+        temp.unlink(missing_ok=True)
+    print(f'Applied {applied} bounded refresh entries into {dest}.')
+    return 0
+
+
 def _cli(argv: list[str]) -> int:
     _load_dotenv()
     if not argv or argv[0] not in ("harvest", "roster", "apply", "works",
-                                   "works-roster", "apply-works"):
+                                   "works-roster", "apply-works", "refresh-research", "apply-research"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
+    if mode == "refresh-research":
+        return _research_cli(rest)
+    if mode == "apply-research":
+        return _apply_research_cli(rest)
     if mode == "roster":
         schools = rest[0].split(",") if rest and not rest[0].startswith("-") else None
         out = "openalex.json"

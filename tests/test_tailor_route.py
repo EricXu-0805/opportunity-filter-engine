@@ -175,14 +175,14 @@ class TestStatus:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         resp = client.get("/api/tailor/status")
         assert resp.status_code == 200
-        assert resp.json() == {"ai_available": True}
+        assert resp.json() == {"ai_available": True, "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION}
 
     def test_status_false_when_no_provider(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
             monkeypatch.delenv(k, raising=False)
         resp = client.get("/api/tailor/status")
         assert resp.status_code == 200
-        assert resp.json() == {"ai_available": False}
+        assert resp.json() == {"ai_available": False, "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION}
 
 
 class TestExtractBullets:
@@ -192,7 +192,11 @@ class TestExtractBullets:
         resp = client.post("/api/tailor/extract-bullets", json={"resume_text": "   "})
         assert resp.status_code == 200
         body = resp.json()
-        assert body == {"bullets": [], "method": "heuristic"}
+        assert body == {
+            "bullets": [], "method": "heuristic", "warnings": [], "processing": None,
+            "generated_at": body["generated_at"], "pipeline_version": tailor_module.TAILOR_PIPELINE_VERSION,
+        }
+        assert body["generated_at"]
 
     def test_no_provider_uses_glyph_heuristic(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
@@ -378,16 +382,16 @@ class TestAntiFabrication:
     def test_valid_tailored_passes_through(
         self, python_profile, real_opp_id, monkeypatch,
     ):
-        """Profile has Python + ML coursework — re-using those terms is OK."""
+        """The current original establishes the work and its quoted evidence."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
             "bullets": [
                 {
                     "text": (
-                        "Implemented machine learning experiments in Python "
-                        "during CS 225 coursework."
+                        "Implemented machine learning projects in Python "
+                        "for CS 225."
                     ),
-                    "source_evidence": "Python (experienced); CS 225",
+                    "source_evidence": "machine learning projects in Python for CS 225",
                 },
             ],
         })
@@ -398,7 +402,7 @@ class TestAntiFabrication:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Worked on Python projects in CS 225"],
+                "original_bullets": ["Implemented machine learning projects in Python for CS 225"],
             },
         )
         assert resp.status_code == 200
@@ -565,7 +569,7 @@ class TestLlmFailureModes:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Did Python projects in CS 225"],
+                "original_bullets": ["Implemented Python machine learning projects for CS 225"],
             },
         )
         assert resp.status_code == 200
@@ -575,44 +579,67 @@ class TestLlmFailureModes:
 
 
 class TestInputCaps:
-    """Pydantic ``cap_bullets`` validator drops empty strings & enforces limits."""
+    """Over-limit bullets are refused with the limit named, never cut down.
 
-    def test_more_than_12_bullets_truncated(self, java_profile, real_opp_id, monkeypatch):
+    The validator used to keep the first 12 bullets and the first 500
+    characters of each, so a student got a rewrite of text they never wrote
+    in full and no word that anything was missing."""
+
+    @staticmethod
+    def _post(profile, opp_id, bullets):
+        return client.post(
+            "/api/tailor",
+            json={"profile": profile, "opportunity_id": opp_id, "original_bullets": bullets},
+        )
+
+    @pytest.fixture(autouse=True)
+    def _no_provider(self, monkeypatch):
         for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
             monkeypatch.delenv(k, raising=False)
 
-        bullets = [f"bullet number {i}" for i in range(20)]
-        resp = client.post(
-            "/api/tailor",
-            json={
-                "profile": java_profile,
-                "opportunity_id": real_opp_id,
-                "original_bullets": bullets,
-            },
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        # Validator caps the input list at 12 before the route sees it.
-        assert len(body["tailored_bullets"]) == 12
+    def test_more_than_12_bullets_refused(self, java_profile, real_opp_id):
+        resp = self._post(java_profile, real_opp_id, [f"bullet number {i}" for i in range(13)])
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["code"] == "TAILOR_INPUT_TOO_LARGE"
+        assert detail["max_bullets"] == 12 and detail["max_characters_per_bullet"] == 500
+        assert "12" in detail["message"] and "500" in detail["message"]
 
-    def test_each_bullet_capped_500_chars(
-        self, java_profile, real_opp_id, monkeypatch,
-    ):
-        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
-            monkeypatch.delenv(k, raising=False)
-
-        long_bullet = "x" * 2000
-        resp = client.post(
-            "/api/tailor",
-            json={
-                "profile": java_profile,
-                "opportunity_id": real_opp_id,
-                "original_bullets": [long_bullet],
-            },
-        )
+    def test_exactly_12_bullets_all_kept(self, java_profile, real_opp_id):
+        bullets = [f"bullet number {i}" for i in range(12)]
+        resp = self._post(java_profile, real_opp_id, bullets)
         assert resp.status_code == 200
-        body = resp.json()
-        assert len(body["tailored_bullets"][0]["text"]) == 500
+        assert [b["text"] for b in resp.json()["tailored_bullets"]] == bullets
+
+    def test_blank_lines_do_not_count_toward_the_limit(self, java_profile, real_opp_id):
+        bullets = [f"bullet number {i}" for i in range(12)]
+        resp = self._post(java_profile, real_opp_id, bullets + ["", "   "])
+        assert resp.status_code == 200
+        assert len(resp.json()["tailored_bullets"]) == 12
+
+    def test_bullet_over_500_chars_refused(self, java_profile, real_opp_id):
+        resp = self._post(java_profile, real_opp_id, ["x" * 501])
+        assert resp.status_code == 422
+        assert resp.json()["detail"]["code"] == "TAILOR_INPUT_TOO_LARGE"
+
+    def test_bullet_of_500_chars_kept_whole(self, java_profile, real_opp_id):
+        resp = self._post(java_profile, real_opp_id, ["x" * 500])
+        assert resp.status_code == 200
+        assert resp.json()["tailored_bullets"][0]["text"] == "x" * 500
+
+    def test_refusal_returns_the_global_llm_slot(self, java_profile, real_opp_id, monkeypatch):
+        from backend import main as main_mod
+
+        monkeypatch.setattr(main_mod, "RATE_LIMIT_DISABLED", False)
+        main_mod._rate_buckets.clear()
+        main_mod._global_buckets.clear()
+        try:
+            resp = self._post(java_profile, real_opp_id, [f"bullet number {i}" for i in range(13)])
+            assert resp.status_code == 422
+            assert main_mod._global_buckets["llm"] == []
+        finally:
+            main_mod._rate_buckets.clear()
+            main_mod._global_buckets.clear()
 
     def test_empty_string_bullets_dropped(
         self, java_profile, real_opp_id, monkeypatch,
@@ -667,7 +694,7 @@ class TestSourceIndex:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
             "bullets": [
-                {"text": "Implemented Python ML in CS 225", "source_evidence": "Python"},
+                {"text": "Implemented Python ML exercises in CS 225.", "source_evidence": "Python"},
                 {"text": "Built ML models with Python during coursework", "source_evidence": "Python"},
             ],
         })
@@ -679,8 +706,8 @@ class TestSourceIndex:
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
                 "original_bullets": [
-                    "Did Python coursework in CS 225",
-                    "Worked on Python ML projects",
+                    "Implemented Python ML exercises in CS 225",
+                    "Built Python ML models during coursework",
                 ],
             },
         )
@@ -774,7 +801,7 @@ class TestLocale:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Did Python work in CS 225"],
+                "original_bullets": ["Implemented machine learning projects in Python for CS 225"],
                 "locale": "zh",
             },
         )

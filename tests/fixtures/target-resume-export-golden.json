@@ -1,0 +1,110 @@
+{
+  "base_fixture": "target-resume-ai-golden.json",
+  "options": {
+    "locale": "zh",
+    "page_size": "a4"
+  },
+  "draft_edits": {
+    "section_order": [
+      "awards",
+      "skills",
+      "publications",
+      "activities",
+      "education",
+      "basics"
+    ],
+    "excluded_sections": [
+      "publications"
+    ],
+    "excluded_blocks": [
+      "skill"
+    ],
+    "excluded_lines": [
+      "line-2"
+    ],
+    "line_text": {
+      "line-1": "  徐同学 😀  ",
+      "line-6": "手动修改\r\n\nI did not lead the team.\tBuilt a parser with teammates.  "
+    }
+  },
+  "projection": {
+    "version": 1,
+    "template": "standard-v1",
+    "locale": "zh",
+    "page_size": "a4",
+    "sections": [
+      {
+        "kind": "other",
+        "heading": "Awards 奖项",
+        "blocks": [
+          {
+            "lines": [
+              {
+                "role": "other",
+                "label": "Awards 奖项",
+                "text": "College scholarship"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "activities",
+        "heading": "",
+        "blocks": [
+          {
+            "lines": [
+              {
+                "role": "title",
+                "label": "",
+                "text": "Parser project 😀"
+              },
+              {
+                "role": "experience",
+                "label": "",
+                "text": "手动修改\r\n\nI did not lead the team.\tBuilt a parser with teammates.  "
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "education",
+        "heading": "",
+        "blocks": [
+          {
+            "lines": [
+              {
+                "role": "school",
+                "label": "",
+                "text": "UIUC"
+              },
+              {
+                "role": "degree",
+                "label": "",
+                "text": "B.S. — expected 2028"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "basics",
+        "heading": "",
+        "blocks": [
+          {
+            "lines": [
+              {
+                "role": "name",
+                "label": "",
+                "text": "  徐同学 😀  "
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "document_signature": "v1:sha256:aa01f67207fddbb0cd7ebd10b1c52c5979050e076f8aa4564be7b5e417840b4c",
+  "export_signature": "v1:sha256:5bd4515dc20cedd5b2779a543398814779a788a69770ab74834c337b1fb8dd32"
+}

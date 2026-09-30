@@ -6,6 +6,8 @@ import type { MatchResult } from '@/lib/types';
 export interface UseResultsKeyboardNavParams {
   paginated: MatchResult[];
   emailModalOpen: boolean;
+  /** A persistent writing dialog owns its keyboard, including its dirty exit guard. */
+  suspended?: boolean;
   onCloseEmailModal: () => void;
   onToggleFavorite: (opportunityId: string) => void;
   onOpenHelp: () => void;
@@ -25,6 +27,7 @@ export interface UseResultsKeyboardNavResult {
 export function useResultsKeyboardNav({
   paginated,
   emailModalOpen,
+  suspended = false,
   onCloseEmailModal,
   onToggleFavorite,
   onOpenHelp,
@@ -33,6 +36,7 @@ export function useResultsKeyboardNav({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (suspended || e.defaultPrevented) return;
       if (e.key === 'Escape' && emailModalOpen) {
         onCloseEmailModal();
         return;
@@ -93,7 +97,7 @@ export function useResultsKeyboardNav({
     }
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [emailModalOpen, paginated, focusedIdx, onCloseEmailModal, onToggleFavorite, onOpenHelp]);
+  }, [suspended, emailModalOpen, paginated, focusedIdx, onCloseEmailModal, onToggleFavorite, onOpenHelp]);
 
   return { focusedIdx, setFocusedIdx };
 }

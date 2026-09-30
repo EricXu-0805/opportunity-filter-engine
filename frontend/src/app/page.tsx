@@ -7,6 +7,8 @@ import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { useT } from '@/i18n/client';
 
 import { AcademicProfileCard } from './home/AcademicProfileCard';
+import { ExperienceLibraryCard } from './home/ExperienceLibraryCard';
+import { ResumeMasterCard } from './home/ResumeMasterCard';
 import { DocumentsCard } from './home/DocumentsCard';
 import { HeroSection } from './home/HeroSection';
 import { LiveDatabaseCard } from './home/LiveDatabaseCard';
@@ -17,6 +19,7 @@ import { SearchFocusCard } from './home/SearchFocusCard';
 import { SharedBanner } from './home/SharedBanner';
 import { SubmitRow } from './home/SubmitRow';
 import { useProfileForm } from './home/use-profile-form';
+import { useDatabaseStats } from './home/use-database-stats';
 
 export default function HomePage() {
   // The fallback reserves a viewport of height on purpose. With a null
@@ -33,33 +36,40 @@ export default function HomePage() {
 
 function HomePageInner() {
   const { t } = useT();
+  const databaseStats = useDatabaseStats();
   const {
     profile,
     searchWeight,
     setSearchWeight,
-    oppCount,
-    lastUpdated,
     ghLoading,
     ghStatus,
     sharedBanner,
     dismissSharedBanner,
     shareCopied,
+    shareError,
     saveStatus,
     isSubmitting,
     retryCloudSave,
+    retryProfileLoad,
+    profileRefreshStatus,
+    retryProfileRefresh,
     canRetrySync,
     conflicts,
     keepMyChanges,
     useCloudVersion,
     hydrationState,
     isValid,
+    missingSeekingTypes,
     identityGeneration,
+    academicIdentityGeneration,
     viewSnapshot,
     update,
     handleSubmit,
     handleShare,
     handleResumeParsed,
     handleResumeRemoved,
+    handleExperienceChange,
+    handleResumeMasterChange,
     handleGitHubImport,
   } = useProfileForm(t);
 
@@ -69,20 +79,23 @@ function HomePageInner() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {shareError && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{shareError}</p>}
       <SharedBanner message={sharedBanner} onDismiss={dismissSharedBanner} t={t} />
 
       <HeroSection t={t} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7">
-          {/* Keyed by identity like DocumentsCard: the school-switcher modal and
-              its error are this card's own state, and a modal opened under one
-              account must not stay open, pre-selected, for the next. */}
+          {/* Initial identity establishment preserves controlled input focus
+              where the hook already carries the virgin draft. Private card
+              controls reset on every core generation; account switches also
+              remount the entire card. */}
           <AcademicProfileCard
-            key={identityGeneration}
+            key={academicIdentityGeneration}
+            identityGeneration={identityGeneration}
             profile={profile}
             update={update}
-            viewSnapshot={viewSnapshot}
+            viewSnapshot={profileRefreshStatus === 'ready' ? viewSnapshot : null}
             t={t}
           />
         </div>
@@ -95,9 +108,23 @@ function HomePageInner() {
           <DocumentsCard
             key={identityGeneration}
             profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
             onResumeParsed={handleResumeParsed}
             onResumeRemoved={handleResumeRemoved}
             t={t}
+          />
+          <ExperienceLibraryCard
+            key={`experience-${identityGeneration}`}
+            profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
+            onChange={handleExperienceChange}
+            t={t}
+          />
+          <ResumeMasterCard
+            key={`resume-master-${identityGeneration}`}
+            profile={profile}
+            ready={hydrationState === 'ready' && viewSnapshot !== null}
+            onChange={handleResumeMasterChange}
           />
           <OnlineProfilesCard
             profile={profile}
@@ -114,7 +141,7 @@ function HomePageInner() {
             setExploring={(v) => update('exploring', v)}
             t={t}
           />
-          <LiveDatabaseCard oppCount={oppCount} lastUpdated={lastUpdated} t={t} />
+          <LiveDatabaseCard {...databaseStats} t={t} />
         </div>
       </div>
 
@@ -124,6 +151,7 @@ function HomePageInner() {
 
       <SubmitRow
         isValid={isValid}
+        missingSeekingTypes={missingSeekingTypes}
         shareCopied={shareCopied}
         saveStatus={saveStatus}
         hydrationState={hydrationState}
@@ -131,6 +159,9 @@ function HomePageInner() {
         hasConflict={conflicts.length > 0}
         canRetrySync={canRetrySync}
         onRetrySync={retryCloudSave}
+        onRetryProfileLoad={retryProfileLoad}
+        profileRefreshStatus={profileRefreshStatus}
+        onRetryProfileRefresh={retryProfileRefresh}
         onKeepMyChanges={keepMyChanges}
         onUseCloudVersion={useCloudVersion}
         onSubmit={handleSubmit}

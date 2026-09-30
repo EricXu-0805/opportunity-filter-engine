@@ -245,8 +245,12 @@ jobs:
 
       - name: Data-quality gate
         # Fail fast and attributably here if the fresh scrape produced dirty data,
-        # rather than letting the downstream data PR's CI catch it late.
-        run: pytest tests/test_opportunity_data_quality.py -q
+        # rather than letting the downstream data PR's CI catch it late. The
+        # tombstone invariant is the contact check the data PR failed on 09-21
+        # and 09-28 (an address re-scraped onto a rejected identity).
+        run: >-
+          pytest -q tests/test_opportunity_data_quality.py
+          "tests/test_contact_gating.py::TestTheCorpusStaysReachable::test_no_record_holds_an_address_and_a_tombstone"
 
       - name: Check for changes
         id: changes
@@ -430,6 +434,15 @@ jobs:
               echo "waiting for required checks to register ($i)…"; sleep 15
             done
             gh pr checks "$BRANCH" --required --watch
+            # --watch exits 0 when a required check was cancelled (gh 2.93,
+            # PR #996), and the merge below would then be refused as if main
+            # had moved. Only an all-pass set of required checks may merge.
+            NOT_PASSED=$(gh pr checks "$BRANCH" --required --json name,bucket \
+              --jq '[.[] | select(.bucket != "pass") | "\(.name)=\(.bucket)"] | join(", ")')
+            if [ -n "$NOT_PASSED" ]; then
+              echo "::error::Required checks did not pass: $NOT_PASSED"
+              exit 1
+            fi
 
             # Merge once green (retry briefly while GitHub recomputes mergeability).
             MERGED=""

@@ -9,11 +9,12 @@ hardening) applies to every LLM touchpoint at once.
 from __future__ import annotations
 
 
-def sanitize_field(value: object, *, max_len: int = 600) -> str:
-    """Flatten a free-text profile field for safe prompt interpolation.
+def sanitize_field(value: object, *, max_len: int | None = 600) -> str:
+    """Flatten whitespace for a single-line prompt field.
 
-    Collapses all whitespace (incl. newlines) to single spaces so a user
-    supplied field cannot inject fake ``Subject:`` / role lines or multi-line
-    instructions into the LLM prompt, then truncates to ``max_len``.
+    ``max_len=None`` retains the complete field; use a serialized message
+    budget at the provider boundary for that path. The legacy default still
+    clips excerpts. Whitespace formatting is not a prompt-injection guarantee:
+    external text remains untrusted data even when it occupies one line.
     """
     return " ".join(str(value).split())[:max_len]

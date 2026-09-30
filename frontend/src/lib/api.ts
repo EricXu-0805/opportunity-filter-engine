@@ -1,3 +1,7 @@
+import type { EmailTargetConditions, EmailConditionIssue } from './email-target-conditions';
+import { assertProfileInput, ProfileInputError } from './profile-input';
+import type { EmailTextSelection } from './email-revision';
+import { validateResumeMaster } from './resume-master';
 import type {
   ProfileData,
   ProfileRequest,
@@ -5,11 +9,15 @@ import type {
   OpportunitiesResponse,
   ColdEmailEngine,
   ColdEmailResponse,
+  ExperienceUsage,
   EmailStyle,
   EmailVariantsResponse,
+  EmailContactContext,
+  EmailContactContextReceipt,
   StatsResponse,
   TailorResponse,
   StructureResumeResponse,
+  ResumeProcessingCoverage,
   ResumeSectionInput,
   RenovateResponse,
   BulletOptimizeResponse,
@@ -17,7 +25,11 @@ import type {
   DeadlineFilterValue,
 } from './types';
 import { track } from './analytics';
-import { captureOwnerToken } from './identity-owner';
+import { normalizeEmailContactContext } from './email-contact-context';
+import { COLD_EMAIL_STREAM_TIMEOUT_MS, ColdEmailStreamError } from './cold-email-stream';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type OwnerToken } from './identity-owner';
+import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
+import { TARGET_RESUME_PLAN_MAX_BODY_BYTES, type TargetResumePlanRequest, type TargetResumePlanResponse } from './target-resume-plan-protocol';
 import { bySlug } from './schools';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
@@ -85,10 +97,10 @@ function safeHttpMessage(status: number): string {
 }
 
 async function apiErrorFromResponse(res: Response): Promise<ApiError> {
-  const raw = (await res.text().catch(() => '')).slice(0, 4096);
+  const raw = await res.text().catch(() => '');
   let detail: unknown = null;
   try {
-    detail = raw ? JSON.parse(raw) : null;
+    detail = raw && raw.length <= 1_000_000 ? JSON.parse(raw) : null;
   } catch {
     // HTML/text gateway bodies are intentionally ignored.
   }
@@ -124,7 +136,8 @@ async function apiErrorFromResponse(res: Response): Promise<ApiError> {
   return new ApiError(
     res.status,
     code,
-    message,
+    code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || code === 'PROFILE_INPUT_INVALID'
+      ? 'Check your profile input. Your original content is kept.' : message,
     envelope.retryable === true || res.status >= 500 || res.status === 429,
     res.headers?.get?.('x-request-id') ?? undefined,
     fastApiDetail,
@@ -158,75 +171,184 @@ async function requestOnce<T>(
     ...fetchOptions
   } = options;
   const controller = new AbortController();
-  const abortFromCaller = () => controller.abort(callerSignal?.reason);
+  let response: Response | undefined;
+  let interruption: ApiError | DOMException | null = null;
+  let rejectInterruption!: (error: ApiError | DOMException) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const cancelResponseBody = () => {
+    // Real fetch aborts its reader; a late/fake response may ignore that signal.
+    // Cancellation is best effort (a body already locked by json/text rejects).
+    try { void response?.body?.cancel().catch(() => {}); } catch { /* no raw transport error */ }
+  };
+  const interrupt = (error: ApiError | DOMException) => {
+    if (interruption !== null) return; // the first timeout/caller decision wins
+    interruption = error;
+    rejectInterruption(error);
+    controller.abort(error);
+    cancelResponseBody();
+  };
+  const throwIfInterrupted = () => { if (interruption !== null) throw interruption; };
+  const abortFromCaller = () => interrupt(new DOMException('The request was cancelled.', 'AbortError'));
   if (callerSignal?.aborted) abortFromCaller();
   else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
-  const timer = setTimeout(
-    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
-    timeoutMs,
-  );
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (callerHeaders instanceof Headers) {
-    callerHeaders.forEach((value, key) => { headers[key] = value; });
-  } else if (Array.isArray(callerHeaders)) {
-    for (const [key, value] of callerHeaders) headers[key] = value;
-  } else if (callerHeaders) {
-    Object.assign(headers, callerHeaders);
-  }
+  const timer = setTimeout(() => interrupt(new ApiError(
+    408, 'REQUEST_TIMEOUT', 'The request took too long. Please try again.', true,
+  )), timeoutMs);
 
-  let res: Response;
   try {
-    res = await fetch(`${API_BASE}${url}`, {
-      ...fetchOptions,
-      headers,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (controller.signal.aborted && !callerSignal?.aborted) {
-      throw new ApiError(
-        408,
-        'REQUEST_TIMEOUT',
-        'The request took too long. Please try again.',
-        true,
-      );
-    }
-    throw error;
+    return await Promise.race([interrupted, (async () => {
+      throwIfInterrupted();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (callerHeaders instanceof Headers) {
+        callerHeaders.forEach((value, key) => { headers[key] = value; });
+      } else if (Array.isArray(callerHeaders)) {
+        for (const [key, value] of callerHeaders) headers[key] = value;
+      } else if (callerHeaders) {
+        Object.assign(headers, callerHeaders);
+      }
+      try {
+        response = await fetch(`${API_BASE}${url}`, { ...fetchOptions, headers, signal: controller.signal });
+      } catch {
+        throwIfInterrupted();
+        // Preserve existing retry policy: a raw network failure did not opt in
+        // to replay, even for an endpoint which retries declared HTTP failures.
+        throw new ApiError(0, 'NETWORK_ERROR', 'The service could not be reached. Please try again.', false);
+      }
+      if (interruption !== null) { cancelResponseBody(); throwIfInterrupted(); }
+      if (!response.ok) {
+        let error: ApiError;
+        try { error = await apiErrorFromResponse(response); }
+        catch {
+          throwIfInterrupted();
+          error = new ApiError(response.status, `HTTP_${response.status}`, safeHttpMessage(response.status), response.status >= 500 || response.status === 429);
+        }
+        throwIfInterrupted();
+        throw error;
+      }
+      try {
+        const result = await response.json() as T;
+        throwIfInterrupted();
+        return result;
+      } catch {
+        throwIfInterrupted();
+        throw new ApiError(response.status, 'INVALID_RESPONSE', 'The response could not be read. Please try again.', false);
+      }
+    })()]);
   } finally {
+    // One deadline covers headers AND success/error body consumption. The
+    // race also settles when a fetch/body implementation ignores AbortSignal.
     clearTimeout(timer);
     callerSignal?.removeEventListener('abort', abortFromCaller);
   }
-  if (!res.ok) {
-    throw await apiErrorFromResponse(res);
-  }
-  return res.json() as Promise<T>;
 }
 
-/**
- * W10b contact reveal: run a request with the signed-in session's token
- * attached, and — when the backend still answers "sign_in_required" for a
- * token we believed valid (stale/expired) — refresh the session ONCE and
- * retry ONCE. The backend degrades a bad token to the anonymous shape rather
- * than a 401, so this never surfaces an auth error to the page; if the retry
- * still comes back locked, the caller renders the sign-in affordance.
- */
+export const WRITING_AUTH_TIMEOUT_MS = 15_000;
+
+/** Preserve legacy unresolved callers, but never cross an identity generation. */
+function isWritingOwnerCurrent(owner: OwnerToken): boolean {
+  return isTokenOwnerStillCurrent(owner)
+    && captureOwnerToken().generation === owner.generation
+    && (owner.generation < 0 || isOwnerTokenValid(owner, owner.uid));
+}
+
+/** Bound the pre-request identity lookup; a late SDK result cannot start a POST. */
+async function writingAccessToken(owner: OwnerToken, signal?: AbortSignal): Promise<string | null> {
+  let timedOut = false;
+  let rejectCancel!: (error: DOMException) => void;
+  const cancelled = new Promise<never>((_resolve, reject) => { rejectCancel = reject; });
+  const abort = () => rejectCancel(new DOMException('The request was cancelled.', 'AbortError'));
+  const active = () => {
+    if (signal?.aborted) throw new DOMException('The request was cancelled.', 'AbortError');
+    if (!isWritingOwnerCurrent(owner)) throw new ApiError(409, 'WRITING_OWNER_CHANGED', 'The active profile changed. Your draft is kept.', false);
+    if (timedOut) throw new ApiError(408, 'WRITING_AUTH_TIMEOUT', 'Your sign-in could not be checked. Your draft is kept. Please try again.', false);
+  };
+  active();
+  signal?.addEventListener('abort', abort, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => { timedOut = true; reject(new ApiError(408, 'WRITING_AUTH_TIMEOUT',
+      'Your sign-in could not be checked. Your draft is kept. Please try again.', false)); }, WRITING_AUTH_TIMEOUT_MS);
+  });
+  try {
+    const token = await Promise.race([getRevealAccessToken(), deadline, cancelled]);
+    active();
+    return token;
+  } catch (error) {
+    active();
+    if (error instanceof ApiError || (error instanceof DOMException && error.name === 'AbortError')) throw error;
+    throw new ApiError(0, 'WRITING_AUTH_UNAVAILABLE', 'Your sign-in could not be checked. Your draft is kept. Please try again.', false);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
+/** A completed draft with a locked recipient must not trigger a second generation. */
+async function requestWritingWithAuth<T>(url: string, init: Omit<RequestInit, 'headers'>): Promise<T> {
+  const owner = captureOwnerToken();
+  const token = await writingAccessToken(owner, init.signal ?? undefined);
+  const assertOwner = () => {
+    if (!isWritingOwnerCurrent(owner)) throw new ApiError(409, 'WRITING_OWNER_CHANGED', 'The active profile changed. Your draft is kept.', false);
+  };
+  assertOwner();
+  const result = await request<T>(url, { ...init, retries: 0,
+    headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  assertOwner();
+  return result;
+}
+
+/** One deadline covers session lookup, HTTP bodies, and the one auth refresh. */
+export const CONTACT_REVEAL_TIMEOUT_MS = 30_000;
+
+/** GET-only auth recovery. Transport failures require an explicit user retry. */
 async function requestWithRevealRetry<T>(
   url: string,
   init: Omit<RequestInit, 'headers'>,
   isStaleReveal: (resp: T) => boolean,
 ): Promise<T> {
-  const token = await getRevealAccessToken();
+  const controller = new AbortController();
+  let interruption: ApiError | DOMException | null = null;
+  let rejectInterruption!: (error: ApiError | DOMException) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const interrupt = (error: ApiError | DOMException) => {
+    if (interruption !== null) return;
+    interruption = error;
+    rejectInterruption(error);
+    controller.abort(error);
+  };
+  const assertActive = () => { if (interruption !== null) throw interruption; };
+  const callerSignal = init.signal;
+  const abort = () => interrupt(new DOMException('The request was cancelled.', 'AbortError'));
+  if (callerSignal?.aborted) abort();
+  else callerSignal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => interrupt(new ApiError(
+    408, 'CONTACT_REVEAL_TIMEOUT', 'The contact email could not be loaded. Please try again.', true,
+  )), CONTACT_REVEAL_TIMEOUT_MS);
   const headers = (auth: string | null): Record<string, string> => ({
     'Content-Type': 'application/json',
     ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
   });
-  let resp = await request<T>(url, { ...init, headers: headers(token) });
-  if (token && isStaleReveal(resp)) {
-    const fresh = await refreshRevealAccessToken();
-    if (fresh) {
-      resp = await request<T>(url, { ...init, headers: headers(fresh) });
-    }
+  try {
+    return await Promise.race([interrupted, (async () => {
+      assertActive();
+      const token = await getRevealAccessToken({ throwOnError: true });
+      assertActive();
+      let resp = await request<T>(url, { ...init, signal: controller.signal, headers: headers(token) });
+      assertActive();
+      if (token && isStaleReveal(resp)) {
+        const fresh = await refreshRevealAccessToken({ throwOnError: true });
+        assertActive();
+        if (fresh) {
+          resp = await request<T>(url, { ...init, signal: controller.signal, headers: headers(fresh) });
+          assertActive();
+        }
+      }
+      return resp;
+    })()]);
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abort);
   }
-  return resp;
 }
 
 /**
@@ -235,7 +357,7 @@ async function requestWithRevealRetry<T>(
  * keywords for an exact-match bonus. Previously hardcoded to [], so that bonus
  * path was dead for every real user. Splits on commas/semicolons/newlines and
  * the conjunction "and" (so "computer vision and machine learning" → two terms),
- * trims, dedupes, and caps at 20 (the backend also caps). Non-matching terms are
+ * trims and dedupes without discarding later terms. The full text also travels unchanged. Non-matching terms are
  * harmless — the matcher only rewards terms that actually intersect a keyword.
  */
 export function deriveDesiredFields(interests: string | undefined): string[] {
@@ -245,23 +367,22 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
   for (const raw of interests.split(/[,;\n]|\s+and\s+/i)) {
     const term = raw.trim();
     const key = term.toLowerCase();
-    if (term.length >= 2 && term.length <= 100 && !seen.has(key)) {
+    if (term.length >= 2 && !seen.has(key)) {
       seen.add(key);
       out.push(term);
     }
-    if (out.length >= 20) break;
   }
   return out;
 }
 
-function toProfileRequest(profile: ProfileData): ProfileRequest {
+export function toProfileRequest(profile: ProfileData): ProfileRequest {
   const homeSchool = profile.home_school ?? 'uiuc';
   const requestedSeekingTypes =
     profile.seeking_types ?? ['research', 'summer_program'];
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
     (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
-  return {
+  const request: ProfileRequest = {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
     // home_school is the slug the matcher's scope filter consumes.
@@ -273,10 +394,9 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     // Additional majors/minors feed the matcher's secondary-major + keyword signal.
     secondary_interests: profile.additional_majors ?? [],
     international_student: profile.is_international,
-    seeking_type:
-      acceptedSeekingTypes.length > 0
-        ? acceptedSeekingTypes
-        : ['research', 'summer_program'],
+    // Only a missing legacy field receives defaults above. An explicit empty
+    // selection stays empty; Match rejects it, while material tools allow it.
+    seeking_type: acceptedSeekingTypes,
     desired_fields: deriveDesiredFields(profile.research_interests),
     // Provenance travels with the level or the level is a lie on arrival: the
     // server decides whether a skill may back "I have experience with X", and
@@ -285,8 +405,8 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     hard_skills: profile.skills.map((s) => ({
       name: s.name,
       level: s.level,
-      ...(s.source ? { source: s.source } : {}),
-      ...(s.confirmed ? { confirmed: true } : {}),
+      ...(s.source !== undefined && s.source !== null ? { source: s.source } : {}),
+      ...(s.confirmed === true ? { confirmed: true } : {}),
     })),
     coursework: profile.coursework ?? [],
     experience_level: profile.experience_level ?? 'beginner',
@@ -301,6 +421,8 @@ function toProfileRequest(profile: ProfileData): ProfileRequest {
     include_cross_school:
       RELEASE_SCOPE.crossSchoolMatching && (profile.include_cross_school ?? false),
   };
+  assertProfileInput(request);
+  return request;
 }
 
 /** POST /api/matches — get ranked opportunities for a profile */
@@ -624,13 +746,16 @@ export async function getMatchExplanation(
   );
 }
 
-export async function getOpportunityById(id: string): Promise<Record<string, unknown>> {
+export async function getOpportunityById(
+  id: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<Record<string, unknown>> {
   // Reveal-aware: a signed-in session gets contact_email back on the detail
   // payload; a stale token refreshes + retries once, then degrades to the
   // anonymous shape (contact_email_status: 'sign_in_required').
   return requestWithRevealRetry<Record<string, unknown>>(
     `/opportunities/${encodeURIComponent(id)}`,
-    {},
+    options,
     (resp) => resp.contact_email_status === 'sign_in_required',
   );
 }
@@ -760,28 +885,39 @@ export async function getShortlistOpportunities(ids: string[]): Promise<Shortlis
   return { opportunities, unavailableIds };
 }
 
+/** Cold Email always sends an explicit evidence envelope. An empty confirmed
+ * library must never resurrect legacy raw strings as experience facts. */
+export function coldEmailExperienceEvidence(profile: ProfileData | undefined) {
+  const master = validateResumeMaster(profile?.resume_master);
+  if (!master.ok) throw new ApiError(400, 'INVALID_EMAIL_EXPERIENCE_CONTEXT', 'Review your master résumé before using these materials.', false);
+  return {
+    version: 2,
+    resume_text: profile?.resume_text ?? '',
+    entries: profile?.experience_entries ?? [],
+    // Carry current relationships explicitly; never infer an activity from prose.
+    resume_master: master.value,
+  };
+}
+
 /** POST /api/cold-email — generate a cold email draft */
 export async function generateColdEmail(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
 ): Promise<ColdEmailResponse> {
   void track('ai_feature_used', { feature: 'cold_email' });
   const body: Record<string, unknown> = {
     profile: toProfileRequest(profile),
     opportunity_id: opportunityId,
+    experience_evidence: coldEmailExperienceEvidence(profile),
   };
+  if (options.contactContext != null) body.contact_context = normalizeEmailContactContext(options.contactContext);
   if (options.engine) body.engine = options.engine;
   if (options.style) body.style = options.style;
-  // The student's real resume experience bullets, so the AI draft can cite
-  // their actual work. Additive + optional; the backend grounds them.
-  if (options.resumeBullets && options.resumeBullets.length > 0) {
-    body.resume_bullets = options.resumeBullets;
-  }
-  return requestWithRevealRetry<ColdEmailResponse>(
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
+  return requestWritingWithAuth<ColdEmailResponse>(
     '/cold-email',
     { method: 'POST', body: JSON.stringify(body) },
-    (resp) => resp.recipient_status === 'sign_in_required',
   );
 }
 
@@ -791,121 +927,181 @@ export type ColdEmailStage = 'drafting' | 'judging' | 'critiquing' | 'revising';
  * SSE variant of `generateColdEmail`: relays `{"stage": ...}` progress events
  * while the multi-call pipeline runs (draft → critique → revise), then
  * resolves with the final payload carried by the `done` event. Throws on any
- * transport/shape problem — callers fall back to the blocking route.
+ * transport/shape problem. Only a definite unsupported endpoint permits a blocking compatibility request.
  */
 export async function generateColdEmailStream(
   profile: ProfileData,
   opportunityId: string,
-  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[] } = {},
+  options: { engine?: ColdEmailEngine; style?: EmailStyle; resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null; signal?: AbortSignal } = {},
   onStage?: (stage: ColdEmailStage) => void,
 ): Promise<ColdEmailResponse> {
-  // The stream runs for seconds; the funnel event at the end belongs to the
-  // account that asked for the draft, not whoever is signed in when it ends.
+  const contactContext = options.contactContext == null ? undefined : normalizeEmailContactContext(options.contactContext);
   const token = captureOwnerToken();
-  // NOTE: the funnel event fires only after a successful done event (bottom of
-  // this function) — a failed stream falls back to generateColdEmail, which
-  // tracks itself, so one user click never double-counts ai_feature_used.
-  const body: Record<string, unknown> = {
-    profile: toProfileRequest(profile),
-    opportunity_id: opportunityId,
+  const controller = new AbortController();
+  let response: Response | undefined;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let interruption: ColdEmailStreamError | null = null;
+  let retired = false;
+  let cancelledBody = false;
+  const cancelBody = (body: ReadableStream<Uint8Array> | null | undefined) => {
+    try { if (body) void Promise.resolve(body.cancel()).catch(() => {}); } catch { /* safe best effort */ }
   };
-  if (options.engine) body.engine = options.engine;
-  if (options.style) body.style = options.style;
-  if (options.resumeBullets && options.resumeBullets.length > 0) {
-    body.resume_bullets = options.resumeBullets;
-  }
-
-  // Reveal token only (no refresh-retry here: the variants call that always
-  // precedes a stream already refreshed a stale session, and a locked stream
-  // still delivers the draft — the UI keys the recipient state off the
-  // response's recipient_status).
-  const streamToken = await getRevealAccessToken();
-  const res = await fetch(`${API_BASE}/cold-email/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-      ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => 'Unknown error');
-    throw new Error(`API ${res.status}: ${errBody}`);
-  }
-  if (!res.headers.get('content-type')?.includes('text/event-stream') || !res.body) {
-    throw new Error('API stream: not an event stream');
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let final: ColdEmailResponse | null = null;
-
-  const handleFrame = (frame: string) => {
-    for (const line of frame.split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      const payload = JSON.parse(line.slice(6)) as { stage?: string } & Record<string, unknown>;
-      if (payload.stage === 'done') {
-        final = payload as unknown as ColdEmailResponse;
-      } else if (payload.stage) {
-        onStage?.(payload.stage as ColdEmailStage);
-      }
-    }
+  const release = () => {
+    if (cancelledBody || (!reader && !response?.body)) return;
+    cancelledBody = true;
+    if (reader) { try { void Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* safe best effort */ } }
+    else cancelBody(response?.body);
   };
-
+  let rejectInterruption!: (error: ColdEmailStreamError) => void;
+  const interrupted = new Promise<never>((_resolve, reject) => { rejectInterruption = reject; });
+  const interrupt = (code: 'timeout' | 'cancelled') => {
+    if (interruption || retired) return;
+    interruption = new ColdEmailStreamError(code);
+    rejectInterruption(interruption);
+    controller.abort(); release();
+  };
+  const active = () => {
+    if (!isWritingOwnerCurrent(token)) interrupt('cancelled');
+    if (interruption) throw interruption;
+  };
+  const abortFromCaller = () => interrupt('cancelled');
+  if (options.signal?.aborted) abortFromCaller();
+  else options.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(() => interrupt('timeout'), COLD_EMAIL_STREAM_TIMEOUT_MS);
   try {
-    for (;;) {
-      const { value, done: readerDone } = await reader.read();
-      if (readerDone) break;
-      buffer += decoder.decode(value, { stream: true });
-      let idx;
-      while ((idx = buffer.indexOf('\n\n')) !== -1) {
-        const frame = buffer.slice(0, idx);
-        buffer = buffer.slice(idx + 2);
-        handleFrame(frame);
+    return await Promise.race([interrupted, (async () => {
+      active();
+      const body: Record<string, unknown> = { profile: toProfileRequest(profile), opportunity_id: opportunityId,
+        experience_evidence: coldEmailExperienceEvidence(profile) };
+      if (contactContext !== undefined) body.contact_context = contactContext;
+      if (options.engine) body.engine = options.engine;
+      if (options.style) body.style = options.style;
+      if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
+      // Freeze nested course/experience arrays before credentials yield control.
+      const requestBody = JSON.stringify(body);
+      // Authentication, headers and the complete SSE body share one deadline.
+      const streamToken = await getRevealAccessToken();
+      active();
+      response = await fetch(`${API_BASE}/cold-email/stream`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream',
+          ...(streamToken ? { Authorization: `Bearer ${streamToken}` } : {}) },
+        body: requestBody, signal: controller.signal,
+      });
+      if (interruption) { cancelBody(response.body); active(); }
+      if (!response.ok) {
+        // Read only recognized source/context conflicts, within the existing deadline.
+        // Upstream messages and unknown conflict codes never reach the editor.
+        if ((response.status === 409 || response.status === 422 || response.status === 413) && response.headers?.get('content-type')?.includes('application/json')) {
+          const failure: unknown = await response.json().catch(() => null);
+          active();
+          if (failure && typeof failure === 'object' && 'detail' in failure) {
+            const detail = (failure as { detail: unknown }).detail;
+            if (detail && typeof detail === 'object' && 'code' in detail) {
+              const code = detail.code;
+              if (code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || code === 'PROFILE_INPUT_INVALID') {
+                throw new ApiError(response.status, code, 'Check your profile input.', false, undefined, detail);
+              }
+              if ((response.status === 409 && (code === 'WRITING_TARGET_CHANGED' || code === 'EMAIL_CONTACT_INSTRUCTIONS'))
+                || (response.status === 422 && code === 'EMAIL_READING_CHANGED')
+                || (response.status === 413 && code === 'EMAIL_INPUT_TOO_LARGE')) {
+                throw new ColdEmailStreamError(code, response.status);
+              }
+            }
+          }
+        }
+        throw new ColdEmailStreamError(response.status === 404 || response.status === 405 ? 'unsupported' : 'http_error', response.status);
       }
-    }
+      if (!response.headers.get('content-type')?.includes('text/event-stream') || !response.body) {
+        throw new ColdEmailStreamError('invalid_response');
+      }
+      reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let final: ColdEmailResponse | null = null;
+      while (final === null) {
+        const { value, done } = await reader.read();
+        active();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let index;
+        while (final === null && (index = buffer.indexOf('\n\n')) !== -1) {
+          const frame = buffer.slice(0, index); buffer = buffer.slice(index + 2);
+          for (const line of frame.split('\n')) {
+            active();
+            if (!line.startsWith('data: ')) continue;
+            let payload: unknown;
+            try { payload = JSON.parse(line.slice(6)); } catch { throw new ColdEmailStreamError('invalid_response'); }
+            if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new ColdEmailStreamError('invalid_response');
+            const data = payload as Record<string, unknown>;
+            if (data.stage === 'error') {
+              if (data.code === 'EMAIL_INPUT_TOO_LARGE' && data.status === 413) {
+                throw new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413);
+              }
+              throw new ColdEmailStreamError('invalid_response');
+            }
+            if (data.stage === 'done') {
+              if (typeof data.subject !== 'string' || typeof data.body !== 'string') throw new ColdEmailStreamError('invalid_response');
+              final = data as unknown as ColdEmailResponse;
+              break;
+            }
+            if (data.stage === 'drafting' || data.stage === 'judging' || data.stage === 'critiquing' || data.stage === 'revising') {
+              onStage?.(data.stage); active();
+            }
+          }
+        }
+      }
+      if (!final) throw new ColdEmailStreamError('invalid_response');
+      active();
+      void track('ai_feature_used', { feature: 'cold_email' }, token);
+      return final;
+    })()]);
+  } catch (error) {
+    active();
+    if (error instanceof ColdEmailStreamError || error instanceof ProfileInputError || error instanceof ApiError && ['INVALID_EMAIL_EXPERIENCE_CONTEXT', 'PROFILE_INPUT_LIMIT_EXCEEDED', 'PROFILE_INPUT_INVALID'].includes(error.code)) throw error;
+    throw new ColdEmailStreamError('network_error');
   } finally {
-    // Release the connection even when a parse error throws mid-stream —
-    // otherwise the fallback path opens a second connection while this one
-    // lingers until GC.
-    void reader.cancel().catch(() => {});
+    retired = true; clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abortFromCaller);
+    release();
   }
-  // TS doesn't reset a closed-over let's narrowing on function calls, so it
-  // still believes `final` is null here despite handleFrame's assignment.
-  const f = final as unknown as (ColdEmailResponse & { stage?: string }) | null;
-  if (!f) throw new Error('API stream: closed before the done event');
-  // Version-skew guard: a done event missing the core fields must trigger the
-  // blocking fallback, not flow undefined into the compose UI / mailto link.
-  if (typeof f.subject !== 'string' || typeof f.body !== 'string') {
-    throw new Error('API stream: malformed done payload');
-  }
-  void track('ai_feature_used', { feature: 'cold_email' }, token);
-  return f;
 }
 
 export async function getEmailVariants(
   profile: ProfileData,
   opportunityId: string,
-  /** The student's own résumé bullets. #803 wired these through the endpoint —
-   *  "leaving them out here would keep three of the four generated emails empty
-   *  of the student's own work" — and no caller ever sent any, so every
-   *  template variant was built without them. */
-  resumeBullets: string[] = [],
+  /** Deprecated compatibility argument: unconfirmed raw strings are ignored. */
+  _legacyResumeBullets: string[] = [],
+  options: { expectedTargetVersion?: string; contactContext?: EmailContactContext | null } = {},
 ): Promise<EmailVariantsResponse> {
-  return requestWithRevealRetry<EmailVariantsResponse>(
+  return requestWritingWithAuth<EmailVariantsResponse>(
     '/cold-email/variants',
     {
       method: 'POST',
       body: JSON.stringify({
         profile: toProfileRequest(profile),
         opportunity_id: opportunityId,
-        resume_bullets: resumeBullets,
+        expected_target_version: options.expectedTargetVersion,
+        ...(options.contactContext == null ? {} : { contact_context: normalizeEmailContactContext(options.contactContext) }),
+        experience_evidence: coldEmailExperienceEvidence(profile),
       }),
     },
-    (resp) => resp.recipient_status === 'sign_in_required',
   );
+}
+
+export interface EmailRefineResponse {
+  body?: string;
+  method: string;
+  fallback_reason?: string;
+  scope?: 'selection';
+  outcome?: 'proposal' | 'no_change';
+  reason?: 'provider_unavailable' | 'insufficient_evidence' | 'review_required' | 'invalid_output' | 'fabrication' | 'unchanged' | 'target_conditions';
+  target_conditions?: EmailTargetConditions;
+  condition_issues?: EmailConditionIssue[];
+  proposal?: Omit<EmailTextSelection, 'text'> & { original_text: string; replacement: string; base_body_sha256: string };
+  experience_usage?: ExperienceUsage;
+  opportunity_id?: string | null;
+  target_version?: string | null;
+  contact_context_receipt?: EmailContactContextReceipt;
 }
 
 export async function refineEmail(
@@ -916,21 +1112,42 @@ export async function refineEmail(
   // server resolves that target before it will spend anything. Optional here
   // only ever meant "send null and hope"; the modal has always had the id.
   opportunityId: string,
-  options: { resumeBullets?: string[] } = {},
-): Promise<{ body: string; method: string; fallback_reason?: string }> {
-  return request<{ body: string; method: string; fallback_reason?: string }>('/cold-email/refine', {
+  /** Legacy resumeBullets are ignored; only confirmed profile entries count. */
+  options: { resumeBullets?: string[]; expectedTargetVersion?: string; contactContext?: EmailContactContext | null; selection?: EmailTextSelection; subject?: string } = {},
+): Promise<EmailRefineResponse> {
+  return request<EmailRefineResponse>('/cold-email/refine', {
     method: 'POST',
     body: JSON.stringify({
       current_body: currentBody,
+      ...(options.selection ? { selection: options.selection, subject: options.subject ?? '' } : {}),
       instruction: instruction,
       profile: profile ? toProfileRequest(profile) : null,
       opportunity_id: opportunityId,
-      // The student's real resume bullets keep experience claims grounded when
-      // a refine instruction asks to emphasize them (additive + optional).
-      ...(options.resumeBullets && options.resumeBullets.length > 0
-        ? { resume_bullets: options.resumeBullets }
-        : {}),
+      expected_target_version: options.expectedTargetVersion,
+      ...(options.contactContext == null ? {} : { contact_context: normalizeEmailContactContext(options.contactContext) }),
+      experience_evidence: coldEmailExperienceEvidence(profile),
     }),
+  });
+}
+
+export interface EmailValidationResponse {
+  opportunity_id: string;
+  target_version: string;
+  pipeline_version: string;
+  contact_context_receipt: EmailContactContextReceipt;
+  target_conditions: EmailTargetConditions;
+  outcome: 'ready' | 'review_required';
+  issues: EmailConditionIssue[];
+}
+
+/** Checks the current text against explicit target conditions without generating or sending mail. */
+export async function validateEmailDraft(subject: string, body: string, profile: ProfileData, opportunityId: string,
+  options: { expectedTargetVersion: string; contactContext: EmailContactContext; signal?: AbortSignal }): Promise<EmailValidationResponse> {
+  return request<EmailValidationResponse>('/cold-email/validate', {
+    method: 'POST', timeoutMs: 25000, signal: options.signal,
+    body: JSON.stringify({ subject, body, profile: toProfileRequest(profile), opportunity_id: opportunityId,
+      expected_target_version: options.expectedTargetVersion, contact_context: normalizeEmailContactContext(options.contactContext),
+      experience_evidence: coldEmailExperienceEvidence(profile) }),
   });
 }
 
@@ -952,7 +1169,7 @@ export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
-  options: { locale?: string } = {},
+  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string } = {},
 ): Promise<TailorResponse> {
   void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
@@ -961,6 +1178,8 @@ export async function tailorResume(
     original_bullets: originalBullets,
   };
   if (options.locale) body.locale = options.locale;
+  if (options.expectedPipelineVersion) body.expected_pipeline_version = options.expectedPipelineVersion;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<TailorResponse>('/tailor', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -969,10 +1188,57 @@ export async function tailorResume(
 
 export interface TailorStatus {
   ai_available: boolean;
+  pipeline_version: string;
 }
 
+export const TAILOR_STATUS_TIMEOUT_MS = 15_000;
+
+/** One public source read, bounded through the complete body. A fetch/body
+ * implementation that ignores abort still cannot hold the editor indefinitely. */
 export async function getTailorStatus(): Promise<TailorStatus> {
-  return request<TailorStatus>('/tailor/status');
+  const controller = new AbortController();
+  let response: Response | undefined;
+  const message = 'Tailoring rules could not be checked. Please try again.';
+  const invalid = () => new ApiError(200, 'INVALID_TAILOR_STATUS', message, true);
+  const timeout = () => new ApiError(408, 'TAILOR_STATUS_TIMEOUT', message, true);
+  const http = (status: number) => new ApiError(status, `HTTP_${status}`, message, status === 429 || status >= 500);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      void response?.body?.cancel().catch(() => {});
+      reject(timeout());
+    }, TAILOR_STATUS_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([deadline, (async () => {
+      response = await fetch(`${API_BASE}/tailor/status`, {
+        method: 'GET', cache: 'no-store', credentials: 'omit',
+        headers: { Accept: 'application/json' }, signal: controller.signal,
+      });
+      if (controller.signal.aborted) { void response.body?.cancel().catch(() => {}); throw timeout(); }
+      let body: string;
+      try { body = await response.text(); }
+      catch {
+        if (controller.signal.aborted) throw timeout();
+        if (!response.ok) throw http(response.status);
+        throw invalid();
+      }
+      if (controller.signal.aborted) throw timeout();
+      if (!response.ok) throw http(response.status);
+      let value: unknown;
+      try { value = JSON.parse(body); } catch { throw invalid(); }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw invalid();
+      const result = value as Record<string, unknown>;
+      if (typeof result.ai_available !== 'boolean' || typeof result.pipeline_version !== 'string'
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(result.pipeline_version)) throw invalid();
+      return { ai_available: result.ai_available, pipeline_version: result.pipeline_version };
+    })()]);
+  } catch (error) {
+    if (controller.signal.aborted) throw timeout();
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(0, 'TAILOR_STATUS_UNAVAILABLE', message, true);
+  } finally { if (timer !== undefined) clearTimeout(timer); }
 }
 
 /**
@@ -1020,7 +1286,7 @@ export async function renovateResume(
   profile: ProfileData,
   opportunityId: string,
   sections: ResumeSectionInput[],
-  options: { locale?: string } = {},
+  options: { locale?: string; expectedTargetVersion?: string } = {},
 ): Promise<RenovateResponse> {
   void track('ai_feature_used', { feature: 'renovate' });
   const body: Record<string, unknown> = {
@@ -1029,9 +1295,68 @@ export async function renovateResume(
     sections,
   };
   if (options.locale) body.locale = options.locale;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<RenovateResponse>('/tailor/renovate', {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+/** One explicit batch of whole-document suggestions. Replays may spend again,
+ * so retries remain opt-in at the workspace, never automatic in transport. */
+export async function generateTargetResumeSuggestions(
+  payload: TargetResumeAiRequest,
+  options: { owner: OwnerToken; signal?: AbortSignal },
+): Promise<TargetResumeAiResponse> {
+  const body = JSON.stringify({ ...payload, include_check_version: true });
+  if (new TextEncoder().encode(body).byteLength > FULL_TARGET_AI_MAX_BODY_BYTES) {
+    throw new ApiError(413, 'FULL_TARGET_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
+  }
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  const token = await writingAccessToken(options.owner, options.signal).catch((error: unknown) => {
+    if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+      throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+    }
+    throw error;
+  });
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'FULL_TARGET_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  return request<TargetResumeAiResponse>('/tailor/full-target/suggestions', {
+    method: 'POST', body, signal: options.signal, cache: 'no-store',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    retries: 0,
+  });
+}
+
+/** One complete-document selection plan. Freeze the body before auth;
+ * a cancelled or stale owner must never dispatch private material. */
+export async function generateTargetResumePlan(
+  payload: TargetResumePlanRequest,
+  options: { owner: OwnerToken; signal?: AbortSignal },
+): Promise<TargetResumePlanResponse> {
+  const body = JSON.stringify({ ...payload, include_check_version: true });
+  if (new TextEncoder().encode(body).byteLength > TARGET_RESUME_PLAN_MAX_BODY_BYTES) {
+    throw new ApiError(413, 'TARGET_RESUME_PLAN_BODY_TOO_LARGE', 'This complete document exceeds the AI request limit.', false);
+  }
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  const token = await writingAccessToken(options.owner, options.signal).catch((error: unknown) => {
+    if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+      throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+    }
+    throw error;
+  });
+  if (options.signal?.aborted || !isOwnerTokenValid(options.owner, options.owner.uid)) {
+    throw new ApiError(409, 'TARGET_RESUME_PLAN_OWNER_CHANGED', 'The active profile changed.', false);
+  }
+  return request<TargetResumePlanResponse>('/tailor/full-target/selection-plan', {
+    method: 'POST', body, signal: options.signal, cache: 'no-store',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    retries: 0,
   });
 }
 
@@ -1046,7 +1371,7 @@ export async function optimizeBullet(
   opportunityId: string,
   currentText: string,
   baseText: string,
-  options: { instruction?: string; locale?: string } = {},
+  options: { instruction?: string; locale?: string; expectedTargetVersion?: string } = {},
 ): Promise<BulletOptimizeResponse> {
   void track('ai_feature_used', { feature: 'bullet_optimize' });
   const body: Record<string, unknown> = {
@@ -1057,6 +1382,7 @@ export async function optimizeBullet(
   };
   if (options.instruction) body.instruction = options.instruction;
   if (options.locale) body.locale = options.locale;
+  if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;
   return request<BulletOptimizeResponse>('/tailor/bullet', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -1064,8 +1390,12 @@ export async function optimizeBullet(
 }
 
 export interface ExtractBulletsResponse {
+  pipeline_version?: string;
+  generated_at?: string;
   bullets: string[];
-  method: 'ai' | 'heuristic';
+  method: 'ai' | 'heuristic' | 'mixed';
+  warnings?: string[];
+  processing?: ResumeProcessingCoverage;
 }
 
 /**
@@ -1075,10 +1405,12 @@ export interface ExtractBulletsResponse {
  */
 export async function extractResumeBullets(
   resumeText: string,
+  options: { expectedPipelineVersion?: string } = {},
 ): Promise<ExtractBulletsResponse> {
   return request<ExtractBulletsResponse>('/tailor/extract-bullets', {
     method: 'POST',
-    body: JSON.stringify({ resume_text: resumeText }),
+    body: JSON.stringify({ resume_text: resumeText,
+      ...(options.expectedPipelineVersion ? { expected_pipeline_version: options.expectedPipelineVersion } : {}) }),
   });
 }
 
@@ -1243,6 +1575,14 @@ export async function sendFavoritesEmail(
   });
 }
 
+export interface ImportedOpportunityExtras extends Record<string, unknown> {
+  suggested_skills?: string[];
+  suggested_description?: string;
+  description_source?: 'page_excerpt' | 'page_text' | 'pasted_text';
+  ai_input_scope?: 'full_source' | 'source_excerpt';
+  needs_manual_review?: boolean;
+}
+
 export interface ImportedOpportunity {
   source: string;
   source_url: string;
@@ -1254,11 +1594,12 @@ export interface ImportedOpportunity {
   posted_date?: string | null;
   location?: string | null;
   raw_html?: string | null;
-  extra_fields: Record<string, unknown>;
+  extra_fields: ImportedOpportunityExtras;
 }
 
 export interface ImportUrlResponse {
   ok: boolean;
+  error_code?: 'import_input_too_large' | 'import_source_unreadable';
   opportunity?: ImportedOpportunity;
   error?: string;
   llm_enriched: boolean;
@@ -1271,6 +1612,9 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ url }),
     });
   } catch (err) {
+    if (err instanceof ApiError && (err.code === 'import_input_too_large' || err.code === 'import_source_unreadable')) {
+      return { ok: false, error_code: err.code, llm_enriched: false };
+    }
     const structured = err instanceof ApiError
       ? fastApiDetailText(err.detail)
       : null;
@@ -1293,6 +1637,9 @@ export async function importByText(text: string): Promise<ImportUrlResponse> {
       body: JSON.stringify({ text }),
     });
   } catch (err) {
+    if (err instanceof ApiError && (err.code === 'import_input_too_large' || err.code === 'import_source_unreadable')) {
+      return { ok: false, error_code: err.code, llm_enriched: false };
+    }
     const structured = err instanceof ApiError
       ? fastApiDetailText(err.detail)
       : null;

@@ -267,7 +267,7 @@ class TestRenovate:
         ]}]})
         # Rewrite stays within the student's material (Python, machine learning, CS 225).
         rewrite = json.dumps({"bullets": [{
-            "text": "Built machine learning experiments in Python during CS 225 coursework",
+            "text": "Implemented machine learning experiments in Python for CS 225.",
             "source_evidence": "machine learning experiments in Python for CS 225",
         }]})
         monkeypatch.setattr(
@@ -487,6 +487,23 @@ class TestRenovate:
         })
         assert resp.status_code == 422
 
+    def test_sixteen_sections_rejected_not_silently_truncated(
+        self, python_profile, real_opp_id,
+    ):
+        """cap_sections would keep the first 15; the raw-payload validator
+        must refuse first so a 16th section is never renovated away unseen."""
+        sections = [
+            {"id": f"s{i}", "heading": f"H{i}", "kind": "other",
+             "bullets": [{"id": f"s{i}b1", "text": f"Did course project number {i} for a class"}]}
+            for i in range(16)
+        ]
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile,
+            "opportunity_id": real_opp_id,
+            "sections": sections,
+        })
+        assert resp.status_code == 422
+
     def test_ids_are_stripped_and_capped(self):
         """IDs can't smuggle newlines into the plan prompt or blow the prompt
         budget — whitespace is stripped and length capped at the schema."""
@@ -542,7 +559,7 @@ class TestRenovate:
         ]}]})
         rewrite = json.dumps({"bullets": [
             {"text": "", "source_evidence": ""},  # slot for s1b1: no rewrite
-            {"text": "Wrote clear documentation for a class project", "source_evidence": "x"},
+            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
         ]})
         monkeypatch.setattr(
             tailor_module, "chat_completion",
@@ -559,6 +576,60 @@ class TestRenovate:
         assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
         assert by_id["s1b2"]["current"] == 0
         assert "documentation" in by_id["s1b2"]["variants"][0]["text"].lower()
+
+    def test_long_bullet_keeps_its_whole_base_text(self, python_profile, real_opp_id, monkeypatch):
+        """ResumeBullet used to cut text at 600 characters, so a renovated
+        résumé's rollback floor silently lost the end of a long bullet."""
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        sections = _sections_payload()
+        sections[0]["bullets"][0]["text"] = _LONG_BULLET
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile, "opportunity_id": real_opp_id, "sections": sections,
+        })
+        assert resp.status_code == 200
+        by_id = {b["id"]: b for b in resp.json()["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["base_text"] == _LONG_BULLET
+
+    def test_foreground_bullet_over_the_rewrite_limit_stays_whole_at_base(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """The rewrite prompt shows each bullet's first 500 characters, so a
+        longer bullet's rewrite would replace the whole bullet with a rewrite
+        of its head. It stays at base, named, and never reaches the prompt."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        sections = _sections_payload()
+        sections[0]["bullets"][0]["text"] = _LONG_BULLET
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b1", "action": "foreground"},
+            {"id": "s1b2", "action": "foreground"},
+        ]}]})
+        rewrite = json.dumps({"bullets": [
+            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
+        ]})
+        rewrite_prompts: list[str] = []
+        route = _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)])
+
+        def _fake(messages, *a, **k):
+            if "rewrite a student" in messages[0]["content"]:
+                rewrite_prompts.append(messages[1]["content"])
+            return route(messages, *a, **k)
+
+        monkeypatch.setattr(tailor_module, "chat_completion", _fake)
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile, "opportunity_id": real_opp_id, "sections": sections,
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        by_id = {b["id"]: b for b in body["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
+        assert by_id["s1b1"]["base_text"] == _LONG_BULLET
+        assert "bullet_s1b1_too_long_to_rewrite" in body["warnings"]
+        assert by_id["s1b2"]["current"] == 0
+        assert rewrite_prompts and all("stage000" not in p for p in rewrite_prompts)
+
+
+_LONG_BULLET = "Designed and ran a laboratory protocol " + " ".join(f"stage{i:03d}" for i in range(80))
 
 
 # --------------------------------------------------------------------------- #
@@ -600,7 +671,7 @@ class TestOptimizeBullet:
     def test_grounded_rewrite_changes(self, python_profile, real_opp_id, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
-            "text": "Built machine learning models in Python for a research project",
+            "text": "Implemented machine learning experiments in Python.",
             "source_evidence": "machine learning experiments in Python",
         })
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
@@ -641,19 +712,96 @@ class TestOptimizeBullet:
         base floor, so it passes the gate."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         fake = json.dumps({
-            "text": "Analyzed fMRI datasets in Python for the lab's imaging study",
-            "source_evidence": "fMRI data analysis in Python",
+            "text": "Analyzed fMRI datasets in Python.",
+            "source_evidence": "fMRI datasets in Python",
         })
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
         resp = client.post("/api/tailor/bullet", json=self._payload(
             python_profile, real_opp_id,
-            current_text="Performed data analysis in Python for an imaging study",
-            base_text="Performed fMRI data analysis in Python",
+            current_text="Analyzed datasets in Python",
+            base_text="Analyzed fMRI datasets in Python",
         ))
         assert resp.status_code == 200
         body = resp.json()
         assert body["changed"] is True
         assert "fMRI" in body["text"]
+
+    @pytest.mark.parametrize("length", [501, 700])
+    def test_bullet_over_the_rewrite_limit_is_refused_by_name(
+        self, python_profile, real_opp_id, monkeypatch, length,
+    ):
+        """The rewrite limit is 500 characters everywhere a bullet is rewritten.
+        A longer bullet is refused with the limit named, before any provider
+        work or usage, instead of a generic validation error or a cut."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        calls: list[object] = []
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature))
+        text = ("Ran assays " * 80)[:length]
+        assert len(text) == length
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id, current_text=text, base_text=text,
+        ))
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BULLET_TOO_LONG_TO_OPTIMIZE"
+        assert detail["max_characters_per_bullet"] == 500
+        assert detail["retryable"] is False
+        assert calls == []
+
+    def test_limit_counts_characters_not_bytes(self, python_profile, real_opp_id, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        text = "\U0001f9ea" * 500
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id, current_text=text, base_text=text,
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["warnings"] == ["llm_not_configured"]
+
+    def test_long_source_is_evidence_shown_whole(self, python_profile, real_opp_id, monkeypatch):
+        """A long base bullet the student shortened by hand stays optimizable:
+        only the wording being rewritten has the limit, and the whole source
+        reaches the prompt as evidence."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        prompts: list[str] = []
+
+        def _fake(messages, *a, **k):
+            prompts.append(messages[1]["content"])
+            return json.dumps({"text": "Designed and ran a laboratory protocol.", "source_evidence": "x"})
+
+        monkeypatch.setattr(tailor_module, "chat_completion", _fake)
+        assert len(_LONG_BULLET) > 700
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id,
+            current_text="Designed and ran a laboratory protocol",
+            base_text=_LONG_BULLET,
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["changed"] is True
+        assert prompts and "stage079" in prompts[0]
+
+    def test_source_longer_than_one_experience_is_refused_by_name(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """base_text is one bullet's evidence. One confirmed experience holds at
+        most 6,000 characters, so a longer source is refused by name before any
+        provider call or usage, never cut and never billed as one small call."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        calls: list[object] = []
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: calls.append(a))
+        monkeypatch.setattr(tailor_module, "_schedule_usage", lambda auth, feature: calls.append(feature))
+        resp = client.post("/api/tailor/bullet", json=self._payload(
+            python_profile, real_opp_id,
+            current_text="Designed and ran a laboratory protocol",
+            base_text="Ran assays. " * 501,
+        ))
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert detail["code"] == "BULLET_SOURCE_TOO_LONG"
+        assert detail["max_characters_per_bullet_source"] == 6000
+        assert detail["retryable"] is False
+        assert calls == []
 
 
 # --------------------------------------------------------------------------- #

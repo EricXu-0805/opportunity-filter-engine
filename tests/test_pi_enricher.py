@@ -130,3 +130,22 @@ def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
     pi_enricher._fetch_soup("https://arch.gatech.edu/people/someone")
 
     assert seen.get("verify") == _ca_bundle()
+
+
+def test_enrich_never_readdresses_a_tombstoned_record(monkeypatch):
+    """`identity_bound: False` means the address was reviewed and rejected
+    (clear_contact_claim nulls it). Scraping the page again put
+    jiwon.kang@fsu.edu back next to that tombstone on the 09-21 and 09-28
+    refreshes, and test_no_record_holds_an_address_and_a_tombstone failed
+    each data PR after hours of scraping."""
+    fetched = _stub_page(monkeypatch, "<p>Contact: jkang@fsu.edu</p>")
+    opp = _fac("fsu_faculty", "https://stat.fsu.edu/person/jiwon-kang", school="fsu")
+    opp["contact_email"] = None
+    opp["metadata"] = {"identity_bound": False}
+    stats = enrich_opportunities([opp])
+    assert fetched == []
+    assert opp["contact_email"] is None
+    assert "email_source" not in opp["metadata"]
+    assert stats["scraped"] == 0
+    assert stats["skipped_tombstoned"] == 1
+    assert stats["failed"] == 0

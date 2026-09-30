@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ApiError,
@@ -7,8 +9,8 @@ import {
   type MatchViewRequestState,
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
-import { captureOwnerToken, isTokenOwnerStillCurrent } from '@/lib/identity-owner';
-import { hashProfile } from '@/lib/match-utils';
+import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
+import { resultRequestKey, sessionBelongsToOwner, type ResultCursorState, type ResultSession } from '@/lib/result-session';
 import {
   clearMatchCache,
   isTrustedMatchViewPage,
@@ -22,12 +24,19 @@ const MATCH_VIEW_PAGE_SIZE = 50;
  *  fill the wait. Long enough that a warm server snapshot never triggers the
  *  extra ranking, short enough to be invisible next to a cold twenty seconds. */
 const INTERIM_PAINT_AFTER_MS = 600;
+/** Deepest page a return ticket may walk back to when its saved cursors were
+ *  bound to star/dismiss sets that have since changed. Each hop is a full
+ *  request on a route limited to 60 a minute; past this the student gets
+ *  page one and the notice instead. */
+const MAX_REBUILT_PAGE = 10;
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
   setData: React.Dispatch<React.SetStateAction<MatchesResponse | null>>;
   loading: boolean;
   error: string | null;
+  /** Retain the structured failure for recovery actions; never render the code. */
+  errorCode: string | null;
   showSlowHint: boolean;
   paginationReady: boolean;
   /** A rule-ranked list is on screen and the paid refine is still running. */
@@ -46,6 +55,7 @@ interface UseResultsDataResult {
 
 interface CursorState {
   requestKey: string;
+  ownerKey: string;
   byPage: Map<number, string | null>;
 }
 
@@ -82,10 +92,19 @@ export function useResultsData(
    * page 1. Optional: a caller that never paginates has nothing to reset.
    */
   onCursorReset?: () => void,
+  navigation?: { owner?: OwnerToken | null; restore: ResultSession | null; onValidated: (state: ResultCursorState, owner: OwnerToken) => void },
 ): UseResultsDataResult {
+  // The real host supplies the owner of its accepted profile view. A new
+  // generation cannot authorize an old profile just by re-capturing identity.
+  // Legacy standalone callers retain their current-token behaviour.
+  const acceptedOwner = navigation?.owner === undefined ? captureOwnerToken() : navigation.owner;
+  const acceptedOwnerKey = acceptedOwner ? JSON.stringify([acceptedOwner.uid, acceptedOwner.epoch, acceptedOwner.generation]) : '';
+  const acceptedOwnerRef = useRef(acceptedOwner);
+  useLayoutEffect(() => { acceptedOwnerRef.current = acceptedOwner; }, [acceptedOwner]);
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
   const [paginationReady, setPaginationReady] = useState(false);
   const [refining, setRefining] = useState(false);
@@ -98,14 +117,33 @@ export function useResultsData(
   // arrives — two full rankings per page load, server-side, for one page.
   const requestKey = useMemo(
     () => profile && preferenceSettled
-      ? `${hashProfile(profile)}:${semanticRerank ? '1' : '0'}:${JSON.stringify(view)}`
+      ? resultRequestKey(profile, semanticRerank, view)
       : '',
     [profile, preferenceSettled, semanticRerank, view],
   );
+  // Network validation can finish before React commits the cards. Keep its
+  // receipt attached to the exact response, then publish after the loading
+  // layout has been replaced; animation frames alone are not a commit fence.
+  const pendingCommitRef = useRef<{
+    response: MatchesResponse;
+    state: ResultCursorState;
+    owner: ReturnType<typeof captureOwnerToken>;
+    interim?: boolean;
+  } | null>(null);
+  const navigationRef = useRef(navigation);
+  useLayoutEffect(() => { navigationRef.current = navigation; }, [navigation]);
   const cursorsRef = useRef<CursorState>({
-    requestKey: '',
+    requestKey: '', ownerKey: '',
     byPage: new Map([[1, null]]),
   });
+  useLayoutEffect(() => {
+    const pending = pendingCommitRef.current;
+    if (!pending || loading || error || (!paginationReady && !pending.interim) || pending.response !== data
+      || pending.state.requestKey !== requestKey || pending.state.page !== page
+      || !isOwnerTokenValid(pending.owner, pending.owner.uid)) return;
+    pendingCommitRef.current = null;
+    navigationRef.current?.onValidated(pending.state, pending.owner);
+  }, [data, error, loading, page, paginationReady, requestKey]);
   // What the request is BUILT from, held at latest and never reacted to.
   // requestKey above is the content identity of these two, so listing them as
   // deps of the fetch below adds only their object identity — and that churns
@@ -135,24 +173,36 @@ export function useResultsData(
 
   useEffect(() => {
     // requestKey is '' whenever profile is null, so this covers both.
-    if (!requestKey) return;
+    const requestOwner = acceptedOwnerRef.current;
+    if (!requestKey || !requestOwner || !isOwnerTokenValid(requestOwner, requestOwner.uid)) return;
     const { profile: reqProfile, view: reqView } = payloadRef.current;
     if (!reqProfile) return;
-    if (cursorsRef.current.requestKey !== requestKey) {
+    if (cursorsRef.current.requestKey !== requestKey || cursorsRef.current.ownerKey !== acceptedOwnerKey) {
+      const saved = navigationRef.current?.restore;
+      const mayRestore = saved && saved.requestKey === requestKey
+        && sessionBelongsToOwner(saved, requestOwner);
       cursorsRef.current = {
-        requestKey,
-        byPage: new Map([[1, null]]),
+        requestKey, ownerKey: acceptedOwnerKey,
+        byPage: new Map(mayRestore ? saved.cursors : [[1, null]]),
       };
     }
     const cursor = cursorsRef.current.byPage.get(page);
-    if (page > 1 && !cursor) {
+    const ticket = navigationRef.current?.restore;
+    const rebuild = page > 1 && !cursor && page <= MAX_REBUILT_PAGE && !!ticket
+      && ticket.requestKey === requestKey && ticket.page === page && sessionBelongsToOwner(ticket, requestOwner);
+    if (page > 1 && !cursor && !rebuild) {
       // Every reachable page must have been minted by the preceding response.
       // Showing the previous page under a new page number would be a silent
       // duplicate, so fail closed if parent state ever gets ahead of the
       // cursor chain.
       setData(null);
       setLoading(false);
+      if (navigationRef.current && onCursorReset) {
+        onCursorReset();
+        return;
+      }
       setError(t('results.loadFailed'));
+      setErrorCode(null);
       setPaginationReady(false);
       return;
     }
@@ -164,7 +214,7 @@ export function useResultsData(
     // before the write below — a stale caller (identity moved on during
     // the network round-trip) must not write this response into a
     // different account's cache slot.
-    const cacheToken = captureOwnerToken();
+    const cacheToken = requestOwner;
     // Painting is gated on the same token: `active` flips only in this
     // effect's cleanup, one commit after the account changed, so a response
     // landing in that gap would put the previous account's ranked list on
@@ -172,11 +222,12 @@ export function useResultsData(
     // the cache layer itself refuses a write whose token's epoch has moved
     // on, so a late response never reaches another account's slot, and a
     // second gate would only hide that contract.
-    const painting = () => active && isTokenOwnerStillCurrent(cacheToken);
+    const painting = () => active && isOwnerTokenValid(cacheToken, cacheToken.uid);
 
     /* eslint-disable react-hooks/set-state-in-effect -- page/profile/view changes intentionally enter a new request state */
     setLoading(true);
     setError(null);
+    setErrorCode(null);
     setPaginationReady(false);
     setRefining(false);
     setRefined(false);
@@ -202,18 +253,41 @@ export function useResultsData(
     (async () => {
       // The funnel event below fires after the request settles; it belongs to
       // the account this request was issued for.
-      const owner = captureOwnerToken();
-      const request = getMatchView(reqProfile, reqView, {
-        cursor: cursor ?? null,
-        pageSize: MATCH_VIEW_PAGE_SIZE,
-        llm: semanticRerank,
-        signal: controller.signal,
-      });
+      const owner = requestOwner;
       let requestSettled = false;
-      const markSettled = () => { requestSettled = true; };
-      request.then(markSettled, markSettled);
 
       try {
+        // Mint this view's cursors page by page; nothing walked through is
+        // painted. A list that no longer reaches the saved page resets to
+        // page one with notice, the same as a dead cursor.
+        for (let hop = 1; rebuild && hop < page; hop += 1) {
+          const walked = await getMatchView(reqProfile, reqView, {
+            cursor: cursorsRef.current.byPage.get(hop) ?? null,
+            pageSize: MATCH_VIEW_PAGE_SIZE,
+            llm: semanticRerank,
+            signal: controller.signal,
+          });
+          if (!painting()) return;
+          if (!isCompleteView(walked)) {
+            clearMatchCache(cacheToken);
+            throw new ApiError(502, 'MATCH_CONTRACT_MISMATCH', 'Match results need to be refreshed. Please retry.', true);
+          }
+          if (!walked.has_more || !walked.next_cursor) {
+            cursorsRef.current.byPage = new Map([[1, null]]);
+            onCursorReset?.();
+            return;
+          }
+          cursorsRef.current.byPage.set(hop + 1, walked.next_cursor);
+        }
+        const request = getMatchView(reqProfile, reqView, {
+          cursor: cursorsRef.current.byPage.get(page) ?? null,
+          pageSize: MATCH_VIEW_PAGE_SIZE,
+          llm: semanticRerank,
+          signal: controller.signal,
+        });
+        const markSettled = () => { requestSettled = true; };
+        request.then(markSettled, markSettled);
+
         // A first-ever refined page costs about twenty seconds, and roughly
         // four of them are the rule ranking the refine has to run before it can
         // call the model at all. Ask for that ranking on its own as well: it is
@@ -246,7 +320,7 @@ export function useResultsData(
             }),
           ]);
           clearTimeout(timer);
-          if (!active) return;
+          if (!painting()) return;
           if (!requestSettled) {
             try {
               const ruleOnly = await getMatchView(reqProfile, reqView, {
@@ -262,6 +336,15 @@ export function useResultsData(
                 setLoading(false);
                 setRefining(true);
                 interimPainted = true;
+                // A complete page of this request cycle, so its cards' writing
+                // actions are live. Its cursor belongs to the rule snapshot,
+                // not the refined chain, so none is published.
+                pendingCommitRef.current = {
+                  response: ruleOnly,
+                  state: { requestKey, page, cursors: [[1, null]] },
+                  owner: cacheToken,
+                  interim: true,
+                };
               }
             } catch {
               // An optimization the student never asked for. Say nothing and
@@ -284,7 +367,14 @@ export function useResultsData(
             true,
           );
         }
-        if (painting()) setData(result);
+        if (page === 1) {
+          writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
+        }
+        // A generation switch can keep uid/epoch unchanged. The original
+        // capability must authorize ALL visible state and cursor metadata,
+        // not just the cache primitive or the response's card array.
+        if (!painting()) return;
+        setData(result);
         // What the server says happened, not what this request asked for. The
         // two differ whenever the provider was unconfigured, the day budget
         // degraded the call, or a batch came back unusable — and each of those
@@ -296,10 +386,12 @@ export function useResultsData(
         } else {
           cursorsRef.current.byPage.delete(page + 1);
         }
-        if (page === 1) {
-          writeMatchCache(cacheKey, semanticRerank, result, cacheToken);
-        }
         setPaginationReady(true);
+        pendingCommitRef.current = {
+          response: result,
+          state: { requestKey, page, cursors: [...cursorsRef.current.byPage.entries()] },
+          owner: cacheToken,
+        };
         trackOnce('matches_generated', {
           llm: semanticRerank,
           page,
@@ -318,7 +410,7 @@ export function useResultsData(
           && (caught.code === 'MATCH_CURSOR_INVALID' || caught.code === 'MATCH_CURSOR_EXPIRED')
           && page > 1
         ) {
-          cursorsRef.current.byPage.clear();
+          cursorsRef.current.byPage = new Map([[1, null]]);
           clearMatchCache(cacheToken);
           onCursorReset?.();
           return;
@@ -326,10 +418,14 @@ export function useResultsData(
         if (interimPainted) {
           setRefineFailed(true);
         } else {
+          const code = caught instanceof ApiError || caught && typeof caught === 'object' && 'code' in caught && (caught.code === 'PROFILE_INPUT_LIMIT_EXCEEDED' || caught.code === 'PROFILE_INPUT_INVALID') ? caught.code : null;
+          setErrorCode(typeof code === 'string' ? code : null);
           setError(
-            caught instanceof ApiError
-              ? caught.message
-              : t('results.loadFailed'),
+            profileInputMessage(caught, t) ?? (code === 'MATCH_TYPE_REQUIRED'
+              ? t('home.validation.seekingRequired')
+              : caught instanceof ApiError
+                ? caught.message
+                : t('results.loadFailed')),
           );
         }
       } finally {
@@ -342,15 +438,16 @@ export function useResultsData(
 
     return () => {
       active = false;
+      if (pendingCommitRef.current?.owner === cacheToken) pendingCommitRef.current = null;
       controller.abort();
     };
     // onCursorReset is in the deps because the effect calls it: leaving it out
     // captures whichever instance existed at mount, which is the classic stale
     // closure. Callers pass a stable (useCallback) reference, so listing it
     // does not cause a refetch.
-  }, [semanticRerank, page, requestKey, t, onCursorReset]);
+  }, [semanticRerank, page, requestKey, acceptedOwnerKey, t, onCursorReset]);
 
   return {
-    data, setData, loading, error, showSlowHint, paginationReady, refining, refined, refineFailed,
+    data, setData, loading, error, errorCode, showSlowHint, paginationReady, refining, refined, refineFailed,
   };
 }

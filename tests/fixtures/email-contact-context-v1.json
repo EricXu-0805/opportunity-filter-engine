@@ -1,0 +1,286 @@
+{
+  "version": 1,
+  "valid": [
+    {
+      "id": "omitted-default",
+      "wire": null,
+      "canonical": "{\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+    },
+    {
+      "id": "first",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact"
+      },
+      "canonical": "{\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "a1d6520d73d08cfd865ed3c6647c6b85f09ba8d99b59b4d990cff308e87dd15f"
+    },
+    {
+      "id": "unicode-referral",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "王老师",
+          "referral_note": "王老师提到这个方向。\n第二行保留 🙂",
+          "confirmed": true
+        },
+        "availability": null
+      },
+      "canonical": "{\"purpose\":\"referral\",\"referral\":{\"confirmed\":true,\"referral_note\":\"王老师提到这个方向。\\n第二行保留 🙂\",\"referrer_name\":\"王老师\"},\"version\":1}",
+      "context_sig": "6037b79a678ff116163c309c5391b313d49ddef4690fdb3031ca38cca3e0674b"
+    },
+    {
+      "id": "received-leap-date",
+      "wire": {
+        "version": 1,
+        "purpose": "follow_up",
+        "follow_up": {
+          "sent_confirmed": true,
+          "previous_message": "I asked about undergraduate research opportunities.",
+          "sent_on": "2000-02-29",
+          "reply_status": "received",
+          "reply_text": "Please describe your interests.\n第二行🙂"
+        }
+      },
+      "canonical": "{\"follow_up\":{\"previous_message\":\"I asked about undergraduate research opportunities.\",\"reply_status\":\"received\",\"reply_text\":\"Please describe your interests.\\n第二行🙂\",\"sent_confirmed\":true,\"sent_on\":\"2000-02-29\"},\"purpose\":\"follow_up\",\"version\":1}",
+      "context_sig": "d13fa3654ef24a57d1ab979c48cf51c3a59c9498aabf2aea53e1526dd0e0fd0a"
+    },
+    {
+      "id": "availability",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I can contribute 6 hours per week during the semester.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"availability\":{\"confirmed\":true,\"text\":\"I can contribute 6 hours per week during the semester.\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "07d3b86f188d24e3e5fea4c6e0fd32bdd610171a74de340057429cdfc6019aee"
+    },
+    {
+      "id": "nel-not-trimmed",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Janet Rowan",
+          "referral_note": "My advisor suggested contacting this group.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"purpose\":\"referral\",\"referral\":{\"confirmed\":true,\"referral_note\":\"My advisor suggested contacting this group.\",\"referrer_name\":\"Janet Rowan\"},\"version\":1}",
+      "context_sig": "766357ae4d0abae3d8bb86096bd0f690cacaf93d00df56b442965d09d40338c3"
+    },
+    {
+      "id": "apostrophe-name",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Dr. O'Neil",
+          "referral_note": "My advisor suggested contacting this research group.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"purpose\":\"referral\",\"referral\":{\"confirmed\":true,\"referral_note\":\"My advisor suggested contacting this research group.\",\"referrer_name\":\"Dr. O'Neil\"},\"version\":1}",
+      "context_sig": "59c30cde3c27881d80f77de7ccda32c2b26392fc246ad17dfb168d059c248fc4"
+    },
+    {
+      "id": "future-offer-0",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I can send my resume on request.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"availability\":{\"confirmed\":true,\"text\":\"I can send my resume on request.\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "cef0d37a609094e291481d2b664d7dc4711855256ed31cb66fbf47b2613c4fde"
+    },
+    {
+      "id": "future-offer-1",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I will read your paper before we meet.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"availability\":{\"confirmed\":true,\"text\":\"I will read your paper before we meet.\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "2e56db3b1611fc9b20f13463c43bd80cc90257f93daa4d674f27c268315abee9"
+    },
+    {
+      "id": "future-offer-2",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I will write after having read your paper.",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"availability\":{\"confirmed\":true,\"text\":\"I will write after having read your paper.\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "bc770377f0946778b766f56348a2696ee08e15ca8e2f5f1c11a76747a5f9d239"
+    },
+    {
+      "id": "paper-title_only",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": null,
+          "level": "title_only",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"title_only\",\"title\":\"Grounded Models 研究 🧪\"},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "2f8d77569baa9f091dc78d19b782d60715e6bdd3ef68fb7fe14e2dce48aecc29"
+    },
+    {
+      "id": "paper-abstract",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": 2025,
+          "level": "abstract",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"abstract\",\"title\":\"Grounded Models 研究 🧪\",\"year\":2025},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "84da386985f3818bfad96ead3ccc2627d5c9765c64a20784c07eae7cf87bc4c1"
+    },
+    {
+      "id": "paper-full_text",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "paper_reading": {
+          "title": "Grounded Models 研究 🧪",
+          "year": 2025,
+          "level": "full_text",
+          "confirmed": true
+        }
+      },
+      "canonical": "{\"paper_reading\":{\"confirmed\":true,\"level\":\"full_text\",\"title\":\"Grounded Models 研究 🧪\",\"year\":2025},\"purpose\":\"first_contact\",\"version\":1}",
+      "context_sig": "d613bb33f1847857df48bc4873cf3d4494a57d1d9a1cf200e16b4416ac7344aa"
+    }
+  ],
+  "invalid": [
+    {
+      "id": "bom-not-trimmed",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Janet Rowan",
+          "referral_note": "﻿My advisor suggested contacting this group.",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "name-work-claim",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Dr Lee. I won a Nobel Prize",
+          "referral_note": "My advisor suggested contacting this research group.",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "availability-work-claim",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I led a team of 12 researchers.",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "false-calendar-date",
+      "wire": {
+        "version": 1,
+        "purpose": "follow_up",
+        "follow_up": {
+          "sent_confirmed": true,
+          "previous_message": "I asked about undergraduate research opportunities.",
+          "sent_on": "2026-02-30",
+          "reply_status": "unknown"
+        }
+      }
+    },
+    {
+      "id": "unknown-reply-text",
+      "wire": {
+        "version": 1,
+        "purpose": "follow_up",
+        "follow_up": {
+          "sent_confirmed": true,
+          "previous_message": "I asked about undergraduate research opportunities.",
+          "sent_on": "2026-09-10",
+          "reply_status": "unknown",
+          "reply_text": "A response"
+        }
+      }
+    },
+    {
+      "id": "referrer_name-unsupported-action-0",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Dr Lee. I have attached my resume",
+          "referral_note": "My advisor suggested contacting this group.",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "referrer_name-unsupported-action-1",
+      "wire": {
+        "version": 1,
+        "purpose": "referral",
+        "referral": {
+          "referrer_name": "Dr Lee. I have read your paper",
+          "referral_note": "My advisor suggested contacting this group.",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "availability-unsupported-action-0",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I have attached my resume",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "availability-unsupported-action-1",
+      "wire": {
+        "version": 1,
+        "purpose": "first_contact",
+        "availability": {
+          "text": "I have read your paper",
+          "confirmed": true
+        }
+      }
+    }
+  ]
+}

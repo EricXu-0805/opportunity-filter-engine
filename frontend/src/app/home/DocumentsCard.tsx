@@ -17,11 +17,14 @@ export function DocumentsCard({
   profile,
   onResumeParsed,
   onResumeRemoved,
+  ready = true,
   t,
 }: {
   profile: ProfileData;
-  onResumeParsed: (data: ResumeParseResponse) => void;
-  onResumeRemoved: () => void;
+  onResumeParsed: (data: ResumeParseResponse) => boolean | void;
+  onResumeRemoved: () => boolean | void;
+  /** Source actions need the current owner's hydrated profile snapshot. */
+  ready?: boolean;
   t: TFunc;
 }) {
   return (
@@ -36,11 +39,17 @@ export function DocumentsCard({
         </div>
       </div>
 
-      <ResumeUpload
-        onParsed={onResumeParsed}
-        onRemove={onResumeRemoved}
-        alreadyUploaded={!!profile.resume_text}
-      />
+      {ready ? (
+        <ResumeUpload
+          onParsed={onResumeParsed}
+          onRemove={onResumeRemoved}
+          alreadyUploaded={!!profile.resume_text}
+        />
+      ) : (
+        <p role="status" aria-live="polite" className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+          {t('home.actions.profileLoading')}
+        </p>
+      )}
 
       <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-indigo-50/60">
         <Upload className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" />

@@ -541,3 +541,29 @@ describe('OpportunityCard — a saved target we can no longer vouch for', () => 
     ).toBeInTheDocument();
   });
 });
+
+
+describe('browser import account-save entry', () => {
+  const base = { selectionMode: false, isSelected: false, selectedSize: 0, isExpanded: false, hasProfile: true,
+    onToggleExpand: noop, onToggleSelect: noop, onRemove: noop, onOpenEmailModal: noop,
+    onOpenTailorModal: noop, tailorDisabled: false, t };
+  it('opens account review only on an explicit click and keeps writing gates', () => {
+    const prepare = vi.fn(); const opp = { id: 'custom:one', title: 'Local project', _customId: 'one' };
+    render(<OpportunityCard {...base} opp={opp} onSaveAccount={prepare} />);
+    expect(prepare).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('privateImport.prepareSave'));
+    expect(prepare).toHaveBeenCalledExactlyOnceWith(opp);
+    expect(screen.queryByText('card.draftEmail')).toBeNull();
+    expect(screen.queryByText('card.tailorResume')).toBeNull();
+  });
+  it('blocks another account review while one is pending', () => {
+    const prepare = vi.fn();
+    render(<OpportunityCard {...base} opp={{ id: 'custom:one', title: 'Local project', _customId: 'one' }} onSaveAccount={prepare} accountSaveDisabled />);
+    const button = screen.getByText('privateImport.prepareSave'); expect(button).toBeDisabled();
+    fireEvent.click(button); expect(prepare).not.toHaveBeenCalled();
+  });
+  it('does not offer account adoption for a canonical server record', () => {
+    render(<OpportunityCard {...base} opp={{ id: 'server:one', title: 'Canonical project' }} onSaveAccount={vi.fn()} />);
+    expect(screen.queryByText('privateImport.prepareSave')).toBeNull();
+  });
+});

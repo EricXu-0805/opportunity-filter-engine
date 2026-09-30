@@ -72,10 +72,10 @@ _FORMAL_SUBS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bBest regards\b", re.IGNORECASE), "Respectfully"),
 ]
 _ENTHUSIASTIC_SUBS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bI am very interested\b", re.IGNORECASE), "I am truly excited about"),
-    (re.compile(r"\bI really enjoyed\b", re.IGNORECASE), "I was fascinated by"),
+    (re.compile(r"\bI am very interested\b", re.IGNORECASE), "I am particularly interested"),
+    (re.compile(r"\bI really enjoyed\b", re.IGNORECASE), "I appreciated"),
     (re.compile(r"\bI would love the chance\b", re.IGNORECASE),
-     "I would be thrilled at the opportunity"),
+     "I would welcome the opportunity"),
 ]
 _CONCISE_FILLERS: tuple[str, ...] = ("fast learner", "eager to pick up")
 

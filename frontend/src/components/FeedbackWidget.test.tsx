@@ -458,3 +458,83 @@ describe('feedback owner lifecycle', () => {
     expect(storedDraft()?.clientToken).toBe(token);
   });
 });
+
+
+describe('footer disclosure and keyboard boundaries', () => {
+  it('opens a named inline region, focuses its heading, and restores the footer trigger on close', () => {
+    render(<FeedbackWidget />);
+    const trigger = screen.getByTestId('feedback-open');
+    expect(trigger).toHaveAttribute('id', 'site-feedback-trigger');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveTextContent('feedback.button');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('region', { name: 'feedback.title' })).toBe(screen.getByTestId('feedback-panel'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'feedback.title' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'feedback.close' }));
+    expect(screen.queryByTestId('feedback-panel')).toBeNull();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('handles Escape only inside feedback without forwarding it to another dialog', () => {
+    const elsewhere = vi.fn();
+    document.addEventListener('keydown', elsewhere);
+    render(<><input aria-label="Other dialog field" /><FeedbackWidget /></>);
+    openAndType('Keep this draft');
+    const token = storedDraft()?.clientToken;
+    const other = screen.getByLabelText('Other dialog field'); other.focus();
+    fireEvent.keyDown(other, { key: 'Escape' });
+    expect(elsewhere).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('feedback-panel')).toBeInTheDocument();
+    expect(other).toHaveFocus();
+    elsewhere.mockClear();
+    const message = screen.getByPlaceholderText('feedback.placeholder'); message.focus();
+    fireEvent.keyDown(message, { key: 'Escape' });
+    expect(elsewhere).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('feedback-panel')).toBeNull();
+    expect(screen.getByTestId('feedback-open')).toHaveFocus();
+    expect(storedDraft()).toMatchObject({ message: 'Keep this draft', clientToken: token });
+    document.removeEventListener('keydown', elsewhere);
+  });
+
+  it('keeps normal input and composition Escape within the editing session', () => {
+    render(<FeedbackWidget />); openAndType('Text under composition');
+    const message = screen.getByPlaceholderText('feedback.placeholder');
+    fireEvent.keyDown(message, { key: 'a' });
+    fireEvent.keyDown(message, { key: 'Escape', isComposing: true });
+    expect(screen.getByTestId('feedback-panel')).toBeInTheDocument();
+    expect(message).toHaveValue('Text under composition');
+  });
+
+  it('revisiting the open footer form preserves an in-flight send and its retry token', async () => {
+    let resolve!: (result: unknown) => void;
+    mockSubmitFeedback.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    render(<FeedbackWidget />); openAndType('Submission already running');
+    const token = storedDraft()?.clientToken;
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    fireEvent.click(screen.getByTestId('feedback-open'));
+    expect(screen.getByTestId('feedback-send')).toBeDisabled();
+    expect(screen.getByPlaceholderText('feedback.placeholder')).toHaveValue('Submission already running');
+    expect(storedDraft()?.clientToken).toBe(token);
+    expect(screen.getByRole('heading', { name: 'feedback.title' })).toHaveFocus();
+    await act(async () => { resolve({ ok: true, reason: 'created', id: TICKET_ID }); });
+    expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
+    expect(mockSubmitFeedback).toHaveBeenCalledOnce();
+  });
+
+  it('does not change an existing page/modal scroll lock or steal focus on owner retirement', async () => {
+    document.body.style.overflow = 'hidden';
+    try {
+      render(<><button>Other page action</button><FeedbackWidget /></>);
+      openAndType('Private old draft');
+      expect(document.body.style.overflow).toBe('hidden');
+      const action = screen.getByRole('button', { name: 'Other page action' }); action.focus();
+      await act(async () => { advanceOwnerEpoch('footer-next-owner'); await syncLocalIdentityOwner('footer-next-owner'); });
+      expect(screen.queryByTestId('feedback-panel')).toBeNull();
+      expect(action).toHaveFocus();
+      expect(document.body.style.overflow).toBe('hidden');
+    } finally { document.body.style.overflow = ''; }
+  });
+});

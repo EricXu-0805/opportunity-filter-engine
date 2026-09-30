@@ -20,17 +20,17 @@ export default function EmailTipsPanel({ labType }: EmailTipsPanelProps) {
   const mistakes = MISTAKE_KEY_ORDER.map((k) => t(`coldEmail.tips.${labType}.mistakes.${k}`)).filter(Boolean);
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3 break-words">
       <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
         <h4 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-          <Lightbulb className="w-3 h-3" aria-hidden="true" />
+          <Lightbulb className="w-3 h-3 shrink-0" aria-hidden="true" />
           {t('coldEmail.tips.skillsHeading')}
         </h4>
         <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-emerald-900/90">
           {skills.map((tip, i) => (
-            <li key={i} className="flex gap-1.5">
+            <li key={i} className="flex min-w-0 gap-1.5">
               <span aria-hidden="true">•</span>
-              <span>{tip}</span>
+              <span className="min-w-0">{tip}</span>
             </li>
           ))}
         </ul>
@@ -38,14 +38,14 @@ export default function EmailTipsPanel({ labType }: EmailTipsPanelProps) {
 
       <section className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
         <h4 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
-          <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+          <AlertTriangle className="w-3 h-3 shrink-0" aria-hidden="true" />
           {t('coldEmail.tips.mistakesHeading')}
         </h4>
         <ul className="mt-2 space-y-1.5 text-[12px] leading-snug text-amber-900/90">
           {mistakes.map((tip, i) => (
-            <li key={i} className="flex gap-1.5">
+            <li key={i} className="flex min-w-0 gap-1.5">
               <span aria-hidden="true">•</span>
-              <span>{tip}</span>
+              <span className="min-w-0">{tip}</span>
             </li>
           ))}
         </ul>
@@ -54,10 +54,10 @@ export default function EmailTipsPanel({ labType }: EmailTipsPanelProps) {
       <Link
         href={`/resources?lab=${labType}#tips-card-${labType}`}
         data-testid="tips-read-more"
-        className="inline-flex items-center gap-1 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50/60"
+        className="inline-flex max-w-full items-center gap-1 text-[12px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50/60"
       >
         {t('coldEmail.tips.readMore')}
-        <ArrowRight className="w-3 h-3" aria-hidden="true" />
+        <ArrowRight className="w-3 h-3 shrink-0" aria-hidden="true" />
       </Link>
     </div>
   );

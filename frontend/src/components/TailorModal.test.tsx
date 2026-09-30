@@ -29,14 +29,28 @@ const mockTailorResume = vi.fn();
 const mockGetTailorStatus = vi.fn();
 const mockExtractResumeBullets = vi.fn();
 vi.mock('@/lib/api', () => ({
-  tailorResume: (...args: unknown[]) => mockTailorResume(...args),
+  tailorResume: async (...args: unknown[]) => {
+    const result = await mockTailorResume(...args);
+    // Normal old fixtures get the actual wire receipt. Explicit malformed
+    // target/version fields stay malformed so isolation tests remain meaningful.
+    return result && typeof result === 'object'
+      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      : result;
+  },
   getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
-  extractResumeBullets: (...args: unknown[]) => mockExtractResumeBullets(...args),
+  extractResumeBullets: async (...args: unknown[]) => {
+    const result = await mockExtractResumeBullets(...args);
+    return result && typeof result === 'object'
+      ? { pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      : result;
+  },
 }));
 
 import TailorModal from './TailorModal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
-import type { ProfileData, TailorResponse } from '@/lib/types';
+import { createBinding, createDraft, encodeDraft } from '@/lib/tailor-draft';
+import { advanceOwnerEpoch, readUserScopedEntry, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import type { Opportunity, ProfileData, TailorResponse } from '@/lib/types';
 
 // R71-G word-diff splits bullet text into per-word <span>/<ins>/<del>
 // nodes, so getByText(/whole sentence/) no longer matches — testing-library
@@ -60,6 +74,17 @@ function makeProfile(overrides: Partial<ProfileData> = {}): ProfileData {
   };
 }
 
+function publicTarget(id = 'opp-123'): Opportunity {
+  return { id, title: 'Some research opportunity', organization: 'UIUC', source_type: 'manual', record_kind: 'listing',
+    writing_target_version: `wt1:${'a'.repeat(64)}`, opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
+    description_clean: 'Student research', keywords: ['research'],
+    eligibility: { preferred_year: [], majors: [], skills_required: [], international_friendly: 'unknown', citizenship_required: null },
+    application: { application_effort: 'unknown', requires_resume: 'yes', contact_method: 'email' },
+    metadata: { is_active: true, confidence_score: 1 },
+    target_truth: { listing_state: 'open', accepting_state: 'accepting', actionable: true, reference_only: false,
+      reason_code: null, verified_at: null, expires_at: null } };
+}
+
 const OWNER = 'owner-1';
 const OWNER2 = 'owner-2';
 
@@ -68,6 +93,7 @@ const baseProps = {
   onClose: vi.fn(),
   opportunityId: 'opp-123',
   opportunityTitle: 'Some research opportunity',
+  target: publicTarget(),
   ownerReady: true,
   ownerScopeKey: OWNER,
 };
@@ -79,32 +105,37 @@ const DRAFT_KEY = `ofe_tailor_draft_${OWNER}:opp-123`;
 const DRAFT_KEY_OWNER2 = `ofe_tailor_draft_${OWNER2}:opp-123`;
 const LEGACY_DRAFT_KEY = 'ofe_tailor_draft_opp-123';
 
-/** W13: drafts are stored as {t, s} envelopes (text + resume sig); legacy
- *  plain strings still load. Tests assert on the TEXT. */
-function storedDraftText(key: string): string | null {
-  const raw = window.localStorage.getItem(key);
+/** Read the live generation namespace first. Direct UID keys are only old
+ * compatibility fixtures; never consult the ownerless opportunity key. */
+function storedValueText(raw: string | null): string | null {
   if (raw === null) return null;
   try {
-    const parsed = JSON.parse(raw) as { t?: unknown };
+    const parsed = JSON.parse(raw) as { version?: unknown; text?: unknown; t?: unknown };
+    if (parsed?.version === 2 && typeof parsed.text === 'string') return parsed.text;
     if (parsed && typeof parsed.t === 'string') return parsed.t;
   } catch { /* legacy */ }
   return raw;
 }
+function storedDraftText(key: string): string | null {
+  const entry = readUserScopedEntry(key);
+  return storedValueText(entry.status === 'present' ? entry.value : window.localStorage.getItem(key));
+}
 
 
-describe('TailorModal', () => {
-  beforeEach(() => {
+beforeEach(async () => {
     vi.resetAllMocks();
     // R71-F: every test starts with a clean localStorage so a leftover
     // draft from a previous test can't leak into the next one's
     // "initial state" assertions.
     window.localStorage.clear();
+    advanceOwnerEpoch(null); advanceOwnerEpoch(OWNER); await syncLocalIdentityOwner(OWNER);
     // R71-G: default the status probe to "AI available" so the
     // unavailable banner stays hidden and pre-existing assertions are
     // untouched. Tests that exercise the banner override this.
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
   });
 
+describe('TailorModal', () => {
   it('does not render when closed', () => {
     render(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
     expect(screen.queryByText('tailor.title')).toBeNull();
@@ -154,15 +185,16 @@ describe('TailorModal', () => {
     const generate = screen.getByRole('button', { name: /tailor\.generate/ });
     fireEvent.click(generate);
 
-    await waitFor(() =>
-      // R71-D: locale flows from useT().locale ('en' in the test env)
-      // through tailorResume's options arg.
-      expect(mockTailorResume).toHaveBeenCalledWith(
-        expect.objectContaining({ major: 'CS' }),
-        'opp-123',
-        ['Worked on Python projects in CS 225'],
-        { locale: 'en' },
-      ),
+    // Argument checks stay outside waitFor so a changed call shape fails with
+    // the argument diff instead of a polling timeout.
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+    // R71-D: locale flows from useT().locale ('en' in the test env)
+    // through tailorResume's options arg.
+    expect(mockTailorResume).toHaveBeenCalledWith(
+      expect.objectContaining({ major: 'CS' }),
+      'opp-123',
+      ['Worked on Python projects in CS 225'],
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
 
     await waitFor(() => {
@@ -254,17 +286,22 @@ describe('TailorModal', () => {
     });
   });
 
-  it('R71-F: clear-draft button wipes the textarea + storage slot', async () => {
+  it('R71-F: clear-draft persists an empty draft so reopening does not restore the prefill', async () => {
     window.localStorage.setItem(DRAFT_KEY, 'kept across reload');
-    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const profile = makeProfile({ resume_text: '• An old source bullet must stay cleared' });
+    const view = render(<TailorModal {...baseProps} profile={profile} />);
 
     fireEvent.click(screen.getByRole('button', { name: /tailor\.clearDraftAria/ }));
 
     const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
-    expect(storedDraftText(DRAFT_KEY)).toBeNull();
+    expect(storedDraftText(DRAFT_KEY)).toBe('');
     // Chip disappears once cleared.
     expect(screen.queryByText('tailor.draftRestored')).toBeNull();
+    view.rerender(<TailorModal {...baseProps} isOpen={false} profile={profile} />);
+    view.rerender(<TailorModal {...baseProps} profile={profile} />);
+    expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('');
+    expect(storedDraftText(DRAFT_KEY)).toBe('');
   });
 
   it('R71-F: per-bullet copy button writes that bullet to the clipboard', async () => {
@@ -332,9 +369,10 @@ describe('TailorModal', () => {
     fireEvent.click(copyButtons()[0]);
     expect(writeText).toHaveBeenCalledTimes(1);
 
-    // Owner switch while the clipboard write is still pending. The reset
-    // effect clears owner-1's result; type only after it has.
-    view.rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+    // A real auth transition retires the old owner instance. The host remounts
+    // for the newly accepted owner; changing only the prop never grants U2 access.
+    await act(async () => { advanceOwnerEpoch(OWNER2); await syncLocalIdentityOwner(OWNER2); });
+    view.rerender(<TailorModal key={OWNER2} {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
     await waitFor(() => expect(copyButtons().length).toBe(0));
     mockTailorResume.mockResolvedValueOnce(oneBullet());
     fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), {
@@ -504,7 +542,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: shows the AI-unavailable banner when status probe returns false', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: false });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w13.3' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -514,7 +552,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: hides the AI-unavailable banner when AI is configured', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -681,13 +719,12 @@ describe('TailorModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
-    await waitFor(() =>
-      expect(mockTailorResume).toHaveBeenCalledWith(
-        expect.any(Object),
-        'opp-123',
-        ['first bullet', 'second bullet', 'third bullet'],
-        { locale: 'en' },
-      ),
+    await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+    expect(mockTailorResume).toHaveBeenCalledWith(
+      expect.any(Object),
+      'opp-123',
+      ['first bullet', 'second bullet', 'third bullet'],
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
   });
 
@@ -786,6 +823,77 @@ describe('TailorModal', () => {
     await waitFor(() => expect(screen.getByText('tailor.methodFallback')).toBeTruthy());
     expect(screen.queryByRole('button', { name: /tailor\.editBulletAria/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /tailor\.rejectBulletAria/ })).toBeNull();
+  });
+
+  // /api/tailor refuses 13+ bullets or a bullet over 500 characters. The
+  // modal must say which limit and which bullet before sending anything,
+  // not surface the server's generic "profile too long" refusal afterwards.
+  describe('bullet limits', () => {
+    it('names the 12-bullet limit and sends nothing for a 13-line draft', async () => {
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      const lines = Array.from({ length: 13 }, (_, i) => `Bullet number ${i + 1}`).join('\n');
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: lines } });
+
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooMany:13|12');
+      const generate = screen.getByRole('button', { name: /tailor\.generate/ }) as HTMLButtonElement;
+      expect(generate.disabled).toBe(true);
+      fireEvent.click(generate);
+      await act(async () => { await Promise.resolve(); });
+      expect(mockTailorResume).not.toHaveBeenCalled();
+    });
+
+    it('names which bullet is over 500 characters, counting code points like the server', async () => {
+      mockTailorResume.mockResolvedValueOnce({ method: 'ai', warnings: [], tailored_bullets: [] } satisfies TailorResponse);
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${'x'.repeat(501)}\nAnother short bullet\n${'y'.repeat(700)}` } });
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooLongMany:2, 4|500');
+
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${'x'.repeat(501)}` } });
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooLongOne:2|501|500');
+      expect((screen.getByRole('button', { name: /tailor\.generate/ }) as HTMLButtonElement).disabled).toBe(true);
+
+      // 500 emoji are 1,000 UTF-16 units but 500 characters to the server.
+      const emoji = '🧪'.repeat(500);
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${emoji}` } });
+      expect(screen.queryByTestId('tailor-limit-issue')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(mockTailorResume.mock.calls[0][2]).toEqual(['A short bullet', emoji]);
+    });
+
+    it('shows the limit for an over-long bullet that smart-extract kept whole', async () => {
+      const long = `Ran the lab protocol ${'step '.repeat(120)}`.trim();
+      mockExtractResumeBullets.mockResolvedValueOnce({ method: 'ai', bullets: ['A short bullet', long], warnings: ['bullet_exceeds_tailor_limit'] });
+      render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' })} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+
+      await waitFor(() => expect(screen.getByTestId('tailor-limit-issue').textContent)
+        .toBe(`tailor.limits.tooLongOne:2|${[...long].length}|500`));
+    });
+
+    it('a server bullet-limit refusal names the server limits, not the combined profile', async () => {
+      mockTailorResume.mockRejectedValueOnce(Object.assign(new Error('Tailor at most 1 bullets'), {
+        code: 'TAILOR_INPUT_TOO_LARGE', detail: { code: 'TAILOR_INPUT_TOO_LARGE', max_bullets: 1, max_characters_per_bullet: 500 },
+      }));
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'first bullet\nsecond bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+      await waitFor(() => expect(screen.getByText('tailor.limits.tooMany:2|1')).toBeTruthy());
+      expect(screen.queryByText('profileInput.tailorTooLarge')).toBeNull();
+    });
+
+    it('the combined-prompt refusal, which names no bullet limits, keeps its own message', async () => {
+      mockTailorResume.mockRejectedValueOnce(Object.assign(new Error('The combined resume input is too long.'), {
+        code: 'TAILOR_INPUT_TOO_LARGE', detail: { code: 'TAILOR_INPUT_TOO_LARGE', message: 'The combined resume input is too long.' },
+      }));
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'first bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+      await waitFor(() => expect(screen.getByText('profileInput.tailorTooLarge')).toBeTruthy());
+    });
   });
 
   // Nested (not sibling) describe blocks below — they must share the outer
@@ -1476,7 +1584,7 @@ describe('TailorModal', () => {
         resolveN1?.({ method: 'ai', bullets: ['STALE bullet computed under the OLD owner'] });
       });
 
-      const badCalls = setItemSpy.mock.calls.filter(([, value]) => value === 'STALE bullet computed under the OLD owner');
+      const badCalls = setItemSpy.mock.calls.filter(([, value]) => storedValueText(value) === 'STALE bullet computed under the OLD owner');
       expect(badCalls).toEqual([]);
       expect(storedDraftText(DRAFT_KEY)).not.toBe('STALE bullet computed under the OLD owner');
       expect(storedDraftText(DRAFT_KEY_OWNER2)).not.toBe('STALE bullet computed under the OLD owner');
@@ -1690,7 +1798,7 @@ describe('TailorModal', () => {
       });
 
       expect(textarea.value).toBe(''); // still cleared — extract's stale result did not resurrect it
-      expect(storedDraftText(DRAFT_KEY)).toBeNull();
+      expect(storedDraftText(DRAFT_KEY)).toBe('');
     });
   });
 
@@ -1704,7 +1812,7 @@ describe('TailorModal', () => {
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       expect(textarea.value).toBe(''); // heuristic prefill is empty — legacy content never read
       expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe('legacy content — must never surface'); // untouched — never migrated, never deleted
-      expect(storedDraftText(DRAFT_KEY)).toBeNull(); // never written to the scoped key either
+      expect(storedDraftText(DRAFT_KEY)).toBe(''); // fresh empty v2, never the ownerless text
     });
 
     it('a DELAYED legacy write — a stale U1 tab writing the old opp-only key AFTER the LOCAL_IDENTITY_OWNER marker has already moved to U2 — is never shown or migrated to U2', async () => {
@@ -1734,7 +1842,7 @@ describe('TailorModal', () => {
         // No key under the tailor-draft prefix was ever created.
         for (let i = 0; i < window.localStorage.length; i += 1) {
           const key = window.localStorage.key(i);
-          expect(key?.startsWith('ofe_tailor_draft_')).toBe(false);
+          expect(key?.includes('ofe_tailor_draft_')).toBe(false); // also generation-prefixed keys
         }
       });
     });
@@ -1761,11 +1869,19 @@ describe('TailorModal', () => {
   });
 
   describe('C1-R2B: ownerScopeKey changing on an ALREADY-OPEN modal (isOpen never flips false) must never leak a draft cross-owner', () => {
-    it('U1 types a private draft; ownerScopeKey switches straight to U2 with the modal staying open the entire time — U1\'s text must NEVER be written under U2\'s key at ANY point (not just in the final settled state), and the UI must end up showing U2\'s own draft', async () => {
+    it('U1 text never crosses a scope-only U2 change; U2 draft is readable only after real owner confirmation and reopening', async () => {
       const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />); // U1, isOpen=true throughout
       const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
       fireEvent.change(textarea, { target: { value: 'U1 PRIVATE draft' } });
       await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft'));
+      // Initial SHA binding is an independent, legitimate U1 save. Observe
+      // scope switching only after that persisted state is complete; text
+      // persistence alone can precede the binding's passive effect.
+      await waitFor(() => {
+        const entry = readUserScopedEntry(DRAFT_KEY);
+        expect(entry.status).toBe('present');
+        if (entry.status === 'present') expect(JSON.parse(entry.value).origin.binding).not.toBeNull();
+      });
 
       // U2's own draft already exists in storage — proves the UI ends up
       // showing U2's real content, not merely "not U1's".
@@ -1795,17 +1911,73 @@ describe('TailorModal', () => {
       // this whole rerender (including any cascading follow-up renders),
       // U2's key was never once paired with U1's text.
       const badCalls = setItemSpy.mock.calls.filter(
-        ([key, value]) => key === DRAFT_KEY_OWNER2 && value === 'U1 PRIVATE draft',
+        ([key, value]) => key.endsWith(DRAFT_KEY_OWNER2) && storedValueText(value) === 'U1 PRIVATE draft',
       );
       expect(badCalls).toEqual([]);
       // U1's own key was also never touched by U2's arrival, at any point.
-      const u1KeyTouched = setItemSpy.mock.calls.some(([key]) => key === DRAFT_KEY);
+      const u1KeyTouched = setItemSpy.mock.calls.some(([key]) => key.endsWith(DRAFT_KEY));
       expect(u1KeyTouched).toBe(false);
 
-      // Final settled state: U1's key untouched, U2 sees U2's own draft.
+      // A prop is not authentication: no foreign draft is readable yet and
+      // no component write touched either owner's stored text.
       expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft');
-      await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('U2 own draft'));
+      expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('');
       expect(storedDraftText(DRAFT_KEY_OWNER2)).toBe('U2 own draft');
+      await act(async () => { advanceOwnerEpoch(OWNER2); await syncLocalIdentityOwner(OWNER2); });
+      // Seed U2's own legacy slot after the real generation sweep, then reopen
+      // as hosts do. The old U1 instance cannot authorize this read by itself.
+      window.localStorage.setItem(DRAFT_KEY_OWNER2, 'U2 own draft');
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} isOpen={false} profile={makeProfile()} />);
+      rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+      await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('U2 own draft'));
+      expect(setItemSpy.mock.calls.filter(([key, value]) =>
+        key.endsWith(DRAFT_KEY_OWNER2) && storedValueText(value) === 'U1 PRIVATE draft')).toEqual([]);
+    });
+
+    it.each(['before', 'after'] as const)('initial SHA completing %s the U2 prop commit never authorizes a cross-owner write', async completion => {
+      const nativeDigest = crypto.subtle.digest.bind(crypto.subtle);
+      const pending: Array<{ release: () => void; result: Promise<ArrayBuffer> }> = [];
+      const digest = vi.spyOn(crypto.subtle, 'digest').mockImplementation((algorithm, data) => {
+        let release!: () => void;
+        const gate = new Promise<void>(resolve => { release = resolve; });
+        const result = gate.then(() => nativeDigest(algorithm, data));
+        pending.push({ release, result });
+        return result;
+      });
+      try {
+        const { rerender } = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+        fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'U1 PRIVATE draft' } });
+        await waitFor(() => expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft'));
+        await waitFor(() => expect(digest).toHaveBeenCalledTimes(3));
+        const initial = pending.splice(0, 3);
+        const finishInitialBinding = async () => {
+          await act(async () => {
+            initial.forEach(item => item.release());
+            await Promise.all(initial.map(item => item.result));
+          });
+        };
+        if (completion === 'before') {
+          await finishInitialBinding();
+          await waitFor(() => {
+            const entry = readUserScopedEntry(DRAFT_KEY);
+            expect(entry.status).toBe('present');
+            if (entry.status === 'present') expect(JSON.parse(entry.value).origin.binding).not.toBeNull();
+          });
+        }
+        window.localStorage.setItem(DRAFT_KEY_OWNER2, 'U2 own draft');
+        const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
+        rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={makeProfile()} />);
+        // The U2 prop commit has happened, but props alone still do not
+        // establish authenticated U2 authority or license reading its draft.
+        expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('');
+        if (completion === 'after') await finishInitialBinding();
+        expect(setItemSpy.mock.calls.filter(([key]) => key.endsWith(DRAFT_KEY))).toEqual([]);
+        expect(setItemSpy.mock.calls.filter(([key, value]) =>
+          key.endsWith(DRAFT_KEY_OWNER2) && storedValueText(value) === 'U1 PRIVATE draft')).toEqual([]);
+        expect(storedDraftText(DRAFT_KEY)).toBe('U1 PRIVATE draft');
+        expect(storedDraftText(DRAFT_KEY_OWNER2)).toBe('U2 own draft');
+        expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('');
+      } finally { digest.mockRestore(); }
     });
 
     it('same scenario but U2 has NO existing draft — U2 sees the heuristic prefill (or empty), and setItem is NEVER called with U2\'s key paired with U1\'s text at any point', async () => {
@@ -1819,7 +1991,7 @@ describe('TailorModal', () => {
       rerender(<TailorModal {...baseProps} ownerScopeKey={OWNER2} profile={profile} />);
 
       const badCalls = setItemSpy.mock.calls.filter(
-        ([key, value]) => key === DRAFT_KEY_OWNER2 && value === 'another U1 secret',
+        ([key, value]) => key.endsWith(DRAFT_KEY_OWNER2) && storedValueText(value) === 'another U1 secret',
       );
       expect(badCalls).toEqual([]);
 
@@ -1877,10 +2049,11 @@ describe('W13 target isolation + draft staleness', () => {
     // flag applies to drafts in the CURRENT owner's namespace.
     window.localStorage.setItem(
       DRAFT_KEY,
-      JSON.stringify({ t: 'old bullet draft', s: 'sig-of-old-resume' }),
+      encodeDraft(createDraft(OWNER, 'opp-123', 'old bullet draft', 'manual',
+        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w13.3'))),
     );
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
-    expect(screen.getByTestId('tailor-stale-draft')).toBeTruthy();
+    expect(await screen.findByTestId('tailor-stale-draft')).toBeTruthy();
   });
 
   it('makes no staleness claim for legacy plain-string drafts', async () => {
@@ -1888,5 +2061,37 @@ describe('W13 target isolation + draft staleness', () => {
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'whatever text' })} />);
     expect(screen.getByText('tailor.draftRestored')).toBeTruthy();
     expect(screen.queryByTestId('tailor-stale-draft')).toBeNull();
+    expect(await screen.findByText('tailor.draftUnknown')).toBeTruthy();
+  });
+});
+
+
+describe('resume processing disclosure', () => {
+  it('shows long-input bounds before extraction and mixed coverage afterward', async () => {
+    const profile = makeProfile({ resume_text: 'x'.repeat(8_100) });
+    mockExtractResumeBullets.mockResolvedValue({
+      method: 'mixed', bullets: ['Final source experience'], warnings: ['bullet_selection_limited'],
+      processing: {
+        input_characters: 8_100, ai_chunks: 1, heuristic_chunks: 1,
+        chunks: [{ start: 0, end: 8_000, method: 'ai' }, { start: 8_000, end: 8_100, method: 'heuristic' }],
+      },
+    });
+    render(<TailorModal {...baseProps} profile={profile} />);
+    expect(screen.getByText('resume.processingLong')).toBeInTheDocument();
+    expect(mockExtractResumeBullets).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
+    await waitFor(() => expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument());
+    expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
+    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
+  });
+
+  it('keeps the current draft and shows failure when a long extraction is rejected', async () => {
+    mockExtractResumeBullets.mockRejectedValue(new Error('input rejected'));
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'x'.repeat(8_100) })} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'My current draft' } });
+    fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
+    await waitFor(() => expect(screen.getByText('resume.extractionFailed')).toBeInTheDocument());
+    expect(textarea.value).toBe('My current draft');
   });
 });

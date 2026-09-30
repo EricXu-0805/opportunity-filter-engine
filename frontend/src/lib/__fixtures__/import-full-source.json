@@ -1,0 +1,134 @@
+{
+  "provenance": "Actual local FastAPI response bodies with controlled HTML fetch and provider. No real network or model. 413 is injected route error mapping only, not an implemented prompt limit. Synthetic query token is test data.",
+  "success": {
+    "url": {
+      "ok": true,
+      "opportunity": {
+        "source": "url_parser",
+        "source_url": "https://example.edu/program?session=private-token-for-test",
+        "title": "AI suggested title",
+        "description_raw": "Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. END OF COMPLETE SOURCE: SQL is preferred, not required.",
+        "url": "https://example.edu/program?session=private-token-for-test",
+        "organization": "example.edu",
+        "deadline": null,
+        "posted_date": null,
+        "location": null,
+        "raw_html": null,
+        "extra_fields": {
+          "domain": "example.edu",
+          "description_source": "page_text",
+          "page_meta_summary": "Short summary",
+          "needs_manual_review": true,
+          "contact_instruction_capture": {
+            "version": 1,
+            "status": "unsupported",
+            "reason": "content_limit",
+            "attempted_at": "2026-09-29T03:32:23.713279+00:00",
+            "source_url": "https://example.edu/program?session=private-token-for-test",
+            "record_source_url": "https://example.edu/program?session=private-token-for-test",
+            "requested_source_url": "https://example.edu/program?session=private-token-for-test"
+          },
+          "suggested_description": "AI summary",
+          "suggested_skills": [
+            "Python"
+          ],
+          "llm_enriched": true,
+          "inferred_fields": {
+            "title": "llm:url_parser",
+            "suggested_description": "llm:url_parser",
+            "suggested_skills": "llm:url_parser"
+          },
+          "ai_input_scope": "source_excerpt"
+        }
+      },
+      "error": null,
+      "llm_enriched": true
+    },
+    "text": {
+      "ok": true,
+      "opportunity": {
+        "source": "text_parser",
+        "source_url": "",
+        "title": "AI suggested title",
+        "description_raw": "Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. Original project explanation with applicant information. \nEND OF COMPLETE SOURCE: SQL is preferred, not required.",
+        "url": "",
+        "organization": null,
+        "deadline": null,
+        "posted_date": null,
+        "location": null,
+        "raw_html": null,
+        "extra_fields": {
+          "needs_manual_review": true,
+          "description_source": "pasted_text",
+          "suggested_description": "AI summary",
+          "suggested_skills": [
+            "Python"
+          ],
+          "llm_enriched": true,
+          "inferred_fields": {
+            "title": "llm:url_parser",
+            "suggested_description": "llm:url_parser",
+            "suggested_skills": "llm:url_parser"
+          },
+          "ai_input_scope": "source_excerpt"
+        }
+      },
+      "error": null,
+      "llm_enriched": true
+    }
+  },
+  "errors": [
+    {
+      "name": "metadata_only",
+      "status": 422,
+      "response": {
+        "detail": {
+          "code": "import_source_unreadable",
+          "reason": "metadata_only",
+          "message": "Only a page summary was available. Paste the complete opportunity text.",
+          "retryable": false
+        }
+      },
+      "actual_source_rejection": true
+    },
+    {
+      "name": "empty_page",
+      "status": 422,
+      "response": {
+        "detail": {
+          "code": "import_source_unreadable",
+          "reason": "empty_page",
+          "message": "No readable page text was found. Paste the complete opportunity text.",
+          "retryable": false
+        }
+      },
+      "actual_source_rejection": true
+    },
+    {
+      "name": "unsupported_content_type",
+      "status": 422,
+      "response": {
+        "detail": {
+          "code": "import_source_unreadable",
+          "reason": "unsupported_content_type",
+          "message": "This link does not contain a supported page. Paste the complete opportunity text.",
+          "retryable": false
+        }
+      },
+      "actual_source_rejection": true
+    },
+    {
+      "name": "413-injected",
+      "status": 413,
+      "response": {
+        "detail": {
+          "code": "import_input_too_large",
+          "reason": "too_large",
+          "message": "The page is too large to import in full. Use a page for one opportunity.",
+          "retryable": false
+        }
+      },
+      "actual_source_rejection": false
+    }
+  ]
+}

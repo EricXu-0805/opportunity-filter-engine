@@ -17,6 +17,8 @@ from src.evidence import (
     record_kind,
     target_truth,
 )
+from src.lab_context import lab_context_for
+from src.research_context import research_context_for
 
 _EMAIL_IN_TEXT_RE = re.compile(
     r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\."
@@ -581,6 +583,14 @@ def public_target_truth(canonical_record: dict) -> dict:
 # envelope the moment a record is closed-but-active — which is the exact shape
 # of the 861 rows this contract exists for.
 _EVIDENCE_ONLY_METADATA_KEYS = frozenset({
+    "skill_mentions",
+    "contact_instruction_sources",
+    "contact_instruction_capture",
+    "contact_instruction_pages",
+    "research_snapshot",
+    "research_refresh",
+    "lab_snapshot",
+    "lab_refresh",
     "is_active",
     "listing_status",
     "urap_status",
@@ -693,6 +703,37 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # (`stanford-f0a974ed2bd2` has one as its TITLE). Canonical does not mean
     # clean; it means authoritative about identity.
     prepared = dict(payload)
+    condition_context = None
+    if "target_conditions" in prepared:
+        # Do not trust a caller/corpus-supplied public receipt. Raw retained
+        # source blocks are still present here and are removed before serving.
+        from backend.lib.email_target_conditions import (
+            build_target_conditions,
+            target_conditions_template_request,
+        )
+
+        condition_context = build_target_conditions(canonical_record)
+        prepared["target_conditions"] = condition_context
+    research = research_context_for(canonical_record)
+    lab = lab_context_for(canonical_record)
+    if "lab_context" in prepared:
+        prepared["lab_context"] = lab
+    if "research_context" in prepared:
+        # Never accept a caller/corpus-supplied public snapshot.
+        prepared["research_context"] = research
+    if research["status"] == "available":
+        works = research["snapshot"]["works"]
+        if isinstance(prepared.get("recent_works"), list):
+            # Preserve the existing card's bounded two-title shape, never add
+            # abstracts to list payloads or trust a stale legacy title cache.
+            prepared["recent_works"] = [
+                {"title": work["title"][:110], "year": work["year"]}
+                for work in works[:min(2, len(prepared["recent_works"]))]
+            ]
+        if isinstance(prepared.get("metadata"), dict) and "recent_works" in prepared["metadata"]:
+            prepared["metadata"] = {**prepared["metadata"], "recent_works": [
+                {"title": work["title"], "year": work["year"]} for work in works]}
+
     for field in _CANONICAL_IDENTITY_FIELDS:
         if field in canonical_record:
             prepared[field] = canonical_record[field]
@@ -703,6 +744,31 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # result is shared with `payload` — the shallow `dict()` above is only a
     # scaffold for the identity edit and never reaches the caller.
     projected = redact_embedded_emails(sanitize_public_urls(prepared))
+    if condition_context is not None:
+        public_conditions = projected["target_conditions"]
+        for original, visible in zip(condition_context["conditions"], public_conditions["conditions"], strict=True):
+            if original != visible:
+                # A changed source quote/URL/value no longer supports the
+                # displayed assertion. Retire only this item, not unrelated
+                # complete evidence; never re-sign redacted text as proof.
+                visible.update(status="unknown", usage="excluded", value=None,
+                               reason="source_not_public", sources=[])
+        public_conditions["template_request"] = target_conditions_template_request(public_conditions)
+    research_changed = redact_embedded_emails(sanitize_public_urls(research)) != research
+    if "lab_context" in projected and redact_embedded_emails(sanitize_public_urls(lab)) != lab:
+        # Do not re-sign source text changed by privacy/URL filtering.
+        projected["lab_context"] = {"version": 1, "status": "unavailable", "snapshot": None}
+    if research_changed and "research_context" in projected:
+        # A source quote changed by privacy/URL projection cannot keep its source
+        # hash. Preserve the raw private snapshot; do not re-sign edited text.
+        projected["research_context"] = {"version": 1, "status": "unavailable", "snapshot": None}
+    raw_metadata = canonical_record.get("metadata") or {}
+    if isinstance(raw_metadata, dict) and "research_snapshot" in raw_metadata and (
+        research["status"] != "available" or research_changed
+    ):
+        projected.pop("recent_works", None)
+        if isinstance(projected.get("metadata"), dict):
+            projected["metadata"].pop("recent_works", None)
 
     truth = public_target_truth(canonical_record)
     kind = record_kind(canonical_record)

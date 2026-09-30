@@ -834,9 +834,13 @@ def test_every_budget_status_the_engine_emits_is_known_to_the_contract():
     emitted = set(re.findall(r'"status": "([a-z_]+)"', source))
     emitted |= set(re.findall(r'\["status"\] = "([a-z_]+)"', source))
 
-    from src.collectors.refresh_contract import RELEASABLE_INCOMPLETE_STATUSES
+    from src.collectors.refresh_contract import (
+        CONDITION_REFRESH_STATUSES,
+        RELEASABLE_INCOMPLETE_STATUSES,
+    )
 
-    known = {"ok", "error"} | RELEASABLE_INCOMPLETE_STATUSES
+    # Condition progress is a separate report, not a collector source status.
+    known = {"ok", "error"} | RELEASABLE_INCOMPLETE_STATUSES | CONDITION_REFRESH_STATUSES
     assert emitted <= known, (
         f"refresh_all emits status(es) the release contract has never been "
         f"told how to judge: {sorted(emitted - known)}. Decide explicitly: "
@@ -1140,3 +1144,27 @@ class TestUcbShardIsolation:
         verdict = _ucb_summary(**{"ucb_chem_faculty": {"status": "error",
                                                        "error": "boom"}})
         assert verdict["by_unit"]["ucb"]["ready"] is False
+
+
+def test_b55_partial_failure_can_publish_but_not_claim_complete_success():
+    info = _graph_ok(status="partial_failure", condition_capture_counts={"captured": 0, "empty": 0, "unsupported": 1, "failed": 0}, condition_capture_complete=False)
+    summary = _summary({"uw"}, {"campus_graph:uw": info, "uw_faculty": _ok(100)})
+    verdict = evaluate_refresh_summary(summary, schools={"uw"}, national=False, deep=True, require_tracking=False)
+    assert verdict["ready"] is True
+    assert verdict["status"] == "degraded"
+    assert verdict["publishable"] == ["uw"]
+    assert any(item["kind"] == "partial_failure" for item in verdict["degradations"])
+
+
+def test_b55_partial_failure_does_not_bypass_malformed_deep_evidence():
+    info = _graph_ok(status="partial_failure", seed_pages_loaded=9)
+    verdict = evaluate_refresh_summary(_summary({"uw"}, {"campus_graph:uw": info, "uw_faculty": _ok(100)}),
+                                      schools={"uw"}, national=False, deep=True, require_tracking=False)
+    assert verdict["ready"] is False
+
+
+def test_b55_forged_ok_with_failed_capture_is_still_degraded():
+    info = _graph_ok(condition_capture_counts={"captured": 0, "empty": 0, "unsupported": 0, "failed": 1}, condition_capture_complete=False)
+    verdict = evaluate_refresh_summary(_summary({"uw"}, {"campus_graph:uw": info, "uw_faculty": _ok(100)}),
+                                      schools={"uw"}, national=False, deep=True, require_tracking=False)
+    assert verdict["status"] == "degraded"

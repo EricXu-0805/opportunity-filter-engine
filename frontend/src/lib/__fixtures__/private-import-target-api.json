@@ -1,0 +1,126 @@
+{
+  "fixture_kind": "synthetic actual API with mocked GoTrue/PostgREST; no live service",
+  "create": {
+    "version": 1,
+    "target": {
+      "id": "private-import:a2000000-0000-4000-8000-000000000001",
+      "owner_id": "a1000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "opportunity": {
+        "source": "text_parser",
+        "title": "Private research note",
+        "description_raw": "GPA < 3.0 needs review; scores > 80 preferred. END 私人正文",
+        "source_url": "",
+        "url": "",
+        "extra_fields": {
+          "description_source": "pasted_text",
+          "ai_input_scope": "source_excerpt",
+          "llm_enriched": true,
+          "suggested_skills": [
+            "ImaginarySkill"
+          ],
+          "target_truth": {
+            "actionable": true
+          }
+        }
+      },
+      "created_at": "2026-09-28T12:00:00+00:00",
+      "updated_at": "2026-09-28T12:00:00+00:00",
+      "deleted_at": null,
+      "import_source": {
+        "version": 1,
+        "description_source": "pasted_text",
+        "ai_input_scope": "source_excerpt",
+        "llm_enriched": true
+      },
+      "target_scope": "private_import",
+      "verification": "unverified",
+      "target_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040"
+    },
+    "replayed": false
+  },
+  "read": {
+    "version": 1,
+    "target": {
+      "id": "private-import:a2000000-0000-4000-8000-000000000001",
+      "owner_id": "a1000000-0000-4000-8000-000000000001",
+      "revision": 1,
+      "opportunity": {
+        "source": "text_parser",
+        "title": "Private research note",
+        "description_raw": "GPA < 3.0 needs review; scores > 80 preferred. END 私人正文",
+        "source_url": "",
+        "url": "",
+        "extra_fields": {
+          "description_source": "pasted_text",
+          "ai_input_scope": "source_excerpt",
+          "llm_enriched": true,
+          "suggested_skills": [
+            "ImaginarySkill"
+          ],
+          "target_truth": {
+            "actionable": true
+          }
+        }
+      },
+      "created_at": "2026-09-28T12:00:00+00:00",
+      "updated_at": "2026-09-28T12:00:00+00:00",
+      "deleted_at": null,
+      "import_source": {
+        "version": 1,
+        "description_source": "pasted_text",
+        "ai_input_scope": "source_excerpt",
+        "llm_enriched": true
+      },
+      "target_scope": "private_import",
+      "verification": "unverified",
+      "target_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040"
+    },
+    "replayed": false
+  },
+  "list": {
+    "version": 1,
+    "items": [
+      {
+        "id": "private-import:a2000000-0000-4000-8000-000000000001",
+        "owner_id": "a1000000-0000-4000-8000-000000000001",
+        "revision": 1,
+        "created_at": "2026-09-28T12:00:00+00:00",
+        "updated_at": "2026-09-28T12:00:00+00:00",
+        "deleted_at": null,
+        "title": "Private research note",
+        "organization": null,
+        "source_url": "",
+        "url": "",
+        "source": "text_parser",
+        "target_scope": "private_import",
+        "verification": "unverified",
+        "target_version": "pit1:944477819dd895dd519af648c514986bac3d67b21d0e83e2ede0e9b8b9759040"
+      }
+    ],
+    "next_cursor": null
+  },
+  "delete": {
+    "version": 1,
+    "target": {
+      "id": "private-import:a2000000-0000-4000-8000-000000000001",
+      "owner_id": "a1000000-0000-4000-8000-000000000001",
+      "revision": 2,
+      "opportunity": null,
+      "created_at": "2026-09-28T12:00:00+00:00",
+      "updated_at": "2026-09-28T12:00:00+00:00",
+      "deleted_at": "2026-09-28T12:00:00+00:00",
+      "import_source": null,
+      "target_scope": "private_import",
+      "verification": "unverified",
+      "target_version": "pit1:edafc7c7ed961818c0bb21b4cf1debf1bbb5dc441fb51fcae2ec043e6f2746f6"
+    },
+    "replayed": false
+  },
+  "status_codes": [
+    200,
+    200,
+    200,
+    200
+  ]
+}

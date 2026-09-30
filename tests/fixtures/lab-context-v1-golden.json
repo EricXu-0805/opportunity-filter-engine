@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "status": "available",
+  "snapshot": {
+    "version": 1,
+    "source": "official_website",
+    "record_id": "ucb-stat-jane-doe",
+    "record_source_url": "https://statistics.berkeley.edu/people/jane-doe",
+    "school": "ucb",
+    "department": "Department of Statistics",
+    "identity_name": "Jane Doe",
+    "policy_version": 1,
+    "checked_at": "2026-09-26T10:00:00Z",
+    "pages": [
+      {
+        "kind": "faculty_profile",
+        "requested_url": "https://statistics.berkeley.edu/people/jane-doe",
+        "source_url": "https://statistics.berkeley.edu/people/jane-doe",
+        "page_title": "Jane Doe — Research",
+        "identity_text": "Jane Doe",
+        "linked_from": null,
+        "sections": [
+          {
+            "section_id": "s1",
+            "heading": "Research Interests",
+            "text": "Our group studies causal inference.\n研究😀原文完整保留。"
+          },
+          {
+            "section_id": "s2",
+            "heading": "Research Areas",
+            "text": "Experimental design and missing data."
+          }
+        ]
+      }
+    ],
+    "snapshot_version": "ls1:c99d98857843e101928d42ebb96a26f395c6db60f717fe978f0c9b94f038c9dd"
+  }
+}

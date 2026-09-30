@@ -38,6 +38,9 @@ _COMMON_FILLER: frozenset[str] = frozenset({
     "another", "below", "between", "during", "every", "other",
     "their", "there", "these", "those", "throughout", "through",
     "together", "under", "until", "where", "which", "while", "would",
+    "along", "among", "amongst", "beside", "beneath", "beyond", "toward",
+    "towards", "underneath", "without", "including", "regarding",
+    "concerning", "except", "inside", "unlike", "versus", "whereas", "whose",
     # Common verbs
     "achieved", "acquired", "added", "adapted", "addressed", "adjusted",
     "advised", "analyzed", "applied", "approved", "assembled",
@@ -463,7 +466,13 @@ def _in_corpus(token: str, corpus_lower: str, corpus_tokens: set[str]) -> bool:
     """
     if token in corpus_tokens:
         return True
-    return len(token) >= 5 and token in corpus_lower
+    if len(token) >= 5 and token in corpus_lower:
+        return True
+    # "hours/week", "robotics/ergonomics": grounded only if every part is.
+    parts = [part for part in token.split("/") if part]
+    return len(parts) > 1 and all(
+        part in _COMMON_FILLER or _in_corpus(part, corpus_lower, corpus_tokens) for part in parts
+    )
 
 
 def _lenient_fabricated(
@@ -607,6 +616,21 @@ _COMPETENCE_RE = re.compile(
     r")",
 )
 
+def _ing_form_in_corpus(token: str, corpus_tokens: set[str]) -> bool:
+    """Whether an -ing word names an activity the student's own words state.
+
+    A draft may call the student's confirmed "cleaned the responses" "data
+    cleaning". Only -ing forms with a stem of 4+ letters count, and only a whole
+    corpus word with that stem, so no new vocabulary gets in."""
+    if not token.endswith("ing") or len(token) < 7:
+        return False
+    stem = token[:-3]
+    candidates = {stem, stem + "e", stem + "ed", stem + "es", stem + "s", stem + "d"}
+    if len(stem) > 2 and stem[-1] == stem[-2]:
+        candidates |= {stem[:-1], stem[:-1] + "ed", stem[:-1] + "s"}
+    return bool(candidates & corpus_tokens)
+
+
 def competence_violations(
     text: str,
     student_corpus: str,
@@ -644,7 +668,7 @@ def competence_violations(
         for token in hard_claims(sentence[claim.end():]):
             if token in _COMMON_FILLER or token in extra_allow:
                 continue
-            if _in_corpus(token, corpus_lower, corpus_tokens):
+            if _in_corpus(token, corpus_lower, corpus_tokens) or _ing_form_in_corpus(token, corpus_tokens):
                 continue
             violations.add(token)
         for topic in topics:

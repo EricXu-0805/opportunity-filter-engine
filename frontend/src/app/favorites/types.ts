@@ -1,3 +1,5 @@
+import { importSourceInfo, type ImportSourceInfo } from '@/lib/import-source';
+import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
 import type { SavedSearch } from '@/lib/saved-searches';
 import { humanizeTime } from '@/lib/humanize-time';
@@ -45,6 +47,8 @@ export interface Opp {
     years?: string[];
   };
   _customId?: string;
+  import_source?: ImportSourceInfo;
+  import_suggestions?: { skills: string[]; summary: string };
 }
 
 export const MIN_COMPARE = 2;
@@ -62,7 +66,7 @@ export function customImportToOpp(c: CustomImport): Opp {
   const paid = typeof extra.paid === 'string' ? extra.paid : undefined;
   const onCampus = typeof extra.on_campus === 'boolean' ? extra.on_campus : undefined;
   const intl = typeof extra.international_friendly === 'string' ? extra.international_friendly : undefined;
-  const skills = Array.isArray(extra.skills_required) ? (extra.skills_required as string[]) : undefined;
+  const suggestions = importSuggestions(extra);
   return {
     id: c.id,
     _customId: c.id,
@@ -80,10 +84,9 @@ export function customImportToOpp(c: CustomImport): Opp {
     on_campus: onCampus,
     deadline: e.deadline || undefined,
     description_raw: e.description_raw || undefined,
-    eligibility: skills || intl ? {
-      international_friendly: intl,
-      skills_required: skills,
-    } : undefined,
+    eligibility: intl ? { international_friendly: intl } : undefined,
+    import_suggestions: suggestions,
+    import_source: importSourceInfo(extra, e.description_raw || ''),
   };
 }
 

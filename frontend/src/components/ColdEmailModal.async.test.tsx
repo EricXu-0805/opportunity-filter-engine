@@ -1,30 +1,38 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
+import { createHash, webcrypto } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ColdEmailResponse, EmailVariant, ProfileData } from '@/lib/types';
-import { advanceOwnerEpoch, captureOwnerToken } from '@/lib/identity-owner';
+import type { ColdEmailResponse, EmailVariant, ExperienceEntry, ExperienceUsage, ProfileData } from '@/lib/types';
+import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
-  return { useT: () => ({ t }) };
+  return { useT: () => ({ t, locale: 'en' }), useLocale: () => 'en' };
 });
 const api = vi.hoisted(() => ({
   variants: vi.fn(), stream: vi.fn(), generate: vi.fn(), refine: vi.fn(), extract: vi.fn(),
 }));
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: api.variants,
-  generateColdEmailStream: api.stream,
-  generateColdEmail: api.generate,
-  refineEmail: api.refine,
+  validateEmailDraft: emailValidationReceipt,
+  getEmailVariants: (...args: unknown[]) => emailReceipt(api.variants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmailStream: (...args: unknown[]) => emailReceipt(api.stream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmail: (...args: unknown[]) => emailReceipt(api.generate(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  refineEmail: (...args: unknown[]) => emailReceipt(api.refine(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   extractResumeBullets: api.extract,
   getVapidPublicKey: vi.fn(),
 }));
 vi.mock('@/lib/supabase', () => ({
   onAuthChange: () => () => {},
-  confirmInteractionContact: vi.fn(),
+  confirmContactEvent: vi.fn(),
   updateInteractionDetails: vi.fn(),
 }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: vi.fn() }) }));
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 
 const profile: ProfileData = {
   name: 'Alex', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
@@ -49,8 +57,18 @@ function openModal(initialProfile = profile) {
   const view = render(<ColdEmailModal {...props} />);
   return {
     ...view, onClose,
-    show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />),
+    show: (next: Partial<Parameters<typeof ColdEmailModal>[0]>) => view.rerender(<ColdEmailModal {...props} {...next} />),
   };
+}
+async function generateRestoredDraft() {
+  await act(async () => {});
+  const rebuild = screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' });
+  if (rebuild) fireEvent.click(rebuild);
+  else {
+    const ai = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
+    await waitFor(() => expect(ai).toBeEnabled());
+    fireEvent.click(ai);
+  }
 }
 async function ready() {
   await screen.findByDisplayValue('Draft A');
@@ -61,8 +79,10 @@ function requestEdit() {
   fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' }));
 }
 let ownerSequence = 0;
-beforeEach(() => {
-  advanceOwnerEpoch(`draft-owner-${++ownerSequence}`);
+beforeEach(async () => {
+  const uid = `draft-owner-${++ownerSequence}`;
+  advanceOwnerEpoch(uid);
+  await syncLocalIdentityOwner(uid);
   api.variants.mockReset().mockImplementation((_profile: ProfileData, id: string) =>
     Promise.resolve({ variants: [variant(id)] }));
   // Automatic fallback leaves the template on screen.
@@ -89,6 +109,7 @@ describe('cold email draft lifetime', () => {
     await act(async () => { edit.resolve({ body: 'Late AI edit', method: 'llm' }); });
     expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Late AI edit')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(screen.getByText('coldEmail.editSuperseded')).toBeInTheDocument();
     expect(screen.getByText('coldEmail.quickActions.shorter')).toBeEnabled();
   });
@@ -101,6 +122,9 @@ describe('cold email draft lifetime', () => {
     requestEdit();
     await screen.findByText('coldEmail.editFailed');
     requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('New edit');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('New edit');
     expect(api.refine).toHaveBeenCalledTimes(2);
   });
@@ -117,13 +141,22 @@ describe('cold email draft lifetime', () => {
       : change === 'profile' ? { profile: { ...profile, name: 'Updated Alex' } } : {});
     const expected = change === 'target' ? 'Draft B' : 'Draft A';
     await screen.findByDisplayValue(expected);
+    if (change === 'profile') {
+      fireEvent.click(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' }));
+      await waitFor(() => expect(screen.queryByText('coldEmail.profileChanged')).toBeNull());
+    }
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeEnabled());
     requestEdit();
     expect(api.refine).toHaveBeenCalledTimes(2);
     await act(async () => { first.resolve({ body: 'Old edit', method: 'llm' }); });
     expect(screen.queryByDisplayValue('Old edit')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
     await act(async () => { second.resolve({ body: 'Current edit', method: 'llm' }); });
-    expect(screen.getByDisplayValue('Current edit')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Current edit');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue(expected);
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    expect(await screen.findByDisplayValue('Current edit')).toBeInTheDocument();
     expect(screen.queryByText('coldEmail.editing')).toBeNull();
   });
 
@@ -148,6 +181,7 @@ describe('cold email draft lifetime', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     await act(async () => { old.resolve(aiDraft('Private old result')); });
     view.show({ isOpen: false });
+    await act(async () => { await syncLocalIdentityOwner('next-owner'); });
     view.show({});
     await screen.findByDisplayValue('Draft A');
     await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
@@ -162,31 +196,38 @@ describe('cold email draft lifetime', () => {
     requestEdit();
     act(() => { advanceOwnerEpoch(captureOwnerToken().uid); });
     await act(async () => { edit.resolve({ body: 'Current owner result', method: 'llm' }); });
-    expect(screen.getByDisplayValue('Current owner result')).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Current owner result');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    expect(await screen.findByDisplayValue('Current owner result')).toBeInTheDocument();
     expect(view.onClose).not.toHaveBeenCalled();
   });
 
-  it('does not start an old generation or template refetch after extraction finishes for a closed dialog', async () => {
-    const extraction = deferred<{ bullets: string[] }>();
-    api.extract.mockReturnValue(extraction.promise);
+  it('never extracts raw resume text and drops a generation completed after close', async () => {
+    const pending = deferred<ColdEmailResponse>();
+    api.stream.mockReturnValueOnce(pending.promise);
     const view = openModal({ ...profile, resume_text: 'Built a robot.' });
-    await waitFor(() => expect(api.extract).toHaveBeenCalledTimes(1));
+    await ready();
+    expect(api.extract).not.toHaveBeenCalled();
     view.show({ isOpen: false });
-    await act(async () => { extraction.resolve({ bullets: ['Built a robot.'] }); });
-    expect(api.stream).not.toHaveBeenCalled();
+    await act(async () => { pending.resolve(aiDraft('Retired raw-resume draft')); });
     expect(api.generate).not.toHaveBeenCalled();
     expect(api.variants).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByDisplayValue('Retired raw-resume draft')).toBeNull();
   });
 
-  it('keeps a successful AI draft when its slower, enriched templates arrive', async () => {
-    const templates = deferred<{ variants: EmailVariant[] }>();
-    api.extract.mockResolvedValue({ bullets: ['Built a robot.'] });
-    api.variants.mockResolvedValueOnce({ variants: [variant('A')] }).mockReturnValueOnce(templates.promise);
+  it('uses the confirmed library immediately without hidden extraction or template enrichment', async () => {
     api.stream.mockResolvedValue(aiDraft('AI grounded draft'));
-    openModal({ ...profile, resume_text: 'Built a robot.' });
+    const entry = { id: 'robot', revision: 1, status: 'confirmed' as const,
+      text: 'Built a robot.', source: { kind: 'manual' as const } };
+    openModal({ ...profile, resume_text: 'Built a robot.', experience_entries: [entry] });
     await screen.findByDisplayValue('AI grounded draft');
-    await act(async () => { templates.resolve({ variants: [variant('enriched')] }); });
-    expect(screen.getByDisplayValue('AI grounded draft')).toBeInTheDocument();
+    expect(api.extract).not.toHaveBeenCalled();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+    expect(api.variants).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
+    expect(api.stream).toHaveBeenCalledWith(expect.objectContaining({ experience_entries: [entry] }), 'A',
+      { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
   });
 
   it('a late stream error does not launch a blocking fallback after unmount', async () => {
@@ -206,7 +247,7 @@ describe('cold email draft lifetime', () => {
     await ready();
     requestEdit();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.closeAria' }));
-    expect(view.onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(view.onClose).toHaveBeenCalledTimes(1));
     await act(async () => { edit.resolve({ body: 'Closed session result', method: 'llm' }); });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByDisplayValue('Closed session result')).toBeNull();
@@ -230,6 +271,7 @@ describe('cold email draft lifetime', () => {
     const view = openModal();
     await ready();
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledOnce());
     view.show({ opportunityId: 'B' });
     await screen.findByDisplayValue('Draft B');
     await act(async () => {
@@ -239,5 +281,695 @@ describe('cold email draft lifetime', () => {
     expect(screen.queryByText('coldEmail.copied')).toBeNull();
     expect(screen.queryByText('coldEmail.copyFailed')).toBeNull();
     expect(screen.queryByText('coldEmail.sentQuestion')).toBeNull();
+  });
+});
+
+// M31: variants is the fresh authority for cache compatibility; neither a
+// cached draft nor an older worker response can declare itself current.
+describe('cold email pipeline cache compatibility', () => {
+  it.each([
+    { cached: 'pipeline-one', current: 'pipeline-one', reuse: true, label: 'same version' },
+    { cached: 'pipeline-one', current: 'pipeline-two', reuse: false, label: 'changed version' },
+    { cached: undefined, current: 'pipeline-two', reuse: false, label: 'missing cached version' },
+    { cached: 'pipeline-one', current: undefined, reuse: false, label: 'missing current version' },
+    { cached: undefined, current: undefined, reuse: false, label: 'both versions missing' },
+    { cached: ' ', current: ' ', reuse: false, label: 'blank versions' },
+  ])('$label: keeps the saved editor without automatic generation after reopening', async ({ cached, current }) => {
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: cached, corpus_version: 'same-corpus' })
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: current, corpus_version: 'same-corpus' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('First AI draft'), pipeline_version: cached, corpus_version: 'same-corpus' })
+      .mockResolvedValueOnce({ ...aiDraft('Regenerated AI draft'), pipeline_version: current, corpus_version: 'same-corpus' });
+    const view = openModal();
+    await screen.findByDisplayValue('First AI draft');
+    view.show({ isOpen: false });
+    view.show({ isOpen: true });
+    await screen.findByDisplayValue('First AI draft');
+    await act(async () => {});
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    expect(api.generate).not.toHaveBeenCalled();
+  });
+
+  it('keeps manual edits when regeneration for a newer pipeline finishes late', async () => {
+    const replacement = deferred<ColdEmailResponse>();
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-one' })
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-two' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('Old pipeline draft'), pipeline_version: 'pipeline-one' })
+      .mockReturnValueOnce(replacement.promise);
+    const view = openModal();
+    await screen.findByDisplayValue('Old pipeline draft');
+    view.show({ isOpen: false });
+    view.show({ isOpen: true });
+    await generateRestoredDraft();
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'My own rewritten draft' } });
+    await act(async () => {
+      replacement.resolve({ ...aiDraft('New pipeline response'), pipeline_version: 'pipeline-two' });
+    });
+    expect(screen.getByDisplayValue('My own rewritten draft')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('New pipeline response')).toBeNull();
+  });
+
+  it('does not let an older AI worker response replace the version learned from variants', async () => {
+    api.variants.mockResolvedValue({ variants: [variant('A')], pipeline_version: 'pipeline-current' });
+    api.stream
+      .mockResolvedValueOnce({ ...aiDraft('Old professional draft'), pipeline_version: 'pipeline-old' })
+      .mockResolvedValueOnce({ ...aiDraft('Old warm draft'), pipeline_version: 'pipeline-old' })
+      .mockResolvedValueOnce({ ...aiDraft('Current professional draft'), pipeline_version: 'pipeline-current' });
+    openModal();
+    await screen.findByDisplayValue('Old professional draft');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.warm' }));
+    await screen.findByDisplayValue('Old warm draft');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.professional' }));
+    await screen.findByDisplayValue('Current professional draft');
+    expect(api.stream).toHaveBeenCalledTimes(3);
+  });
+
+  it('waits for target B variants even if the old target A response arrives first', async () => {
+    const a = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    const b = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    api.variants.mockReturnValueOnce(a.promise).mockReturnValueOnce(b.promise);
+    api.stream.mockResolvedValue({ ...aiDraft('Current target B draft'), pipeline_version: 'pipeline-B' });
+    const view = openModal();
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(1));
+    view.show({ opportunityId: 'B' });
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      a.resolve({ variants: [variant('A')], pipeline_version: 'pipeline-A' });
+    });
+    expect(api.stream).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue('Draft A')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
+    await act(async () => {
+      b.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
+    });
+    await screen.findByDisplayValue('Current target B draft');
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['B']);
+  });
+
+  it('ignores a late version from another target before reusing the current target cache', async () => {
+    const otherTarget = deferred<{ variants: EmailVariant[]; pipeline_version: string }>();
+    api.variants
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-A' })
+      .mockReturnValueOnce(otherTarget.promise)
+      .mockResolvedValueOnce({ variants: [variant('A')], pipeline_version: 'pipeline-A' });
+    api.stream.mockResolvedValue({ ...aiDraft('Cached target A draft'), pipeline_version: 'pipeline-A' });
+    const view = openModal();
+    await screen.findByDisplayValue('Cached target A draft');
+    view.show({ opportunityId: 'B' });
+    await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+    expect(screen.queryByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeNull();
+    view.show({ opportunityId: 'A' });
+    await screen.findByDisplayValue('Cached target A draft');
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
+    await generateRestoredDraft();
+    await waitFor(() => expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']));
+    await act(async () => {
+      otherTarget.resolve({ variants: [variant('B')], pipeline_version: 'pipeline-B' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.tone.professional' }));
+    await act(async () => {});
+    expect(screen.getByDisplayValue('Cached target A draft')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Draft B')).toBeNull();
+    expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A', 'A']);
+  });
+});
+
+
+describe('confirmed experience draft inputs', () => {
+  beforeEach(() => vi.stubGlobal('crypto', webcrypto));
+  afterEach(() => vi.unstubAllGlobals());
+  const emptyUsage: ExperienceUsage = {
+    version: 1, eligible_count: 0, selected: [], excluded: [], needs_review: false, notices: [],
+  };
+  const manual = (id: string, status: ExperienceEntry['status'] = 'confirmed'): ExperienceEntry => ({
+    id, revision: 1, status, text: `Confirmed material ${id}`, source: { kind: 'manual' },
+  });
+  const used = (entry: ExperienceEntry): ExperienceUsage => ({
+    ...emptyUsage, eligible_count: 1,
+    selected: [{ id: entry.id, revision: entry.revision, excerpt: entry.text, source: entry.source }],
+  });
+  function variantsWith(usage: ExperienceUsage) {
+    return { variants: [{ ...variant('A'), experience_usage: usage }], experience_usage: usage,
+      pipeline_version: 'confirmed-v1', corpus_version: 'snapshot' };
+  }
+
+  it.each([true,false])('displays only the returned activity relation, linked=%s',async linked=>{
+    const entry=manual('related');const usage=used(entry);usage.selected[0].context=linked?{master_id:'master',master_revision:3,section:'activities',id:'project',kind:'research',fields:Object.fromEntries([['title','Actual project'],['organization','Current lab'],['start','Fall 2025'],['end','Spring 2026']].map(([id,value])=>[id,{id,value,revision:1,status:'confirmed',source:{kind:'manual'}}]))}:null;
+    api.variants.mockResolvedValue(variantsWith(usage));openModal({...profile,experience_entries:[entry]});await ready();
+    if(linked){for(const text of ['Actual project','Current lab','Fall 2025','Spring 2026'])expect(screen.getByText(text)).toBeInTheDocument();}
+    else expect(screen.getByText('No activity assigned; only this original entry is used.')).toBeInTheDocument();
+  });
+
+  it('shows only reported input excerpts, including a selected 13th entry from the source tail', async () => {
+    const prefix = '🧪 Earlier paragraph.\n'.repeat(500);
+    const quote = 'Built a spectroscopy instrument at the resume tail.';
+    const raw = prefix + quote;
+    const entries = Array.from({ length: 12 }, (_, index) => manual(`early-${index}`));
+    const tail: ExperienceEntry = { id: 'tail', revision: 2, status: 'confirmed', text: quote,
+      source: { kind: 'resume', signature: createHash('sha256').update(raw).digest('hex'), quote,
+        start: Array.from(prefix).length, end: Array.from(raw).length } };
+    entries.push(tail, manual('candidate-material', 'candidate'));
+    const usage = { ...used(tail), eligible_count: 13, needs_review: true };
+    api.variants.mockResolvedValue(variantsWith(usage));
+    openModal({ ...profile, resume_text: raw, experience_entries: entries });
+    await ready();
+    expect(screen.getByText(quote)).toBeInTheDocument();
+    expect(screen.queryByText('Confirmed material early-0')).toBeNull();
+    expect(screen.queryByText('Confirmed material candidate-material')).toBeNull();
+    expect(screen.getByText('coldEmail.experienceExplanation')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'coldEmail.experienceReviewCta' })).toHaveAttribute('href', '/#experience-library');
+    expect(api.stream.mock.calls[0][0].experience_entries).toEqual(entries);
+    expect(api.stream.mock.calls[0][0].resume_text).toBe(raw);
+    expect(api.stream.mock.calls[0][2]).not.toHaveProperty('resumeBullets');
+    expect(api.extract).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['experience_prompt_budget_omission', false],
+    ['experience_prompt_budget_omission', true],
+    ['experience_template_budget_omission', false],
+    ['experience_template_budget_omission', true],
+  ] as const)('explains %s with selected material=%s without claiming no confirmed experience', async (notice, selected) => {
+    const entry = manual('confirmed-with-budget');
+    const usage = { ...(selected ? used(entry) : emptyUsage), eligible_count: 2, notices: [notice] };
+    api.variants.mockResolvedValue(variantsWith(usage));
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    expect(screen.getByText('coldEmail.experienceBudgetNote')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'coldEmail.experienceReviewCta' })).toHaveAttribute('href', '/#experience-library');
+    expect(screen.queryByText('coldEmail.experienceNone')).toBeNull();
+    expect(screen.queryByText('coldEmail.experienceReviewNeeded')).toBeNull();
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+    if (selected) expect(screen.getByText(entry.text)).toBeInTheDocument();
+  });
+
+  it.each([false, true])('explains a partial local-refine receipt with listed material=%s without implying omitted input', async (selected) => {
+    const entry = manual('retained-in-original-draft');
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    api.refine.mockResolvedValue({ body: 'Refined draft retaining confirmed experience', method: 'local', experience_usage: {
+      ...(selected ? used(entry) : emptyUsage), eligible_count: 9, notices: ['experience_usage_receipt_limit'],
+    } });
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined draft retaining confirmed experience');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Refined draft retaining confirmed experience');
+    expect(screen.getByText('coldEmail.experienceReceiptLimit')).toBeVisible();
+    expect(screen.queryByText('coldEmail.experienceNone')).toBeNull();
+    expect(screen.queryByText('coldEmail.experienceBudgetNote')).toBeNull();
+    expect(screen.queryByText('coldEmail.experienceReviewNeeded')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'coldEmail.experienceReviewCta' })).toBeNull();
+    if (selected) expect(screen.getByText(entry.text)).toBeInTheDocument();
+  });
+
+  it('clears the omission notice and recovery link when another variant fits', async () => {
+    const entry = manual('fits');
+    api.variants.mockResolvedValue({ variants: [
+      { ...variant('A'), experience_usage: { ...emptyUsage, eligible_count: 1, notices: ['experience_template_budget_omission'] } },
+      { ...variant('B'), experience_usage: used(entry) },
+    ] });
+    openModal({ ...profile, experience_entries: [entry] });
+    await ready();
+    expect(screen.getByText('coldEmail.experienceBudgetNote')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Template B' }));
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B'));
+    expect(screen.queryByText('coldEmail.experienceBudgetNote')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'coldEmail.experienceReviewCta' })).toBeNull();
+    expect(screen.getByText(entry.text)).toBeInTheDocument();
+  });
+
+  it('preserves a whole long excerpt and every actual local-refine input in the receipt', async () => {
+    const entries = Array.from({ length: 9 }, (_, index) => manual(`local-${index}`));
+    entries[0].text = 'I worked on instrumentation. '.repeat(24) + 'I did not lead the project.';
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    api.refine.mockResolvedValue({ body: 'Refined current draft', method: 'local', experience_usage: {
+      ...emptyUsage, eligible_count: entries.length, selected: entries.flatMap((entry) => used(entry).selected),
+    } });
+    openModal({ ...profile, experience_entries: entries });
+    await ready();
+    requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined current draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Refined current draft');
+    for (const entry of entries) expect(screen.getByText(entry.text)).toBeInTheDocument();
+    expect(screen.getByText(entries[0].text)).toHaveTextContent('I did not lead the project.');
+  });
+
+  it('does not block a student with no resume or confirmed experience', async () => {
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    openModal();
+    await ready();
+    expect(screen.getByText('coldEmail.experienceNone')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'coldEmail.experienceReviewCta' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+    expect(api.extract).not.toHaveBeenCalled();
+  });
+
+  it.each(['candidate', 'stale', 'rejected', 'withdrawn'] as const)('offers review only when needed for %s experience', async (kind) => {
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    const entry: ExperienceEntry = kind === 'stale'
+      ? { id: 'source', revision: 1, status: 'confirmed', text: 'Source text',
+        source: { kind: 'resume', signature: '0'.repeat(64), quote: 'Source text', start: 0, end: 11 } }
+      : manual('entry', kind);
+    openModal({ ...profile, resume_text: 'Source text', experience_entries: [entry] });
+    await ready();
+    await act(async () => {});
+    if (kind === 'candidate' || kind === 'stale') {
+      await screen.findByRole('link', { name: 'coldEmail.experienceReviewCta' });
+    } else {
+      expect(screen.queryByRole('link', { name: 'coldEmail.experienceReviewCta' })).toBeNull();
+    }
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+  });
+
+  it.each(['revision', 'withdrawal', 'text', 'source', 'resume'] as const)('retires late generation and cache after an in-place %s change', async (change) => {
+    const old = deferred<ColdEmailResponse>();
+    api.stream.mockReturnValueOnce(old.promise);
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    const raw = 'Original source';
+    const entry: ExperienceEntry = { id: 'evidence', revision: 1, status: 'confirmed', text: raw,
+      source: { kind: 'resume', signature: createHash('sha256').update(raw).digest('hex'), quote: raw, start: 0, end: raw.length } };
+    const input = { ...profile, resume_text: raw, experience_entries: [entry] };
+    const view = openModal(input);
+    await ready();
+    if (change === 'revision') entry.revision = 2;
+    if (change === 'withdrawal') entry.status = 'withdrawn';
+    if (change === 'text') entry.text = 'Corrected confirmed material';
+    if (change === 'source' && entry.source.kind === 'resume') entry.source.signature = '1'.repeat(64);
+    if (change === 'resume') input.resume_text = 'Replaced source';
+    view.show({ profile: input });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('coldEmail.profileChanged')).toBeInTheDocument();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My new manual draft' } });
+    await act(async () => { old.resolve({ ...aiDraft('Withdrawn late evidence'), pipeline_version: 'confirmed-v1', corpus_version: 'snapshot', experience_usage: used(entry) }); });
+    expect(screen.getByDisplayValue('My new manual draft')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Withdrawn late evidence')).toBeNull();
+    view.show({ isOpen: false, profile: input });
+    view.show({ profile: input });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    await generateRestoredDraft();
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
+    expect(screen.queryByDisplayValue('Withdrawn late evidence')).toBeNull();
+  });
+
+  it('retires a refine and its material receipt when the supporting entry is withdrawn', async () => {
+    const entry = manual('old');
+    const old = deferred<{ body: string; method: string; experience_usage: ExperienceUsage }>();
+    api.refine.mockReturnValueOnce(old.promise);
+    api.variants.mockResolvedValue(variantsWith(used(entry)));
+    const input = { ...profile, experience_entries: [entry] };
+    const view = openModal(input);
+    await ready();
+    requestEdit();
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    entry.status = 'withdrawn'; entry.revision += 1;
+    view.show({ profile: input });
+    expect(api.variants).toHaveBeenCalledTimes(1);
+    await screen.findByText('coldEmail.experienceUnavailable');
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Current draft without the entry' } });
+    await act(async () => { old.resolve({ body: 'Old refine', method: 'llm', experience_usage: used(entry) }); });
+    expect(screen.getByDisplayValue('Current draft without the entry')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Old refine')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
+    expect(screen.queryByText(entry.text)).toBeNull();
+  });
+
+  it('does not restore old variant evidence after withdrawal while variants are still loading', async () => {
+    const entry = manual('withdrawn-variant');
+    const old = deferred<ReturnType<typeof variantsWith>>();
+    const oldData = variantsWith(used(entry));
+    oldData.variants[0].body = 'Old evidence template';
+    api.variants.mockReturnValueOnce(old.promise).mockResolvedValueOnce(variantsWith(emptyUsage));
+    const input = { ...profile, experience_entries: [entry] };
+    const view = openModal(input);
+    entry.status = 'withdrawn'; entry.revision += 1;
+    view.show({ profile: input });
+    await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Current manual body' } });
+    await act(async () => { old.resolve(oldData); });
+    expect(screen.getByDisplayValue('Current manual body')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Old evidence template')).toBeNull();
+    expect(screen.queryByText(entry.text)).toBeNull();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['revision', 'source'] as const)('invalidates an already populated cache after an in-place %s change', async (change) => {
+    api.variants.mockResolvedValue(variantsWith(emptyUsage));
+    api.stream.mockResolvedValueOnce({ ...aiDraft('Cached old materials'), pipeline_version: 'confirmed-v1', corpus_version: 'snapshot' });
+    const raw = 'Original source';
+    const entry: ExperienceEntry = { id: 'cached', revision: 1, status: 'confirmed', text: raw,
+      source: { kind: 'resume', signature: createHash('sha256').update(raw).digest('hex'), quote: raw, start: 0, end: raw.length } };
+    const input = { ...profile, resume_text: raw, experience_entries: [entry] };
+    const view = openModal(input);
+    await screen.findByDisplayValue('Cached old materials');
+    view.show({ isOpen: false, profile: input });
+    if (change === 'revision') entry.revision += 1;
+    if (change === 'source' && entry.source.kind === 'resume') entry.source.signature = '2'.repeat(64);
+    view.show({ profile: input });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    await generateRestoredDraft();
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
+    expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Cached old materials')).toBeNull();
+  });
+
+  it('offers the profile review recovery link when malformed evidence prevents draft loading', async () => {
+    api.variants.mockRejectedValueOnce(new Error('Invalid experience evidence'));
+    openModal({ ...profile, experience_entries: [{ ...manual('invalid'), revision: 0 }] });
+    await screen.findByText('Invalid experience evidence');
+    expect(await screen.findByRole('link', { name: 'coldEmail.experienceReviewCta' })).toHaveAttribute('href', '/#experience-library');
+    expect(api.stream).not.toHaveBeenCalled();
+    expect(api.extract).not.toHaveBeenCalled();
+  });
+
+  it('follows the selected variant and later refinement receipt without claiming every entry appears', async () => {
+    const one = manual('one'); const two = manual('two');
+    api.variants.mockResolvedValue({ variants: [
+      { ...variant('A'), experience_usage: used(one) },
+      { ...variant('B'), experience_usage: used(two) },
+    ], experience_usage: { ...used(one), selected: [...used(one).selected, ...used(two).selected] } });
+    api.refine.mockResolvedValue({ body: 'Refined current draft', method: 'llm', experience_usage: emptyUsage });
+    openModal({ ...profile, experience_entries: [one, two] });
+    await ready();
+    expect(screen.getByText(one.text)).toBeInTheDocument();
+    expect(screen.queryByText(two.text)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Template B' }));
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B'));
+    expect(screen.getByText(two.text)).toBeInTheDocument();
+    expect(screen.queryByText(one.text)).toBeNull();
+    requestEdit();
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined current draft');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft B');
+    expect(screen.getByText(two.text)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Refined current draft');
+    expect(screen.getByText('coldEmail.experienceNone')).toBeInTheDocument();
+    expect(screen.queryByText(two.text)).toBeNull();
+  });
+});
+
+
+describe('profile changes preserve the open email', () => {
+  const updated = { ...profile, coursework: ['CS 225', 'CS 374'] };
+  const regenerate = () => fireEvent.click(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' }));
+  function editDraft() {
+    fireEvent.change(screen.getByDisplayValue('Subject A'), { target: { value: 'My subject' } });
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My body' } });
+    fireEvent.change(screen.getByDisplayValue('A@example.edu'), { target: { value: 'verified@example.edu' } });
+  }
+  function expectDraft() {
+    expect(screen.getByDisplayValue('My subject')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('My body')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('verified@example.edu')).toBeInTheDocument();
+  }
+  it('keeps all manual fields and the unsent instruction, retires a refine, and waits for explicit regeneration', async () => {
+    const old = deferred<{ body: string; method: string }>();
+    api.refine.mockReturnValue(old.promise);
+    const view = openModal(); await ready(); editDraft(); requestEdit();
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'My unsent request' } });
+    view.show({ profile: updated });
+    expectDraft();
+    expect(screen.getByDisplayValue('My unsent request')).toBeInTheDocument();
+    expect(screen.getByText('coldEmail.profileChanged')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeDisabled();
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+    await act(async () => { old.resolve({ body: 'Old profile result', method: 'llm' }); });
+    expectDraft(); expect(screen.queryByDisplayValue('Old profile result')).toBeNull();
+  });
+  it('keeps a deliberately cleared editor empty on profile change', async () => {
+    const view = openModal(); await ready();
+    for (const value of ['Subject A', 'Draft A', 'A@example.edu']) {
+      fireEvent.change(screen.getByDisplayValue(value), { target: { value: '' } });
+    }
+    view.show({ profile: updated }); await act(async () => {});
+    expect(screen.getByTestId('cold-email-editor-fields').querySelector('textarea')).toHaveValue('');
+    expect(screen.getByText('coldEmail.profileChanged')).toBeInTheDocument();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+  });
+  it('regenerates only on request, uses the updated profile, and keeps the chosen recipient', async () => {
+    const next = deferred<{ variants: EmailVariant[] }>();
+    const view = openModal(); await ready(); editDraft(); view.show({ profile: updated });
+    api.variants.mockReturnValueOnce(next.promise);
+    api.stream.mockResolvedValueOnce(aiDraft('AI from updated profile'));
+    regenerate(); expectDraft();
+    expect(api.variants).toHaveBeenLastCalledWith(updated, 'A', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
+    await act(async () => { next.resolve({ variants: [variant('updated')] }); });
+    await screen.findByDisplayValue('AI from updated profile');
+    expect(api.stream).toHaveBeenLastCalledWith(updated, 'A', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
+    expect(screen.getByDisplayValue('verified@example.edu')).toBeInTheDocument();
+    expect(screen.queryByText('coldEmail.profileChanged')).toBeNull();
+  });
+  it.each(['body', 'subject', 'recipient'] as const)('a later manual %s edit prevents regeneration from replacing any fields', async (field) => {
+    const next = deferred<{ variants: EmailVariant[] }>();
+    const view = openModal(); await ready(); editDraft(); view.show({ profile: updated });
+    api.variants.mockReturnValueOnce(next.promise); regenerate();
+    const oldValue = { body: 'My body', subject: 'My subject', recipient: 'verified@example.edu' }[field];
+    const input = screen.getByDisplayValue(oldValue);
+    fireEvent.change(input, { target: { value: field === 'recipient' ? 'later@example.edu' : 'Later manual change' } });
+    fireEvent.change(input, { target: { value: oldValue } }); // Undo still counts as an intervening edit.
+    await act(async () => { next.resolve({ variants: [variant('replacement')] }); });
+    await screen.findByText('coldEmail.editSuperseded'); expectDraft();
+    expect(screen.getByText('coldEmail.profileChanged')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+  it.each(['failure', 'empty'] as const)('preserves the editor after regeneration %s, then permits retry', async (kind) => {
+    const view = openModal(); await ready(); editDraft(); view.show({ profile: updated });
+    if (kind === 'failure') api.variants.mockRejectedValueOnce(new Error('offline'));
+    else api.variants.mockResolvedValueOnce({ variants: [] });
+    regenerate(); await screen.findByText('coldEmail.profileRegenerateFailed'); expectDraft();
+    expect(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeEnabled();
+    regenerate(); await waitFor(() => expect(screen.queryByText('coldEmail.profileChanged')).toBeNull());
+    expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
+  });
+  it('keeps the editor with a profile recovery link when the updated name is missing', async () => {
+    const view = openModal(); await ready(); editDraft(); view.show({ profile: { ...profile, name: '' } });
+    regenerate(); expectDraft();
+    expect(screen.getByRole('link', { name: 'coldEmail.nameRequiredCta' })).toBeInTheDocument();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+  });
+  it('retires regeneration when the profile changes again and keeps the unsaved draft', async () => {
+    const next = deferred<{ variants: EmailVariant[] }>();
+    const view = openModal(); await ready(); editDraft(); view.show({ profile: updated });
+    api.variants.mockReturnValueOnce(next.promise); regenerate();
+    view.show({ profile: { ...updated, research_interests: 'New interest' } });
+    await act(async () => { next.resolve({ variants: [variant('obsolete')] }); });
+    expectDraft(); expect(screen.queryByDisplayValue('Draft obsolete')).toBeNull();
+    expect(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeEnabled();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('cloud refresh and target readiness', () => {
+  it('waits for the initial profile check before starting templates or AI', async () => {
+    const refresh = vi.fn().mockResolvedValue(true);
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab' };
+    const view = render(<ColdEmailModal {...props} profileRefresh={{ status: 'checking', refresh }} />);
+    expect(screen.getByText('Checking for profile updates…')).toBeVisible();
+    expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+    view.rerender(<ColdEmailModal {...props} profileRefresh={{ status: 'ready', refresh }} />);
+    await ready(); expect(api.variants).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps every manual field and retires refinement even when the check returns unchanged data', async () => {
+    const pending = deferred<{ body: string; method: string }>(); api.refine.mockReturnValue(pending.promise);
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Subject A'), { target: { value: 'My subject' } });
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My body' } });
+    fireEvent.change(screen.getByDisplayValue('A@example.edu'), { target: { value: 'my@example.edu' } });
+    requestEdit();
+    const input = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+    fireEvent.change(input, { target: { value: 'Not submitted yet' } });
+    const refresh = vi.fn().mockResolvedValue(true);
+    view.show({ profileRefresh: { status: 'checking', refresh } });
+    expect(screen.getByDisplayValue('My body')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    view.show({ profileRefresh: { status: 'failed', refresh } });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(refresh).toHaveBeenCalledTimes(1);
+    view.show({ profileRefresh: { status: 'ready', refresh } });
+    await act(async () => { pending.resolve({ body: 'Obsolete refinement', method: 'llm' }); });
+    for (const value of ['My subject', 'My body', 'my@example.edu', 'Not submitted yet']) expect(screen.getByDisplayValue(value)).toBeVisible();
+    expect(screen.queryByDisplayValue('Obsolete refinement')).toBeNull();
+    expect(screen.getByText('coldEmail.sourceCheckRetired')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeEnabled();
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the draft when a target is unconfirmed and resumes only after target readiness returns', async () => {
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Keep this draft' } });
+    view.show({ targetReady: false });
+    expect(screen.getByDisplayValue('Keep this draft')).toBeEnabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })); expect(api.refine).not.toHaveBeenCalled();
+    view.show({ targetReady: true });
+    expect(screen.getByDisplayValue('Keep this draft')).toHaveValue('Keep this draft');
+    expect(screen.getByText('coldEmail.openInEmail')).toBeEnabled();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('missing profile keeps the email draft', () => {
+  it('keeps manual fields and copy, pauses generation and retires late refinement', async () => {
+    const pending = deferred<{ body: string; method: string }>(); api.refine.mockReturnValue(pending.promise);
+    const view = openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'Keep my email after profile removal' } });
+    requestEdit();
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'Keep my next request' } });
+    view.show({ profileAvailable: false });
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+    expect(screen.getByDisplayValue('Keep my email after profile removal')).toBeEnabled();
+    expect(screen.getByDisplayValue('Keep my next request')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+    expect(screen.getByText('coldEmail.openInEmail')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+    view.show({ profileAvailable: true });
+    await act(async () => { pending.resolve({ body: 'Late deleted-profile refinement', method: 'llm' }); });
+    expect(screen.getByDisplayValue('Keep my email after profile removal')).toBeVisible();
+    expect(screen.queryByDisplayValue('Late deleted-profile refinement')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not generate from a retained snapshot when opened without a current profile', async () => {
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} profileAvailable={false} opportunityId="A" opportunityTitle="Lab" />);
+    expect(screen.getByTestId('profile-refresh-status')).toHaveTextContent('Your profile is no longer available.');
+    await act(async () => {});
+    expect(api.variants).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('action-time profile checks', () => {
+  it('does not refine an existing manual draft on the render that accepts changed source facts', async () => {
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValueOnce(receipt).mockReturnValue(pending.promise);
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab',
+      profileRefresh: { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction } };
+    const view = render(<ColdEmailModal {...props} />); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My existing manual draft' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' }), { target: { value: 'Keep this request until I review changes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    const changed = { ...profile, coursework: ['New course only'] };
+    // The receipt can arrive before React commits the accepted profile.
+    await act(async () => { pending.resolve({ ...receipt, checkId: 2, revision: 2, profile: changed }); });
+    view.rerender(<ColdEmailModal {...props} profile={changed} />);
+    await act(async () => {});
+    expect(api.refine).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('My existing manual draft')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Keep this request until I review changes');
+  });
+
+  it('checks again before reusing an AI draft and before inserting coursework', async () => {
+    api.stream.mockResolvedValue({ ...aiDraft('Cached verified AI draft'), pipeline_version: 'v1' });
+    api.variants.mockResolvedValue({ variants: [variant('A')], pipeline_version: 'v1' });
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValue(receipt);
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="A" opportunityTitle="Lab"
+      profileRefresh={{ status: 'ready', refresh: vi.fn(async () => true), checkForAction }} />);
+    await screen.findByDisplayValue('Cached verified AI draft');
+    fireEvent.change(screen.getByDisplayValue('Cached verified AI draft'), { target: { value: 'My new manual wording' } });
+    checkForAction.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2));
+    expect(screen.getByDisplayValue('My new manual wording')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.coursework' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(3));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('My new manual wording');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue(/My new manual wording[\s\S]*CS 225/);
+    expect(checkForAction).toHaveBeenCalledTimes(4);
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for a checked profile to be rendered before opening templates, then uses the new complete profile', async () => {
+    const checked = { ...profile, name: 'Updated student', experience_entries: [{ id: 'new-fact', revision: 2, status: 'confirmed' as const, source: { kind: 'manual' as const }, text: 'New complete experience' }] };
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const checkForAction = vi.fn(() => pending.promise);
+    const refresh = { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction };
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', profileRefresh: refresh };
+    const view = render(<ColdEmailModal {...props} />);
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(1));
+    expect(api.variants).not.toHaveBeenCalled();
+    await act(async () => { pending.resolve({ checkId: 1, owner: captureOwnerToken(), revision: 2, source: 'cloud', profile: checked }); });
+    expect(api.variants).not.toHaveBeenCalled();
+    view.rerender(<ColdEmailModal {...props} profile={checked} />);
+    await ready();
+    expect(api.variants).toHaveBeenCalledTimes(1);
+    expect(api.variants.mock.calls[0][0]).toEqual(checked);
+    expect(api.stream.mock.calls[0][0]).toEqual(checked);
+    expect(checkForAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a typed instruction and manual draft when their action check fails, then retries once explicitly', async () => {
+    const checkForAction = vi.fn().mockResolvedValue({ checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud', profile });
+    const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', profileRefresh: { status: 'ready' as const, refresh: vi.fn(async () => true), checkForAction } };
+    render(<ColdEmailModal {...props} />); await ready();
+    const input = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+    fireEvent.change(input, { target: { value: 'Keep my exact request' } });
+    checkForAction.mockResolvedValueOnce(null);
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    await waitFor(() => expect(checkForAction).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(input).toHaveValue('Keep my exact request');
+    expect(screen.getByDisplayValue('Draft A')).toBeInTheDocument();
+    expect(api.refine).not.toHaveBeenCalled();
+    api.refine.mockResolvedValueOnce({ body: 'Verified refinement', method: 'llm' });
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.submitRequest' }));
+    expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Verified refinement');
+    expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Draft A');
+    expect(input).toHaveValue('Keep my exact request');
+    expect(checkForAction).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+    await screen.findByDisplayValue('Verified refinement');
+    expect(input).toHaveValue('');
+    expect(checkForAction).toHaveBeenCalledTimes(4);
+    expect(api.refine).toHaveBeenCalledTimes(1);
+    expect(api.refine.mock.calls[0][1]).toBe('Keep my exact request');
+  });
+
+  it('cancels a queued refinement when the user edits during its profile check', async () => {
+    const pending = deferred<import('@/lib/use-profile-refresh').ProfileActionReceipt | null>();
+    const receipt = { checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile };
+    const checkForAction = vi.fn().mockResolvedValueOnce(receipt).mockReturnValue(pending.promise);
+    render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="A" opportunityTitle="Lab"
+      profileRefresh={{ status: 'ready', refresh: vi.fn(async () => true), checkForAction }} />);
+    await ready(); requestEdit();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'I changed the draft during the read' } });
+    await act(async () => { pending.resolve({ ...receipt, checkId: 2 }); });
+    expect(api.refine).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('I changed the draft during the read')).toBeInTheDocument();
+  });
+});
+
+
+describe('stream failures do not repeat generation', () => {
+  it.each(['timeout', 'network_error', 'invalid_response'] as const)('preserves the draft and avoids a second POST after %s', async code => {
+    const held = deferred<ColdEmailResponse>(); api.stream.mockReturnValue(held.promise);
+    openModal(); await ready();
+    fireEvent.change(screen.getByDisplayValue('Draft A'), { target: { value: 'My manual cold email' } });
+    await act(async () => { held.reject(new ColdEmailStreamError(code)); });
+    expect(screen.getByDisplayValue('My manual cold email')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled();
+  });
+  it.each([404, 405])('permits one compatibility request only after HTTP %i', async status => {
+    api.stream.mockRejectedValue(new ColdEmailStreamError('unsupported', status));
+    api.generate.mockResolvedValue(aiDraft('Compatible draft'));
+    openModal(); await screen.findByDisplayValue('Compatible draft');
+    expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).toHaveBeenCalledOnce();
   });
 });

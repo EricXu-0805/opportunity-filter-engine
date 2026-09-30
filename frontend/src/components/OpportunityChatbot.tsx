@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles, X, Loader2, AlertCircle, User, Bot, RotateCcw } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
@@ -95,7 +97,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
         setError(t('chatbot.errorGeneric'));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '';
+      const message = profileInputMessage(err, t) ?? (err instanceof Error ? err.message : '');
       if (err instanceof ApiError && err.status === 429) {
         setError(t('chatbot.errorRateLimited'));
       } else {
@@ -103,7 +105,7 @@ export default function OpportunityChatbot({ opportunity, profile, onClose }: Pr
       }
       if (!assistantStarted) {
         setMessages((prev) => prev.slice(0, -1));
-        setInput(trimmed);
+        setInput(text);
       }
     } finally {
       setLoading(false);

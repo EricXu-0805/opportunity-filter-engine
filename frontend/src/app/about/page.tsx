@@ -24,7 +24,7 @@ export default async function AboutPage() {
     <div className="py-20">
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10">
-        <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
+        <h1 className="text-[40px] sm:text-6xl font-bold text-gray-900 tracking-tight leading-[1.1]">
           {t('about.heroLine1')}
           <br />
           <span className="bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent">

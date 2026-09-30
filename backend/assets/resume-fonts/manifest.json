@@ -1,0 +1,28 @@
+[
+  {
+    "file": "NotoSansCJKsc-Regular.ttf",
+    "source_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/523d033d6cb47f4a80c58a35753646f5c3608a78/Sans/Variable/TTF/NotoSansCJKsc-VF.ttf",
+    "source_sha256": "990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f",
+    "sha256": "dbabda9aa9a3577aa0a50612a30c413130f072d0914994bae3cc067d29bdce86",
+    "bytes": 21659488,
+    "family": "Noto Sans CJK SC",
+    "style": "Regular",
+    "copyright": "© 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.",
+    "codepoints": 44810,
+    "weight": 400,
+    "fonttools": "4.66.0"
+  },
+  {
+    "file": "NotoEmoji-Regular.ttf",
+    "source_url": "https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+    "source_sha256": "de6c18832938afc99caf132b39d6a30a19bac7f2e812e28db2535b4608d27551",
+    "sha256": "8490245b3ed2db39c7a40b931de9987ef513e548f15964fde86fe7109e3265d3",
+    "bytes": 886628,
+    "family": "Noto Emoji",
+    "style": "Regular",
+    "copyright": "Copyright 2013 Google LLC",
+    "codepoints": 1489,
+    "weight": 400,
+    "fonttools": "4.66.0"
+  }
+]

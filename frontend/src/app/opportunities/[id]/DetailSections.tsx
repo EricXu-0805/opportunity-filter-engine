@@ -12,6 +12,7 @@ import {
   Mail,
   Users,
 } from 'lucide-react';
+import { parseResearchContext } from '@/lib/research-context';
 import type { Opportunity } from '@/lib/types';
 import { facultySafeInternational } from '@/lib/match-utils';
 import {
@@ -212,6 +213,26 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   );
 }
 
+// Only translate collector/schema enum values. Imported source instructions
+// can use the same fields and must retain their wording.
+const CONTACT_METHOD_KEYS = new Map([
+  ['application_form', 'detail.applicationValues.methodApplicationForm'],
+  ['email', 'detail.applicationValues.methodEmail'],
+  ['portal', 'detail.applicationValues.methodPortal'],
+  ['website', 'detail.applicationValues.methodWebsite'],
+  ['online', 'detail.applicationValues.methodOnline'],
+  ['online_application', 'detail.applicationValues.methodOnlineApplication'],
+]);
+const APPLICATION_EFFORT_KEYS = new Map([
+  ['low', 'detail.applicationValues.effortLow'],
+  ['medium', 'detail.applicationValues.effortMedium'],
+  ['high', 'detail.applicationValues.effortHigh'],
+]);
+function applicationValue(value: string, keys: ReadonlyMap<string, string>, t: TFunc): string {
+  const key = keys.get(value);
+  return key ? t(key) : value;
+}
+
 export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   if (!opp.application) return null;
   const a = opp.application;
@@ -223,7 +244,7 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           <DetailRow
             icon={<Mail />}
             label={t(isFaculty ? 'detail.fields.suggestedOutreach' : 'detail.fields.contactMethod')}
-            value={a.contact_method}
+            value={applicationValue(a.contact_method, CONTACT_METHOD_KEYS, t)}
           />
         )}
         {!isFaculty && a.requires_resume && (
@@ -236,7 +257,7 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           <DetailRow icon={<Users />} label={t('detail.fields.recommendation')} value={friendlyLabel(a.requires_recommendation, t)} />
         )}
         {!isFaculty && a.application_effort && a.application_effort !== 'unknown' && (
-          <DetailRow icon={<Clock />} label={t('detail.fields.effort')} value={a.application_effort} />
+          <DetailRow icon={<Clock />} label={t('detail.fields.effort')} value={applicationValue(a.application_effort, APPLICATION_EFFORT_KEYS, t)} />
         )}
       </dl>
     </Section>
@@ -244,6 +265,27 @@ export function ApplicationSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
 }
 
 export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
+  const research = parseResearchContext(opp.research_context);
+  if ('research_context' in opp && !research) return null;
+  if (research?.snapshot) {
+    const snapshot = research.snapshot;
+    return <Section title={t('detail.sections.recentWorks')}>
+      <p className="mb-3 text-[12px] text-gray-500" data-testid="research-source-status">
+        {t(research.status === 'stale' ? 'detail.researchSourcesStale' : 'detail.researchSourcesNote')}
+      </p>
+      <p className="mb-3 text-[11px] text-gray-500">{t('detail.researchCheckedAt')} {snapshot.checked_at}</p>
+      <ul className="space-y-4">
+        {snapshot.works.map(work => <li key={work.work_id} className="min-w-0 text-[13px] leading-relaxed">
+          <a href={work.source_url} target="_blank" rel="noopener noreferrer" className="break-words text-indigo-700 hover:underline">{work.title}</a>
+          <span className="ml-2 text-gray-500">({work.year})</span>
+          {work.abstract_status === 'present'
+            ? <details className="mt-2"><summary className="cursor-pointer text-gray-600">{t('detail.researchAbstract')}</summary><p className="mt-2 whitespace-pre-wrap break-words text-gray-600">{work.abstract}</p></details>
+            : <p className="mt-2 text-[12px] text-gray-500">{t('detail.researchAbstractMissing')}</p>}
+        </li>)}
+      </ul>
+    </Section>;
+  }
+  if (opp.metadata && 'research_snapshot' in opp.metadata) return null;
   const works = opp.metadata?.recent_works;
   if (!works?.length) return null;
   // Publication trust boundary: only works with explicitly verified
@@ -272,6 +314,7 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           </li>
         ))}
       </ul>
+      <p className="mt-3 text-[11px] text-gray-500">{t('detail.researchLegacySearchNote')}</p>
       <p className="mt-4 text-[11px] text-gray-400">
         {/* "this professor's record" only when the scraped rank actually is
             professor-like (or unknown — legacy records); a known non-professor

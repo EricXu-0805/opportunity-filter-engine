@@ -170,3 +170,20 @@ Canonical identity is the record's `id` string.
 - The url-UNIQUE constraint and fuzzy `title + organization` matching that an
   earlier revision of this document described were never implemented; they
   remain future work, not a property of the current system.
+
+## Source-backed contact instructions (local candidate)
+
+`application.contact_method` is a legacy normalized field and can be inferred. It is not proof that a professor accepts email. Current detail projection recomputes `contact_instructions` from retained website evidence; client-supplied or cached top-level rules are not authoritative.
+
+- Internal evidence: `metadata.contact_instruction_sources[]`, containing `source_url`, `record_source_url`, timezone-aware `checked_at`, and `sections: [{heading, text}]`. Faculty evidence also binds `identity_name` to the current professor. Raw evidence is removed from public output.
+- Public result: `version: 1`, `status: unknown | known | conflicting`, `email_policy: unknown | allowed | not_accepted | form_only | conflicting`, and `rules[]`. Each rule has a kind, exact quote, source URL and original check time. Public email redaction still applies.
+- Rule kinds: `no_email`, `form_only`, `email_allowed`, `subject`, `materials`, and reserved `contact_person`. This candidate does not extract or select a designated contact automatically.
+- A subject rule contains either an exact `subject`, a `subject_template` with placeholders, or only its unparsed format quote. Exact subjects survive initial generation and refinement. Formats require the user to complete and confirm the subject before opening an email app; the model must not invent names.
+- Material values: `resume_cv`, `unofficial_transcript`, `transcript`, `cover_letter`, `statement_of_interest`, `application_form`, `single_pdf`. Listing a requirement does not attach, combine, or submit a file.
+- More than 40 distinct rules adds `review_required: true` and `reason: too_many_requirements`. Output stays bounded to 40 rules while policy/conflict detection considers all retained sections. Generation and new composition stop until review; overflow is not described as a source conflict.
+
+The first extractor accepts only clearly undergraduate or all-applicant sections. Conditional/optional rules and mixed audiences are conservatively omitted. A ban on application-status inquiries is not a ban on first contact; an application portal alone is not evidence that inquiry emails are forbidden. Unknown means no applicable rule was confirmed, not permission or a vacancy.
+
+Source collection is connected to successful SRO detail, URL fetch, and identity-matched faculty profile reads. Parsing caller-supplied HTML, an OG summary, a generated description, an address, or a publication cannot create official contact evidence. Existing records are not backfilled by this change.
+
+The complete public result participates in `writing_target_version`. Initial generation, variants, streaming, and refinement recheck current policy before provider work. New composition refreshes the current stored target and profile; a server-provided recipient is checked separately because addresses are intentionally excluded from the writing version. This does not fetch the official webpage at click time. Copying a draft and confirming a historical send retain their existing meanings.

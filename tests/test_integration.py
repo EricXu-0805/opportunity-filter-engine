@@ -172,9 +172,8 @@ class TestTaggerUpdates:
             "paid": "unknown",
         }
         updates = rule_based_tag(opp)
-        assert "skills_required" in updates or "skills_preferred" in updates
-        all_skills = updates.get("skills_required", []) + updates.get("skills_preferred", [])
-        assert "Python" in all_skills
+        assert not updates.get("skills_required") and not updates.get("skills_preferred")
+        assert "Python" in updates["skill_mentions"]
 
     def test_rule_based_tag_extracts_from_url_path(self):
         opp = {
@@ -212,10 +211,12 @@ class TestTaggerUpdates:
         }
         updates = rule_based_tag(opp)
         all_skills = updates.get("skills_required", []) + updates.get("skills_preferred", [])
-        assert len(all_skills) > 0, "Should infer skills from domain keywords"
+        assert all_skills == [], "Domain keywords cannot establish skill requirements"
+        assert "Python" not in updates.get("skill_mentions", [])
 
     def test_apply_updates_modifies_opportunity(self):
         opp = {
+            "description_raw": "Python is required.",
             "paid": "unknown",
             "eligibility": {
                 "skills_required": [],
@@ -555,17 +556,16 @@ class TestLabTypeAwareTemplates:
         email = generate_cold_email(sample_profile, opp)
         assert "safety training" in email.lower() or "graduate mentor" in email.lower()
 
-    def test_humanities_ask_mentions_literature_reviews(self, sample_profile):
+    def test_humanities_ask_does_not_invent_task_assignments(self, sample_profile):
         opp = {
             "id": "hum-2", "title": "History RA",
             "department": "History", "description_clean": "Archival research.",
             "keywords": ["history"], "eligibility": {"skills_required": []},
         }
         email = generate_cold_email(sample_profile, opp)
-        assert (
-            "literature review" in email.lower()
-            or "qualitative coding" in email.lower()
-        )
+        assert "first step" in email.lower()
+        assert "literature review" not in email.lower()
+        assert "qualitative coding" not in email.lower()
 
     def test_variants_include_lab_type_field(self, sample_profile):
         opp = {

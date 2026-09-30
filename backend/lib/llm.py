@@ -10,7 +10,7 @@ Provider chain (same as the historical inline copies):
   1. ``OPENAI_API_KEY``     → ``gpt-4o-mini`` against api.openai.com
   2. ``GEMINI_API_KEY``     → ``gemini-2.5-flash`` via Google's
                               OpenAI-compatible v1beta endpoint
-  3. ``OPENROUTER_API_KEY`` → ``google/gemini-2.0-flash-lite-001``
+  3. ``OPENROUTER_API_KEY`` → ``google/gemini-2.5-flash-lite``
                               via openrouter.ai
 
 Gemini models need ``reasoning_effort: none`` in ``extra_body`` or they
@@ -43,12 +43,39 @@ import logging
 import os
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Optional
 
 from backend.lib import llm_budget
 
 logger = logging.getLogger("ofe.llm")
+
+_PRIVATE_PROVIDER_LOGGING = ContextVar("ofe_private_provider_logging", default=False)
+
+
+class _PrivateProviderLogFilter(logging.Filter):
+    def filter(self, record):
+        return not _PRIVATE_PROVIDER_LOGGING.get()
+
+
+_PRIVATE_PROVIDER_LOG_FILTER = _PrivateProviderLogFilter()
+
+
+@contextmanager
+def _provider_log_scope(private: bool):
+    # The installed SDK logs complete RequestOptions at DEBUG and exception
+    # bodies in response parsing. Suppress only this call's SDK diagnostics;
+    # concurrent/legacy calls keep their existing logging configuration.
+    if private:
+        for name in ("openai._base_client", "openai._response", "openai._legacy_response"):
+            logging.getLogger(name).addFilter(_PRIVATE_PROVIDER_LOG_FILTER)
+    token = _PRIVATE_PROVIDER_LOGGING.set(private)
+    try:
+        yield
+    finally:
+        _PRIVATE_PROVIDER_LOGGING.reset(token)
 
 _MAX_ATTEMPTS = 2
 _RETRY_BASE_DELAY_SECONDS = 0.5
@@ -68,7 +95,7 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
         "openrouter",
         "OPENROUTER_API_KEY",
         "https://openrouter.ai/api/v1",
-        "google/gemini-2.0-flash-lite-001",
+        "google/gemini-2.5-flash-lite",
     ),
 )
 
@@ -86,8 +113,8 @@ _PROVIDERS: tuple[tuple[str, str, str, str], ...] = (
 # Surfaced ONLY when OPENROUTER_API_KEY is set; otherwise the picker stays hidden
 # and chat uses the default provider chain.
 _DEFAULT_CHAT_MODELS: tuple[tuple[str, str, str], ...] = (
-    ("auto", "Auto", "anthropic/claude-sonnet-5"),
-    ("thinking", "Thinking", "openai/gpt-5.6-terra-pro"),
+    ("auto", "Auto", "anthropic/claude-sonnet-5.5"),
+    ("thinking", "Thinking", "openai/gpt-6.1-sol-pro"),
 )
 
 
@@ -154,14 +181,28 @@ def strong_model() -> Optional[str]:
     return os.environ.get("OFE_STRONG_MODEL", "").strip() or None
 
 
-# Best-fit model per quality-sensitive task ("right tool for each job"), chosen
-# against 2026-07 writing evaluations: Sonnet 5 WINS the writing-quality and
-# instruction-following categories outright ("sounds the most human, needs the
-# least cleanup" — EQ-Bench-adjacent leaderboards put the Claude family a full
-# tier above GPT-5.5 on writing Elo), so the PROSE tasks stay on it — an
-# "upgrade" there would be a downgrade. Opus 4.8 leads deliberate editorial
-# REASONING, which is exactly the judge/critique lens, so that one task rides
-# the premium tier:
+# Best-fit model per quality-sensitive task ("right tool for each job"). The
+# prose tasks moved from Sonnet 5 to Sonnet 5.5 on 2026-09-30 after a run of
+# the real pipeline (3 student profiles x 3 targets, same grounding gates):
+# same AI-draft rate as Sonnet 5 and GPT-6.1 Sol, same $2/$10 price, 10.6 s vs
+# 14.6 s per email, and the résumé rewrite endpoint answered in 3 s vs 24 s.
+# Nine emails is a small sample, so this is a latency-and-currency move, not a
+# measured quality gain. Opus 4.8 stays the judge/critique lens: Opus 5.5 in
+# that seat was slower (18 s per email) and rescued no more drafts.
+# The cold-email draft then moved to Opus 5.5 after a blind review of 65 real
+# emails (6 student profiles x 6 targets; a professor-reader judge and a
+# fact-checker per email, flagged claims re-checked): would-reply 3.31 vs 2.86
+# for Sonnet 5.5, 2.89 GPT-6.1 Sol, 2.33 Sonnet 5; best mean rank; no
+# fabricated claims for any model. It costs about twice Sonnet 5.5 and runs
+# about 7 s slower at the median.
+# The shared defects in that review were prompt-level (pasted keyword lists,
+# missing best experience, stacked asks), fixed by the reader rules in
+# cold_email.py. A second blind round with those rules (9 profile x target
+# items, 4 drafts each, skeptic-checked flags) moved the draft back to Sonnet
+# 5.5: would-reply 3.56 vs 3.44 Opus 5.5, 3.00 GPT-6.1 Sol, 2.44 for Sonnet
+# 5.5 without the rules; ranked first in 6 of 9; no confirmed overstatement
+# (Opus 5.5 had two, e.g. "I work regularly in Python and R"); p95 19 s vs
+# 33 s. Nine items is small, so read this as parity at half the latency.
 #   * cold_email — highest-stakes personalized writing (draft + revise).
 #   * cold_email_review — the critique rubric + N-draft judge (judgment, not
 #     prose: which email would a professor answer, what reads templated).
@@ -170,12 +211,12 @@ def strong_model() -> Optional[str]:
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
 _TASK_MODEL_DEFAULTS: dict[str, str] = {
-    "cold_email": "anthropic/claude-sonnet-5",
+    "cold_email": "anthropic/claude-sonnet-5.5",
     # NB: OpenRouter's slug is dotted ("4.8") — the hyphenated "opus-4-8" does
     # not exist in the catalog and 404s, silently degrading the review tier.
     "cold_email_review": "anthropic/claude-opus-4.8",
-    "tailor": "anthropic/claude-sonnet-5",
-    "extract": "anthropic/claude-sonnet-5",
+    "tailor": "anthropic/claude-sonnet-5.5",
+    "extract": "anthropic/claude-sonnet-5.5",
 }
 
 
@@ -196,6 +237,28 @@ def model_for(task: str) -> dict:
     return {"model": strong_model()}
 
 
+# Reasoning tokens count against max_tokens on OpenRouter. Callers size
+# max_tokens for the visible answer, so a thinking model needs room on top of
+# it: Sonnet 5 thinks by default at 'high' and spent an entire 1,500-token
+# draft budget on thinking, returning an empty length-truncated body. The
+# newer Claude, GPT and Gemini generations cannot turn thinking off at all,
+# so "none" is sent as the lowest effort they accept.
+_REASONING_HEADROOM = {"low": 3072, "medium": 6144, "high": 12288, "xhigh": 16384, "max": 24576}
+
+
+def _provider_request_options(
+    provider_pid: str, effective_model: str, reasoning_effort: str, max_tokens: int,
+) -> tuple[dict | None, int]:
+    """(extra_body, max_tokens) for one request."""
+    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
+        return {"reasoning_effort": reasoning_effort}, max_tokens
+    if provider_pid != "openrouter":
+        return None, max_tokens
+    effort = reasoning_effort if reasoning_effort in _REASONING_HEADROOM else "low"
+    return ({"reasoning": {"effort": effort, "exclude": True}},
+            max_tokens + _REASONING_HEADROOM[effort])
+
+
 def chat_completion(
     messages: list[dict],
     *,
@@ -204,6 +267,8 @@ def chat_completion(
     reasoning_effort: str = "none",
     model: Optional[str] = None,
     provider_id: Optional[str] = None,
+    safe_error_logging: bool = False,
+    require_complete: bool = False,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
 
@@ -215,7 +280,12 @@ def chat_completion(
     when:
       * no (matching) provider env var is set,
       * the ``openai`` SDK isn't importable,
-      * the upstream call raises for any reason.
+      * the upstream call raises for any reason,
+      * ``require_complete`` is true and the provider does not report ``stop``.
+
+    The opt-in completion check discards truncated/filtered/tool responses
+    immediately, without a second billed request. ``stop`` is a transport
+    completion signal, not evidence of factual or semantic correctness.
 
     Callers should treat ``None`` as "fall back to local template" — never
     surface as a 5xx to the user. The provider chain is order-dependent;
@@ -245,41 +315,51 @@ def chat_completion(
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
+    extra_body, request_max_tokens = _provider_request_options(
+        provider.pid, effective_model, reasoning_effort, max_tokens)
     call_kwargs: dict = {
         "model": effective_model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": request_max_tokens,
     }
     # Gemini needs reasoning_effort in extra_body whether it's reached directly
-    # ("gemini-2.5-flash") or via OpenRouter ("google/gemini-2.0-flash-lite-001",
-    # incl. the Ask-AI picker default and the chain's OpenRouter default).
-    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
-        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+    # or via OpenRouter; other OpenRouter models get an explicit reasoning
+    # effort and thinking headroom (see _provider_request_options).
+    if extra_body is not None:
+        call_kwargs["extra_body"] = extra_body
 
     last_error: Optional[Exception] = None
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
-            client = openai.OpenAI(**client_kwargs)
-            # Counted before the call, and per attempt: a retry is a second
-            # request the provider may well bill for, and a call that raises
-            # after the provider received it is not free either. The day
-            # ceiling has to fail toward under-spending.
-            llm_budget.spend()
-            resp = client.chat.completions.create(**call_kwargs)
-            text = (resp.choices[0].message.content or "").strip()
-            return text or None
+            with _provider_log_scope(safe_error_logging):
+                client = openai.OpenAI(**client_kwargs)
+                # Count per issued attempt, including failed/retried requests.
+                llm_budget.spend()
+                resp = client.chat.completions.create(**call_kwargs)
+                if require_complete:
+                    choices = getattr(resp, "choices", None)
+                    if not choices or getattr(choices[0], "finish_reason", None) != "stop":
+                        return None
+                text = (resp.choices[0].message.content or "").strip()
+                return text or None
         except Exception as exc:
             last_error = exc
             if attempt < _MAX_ATTEMPTS:
                 time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
 
-    logger.warning(
-        "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
-        _MAX_ATTEMPTS,
-        effective_model,
-        last_error,
-    )
+    if safe_error_logging:
+        status = getattr(last_error, "status_code", None)
+        logger.warning(
+            "LLM chat_completion failed attempts=%d error_type=%s status=%s",
+            _MAX_ATTEMPTS, type(last_error).__name__,
+            status if type(status) is int and 100 <= status <= 599 else None,
+        )
+    else:
+        logger.warning(
+            "LLM chat_completion failed after %d attempt(s) (model=%s): %s",
+            _MAX_ATTEMPTS, effective_model, last_error,
+        )
     return None
 
 
@@ -339,16 +419,17 @@ def chat_completion_stream(
     if provider.base_url:
         client_kwargs["base_url"] = provider.base_url
 
+    extra_body, request_max_tokens = _provider_request_options(
+        provider.pid, effective_model, reasoning_effort, max_tokens)
     call_kwargs: dict = {
         "model": effective_model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": request_max_tokens,
         "stream": True,
     }
-    # Same guard as chat_completion: OpenRouter can serve google/gemini slugs.
-    if effective_model.startswith("gemini-") or effective_model.startswith("google/gemini"):
-        call_kwargs["extra_body"] = {"reasoning_effort": reasoning_effort}
+    if extra_body is not None:
+        call_kwargs["extra_body"] = extra_body
 
     stream = None
     last_error: Optional[Exception] = None

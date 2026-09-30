@@ -6,7 +6,7 @@
 // concern, different page). Every OTHER child is stubbed so this stays a
 // narrow, fast test of the wiring, with a sentinel TailorModal doing the
 // actual mount/unmount work.
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { useRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
@@ -18,13 +18,18 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn() }),
 }));
 
+const profileRefreshFeed = vi.hoisted(() => ({ status: 'ready' as import('@/lib/use-profile-refresh').ProfileRefreshState['status'] }));
+vi.mock('@/lib/use-profile-refresh', () => ({ useProfileRefresh: () => ({ status: profileRefreshFeed.status, refresh: async () => true, checkForAction: async () => null }) }));
+beforeEach(() => { profileRefreshFeed.status = 'ready'; customStorageFeed.state = { status: 'ready', entries: [] }; });
+
+const customStorageFeed = vi.hoisted(() => ({ state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState }));
 vi.mock('@/lib/custom-imports', () => ({
-  useCustomImports: () => [],
+  useCustomImportStorageState: () => customStorageFeed.state,
 }));
 
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 vi.mock('@/components/SaveFavoritesAnchor', () => ({ default: () => null }));
-vi.mock('./FavoritesEmptyState', () => ({ FavoritesEmptyState: () => null }));
+vi.mock('./FavoritesEmptyState', () => ({ FavoritesEmptyState: () => <div data-testid="empty-favorites" /> }));
 vi.mock('./FavoritesHeader', () => ({ FavoritesHeader: () => null }));
 vi.mock('./SavedSearchesSection', () => ({ SavedSearchesSection: () => null }));
 vi.mock('./use-saved-searches', () => ({
@@ -37,7 +42,11 @@ vi.mock('./use-saved-searches', () => ({
   }),
 }));
 vi.mock('./SelectionFooter', () => ({ SelectionFooter: () => null }));
-vi.mock('@/components/ColdEmailModal', () => ({ default: () => null }));
+vi.mock('@/components/CheckedColdEmailModal', () => ({ default: (props: {
+  isOpen: boolean; onClose: () => void; profileRefresh: { status: string };
+}) => props.isOpen ? <div data-testid="mock-email-modal" data-refresh={props.profileRefresh.status}>
+  <button onClick={props.onClose}>Close email</button>
+</div> : null }));
 
 // A sentinel mock, NOT the real OpportunityCard: exposes onOpenTailorModal
 // via a plain button and tailorDisabled as visible text, so the test can
@@ -48,8 +57,14 @@ vi.mock('./OpportunityCard', () => ({
     opp: { id: string; title: string };
     onOpenTailorModal?: (opp: { id: string; title: string }) => void;
     tailorDisabled: boolean;
+    hasProfile: boolean;
+    removeDisabled: boolean;
+    removing: boolean;
+    onOpenEmailModal: (opp: { id: string; title: string }) => void;
   }) => (
     <div data-testid={`opp-card-${props.opp.id}`}>
+      <button disabled={!props.hasProfile} onClick={() => props.onOpenEmailModal(props.opp)}>{`Email ${props.opp.title}`}</button>
+      <button disabled={props.removeDisabled} aria-busy={props.removing}>{`Remove ${props.opp.title}`}</button>
       <span data-testid={`tailor-disabled-${props.opp.id}`}>{String(props.tailorDisabled)}</span>
       <button
         type="button"
@@ -72,19 +87,24 @@ vi.mock('./OpportunityCard', () => ({
 // one thing a missing/wrong key would fail to cause. The real
 // opportunityId/ownerReady/ownerScopeKey props are rendered too, so the
 // wiring of those (separately from the key) stays covered.
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: function MockTailorModal(props: {
     isOpen: boolean;
     opportunityId: string;
     ownerReady: boolean;
     ownerScopeKey: string | null;
+    targetReady?: boolean;
+    onClose: () => void;
+    profileRefresh: { status: string };
   }) {
     const mountIdRef = useRef(Math.random().toString(36).slice(2));
     if (!props.isOpen) return null;
     return (
-      <div data-testid="mock-tailor-modal">
+      <div data-testid="mock-tailor-modal" data-refresh={props.profileRefresh.status}>
+        <button onClick={props.onClose}>Close tailor</button>
         <span data-testid="mount-id">{mountIdRef.current}</span>
         <span data-testid="tailor-opp-id">{props.opportunityId}</span>
+        <span data-testid="target-ready">{String(props.targetReady)}</span>
         <span data-testid="owner-ready">{String(props.ownerReady)}</span>
         <span data-testid="owner-scope-key">{String(props.ownerScopeKey)}</span>
       </div>
@@ -152,7 +172,7 @@ function setProfile() {
 }
 
 describe('FavoritesPage — TailorModal is keyed by identityGeneration (C1-R2B)', () => {
-  it('an identityGeneration bump (a real account switch) force-remounts TailorModal — proven via a sentinel mount-id that can ONLY change on a genuine unmount+remount. tailorModal stays open across both renders (page-owned state, never explicitly closed here) to isolate the key\'s OWN protection', async () => {
+  it('retires the old open Tailor lifetime when the owner scope changes', async () => {
     setProfile();
     mockHookState.current = baseHookResult({ identityGeneration: 1, ownerScopeKey: 'owner-1' });
     const { rerender } = render(<FavoritesPage />);
@@ -168,9 +188,8 @@ describe('FavoritesPage — TailorModal is keyed by identityGeneration (C1-R2B)'
     mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2' });
     rerender(<FavoritesPage />);
 
-    const mountId2 = screen.getByTestId('mount-id').textContent;
-    expect(mountId2).not.toBe(mountId1); // genuinely torn down and recreated — a fresh instance
-    expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-2'); // real props still flow through
+    expect(mountId1).toBeTruthy();
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull(); // no old draft is transferred to the new owner
   });
 
   it('a re-render with the SAME identityGeneration (e.g. a manual data retry — different serverOpportunities/unavailableCount, same identity) does NOT remount TailorModal — the sentinel\'s mount-id survives', async () => {
@@ -264,7 +283,7 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     ['malformed truth', { listing_state: 'open' }],
   ];
 
-  it.each(DEGRADED)('unmounts the modal when the target becomes %s', async (_label, truth) => {
+  it.each(DEGRADED)('retains the editor but pauses target actions when the target becomes %s', async (_label, truth) => {
     // The modal opened while the target was live. A refresh then closed it —
     // same identity, so nothing remounts and no callback runs again. Checking
     // only at open time would leave a Tailor session attached to a target the
@@ -284,10 +303,11 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     });
     rerender(<FavoritesPage />);
 
-    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+    expect(screen.getByTestId('mock-tailor-modal')).toBeTruthy();
+    expect(screen.getByTestId('target-ready')).toHaveTextContent('false');
   });
 
-  it('unmounts the modal when the target disappears from the corpus', async () => {
+  it('retains the editor but pauses target actions when the target disappears from the corpus', async () => {
     setProfile();
     mockHookState.current = withTarget(live());
     const { rerender } = render(<FavoritesPage />);
@@ -297,6 +317,92 @@ describe('an open Tailor modal is re-checked on every render, not only at open',
     mockHookState.current = withTarget(null);
     rerender(<FavoritesPage />);
 
+    expect(screen.getByTestId('mock-tailor-modal')).toBeTruthy();
+    expect(screen.getByTestId('target-ready')).toHaveTextContent('false');
+  });
+});
+
+
+describe('Favorites offline writing entry', () => {
+  it.each(['ready', 'local-only'] as const)('can close and reopen email and Tailor offline after a %s profile', async status => {
+    setProfile(); mockHookState.current = baseHookResult(); profileRefreshFeed.status = status;
+    const view = render(<FavoritesPage />);
+    for (const editor of ['email', 'tailor'] as const) {
+      profileRefreshFeed.status = status; view.rerender(<FavoritesPage />);
+      fireEvent.click(screen.getByRole('button', { name: `${editor === 'email' ? 'Email' : 'Tailor'} Opp One` }));
+      expect(await screen.findByTestId(`mock-${editor}-modal`)).toHaveAttribute('data-refresh', status);
+      profileRefreshFeed.status = 'offline'; view.rerender(<FavoritesPage />);
+      fireEvent.click(screen.getByRole('button', { name: `Close ${editor}` }));
+      expect(screen.queryByTestId(`mock-${editor}-modal`)).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: `${editor === 'email' ? 'Email' : 'Tailor'} Opp One` }));
+      expect(await screen.findByTestId(`mock-${editor}-modal`)).toHaveAttribute('data-refresh', 'offline');
+      fireEvent.click(screen.getByRole('button', { name: `Close ${editor}` }));
+    }
+  });
+
+  it.each(['checking', 'failed', 'conflict'] as const)('offline does not override a previous %s profile state', status => {
+    setProfile(); mockHookState.current = baseHookResult();
+    const view = render(<FavoritesPage />);
+    profileRefreshFeed.status = status; view.rerender(<FavoritesPage />);
+    profileRefreshFeed.status = 'offline'; view.rerender(<FavoritesPage />);
+    expect(screen.getByRole('button', { name: 'Email Opp One' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tailor Opp One' })).toBeDisabled();
+  });
+
+  it('does not treat an initially offline profile as previously checked', () => {
+    setProfile(); mockHookState.current = baseHookResult(); profileRefreshFeed.status = 'offline';
+    render(<FavoritesPage />);
+    expect(screen.getByRole('button', { name: 'Email Opp One' })).toBeDisabled();
+  });
+
+  it.each(['owner-unready', 'owner-changed', 'load-error', 'closed-target'] as const)('offline does not bypass %s', async condition => {
+    setProfile(); mockHookState.current = baseHookResult();
+    const view = render(<FavoritesPage />); profileRefreshFeed.status = 'offline';
+    const next = baseHookResult(condition === 'owner-unready' ? { ownerReady: false }
+      : condition === 'owner-changed' ? { ownerScopeKey: 'owner-2', identityGeneration: 2 }
+      : condition === 'load-error' ? { error: true } : {});
+    if (condition === 'closed-target') next.serverOpportunities[0].target_truth = {
+      ...next.serverOpportunities[0].target_truth, listing_state: 'closed', actionable: false,
+    };
+    mockHookState.current = next; view.rerender(<FavoritesPage />);
+    const email = screen.queryByRole('button', { name: 'Email Opp One' });
+    const tailor = screen.queryByRole('button', { name: 'Tailor Opp One' });
+    if (email) fireEvent.click(email); if (tailor) fireEvent.click(tailor);
+    expect(screen.queryByTestId('mock-email-modal')).toBeNull();
     expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
   });
+});
+
+
+it('renders remove failure and connects a visible retry without claiming removal succeeded', () => {
+  const retry = vi.fn();
+  mockHookState.current = baseHookResult({ removeError: { id: 'custom-one', title: 'Saved source', _customId: 'custom-one' },
+    removeErrorReason: 'lock_timeout', retryRemove: retry });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.removeFailed')).toBeInTheDocument();
+  expect(screen.getByText('import.storageBusy')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('common.retry'));
+  expect(retry).toHaveBeenCalledTimes(1);
+});
+
+
+it('keeps readable damaged imports visible, disables removal, and avoids a false empty state', () => {
+  customStorageFeed.state = { status: 'damaged', entries: [{ id: 'custom-source', imported_at: '2026-09-28', opportunity: {
+    source: 'url_parser', source_url: 'https://example.edu/project', url: 'https://example.edu/project', title: 'Readable source', description_raw: 'Complete original', extra_fields: {},
+  } }] };
+  mockHookState.current = baseHookResult({ serverOpportunities: [] });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.storageDamaged')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Remove Readable source' })).toBeDisabled();
+  expect(screen.queryByTestId('empty-favorites')).toBeNull();
+  expect(screen.getByText('import.exportBackup')).toBeInTheDocument();
+});
+
+it('does not call unavailable import storage an empty list or offer reset', () => {
+  customStorageFeed.state = { status: 'unavailable', entries: [], reason: 'storage_failed' };
+  mockHookState.current = baseHookResult({ serverOpportunities: [] });
+  render(<FavoritesPage />);
+  expect(screen.getByText('import.storageFailed')).toBeInTheDocument();
+  expect(screen.queryByTestId('empty-favorites')).toBeNull();
+  expect(screen.queryByText('import.reviewReset')).toBeNull();
 });

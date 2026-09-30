@@ -52,6 +52,8 @@ export default async function OGImage() {
 
         <h1
           style={{
+            display: 'flex',
+            flexDirection: 'column',
             fontSize: 76,
             fontWeight: 800,
             letterSpacing: '-2.5px',
@@ -61,17 +63,12 @@ export default async function OGImage() {
             maxWidth: 1000,
           }}
         >
-          Find research & internships that{' '}
-          <span
-            style={{
-              background: 'linear-gradient(90deg, #818cf8 0%, #a78bfa 100%)',
-              backgroundClip: 'text',
-              color: 'transparent',
-            }}
-          >
-            actually match
-          </span>{' '}
-          you.
+          <span>Find research & internships</span>
+          <span style={{ display: 'flex', gap: 16 }}>
+            <span>that</span>
+            <span style={{ color: '#a5b4fc' }}>actually match</span>
+            <span>you.</span>
+          </span>
         </h1>
 
         <p
@@ -96,11 +93,28 @@ export default async function OGImage() {
             color: 'rgba(255,255,255,0.6)',
           }}
         >
-          <span>🎯 thousands of opportunities</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="5" />
+              <circle cx="12" cy="12" r="1" fill="#a5b4fc" stroke="none" />
+            </svg>
+            thousands of opportunities
+          </span>
           <span>·</span>
-          <span>✓ Deterministic match</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86efac" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+            Deterministic match
+          </span>
           <span>·</span>
-          <span>⚡ Free · Privacy-first</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbf24">
+              <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" />
+            </svg>
+            Free · Privacy-first
+          </span>
         </div>
       </div>
     ),

@@ -1,11 +1,10 @@
 """URL + Text Parser — V1 OG-meta scrape + V2 LLM-enriched structured extraction.
 
-V1 (parse_url) reads OpenGraph tags + regex deadline. Best-effort, no LLM
-needed, no rate-limited external dep beyond the source URL. Stable since
-the very first manual-import iteration.
+V1 (parse_url) saves the current static HTML body without a model. It keeps
+metadata separately and refuses sources with no readable body.
 
 V2 (parse_url_llm) layers a single LLM call on top of V1: feeds the page
-body + V1's already-extracted title/description back to the model with a
+existing body excerpt + legacy metadata/body hints to the model with a
 strict JSON schema and merges the response into a RawOpportunity. Used
 by the /api/import-url backend route the frontend's "Add by URL" flow
 calls. Falls back to V1 silently when no LLM provider is configured
@@ -26,13 +25,17 @@ import json
 import logging
 import re
 import socket
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
+from ..contact_instructions import capture_from_html, capture_metadata, same_source_page
 from .base import RawOpportunity
+from .import_document import extract_import_document
 
 logger = logging.getLogger(__name__)
 
@@ -54,28 +57,62 @@ PASTE_TEXT_MIN_CHARS = 50
 PASTE_TEXT_MAX_CHARS = 50_000
 
 
-def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunity]:
-    """V1: OG-meta + regex deadline scrape. No LLM.
+def parse_url(
+    url: str, *, html: Optional[str] = None, content_type: str | None = None,
+) -> Optional[RawOpportunity]:
+    """Save the current static page's readable text without a model call.
 
-    Pass an already-fetched ``html`` body to reuse it instead of fetching again
-    — parse_url_llm needs both the parsed V1 fields and the raw text, and would
-    otherwise round-trip to the same URL twice.
+    ``html=`` reuses a fetched document; it does not create a fetch receipt.
+    Metadata remains separate and cannot substitute for missing source text.
     """
     if html is None:
         resp = _safe_fetch(url)
-        if resp is None:
-            return None
-        html = resp.text
+        return _parse_fetched_page(url, resp) if resp is not None else None
 
+    document = extract_import_document(html, content_type=content_type)
+    domain = urlparse(url).netloc
+    organization = _domain_to_org(domain)
+    deadline = _extract_deadline(document["text"])
+    # A guess from the address or a date near "deadline" is not a stated fact.
+    inferred = {}
+    if organization:
+        inferred["organization"] = "heuristic:url_domain"
+    if deadline:
+        inferred["deadline"] = "heuristic:page_text_date"
+    extra_fields = {
+        "domain": domain,
+        "description_source": "page_text",
+        "page_meta_summary": document["meta_summary"],
+        "needs_manual_review": True,
+    }
+    if inferred:
+        extra_fields["inferred_fields"] = inferred
+    return RawOpportunity(
+        source="url_parser",
+        source_url=url,
+        title=document["title"] or "Untitled Opportunity",
+        description_raw=document["text"],
+        url=url,
+        organization=organization,
+        deadline=deadline,
+        location=None,
+        extra_fields=extra_fields,
+    )
+
+
+def _legacy_model_hints(html: str) -> tuple[str, str]:
+    """Keep the existing model payload separate from locally saved full text.
+
+    Preserve the previous metadata/body hint and title exactly. Full-source
+    model processing is a separate pending change, not enabled by source saving.
+    """
     soup = BeautifulSoup(html, "html.parser")
-
     title = ""
     og_title = soup.find("meta", property="og:title")
     if og_title:
         title = og_title.get("content", "")
     elif soup.title:
         title = soup.title.get_text(strip=True)
-
     description = ""
     og_desc = soup.find("meta", property="og:description")
     meta_desc = soup.find("meta", attrs={"name": "description"})
@@ -87,27 +124,38 @@ def parse_url(url: str, *, html: Optional[str] = None) -> Optional[RawOpportunit
         main = soup.find("main") or soup.find("article") or soup.find("body")
         if main:
             description = main.get_text(separator=" ", strip=True)[:2000]
+    return title or "Untitled Opportunity", description
 
-    domain = urlparse(url).netloc
-    organization = _domain_to_org(domain)
 
-    deadline = _extract_deadline(soup.get_text())
 
-    return RawOpportunity(
-        source="url_parser",
-        source_url=url,
-        title=title or "Untitled Opportunity",
-        description_raw=description,
-        url=url,
-        organization=organization,
-        deadline=deadline,
-        location=None,
-        extra_fields={
-            "domain": domain,
-            "needs_manual_review": True,
-        },
+class UrlImportSourceError(ValueError):
+    """A fetched page cannot be attributed to the address the user submitted."""
+
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(reason)
+
+
+def _parse_fetched_page(url: str, response: requests.Response) -> RawOpportunity:
+    final_url = getattr(response, "url", None)
+    if not isinstance(final_url, str) or not final_url:
+        raise UrlImportSourceError("unverified_response")
+    if not same_source_page(url, final_url):
+        # Do not offer the other page's title/body as a draft under the old URL.
+        # The user can explicitly import the destination when it is intended.
+        raise UrlImportSourceError("redirect_mismatch")
+    base = parse_url(
+        url, html=response.text, content_type=response.headers.get("Content-Type"),
     )
-
+    capture = capture_from_html(
+        response.text,
+        source_url=final_url,
+        requested_source_url=url,
+        record_source_url=url,
+        checked_at=getattr(response, "_ofe_checked_at", None),
+    )
+    base.extra_fields.update(capture_metadata(capture))
+    return base
 
 def is_safe_url(url: str) -> tuple[bool, str]:
     """SSRF guard for user-supplied URLs.
@@ -173,7 +221,12 @@ def _host_resolves_to_blocked_ip(host: str) -> bool:
     return any(_ip_is_blocked(info[4][0]) for info in infos)
 
 
-def _safe_fetch(url: str) -> Optional[requests.Response]:
+def _safe_fetch(
+    url: str,
+    *,
+    before_request: Callable[[str], bool] | None = None,
+    on_response: Callable[[requests.Response], None] | None = None,
+) -> Optional[requests.Response]:
     """SSRF-hardened GET — the only network entry point for user-supplied URLs.
 
     Validates the URL and EVERY redirect hop with ``is_safe_url`` plus a DNS
@@ -188,6 +241,9 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
     validated IP); the manual-redirect + resolve checks defeat the directly
     exploitable bypass, which is the realistic threat for this endpoint.
     """
+    # Optional observers let bounded refresh callers account for EVERY real
+    # request, including redirect hops. A refusal/exception stops this fetch;
+    # neither hook authorizes an otherwise unsafe address.
     headers = {"User-Agent": "OpportunityFilterEngine/1.0"}
     current = url
     try:
@@ -197,18 +253,21 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
                 return None
             if _host_resolves_to_blocked_ip(urlparse(current).hostname or ""):
                 return None
+            if before_request is not None and not before_request(current):
+                return None
             resp = requests.get(
                 current, timeout=PAGE_FETCH_TIMEOUT_S, headers=headers,
                 allow_redirects=False, stream=True,
             )
-            if resp.is_redirect:
-                resp.close()
-                location = resp.headers.get("Location")
-                if not location:
-                    break
-                current = urljoin(current, location)
-                continue
             try:
+                if on_response is not None:
+                    on_response(resp)
+                if resp.is_redirect:
+                    location = resp.headers.get("Location")
+                    if not location:
+                        break
+                    current = urljoin(current, location)
+                    continue
                 resp.raise_for_status()
                 declared = resp.headers.get("Content-Length")
                 if declared and declared.isdigit() and int(declared) > MAX_FETCH_BYTES:
@@ -222,6 +281,7 @@ def _safe_fetch(url: str) -> Optional[requests.Response]:
                         return None
                 resp._content = bytes(body)
                 resp._content_consumed = True
+                resp._ofe_checked_at = datetime.now(UTC).isoformat()
             finally:
                 resp.close()
             return resp
@@ -240,23 +300,21 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     """
     # Fetch once and reuse the body for both V1 parsing and the LLM excerpt
     # (was two separate _safe_fetch round-trips to the same URL).
-    raw_text = _fetch_text(url)
-    if raw_text is None:
+    response = _safe_fetch(url)
+    if response is None:
         return None
+    base = _parse_fetched_page(url, response)
 
-    base = parse_url(url, html=raw_text)
-    if base is None:
-        return None
-
-    body_excerpt = _strip_to_text(raw_text)[:LLM_BODY_EXCERPT_CHARS]
+    body_excerpt = _strip_to_text(response.text)[:LLM_BODY_EXCERPT_CHARS]
+    title_hint, description_hint = _legacy_model_hints(response.text)
     enriched = _run_llm_extraction(
         base,
         body_excerpt=body_excerpt,
         url_hint=url,
-        title_hint=base.title,
-        description_hint=base.description_raw,
+        title_hint=title_hint,
+        description_hint=description_hint,
     )
-    # URL flow always has a V1 fallback (OG meta), so on any LLM failure
+    # URL flow has the saved static source, so on an LLM failure
     # we return the V1 result rather than failing the whole request.
     return enriched if enriched is not None else base
 
@@ -289,10 +347,10 @@ def parse_text_llm(text: str) -> Optional[RawOpportunity]:
         source="text_parser",
         source_url="",
         title="Untitled Opportunity",
-        description_raw="",
+        description_raw=text,
         url="",
         organization=None,
-        extra_fields={"needs_manual_review": True},
+        extra_fields={"needs_manual_review": True, "description_source": "pasted_text"},
     )
 
     body_excerpt = text[:LLM_BODY_EXCERPT_CHARS]
@@ -337,6 +395,10 @@ def _run_llm_extraction(
         callers can log + decide whether to surface an error.
       - The merged RawOpportunity on success.
     """
+    # Scope is established by this call, never inherited or model-reported.
+    extra = dict(base.extra_fields)
+    extra.pop("ai_input_scope", None)
+    base = _replace(base, extra_fields=extra)
     try:
         from backend.lib.llm import chat_completion, is_configured
     except ImportError:
@@ -362,7 +424,9 @@ def _run_llm_extraction(
         logger.warning("LLM returned unparseable JSON, no enrichment")
         return None
 
-    return _merge_llm_into_base(base, parsed)
+    result = _merge_llm_into_base(base, parsed)
+    result.extra_fields["ai_input_scope"] = "source_excerpt"
+    return result
 
 
 EXTRACTION_SYSTEM_PROMPT = """You extract structured data from research / internship / scholarship URLs.
@@ -463,68 +527,81 @@ def _merge_llm_into_base(base: RawOpportunity, llm: dict) -> RawOpportunity:
         return out
 
     extra: dict = dict(base.extra_fields)
+    inferred = dict(extra.get("inferred_fields") or {})
 
     title = llm.get("title")
     if isinstance(title, str) and title.strip():
         base = _replace(base, title=title.strip())
+        inferred["title"] = "llm:url_parser"
 
     org = llm.get("organization")
     if isinstance(org, str) and org.strip():
         base = _replace(base, organization=org.strip())
+        inferred["organization"] = "llm:url_parser"
 
     opp_type = llm.get("opportunity_type")
     if isinstance(opp_type, str) and opp_type.lower() in _VALID_OPP_TYPES:
         extra["opportunity_type"] = opp_type.lower()
+        inferred["opportunity_type"] = "llm:url_parser"
 
     location = llm.get("location")
     if isinstance(location, str) and location.strip():
         base = _replace(base, location=location.strip())
+        inferred["location"] = "llm:url_parser"
 
     on_campus = llm.get("on_campus")
     if isinstance(on_campus, bool):
         extra["on_campus"] = on_campus
+        inferred["on_campus"] = "llm:url_parser"
 
     paid = llm.get("paid")
     if isinstance(paid, str) and paid.lower() in _VALID_PAID:
         extra["paid"] = paid.lower()
+        inferred["paid"] = "llm:url_parser"
 
     deadline = llm.get("deadline")
     if isinstance(deadline, str) and _ISO_DATE_RE.match(deadline.strip()):
         base = _replace(base, deadline=deadline.strip())
+        inferred["deadline"] = "llm:url_parser"
 
     description = llm.get("description")
     if isinstance(description, str) and description.strip():
-        base = _replace(base, description_raw=description.strip())
+        extra["suggested_description"] = description.strip()
+        inferred["suggested_description"] = "llm:url_parser"
 
-    skills_req = _coerce_str_list(llm.get("skills_required"))
-    if skills_req:
-        extra["skills_required"] = skills_req
-
-    skills_pref = _coerce_str_list(llm.get("skills_preferred"))
-    if skills_pref:
-        extra["skills_preferred"] = skills_pref
+    # Model lists are review suggestions, not source-stated qualifications.
+    # Preserve every suggested skill while dropping only duplicate labels.
+    skills = _coerce_str_list(llm.get("skills_required")) + _coerce_str_list(llm.get("skills_preferred"))
+    suggested = []
+    seen = set()
+    for skill in skills:
+        if skill.casefold() not in seen:
+            suggested.append(skill)
+            seen.add(skill.casefold())
+    if suggested:
+        extra["suggested_skills"] = suggested
+        inferred["suggested_skills"] = "llm:url_parser"
 
     pref_year = _coerce_str_list(llm.get("preferred_year"), _VALID_YEARS)
     if pref_year:
         extra["preferred_year"] = pref_year
+        inferred["preferred_year"] = "llm:url_parser"
 
     intl = llm.get("international_friendly")
     if isinstance(intl, str) and intl.lower() in _VALID_INTL:
         extra["international_friendly"] = intl.lower()
+        inferred["international_friendly"] = "llm:url_parser"
 
     extra["llm_enriched"] = True
-    extra["needs_manual_review"] = False
+    extra["needs_manual_review"] = True
+    if inferred:
+        extra["inferred_fields"] = inferred
     return _replace(base, extra_fields=extra)
 
 
 def _replace(opp: RawOpportunity, **kwargs) -> RawOpportunity:
     from dataclasses import replace
     return replace(opp, **kwargs)
-
-
-def _fetch_text(url: str) -> Optional[str]:
-    resp = _safe_fetch(url)
-    return resp.text if resp is not None else None
 
 
 def _strip_to_text(html: str) -> str:

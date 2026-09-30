@@ -500,11 +500,10 @@ SCHOOL: dict = {
                 "https://undergraduateresearch.duke.edu/TRI-Path",
                 "https://undergraduateresearch.duke.edu/opportunity/deans-summer-research-fellowships",
                 "https://undergraduateresearch.duke.edu/honors-theses",
-                "https://undergraduateresearch.duke.edu/program-ii-research-funds",
                 "https://focus.duke.edu/",
                 "https://bigdata.duke.edu/participate/data-plus/",
                 "https://fhi.duke.edu/education/story/",
-                "https://bigdata.duke.edu/participate/climate-plus/",
+                "https://iid.duke.edu/iid/climate/",
                 "https://codeplus.duke.edu/",
                 "https://scienceandsociety.duke.edu/huang-fellows-program/",
                 "https://undergraduateresearch.duke.edu/opportunity/duke-national-academy-engineering-grand-challenge-scholar-program",
@@ -756,25 +755,6 @@ SCHOOL: dict = {
                     keywords=["honors thesis", "graduation with distinction", "capstone research", "Duke"],
                 ),
                 program(
-                    "program_ii_research_funds",
-                    "Duke Program II Research Funds",
-                    "https://undergraduateresearch.duke.edu/program-ii-research-funds",
-                    "Research funding available specifically to Duke Program II students \u2014 "
-                    "undergraduates who design their own interdisciplinary degree \u2014 to support "
-                    "projects tied to their individualized curriculum. Provides grant support "
-                    "for the independent scholarly work central to a Program II course of "
-                    "study. Restricted to enrolled Program II students.",
-                    organization="Duke University",
-                    department="Undergraduate Research Support (URS) Office",
-                    lab_or_program="Program II Research Funds",
-                    paid="stipend",
-                    compensation="Research grant funds",
-                    preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="yes",
-                    deadline_note="For enrolled Program II students; see page for timing",
-                    keywords=["Program II", "interdisciplinary", "research funding", "self-designed major", "Duke"],
-                ),
-                program(
                     "focus_program",
                     "Duke FOCUS Program (First-Year Interdisciplinary Clusters)",
                     "https://focus.duke.edu/",
@@ -841,12 +821,12 @@ SCHOOL: dict = {
                 program(
                     "climate_plus",
                     "Climate+ Summer Research Program \u2014 Duke University",
-                    "https://bigdata.duke.edu/participate/climate-plus/",
+                    "https://iid.duke.edu/iid/climate/",
                     "Climate+ is a full-time, 10-week summer research experience in which teams "
                     "of undergraduates from a variety of majors, plus a graduate student "
                     "project manager, marshal, analyze, and visualize data to tackle a climate "
                     "challenge. Open to Duke undergraduates across disciplines interested in "
-                    "climate and data. Modeled on Data+, participation is a full-time summer "
+                    "climate and data. It is part of Duke's Data+ program and a full-time summer "
                     "commitment; check the page for the current stipend and application cycle.",
                     organization="Duke University",
                     department="Rhodes Information Initiative at Duke (iiD)",

@@ -354,9 +354,11 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
     # that swallows anything stops noticing when the contract it stands in
     # for changes.
     def fake_generate(profile: dict, safe_opp: dict,
-                      resume_bullets: list[str] | None = None) -> str:
+                      resume_bullets: list[str] | None = None,
+                      *, parts_cache: dict | None = None) -> str:
         captured["profile"] = profile
         captured["opportunity"] = safe_opp
+        captured["parts_cache"] = parts_cache
         return (
             "Subject: Questions for jane@example.edu\n\n"
             "Dear Professor Doe,\nPlease write jane at example dot edu.\n"
@@ -379,6 +381,8 @@ def test_cold_email_context_and_output_cannot_reintroduce_hidden_address(monkeyp
 
     assert captured["opportunity"] == _contact_safe_opportunity(opportunity)
     assert not contains_embedded_email(str(captured["opportunity"]))
+    assert isinstance(captured["parts_cache"], dict)
+    assert not contains_embedded_email(str(captured["parts_cache"]))
     assert response["subject"] == "[email redacted]"
     assert response["body"] == "[email redacted]"
     assert response["recipient_email"] == ""
@@ -398,11 +402,14 @@ _SEVEN_TRUTH_KEYS = {
     "accepting_state", "reason_code", "verified_at", "expires_at",
 }
 
-# Written out, not imported. These are the ten internal paths that must never
+# Written out, not imported. These are the internal paths that must never
 # reach a browser; the test below asserts production still equals this set, so
 # a key added or removed there is a deliberate edit here rather than a silent
 # narrowing of what is being checked.
 _EXPECTED_EVIDENCE_KEYS = frozenset({
+    "skill_mentions",
+    "contact_instruction_capture",
+    "contact_instruction_pages",
     "is_active",
     "listing_status",
     "urap_status",
@@ -413,6 +420,11 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "faculty_availability_scan_version",
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
+    "contact_instruction_sources",
+    "research_snapshot",
+    "research_refresh",
+    "lab_snapshot",
+    "lab_refresh",
 })
 
 _LIVE_LISTING = {
@@ -1091,3 +1103,17 @@ class TestADerivedPiNameIsNotServed:
         record = self._program(inferred=False)
         served = project_public_opportunity_payload(dict(record), record)
         assert served["pi_name"] == "Spring Harbor"
+
+
+@pytest.mark.parametrize("projector", [_redact, _list_card, _match_card])
+def test_multisource_ledger_is_private_in_each_public_shape(projector):
+    record = _opportunity()
+    record['metadata']['contact_instruction_pages'] = {
+        'version': 1,
+        'pages': [{'receipt': {'reason': 'PRIVATE_PAGE_STATE_MARKER',
+                               'source_url': 'https://example.edu/private-source',
+                               'next_retry_at': '2030-01-01T00:00:00+00:00'}}],
+    }
+    projected = projector(record)
+    assert 'contact_instruction_pages' not in projected.get('metadata', {})
+    assert 'PRIVATE_PAGE_STATE_MARKER' not in str(projected)

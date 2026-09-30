@@ -74,13 +74,13 @@ describe('generateColdEmailStream SSE parsing', () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('/cold-email/stream');
   });
 
-  it('throws when the stream closes before a done event (caller falls back)', async () => {
+  it('throws when the stream closes before a done event without permitting an automatic replay', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       sseResponse(['{"stage": "drafting"}']),
     ));
     await expect(
       generateColdEmailStream(profile, 'opp-1', { engine: 'ai' }),
-    ).rejects.toThrow(/done event/);
+    ).rejects.toMatchObject({ code: 'invalid_response' });
   });
 
   it('throws on a done payload missing core fields (version-skew guard)', async () => {
@@ -89,10 +89,10 @@ describe('generateColdEmailStream SSE parsing', () => {
     ));
     await expect(
       generateColdEmailStream(profile, 'opp-1', { engine: 'ai' }),
-    ).rejects.toThrow(/malformed done payload/);
+    ).rejects.toMatchObject({ code: 'invalid_response' });
   });
 
-  it('throws on a non-SSE response (old backend → caller falls back)', async () => {
+  it('throws on a non-SSE response without permitting an automatic replay', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       headers: new Headers({ 'content-type': 'application/json' }),
@@ -100,6 +100,6 @@ describe('generateColdEmailStream SSE parsing', () => {
     } as unknown as Response));
     await expect(
       generateColdEmailStream(profile, 'opp-1', { engine: 'ai' }),
-    ).rejects.toThrow(/not an event stream/);
+    ).rejects.toMatchObject({ code: 'invalid_response' });
   });
 });

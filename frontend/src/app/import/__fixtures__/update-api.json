@@ -1,0 +1,101 @@
+{
+  "initial": {
+    "ok": true,
+    "opportunity": {
+      "source": "url_parser",
+      "source_url": "https://example.edu/program",
+      "title": "Program notice",
+      "description_raw": "Original source: Python is required. Deadline: June 1, 2027.",
+      "url": "https://example.edu/program",
+      "organization": "example.edu",
+      "deadline": "June 1, 2027",
+      "posted_date": null,
+      "location": null,
+      "raw_html": null,
+      "extra_fields": {
+        "domain": "example.edu",
+        "description_source": "page_text",
+        "page_meta_summary": "",
+        "needs_manual_review": true,
+        "contact_instruction_capture": {
+          "version": 1,
+          "status": "captured",
+          "reason": null,
+          "attempted_at": "2026-09-29T03:52:53.748817+00:00",
+          "source_url": "https://example.edu/program",
+          "record_source_url": "https://example.edu/program",
+          "requested_source_url": "https://example.edu/program"
+        },
+        "contact_instruction_sources": [
+          {
+            "source_url": "https://example.edu/program",
+            "record_source_url": "https://example.edu/program",
+            "checked_at": "2026-09-29T03:52:53.748817+00:00",
+            "sections": [
+              {
+                "heading": "",
+                "text": "Original source: Python is required. Deadline: June 1, 2027."
+              }
+            ]
+          }
+        ],
+        "suggested_description": "AI suggestion 0",
+        "suggested_skills": [
+          "Python"
+        ],
+        "llm_enriched": true,
+        "inferred_fields": {
+          "title": "llm:url_parser",
+          "suggested_description": "llm:url_parser",
+          "suggested_skills": "llm:url_parser"
+        },
+        "ai_input_scope": "source_excerpt"
+      }
+    },
+    "error": null,
+    "llm_enriched": true
+  },
+  "updated": {
+    "ok": true,
+    "opportunity": {
+      "source": "url_parser",
+      "source_url": "https://example.edu/program",
+      "title": "Program notice",
+      "description_raw": "Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. Updated environmental research opportunity. LATE_NEW_SOURCE: SQL is preferred. Deadline: July 1, 2027.",
+      "url": "https://example.edu/program",
+      "organization": "example.edu",
+      "deadline": "July 1, 2027",
+      "posted_date": null,
+      "location": null,
+      "raw_html": null,
+      "extra_fields": {
+        "domain": "example.edu",
+        "description_source": "page_text",
+        "page_meta_summary": "",
+        "needs_manual_review": true,
+        "contact_instruction_capture": {
+          "version": 1,
+          "status": "unsupported",
+          "reason": "content_limit",
+          "attempted_at": "2026-09-29T03:52:53.752870+00:00",
+          "source_url": "https://example.edu/program",
+          "record_source_url": "https://example.edu/program",
+          "requested_source_url": "https://example.edu/program"
+        },
+        "suggested_description": "AI suggestion 1",
+        "suggested_skills": [
+          "SQL"
+        ],
+        "llm_enriched": true,
+        "inferred_fields": {
+          "title": "llm:url_parser",
+          "suggested_description": "llm:url_parser",
+          "suggested_skills": "llm:url_parser"
+        },
+        "ai_input_scope": "source_excerpt"
+      }
+    },
+    "error": null,
+    "llm_enriched": true
+  }
+}

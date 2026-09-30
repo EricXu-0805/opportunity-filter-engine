@@ -56,6 +56,12 @@ function seedUserScopedValues(): Record<string, string> {
     seeded[key] = `value-of-${key}`;
     localStorage.setItem(key, seeded[key]);
   }
+  const applicationKey = `${STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX}opp-123`;
+  seeded[applicationKey] = 'private pending application';
+  localStorage.setItem(applicationKey, seeded[applicationKey]);
+  for (const prefix of [STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX, STORAGE_KEYS.APPLICATION_MATERIAL_DELETE_PREFIX]) {
+    const key = prefix + 'scope'; seeded[key] = 'private material pending'; localStorage.setItem(key, seeded[key]);
+  }
   seeded[DRAFT_KEY] = 'Dear Professor…';
   localStorage.setItem(DRAFT_KEY, seeded[DRAFT_KEY]);
   return seeded;
@@ -85,6 +91,7 @@ describe('registry sanity', () => {
     // detail) — the next account on this browser must never inherit it.
     expect(USER_SCOPED_KEYS).toContain(STORAGE_KEYS.FEEDBACK_DRAFT);
     expect(USER_SCOPED_PREFIXES).toContain(STORAGE_KEYS.TAILOR_DRAFT_PREFIX);
+    expect(USER_SCOPED_PREFIXES).toContain(STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX);
     expect(USER_SCOPED_KEYS).not.toContain('ofe_auth');
     expect(USER_SCOPED_KEYS).not.toContain(MARKER);
     expect(USER_SCOPED_KEYS).not.toContain(STORAGE_KEYS.MERGE_GRANT);

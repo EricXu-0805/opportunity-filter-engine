@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mail, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { ApiError } from '@/lib/api';
@@ -99,7 +101,8 @@ export default function EmailMeButton({
     } catch (err) {
       setState('error');
       const msg = err instanceof Error ? err.message : String(err);
-      if (err instanceof ApiError && err.status === 503) setMessage(t('email.notConfigured'));
+      if (profileInputMessage(err, t)) setMessage(profileInputMessage(err, t));
+      else if (err instanceof ApiError && err.status === 503) setMessage(t('email.notConfigured'));
       else if (err instanceof ApiError && err.status === 429) setMessage(t('email.rateLimit'));
       // The session expired between opening the dialog and submitting, or the
       // server disagrees about who this is. Say which, rather than "failed".

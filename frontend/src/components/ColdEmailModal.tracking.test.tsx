@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 /**
  * Verified-send tracking contract for the cold-email modal.
  *
@@ -23,8 +24,11 @@ vi.mock('@/i18n/client', () => {
 });
 
 const mockGetVariants = vi.fn();
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
+  validateEmailDraft: emailValidationReceipt,
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn(),
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),
   refineEmail: vi.fn(),
@@ -47,14 +51,19 @@ const getInteractionDetailMock = vi.fn().mockResolvedValue(null);
 const updateInteractionDetailsMock = vi.fn().mockResolvedValue(undefined);
 const confirmContactMock = vi.fn().mockResolvedValue({ type: 'applied' });
 vi.mock('@/lib/supabase', () => ({
-  confirmInteractionContact: (...args: unknown[]) => confirmContactMock(...args),
+  confirmContactEvent: async (...args: unknown[]) => ({ interaction: await confirmContactMock(...args) }),
   trackInteraction: (...args: unknown[]) => trackInteractionMock(...args),
   getInteractionDetail: (...args: unknown[]) => getInteractionDetailMock(...args),
   updateInteractionDetails: (...args: unknown[]) => updateInteractionDetailsMock(...args),
   onAuthChange: () => () => {},
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant } from '@/lib/types';
 
 const profile: ProfileData = {
@@ -78,7 +87,9 @@ const variant: EmailVariant = {
   mailto_link: 'mailto:prof@illinois.edu',
 };
 
-beforeEach(() => {
+beforeEach(async () => {
+  advanceOwnerEpoch('cold-email-tracking-owner');
+  await syncLocalIdentityOwner('cold-email-tracking-owner');
   trackInteractionMock.mockClear();
   getInteractionDetailMock.mockClear().mockResolvedValue(null);
   updateInteractionDetailsMock.mockClear();
@@ -90,7 +101,7 @@ beforeEach(() => {
     configurable: true,
     writable: true,
   });
-  vi.stubGlobal('open', vi.fn());
+  vi.stubGlobal('open', vi.fn(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() })));
 });
 
 afterEach(() => {
@@ -157,6 +168,7 @@ describe('ColdEmailModal — verified send tracking', () => {
       // modal writes on its own.)
       expect(confirmContactMock).toHaveBeenCalledWith(
         'opp-1',
+        expect.objectContaining({ id: expect.any(String), recipient: expect.any(String), subject: expect.any(String), body: expect.any(String) }),
         expect.objectContaining({ epoch: expect.any(Number), generation: expect.any(Number) }),
       );
     });
@@ -175,23 +187,23 @@ describe('ColdEmailModal — verified send tracking', () => {
 describe('W12 draft freshness — in-tab AI cache', () => {
   it('expires a cached draft after the TTL', async () => {
     const { aiCacheEntryIsStale, AI_CACHE_TTL_MS } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1' }, at: 1_000 };
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1')).toBe(false);
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: 1_000 };
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS + 1, 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(true);
+    expect(aiCacheEntryIsStale(entry, 1_000 + AI_CACHE_TTL_MS - 1, 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 
   it('expires a cached draft when the corpus generation moves', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
-    const entry = { response: { corpus_version: 'v1' }, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(true);
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1')).toBe(false);
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, corpus_version: 'v1', pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(true);
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v1', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 
-  it('keeps pre-W12 cached drafts on the TTL rule alone', async () => {
+  it('allows missing corpus metadata only when pipeline compatibility is established', async () => {
     const { aiCacheEntryIsStale } = await import('./ColdEmailModal');
-    // No corpus_version on the cached response (old backend) — only the TTL
-    // can expire it; a null comparison must not spuriously invalidate.
-    const entry = { response: {}, at: Date.now() };
-    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2')).toBe(false);
+    // Corpus metadata keeps its legacy behavior; pipeline metadata is now
+    // independently required, so an unversioned AI draft is never reused.
+    const entry = { response: { target_version: EMAIL_TARGET_VERSION, pipeline_version: 'pipeline-current' }, at: Date.now() };
+    expect(aiCacheEntryIsStale(entry, Date.now(), 'v2', 'pipeline-current', EMAIL_TARGET_VERSION)).toBe(false);
   });
 });

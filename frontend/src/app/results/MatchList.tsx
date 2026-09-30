@@ -24,6 +24,9 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     // ordinary case, since `data.results` is stable between fetches — still
     // skips, which is the only thing this memo was ever for.
     prev.match === next.match &&
+    prev.detailHref === next.detailHref &&
+    prev.isViewed === next.isViewed &&
+    prev.onViewOpportunity === next.onViewOpportunity &&
     prev.isFavorited === next.isFavorited &&
     prev.interaction === next.interaction &&
     prev.favoritePending === next.favoritePending &&
@@ -37,6 +40,7 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.feedbackVerdict === next.feedbackVerdict &&
     prev.position === next.position &&
     prev.onDraftEmail === next.onDraftEmail &&
+    prev.onOpenResume === next.onOpenResume &&
     prev.onToggleFavorite === next.onToggleFavorite &&
     prev.onTrackInteraction === next.onTrackInteraction &&
     prev.onRetryFavSave === next.onRetryFavSave &&
@@ -47,6 +51,10 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
 MemoizedMatchCard.displayName = 'MemoizedMatchCard';
 
 export interface MatchListProps {
+  sessionId?: string | null;
+  returnUrl?: string;
+  viewedIds?: Set<string>;
+  onViewOpportunity?: (id: string) => void;
   matches: MatchResult[];
   profile: ProfileData | null;
   highlightSet: Set<string>;
@@ -82,6 +90,7 @@ export interface MatchListProps {
   interactionsUnready: boolean;
   feedback: Map<string, MatchVerdict>;
   onDraftEmail: (opportunityId: string) => void;
+  onOpenResume?: (opportunityId: string) => void;
   onToggleFavorite: (opportunityId: string) => void;
   onTrackInteraction: (opportunityId: string, type: InteractionType) => void;
   onRetryFavSave: (opportunityId: string) => void;
@@ -98,6 +107,7 @@ export interface MatchListProps {
 }
 
 export function MatchList({
+  sessionId, returnUrl, viewedIds, onViewOpportunity,
   matches,
   profile,
   highlightSet,
@@ -114,6 +124,7 @@ export function MatchList({
   interactionsUnready,
   feedback,
   onDraftEmail,
+  onOpenResume,
   onToggleFavorite,
   onTrackInteraction,
   onRetryFavSave,
@@ -158,9 +169,9 @@ export function MatchList({
             // MatchCard's own local state (tailorOpen) and everything
             // TailorModal owns internally (draft, in-flight request, AI
             // result) are destroyed with it, not just visually hidden. A
-            // same-uid rerender (ownerReady flipping on a retry, a data
-            // reload, etc.) keeps the SAME key, so nothing remounts and
-            // in-progress work survives untouched.
+            // same-owner rerender with the same rows keeps this key. The
+            // full résumé and email editors live above the list so they also
+            // survive when loading, filtering or pagination removes the row.
             <Fragment key={`${identityGeneration}:${match.opportunity.id}`}>
               <div
                 id={`match-card-${match.opportunity.id}`}
@@ -168,8 +179,12 @@ export function MatchList({
               >
                 <MemoizedMatchCard
                   match={match}
+                  detailHref={`/opportunities/${encodeURIComponent(match.opportunity.id)}${returnUrl ? `?returnTo=${encodeURIComponent(returnUrl)}${sessionId ? `&returnSession=${encodeURIComponent(sessionId)}` : ''}` : ''}`}
+                  isViewed={viewedIds?.has(match.opportunity.id)}
+                  onViewOpportunity={onViewOpportunity}
                   profile={profile}
                   onDraftEmail={onDraftEmail}
+                  onOpenResume={onOpenResume}
                   isFavorited={favs.has(match.opportunity.id)}
                   onToggleFavorite={onToggleFavorite}
                   favoritePending={!ownerReady || pendingFavIds.has(match.opportunity.id)}

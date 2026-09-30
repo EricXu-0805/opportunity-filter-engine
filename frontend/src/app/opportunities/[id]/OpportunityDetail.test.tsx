@@ -6,18 +6,24 @@
 // OTHER child is stubbed so this stays a narrow, fast test of the wiring,
 // with the REAL TrackerPanel doing the actual mount/unmount work.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useRef } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useEffect, useRef, useState } from 'react';
+import type { Opportunity, ProfileData } from '@/lib/types';
+import type { ProfileHydration } from '@/lib/profile-sync';
+import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Echoing only the key made every interpolated value invisible: "Source:
 // jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
 // `detail.source`, so no assertion in this file could tell them apart.
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
+    locale: 'en',
     t: (key: string, params?: Record<string, unknown>) =>
       params ? `${key}:${Object.values(params).join('|')}` : key,
   }),
 }));
+
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(window.location.search) }));
 
 vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 // Rendered as a sentinel rather than null: "the contact reveal is absent" is
@@ -27,9 +33,22 @@ vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 // modal and re-fetches the record on success). Deleting the parent's gate must
 // make these tests red, not merely change which branch renders.
 const contactRevealMounts = vi.hoisted(() => [] as string[]);
+const refreshHook = vi.hoisted(() => ({
+  current: { status: 'ready', refresh: vi.fn().mockResolvedValue(true) } as ProfileRefreshState,
+  enabled: undefined as boolean | undefined,
+  onAccepted: undefined as ((loaded: ProfileHydration) => void) | undefined,
+}));
+vi.mock('@/lib/use-profile-refresh', () => ({
+  useProfileRefresh: (enabled: boolean, onAccepted?: (loaded: ProfileHydration) => void) => { refreshHook.enabled = enabled; refreshHook.onAccepted = onAccepted; return refreshHook.current; },
+}));
+beforeEach(() => {
+  refreshHook.current = { status: 'ready', refresh: vi.fn().mockResolvedValue(true) };
+  refreshHook.enabled = undefined; refreshHook.onAccepted = undefined;
+});
 vi.mock('./ContactRevealSection', () => ({
   ContactRevealSection: (props: { opp: { id: string } }) => {
-    contactRevealMounts.push(props.opp.id);
+    const mountedTarget = useRef(props.opp.id);
+    useEffect(() => { contactRevealMounts.push(mountedTarget.current); }, []);
     return (
       <div data-testid="contact-reveal">
         <a data-testid="contact-reveal-revealed" href="mailto:pi@example.edu">email</a>
@@ -88,15 +107,30 @@ vi.mock('./InteractionPills', () => ({
 // The Cold Email modal was never stubbed here, so nothing checked that a
 // dead target stops mounting it — the real one is dynamically imported and
 // simply never appeared in these tests.
-vi.mock('@/components/ColdEmailModal', () => ({
-  default: () => <div data-testid="cold-email-modal" />,
+const writingProps = vi.hoisted(() => ({
+  tailor: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
+  email: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
+  resume: null as { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean } | null,
+}));
+vi.mock('@/components/CheckedColdEmailModal', () => ({
+  default: function MockColdEmail(props: { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
+    writingProps.email = props;
+    const mount = useRef(Math.random().toString(36).slice(2));
+    const [text, setText] = useState('Original email');
+    return <div data-testid="cold-email-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'}><textarea aria-label="Email buffer" value={text} onChange={(event) => setText(event.target.value)} /></div>;
+  },
 }));
 vi.mock('./ChatDrawer', () => ({ ChatDrawer: () => <div data-testid="chat-drawer" /> }));
 vi.mock('./ProfessorFollowToggle', () => ({
   ProfessorFollowToggle: () => <div data-testid="professor-follow" />,
 }));
-vi.mock('@/components/ResumeRenovationModal', () => ({
-  default: () => <div data-testid="renovation-modal" />,
+vi.mock('@/components/ResumeWorkspaceModal', () => ({
+  default: function MockResumeWorkspace(props: { profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
+    writingProps.resume = props;
+    const mount = useRef(Math.random().toString(36).slice(2));
+    const [text, setText] = useState('Original résumé');
+    return <div data-testid="renovation-modal" data-mount-id={mount.current} data-refresh-status={props.profileRefresh?.status ?? 'missing'}><textarea aria-label="Résumé buffer" value={text} onChange={(event) => setText(event.target.value)} /></div>;
+  },
 }));
 vi.mock('@/components/OpportunityChatbot', () => ({
   default: function MockOpportunityChatbot() {
@@ -113,12 +147,15 @@ vi.mock('@/components/OpportunityChatbot', () => ({
 // one thing a missing key would fail to cause. The real ownerReady/
 // ownerScopeKey props are rendered too, so the wiring of those (separately
 // from the key) stays covered.
-vi.mock('@/components/TailorModal', () => ({
-  default: function MockTailorModal(props: { isOpen: boolean; ownerReady: boolean; ownerScopeKey: string | null }) {
+vi.mock('@/components/CheckedTailorModal', () => ({
+  default: function MockTailorModal(props: { isOpen: boolean; ownerReady: boolean; ownerScopeKey: string | null; profile?: ProfileData; profileRefresh?: ProfileRefreshState; profileAvailable?: boolean; targetReady?: boolean }) {
+    writingProps.tailor = props;
+    const [text, setText] = useState("Original tailor");
     const mountIdRef = useRef(Math.random().toString(36).slice(2));
     if (!props.isOpen) return null;
     return (
       <div data-testid="mock-tailor-modal">
+        <textarea aria-label="Tailor buffer" value={text} onChange={event => setText(event.target.value)} />
         <span data-testid="mount-id">{mountIdRef.current}</span>
         <span data-testid="owner-ready">{String(props.ownerReady)}</span>
         <span data-testid="owner-scope-key">{String(props.ownerScopeKey)}</span>
@@ -146,6 +183,11 @@ vi.mock('./use-opportunity-detail', () => ({
 
 import OpportunityDetail from './OpportunityDetail';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode } from '@/lib/identity-owner';
+
+// Hook state below says ownerReady=true; establish its matching readable local
+// realm before mounting, rather than depending on an attachment child's effect.
+beforeEach(() => { advanceOwnerEpoch(null); expect(enterLocalOnlyMode()).toBe(true); });
 
 function baseHookResult(overrides: Record<string, unknown> = {}) {
   return {
@@ -274,7 +316,7 @@ describe('OpportunityDetail — TrackerPanel is keyed by identityGeneration', ()
 });
 
 describe('OpportunityDetail — TailorModal is keyed by identityGeneration (C1-R2B)', () => {
-  it('an identityGeneration bump force-remounts TailorModal — proven via a sentinel mount-id that can ONLY change on a genuine unmount+remount, not merely on a prop change (the real component\'s own ownerScopeKey-driven internal reset would otherwise mask a missing key). tailorOpen is kept true across BOTH renders (the mock fully controls it) to isolate the key\'s OWN protection from hydrate()\'s separate setTailorOpen(false) safety net', async () => {
+  it('retires the old Tailor lifetime on an identity change and only acquires the new owner after closing', async () => {
     window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
       institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
       research_interests: 'ml', skills: [],
@@ -303,8 +345,13 @@ describe('OpportunityDetail — TailorModal is keyed by identityGeneration (C1-R
     });
     rerender(<OpportunityDetail opp={opp} />);
 
-    const mountId2 = screen.getByTestId('mount-id').textContent;
-    expect(mountId2).not.toBe(mountId1); // genuinely torn down and recreated — a fresh instance
+    expect(screen.queryByTestId('mount-id')).toBeNull();
+    mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2', tailorOpen: false });
+    rerender(<OpportunityDetail opp={opp} />);
+    mockHookState.current = baseHookResult({ identityGeneration: 2, ownerScopeKey: 'owner-2', tailorOpen: true });
+    rerender(<OpportunityDetail opp={opp} />);
+    const mountId2 = (await screen.findByTestId('mount-id')).textContent;
+    expect(mountId2).not.toBe(mountId1); // a fresh open lifetime, never the old draft
     expect(screen.getByTestId('owner-scope-key').textContent).toBe('owner-2'); // real props still flow through
   });
 
@@ -491,7 +538,7 @@ describe('OpportunityDetail target-truth postures', () => {
       'renovation-modal', 'opportunity-chatbot',
     ];
 
-    it.each(POSTURES)('tears down every action surface when a target becomes %s', async (_label, truth) => {
+    it.each(POSTURES)('pauses retained editors and removes other action surfaces when a target becomes %s', async (_label, truth) => {
       // A transition, not a fresh render. Four of these arrive through
       // next/dynamic, so querying a freshly-rendered dead target proves
       // nothing: the sentinel would be absent for a tick either way. Mount
@@ -504,9 +551,13 @@ describe('OpportunityDetail target-truth postures', () => {
 
       rerender(<OpportunityDetail opp={targetWith(truth)} />);
 
-      for (const id of [...DYNAMIC, 'chat-drawer']) {
-        expect(screen.queryByTestId(id), id).toBeNull();
+      for (const id of ['cold-email-modal', 'mock-tailor-modal', 'renovation-modal']) {
+        expect(screen.getByTestId(id), id).toBeInTheDocument();
       }
+      for (const props of [writingProps.email, writingProps.tailor, writingProps.resume]) {
+        expect(props?.targetReady).toBe(false);
+      }
+      for (const id of ['opportunity-chatbot', 'chat-drawer']) expect(screen.queryByTestId(id), id).toBeNull();
       // And the openers the header would have rendered controls for.
       expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
       expect(screen.getByTestId('header-tailor-handler')).toHaveTextContent('false');
@@ -576,6 +627,164 @@ describe('OpportunityDetail target-truth postures', () => {
     for (const id of ALWAYS) {
       expect(screen.getByTestId(id), id).toBeInTheDocument();
     }
+  });
+});
+
+
+describe('detail return link before private hydration', () => {
+  afterEach(() => window.history.replaceState({}, '', '/'));
+  it.each(['loading', 'failed'])('keeps filters and the opaque ticket immediately when favorites are %s', (phase) => {
+    window.history.replaceState({}, '', '/opportunities/opp-1?returnSession=0123456789abcdef&returnTo=%2Fresults%3Ftab%3Dall%26q%3Drobotics');
+    mockHookState.current = baseHookResult({ ownerReady: false, favoriteLoading: phase === 'loading', favoriteError: phase === 'failed' });
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('return-to-results')).toHaveAttribute('href', '/results?tab=all&q=robotics&returnSession=0123456789abcdef');
+  });
+  it('rejects external return routes and invalid tickets without opening a redirect', () => {
+    window.history.replaceState({}, '', '/opportunities/opp-1?returnSession=bad&returnTo=https%3A%2F%2Fevil.example%2Fresults');
+    mockHookState.current = baseHookResult({ ownerReady: false });
+    render(<OpportunityDetail opp={opp} />);
+    expect(screen.getByTestId('return-to-results')).toHaveAttribute('href', '/results');
+  });
+});
+
+
+describe('OpportunityDetail shared profile refresh wiring', () => {
+  let originalResumeFlag: unknown;
+  beforeEach(() => {
+    originalResumeFlag = releaseFlags.resumeRenovate;
+    releaseFlags.resumeRenovate = true;
+    contactRevealMounts.length = 0;
+    writingProps.email = null; writingProps.resume = null;
+    window.localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({
+      institution: 'UIUC', major: 'CS', grade: 'Sophomore', is_international: false,
+      research_interests: 'ml', skills: [],
+    }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true });
+  });
+  afterEach(() => { releaseFlags.resumeRenovate = originalResumeFlag; });
+
+  it('forwards the same refresh state and retry to both persistent writing windows without remounting them', async () => {
+    const refresh = vi.fn().mockResolvedValue(true);
+    refreshHook.current = { status: 'ready', refresh };
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const email = await screen.findByTestId('cold-email-modal');
+    const resume = await screen.findByTestId('renovation-modal');
+    const emailMount = email.dataset.mountId;
+    const resumeMount = resume.dataset.mountId;
+    expect(refreshHook.enabled).toBe(true);
+    for (const status of ['checking', 'failed', 'conflict', 'local-only', 'ready', 'offline'] as const) {
+      refreshHook.current = { status, refresh };
+      rerender(<OpportunityDetail opp={opp} />);
+      expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+      expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+      expect(screen.getByTestId('cold-email-modal')).toHaveAttribute('data-refresh-status', status);
+      expect(screen.getByTestId('renovation-modal')).toHaveAttribute('data-refresh-status', status);
+      expect(screen.getByTestId('cold-email-modal')).toHaveAttribute('data-mount-id', emailMount);
+      expect(screen.getByTestId('renovation-modal')).toHaveAttribute('data-mount-id', resumeMount);
+      if (status === 'failed') fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    }
+    expect(refresh).toHaveBeenCalledTimes(1);
+    // Refresh re-renders are not contact reveals and must not inflate mount evidence.
+    expect(contactRevealMounts).toEqual(['opp-1']);
+  });
+
+  it('does not enable the shared refresher before the detail owner is ready', async () => {
+    mockHookState.current = baseHookResult({ ownerReady: false, emailModalOpen: true, renovationOpen: true });
+    refreshHook.current = { status: 'checking', refresh: vi.fn().mockResolvedValue(false) };
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    await screen.findByTestId('renovation-modal');
+    expect(refreshHook.enabled).toBe(false);
+    expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+    expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+    mockHookState.current = baseHookResult({ ownerReady: true, emailModalOpen: true, renovationOpen: true });
+    refreshHook.current = { status: 'ready', refresh: vi.fn().mockResolvedValue(true) };
+    rerender(<OpportunityDetail opp={opp} />);
+    expect(refreshHook.enabled).toBe(true);
+    expect(writingProps.email?.profileRefresh).toBe(refreshHook.current);
+    expect(writingProps.resume?.profileRefresh).toBe(refreshHook.current);
+  });
+});
+
+
+describe('OpportunityDetail whole-profile deletion while writing', () => {
+  let originalResumeFlag: unknown;
+  beforeEach(() => { originalResumeFlag = releaseFlags.resumeRenovate; releaseFlags.resumeRenovate = true; });
+  afterEach(() => { releaseFlags.resumeRenovate = originalResumeFlag; });
+  it('renders the exact accepted candidate, then retires it when the source reverts after the mirror catches up', async () => {
+    const old = { institution: 'UIUC', college: 'Engineering', major: 'CS', grade: 'Junior',
+      skills: [], is_international: false, research_interests: 'robots' } as ProfileData;
+    const fresh = { ...old, major: 'New with local journal edit' };
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(old));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true });
+    render(<OpportunityDetail opp={opp} />);
+    const editor = await screen.findByRole('textbox', { name: 'Email buffer' });
+    fireEvent.change(editor, { target: { value: 'Keep my manual draft' } });
+    act(() => refreshHook.onAccepted!({ profile: fresh, baseProfile: { ...old, grade: 'Senior' }, revision: 2,
+      token: captureOwnerToken(), source: 'cloud', hasPending: true, conflictKeys: [], conflicts: [], quarantineFailed: false }));
+    expect(writingProps.email?.profile).toEqual(fresh);
+    expect(writingProps.resume?.profile).toEqual(fresh);
+    expect(screen.getByRole('textbox', { name: 'Email buffer' })).toBe(editor);
+    act(() => { localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(fresh)); window.dispatchEvent(new Event('storage')); });
+    expect(writingProps.email?.profile).toEqual(fresh);
+    act(() => { localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(old)); window.dispatchEvent(new Event('storage')); });
+    expect(writingProps.email?.profile).toEqual(old);
+    expect(editor).toHaveValue('Keep my manual draft');
+  });
+  it('accepts an absent hydration immediately without using the old raw mirror as current evidence', async () => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', skills: [] }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true }); render(<OpportunityDetail opp={opp} />);
+    const editor = await screen.findByRole('textbox', { name: 'Email buffer' });
+    act(() => refreshHook.onAccepted!({ profile: null, baseProfile: null, revision: 0, token: captureOwnerToken(),
+      source: 'cloud-absent', hasPending: false, conflictKeys: [], conflicts: [], quarantineFailed: false }));
+    expect(screen.getByRole('textbox', { name: 'Email buffer' })).toBe(editor);
+    expect(writingProps.email?.profileAvailable).toBe(false);
+    expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
+  });
+  it('keeps already-open drafts when the target closes, without opening a new historical-target editor', async () => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', skills: [] }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true, tailorOpen: true });
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const labels = ['Email buffer', 'Résumé buffer', 'Tailor buffer'];
+    for (const label of labels) fireEvent.change(await screen.findByRole('textbox', { name: label }), { target: { value: `Keep ${label}` } });
+    const closed: Opportunity = { ...(opp as Opportunity), target_truth: { listing_state: 'closed' as const, reference_only: true, actionable: false,
+      accepting_state: 'not_accepting' as const, reason_code: 'listing_closed', verified_at: null, expires_at: null } };
+    rerender(<OpportunityDetail opp={closed} />);
+    for (const label of labels) expect(screen.getByRole('textbox', { name: label })).toHaveValue(`Keep ${label}`);
+    for (const props of [writingProps.email, writingProps.resume, writingProps.tailor]) {
+      expect(props?.targetReady).toBe(false); expect(props?.profileAvailable).toBe(true);
+    }
+    mockHookState.current = baseHookResult(); rerender(<OpportunityDetail opp={closed} />);
+    expect(screen.queryByTestId('cold-email-modal')).toBeNull();
+    expect(screen.queryByTestId('renovation-modal')).toBeNull();
+    expect(screen.queryByTestId('mock-tailor-modal')).toBeNull();
+  });
+  it('keeps all three manually edited buffers mounted and withdraws current source authority on deletion', async () => {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ institution: 'UIUC', major: 'CS', grade: 'Junior', skills: [] }));
+    mockHookState.current = baseHookResult({ emailModalOpen: true, renovationOpen: true, tailorOpen: true });
+    const { rerender } = render(<OpportunityDetail opp={opp} />);
+    const email = await screen.findByRole('textbox', { name: 'Email buffer' });
+    const resume = await screen.findByRole('textbox', { name: 'Résumé buffer' });
+    const tailor = await screen.findByRole('textbox', { name: 'Tailor buffer' });
+    fireEvent.change(tailor, { target: { value: 'Keep unsaved tailor' } });
+    fireEvent.change(email, { target: { value: 'Keep unsaved email' } });
+    fireEvent.change(resume, { target: { value: 'Keep unsaved résumé' } });
+    act(() => { localStorage.removeItem(STORAGE_KEYS.PROFILE); window.dispatchEvent(new Event('storage')); });
+    rerender(<OpportunityDetail opp={opp} />);
+    expect(screen.getByRole('textbox', { name: 'Email buffer' })).toBe(email);
+    expect(screen.getByRole('textbox', { name: 'Résumé buffer' })).toBe(resume);
+    expect(screen.getByRole('textbox', { name: 'Tailor buffer' })).toBe(tailor);
+    expect(tailor).toHaveValue('Keep unsaved tailor');
+    expect(writingProps.tailor?.profileAvailable).toBe(false);
+    expect(writingProps.tailor?.profileRefresh).toBe(refreshHook.current);
+    expect(email).toHaveValue('Keep unsaved email'); expect(resume).toHaveValue('Keep unsaved résumé');
+    expect(writingProps.email?.profileAvailable).toBe(false); expect(writingProps.resume?.profileAvailable).toBe(false);
+    expect(writingProps.email?.targetReady).toBe(true); expect(writingProps.resume?.targetReady).toBe(true);
+    expect(screen.getByTestId('header-email-handler')).toHaveTextContent('false');
+    expect(screen.getByTestId('header-renovate-handler')).toHaveTextContent('false');
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBeNull();
+    mockHookState.current = baseHookResult(); rerender(<OpportunityDetail opp={opp} />);
+    expect(screen.queryByTestId('cold-email-modal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('renovation-modal')).not.toBeInTheDocument();
   });
 });
 

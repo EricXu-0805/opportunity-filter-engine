@@ -31,13 +31,21 @@ from backend.lib.llm import (
 )
 from backend.lib.opportunity_detail import build_detail_fields
 from backend.lib.position_truth import displayed_title
+from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
+from backend.lib.public_opportunity_detail import (
+    _UNVERIFIED_PUBLICATION_KEYS as _UNVERIFIED_PUBLICATION_KEYS,
+)
+from backend.lib.public_opportunity_detail import (
+    REDACTED_FIELDS,
+    project_public_detail,
+    writing_target_version,
+)
 from backend.lib.public_projection import (
     project_public_opportunity_payload,
     redact_embedded_emails,
     sanitize_public_urls,
 )
-from backend.lib.publication_attribution import works_are_verified
 from backend.lib.release_scope import (
     feature_enabled,
     release_visible_opportunities,
@@ -68,7 +76,15 @@ from src.tracking.professor_profiles import canonical_professor_id
 router = APIRouter()
 logger = logging.getLogger("ofe.opportunities")
 
-REDACTED_FIELDS = {"contact_email", "pi_email", "professor_id"}
+CHAT_PROMPT_MAX_CHARACTERS = 120_000
+
+
+def _check_chat_prompt(messages: list[dict]) -> None:
+    check_prompt_size(
+        messages, limit=CHAT_PROMPT_MAX_CHARACTERS, code="CHAT_INPUT_TOO_LARGE",
+        message="The combined chat input is too long. Reduce the conversation or profile and try again.",
+    )
+
 
 # The exact release scope the current frontend build sends on every server-side
 # detail fetch (frontend/src/lib/release-scope.ts). It doubles as a capability
@@ -123,13 +139,6 @@ _stats_cache_time: float = 0
 _STATS_TTL = 300
 
 
-# The whole publication block, so an unverified record leaks no part of it —
-# including the resolved author id, which on its own would still assert that
-# some OpenAlex person is this professor.
-_UNVERIFIED_PUBLICATION_KEYS = ("recent_works", "publication_attribution_status",
-                                "publication_author_id")
-
-
 def _tri_state(value: object) -> str:
     """Render a nullable boolean honestly: only real True/False claim yes/no;
     None/absent is "unknown" — never coerced to a confident False (W11)."""
@@ -152,35 +161,8 @@ def _public_payload(value):
 
 
 def _redact(opp: dict) -> dict:
-    opp = faculty_safe_public_record(opp)
-    out = {k: v for k, v in opp.items() if k not in REDACTED_FIELDS}
-    # Position truthfulness (W11): strip an unsupported "Prof." honorific
-    # baked into legacy titles when the record's own stated rank contradicts
-    # it. Copy-on-write on the fresh dict; the corpus object is untouched.
-    honest = displayed_title(opp)
-    if honest != out.get("title"):
-        out["title"] = honest
-    # Publication trust boundary: works whose attribution is anything but
-    # explicitly verified (name_match, absent, junk) are internal candidates
-    # for the recollection/verification effort, not the professor's
-    # publications — never served. Copy-on-write — the metadata dict is
-    # shared with the in-process corpus cache.
-    md = out.get("metadata")
-    if (
-        isinstance(md, dict)
-        and any(k in md for k in _UNVERIFIED_PUBLICATION_KEYS)
-        and not works_are_verified(opp)
-    ):
-        out["metadata"] = {
-            k: v for k, v in md.items() if k not in _UNVERIFIED_PUBLICATION_KEYS
-        }
-    # Historical targets stay readable — a saved link must keep working — so
-    # detail answers 200 and carries the truth that lets every surface refuse
-    # to offer an action on it. The projector owns the contact/URL boundary,
-    # the envelope and the neutralization; this function only decides which
-    # fields a detail response starts from.
-    return project_public_opportunity_payload(out, opp)
-
+    """Compatibility entry point shared by detail, batch, similar and chat."""
+    return project_public_detail(opp)
 
 # Heavy fields the browse-list cards never render — the raw HTML scrape and the
 # internal metadata blob. Dropped only from the paginated LIST response (cuts
@@ -399,8 +381,10 @@ async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     })
 
 
+# FastAPI runs synchronous handlers in its worker pool, keeping the full
+# corpus scan and public projection off the event loop used by health/detail.
 @router.get("/opportunities/{opportunity_id}/similar")
-async def get_similar_opportunities(
+def get_similar_opportunities(
     opportunity_id: str,
     limit: int = Query(default=5, ge=1, le=20),
 ):
@@ -507,6 +491,7 @@ async def get_opportunity(
             headers=_TRUTH_CAPABILITY_HEADERS,
         )
     detail = _redact(opp)
+    detail["writing_target_version"] = writing_target_version(detail)
     # M03: every detail field as source / inferred / unknown, read off the
     # projection just built (so nothing the projector stripped comes back)
     # with the canonical record consulted only for how each value was made.
@@ -761,7 +746,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
             f"- Skills: {_format_skill_list(p.hard_skills)}",
             f"- Coursework: {', '.join(p.coursework) or '(none listed)'}",
             f"- Experience level: {p.experience_level or '—'}",
-            f"- Research interests: {' '.join((p.research_interests_text or '').split())[:300] or '(none stated)'}",
+            f"- Research interests: {_sanitize_field(p.research_interests_text, max_len=None) or '(none stated)'}",
             "",
             "Personalize answers when the user asks fit-style questions (e.g., 'am I eligible', 'what gaps do I have').",
         ])
@@ -775,6 +760,7 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
 
 
 def _llm_chat_call(messages: list[dict], model_id: str | None = None) -> str | None:
+    _check_chat_prompt(messages)
     # User picked an OpenRouter model → route there; on any miss (unknown id,
     # OpenRouter unconfigured or failing) fall through to the default chain so
     # the picker can never make chat worse than the default.
@@ -791,6 +777,7 @@ def _llm_chat_call(messages: list[dict], model_id: str | None = None) -> str | N
 
 
 def _llm_chat_stream(messages: list[dict], model_id: str | None = None) -> Iterator[str]:
+    _check_chat_prompt(messages)
     # Streaming mirror of _llm_chat_call: a picked model that yields ZERO
     # chunks (unknown id, OpenRouter unconfigured or dead) falls through to
     # the default chain. A mid-stream raise after partial output propagates —
@@ -925,6 +912,9 @@ async def chat_with_opportunity(
     for msg in body.history[-10:]:
         messages.append({"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": body.message})
+    # Refuse before SSE headers or local fallback can turn a size error into
+    # a successful-looking, incomplete answer. Every selected message is kept.
+    _check_chat_prompt(messages)
 
     if stream == 1 or "text/event-stream" in request.headers.get("accept", ""):
         # Sync generator → Starlette iterates it in a threadpool, so the

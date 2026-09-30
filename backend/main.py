@@ -31,13 +31,17 @@ from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 init_sentry()
 
 from fastapi import FastAPI, Request, Response
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import TypeAdapter, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.routes import (
     admin,
+    application_materials,
     cold_email,
     import_text,
     import_url,
@@ -45,6 +49,8 @@ from backend.routes import (
     opportunities,
     ops,
     orders,
+    private_cold_email,
+    private_import_targets,
     professors,
     push,
     readiness,
@@ -53,6 +59,8 @@ from backend.routes import (
     roadmap,
     saved_searches,
     tailor,
+    target_resume_ai,
+    target_resume_export,
 )
 from backend.routes import email as email_routes
 
@@ -85,6 +93,8 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "/api/tailor/status": (60, 60),
     "/api/tailor": (10, 60),
     "/api/resume/github": (10, 60),
+    # Local font parsing/layout is bounded work, although it is not an AI call.
+    "/api/resume/full-target/export": (10, 60),
     "/api/email/send-matches": (3, 3600),
     "/api/email/send-favorites": (3, 3600),
     "/api/import-url": (5, 60),
@@ -207,6 +217,10 @@ def _llm_degradable(path: str) -> bool:
     )
 
 _LLM_COST_PREFIXES = ("/api/cold-email", "/api/import-url", "/api/import-text")
+# Under the cold-email prefix but provider-free: the manual-draft check and the
+# deterministic template variants. They keep their per-IP bucket; billing them
+# would 429 a student's own draft whenever the AI budget is spent.
+_PROVIDER_FREE_PATHS = frozenset({"/api/cold-email/validate", "/api/cold-email/variants"})
 _EMAIL_SEND_PATHS = frozenset(
     {
         "/api/email/send-matches",
@@ -256,6 +270,8 @@ def _billable_class(request: Request, path: str) -> str | None:
         return "email"
     if path.startswith("/api/tailor") and not path.startswith("/api/tailor/status"):
         return "llm"
+    if path in _PROVIDER_FREE_PATHS:
+        return None
     if path.startswith(_LLM_COST_PREFIXES):
         return "llm"
     if path.startswith("/api/opportunities/") and path.endswith("/chat"):
@@ -360,12 +376,47 @@ def _release_reservation(bucket: list, slot: _RateSlot) -> None:
         pass
 
 
+def _llm_dispatch_reserver(bucket_key: str, max_requests: int, window: int):
+    """A handler's way to pay for each further provider dispatch it fans out.
+
+    Admission reserves one per-IP slot and one global LLM slot per request. A
+    route that splits one request into several provider calls (the chunked
+    résumé extraction) would otherwise reach the provider eight times on one
+    reservation, so each call after the first takes one more slot in BOTH
+    buckets, or is not made. Taken just before the dispatch and never refunded:
+    by then the call is being paid for.
+    """
+    def reserve() -> bool:
+        now = time.time()
+        with _rate_lock:
+            own = [t for t in _rate_buckets[bucket_key] if _slot_time(t) > now - window]
+            shared = [t for t in _global_buckets["llm"] if _slot_time(t) > now - 60]
+            _rate_buckets[bucket_key] = own
+            _global_buckets["llm"] = shared
+            if len(own) >= max_requests or len(shared) >= GLOBAL_LLM_PER_MIN:
+                return False
+            own.append(now)
+            shared.append(_RateSlot(now))
+            return True
+
+    return reserve
+
+
+def _refuse_llm_dispatch() -> bool:
+    return False
+
+
+def _allow_llm_dispatch() -> bool:
+    return True
+
+
 RATE_LIMIT_DISABLED = os.environ.get("OFE_DISABLE_RATE_LIMIT") == "1"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if RATE_LIMIT_DISABLED:
+            request.state.reserve_llm_dispatch = _allow_llm_dispatch
             # Still consume the marker. It is an internal signal between the
             # truth guard and this middleware; leaking it to clients when rate
             # limiting happens to be off would publish an undocumented field
@@ -449,6 +500,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     _global_buckets[klass].append(global_slot)
                     global_reserved = True
 
+        request.state.reserve_llm_dispatch = (
+            _llm_dispatch_reserver(bucket_key, max_requests, window)
+            if klass == "llm" and global_reserved else _refuse_llm_dispatch
+        )
         response = await call_next(request)
         # Refund the GLOBAL ceiling only, and only when nothing was spent. The
         # two buckets measure different things and must not be refunded alike:
@@ -500,6 +555,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # authenticated tier is also token-varied, which no shared cache
             # keys on.
             or path == "/api/ready"
+            or path.rstrip("/") == "/api/private-import-targets"
+            or path.startswith("/api/private-import-targets/")
+            or path.rstrip("/") in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan", "/api/resume/full-target/export"}
         ):
             # Admin responses can contain student email addresses, feedback
             # text, order rows, and internal notes. The X-Admin-Token custom
@@ -523,6 +581,9 @@ def _release_feature_for_path(path: str) -> ReleaseFeature | None:
         "/api/tailor/structure",
         "/api/tailor/renovate",
         "/api/tailor/bullet",
+        "/api/tailor/full-target/suggestions",
+        "/api/tailor/full-target/selection-plan",
+        "/api/resume/full-target/export",
     }:
         return "resume_renovate"
     if path == "/api/chat/models":
@@ -581,6 +642,28 @@ def _request_body_limit_from_env() -> int:
     return value
 
 
+def _full_target_body_limit_from_env() -> int:
+    """The full-document suggestion route gets its own bounded envelope room."""
+    from backend.lib.target_resume_ai_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
+def _export_body_limit_from_env() -> int:
+    """Use the export contract independently of the AI request envelope."""
+    from backend.lib.target_resume_export_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
+def _material_body_limit_from_env() -> int:
+    from backend.lib.material_archive_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
+def _private_target_body_limit_from_env() -> int:
+    from backend.lib.private_import_targets_schema import MAX_BODY_BYTES
+    return min(_request_body_limit_from_env(), MAX_BODY_BYTES) if os.environ.get("OFE_MAX_REQUEST_BODY_BYTES") else MAX_BODY_BYTES
+
+
 class _BodyTooLarge(StarletteHTTPException):
     """The cumulative chunked body crossed the limit.
 
@@ -607,15 +690,22 @@ class RequestBodyLimitMiddleware:
     trips 413 the moment the cumulative chunk size crosses the limit.
     """
 
-    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES):
+    def __init__(self, app, max_bytes: int = DEFAULT_MAX_REQUEST_BODY_BYTES, full_target_max_bytes: int | None = None, export_max_bytes: int | None = None, material_max_bytes: int | None = None, private_target_max_bytes: int | None = None):
         if max_bytes < 1:
             raise ValueError("max_bytes must be positive")
         self.app = app
         self.max_bytes = max_bytes
+        self.full_target_max_bytes = full_target_max_bytes or max_bytes
+        self.export_max_bytes = export_max_bytes or max_bytes
+        self.material_max_bytes = material_max_bytes or max_bytes
+        self.private_target_max_bytes = private_target_max_bytes or max_bytes
 
     @staticmethod
-    async def _send_error(send, status: int) -> None:
-        if status == 413:
+    async def _send_error(send, status: int, *, private_target: bool = False) -> None:
+        if private_target:
+            body = (b'{"detail":{"code":"private_target_too_large"}}' if status == 413
+                    else b'{"detail":{"code":"private_target_invalid_request"}}')
+        elif status == 413:
             body = b'{"detail":"Request body too large"}'
         else:
             body = b'{"detail":"Invalid Content-Length"}'
@@ -645,6 +735,18 @@ class RequestBodyLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        path = scope.get("path", "").rstrip("/")
+        private_target = path == "/api/private-import-targets" or path.startswith("/api/private-import-targets/")
+        if private_target:
+            max_bytes = self.private_target_max_bytes
+        elif path in {"/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan"}:
+            max_bytes = self.full_target_max_bytes
+        elif path == "/api/resume/full-target/export":
+            max_bytes = self.export_max_bytes
+        elif path in ("/api/application-materials", "/api/contact-materials") and scope.get("method") == "POST":
+            max_bytes = self.material_max_bytes
+        else:
+            max_bytes = self.max_bytes
         content_lengths = [
             value.strip() for name, value in scope.get("headers", []) if name.lower() == b"content-length"
         ]
@@ -653,14 +755,14 @@ class RequestBodyLimitMiddleware:
             # values happen to match, and have a history of request-smuggling
             # discrepancies between proxies and application servers.
             if len(content_lengths) != 1:
-                await self._send_error(send, 400)
+                await self._send_error(send, 400, private_target=private_target)
                 return
             raw_length = content_lengths[0]
             if not raw_length or not raw_length.isdigit() or len(raw_length) > 20:
-                await self._send_error(send, 400)
+                await self._send_error(send, 400, private_target=private_target)
                 return
-            if int(raw_length) > self.max_bytes:
-                await self._send_error(send, 413)
+            if int(raw_length) > max_bytes:
+                await self._send_error(send, 413, private_target=private_target)
                 return
 
         received_bytes = 0
@@ -671,7 +773,7 @@ class RequestBodyLimitMiddleware:
             message = await receive()
             if message.get("type") == "http.request":
                 received_bytes += len(message.get("body", b"") or b"")
-                if received_bytes > self.max_bytes:
+                if received_bytes > max_bytes:
                     raise _BodyTooLarge()
             return message
 
@@ -688,7 +790,7 @@ class RequestBodyLimitMiddleware:
                 # Too late for a clean 413 — surface the abort instead of
                 # corrupting an in-flight response.
                 raise
-            await self._send_error(send, 413)
+            await self._send_error(send, 413, private_target=private_target)
 
 
 def _warmup() -> None:
@@ -712,7 +814,19 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(_warmup)
     except Exception as exc:  # never let a warmup hiccup block boot
         logger.warning("Startup warmup failed (will load lazily): %s", exc)
-    yield
+    from backend.lib import material_cleanup
+    stop_material_cleanup = asyncio.Event()
+    cleanup_task = asyncio.create_task(material_cleanup.run_forever(stop_material_cleanup)) if material_cleanup.configured() else None
+    try:
+        yield
+    finally:
+        stop_material_cleanup.set()
+        if cleanup_task is not None:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(
@@ -725,9 +839,37 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+@app.exception_handler(RequestValidationError)
+async def safe_profile_validation_error(request: Request, exc: RequestValidationError):
+    from backend.lib.profile_validation import safe_profile_validation_detail, safe_validation_errors
+
+    path = request.url.path
+    profile_root = path == "/api/matches" or (
+        path.startswith("/api/matches/") and path.endswith(("/gaps", "/explain"))
+    )
+    detail = safe_profile_validation_detail(exc, profile_root=profile_root)
+    if detail is not None:
+        return JSONResponse(status_code=422, content={"detail": detail})
+    profile_consumer = profile_root or path in {
+        "/api/matches/view", "/api/tailor", "/api/tailor/renovate", "/api/tailor/bullet", "/api/roadmap",
+    } or path.startswith("/api/cold-email") or (
+        path.startswith("/api/opportunities/") and path.endswith("/chat")
+    )
+    if profile_consumer:
+        # A parent model validator (e.g. duplicate renovation section IDs)
+        # can attach the entire request to an error at body root. Keep the
+        # standard error-list shape without reflecting its profile or text.
+        return JSONResponse(status_code=422, content={"detail": safe_validation_errors(exc)})
+    return await request_validation_exception_handler(request, exc)
+
+
 app.add_middleware(
     RequestBodyLimitMiddleware,
     max_bytes=_request_body_limit_from_env(),
+    full_target_max_bytes=_full_target_body_limit_from_env(),
+    export_max_bytes=_export_body_limit_from_env(),
+    material_max_bytes=_material_body_limit_from_env(),
+    private_target_max_bytes=_private_target_body_limit_from_env(),
 )
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
@@ -754,9 +896,12 @@ app.add_middleware(
     # cross-origin admin call from a first-party origin fails preflight, so the
     # route would look broken in exactly the NEXT_PUBLIC_API_URL → Render
     # configuration the X-Admin-Token grant below already anticipates.
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    # PUT is the private-import save (savePrivateImportTarget); without it that
+    # save fails preflight in the same cross-origin configuration.
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # X-Admin-Actor is the self-declared operator label (see admin.require_admin).
     allow_headers=["Content-Type", "Authorization", "X-Admin-Token", "X-Admin-Actor"],
+    expose_headers=["x-ofe-export-request", "x-ofe-document-signature", "x-ofe-export-signature", "x-ofe-export-template", "Content-Disposition", "x-ofe-material-id", "x-ofe-material-record", "x-ofe-material-sha256"],
 )
 
 app.include_router(matches.router, prefix="/api", tags=["matches"])
@@ -767,6 +912,11 @@ app.include_router(responsiveness.router, prefix="/api", tags=["responsiveness"]
 app.include_router(opportunities.router, prefix="/api", tags=["opportunities"])
 app.include_router(cold_email.router, prefix="/api", tags=["cold-email"])
 app.include_router(tailor.router, prefix="/api", tags=["tailor"])
+app.include_router(target_resume_ai.router, prefix="/api", tags=["tailor"])
+app.include_router(target_resume_export.router, prefix="/api", tags=["resume"])
+app.include_router(application_materials.router, prefix="/api", tags=["materials"])
+app.include_router(private_import_targets.router, prefix="/api", tags=["private-imports"])
+app.include_router(private_cold_email.router, prefix="/api", tags=["private-email"])
 app.include_router(resume.router, prefix="/api", tags=["resume"])
 app.include_router(push.router, prefix="/api", tags=["push"])
 app.include_router(admin.router, prefix="/api", tags=["admin"])

@@ -11,7 +11,7 @@ import {
   trackInteraction,
   type InteractionType,
 } from '@/lib/supabase';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
 
 // The exact operation a favorite/status write attempted — captured as DATA
 // at the moment of the ORIGINAL user action (or a prior retry), never
@@ -29,7 +29,7 @@ export interface UseResultsInteractionsResult {
   interactions: Map<string, InteractionType>;
   /** Records what the cold-email dialog just confirmed, so the card's status
    *  chip stops showing the pre-contact value for the rest of the session. */
-  noteContactConfirmed: (oppId: string, type: InteractionType) => void;
+  noteContactConfirmed: (oppId: string, type: InteractionType | null) => void;
   /** True once getFavorites() has primed the shared owner primitive for the
    *  CURRENT identity generation — see identity-owner.ts. A click before
    *  this is true would capture the unprimed {uid:null, epoch:0} sentinel,
@@ -129,6 +129,8 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
   const favsRef = useRef(favs);
   const [interactions, setInteractions] = useState<Map<string, InteractionType>>(new Map());
   const interactionsRef = useRef(interactions);
+  const contactRevisionRef = useRef(0);
+  const contactReceiptsRef = useRef(new Map<string, { revision: number; type: InteractionType | null }>());
   const [ownerReady, setOwnerReady] = useState(false);
   const [identityGeneration, setIdentityGeneration] = useState(0);
   const [ownerScopeKey, setOwnerScopeKey] = useState<string | null>(null);
@@ -261,6 +263,7 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
   }, [loadFavorites]);
 
   const loadInteractions = useCallback((generation: number) => {
+    const readContactRevision = contactRevisionRef.current;
     const attempt = ++interactionsAttemptRef.current;
     const stale = () => identityGenerationRef.current !== generation || interactionsAttemptRef.current !== attempt;
     setInteractionsLoading(true);
@@ -268,8 +271,15 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
     getInteractions()
       .then((d) => {
         if (stale()) return;
-        interactionsRef.current = d;
-        setInteractions(d);
+        const next = new Map(d);
+        // Preserve newer target-specific receipts while retaining unrelated
+        // rows from this bulk response. An empty receipt means absence.
+        for (const [id, receipt] of contactReceiptsRef.current) {
+          if (receipt.revision <= readContactRevision) continue;
+          if (receipt.type === null) next.delete(id); else next.set(id, receipt.type);
+        }
+        interactionsRef.current = next;
+        setInteractions(next);
         setInteractionsLoading(false);
       })
       .catch(() => {
@@ -304,6 +314,7 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
       favsRef.current = new Set();
       setFavs(favsRef.current);
       interactionsRef.current = new Map();
+      contactReceiptsRef.current.clear();
       setInteractions(interactionsRef.current);
       setFavoritesLoading(true);
       setFavoritesLoadError(false);
@@ -413,6 +424,7 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
     if (!ownerReady || interactionsLoading || interactionsError) return;
     if (pendingTrackIdsRef.current.has(oppId)) return;
     const generation = identityGenerationRef.current;
+    const contactRevision = contactReceiptsRef.current.get(oppId)?.revision;
     const token = captureOwnerToken();
     const prevValue = interactionsRef.current.get(oppId);
     const applyValue = (m: Map<string, InteractionType>, val: InteractionType | undefined) => {
@@ -433,7 +445,7 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
         await trackInteraction(oppId, intent.type, token);
       }
     } catch {
-      if (identityGenerationRef.current === generation) {
+      if (identityGenerationRef.current === generation && contactReceiptsRef.current.get(oppId)?.revision === contactRevision) {
         interactionsRef.current = applyValue(interactionsRef.current, prevValue);
         setInteractions(interactionsRef.current);
         setTrackFailed(oppId, intent);
@@ -458,17 +470,17 @@ export function useResultsInteractions(onIdentityChange?: () => void): UseResult
     void performTrackOp(oppId, intent);
   }, [performTrackOp]);
 
-  // The cold-email dialog writes the contact row itself; this only stops the
-  // list contradicting it. Nothing else re-reads the map after a modal
-  // confirm, so the chip kept its pre-contact value for the rest of the
-  // session. Same shape as a status write's optimistic apply, minus the
-  // rollback: the row is already persisted.
-  const noteContactConfirmed = useCallback((oppId: string, type: InteractionType) => {
+  const receiptOwner = captureOwnerToken();
+  const noteContactConfirmed = useCallback((oppId: string, type: InteractionType | null) => {
+    if (identityGenerationRef.current !== identityGeneration || !receiptOwner.uid
+      || receiptOwner.uid !== ownerScopeKey || !isOwnerTokenValid(receiptOwner, receiptOwner.uid)) return;
+    contactReceiptsRef.current.set(oppId, { revision: ++contactRevisionRef.current, type });
     const next = new Map(interactionsRef.current);
-    next.set(oppId, type);
+    if (type === null) next.delete(oppId); else next.set(oppId, type);
     interactionsRef.current = next;
     setInteractions(next);
-  }, []);
+    clearTrackFailed(oppId);
+  }, [identityGeneration, ownerScopeKey, receiptOwner, clearTrackFailed]);
 
   return {
     favs,

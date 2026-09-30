@@ -1,5 +1,6 @@
+import { createEmptyResumeMaster, resumeMasterEditBase } from '@/lib/resume-master';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { cleanup, render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { Suspense, useState } from 'react';
 
 vi.mock('@/i18n/client', () => ({
@@ -952,22 +953,17 @@ describe('useProfileForm — the very first visit is not stranded', () => {
 
 describe('useProfileForm — resume seeds the interests box (PR5 ①)', () => {
   it('prefills research_interests from the resume when the box is empty', async () => {
-    render(<Suspense fallback={null}><FullHarness /></Suspense>);
-    fireEvent.click(screen.getByTestId('parseA'));
-    await waitFor(() =>
-      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
-    );
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleResumeParsed(RESUME('computer vision, machine learning'))).toBe(true); });
+    expect(result.current.profile.research_interests).toBe('computer vision, machine learning');
   });
-
   it('does NOT overwrite interests the user already has', async () => {
-    render(<Suspense fallback={null}><FullHarness /></Suspense>);
-    fireEvent.click(screen.getByTestId('parseA')); // seeds it
-    await waitFor(() =>
-      expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning'),
-    );
-    fireEvent.click(screen.getByTestId('parseB')); // must not clobber
-    await new Promise((r) => setTimeout(r, 10));
-    expect(screen.getByTestId('interests').textContent).toBe('computer vision, machine learning');
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('computer vision, machine learning')));
+    act(() => result.current.handleResumeParsed(RESUME('robotics')));
+    expect(result.current.profile.research_interests).toBe('computer vision, machine learning');
   });
 });
 
@@ -1193,6 +1189,7 @@ function IdentityHarness() {
       <button data-testid="set-coursework" onClick={() => form.update('coursework', ['CS 225'])}>cw</button>
       <span data-testid="gh-url">{form.profile.github_url ?? ''}</span>
       <span data-testid="shared-banner">{form.sharedBanner ?? ''}</span>
+      <span data-testid="share-error">{form.shareError ?? ''}</span>
       <span data-testid="gh-status">{form.ghStatus ?? ''}</span>
       <span data-testid="gh-loading">{form.ghLoading ? 'yes' : 'no'}</span>
       <span data-testid="skills">{form.profile.skills.map((s) => s.name).join(',')}</span>
@@ -3011,7 +3008,7 @@ describe('useProfileForm — removing the résumé removes it from the profile t
     unmount();
   });
 
-  it('a removal made while the row was loading is not undone by the row landing', async () => {
+  it('refuses removal while loading; a new removal after loading clears the accepted source', async () => {
     let resolveLoad: ((v: LoadedProfile) => void) | undefined;
     mockLoadProfile = () => deferredLoad((settle) => { resolveLoad = settle; });
     render(<Suspense fallback={null}><ResumeRemovalHarness /></Suspense>);
@@ -3022,6 +3019,9 @@ describe('useProfileForm — removing the résumé removes it from the profile t
       resolveLoad?.(await cloudRow({ resume_text: 'cloud resume text', coursework: ['CS 233'], skills: [] }));
     });
 
+    expect(screen.getByTestId('resume').textContent).toBe('cloud resume text');
+    expect(screen.getByTestId('coursework').textContent).toBe('CS 233');
+    fireEvent.click(screen.getByTestId('remove-resume'));
     expect(screen.getByTestId('resume').textContent).toBe('');
     expect(screen.getByTestId('coursework').textContent).toBe('');
   });
@@ -3048,9 +3048,22 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
   });
 
   it('a cloud rejection is reported immediately, with a retry that replays the cleansed snapshot', async () => {
-    // Both requests are HELD, so the test decides when each one answers. No
-    // wait budget is involved: the status is asserted on the turn the
-    // response is released, which is the only turn it can appear on.
+    // Hold the transport response, then await the real coordinator operation
+    // before checking React state. Releasing the transport alone does not
+    // promise that the owner write queue and result handler have finished.
+    const actualSync = await vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync');
+    const stages: ReturnType<typeof actualSync.stageProfilePatch>[] = [];
+    const retries: ReturnType<typeof actualSync.flushPendingProfileWrite>[] = [];
+    syncOverrides.stageProfilePatch = (...args: Parameters<typeof actualSync.stageProfilePatch>) => {
+      const pending = actualSync.stageProfilePatch(...args);
+      stages.push(pending);
+      return pending;
+    };
+    syncOverrides.flushPendingProfileWrite = (...args: Parameters<typeof actualSync.flushPendingProfileWrite>) => {
+      const pending = actualSync.flushPendingProfileWrite(...args);
+      retries.push(pending);
+      return pending;
+    };
     const held: Array<(o: ProfilePatchOutcome) => void> = [];
     commitProfilePatch.mockReset();
     commitProfilePatch.mockImplementation(
@@ -3062,8 +3075,11 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
 
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
     expect(held, 'the removal went out immediately').toHaveLength(1);
+    expect(stages).toHaveLength(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
     await act(async () => {
       held[0]({ status: 'transport-error', message: 'Failed to sync profile: boom' });
+      await expect(stages[0]).resolves.toEqual({ status: 'error', message: 'Failed to sync profile: boom' });
     });
     expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed');
     // The local copy IS clean — only the cloud one is stale.
@@ -3071,14 +3087,16 @@ describe('useProfileForm — removing the résumé saves once, immediately', () 
 
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
     expect(held, 'the retry re-sent it').toHaveLength(2);
+    expect(retries).toHaveLength(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
     await act(async () => {
       held[1](await applyIntent(commitProfilePatch.mock.calls[1][0]));
+      await expect(retries[0]).resolves.toMatchObject({ status: 'saved' });
     });
     expect(screen.getByTestId('save-status').textContent).toBe('saved');
     expect(commitProfilePatch.mock.calls).toHaveLength(2);
     expect((commitProfilePatch.mock.calls[1][0].patch as { resume_text?: string }).resume_text).toBe('');
-
-
+    expect(commitProfilePatch.mock.calls[1][0].patch).toEqual(commitProfilePatch.mock.calls[0][0].patch);
   });
 });
 
@@ -3298,44 +3316,115 @@ describe('useProfileForm — the share receipt outlives the draft', () => {
 });
 
 describe('useProfileForm — a save that half-landed is never a dead end', () => {
-  it('local write blocked + cloud rejected: reported as an error, and Retry still finishes the job', async () => {
-    let rejectCloud = true;
+  it('local staging sends no RPC; explicit retries preserve the complete removal bundle through a held cloud failure and success', async ({ onTestFailed }) => {
+    let phase = 'setup';
+    let statusNode: Element | null = null;
+    onTestFailed(() => {
+      // State/counts only, never the résumé, experience, or profile body.
+      // Retain the node because this callback can run after cleanup.
+      console.error('[Home removal retry failure]', JSON.stringify({
+        phase,
+        stageCalls: syncOverrides.stageCalls,
+        flushCalls: syncOverrides.flushCalls,
+        rpcCalls: commitProfilePatch.mock.calls.length,
+        owner: captureOwnerToken(),
+        saveStatus: statusNode?.textContent ?? null,
+        serverRevision,
+        requests: commitProfilePatch.mock.calls.map(([intent]) => ({
+          expectedRevision: intent.expectedRevision,
+          keys: Object.keys(intent.patch).sort(),
+          ownerCurrent: isOwnerTokenValid(intent.token, intent.token.uid),
+        })),
+      }));
+    });
+    const manual = { id: 'independent-experience', revision: 2, status: 'confirmed',
+      text: 'I assisted with measurements; I did not lead the team.', source: { kind: 'manual' } } as const;
+    const sourced = { id: 'resume-experience', revision: 1, status: 'confirmed', text: 'old text',
+      source: { kind: 'resume', signature: 'a'.repeat(64), quote: 'old text', start: 0, end: 8 } } as const;
+    const master = { ...createEmptyResumeMaster(), id: 'independent-master' };
+    const loaded = { ...DEFAULT_PROFILE, major: 'Computer Engineering', research_interests: 'Keep this independent interest',
+      skills: [{ name: 'Python', level: 'beginner', confirmed: true }],
+      resume_text: 'old text', coursework: ['ECE 220'], experience_entries: [sourced, manual], resume_master: master };
+    const removalPatch = { resume_text: '', coursework: [], experience_entries: [manual], resume_master: master };
+    let releaseFirst!: (outcome: ProfilePatchOutcome) => void;
+    const firstOutcome = new Promise<ProfilePatchOutcome>(resolve => { releaseFirst = resolve; });
+    let releaseRetry!: () => void;
+    const retryAllowed = new Promise<void>(resolve => { releaseRetry = resolve; });
     commitProfilePatch.mockReset();
-    // A cloud write that does not land REPORTS that; commitProfilePatch
-    // turns transport failures into a typed outcome rather than rejecting,
-    // so a mock that rejects would be testing a shape production never
-    // produces.
-    commitProfilePatch.mockImplementation((intent) => (
-      rejectCloud
-        ? Promise.resolve<ProfilePatchOutcome>({ status: 'transport-error', message: 'boom' })
-        : defaultCommit(intent)
-    ));
-    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'old text', coursework: ['ECE 220'] }));
+    commitProfilePatch.mockImplementationOnce(() => firstOutcome)
+      .mockImplementationOnce(async intent => { await retryAllowed; return defaultCommit(intent); });
+    mockLoadProfile = () => Promise.resolve(cloudRow(loaded));
     render(<Suspense fallback={null}><ResumeRemovalHarness /></Suspense>);
+    statusNode = document.querySelector('[data-testid="save-status"]');
+    phase = 'initial-profile-wait';
     await waitFor(() => expect(screen.getByTestId('resume').textContent).toBe('old text'));
+    const owner = captureOwnerToken();
+    const before = readUserScopedRaw(STORAGE_KEYS.PROFILE);
 
-    // Storage is refusing writes (quota / private mode) — the identity is
-    // unchanged, only the write fails.
-    const setItemSpy = await registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
+    // The local journal cannot stage the removal, so cloud code must not run.
+    const setItemSpy = registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
       throw new Error('QuotaExceededError');
     });
+    phase = 'remove-action';
     await act(async () => { fireEvent.click(screen.getByTestId('remove-resume')); });
+    phase = 'local-error-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('error'));
-    // Still the row as loaded: the removal reached neither the journal nor
-    // the mirror, which is exactly why it is reported as a failure.
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).resume_text).toBe('old text');
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    expect(syncOverrides.stageCalls).toBe(1);
+    expect(serverRevision).toBe(1);
+    expect(serverRow).toEqual(loaded);
+    expect(readUserScopedRaw(STORAGE_KEYS.PROFILE)).toBe(before);
+    expect(screen.getByTestId('resume').textContent).toBe('');
+    expect(screen.getByTestId('coursework').textContent).toBe('');
 
-    // Storage comes back and so does the network: the SAME cleansed
-    // snapshot is replayed, both halves, under the SAME owner.
+    // Restoring local storage alone does not send anything. Retry records the
+    // same four-field source bundle, preserving independent data and ownership.
     setItemSpy.mockRestore();
-    rejectCloud = false;
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    phase = 'retry-to-held-cas';
     await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
+    await waitFor(() => expect(commitProfilePatch).toHaveBeenCalledTimes(1));
+    expect(commitProfilePatch.mock.calls[0][0]).toEqual({
+      expectedRevision: 1, patch: removalPatch, token: owner, mutationId: expect.any(String),
+    });
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    expect(serverRow).toEqual(loaded);
+    expect(serverRevision).toBe(1);
+    expect(readProfileSyncEnvelope()).toMatchObject({
+      confirmed: { revision: 1 }, pending: { baseRevision: 1, desiredProfile: removalPatch,
+        dirtyKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] }, tombstone: null,
+    });
 
+    // This time a real CAS attempt reports a typed transport failure. Unlike
+    // the old test, the assertion proves that the cloud boundary was reached.
+    phase = 'release-cloud-failure';
+    await act(async () => { releaseFirst({ status: 'transport-error', message: 'controlled unavailable transport' }); });
+    phase = 'cloud-failed-wait';
+    await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed'));
+    expect(commitProfilePatch).toHaveBeenCalledTimes(1);
+    expect(serverRow).toEqual(loaded);
+    expect(readProfileSyncEnvelope()?.pending?.desiredProfile).toMatchObject(removalPatch);
+
+    phase = 'explicit-second-retry';
+    await act(async () => { fireEvent.click(screen.getByTestId('retry-sync')); });
+    await waitFor(() => expect(commitProfilePatch).toHaveBeenCalledTimes(2));
+    expect(commitProfilePatch.mock.calls[1][0]).toEqual(commitProfilePatch.mock.calls[0][0]);
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    expect(serverRevision).toBe(1);
+    phase = 'release-success';
+    await act(async () => { releaseRetry(); });
+    phase = 'saved-status-wait';
     await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('saved'));
-    const stored = JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!);
-    expect(stored.resume_text).toBe('');
-    expect(stored.coursework).toEqual([]);
-
+    phase = 'confirmed-mirror-assertions';
+    expect(commitProfilePatch).toHaveBeenCalledTimes(2);
+    expect(captureOwnerToken()).toEqual(owner);
+    expect(serverRevision).toBe(2);
+    expect(serverRow).toEqual({ ...loaded, ...removalPatch });
+    expect(JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!)).toEqual(serverRow);
+    expect(readProfileSyncEnvelope()).toMatchObject({
+      confirmed: { revision: 2, profile: serverRow }, pending: null, tombstone: null,
+    });
+    expect(getDirtyProfileKeys(owner, HOME_FORM_WRITER)).toEqual({ ok: true, value: [] });
   });
 
   it('cloud saved but the local mirror did not: says so, and does not claim the cloud failed', async () => {
@@ -3376,9 +3465,18 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     await waitFor(() => expect(screen.getByTestId('resume').textContent).toBe('old text'));
     commitProfilePatch.mockClear();
 
+    // A failed journal write happens before the asynchronous staging result.
+    // Hold that real stage call explicitly so the test exercises both moments
+    // without assuming one microtask has also finished the Web Lock/result chain.
+    const actualSync = await vi.importActual<typeof import('@/lib/profile-sync')>('@/lib/profile-sync');
+    let releaseStage!: () => void;
+    const stageAllowed = new Promise<void>((resolve) => { releaseStage = resolve; });
+    syncOverrides.stageProfilePatch = (...args: Parameters<typeof actualSync.stageProfilePatch>) => stageAllowed.then(() =>
+      actualSync.stageProfilePatch(...args));
+
     // The spy hands the test a handshake: it reports the first attempted write
-    // before refusing it, so the assertion below waits on the thing that
-    // actually has to happen rather than polling a clock.
+    // before refusing it. This is a write-attempt acknowledgement, not the
+    // final save outcome; the latter is awaited after releasing staging.
     let attempted!: () => void;
     const firstWrite = new Promise<void>((resolve) => { attempted = resolve; });
     const setItemSpy = await registerSpy(vi.spyOn(window.localStorage, 'setItem')).mockImplementation(() => {
@@ -3391,10 +3489,16 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
       await Promise.resolve();
     });
 
+    expect(screen.getByTestId('save-status').textContent).toBe('saving');
+    releaseStage();
+
     // 'error', NOT 'device-failed': device-failed promises the cloud has it.
-    expect(screen.getByTestId('save-status').textContent).toBe('error');
+    await waitFor(() => expect(screen.getByTestId('save-status').textContent).toBe('error'));
     expect(commitProfilePatch).not.toHaveBeenCalled();
     expect((serverRow as { resume_text?: string }).resume_text).toBe('old text');
+    expect(JSON.parse(readUserScopedRaw(STORAGE_KEYS.PROFILE)!)).toMatchObject({
+      resume_text: 'old text', coursework: ['ECE 220'],
+    });
   });
 });
 
@@ -7332,7 +7436,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
     expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle')
-      .toEqual(['coursework', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
     expect(patch.resume_text).toBe('');
   });
 
@@ -8007,7 +8111,7 @@ describe('useProfileForm — every action is bound to the capability the screen 
         // Proof the window is genuinely open: React has not flushed its
         // passive work, so nothing that runs in an effect has run yet.
         expect(screen.getByTestId('hydration').textContent,
-          'React has not flushed the hydration yet').toBe('failed');
+          'React has not flushed the hydration yet').toBe('loading');
         cleanup();
         order.push('unmounted');
       });
@@ -8441,14 +8545,14 @@ describe('useProfileForm — every action is bound to the capability the screen 
       name: 'OwnerScopedLoadError',
       ownerToken: captureOwnerToken(),
     });
-    const hydrationBefore = screen.getByTestId('hydration').textContent;
+    expect(screen.getByTestId('hydration').textContent).toBe('loading');
 
     await act(async () => { held.reads[0].reject(forged); });
     await settle();
 
     expect(screen.getByTestId('hydration').textContent,
-      'a shape is not a capability, so this screen learns nothing')
-      .toBe(hydrationBefore);
+      'the abandoned read fails visibly without granting a capability')
+      .toBe('failed');
     expect(screen.getByTestId('view-uid').textContent,
       'and adopts nobody').toBe('none');
 
@@ -8481,9 +8585,9 @@ describe('useProfileForm — every action is bound to the capability the screen 
     expect(pushSpy, 'and nothing navigated').not.toHaveBeenCalled();
   });
 
-  it('D-null-reject-stale: a load failing after an identity arrives labels nothing', async () => {
+  it('D-null-reject-stale: a load failing after an identity arrives grants no new owner', async () => {
     const held = await heldNullLoad();
-    const hydrationBefore = screen.getByTestId('hydration').textContent;
+    expect(screen.getByTestId('hydration').textContent).toBe('loading');
     // A real identity now owns the browser, and this hook has not heard.
     await act(async () => {
       advanceOwnerEpoch(FIRST_UID);
@@ -8496,8 +8600,9 @@ describe('useProfileForm — every action is bound to the capability the screen 
     await settle();
 
     expect(screen.getByTestId('hydration').textContent,
-      "the unresolved screen's failure is not the new identity's news")
-      .toBe(hydrationBefore);
+      "the read is no longer pending, without accepting the new identity")
+      .toBe('failed');
+    expect(screen.getByTestId('view-uid').textContent).toBe('none');
   });
 
   /**
@@ -10279,3 +10384,251 @@ describe('typing into the research-interests box is one burst, not one operation
     }
   });
 });
+
+
+describe('useProfileForm — M21 opportunity-type selection', () => {
+  const completeProfile = { ...DEFAULT_PROFILE, college: 'Grainger', major: 'CS', grade: 'Junior' };
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  it.each(combinations.map((types) => ({ types })))('allows submitting $types without replacing the selection', async ({ types }) => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ ...completeProfile, seeking_types: types }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    expect(result.current.isValid).toBe(true);
+    expect(result.current.missingSeekingTypes).toBe(false);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).toHaveBeenCalledWith('/results');
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).seeking_types).toEqual(types);
+  });
+
+  it('blocks a direct empty-selection submit before imports, writes, cache clearing or navigation', async () => {
+    vi.mocked(parseGitHubProfile).mockReset();
+    mockLoadProfile = () => Promise.resolve(cloudRow({
+      ...completeProfile, seeking_types: [], github_url: 'https://github.com/octocat',
+    }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.missingSeekingTypes).toBe(true);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(parseGitHubProfile).not.toHaveBeenCalled();
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+    expect(cacheMocks.clearMatchCache).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE)).toBe(saved);
+  });
+
+  it('accepts a legacy missing field, but cancelling all then restoring a type preserves the new choice', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow(completeProfile));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    expect(result.current.isValid).toBe(true);
+    act(() => result.current.update('seeking_types', []));
+    expect(result.current.isValid).toBe(false);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).not.toHaveBeenCalled();
+    act(() => result.current.update('seeking_types', ['internship']));
+    expect(result.current.isValid).toBe(true);
+    await act(async () => { await result.current.handleSubmit(); });
+    expect(pushSpy).toHaveBeenCalledWith('/results');
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!).seeking_types).toEqual(['internship']);
+  });
+
+  it('rechecks the live selection after an in-flight import before generating matches', async () => {
+    let resolveImport!: (value: Awaited<ReturnType<typeof parseGitHubProfile>>) => void;
+    vi.mocked(parseGitHubProfile).mockReset();
+    vi.mocked(parseGitHubProfile).mockImplementation(() => new Promise((resolve) => { resolveImport = resolve; }));
+    mockLoadProfile = () => Promise.resolve(cloudRow({
+      ...completeProfile, seeking_types: ['research'], github_url: 'https://github.com/octocat',
+    }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { void result.current.handleSubmit(); });
+    await waitFor(() => expect(parseGitHubProfile).toHaveBeenCalledTimes(1));
+    act(() => result.current.update('seeking_types', []));
+    await act(async () => {
+      resolveImport({ username: 'octocat', extracted_skills: [], topics: [], repo_count: 0, top_repos: [] });
+    });
+    await waitFor(() => expect(result.current.isSubmitting).toBe(false));
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.profile.seeking_types).toEqual([]);
+    expect(cacheMocks.clearMatchCache).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('useProfileForm — confirmed experience lifecycle', () => {
+  const manual = { id: 'own-fact', revision: 1, status: 'confirmed', text: 'Built a robot.', source: { kind: 'manual' } } as const;
+  const sourced = { id: 'resume-fact', revision: 1, status: 'confirmed', text: 'Old source', source: { kind: 'resume', signature: 'a'.repeat(64), quote: 'Old source', start: 0, end: 10 } } as const;
+  const baseOf = (form: ReturnType<typeof useProfileForm>) => ({ resumeText: form.profile.resume_text ?? '', entriesJson: JSON.stringify(form.profile.experience_entries ?? []) });
+  it('accepts a reviewed entry against the displayed base and persists the complete resume bundle', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleExperienceChange([manual], baseOf(result.current))).toBe(true); });
+    await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]), { timeout: 2500 });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [manual] });
+  });
+  it('refuses a late review after another edit or source replacement', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready')); const before = baseOf(result.current);
+    act(() => { expect(result.current.handleExperienceChange([manual], before)).toBe(true); });
+    act(() => { expect(result.current.handleExperienceChange([], before)).toBe(false); });
+    const nextBase = baseOf(result.current);
+    act(() => result.current.handleResumeParsed(RESUME('replacement')));
+    act(() => { expect(result.current.handleExperienceChange([], nextBase)).toBe(false); });
+    expect(result.current.profile.experience_entries).toEqual([manual]);
+  });
+  it('withdraws old source on replacement; deletion preserves independent experience and skills', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [sourced, manual], skills: [{ name: 'Python', level: 'expert', confirmed: true }] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    expect(result.current.profile.experience_entries).toEqual([{ ...sourced, status: 'withdrawn', revision: 2 }, manual]);
+    await act(async () => result.current.handleResumeRemoved());
+    await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]));
+    expect(serverRow?.resume_text).toBe('');
+    expect(serverRow?.skills).toEqual([{ name: 'Python', level: 'expert', confirmed: true }]);
+  });
+  it('preserves confirmed entries when the same exact resume is parsed again', async () => {
+    const parsed = RESUME('same');
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: parsed.raw_text, experience_entries: [sourced] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(parsed)); expect(result.current.profile.experience_entries).toEqual([sourced]);
+  });
+  it('rejects an old account callback even if the new account has identical fields', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const oldCallback = result.current.handleExperienceChange; const oldBase = baseOf(result.current);
+    await emitAuth('experience-other'); await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(oldCallback([manual], oldBase)).toBe(false); });
+    expect(result.current.profile.experience_entries).toEqual([]);
+  });
+  it('refuses source mutations while hydration is pending and preserves the arriving manual entries', async () => {
+    let settle!: (row: LoadedProfile) => void;
+    mockLoadProfile = () => deferredLoad((resolve) => { settle = resolve; });
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(authChangeCb).not.toBeNull());
+    act(() => { expect(result.current.handleResumeParsed(RESUME('too early'))).toBe(false); expect(result.current.handleResumeRemoved()).toBe(false); });
+    await act(async () => settle(cloudRow({ resume_text: 'Old source', experience_entries: [sourced, manual] })));
+    expect(result.current.profile.experience_entries).toEqual([sourced, manual]); expect(result.current.profile.resume_text).toBe('Old source');
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('useProfileForm — full resume master lifecycle', () => {
+  const manual = { id: 'name', revision: 1, status: 'confirmed' as const, value: 'Alex 王', source: { kind: 'manual' as const } };
+  const sourced = { id: 'school', revision: 1, status: 'confirmed' as const, value: 'Old source',
+    source: { kind: 'resume' as const, signature: 'a'.repeat(64), quote: 'Old source', start: 0, end: 10 } };
+  const master = () => ({ ...createEmptyResumeMaster('master-a'), basics: { links: [], name: manual },
+    education: [{ id: 'education-a', school: sourced, details: [] }] });
+  const baseOf = (form: ReturnType<typeof useProfileForm>) => resumeMasterEditBase(form.profile);
+
+  it('applies the displayed master and saves it with the unchanged source and experience library', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(true); });
+    await waitFor(() => expect(serverRow?.resume_master).toEqual(master()), { timeout: 2500 });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [], resume_master: master() });
+  });
+
+  it('refuses a stale editor after an experience edit, source replacement or another master edit', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    const before = baseOf(result.current);
+    act(() => { expect(result.current.handleResumeMasterChange(master(), before)).toBe(true); });
+    act(() => { expect(result.current.handleResumeMasterChange(master(), before)).toBe(false); });
+    const afterMaster = baseOf(result.current);
+    act(() => result.current.handleExperienceChange([{ id: 'extra', revision: 1, status: 'candidate', text: 'New detail', source: { kind: 'manual' } }], { resumeText: result.current.profile.resume_text ?? '', entriesJson: JSON.stringify(result.current.profile.experience_entries ?? []) }));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), afterMaster)).toBe(false); });
+    const afterExperience = baseOf(result.current);
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    act(() => { expect(result.current.handleResumeMasterChange(master(), afterExperience)).toBe(false); });
+    expect(result.current.profile.resume_master?.basics.name).toEqual(manual);
+  });
+
+  it('withdraws sourced metadata on replacement and removes its quote on deletion while preserving manual fields', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', resume_master: master(), skills: [{ name: 'Python', level: 'expert', confirmed: true }] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(RESUME('replacement', [])));
+    expect(result.current.profile.resume_master?.education[0].school).toEqual({ ...sourced, status: 'withdrawn', revision: 2 });
+    expect(result.current.profile.resume_master?.basics.name).toEqual(manual);
+    await act(async () => result.current.handleResumeRemoved());
+    await waitFor(() => expect(serverRow?.resume_text).toBe(''));
+    expect(JSON.stringify(serverRow?.resume_master)).not.toContain('Old source');
+    expect((serverRow?.resume_master as ReturnType<typeof master>)?.basics.name).toEqual(manual);
+    expect(serverRow?.skills).toEqual([{ name: 'Python', level: 'expert', confirmed: true }]);
+  });
+
+  it('keeps the exact master when the same resume is parsed again', async () => {
+    const parsed = RESUME('same');
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: parsed.raw_text, resume_master: master() }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.handleResumeParsed(parsed));
+    expect(result.current.profile.resume_master).toEqual(master());
+  });
+
+  it('blocks a pre-hydration action and old-account callback without writing either master', async () => {
+    let settle!: (row: LoadedProfile) => void;
+    mockLoadProfile = () => deferredLoad(resolve => { settle = resolve; });
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(authChangeCb).not.toBeNull());
+    act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(false); });
+    await act(async () => settle(cloudRow({ resume_text: 'Old source', resume_master: master() })));
+    const callback = result.current.handleResumeMasterChange; const before = baseOf(result.current);
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', resume_master: master() }));
+    await emitAuth('master-other'); await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { expect(callback({ ...master(), revision: 2 }, before)).toBe(false); });
+    expect(result.current.profile.resume_master).toEqual(master());
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+  });
+});
+
+ describe('B53 rejects a complete oversized shared import', () => {
+  it('keeps the owner profile and shows a safe error without saving a partial share',async()=>{
+    commitProfilePatch.mockClear();
+    const raw={v:1,major:'Other Major',interests:'x'.repeat(60001)};
+    searchRef.current='share='+btoa(JSON.stringify(raw));
+    mockLoadProfile=()=>Promise.resolve(cloudRow({research_interests:'my original full interests',major:'My Major'}));
+    await renderIdentityHarness();
+    await waitFor(()=>expect(screen.getByTestId('interests').textContent).toBe('my original full interests'));
+    expect(screen.getByTestId('major')).toHaveTextContent('My Major');
+    expect(screen.getByTestId('share-error')).toHaveTextContent('profileInput.characters');
+    expect(screen.getByTestId('shared-banner')).toBeEmptyDOMElement();
+    expect(commitProfilePatch).not.toHaveBeenCalled();
+  });
+ });
+
+ describe('B53 sharing refuses an oversized encoded URL', () => {
+   it('does not copy, prompt, save or replace the complete profile', async () => {
+     const interests='🧪'.repeat(2000);
+     mockLoadProfile=()=>Promise.resolve(cloudRow({research_interests:interests}));
+     await renderIdentityHarness();
+     await waitFor(()=>expect(screen.getByTestId('interests').textContent).toBe(interests));
+     commitProfilePatch.mockClear();
+     const descriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+     const writeText=vi.fn().mockResolvedValue(undefined);
+     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText}});
+     const prompt=vi.spyOn(window,'prompt').mockReturnValue(null);
+     try {
+       fireEvent.click(screen.getByTestId('share'));
+       await waitFor(()=>expect(screen.getByTestId('share-error')).toHaveTextContent('profileInput.shareTooLarge'));
+       expect(screen.getByTestId('interests').textContent).toBe(interests);
+       expect(screen.getByTestId('share-copied')).toHaveTextContent('no');
+       expect(writeText).not.toHaveBeenCalled();expect(prompt).not.toHaveBeenCalled();expect(commitProfilePatch).not.toHaveBeenCalled();
+     } finally {prompt.mockRestore(); if(descriptor)Object.defineProperty(navigator,'clipboard',descriptor); else delete (navigator as {clipboard?:unknown}).clipboard;}
+   });
+ });

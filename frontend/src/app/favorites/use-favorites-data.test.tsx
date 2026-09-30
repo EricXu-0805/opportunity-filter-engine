@@ -42,6 +42,7 @@ beforeEach(() => {
   mocks.onAuthChange.mockReset();
   mocks.getShortlistOpportunities.mockReset();
   mocks.removeCustomImport.mockReset();
+  mocks.removeCustomImport.mockResolvedValue({ ok: true });
 
   mocks.getFavorites.mockResolvedValue(new Set());
   mocks.getAuthState.mockResolvedValue({ session: null, user: null, isAnonymous: false, email: null });
@@ -401,5 +402,44 @@ describe('useFavoritesData — auth identity resets', () => {
     expect(result.current.serverOpportunities).toEqual([]); // reset synchronously — no stale flash
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.serverOpportunities).toEqual([]);
+  });
+});
+
+
+describe('custom remove asynchronous feedback', () => {
+  it('waits for the write, prevents a duplicate, and exposes the exact retryable failure', async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.removeCustomImport.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    const { result } = renderHook(() => useFavoritesData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const custom: Opp = { id: 'custom-one', _customId: 'custom-one', title: 'Original' };
+    let first!: Promise<void>;
+    act(() => { first = result.current.handleRemove(custom); });
+    expect(result.current.removePendingId).toBe(custom.id);
+    expect(result.current.removeError).toBeNull();
+    await act(async () => { await result.current.handleRemove(custom); });
+    expect(mocks.removeCustomImport).toHaveBeenCalledTimes(1);
+    await act(async () => { resolve({ ok: false, reason: 'lock_timeout' }); await first; });
+    expect(result.current.removePendingId).toBeNull();
+    expect(result.current.removeError).toEqual(custom);
+    expect(result.current.removeErrorReason).toBe('lock_timeout');
+    mocks.removeCustomImport.mockResolvedValueOnce({ ok: true });
+    act(() => { result.current.retryRemove(); });
+    await waitFor(() => expect(result.current.removeError).toBeNull());
+    expect(mocks.removeCustomImport).toHaveBeenCalledTimes(2);
+  });
+  it('does not show an old removal failure in a newer account list', async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.removeCustomImport.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    const { result } = renderHook(() => useFavoritesData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let first!: Promise<void>;
+    act(() => { first = result.current.handleRemove({ id: 'private', _customId: 'private', title: 'Old' }); });
+    act(() => { authChangeCallback?.({ session: {}, user: { id: 'other-owner' }, isAnonymous: false, email: null }); });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => { resolve({ ok: false, reason: 'storage_failed' }); await first; });
+    expect(result.current.removeError).toBeNull();
+    expect(result.current.removeErrorReason).toBeNull();
+    expect(result.current.removePendingId).toBeNull();
   });
 });

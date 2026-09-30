@@ -91,7 +91,7 @@ export function ResultsHeader({
                   )}
                 </>
               )
-              : t('common.loading')}
+              : null}
         </p>
         {!loading && data && typeof data.field_relevant_count === 'number' && data.field_relevant_count > 0 && (
           <p className="mt-1 text-[12px] sm:text-[13px] font-medium text-indigo-700">

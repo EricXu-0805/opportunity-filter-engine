@@ -19,6 +19,10 @@ DO $$ BEGIN CREATE ROLE service_role NOLOGIN;   EXCEPTION WHEN duplicate_object 
 -- auth schema + claim-reading functions.
 CREATE SCHEMA IF NOT EXISTS auth;
 
+-- Platform identity table, required by owner-cascade FKs on target resumes.
+CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY, is_anonymous boolean NOT NULL DEFAULT false);
+CREATE TABLE IF NOT EXISTS auth.sessions (id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, not_after timestamptz);
+
 -- Supabase grants the browser roles USAGE on `auth` so a SECURITY INVOKER
 -- function (025's confirm_interaction_contact) can call auth.uid() as the
 -- caller. A vanilla cluster grants USAGE on a new schema to nobody, so
@@ -55,6 +59,8 @@ CREATE TABLE IF NOT EXISTS storage.objects (
   owner      uuid,
   created_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Real Supabase storage.foldername returns the path segments EXCLUDING the
 -- filename; for our [1] lookup only the first segment matters, but mirror

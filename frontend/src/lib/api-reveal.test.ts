@@ -112,38 +112,33 @@ describe('getOpportunityById (reveal-aware)', () => {
   });
 });
 
-describe('getEmailVariants (reveal-aware)', () => {
-  it('retries once on a stale-token locked response', async () => {
+describe('getEmailVariants (single generation with contact state)', () => {
+  it('returns the locked draft without refreshing auth or generating twice', async () => {
     mockGetToken.mockResolvedValue('tok-stale');
     mockRefreshToken.mockResolvedValue('tok-fresh');
     fetchMock
       .mockResolvedValueOnce(okJson({ variants: [], recipient_status: 'sign_in_required' }))
       .mockResolvedValueOnce(okJson({ variants: [], recipient_status: 'revealed' }));
     const body = await getEmailVariants(profile, 'opp-1');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(body.recipient_status).toBe('revealed');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(body.recipient_status).toBe('sign_in_required');
   });
 
-  it('sends the student\'s own resume bullets with the request', async () => {
-    // #803 wired resume_bullets through /cold-email/variants — its message
-    // says leaving them out "would keep three of the four generated emails
-    // empty of the student's own work" — and no caller ever sent any, so
-    // every template variant was built without them.
+  it('ignores legacy raw bullets and sends an explicit empty evidence envelope', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ recipient_status: 'revealed', variants: [] }));
-
     await getEmailVariants(profile, 'opp-1', ['Built a CV pipeline in PyTorch']);
-
     const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
-    expect(sent.resume_bullets).toEqual(['Built a CV pipeline in PyTorch']);
+    expect(sent).not.toHaveProperty('resume_bullets');
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
   });
 
-  it('sends an empty list when the student has no parsed resume', async () => {
+  it('keeps the no-resume request explicit instead of enabling legacy evidence', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ recipient_status: 'revealed', variants: [] }));
-
     await getEmailVariants(profile, 'opp-1');
-
     const sent = JSON.parse(String(fetchMock.mock.calls[0][1].body));
-    expect(sent.resume_bullets).toEqual([]);
+    expect(sent.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
+    expect(sent).not.toHaveProperty('resume_bullets');
   });
 
   it('treats "unavailable" as final — no retry burned on it', async () => {

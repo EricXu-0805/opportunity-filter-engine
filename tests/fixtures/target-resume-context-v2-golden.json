@@ -1,0 +1,1172 @@
+{
+  "draft": {
+    "base": {
+      "master_id": "master-golden",
+      "master_revision": 1,
+      "profile_signature": "v1:sha256:178e75c8a9d3c64dddc5338abcc71fd86c1315499faf40463baec2d62acd527c",
+      "source_signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+      "target_signature": "v1:sha256:23144c2f7bfe79ccf4802b3b03b54284b42e4340ec4010e2007d44b29ae32741"
+    },
+    "base_snapshot": {
+      "experience_entries": [
+        {
+          "id": "evidence-one",
+          "revision": 2,
+          "source": {
+            "end": 76,
+            "kind": "resume",
+            "quote": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+            "signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+            "start": 7
+          },
+          "status": "confirmed",
+          "text": "I did not lead the team. I built a Python parser 😀 with my teammates."
+        }
+      ],
+      "resume_master": {
+        "activities": [
+          {
+            "details": [
+              {
+                "id": "evidence-one",
+                "revision": 2
+              }
+            ],
+            "id": "project-one",
+            "kind": "project",
+            "title": {
+              "id": "project-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Parser project 😀"
+            }
+          }
+        ],
+        "basics": {
+          "email": {
+            "id": "email",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "student@example.test"
+          },
+          "links": [],
+          "name": {
+            "id": "name",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "徐同学"
+          }
+        },
+        "education": [
+          {
+            "degree": {
+              "id": "degree",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "B.S. — expected 2028"
+            },
+            "details": [],
+            "id": "education-one",
+            "school": {
+              "id": "school",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "UIUC"
+            }
+          }
+        ],
+        "id": "master-golden",
+        "other_sections": [
+          {
+            "heading": "Awards 奖项",
+            "id": "awards",
+            "items": [
+              {
+                "id": "award",
+                "revision": 1,
+                "source": {
+                  "kind": "manual"
+                },
+                "status": "confirmed",
+                "value": "College scholarship"
+              }
+            ]
+          }
+        ],
+        "publications": [
+          {
+            "authors": {
+              "id": "authors",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Xu, G.; 张三"
+            },
+            "details": [],
+            "id": "publication-one",
+            "publication_status": {
+              "id": "publication-status",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "Submitted, not accepted"
+            },
+            "title": {
+              "id": "publication-title",
+              "revision": 1,
+              "source": {
+                "kind": "manual"
+              },
+              "status": "confirmed",
+              "value": "研究记录"
+            }
+          }
+        ],
+        "revision": 1,
+        "section_order": [
+          "basics",
+          "education",
+          "activities",
+          "publications",
+          "skills",
+          "awards"
+        ],
+        "skills": [
+          {
+            "id": "skill",
+            "revision": 1,
+            "source": {
+              "kind": "manual"
+            },
+            "status": "confirmed",
+            "value": "Python — beginner"
+          }
+        ],
+        "source_signature": "01f407182b9ae6a4a2817dc9ba108be209f85284acab6c5ff67b3d10af6fb4c4",
+        "unmapped_ranges": [],
+        "version": 1
+      },
+      "resume_text": "姓名：徐同学\nI did not lead the team. I built a Python parser 😀 with my teammates.\n论文：研究记录"
+    },
+    "document": {
+      "sections": [
+        {
+          "blocks": [
+            {
+              "id": "master-golden",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "name",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-1",
+                  "included": true,
+                  "label": "",
+                  "original": "徐同学",
+                  "role": "name",
+                  "text": "徐同学"
+                },
+                {
+                  "evidence": {
+                    "id": "email",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-2",
+                  "included": true,
+                  "label": "",
+                  "original": "student@example.test",
+                  "role": "email",
+                  "text": "student@example.test"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "basics",
+          "included": true,
+          "kind": "basics"
+        },
+        {
+          "blocks": [
+            {
+              "id": "education-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "school",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-3",
+                  "included": true,
+                  "label": "",
+                  "original": "UIUC",
+                  "role": "school",
+                  "text": "UIUC"
+                },
+                {
+                  "evidence": {
+                    "id": "degree",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-4",
+                  "included": true,
+                  "label": "",
+                  "original": "B.S. — expected 2028",
+                  "role": "degree",
+                  "text": "B.S. — expected 2028"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "education",
+          "included": true,
+          "kind": "education"
+        },
+        {
+          "blocks": [
+            {
+              "id": "project-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "project-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-5",
+                  "included": true,
+                  "label": "",
+                  "original": "Parser project 😀",
+                  "role": "title",
+                  "text": "Parser project 😀"
+                },
+                {
+                  "evidence": {
+                    "id": "evidence-one",
+                    "kind": "experience",
+                    "revision": 2
+                  },
+                  "id": "line-6",
+                  "included": true,
+                  "label": "",
+                  "original": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+                  "role": "experience",
+                  "text": "My manual draft edit is not evidence."
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "activities",
+          "included": true,
+          "kind": "activities"
+        },
+        {
+          "blocks": [
+            {
+              "id": "publication-one",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "publication-title",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-7",
+                  "included": true,
+                  "label": "",
+                  "original": "研究记录",
+                  "role": "title",
+                  "text": "研究记录"
+                },
+                {
+                  "evidence": {
+                    "id": "authors",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-8",
+                  "included": true,
+                  "label": "",
+                  "original": "Xu, G.; 张三",
+                  "role": "authors",
+                  "text": "Xu, G.; 张三"
+                },
+                {
+                  "evidence": {
+                    "id": "publication-status",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-9",
+                  "included": true,
+                  "label": "",
+                  "original": "Submitted, not accepted",
+                  "role": "publication_status",
+                  "text": "Submitted, not accepted"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "publications",
+          "included": true,
+          "kind": "publications"
+        },
+        {
+          "blocks": [
+            {
+              "id": "skill",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "skill",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-10",
+                  "included": true,
+                  "label": "",
+                  "original": "Python — beginner",
+                  "role": "skill",
+                  "text": "Python — beginner"
+                }
+              ]
+            }
+          ],
+          "heading": "",
+          "id": "skills",
+          "included": true,
+          "kind": "skills"
+        },
+        {
+          "blocks": [
+            {
+              "id": "award",
+              "included": true,
+              "lines": [
+                {
+                  "evidence": {
+                    "id": "award",
+                    "kind": "fact",
+                    "revision": 1
+                  },
+                  "id": "line-11",
+                  "included": true,
+                  "label": "Awards 奖项",
+                  "original": "College scholarship",
+                  "role": "other",
+                  "text": "College scholarship"
+                }
+              ]
+            }
+          ],
+          "heading": "Awards 奖项",
+          "id": "awards",
+          "included": true,
+          "kind": "other"
+        }
+      ]
+    },
+    "id": "draft-golden",
+    "kind": "full_resume",
+    "opportunity_id": "golden-opportunity",
+    "target_snapshot": {
+      "description": "Robotics 😀 materials. Research is collaborative.",
+      "opportunity_id": "golden-opportunity",
+      "organization": "Example University",
+      "requirements": [
+        "Python",
+        "😀研究"
+      ],
+      "source_url": "https://example.test/lab",
+      "title": "Robotics research",
+      "context_version": 2,
+      "criteria": {
+        "eligibility": {
+          "preferred_year": [
+            "Junior",
+            "研究生 😀"
+          ],
+          "min_gpa_decimal": "3.5",
+          "majors": [
+            "ECE",
+            "材料科学"
+          ],
+          "skills_required": [
+            "Python",
+            "😀研究"
+          ],
+          "skills_preferred": [],
+          "citizenship_required": null,
+          "international_friendly": "unknown",
+          "work_auth_notes": "Verify on source — 未知",
+          "first_time_researchers": false
+        },
+        "timing": {
+          "deadline": null,
+          "deadline_is_estimate": true,
+          "is_rolling": false,
+          "deadline_note": "Estimated / 估计 🧪",
+          "start_date": "2027 spring",
+          "posted_date": null,
+          "duration": "12 weeks"
+        },
+        "application": {
+          "contact_method": "email",
+          "application_effort": "unknown",
+          "requires_resume": "yes",
+          "requires_cover_letter": null,
+          "requires_transcript": "unknown",
+          "requires_recommendation": "no",
+          "application_url": "https://example.test/apply"
+        },
+        "setting": {
+          "location": "Urbana—Champaign",
+          "remote_option": "unknown",
+          "on_campus": true,
+          "opportunity_type": "research",
+          "paid": "unknown",
+          "compensation_details": null,
+          "department": "ECE",
+          "lab_or_program": "材料实验室 😀",
+          "pi_name": null
+        },
+        "availability": {
+          "record_kind": "listing",
+          "source_type": "campus_program",
+          "faculty_availability_status": "unknown",
+          "target_truth": {
+            "listing_state": "open",
+            "reference_only": false,
+            "actionable": true,
+            "accepting_state": "unknown",
+            "reason_code": null
+          }
+        },
+        "attribution": {
+          "skills_attribution": null,
+          "majors_attribution": "inferred",
+          "preferred_year_attribution": null,
+          "international_attribution": "inferred",
+          "citizenship_attribution": null,
+          "paid_attribution": "inferred"
+        }
+      }
+    },
+    "version": 1
+  },
+  "document_signature": "v1:sha256:efb392e48abcc199ec8da32eeb1434dd4d031a698e7fb8ff845a56ee158215b9",
+  "manifest": {
+    "unit_ids": [
+      "line-3",
+      "line-4",
+      "line-5",
+      "line-6",
+      "line-7",
+      "line-8",
+      "line-9",
+      "line-10",
+      "line-11"
+    ],
+    "protected_unit_count": 2
+  },
+  "units": [
+    {
+      "unit_id": "line-3",
+      "section_id": "education",
+      "block_id": "education-one",
+      "evidence": {
+        "id": "school",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "school",
+      "label": "",
+      "original": "UIUC",
+      "before_text": "UIUC"
+    },
+    {
+      "unit_id": "line-4",
+      "section_id": "education",
+      "block_id": "education-one",
+      "evidence": {
+        "id": "degree",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "degree",
+      "label": "",
+      "original": "B.S. — expected 2028",
+      "before_text": "B.S. — expected 2028"
+    },
+    {
+      "unit_id": "line-5",
+      "section_id": "activities",
+      "block_id": "project-one",
+      "evidence": {
+        "id": "project-title",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "title",
+      "label": "",
+      "original": "Parser project 😀",
+      "before_text": "Parser project 😀"
+    },
+    {
+      "unit_id": "line-6",
+      "section_id": "activities",
+      "block_id": "project-one",
+      "evidence": {
+        "id": "evidence-one",
+        "kind": "experience",
+        "revision": 2
+      },
+      "role": "experience",
+      "label": "",
+      "original": "I did not lead the team. I built a Python parser 😀 with my teammates.",
+      "before_text": "My manual draft edit is not evidence."
+    },
+    {
+      "unit_id": "line-7",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "publication-title",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "title",
+      "label": "",
+      "original": "研究记录",
+      "before_text": "研究记录"
+    },
+    {
+      "unit_id": "line-8",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "authors",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "authors",
+      "label": "",
+      "original": "Xu, G.; 张三",
+      "before_text": "Xu, G.; 张三"
+    },
+    {
+      "unit_id": "line-9",
+      "section_id": "publications",
+      "block_id": "publication-one",
+      "evidence": {
+        "id": "publication-status",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "publication_status",
+      "label": "",
+      "original": "Submitted, not accepted",
+      "before_text": "Submitted, not accepted"
+    },
+    {
+      "unit_id": "line-10",
+      "section_id": "skills",
+      "block_id": "skill",
+      "evidence": {
+        "id": "skill",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "skill",
+      "label": "",
+      "original": "Python — beginner",
+      "before_text": "Python — beginner"
+    },
+    {
+      "unit_id": "line-11",
+      "section_id": "awards",
+      "block_id": "award",
+      "evidence": {
+        "id": "award",
+        "kind": "fact",
+        "revision": 1
+      },
+      "role": "other",
+      "label": "Awards 奖项",
+      "original": "College scholarship",
+      "before_text": "College scholarship"
+    }
+  ],
+  "public_opportunity": {
+    "id": "golden-opportunity",
+    "title": "Robotics research",
+    "organization": "Example University",
+    "source_url": "https://example.test/lab",
+    "description_clean": "Robotics 😀 materials. Research is collaborative.",
+    "keywords": [
+      "robotics",
+      "研究"
+    ],
+    "eligibility": {
+      "preferred_year": [
+        "Junior",
+        "研究生 😀"
+      ],
+      "majors": [
+        "ECE",
+        "材料科学"
+      ],
+      "skills_required": [
+        "Python",
+        "😀研究"
+      ],
+      "skills_preferred": [],
+      "citizenship_required": null,
+      "international_friendly": "unknown",
+      "work_auth_notes": "Verify on source — 未知",
+      "first_time_researchers": false,
+      "min_gpa": 3.5
+    },
+    "deadline": null,
+    "deadline_is_estimate": true,
+    "is_rolling": false,
+    "start_date": "2027 spring",
+    "posted_date": null,
+    "duration": "12 weeks",
+    "application": {
+      "contact_method": "email",
+      "application_effort": "unknown",
+      "requires_resume": "yes",
+      "requires_cover_letter": null,
+      "requires_transcript": "unknown",
+      "requires_recommendation": "no",
+      "application_url": "https://example.test/apply"
+    },
+    "location": "Urbana—Champaign",
+    "remote_option": "unknown",
+    "on_campus": true,
+    "opportunity_type": "research",
+    "paid": "unknown",
+    "compensation_details": null,
+    "department": "ECE",
+    "lab_or_program": "材料实验室 😀",
+    "pi_name": null,
+    "record_kind": "listing",
+    "source_type": "campus_program",
+    "faculty_availability_status": "unknown",
+    "target_truth": {
+      "listing_state": "open",
+      "reference_only": false,
+      "actionable": true,
+      "accepting_state": "unknown",
+      "reason_code": null,
+      "verified_at": "2026-09-24T00:00:00Z",
+      "expires_at": "2026-09-25T00:00:00Z"
+    },
+    "skills_attribution": null,
+    "majors_attribution": "inferred",
+    "preferred_year_attribution": null,
+    "international_attribution": "inferred",
+    "citizenship_attribution": null,
+    "paid_attribution": "inferred",
+    "metadata": {
+      "confidence_score": 0.75,
+      "skills_attribution": "inferred",
+      "deadline_note": "Estimated / 估计 🧪",
+      "private_extra": "not in target context"
+    },
+    "contact_email": "excluded@example.test",
+    "description_raw": "excluded raw source"
+  },
+  "context_cases": [
+    {
+      "name": "zero",
+      "input_json": "0",
+      "expected_min_gpa_decimal": "0",
+      "target_signature": "v1:sha256:2154b14b5279fc7b5897f308b8878b3ea45d38be334cc291b76eddbe32d8a931"
+    },
+    {
+      "name": "negative-zero",
+      "input_json": "-0",
+      "expected_min_gpa_decimal": "0",
+      "target_signature": "v1:sha256:2154b14b5279fc7b5897f308b8878b3ea45d38be334cc291b76eddbe32d8a931"
+    },
+    {
+      "name": "ordinary",
+      "input_json": "3.5",
+      "expected_min_gpa_decimal": "3.5",
+      "target_signature": "v1:sha256:23144c2f7bfe79ccf4802b3b03b54284b42e4340ec4010e2007d44b29ae32741"
+    },
+    {
+      "name": "binary64-rounding",
+      "input_json": "3.4000000000000004",
+      "expected_min_gpa_decimal": "3.4000000000000004",
+      "target_signature": "v1:sha256:593c7b35e0d79619d19c3c0782cf61e9f27b48be813b992483b78a0bf8cc653b"
+    },
+    {
+      "name": "small-fixed-boundary",
+      "input_json": "0.000001",
+      "expected_min_gpa_decimal": "0.000001",
+      "target_signature": "v1:sha256:f955b66c77fb44af086ff7b2b4ddd62636f73cd77d82c6427f1f2917c31f1442"
+    },
+    {
+      "name": "small-exponent",
+      "input_json": "1e-7",
+      "expected_min_gpa_decimal": "1e-7",
+      "target_signature": "v1:sha256:52473244f6eeb78033fb19bbc5156f97b87b282eed6efe244c835dba864eb798"
+    },
+    {
+      "name": "large-fixed-boundary",
+      "input_json": "100000000000000000000",
+      "expected_min_gpa_decimal": "100000000000000000000",
+      "target_signature": "v1:sha256:173bd721e2ae194165bb9065d33ffcedcbb0810b6c36390ce8fc32e0cf0a3c80"
+    },
+    {
+      "name": "large-exponent",
+      "input_json": "1e+21",
+      "expected_min_gpa_decimal": "1e+21",
+      "target_signature": "v1:sha256:a21ece75277e440ac5c3fd08091f73b1d177ee76ea0474296d1267244d1c3369"
+    },
+    {
+      "name": "subnormal",
+      "input_json": "5e-324",
+      "expected_min_gpa_decimal": "5e-324",
+      "target_signature": "v1:sha256:06fb097f0021397e1cf518f55ce1a8e88948ae09ceeb06aab72e6f2174684881"
+    },
+    {
+      "name": "large-finite",
+      "input_json": "1.7976931348623157e+308",
+      "expected_min_gpa_decimal": "1.7976931348623157e+308",
+      "target_signature": "v1:sha256:21c0398b1f92c15a5402e5264ea4b5592177478ef5dd1ce4088370f2f59ee50d"
+    },
+    {
+      "name": "preserved-string",
+      "input_json": "\" 3.50 \"",
+      "expected_min_gpa_decimal": " 3.50 ",
+      "target_signature": "v1:sha256:5379c92d923e8d2462d7550c667869e918dd8142b059a1873c11a0e5e205444f"
+    },
+    {
+      "name": "null",
+      "input_json": "null",
+      "expected_min_gpa_decimal": null,
+      "target_signature": "v1:sha256:d615773fa8061f9958eb1571e8190fd8dfee5916224c086b30d8e6bf4f1c06c9"
+    }
+  ],
+  "target_cases": [
+    {
+      "name": "omitted-leaf",
+      "target": {
+        "description": "Robotics 😀 materials. Research is collaborative.",
+        "opportunity_id": "golden-opportunity",
+        "organization": "Example University",
+        "requirements": [
+          "Python",
+          "😀研究"
+        ],
+        "source_url": "https://example.test/lab",
+        "title": "Robotics research",
+        "context_version": 2,
+        "criteria": {
+          "eligibility": {
+            "preferred_year": [
+              "Junior",
+              "研究生 😀"
+            ],
+            "min_gpa_decimal": "3.5",
+            "majors": [
+              "ECE",
+              "材料科学"
+            ],
+            "skills_required": [
+              "Python",
+              "😀研究"
+            ],
+            "skills_preferred": [],
+            "citizenship_required": null,
+            "international_friendly": "unknown",
+            "work_auth_notes": "Verify on source — 未知",
+            "first_time_researchers": false
+          },
+          "timing": {
+            "deadline_is_estimate": true,
+            "is_rolling": false,
+            "deadline_note": "Estimated / 估计 🧪",
+            "start_date": "2027 spring",
+            "posted_date": null,
+            "duration": "12 weeks"
+          },
+          "application": {
+            "contact_method": "email",
+            "application_effort": "unknown",
+            "requires_resume": "yes",
+            "requires_cover_letter": null,
+            "requires_transcript": "unknown",
+            "requires_recommendation": "no",
+            "application_url": "https://example.test/apply"
+          },
+          "setting": {
+            "location": "Urbana—Champaign",
+            "remote_option": "unknown",
+            "on_campus": true,
+            "opportunity_type": "research",
+            "paid": "unknown",
+            "compensation_details": null,
+            "department": "ECE",
+            "lab_or_program": "材料实验室 😀",
+            "pi_name": null
+          },
+          "availability": {
+            "record_kind": "listing",
+            "source_type": "campus_program",
+            "faculty_availability_status": "unknown",
+            "target_truth": {
+              "listing_state": "open",
+              "reference_only": false,
+              "actionable": true,
+              "accepting_state": "unknown",
+              "reason_code": null
+            }
+          },
+          "attribution": {
+            "skills_attribution": null,
+            "majors_attribution": "inferred",
+            "preferred_year_attribution": null,
+            "international_attribution": "inferred",
+            "citizenship_attribution": null,
+            "paid_attribution": "inferred"
+          }
+        }
+      },
+      "target_signature": "v1:sha256:6f3e9f12a91b4da25bd07d4d336b91edcca07d1fe84a8cbf5d162d44fb1ca56f"
+    },
+    {
+      "name": "null-truth",
+      "target": {
+        "description": "Robotics 😀 materials. Research is collaborative.",
+        "opportunity_id": "golden-opportunity",
+        "organization": "Example University",
+        "requirements": [
+          "Python",
+          "😀研究"
+        ],
+        "source_url": "https://example.test/lab",
+        "title": "Robotics research",
+        "context_version": 2,
+        "criteria": {
+          "eligibility": {
+            "preferred_year": [
+              "Junior",
+              "研究生 😀"
+            ],
+            "min_gpa_decimal": "3.5",
+            "majors": [
+              "ECE",
+              "材料科学"
+            ],
+            "skills_required": [
+              "Python",
+              "😀研究"
+            ],
+            "skills_preferred": [],
+            "citizenship_required": null,
+            "international_friendly": "unknown",
+            "work_auth_notes": "Verify on source — 未知",
+            "first_time_researchers": false
+          },
+          "timing": {
+            "deadline": null,
+            "deadline_is_estimate": true,
+            "is_rolling": false,
+            "deadline_note": "Estimated / 估计 🧪",
+            "start_date": "2027 spring",
+            "posted_date": null,
+            "duration": "12 weeks"
+          },
+          "application": {
+            "contact_method": "email",
+            "application_effort": "unknown",
+            "requires_resume": "yes",
+            "requires_cover_letter": null,
+            "requires_transcript": "unknown",
+            "requires_recommendation": "no",
+            "application_url": "https://example.test/apply"
+          },
+          "setting": {
+            "location": "Urbana—Champaign",
+            "remote_option": "unknown",
+            "on_campus": true,
+            "opportunity_type": "research",
+            "paid": "unknown",
+            "compensation_details": null,
+            "department": "ECE",
+            "lab_or_program": "材料实验室 😀",
+            "pi_name": null
+          },
+          "availability": {
+            "record_kind": "listing",
+            "source_type": "campus_program",
+            "faculty_availability_status": "unknown",
+            "target_truth": null
+          },
+          "attribution": {
+            "skills_attribution": null,
+            "majors_attribution": "inferred",
+            "preferred_year_attribution": null,
+            "international_attribution": "inferred",
+            "citizenship_attribution": null,
+            "paid_attribution": "inferred"
+          }
+        }
+      },
+      "target_signature": "v1:sha256:0968a4c5522f7c047b883bd485cc10a203485bd0522c6e6a4d30a724a8a1ec5b"
+    },
+    {
+      "name": "inferred-skills",
+      "target": {
+        "description": "Robotics 😀 materials. Research is collaborative.",
+        "opportunity_id": "golden-opportunity",
+        "organization": "Example University",
+        "requirements": [],
+        "source_url": "https://example.test/lab",
+        "title": "Robotics research",
+        "context_version": 2,
+        "criteria": {
+          "eligibility": {
+            "preferred_year": [
+              "Junior",
+              "研究生 😀"
+            ],
+            "min_gpa_decimal": "3.5",
+            "majors": [
+              "ECE",
+              "材料科学"
+            ],
+            "skills_required": [
+              "Python",
+              "😀研究"
+            ],
+            "skills_preferred": [],
+            "citizenship_required": null,
+            "international_friendly": "unknown",
+            "work_auth_notes": "Verify on source — 未知",
+            "first_time_researchers": false
+          },
+          "timing": {
+            "deadline": null,
+            "deadline_is_estimate": true,
+            "is_rolling": false,
+            "deadline_note": "Estimated / 估计 🧪",
+            "start_date": "2027 spring",
+            "posted_date": null,
+            "duration": "12 weeks"
+          },
+          "application": {
+            "contact_method": "email",
+            "application_effort": "unknown",
+            "requires_resume": "yes",
+            "requires_cover_letter": null,
+            "requires_transcript": "unknown",
+            "requires_recommendation": "no",
+            "application_url": "https://example.test/apply"
+          },
+          "setting": {
+            "location": "Urbana—Champaign",
+            "remote_option": "unknown",
+            "on_campus": true,
+            "opportunity_type": "research",
+            "paid": "unknown",
+            "compensation_details": null,
+            "department": "ECE",
+            "lab_or_program": "材料实验室 😀",
+            "pi_name": null
+          },
+          "availability": {
+            "record_kind": "listing",
+            "source_type": "campus_program",
+            "faculty_availability_status": "unknown",
+            "target_truth": {
+              "listing_state": "open",
+              "reference_only": false,
+              "actionable": true,
+              "accepting_state": "unknown",
+              "reason_code": null
+            }
+          },
+          "attribution": {
+            "skills_attribution": "inferred",
+            "majors_attribution": "inferred",
+            "preferred_year_attribution": null,
+            "international_attribution": "inferred",
+            "citizenship_attribution": null,
+            "paid_attribution": "inferred"
+          }
+        }
+      },
+      "target_signature": "v1:sha256:e7dcb7f3677951af96984d8c58efe31cefeafd535134e6cb34880f039ff474fc"
+    }
+  ],
+  "export": {
+    "options": {
+      "locale": "zh",
+      "page_size": "a4"
+    },
+    "projection": {
+      "version": 1,
+      "template": "standard-v1",
+      "locale": "zh",
+      "page_size": "a4",
+      "sections": [
+        {
+          "kind": "basics",
+          "heading": "",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "name",
+                  "label": "",
+                  "text": "徐同学"
+                },
+                {
+                  "role": "email",
+                  "label": "",
+                  "text": "student@example.test"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "education",
+          "heading": "",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "school",
+                  "label": "",
+                  "text": "UIUC"
+                },
+                {
+                  "role": "degree",
+                  "label": "",
+                  "text": "B.S. — expected 2028"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "activities",
+          "heading": "",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "title",
+                  "label": "",
+                  "text": "Parser project 😀"
+                },
+                {
+                  "role": "experience",
+                  "label": "",
+                  "text": "My manual draft edit is not evidence."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "publications",
+          "heading": "",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "title",
+                  "label": "",
+                  "text": "研究记录"
+                },
+                {
+                  "role": "authors",
+                  "label": "",
+                  "text": "Xu, G.; 张三"
+                },
+                {
+                  "role": "publication_status",
+                  "label": "",
+                  "text": "Submitted, not accepted"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "skills",
+          "heading": "",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "skill",
+                  "label": "",
+                  "text": "Python — beginner"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "other",
+          "heading": "Awards 奖项",
+          "blocks": [
+            {
+              "lines": [
+                {
+                  "role": "other",
+                  "label": "Awards 奖项",
+                  "text": "College scholarship"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "export_signature": "v1:sha256:e1c1bfab81cc25b62b67835dff4b94d154fcb688588550dfb9116384599245a6"
+  },
+  "target_character_count": 1509,
+  "legacy_document_signature": "v1:sha256:d8ed6b3e016a8e9007f2d97d38313f21bda0968e15b02c27d85a0741e874f528"
+}

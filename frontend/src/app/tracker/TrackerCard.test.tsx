@@ -492,3 +492,12 @@ describe('TrackerCard — notes cannot exceed what the column accepts', () => {
       .toHaveAttribute('maxlength', '2000');
   });
 });
+
+it('opens private history without claiming an opening deadline or offering delivery reminders', () => {
+  const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  render(<TrackerCard opp={{ id, title: 'My imported lab', organization: 'Lab' }} status="applied" draft=""
+    onDraftChange={vi.fn()} onChangeStatus={vi.fn()} onSaveNotes={vi.fn()} onSetReminder={vi.fn()} t={t} />);
+  expect(screen.getByText('privateImport.unverified')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'applicationRecord.viewRecords' })).toHaveAttribute('href', '/private-imports/' + encodeURIComponent(id) + '#tracker-records');
+  expect(screen.queryByRole('button', { name: /remind1d|remind3d|remind7d/i })).toBeNull();
+});

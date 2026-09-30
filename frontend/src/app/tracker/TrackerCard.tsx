@@ -1,6 +1,7 @@
 'use client';
 
 import { BellRing, Calendar, ExternalLink, X } from 'lucide-react';
+import Link from 'next/link';
 
 import { InteractionStatusMenu } from '@/components/InteractionStatusMenu';
 import { opportunityRecordKind } from '@/lib/match-utils';
@@ -8,6 +9,7 @@ import { opportunitySourceUrl, targetPosture } from '@/lib/target-truth';
 import type { InteractionType } from '@/lib/supabase';
 import type { Opp, TFunc } from '@/app/favorites/types';
 
+import { isPrivateImportId } from '@/lib/private-import-target-api';
 import { canDeliverReminder } from '@/lib/reminders';
 
 import { dateInDays, isReminderDue } from './use-tracker-data';
@@ -127,6 +129,11 @@ export function TrackerCard({
       </div>
 
       {lab && <p className="mt-1 text-xs text-gray-500">{lab}</p>}
+      {isPrivateImportId(opp.id) && <p className="mt-1 text-xs text-amber-800">{t('privateImport.unverified')}</p>}
+      <Link href={(isPrivateImportId(opp.id) ? '/private-imports/' : '/opportunities/') + encodeURIComponent(opp.id) + '#tracker-records'}
+        className="mt-2 inline-flex min-h-9 items-center rounded text-xs font-medium text-indigo-700 underline focus-visible:ring-2 focus-visible:ring-indigo-500">
+        {t('applicationRecord.viewRecords')}
+      </Link>
 
       {isCurrentListing && opp.deadline && (
         <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-400">

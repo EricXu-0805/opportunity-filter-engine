@@ -35,6 +35,10 @@
 // the revision + outbox live BESIDE it under STORAGE_KEYS.PROFILE_SYNC.
 
 import type { ProfileData, SkillWithLevel } from './types';
+import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
+import type { ProfileReadObserver } from './profile-read-diagnostics';
+import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
+import { validateResumeMaster } from './resume-master';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -79,11 +83,10 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
 ];
 
 /** Fields that are one unit as far as conflict detection goes. The résumé
- *  text and the coursework extracted FROM it are meaningless apart: keeping
- *  one and taking the other from a different device produces coursework that
- *  no résumé on file supports (the exact state "remove my résumé" exists to
- *  prevent). Staging either always stages both. */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'];
+ *  text, extracted coursework and experience sources must stay together.
+ *  Taking them from different revisions can attach claims to the wrong résumé.
+ *  Staging any member stages the whole bundle. */
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
@@ -93,7 +96,7 @@ export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'
 const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
-  research_interests: true, skills: true, resume_text: true, coursework: true,
+  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true, resume_master: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -138,37 +141,43 @@ function isProfileKey(key: string): key is ProfileKey {
  *  about — that is its downgrade guard — so the shape's owner declares them
  *  here, at module load, before any read can happen. */
 export const RESUME_BUNDLE_ID = 'resume';
-registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID]);
+registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
+  !value.present || (key === 'experience_entries' ? validateExperienceEntries(value.value).ok
+    : key === 'resume_master' ? validateResumeMaster(value.value).ok : true)
+));
 
-/** The résumé text and the coursework extracted from it are one unit (see
- *  RESUME_BUNDLE). A persisted outbox entry naming only half of it would send
- *  a patch that clears one and leaves the other — the exact torn state the
- *  bundle exists to prevent — so the missing half is materialised here, from
- *  the base if it has one and from the empty value if not. */
+function emptyResumeValue(key: ProfileKey): string | [] | null {
+  return key === 'resume_text' ? '' : key === 'resume_master' ? null : [];
+}
+
+function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'resume_master'>): boolean {
+  return validateExperienceEntries(profile.experience_entries).ok
+    && validateResumeMaster(profile.resume_master).ok;
+}
+
+/** Complete a persisted partial bundle from its frozen base, or the empty
+ *  value for a field introduced after that base was saved. Locks and mutation
+ *  versions must cover every member even when the desired values already do. */
 function completeResumeBundle(pending: ProfilePendingWrite): ProfilePendingWrite {
   const present = RESUME_BUNDLE.filter((k) => pending.dirtyKeys.includes(k));
-  // Nothing to do only when the bundle is not involved at all. With BOTH
-  // halves present the keys are already there, but the LOCKS and versions
-  // still have to be normalized: one half locked and the other sendable is
-  // exactly the torn write the bundle exists to prevent.
+  // Partial locks must not allow the remaining bundle members to send alone.
   if (present.length === 0) return pending;
   const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
   const base = pending.baseProfile as unknown as Record<string, unknown>;
   const dirtyKeys = [...pending.dirtyKeys];
   const lockedKeys = [...pending.lockedKeys];
   const keyVersions = { ...pending.keyVersions };
-  // If either half is locked, BOTH are: sending the unlocked half alone is
-  // exactly the torn state the bundle exists to prevent.
+  // A lock on any member protects the whole document.
   const anyLocked = RESUME_BUNDLE.some((k) => lockedKeys.includes(k));
+  const inheritedVersion = Math.max(0, ...present.map((key) => keyVersions[key] ?? 0));
   for (const key of RESUME_BUNDLE) {
     if (!dirtyKeys.includes(key)) dirtyKeys.push(key);
-    if (!(key in desired)) desired[key] = key in base ? base[key] : (key === 'coursework' ? [] : '');
+    if (!(key in desired)) desired[key] = key in base ? base[key] : emptyResumeValue(key);
     if (anyLocked && !lockedKeys.includes(key)) lockedKeys.push(key);
     if (!(key in keyVersions)) {
-      // The half being materialised was never staged on its own; give it the
-      // partner's version so a confirmation acknowledges them together.
-      const partner = RESUME_BUNDLE.find((k) => k !== key);
-      keyVersions[key] = (partner && keyVersions[partner]) ?? 0;
+      // A newly materialized member follows the latest staged member. Do not
+      // arbitrarily inherit the first partner when the bundle has 3+ keys.
+      keyVersions[key] = inheritedVersion;
     }
   }
   return {
@@ -551,6 +560,7 @@ export function recordProfileIntent(
   // envelope read below would hand the live owner's document to a caller the
   // authority has already retired. Neither is repairable after the fact.
   if (!isOwnerTokenValid(token, token.uid)) return false;
+  if (!validResumeContent(desired)) return false;
   ensureScope(token);
   const writer = opts.writer ?? DEFAULT_WRITER;
   const envelope = readProfileSyncEnvelopeStrict();
@@ -989,6 +999,27 @@ async function withSharedState<T>(
   };
 }
 
+/** A server receipt may describe a write from before another device deleted
+ * this profile. Inspect the deletion fence inside the same lock as its local
+ * settlement: even an already-saved response must not clear a newer fence or
+ * acknowledge away the retained pending edits. This does not cancel a CAS
+ * that has already reached the server. */
+async function withProfileReceiptState<T>(
+  token: OwnerToken,
+  fn: () => T,
+): Promise<{ ok: true; value: T } | { ok: false; result: ProfileSaveResult }> {
+  const settled = await withSharedState(token, () => {
+    const fence = readProfileSyncEnvelope()?.tombstone;
+    if (fence) return { accepted: false as const, reason: fence.reason };
+    return { accepted: true as const, value: fn() };
+  });
+  if (!settled.ok) return settled;
+  if (!settled.value.accepted) return { ok: false, result: {
+    status: 'missing', reason: settled.value.reason === 'merged' ? 'merged_away' : 'absent',
+  } };
+  return { ok: true, value: settled.value.value };
+}
+
 /**
  * The operations inside `ids` that are FINISHED, as whole dependency
  * closures.
@@ -1424,7 +1455,8 @@ function consumeSkillOps(confirmed?: ProfilePendingWrite): void {
 // ---------------------------------------------------------------------------
 
 function isProfileObject(value: unknown): value is ProfileData {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+    && validResumeContent(value as ProfileData);
 }
 
 function stringList(value: unknown): string[] {
@@ -1478,7 +1510,21 @@ export function readProfileSyncEnvelopeStrict(): JournalResult<ProfileSyncEnvelo
   if (entry.status === 'unavailable') {
     return { ok: false, reason: `profile envelope unavailable: ${entry.reason}` };
   }
-  if (entry.status === 'absent') return { ok: true, value: null };
+  if (entry.status === 'absent') {
+    // Before an envelope exists, the legacy mirror may be the only copy.
+    // Reject malformed new evidence instead of migrating it as an empty row.
+    const mirror = readUserScopedRaw(STORAGE_KEYS.PROFILE);
+    if (mirror) {
+      try {
+        const profile = JSON.parse(mirror) as unknown;
+        if (profile && typeof profile === 'object' && !Array.isArray(profile)
+          && !validResumeContent(profile as ProfileData)) {
+          return { ok: false, reason: 'profile resume data is malformed' };
+        }
+      } catch { /* Legacy JSON handling remains with the existing migration. */ }
+    }
+    return { ok: true, value: null };
+  }
   const parsedEnvelope = parseProfileSyncEnvelope(entry.value);
   return parsedEnvelope === null
     ? { ok: false, reason: 'profile envelope is not a shape this build understands' }
@@ -1497,6 +1543,11 @@ function parseProfileSyncEnvelope(raw: string): ProfileSyncEnvelope | null {
     if (!parsed || typeof parsed !== 'object') return null;
     const env = parsed as Partial<ProfileSyncEnvelope>;
     if (env.v !== 1) return null; // a future/rewritten shape is not guessed at
+    // Never turn malformed experience evidence into an absent row or outbox.
+    for (const profile of [env.confirmed?.profile, env.pending?.baseProfile,
+      env.pending?.desiredProfile, env.pending?.conflictRemote]) {
+      if (profile && !validResumeContent(profile)) return null;
+    }
     const c = env.confirmed;
     const confirmed = c && typeof c.revision === 'number' && Number.isInteger(c.revision)
       && c.revision >= 1 && isProfileObject(c.profile)
@@ -1553,7 +1604,13 @@ function parseProfileSyncEnvelope(raw: string): ProfileSyncEnvelope | null {
  * about what one revision contains — so it is refused rather than resolved.
  */
 function writeEnvelope(envelope: ProfileSyncEnvelope, token: OwnerToken): boolean {
-  const current = readProfileSyncEnvelope()?.confirmed ?? null;
+  for (const profile of [envelope.confirmed?.profile, envelope.pending?.baseProfile,
+    envelope.pending?.desiredProfile, envelope.pending?.conflictRemote]) {
+    if (profile && !isProfileObject(profile)) return false;
+  }
+  const stored = readProfileSyncEnvelopeStrict();
+  if (!stored.ok) return false;
+  const current = stored.value?.confirmed ?? null;
   const next = envelope.confirmed;
   if (current && next) {
     if (next.revision < current.revision) return true; // stale, ignored — not a failure
@@ -1569,6 +1626,7 @@ function writeEnvelope(envelope: ProfileSyncEnvelope, token: OwnerToken): boolea
  *  purpose — changing it would break /results, /favorites, /compare, the
  *  roadmap and the school gate all at once for zero benefit. */
 function writeRawMirror(profile: ProfileData, token: OwnerToken): boolean {
+  if (!isProfileObject(profile)) return false;
   return writeLocalStorageJSON(STORAGE_KEYS.PROFILE, profile, token);
 }
 
@@ -1965,7 +2023,8 @@ export interface ProfileHydration {
  * an unattributable read, Error for a failed one) — a failed read is never
  * turned into "you have no profile".
  */
-export async function hydrateProfile(): Promise<ProfileHydration> {
+export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileReadObserver): Promise<ProfileHydration> {
+  assertProfileReadActive(signal);
   // The network read happens FIRST and unlocked — holding the shared-state
   // lock across it would freeze every other tab for as long as it takes.
   // What this browser held when the read was ISSUED. An answer is only news
@@ -1979,11 +2038,13 @@ export async function hydrateProfile(): Promise<ProfileHydration> {
   // it was (see OwnerScopedLoadError), and an abandonment already belongs to
   // nobody. Re-interpreting either here would overwrite what the layer that
   // resolved the identity actually established.
-  const loaded = await loadProfile();
+  const loaded = await awaitProfileRead(signal ? loadProfile(signal, observe) : loadProfile(), signal);
+  assertProfileReadActive(signal);
   const token = loaded.token;
   try {
-    return await hydrateLoadedProfile(loaded, token, observedBefore);
+    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, signal, observe), signal);
   } catch (err) {
+    assertProfileReadActive(signal);
     // Everything above this line ran with `token` already fixed, so a failure
     // in it is this identity's — unless the identity is gone.
     //
@@ -2003,7 +2064,10 @@ async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,
   observedBefore: LoadFence,
+  signal?: AbortSignal,
+  observe?: ProfileReadObserver,
 ): Promise<ProfileHydration> {
+  assertProfileReadActive(signal);
   // BEFORE ensureScope, which mutates module-global coordinator state — the
   // in-memory field intents, the unwritten-confirmation repair marker, the
   // last load source, the skill ops. Running it for a superseded owner
@@ -2011,12 +2075,21 @@ async function hydrateLoadedProfile(
   // in-flight bookkeeping, and the lock branch below discovering the problem
   // afterwards does not put any of it back.
   if (!isTokenOwnerStillCurrent(token)) throw new OwnerNotReadyError();
+  if (loaded.profile && !isProfileObject(loaded.profile)) throw new ExperienceEvidenceError('invalid_entries');
   ensureScope(token);
+  observe?.('reconcile-wait');
   const reconciled = await withProfileLock(
     token,
-    () => reconcileLoadedProfile(loaded, token, observedBefore),
+    () => {
+      // The lock may arrive after the caller's deadline/unmount. Reconciliation
+      // below is synchronous: cancellation cannot interleave with its writes.
+      assertProfileReadActive(signal);
+      observe?.('reconcile-locked');
+      return reconcileLoadedProfile(loaded, token, observedBefore);
+    },
   );
-  if (reconciled.ok) return reconciled.value;
+  assertProfileReadActive(signal);
+  if (reconciled.ok) { observe?.('reconciled'); return reconciled.value; }
   // SUPERSEDED is not "we could not serialize" — it is "this read belongs to
   // an owner who is gone". Falling through to the snapshot below would read
   // the CURRENT envelope, which is the new owner's, and hand it back paired
@@ -2072,6 +2145,7 @@ function reconcileLoadedProfile(
   token: OwnerToken,
   observedBefore: LoadFence = { revision: 0, tombstone: null },
 ): ProfileHydration {
+  if (!readProfileSyncEnvelopeStrict().ok) throw new ExperienceEvidenceError('invalid_entries');
   const journal = readOutstandingOps();
   if (!journal.ok) {
     // The authority is unreadable. Writing the cloud row into the mirror now
@@ -2538,6 +2612,7 @@ export async function stageProfilePatch(
   if (gate) return gate;
   ensureScope(token);
 
+  if (!validResumeContent(desired)) return { status: 'device-failed', phase: 'stage' };
   const effectiveKeys = expandBundles(keys);
   if (effectiveKeys.length === 0) return { status: 'blocked' };
 
@@ -4041,7 +4116,7 @@ export async function flushPendingProfileWrite(token: OwnerToken): Promise<Profi
     // a newer edit in between, and this repair would put the older one back
     // over it. The revision is checked too — a confirmation older than what
     // is already recorded is not news.
-    const repaired = await withSharedState(token, () => {
+    const repaired = await withProfileReceiptState(token, () => {
       const env = readProfileSyncEnvelope();
       const recorded = env?.confirmed;
       if (recorded && recorded.revision > revision) {
@@ -4295,7 +4370,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // own journal operations and record the confirmed revision. Both read
         // shared state and write it back, and another tab doing the same in
         // between would decide from a half-updated view.
-        const settled = await withSharedState(token, () => {
+        const settled = await withProfileReceiptState(token, () => {
           const acked = ackConfirmedJournalOpsLocked(pending, sendKeys as string[], profile, outcome.revision, token);
           clearConfirmedKeys(sendKeys as string[], pending.keyVersions, pending);
           const survivor = survivorFor(pending, sendKeys as string[], outcome.revision, profile);
@@ -4343,7 +4418,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // what is there when the write happens — never from a copy read
         // beforehand. Another tab can stage between the two, and writing back
         // a pre-lock snapshot would put its edit back to what it was.
-        const superseded = await withSharedState(token, () => {
+        const superseded = await withProfileReceiptState(token, () => {
           const live = readProfileSyncEnvelope()?.pending ?? null;
           if (!live || live.mutationId === pending.mutationId) return { newer: false as const };
           const written = writeEnvelope(
@@ -4371,7 +4446,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // applyKeys would report every all-keys-collide conflict as a success
         // and drop the working copy with it.
         if (resolution.applyKeys.length === 0 && resolution.conflictKeys.length === 0) {
-          const settled = await withSharedState(token, () => {
+          const settled = await withProfileReceiptState(token, () => {
             const acked = ackConfirmedJournalOpsLocked(pending, sendKeys as string[], remote, outcome.revision, token);
             clearConfirmedKeys(sendKeys as string[], pending.keyVersions, pending);
             const survivor = survivorFor(pending, sendKeys as string[], outcome.revision, remote);
@@ -4408,7 +4483,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
             desiredProfile: rebasedDesired,
             dirtyKeys: [...new Set([...resolution.applyKeys as string[], ...pending.lockedKeys])],
           };
-          const rebasedWrite = await withSharedState(token, () => (
+          const rebasedWrite = await withProfileReceiptState(token, () => (
             writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: rebased, tombstone: null },
               token,
@@ -4444,7 +4519,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
             lockedKeys: [...new Set([...pending.lockedKeys, ...conflictKeys])],
             conflictRemote: remote,
           };
-          const partialWrite = await withSharedState(token, () => (
+          const partialWrite = await withProfileReceiptState(token, () => (
             writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: partial, tombstone: null },
               token,
@@ -4474,7 +4549,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
           lockedKeys: [...new Set([...pending.lockedKeys, ...toLock])],
           conflictRemote: remote,
         };
-        const lockRecorded = await withSharedState(token, () => writeEnvelope(
+        const lockRecorded = await withProfileReceiptState(token, () => writeEnvelope(
           { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: conflicted, tombstone: null },
           token,
         ));

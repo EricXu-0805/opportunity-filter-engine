@@ -15,6 +15,8 @@ export const DEFAULT_PROFILE: ProfileData = {
   is_international: false,
   research_interests: '',
   skills: [],
+  experience_entries: [],
+  resume_master: null,
   search_weight: 50,
 };
 
@@ -25,6 +27,17 @@ export const SEEKING_TYPES = [
   ...(RELEASE_SCOPE.fellowships ? (['fellowship'] as const) : []),
 ] as const;
 export type SeekingType = typeof SEEKING_TYPES[number];
+
+/** Show the same defaults the API uses for older profiles without this field.
+ *  An explicit [] is a deliberate empty selection and must remain empty. */
+export function selectedSeekingTypes(profile: Pick<ProfileData, 'seeking_types'>): string[] {
+  return profile.seeking_types ?? ['research', 'summer_program'];
+}
+
+export function hasSelectedSeekingType(profile: Pick<ProfileData, 'seeking_types'>): boolean {
+  const selected = selectedSeekingTypes(profile);
+  return SEEKING_TYPES.some((type) => selected.includes(type));
+}
 
 
 // Outcomes of SAVING. Whether this identity's row has been READ at all is
@@ -55,3 +68,6 @@ export type SaveStatus =
 // 'failed'  → the read itself failed; nothing is persisted, and the row is
 //             NOT assumed empty (see useProfileForm's hydration gate)
 export type HydrationState = 'loading' | 'ready' | 'failed';
+
+/** Freshness of an already loaded form; separate from its initial read and saves. */
+export type HomeProfileRefreshStatus = 'ready' | 'checking' | 'failed' | 'deleted';

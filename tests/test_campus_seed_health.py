@@ -74,3 +74,31 @@ class TestSeedInventory:
         }
 
         assert not (urls & retired)
+
+    def test_the_three_seeds_that_rotted_in_august_and_september_are_gone(self):
+        """campus-seed-health failed every run from 2026-08-23 on these three.
+
+        A seed and its program record share the URL, so dropping only the seed
+        would silence the canary while the record kept sending students to the
+        404. Both have to leave together; Climate+ moved and is pinned to its
+        successor, the other two have no successor on their own site.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://bigdata.duke.edu/participate/climate-plus/",
+            "https://undergraduateresearch.duke.edu/program-ii-research-funds",
+            "https://www.macalester.edu/serie-center/funding/studentresearch/",
+        }
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (seeds & dead)
+        assert not (set(programs.values()) & dead)
+        assert programs[("duke", "climate_plus")] == "https://iid.duke.edu/iid/climate/"
+        assert programs[("duke", "climate_plus")] in seeds

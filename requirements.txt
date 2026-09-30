@@ -7,12 +7,16 @@
 
 # API server (used by Render + GitHub Actions)
 fastapi==0.135.1
+# fastapi only asks for starlette>=0.46.0; 1.7.0 changed the Vary header under an unchanged file (#974).
+starlette==1.7.0
 uvicorn==0.42.0
 pydantic==2.12.3
 python-multipart==0.0.31
 httpx==0.28.1
 pyyaml==6.0.3
 python-dotenv==1.2.2
+# ECMAScript-compatible numeric GPA scalar in persisted public target contexts.
+rfc8785==0.1.4
 
 # Web Push (only needed for /api/cron/reminders push delivery; soft-pinned
 # because it isn't installed in dev/CI by default and we don't want
@@ -27,12 +31,23 @@ cryptography==50.0.0
 # Data collection (used by scrapers + GitHub Action refresh-data.yml)
 feedparser==6.0.12
 requests==2.33.0
+# Shared website-source URL validation uses IDNA roundtrip directly.
+idna==3.20
 beautifulsoup4==4.14.3
 lxml==6.1.0
 # Deadline normalization (src/normalizers/deadlines.py). dateutil's
 # fuzzy-but-strict mode is the only sane way to handle the MM/DD/YY,
 # season-name, and "Rolling/TBD" mix that scrapers produce.
 python-dateutil==2.9.0
+
+# Complete target resume PDF/DOCX export (M41).
+# Fonts are bundled locally; rendering never fetches external content.
+fpdf2==2.8.8
+python-docx==1.2.0
+fonttools==4.66.0
+Pillow==12.3.0
+defusedxml==0.7.1
+uharfbuzz==0.56.2
 
 # LLM + embedding integration
 openai==2.29.0
@@ -48,3 +63,5 @@ sentry-sdk[fastapi]==2.60.0
 # Testing (kept in production set so Render-built images can run /api/health
 # style smoke tests; very small footprint)
 pytest==9.0.3
+# Real PDF extraction checks for the export contract.
+pypdf==6.19.0

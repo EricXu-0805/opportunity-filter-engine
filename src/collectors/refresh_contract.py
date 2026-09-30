@@ -21,6 +21,7 @@ from src.normalizers.school_audience import SOURCE_DEFAULTS
 from src.school_scope import is_supported
 
 from .schools import SCHOOL_CONFIGS
+from .source_health import collection_evidence_issues
 
 # The shard file that holds every record not owned by one school. It is a
 # publication unit exactly like a school is, so a broken nsf_reu withholds
@@ -233,6 +234,68 @@ def _expected_shard(
     }
 
 
+CONDITION_REFRESH_STATUSES = frozenset({"ok", "partial", "skipped", "unavailable"})
+
+
+def _condition_report_issues(report, targets, *, national, deep, allow_unknown=False):
+    errors, gaps = [], []
+    invalid = "invalid condition refresh report"
+    if (not isinstance(report, dict) or type(report.get("version")) is not int or report["version"] != 1
+            or not isinstance(report.get("status"), str) or report["status"] not in CONDITION_REFRESH_STATUSES):
+        return [invalid], []
+    status = report["status"]
+    if status == "skipped":
+        expected = "quick_mode" if not deep else "national_only" if national else None
+        return ([] if expected and report.get("reason") == expected else [invalid + ": invalid skip"]), []
+    if not deep or national:
+        return [invalid + ": wrong scope"], []
+    if status == "unavailable":
+        if report.get("reason") != "missing_corpus":
+            return [invalid + ": unavailable reason"], []
+        return [], [(school, "unavailable") for school in sorted(targets)]
+    fields = ("records", "due", "backlog", "attempted", "requests", "deferred", "updated", "fresh",
+              "retry_deferred", "missing", "stale", "source_limit", "storage_rejected", "skipped_records", "capacity_blocked")
+    extra = ("records_in_scope", "request_budget", "page_budget")
+    by_school, captures = report.get("by_school"), report.get("condition_capture_counts")
+    if (any(type(report.get(key)) is not int or report[key] < 0 for key in fields + extra)
+            or not isinstance(by_school, dict) or not isinstance(captures, dict)
+            or set(captures) != {"captured", "empty", "unsupported", "failed"}
+            or any(type(v) is not int or v < 0 for v in captures.values())):
+        return [invalid + ": counts"], []
+    if report["records"] != report["records_in_scope"]:
+        errors.append(invalid + ": record counts do not reconcile")
+    if (sum(captures.values()) != report["attempted"]
+            or report["backlog"] != report["due"] + report["retry_deferred"] - captures["captured"] - captures["empty"]
+            or report["requests"] > report["request_budget"] or report["attempted"] > report["page_budget"]):
+        errors.append(invalid + ": capture or budget counts do not reconcile")
+    for school, counts in by_school.items():
+        if school not in targets and not (allow_unknown and school == "unknown"):
+            errors.append(invalid + ": school outside requested scope")
+        if (not isinstance(counts, dict)
+                or any(type(counts.get(key)) is not int or counts[key] < 0 for key in fields)):
+            errors.append(invalid + ": school counts")
+            continue
+        eligible = counts["records"] - counts["skipped_records"]
+        pages = counts["fresh"] + counts["due"] + counts["retry_deferred"]
+        if (eligible < 0 or not eligible <= pages <= 34 * eligible
+                or counts["deferred"] != counts["due"] - counts["attempted"]
+                or counts["updated"] > counts["attempted"]
+                or not counts["retry_deferred"] <= counts["backlog"] <= counts["due"] + counts["retry_deferred"]
+                or counts["source_limit"] + counts["storage_rejected"] > counts["attempted"]
+                or counts["capacity_blocked"] > counts["backlog"]):
+            errors.append(invalid + ": school page counts do not reconcile")
+        if any(counts[key] for key in ("backlog", "skipped_records", "source_limit", "storage_rejected")):
+            gaps.append((school, f"backlog={counts['backlog']}, unchecked={counts['skipped_records']}, rejected={counts['source_limit'] + counts['storage_rejected']}"))
+    if not any(error.endswith(": school counts") for error in errors) and any(
+        sum(counts[key] for counts in by_school.values()) != report[key] for key in fields
+    ):
+        errors.append(invalid + ": school totals do not reconcile")
+    expected_status = "partial" if any(report[key] for key in ("backlog", "skipped_records", "source_limit", "storage_rejected")) else "ok"
+    if status != expected_status:
+        errors.append(invalid + ": completion does not match counts")
+    return errors, gaps
+
+
 def evaluate_refresh_summary(
     summary: dict,
     *,
@@ -322,6 +385,17 @@ def evaluate_refresh_summary(
             "policies": [asdict(policy) for policy in policies.values()],
         }
 
+    # Older summaries contain no condition-check evidence. New reports must
+    # reconcile records, pages, requests and school scope before claiming it.
+    if "condition_refresh" in summary:
+        errors, gaps = _condition_report_issues(summary["condition_refresh"], targets, national=national, deep=deep,
+                                               allow_unknown=schools is None and not national)
+        for error in errors:
+            block(error)
+        for school, detail in gaps:
+            degrade("condition_refresh", f"{school}_faculty", detail,
+                    f"condition checks for {school} remain incomplete; retained sources keep their own check dates")
+
     fatal_error = summary.get("fatal_error")
     if fatal_error:
         reasons.append(f"refresh raised a fatal error: {fatal_error}")
@@ -394,6 +468,15 @@ def evaluate_refresh_summary(
         if not isinstance(info, dict):
             block(f"required source missing: {key}", unit_of(key))
             continue
+        incomplete, invalid = collection_evidence_issues(info)
+        if invalid:
+            block(f"source {key} has invalid collection evidence: {', '.join(invalid)}", unit_of(key))
+        if info.get("status") == "partial_failure" or incomplete:
+            degrade(
+                "partial_failure", key, ", ".join(incomplete) or "source check incomplete",
+                f"source {key} kept a partial harvest, but some pages or condition checks failed; "
+                "its last successful check does not advance",
+            )
         if info.get("status") == SUSPICIOUS_ZERO_STATUS:
             # A department that emitted nothing degrades ITSELF. It used to
             # block, and because unit_of() resolves a source to its shard
@@ -437,7 +520,7 @@ def evaluate_refresh_summary(
                 "records and stale retirement skips it",
             )
             continue
-        if info.get("status") != "ok":
+        if info.get("status") not in ("ok", "partial_failure"):
             # The generic error pass above supplies details for status=error.
             if info.get("status") != "error":
                 block(

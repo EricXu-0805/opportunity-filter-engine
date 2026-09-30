@@ -27,6 +27,7 @@ vi.mock('@/lib/supabase', () => ({
 // identity-change detection is entirely driven by the mocked
 // getAuthState/onAuthChange below, independent of identity-owner's global
 // uid/epoch state.
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { useResultsInteractions } from './use-results-interactions';
 
 type AuthCb = (state: { session: unknown; user: { id: string } | null; isAnonymous: boolean; email: string | null }) => void;
@@ -701,5 +702,54 @@ describe('useResultsInteractions — a stale U1 read resolving after a live U1->
     expect(result.current.favs.has('u2-fav')).toBe(true);
     expect(result.current.interactions.has('u1-opp')).toBe(false);
     expect(result.current.interactions.get('u2-opp')).toBe('replied');
+  });
+});
+
+describe('results contact receipt synchronization', () => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('results-receipt-A'); await syncLocalIdentityOwner('results-receipt-A');
+    mocks.getAuthState.mockResolvedValue(authState('results-receipt-A'));
+  });
+  it('removes only the target status when a confirmed event has no remaining summary', async () => {
+    mocks.getInteractions.mockResolvedValue(new Map([['A', 'replied'], ['B', 'applied']]));
+    const { result } = renderHook(() => useResultsInteractions());
+    await waitFor(() => expect(result.current.interactionsLoading).toBe(false));
+    act(() => result.current.noteContactConfirmed('A', null));
+    expect(result.current.interactions.has('A')).toBe(false);
+    expect(result.current.interactions.get('B')).toBe('applied');
+  });
+  it('overlays a newer contact receipt on an older bulk load without losing other targets', async () => {
+    let finish!: (value: Map<string, string>) => void;
+    mocks.getInteractions.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useResultsInteractions());
+    await waitFor(() => expect(result.current.ownerReady).toBe(true));
+    act(() => result.current.noteContactConfirmed('A', null));
+    act(() => result.current.noteContactConfirmed('C', 'contacted'));
+    await act(async () => { finish(new Map([['A', 'replied'], ['B', 'applied']])); });
+    expect(result.current.interactions.has('A')).toBe(false);
+    expect(result.current.interactions.get('B')).toBe('applied');
+    expect(result.current.interactions.get('C')).toBe('contacted');
+  });
+  it('an old failed status write cannot roll back a later authoritative contact receipt', async () => {
+    mocks.getInteractions.mockResolvedValue(new Map([['A', 'replied']]));
+    let reject!: (error: Error) => void;
+    mocks.trackInteraction.mockReturnValueOnce(new Promise((_resolve, fail) => { reject = fail; }));
+    const { result } = renderHook(() => useResultsInteractions());
+    await waitFor(() => expect(result.current.interactionsLoading).toBe(false));
+    let saving!: Promise<void>;
+    act(() => { saving = result.current.handleTrackInteraction('A', 'interviewing'); });
+    act(() => result.current.noteContactConfirmed('A', null));
+    await act(async () => { reject(new Error('old save failure')); await saving; });
+    expect(result.current.interactions.has('A')).toBe(false);
+    expect(result.current.trackSaveErrors.has('A')).toBe(false);
+    expect(result.current.pendingTrackIds.has('A')).toBe(false);
+  });
+  it('rejects old owner callbacks before auth-event hydration updates this view', async () => {
+    const { result } = renderHook(() => useResultsInteractions());
+    await waitFor(() => expect(result.current.interactionsLoading).toBe(false));
+    const old = result.current.noteContactConfirmed;
+    advanceOwnerEpoch('results-receipt-B'); await syncLocalIdentityOwner('results-receipt-B');
+    act(() => old('A', 'contacted'));
+    expect(result.current.interactions.has('A')).toBe(false);
   });
 });

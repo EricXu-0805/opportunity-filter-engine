@@ -1057,6 +1057,21 @@ def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
 
 # --- Scoring layers ---
 
+def _bounded_skill_labels(value) -> list[str]:
+    """Accept only a bounded structured signal; never tokenize arbitrary metadata."""
+    if (not isinstance(value, list) or len(value) > 512
+            or any(not isinstance(item, str) or not item.strip() or len(item) > 100 for item in value)):
+        return []
+    return list(dict.fromkeys(item.strip() for item in value))
+
+
+def _mentioned_skill_labels(opportunity: dict) -> list[str]:
+    if faculty_contact_claims_unverified(opportunity) or not is_inferred(opportunity, "metadata.skill_mentions"):
+        return []
+    metadata = opportunity.get("metadata") or {}
+    return _bounded_skill_labels(metadata.get("skill_mentions"))
+
+
 def score_eligibility(
     profile: dict,
     opportunity: dict,
@@ -1122,6 +1137,7 @@ def score_eligibility(
     # research-curious student's match through a skills mismatch they never
     # should have been graded on."
     major_is_label = opportunity.get("source_type") == "faculty_research"
+    major_is_inferred = is_inferred(opportunity, "eligibility.majors")
     major_labels = (
         faculty_positive_major_labels(opportunity)
         if major_is_label
@@ -1132,12 +1148,16 @@ def score_eligibility(
         student_majors,
         major_labels,
         exploring=bool(profile.get("exploring")),
-        label_only=major_is_label,
+        label_only=major_is_label or major_is_inferred,
     )
     if major_is_label and major_score >= 100:
         reasons_fit.append("This faculty member's department aligns with your major")
     elif major_is_label and major_score >= 70:
         reasons_fit.append("This faculty member's department is related to your major")
+    elif major_is_inferred and major_score >= 100:
+        reasons_fit.append("Your major may fit this field")
+    elif major_is_inferred and major_score >= 70:
+        reasons_fit.append("Your major may be related to this field")
     elif major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
@@ -1197,9 +1217,11 @@ def score_eligibility(
     # entries may omit fixed requirements because they adapt to the applicant.
     # A faculty directory contact is not a rolling posting and cannot earn this
     # boost merely because an old collector stamped is_rolling=True.
-    required_skills_list = elig.get("skills_required", []) or []
+    required_skills_list = _bounded_skill_labels(elig.get("skills_required"))
+    requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
+    stated_required_skills = [] if requirements_are_ours else required_skills_list
     if (
-        not required_skills_list
+        not stated_required_skills
         and opportunity.get("is_rolling")
         and not faculty_contact_claims_unverified(opportunity)
     ):
@@ -1207,11 +1229,21 @@ def score_eligibility(
     else:
         skill_score = _skill_overlap_score(
             profile.get("hard_skills", []),
-            required_skills_list,
+            stated_required_skills,
             skill_map=skill_map,
         )
+    # Optional/derived labels can indicate relevance, but a missing one must
+    # never score below a record with unknown requirements. Optional matches
+    # cannot compensate for a separately stated hard requirement either.
+    preferred_skills = _bounded_skill_labels(elig.get("skills_preferred"))
+    mentioned_skills = _mentioned_skill_labels(opportunity)
+    if not stated_required_skills:
+        soft_skills = list(dict.fromkeys(
+            (required_skills_list if requirements_are_ours else []) + preferred_skills + mentioned_skills
+        ))
+        skill_score = max(skill_score, _skill_overlap_score(profile.get("hard_skills", []), soft_skills, skill_map=skill_map))
     student_skill_map = skill_map if skill_map is not None else _parse_skills(profile.get("hard_skills", []))
-    required_raw = elig.get("skills_required", [])
+    required_raw = required_skills_list
     matched_skills = []
     missing_skills = []
     for r in required_raw:
@@ -1230,9 +1262,8 @@ def score_eligibility(
     # shortfall: "Missing skills: Stata" on a program whose own page lists only
     # timing and a deadline.
     #
-    # The score still uses them — they carry a weak topic signal — but no
-    # SENTENCE may claim the program requires something nobody said it does.
-    requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
+    # Their overlap remains a positive signal, but a missing inferred skill
+    # cannot reduce eligibility or be described as a program requirement.
 
     if matched_skills:
         skill_detail_parts = []
@@ -1266,6 +1297,18 @@ def score_eligibility(
             reasons_fit.append(f"{label}: {', '.join(skill_detail_parts)} — {len(matched_skills)}/{len(required_raw)} required")
     if missing_skills and not requirements_are_ours:
         reasons_gap.append(f"Missing skills: {', '.join(missing_skills)}")
+
+    if not stated_required_skills:
+        already_shown = {_canonicalize_skill(skill) for skill in matched_skills}
+        for labels, label in (
+            (preferred_skills, "Skills mentioned in the description" if is_inferred(opportunity, "eligibility.skills_preferred") else "Preferred skill overlap"),
+            (mentioned_skills, "Skills mentioned in the description"),
+        ):
+            matches = [skill for skill in labels if _canonicalize_skill(skill) in student_skill_map
+                       and _canonicalize_skill(skill) not in already_shown]
+            if matches:
+                reasons_fit.append(f"{label}: {', '.join(matches)}")
+                already_shown.update(_canonicalize_skill(skill) for skill in matches)
 
     # Type preference match (15% weight)
     type_score = _type_preference_score(
@@ -2690,7 +2733,7 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     pref_years = elig.get("preferred_year") or []
     if not pref_years or any((p or "").lower() == "unknown" for p in pref_years):
         unknowns.append("opportunity.preferred_year")  # scored neutral 40
-    if not (elig.get("majors") or []):
+    if not (elig.get("majors") or []) or is_inferred(opportunity, "eligibility.majors"):
         unknowns.append("opportunity.majors")  # open posting: 30, no gap reason
     if profile.get("international_student") and (
         elig.get("international_friendly", "unknown") or "unknown"
@@ -3012,8 +3055,6 @@ class _FilterCtx:
     exclude_citizenship_restricted: bool
     international_student: bool
     seeking: set[str]
-    student_majors_norm: set[str]
-    related_majors_norm: set[str]
 
 
 def _filter_context(profile: dict) -> _FilterCtx:
@@ -3021,13 +3062,6 @@ def _filter_context(profile: dict) -> _FilterCtx:
     # Cross-school resources are opt-in (Eric, 2026-07: 正常肯定还是会优先本学校的科研).
     # Without a home_school there is no "cross-school" to hide, so such
     # profiles keep the pre-toggle behavior.
-    student_majors_norm = {
-        _normalize_major(m)
-        for m in [profile.get("major", "")] + (profile.get("secondary_interests") or [])
-    }
-    related_majors_norm: set[str] = set()
-    for sm in student_majors_norm:
-        related_majors_norm.update(RELATED_MAJORS.get(sm, []))
     return _FilterCtx(
         home_school=home_school_raw or "uiuc",
         hide_cross_school=not profile.get("include_cross_school") and bool(home_school_raw),
@@ -3038,8 +3072,6 @@ def _filter_context(profile: dict) -> _FilterCtx:
         seeking={
             _normalize_type_key(s) for s in (profile.get("seeking_type") or []) if s and s.strip()
         },
-        student_majors_norm=student_majors_norm,
-        related_majors_norm=related_majors_norm,
     )
 
 
@@ -3083,13 +3115,10 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
                 return "citizenship_restricted"
 
     opp_type = _normalize_type_key(opp.get("opportunity_type") or "")
-    if ctx.seeking and opp_type and opp_type not in ctx.seeking:
-        opp_majors = faculty_safe_eligibility(opp).get("majors") or []
-        if opp_majors:
-            opp_majors_norm = {_normalize_major(m) for m in opp_majors}
-            if not (ctx.student_majors_norm & opp_majors_norm):
-                if not (ctx.related_majors_norm & opp_majors_norm):
-                    return "seeking_type_mismatch"
+    # Type selection defines the result universe, independently of major fit.
+    # Missing/unknown record types cannot establish membership in that set.
+    if ctx.seeking and opp_type not in ctx.seeking:
+        return "seeking_type_mismatch"
 
     return None
 

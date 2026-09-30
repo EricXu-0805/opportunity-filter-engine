@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getAuthState: vi.fn(),
   onAuthChange: vi.fn(),
   getShortlistOpportunities: vi.fn(),
+  resolvePrivateImportTrackerTargets: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -28,6 +29,12 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/lib/api', () => ({
   getShortlistOpportunities: mocks.getShortlistOpportunities,
 }));
+
+vi.mock('@/lib/private-import-target-api', async original => ({
+  ...await original<typeof import('@/lib/private-import-target-api')>(),
+  resolvePrivateImportTrackerTargets: mocks.resolvePrivateImportTrackerTargets,
+}));
+import { advanceOwnerEpoch, syncLocalIdentityOwner, captureOwnerToken, isOwnerTokenValid, OwnerMismatchError } from '@/lib/identity-owner';
 
 // identity-owner is NOT mocked — captureOwnerToken is the real primitive,
 // used here only to prove a token is passed through (see
@@ -94,6 +101,7 @@ beforeEach(() => {
   mocks.getAuthState.mockReset();
   mocks.onAuthChange.mockReset();
   mocks.getShortlistOpportunities.mockReset();
+  mocks.resolvePrivateImportTrackerTargets.mockReset();
   authChangeCallback = null;
 
   interactions = new Map([
@@ -1144,4 +1152,22 @@ describe('reminders are counted on the student evening they are set', () => {
     expect(isReminderDue('2026-09-04')).toBe(false);
     expect(isReminderDue('2026-09-03')).toBe(true);
   });
+});
+
+it('reloads private targets when the same account finishes initial local ownership setup', async () => {
+  const uid = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch(uid);
+  expect(isOwnerTokenValid(captureOwnerToken(), uid)).toBe(false);
+  mocks.getAuthState.mockResolvedValue(authState(uid));
+  mocks.getInteractionsFull.mockResolvedValue(new Map([[id, { type: 'applied' }]]));
+  mocks.resolvePrivateImportTrackerTargets.mockImplementation(async (_ids, { owner }) => {
+    if (!isOwnerTokenValid(owner, uid)) throw new OwnerMismatchError();
+    return [{ id, status: 'resolved', tracker: { id, title: 'Saved private target', organization: null, source_url: null, url: null } }];
+  });
+  const { result } = renderHook(useTrackerData);
+  await waitFor(() => expect(result.current.error).toBe(true));
+  await act(async () => { await syncLocalIdentityOwner(uid); authChangeCallback!(authState(uid)); });
+  await waitFor(() => expect(result.current.items[0]?.opp.id).toBe(id), { timeout: 500 });
+  expect(result.current.error).toBe(false);
 });

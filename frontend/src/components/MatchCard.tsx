@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { profileInputMessage } from '@/lib/profile-input';
+
+import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   ChevronDown,
   ExternalLink,
@@ -49,17 +52,23 @@ import {
   type TargetStatusReason,
 } from '@/lib/target-truth';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { useResultModalHistory, type ModalCloseRequest } from '@/app/results/use-result-modal-history';
 import { cleanCompensation } from '@/app/opportunities/[id]/detail-utils';
 
 // R71 PR-2: client-only modal (matches ColdEmailModal SSR-disabled pattern
 // to keep this card a server-cheap leaf until the user opens the panel).
-const TailorModal = dynamic(() => import('./TailorModal'), { ssr: false });
-const ResumeRenovationModal = dynamic(() => import('./ResumeRenovationModal'), { ssr: false });
+const TailorModal = dynamic(() => import('./CheckedTailorModal'), { ssr: false });
+const ResumeRenovationModal = dynamic(() => import('./ResumeWorkspaceModal'), { ssr: false });
 
 export interface MatchCardProps {
+  detailHref?: string;
+  isViewed?: boolean;
+  onViewOpportunity?: (id: string) => void;
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
+  /** Results owns the persistent editor; other callers may retain the local fallback. */
+  onOpenResume?: (opportunityId: string) => void;
   isFavorited?: boolean;
   onToggleFavorite?: (opportunityId: string) => void;
   /** True while this card's favorite is unwritable — a write already in
@@ -178,10 +187,11 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ match, profile, onDraftEmail, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
+export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, onOpenResume, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
+  const [gapError, setGapError] = useState<unknown>(null);
   // R71 PR-2: local tailor-modal state — parent doesn't need to know.
   // We only mount the heavy modal once the user clicks the CTA, and
   // the button itself only renders when a profile exists (the route
@@ -189,6 +199,20 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
   // is empty).
   const [tailorOpen, setTailorOpen] = useState(false);
   const [renovationOpen, setRenovationOpen] = useState(false);
+  const resumeCloseRequest = useRef<ModalCloseRequest | null>(null);
+  const registerResumeCloseRequest = useCallback((request: ModalCloseRequest | null) => {
+    resumeCloseRequest.current = request;
+  }, []);
+  useResultModalHistory(tailorOpen || renovationOpen, () => {
+    setTailorOpen(false);
+    setRenovationOpen(false);
+  }, ownerScopeKey, () => {
+    if (renovationOpen && resumeCloseRequest.current) return resumeCloseRequest.current();
+    setTailorOpen(false);
+    setRenovationOpen(false);
+    return true;
+  });
+
   const { t } = useT();
 
   const { opportunity: opp } = match;
@@ -271,16 +295,18 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                 </button>
               )}
               <h3 className="text-[17px] font-semibold text-gray-900 leading-snug line-clamp-2">
-                <a
-                  href={`/opportunities/${encodeURIComponent(opp.id)}`}
-                  onClick={e => e.stopPropagation()}
+                <Link
+                  href={detailHref ?? `/opportunities/${encodeURIComponent(opp.id)}`}
+                  onClick={e => { e.stopPropagation(); onViewOpportunity?.(opp.id); }}
+                  onAuxClick={e => { if (e.button === 1) onViewOpportunity?.(opp.id); }}
                   className="hover:text-indigo-600 focus:outline-none focus-visible:underline decoration-indigo-500 underline-offset-4 transition-colors"
                 >
                   {opp.title}
-                </a>
+                </Link>
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[12px] sm:text-[13px] text-gray-400">
+              {isViewed && <span data-testid="match-viewed" className="text-gray-500">{t('card.viewed')}</span>}
               {opp.organization && (
                 <span className="inline-flex items-center gap-1 min-w-0">
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
@@ -481,7 +507,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {posture === 'actionable' && !facultyUnavailable && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') onDraftEmail(opp.id); }}
+              onClick={() => { if (posture === 'actionable') { onViewOpportunity?.(opp.id); onDraftEmail(opp.id); } }}
               className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
                 emailIsPrimary
                   ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
@@ -501,7 +527,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               // control that is merely not rendered is safe, but a callback
               // reachable some other way (a retained ref, a future refactor
               // that keeps the button and disables it) must refuse too.
-              onClick={() => { if (ownerReady && posture === 'actionable') setTailorOpen(true); }}
+              onClick={() => { if (ownerReady && posture === 'actionable') { onViewOpportunity?.(opp.id); setTailorOpen(true); } }}
               disabled={!ownerReady}
               aria-busy={!ownerReady}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
@@ -513,7 +539,9 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
           {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') setRenovationOpen(true); }}
+              onClick={() => { if (ownerReady && posture === 'actionable') { onViewOpportunity?.(opp.id); if (onOpenResume) onOpenResume(opp.id); else setRenovationOpen(true); } }}
+              disabled={!ownerReady}
+              aria-busy={!ownerReady}
               className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -670,10 +698,11 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
                   // spinner that ends in an error the user cannot act on.
                   if (posture !== 'actionable') return;
                   setGapLoading(true);
+                  setGapError(null);
                   try {
                     const data = await getGapAnalysis(profile, opp.id);
                     setGaps(data);
-                  } catch { /* best effort */ }
+                  } catch (error) { setGapError(error); }
                   finally { setGapLoading(false); }
                 }}
                 className="inline-flex items-center gap-2 px-4 py-2 text-[12px] font-medium text-teal-700 bg-teal-50 rounded-xl hover:bg-teal-100 transition-colors"
@@ -683,6 +712,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
               </button>
             )}
 
+            {RELEASE_SCOPE.roadmap && profileInputMessage(gapError, t) && <p role="alert" className="text-sm text-amber-700">{profileInputMessage(gapError, t)}</p>}
             {RELEASE_SCOPE.roadmap && gaps && (
               <div className="space-y-4 pt-1">
                 {gaps.missing_skills.length > 0 && (
@@ -761,6 +791,7 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         `isOpen` prop one state change away from opening. */}
     {profile && posture === 'actionable' && (
       <TailorModal
+        target={opp}
         isOpen={tailorOpen}
         onClose={() => setTailorOpen(false)}
         profile={profile}
@@ -770,13 +801,13 @@ export default function MatchCard({ match, profile, onDraftEmail, isFavorited, o
         ownerScopeKey={ownerScopeKey}
       />
     )}
-    {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
+    {!onOpenResume && RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
       <ResumeRenovationModal
         isOpen={renovationOpen}
         onClose={() => setRenovationOpen(false)}
         profile={profile}
-        opportunityId={opp.id}
-        opportunityTitle={opp.title}
+        opportunity={opp}
+        onCloseRequestChange={registerResumeCloseRequest}
       />
     )}
     </>

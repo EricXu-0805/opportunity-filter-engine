@@ -1,3 +1,4 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 /**
  * CE0 — Cold Email: the atomic sent-confirmation contract.
  *
@@ -39,8 +40,11 @@ vi.mock('@/i18n/client', () => {
 });
 
 const mockGetVariants = vi.fn();
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
+  validateEmailDraft: emailValidationReceipt,
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   generateColdEmail: vi.fn().mockRejectedValue(new Error('no ai in tests')),
   generateColdEmailStream: vi.fn().mockRejectedValue(new Error('no stream in tests')),
   refineEmail: vi.fn(),
@@ -74,14 +78,18 @@ const trackInteractionMock = vi.fn();
 const getInteractionDetailMock = vi.fn();
 const updateInteractionDetailsMock = vi.fn();
 vi.mock('@/lib/supabase', () => ({
-  confirmInteractionContact: (...args: unknown[]) => confirmContactMock(...args),
+  confirmContactEvent: async (...args: unknown[]) => ({ interaction: await confirmContactMock(...args) }),
   trackInteraction: (...args: unknown[]) => trackInteractionMock(...args),
   getInteractionDetail: (...args: unknown[]) => getInteractionDetailMock(...args),
   updateInteractionDetails: (...args: unknown[]) => updateInteractionDetailsMock(...args),
   onAuthChange: () => () => {},
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
 import {
   advanceOwnerEpoch,
   captureOwnerToken,
@@ -123,8 +131,10 @@ async function settle<T>(d: Deferred<T>, run: () => void): Promise<void> {
   });
 }
 
-const resolveConfirm = (i: number, value: unknown = APPLIED) =>
-  settle(confirmCalls[i], () => confirmCalls[i].resolve(value));
+const resolveConfirm = async (i: number, value: unknown = APPLIED) => {
+  await until(() => confirmCalls.length > i, 'snapshot hashing reached the confirm write');
+  return settle(confirmCalls[i], () => confirmCalls[i].resolve(value));
+};
 const rejectConfirm = (i: number, err: unknown = new Error('network down')) =>
   settle(confirmCalls[i], () => confirmCalls[i].reject(err));
 
@@ -185,7 +195,8 @@ function expectNoConfirmedUi(when: string): void {
 /** The confirm control, whatever its label currently says. */
 const confirmButton = () => screen.getByTestId('cold-email-confirm-sent');
 
-beforeEach(() => {
+beforeEach(async () => {
+  await becomeOwner('fixture');
   pushStatus = 'default';
   confirmCalls.length = 0;
   updateCalls.length = 0;
@@ -210,7 +221,7 @@ beforeEach(() => {
     configurable: true,
     writable: true,
   });
-  vi.stubGlobal('open', vi.fn());
+  vi.stubGlobal('open', vi.fn(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() })));
 });
 
 afterEach(() => {
@@ -343,7 +354,7 @@ describe('CE0-2 — the confirmation is one atomic call, and the UI follows it',
 
     expect(confirmContactMock).toHaveBeenCalledTimes(1);
     expect(confirmContactMock.mock.calls[0][0], 'the opportunity being confirmed').toBe('opp-A');
-    expect(confirmContactMock.mock.calls[0][1], 'the click-time owner capability').toEqual(expected);
+    expect(confirmContactMock.mock.calls[0][2], 'the click-time owner capability').toEqual(expected);
     // The old two-step path must be gone entirely, not merely also-called.
     expect(getInteractionDetailMock, 'no TOCTOU read').not.toHaveBeenCalled();
     expect(trackInteractionMock, 'no separate status write').not.toHaveBeenCalled();
@@ -1152,5 +1163,98 @@ describe('offering notifications once a reminder exists', () => {
     await screen.findByText(/^coldEmail\.reminderSet/);
 
     expect(screen.queryByText('coldEmail.reminderEnablePush')).toBeNull();
+  });
+});
+
+
+describe('M45 immutable email confirmation snapshot', () => {
+  it('passes the exact edited email and provenance to one event write', async () => {
+    renderModal(); await openedOn('opp-A');
+    fireEvent.change(screen.getByLabelText('coldEmail.subject'), { target: { value: 'Actual subject' } });
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Actual body\nsecond line' } });
+    fireEvent.change(screen.getByLabelText('coldEmail.to'), { target: { value: 'sent@example.edu' } });
+    await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'event write');
+    expect(confirmContactMock.mock.calls[0][1]).toMatchObject({
+      id: expect.stringMatching(/^[0-9a-f-]{36}$/), recipient: 'sent@example.edu', subject: 'Actual subject',
+      body: 'Actual body\nsecond line', actualSentAt: null,
+      materialRefs: expect.arrayContaining([{ kind: 'target', version: EMAIL_TARGET_VERSION }]),
+    });
+  });
+  it('does not carry confirmation into a manually changed body', async () => {
+    renderModal(); await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'event write'); await resolveConfirm(0);
+    expect(await screen.findByText('coldEmail.remindPrompt')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'A second email' } });
+    expect(screen.queryByText('coldEmail.remindPrompt')).not.toBeInTheDocument();
+    await reachConfirmStrip(); expect(confirmButton()).toBeEnabled();
+    fireEvent.click(confirmButton()); await until(() => confirmCalls.length === 2, 'second version write');
+    expect(confirmContactMock.mock.calls[1][1].id).not.toBe(confirmContactMock.mock.calls[0][1].id);
+  });
+  it('reuses the event id after an uncertain save and after reopening the same draft', async () => {
+    const view = renderModal(); await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'event write'); await rejectConfirm(0);
+    fireEvent.click(confirmButton()); await until(() => confirmCalls.length === 2, 'retry');
+    expect(confirmContactMock.mock.calls[0][1].id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(confirmContactMock.mock.calls[1][1].id).toBe(confirmContactMock.mock.calls[0][1].id);
+    await rejectConfirm(1); view.unmount();
+    renderModal(); await openedOn('opp-A');
+    // Recovery never stores a server-revealed address. The same draft is
+    // confirmable only after its recipient has been freshly revealed again.
+    await waitFor(() => expect(screen.getByLabelText('coldEmail.to')).toHaveValue('prof@illinois.edu'));
+    await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 3, 'reopened retry');
+    expect(confirmContactMock.mock.calls[2][1].id).toBe(confirmContactMock.mock.calls[0][1].id);
+  });
+});
+
+
+describe('M45 send snapshot boundaries', () => {
+  it('a late successful old-body confirmation updates history but never confirms a changed email', async () => {
+    const saved = vi.fn(); renderModal('opp-A', liveListingTarget('opp-A'), saved);
+    await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'old-body save started');
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Changed while saving' } });
+    await reachConfirmStrip(); await resolveConfirm(0);
+    expect(saved).toHaveBeenCalledWith(APPLIED);
+    expect(screen.queryByText('coldEmail.remindPrompt')).not.toBeInTheDocument();
+    expect(confirmButton()).toBeEnabled();
+  });
+  it('a late old-body error is not attributed to the changed email', async () => {
+    renderModal(); await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await until(() => confirmCalls.length === 1, 'old-body save started');
+    fireEvent.change(screen.getByLabelText('coldEmail.body'), { target: { value: 'Changed while saving' } });
+    await reachConfirmStrip(); await rejectConfirm(0);
+    expect(screen.queryByText('coldEmail.confirmFailed')).not.toBeInTheDocument();
+    expect(confirmButton()).toBeEnabled();
+  });
+  it.each(['', 'not-an-email'])('does not write an invalid recipient: %s', async recipient => {
+    renderModal(); await openedOn('opp-A');
+    fireEvent.change(screen.getByLabelText('coldEmail.to'), { target: { value: recipient } });
+    await reachConfirmStrip(); fireEvent.click(confirmButton());
+    expect(await screen.findByText('coldEmail.contactInvalid')).toBeInTheDocument();
+    expect(confirmContactMock).not.toHaveBeenCalled();
+  });
+  it('rejects future sends and saves an optional past send time separately', async () => {
+    renderModal(); await openedOn('opp-A'); await reachConfirmStrip();
+    fireEvent.change(screen.getByLabelText('coldEmail.actualSentAt'), { target: { value: '2999-01-02T12:34' } });
+    fireEvent.click(confirmButton()); expect(await screen.findByText('coldEmail.contactInvalid')).toBeInTheDocument();
+    expect(confirmContactMock).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('coldEmail.actualSentAt'), { target: { value: '2020-01-02T12:34' } });
+    fireEvent.click(confirmButton()); await until(() => confirmCalls.length === 1, 'past send written');
+    expect(confirmContactMock.mock.calls[0][1].actualSentAt).toBe(new Date('2020-01-02T12:34').toISOString());
+    await resolveConfirm(0); expect(screen.getByText('coldEmail.remindPrompt')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('coldEmail.actualSentAt'), { target: { value: '2020-01-03T12:34' } });
+    expect(screen.queryByText('coldEmail.remindPrompt')).not.toBeInTheDocument();
+    fireEvent.click(confirmButton()); await until(() => confirmCalls.length === 2, 'repeat send written');
+    expect(confirmContactMock.mock.calls[1][1].id).not.toBe(confirmContactMock.mock.calls[0][1].id);
+  });
+  it('a replay after removal preserves the missing summary without offering reminders', async () => {
+    const saved = vi.fn(); renderModal('opp-A', liveListingTarget('opp-A'), saved);
+    await openedOn('opp-A'); await reachConfirmStrip(); fireEvent.click(confirmButton());
+    await resolveConfirm(0, null);
+    expect(await screen.findByText('coldEmail.contactRecordedNoStatus')).toBeInTheDocument();
+    expect(saved).toHaveBeenCalledWith(null); expect(updateInteractionDetailsMock).not.toHaveBeenCalled();
+    expect(screen.queryByText('coldEmail.remindPrompt')).not.toBeInTheDocument();
   });
 });

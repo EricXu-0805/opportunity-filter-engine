@@ -1,0 +1,187 @@
+{
+  "baseline": "41314705f399e2e3bcb69c6ae3896a0c2eb98f6c",
+  "boundary": "Actual ASGI handlers with controlled page/model output; no external requests or model calls.",
+  "cases": [
+    {
+      "name": "url",
+      "request": {
+        "url": "https://example.edu/program"
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "url_parser",
+          "source_url": "https://example.edu/program",
+          "title": "Model project title",
+          "description_raw": "Application materials A CV is required.",
+          "url": "https://example.edu/program",
+          "organization": "example.edu",
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "domain": "example.edu",
+            "description_source": "page_excerpt",
+            "needs_manual_review": true,
+            "contact_instruction_capture": {
+              "version": 1,
+              "status": "captured",
+              "reason": null,
+              "attempted_at": "2026-09-29T02:58:34.453778+00:00",
+              "source_url": "https://example.edu/program",
+              "record_source_url": "https://example.edu/program",
+              "requested_source_url": "https://example.edu/program"
+            },
+            "contact_instruction_sources": [
+              {
+                "source_url": "https://example.edu/program",
+                "record_source_url": "https://example.edu/program",
+                "checked_at": "2026-09-29T02:58:34.453778+00:00",
+                "sections": [
+                  {
+                    "heading": "Application materials",
+                    "text": "A CV is required."
+                  }
+                ]
+              }
+            ],
+            "suggested_description": "Generated summary to review.",
+            "suggested_skills": [
+              "R",
+              "Java",
+              "C++"
+            ],
+            "llm_enriched": true,
+            "inferred_fields": {
+              "title": "llm:url_parser",
+              "suggested_description": "llm:url_parser",
+              "suggested_skills": "llm:url_parser"
+            }
+          }
+        },
+        "error": null,
+        "llm_enriched": true
+      },
+      "canonical": {
+        "eligibility": {
+          "preferred_year": [
+            "unknown"
+          ],
+          "min_gpa": null,
+          "majors": [],
+          "skills_required": [],
+          "skills_preferred": [],
+          "citizenship_required": false,
+          "international_friendly": "unknown",
+          "work_auth_notes": "",
+          "eligibility_text_raw": ""
+        },
+        "metadata": {
+          "confidence_score": 0.6,
+          "last_verified": "2026-09-29T02:58:34.457402",
+          "first_seen_at": "2026-09-29T02:58:34.457408",
+          "last_seen_at": "2026-09-29T02:58:34.457409",
+          "is_active": true,
+          "manually_reviewed": false,
+          "notes": "",
+          "skill_mentions": [],
+          "contact_instruction_sources": [
+            {
+              "source_url": "https://example.edu/program",
+              "record_source_url": "https://example.edu/program",
+              "checked_at": "2026-09-29T02:58:34.453778+00:00",
+              "sections": [
+                {
+                  "heading": "Application materials",
+                  "text": "A CV is required."
+                }
+              ]
+            }
+          ],
+          "contact_instruction_capture": {
+            "version": 1,
+            "status": "captured",
+            "reason": null,
+            "attempted_at": "2026-09-29T02:58:34.453778+00:00",
+            "source_url": "https://example.edu/program",
+            "record_source_url": "https://example.edu/program",
+            "requested_source_url": "https://example.edu/program"
+          },
+          "inferred_fields": {
+            "title": "llm:url_parser",
+            "metadata.skill_mentions": "rule:opportunity_terms"
+          }
+        }
+      }
+    },
+    {
+      "name": "text",
+      "request": {
+        "text": "Original pasted project text. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration.  FINAL SOURCE SENTENCE."
+      },
+      "response": {
+        "ok": true,
+        "opportunity": {
+          "source": "text_parser",
+          "source_url": "",
+          "title": "Model project title",
+          "description_raw": "Original pasted project text. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration. We measure bird migration.  FINAL SOURCE SENTENCE.",
+          "url": "",
+          "organization": null,
+          "deadline": null,
+          "posted_date": null,
+          "location": null,
+          "raw_html": null,
+          "extra_fields": {
+            "needs_manual_review": true,
+            "description_source": "pasted_text",
+            "suggested_description": "Generated summary to review.",
+            "suggested_skills": [
+              "R",
+              "Java",
+              "C++"
+            ],
+            "llm_enriched": true,
+            "inferred_fields": {
+              "title": "llm:url_parser",
+              "suggested_description": "llm:url_parser",
+              "suggested_skills": "llm:url_parser"
+            }
+          }
+        },
+        "error": null,
+        "llm_enriched": true
+      },
+      "canonical": {
+        "eligibility": {
+          "preferred_year": [
+            "unknown"
+          ],
+          "min_gpa": null,
+          "majors": [],
+          "skills_required": [],
+          "skills_preferred": [],
+          "citizenship_required": false,
+          "international_friendly": "unknown",
+          "work_auth_notes": "",
+          "eligibility_text_raw": ""
+        },
+        "metadata": {
+          "confidence_score": 0.6,
+          "last_verified": "2026-09-29T02:58:34.466328",
+          "first_seen_at": "2026-09-29T02:58:34.466336",
+          "last_seen_at": "2026-09-29T02:58:34.466337",
+          "is_active": true,
+          "manually_reviewed": false,
+          "notes": "",
+          "skill_mentions": [],
+          "inferred_fields": {
+            "title": "llm:url_parser",
+            "metadata.skill_mentions": "rule:opportunity_terms"
+          }
+        }
+      }
+    }
+  ]
+}

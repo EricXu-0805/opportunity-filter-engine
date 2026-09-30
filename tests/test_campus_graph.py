@@ -13,8 +13,10 @@ surface grows automatically as the registry grows — no per-school test file.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import pytest
+from bs4 import BeautifulSoup
 
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
@@ -26,18 +28,14 @@ from src.collectors.schools.ucsd import SCHOOL as UCSD
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
 
 
-class _StaticSoup:
-    def __init__(self, text: str = "Applications open"):
-        self._text = text
+def _observed(soup, url):
+    soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                "checked_at": datetime.now(UTC).isoformat()}
+    return soup
 
-    def get_text(self, *_args, **_kwargs):
-        return self._text
 
-    def find_all(self, *_args, **_kwargs):
-        return []
-
-    def find(self, *_args, **_kwargs):
-        return None
+def _StaticSoup(url, text="Applications open"):
+    return _observed(BeautifulSoup(f"<body><p>{text}</p></body>", "html.parser"), url)
 
 # --- Registry integrity ----------------------------------------------------
 
@@ -291,7 +289,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: _StaticSoup() if url == urls[0] else None,
+            lambda url, **_: _StaticSoup(url) if url == urls[0] else None,
         )
 
         records, evidence = cg.fetch_and_normalize_with_evidence(
@@ -373,6 +371,55 @@ class TestSeedNormalization:
         assert merged["metadata"]["last_verified"] != "2026-06-01T00:00:00"
         assert merged["title"].endswith("(applications closed)")
 
+    def test_div_only_closed_page_still_closes_prior_open_seed(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        from bs4 import BeautifulSoup
+
+        url = "https://example.edu/summer"
+        source = {
+            "source_name": "example_programs",
+            "source_type": cg.PROGRAM,
+            "emit": "campus",
+            "crawl": cg.STATIC,
+            "seeds": [url],
+            "programs": [cg.program("summer", "Summer Research Program", url, "Curated")],
+        }
+        school = {
+            "school_slug": "example",
+            "organization": "Example University",
+            "location": "Example, EX",
+            "emit": {"campus": ("example_programs", "example", "campus")},
+            "sources": [source],
+        }
+        prior = cg._normalize_program(
+            school, source, source["programs"][0], status="open", seed_page_verified=True,
+        )
+        processed = tmp_path / "opportunities.json"
+        processed.write_text(json.dumps([prior]), encoding="utf-8")
+        monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
+        page = BeautifulSoup(
+            "<body><h1>Summer Research Program</h1>"
+            "<div>The 2026 cohort has been selected.</div></body>",
+            "html.parser",
+        )
+        monkeypatch.setattr(cg, "_fetch", lambda u, **_: _observed(page, u))
+
+        records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True)
+        assert records[0]["metadata"]["seed_page_verified"] is True
+        assert records[0]["metadata"]["status"] == "closed"
+        assert evidence["crawl_errors"] == []
+        assert evidence["condition_capture_counts"]["unsupported"] == 1
+        assert evidence["condition_capture_complete"] is False
+        cg.merge_into_processed(records)
+
+        [merged] = json.loads(processed.read_text(encoding="utf-8"))
+        assert merged["metadata"]["status"] == "closed"
+        assert merged["metadata"]["is_active"] is False
+        assert merged["metadata"]["contact_instruction_capture"]["reason"] == "no_supported_content"
+
     def test_discovered_anchor_requires_its_own_page_before_emission(
         self,
         monkeypatch,
@@ -404,7 +451,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: seed if url == seed_url else None,
+            lambda url, **_: _observed(seed, url) if url == seed_url else None,
         )
         _status, discovered, evidence = cg._crawl_source(school, source)
         assert discovered == []
@@ -417,13 +464,19 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: seed if url == seed_url else detail,
+            lambda url, **_: _observed(seed if url == seed_url else detail, url),
         )
-        _status, discovered, _evidence = cg._crawl_source(school, source)
+        _status, discovered, evidence = cg._crawl_source(school, source)
         assert len(discovered) == 1
         assert discovered[0]["metadata"]["discovered_page_verified"] is True
         assert discovered[0]["metadata"]["status"] == "open"
         assert discovered[0]["metadata"]["is_active"] is True
+        # Neither page has condition-capture DOM; that gap is a capture
+        # receipt, not a failed page load.
+        assert evidence["seed_page_errors"] == []
+        assert evidence["degraded_page_errors"] == []
+        assert evidence["live_pages_loaded"] == 2
+        assert evidence["condition_capture_counts"]["unsupported"] == 2
 
     def test_absent_discovery_retires_only_for_complete_recursive_source(
         self,
@@ -476,7 +529,7 @@ class TestSeedNormalization:
         monkeypatch.setattr(
             cg,
             "_fetch",
-            lambda url, **_: None if url == failed_url else _StaticSoup(),
+            lambda url, **_: None if url == failed_url else _StaticSoup(url),
         )
         records, evidence = cg.fetch_and_normalize_with_evidence(
             PRINCETON,
@@ -504,6 +557,31 @@ class TestSeedNormalization:
         )
         assert saved[static["id"]]["metadata"]["is_active"] is True
         assert saved[other_school["id"]]["metadata"]["is_active"] is True
+
+    @pytest.mark.parametrize("html", [
+        "",
+        "<body><div id=\"root\"></div><script>window.boot()</script></body>",
+        "<title>Sign in</title><form><input type=\"password\"></form>",
+    ])
+    def test_a_blank_shell_or_sign_in_seed_never_completes_a_crawl(self, monkeypatch, tmp_path, html):
+        # These pages carry no capture DOM either, but unlike a link hub or a
+        # div-only page they show nothing to observe. Counting them as loaded
+        # would retire every earlier discovery of the source.
+        source = next(source for source in PRINCETON["sources"] if source["crawl"] == cg.RECURSIVE)
+        prior = cg._normalize_discovered(PRINCETON, source, "Old fellowship", "https://example.edu/old", "old")
+        prior["metadata"].update({"discovered_page_verified": True, "status": "open", "is_active": True})
+        processed = tmp_path / "opportunities.json"
+        processed.write_text(json.dumps([prior]), encoding="utf-8")
+        monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: _observed(BeautifulSoup(html, "html.parser"), url))
+
+        records, evidence = cg.fetch_and_normalize_with_evidence(PRINCETON, deep=True)
+
+        assert source["source_name"] not in set(evidence["complete_recursive_sources"])
+        cg.merge_into_processed(records, complete_recursive_sources=set(evidence["complete_recursive_sources"]),
+                                school_slug=PRINCETON["school_slug"])
+        saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+        assert saved[prior["id"]]["metadata"]["is_active"] is True
 
     def test_legacy_unverified_discovery_is_quarantined(self):
         legacy = {

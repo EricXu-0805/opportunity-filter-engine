@@ -16,7 +16,8 @@ import re
 from pathlib import Path
 
 from src.evidence import stamp_inferred
-from src.normalizers.enricher import _combined_text, _extract_skills_from_text
+from src.normalizers.enricher import _skill_source_text, _store_skill_mentions
+from src.opportunity_terms import extract_skill_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -64,51 +65,6 @@ def needs_tagging(opp: dict) -> bool:
 
 # ── Rule-Based Heuristic Tagger ──────────────────
 
-SKILL_PATTERNS = {
-    "Python": r"\bpython\b",
-    "R": r"\bR\b(?!\s*&|\s*D)",
-    "MATLAB": r"\bmatlab\b",
-    "Java": r"\bjava\b(?!script)",
-    "C++": r"\bc\+\+\b",
-    "C": r"(?<![a-zA-Z])\bC\b(?!\+|#|s|o)",
-    "JavaScript": r"\bjavascript\b",
-    "SQL": r"\bsql\b",
-    "PyTorch": r"\bpytorch\b",
-    "TensorFlow": r"\btensorflow\b",
-    "pandas": r"\bpandas\b",
-    "NumPy": r"\bnumpy\b",
-    "scikit-learn": r"\bscikit.?learn\b|\bsklearn\b",
-    "Git": r"\bgit\b(?!hub)",
-    "Linux": r"\blinux\b",
-    "Docker": r"\bdocker\b",
-    "React": r"\breact\b",
-    "OpenCV": r"\bopencv\b",
-    "SPSS": r"\bspss\b",
-    "SAS": r"\bsas\b",
-    "Stata": r"\bstata\b",
-    "Excel": r"\bexcel\b",
-    "LaTeX": r"\blatex\b",
-    "AWS": r"\baws\b",
-    "GIS": r"\bgis\b",
-    "CAD": r"\bcad\b",
-    "Keras": r"\bkeras\b",
-    "Flask": r"\bflask\b",
-    "Django": r"\bdjango\b",
-    "Node.js": r"\bnode\.?js\b",
-    "TypeScript": r"\btypescript\b",
-    "Rust": r"\brust\b(?!ic)",
-    "Go": r"\bgo\b(?:lang)\b|\bgolang\b",
-    "Scala": r"\bscala\b",
-    "Julia": r"\bjulia\b(?!n)",
-    "Perl": r"\bperl\b",
-    "Ruby": r"\bruby\b(?! on)",
-    "Spark": r"\bspark\b",
-    "Hadoop": r"\bhadoop\b",
-    "Tableau": r"\btableau\b",
-    "CUDA": r"\bcuda\b",
-    "HuggingFace": r"\bhugging.?face\b|\btransformers\b",
-}
-
 YEAR_KEYWORDS = {
     "freshman": ["freshman", "first-year", "first year", "1st year"],
     "sophomore": ["sophomore", "second-year", "second year", "2nd year"],
@@ -144,51 +100,6 @@ def _build_full_text(opp: dict) -> str:
     return " ".join(parts)
 
 
-# Extended domain-to-skills mapping — used when no explicit skills found in text
-DOMAIN_SKILLS = {
-    # CS / Engineering
-    r"\b(data science|data analysis|data mining|big data|data.?driven)\b": ["Python", "SQL", "pandas"],
-    r"\b(machine learning|deep learning|artificial intelligence|neural network|AI\b)\b": ["Python", "PyTorch"],
-    r"\b(computer vision|image processing|image analysis|object detection)\b": ["Python", "OpenCV"],
-    r"\b(natural language processing|nlp|text mining|language model)\b": ["Python"],
-    r"\b(web development|web app|full.?stack|front.?end|back.?end)\b": ["JavaScript", "Python"],
-    r"\b(robotics|embedded|microcontroller|autonomous|ROS)\b": ["C++", "Python"],
-    r"\b(database|sql server|relational|ETL|data warehouse)\b": ["SQL"],
-    r"\b(engineering simulation|finite element|cfd|FEA)\b": ["MATLAB", "Python"],
-    r"\b(signal processing|DSP|communications|wireless)\b": ["MATLAB", "Python"],
-    r"\b(cybersecurity|information security|network security|cryptography)\b": ["Python", "Linux"],
-    r"\b(cloud computing|distributed systems|kubernetes|microservices)\b": ["Python", "Docker"],
-    r"\b(semiconductor|VLSI|chip design|digital design|FPGA)\b": ["MATLAB"],
-    r"\b(quantum computing|quantum information)\b": ["Python"],
-    r"\b(computer graphics|visualization|rendering|3D)\b": ["C++", "Python"],
-    r"\b(software engineering|software development|programming)\b": ["Python", "Git"],
-
-    # Natural Sciences
-    r"\b(bioinformatics|computational biology|genomics|proteomics|sequencing)\b": ["Python", "R"],
-    r"\b(statistics|statistical|biostatistics|econometrics)\b": ["R", "Python"],
-    r"\b(chemistry|chemical|molecular|organic chemistry|inorganic)\b": ["Python", "MATLAB"],
-    r"\b(physics|astrophysics|astronomy|particle physics|condensed matter)\b": ["Python", "MATLAB"],
-    r"\b(biology|biological|ecology|evolution|microbiology|neuroscience)\b": ["R", "Python"],
-    r"\b(materials science|nanotechnology|nanofabrication|polymers)\b": ["MATLAB", "Python"],
-    r"\b(environmental science|climate|atmospheric|oceanography|sustainability)\b": ["Python", "R"],
-    r"\b(gis|geospatial|geographic|remote sensing|mapping)\b": ["GIS", "Python"],
-    r"\b(geology|earth science|seismology|hydrology)\b": ["Python", "MATLAB"],
-    r"\b(agriculture|agronomy|crop|soil science|plant)\b": ["R", "Python"],
-
-    # Health / Biomedical
-    r"\b(biomedical engineering|bioengineering|tissue engineering)\b": ["MATLAB", "Python"],
-    r"\b(epidemiology|public health|clinical research|health informatics)\b": ["R", "SPSS"],
-    r"\b(medical imaging|radiology|pathology|diagnostics)\b": ["Python", "MATLAB"],
-    r"\b(pharmaceutical|drug discovery|pharmacology)\b": ["Python", "R"],
-
-    # Social Sciences
-    r"\b(psychology|cognitive science|behavioral|experimental psychology)\b": ["R", "SPSS"],
-    r"\b(economics|economic analysis|market research|econometric)\b": ["R", "Stata"],
-    r"\b(political science|policy analysis|political|government)\b": ["R", "Stata"],
-    r"\b(sociology|social research|survey|demographics)\b": ["R", "SPSS"],
-    r"\b(linguistics|computational linguistics|corpus)\b": ["Python", "R"],
-}
-
 # Organization-based international-friendly inference
 # Federal agencies / national labs almost always require US citizenship
 FEDERAL_ORGS = [
@@ -220,38 +131,14 @@ def rule_based_tag(opp: dict) -> dict:
     lower = full_text.lower()
     updates = {}
 
-    # ── Skills extraction ──
-    skills_found = []
-    for skill, pattern in SKILL_PATTERNS.items():
-        if re.search(pattern, full_text, re.IGNORECASE):
-            skills_found.append(skill)
-
-    # Domain-based skill inference
-    for pattern, domain_skills in DOMAIN_SKILLS.items():
-        if re.search(pattern, lower):
-            for s in domain_skills:
-                if s not in skills_found:
-                    skills_found.append(s)
-
-    # Single-letter skills ("R", "C") are junk unless the record's own text
-    # carries the enricher's context gates ("R programming", not a bare "R" /
-    # middle initial / domain inference) — the corpus DQ gate holds every
-    # record to exactly that standard, so emitting them ungated here would
-    # re-poison the corpus on the next refresh's tagging pass.
-    if any(len(s) == 1 for s in skills_found):
-        legit = set(_extract_skills_from_text(_combined_text(opp)))
-        skills_found = [s for s in skills_found if len(s) > 1 or s in legit]
-
-    # Faculty are cold-email research contacts, not postings with required
-    # skills. Inferring skills from research-topic prose is false-precise (a
-    # topology professor whose page says "finite element" becomes FEA-required)
-    # and degrades their match score, so faculty never get inferred skills.
-    if skills_found and opp.get("source_type") != "faculty_research":
-        existing_req = opp.get("eligibility", {}).get("skills_required", [])
-        existing_pref = opp.get("eligibility", {}).get("skills_preferred", [])
-        if not existing_req and not existing_pref:
-            updates["skills_required"] = skills_found[:2] if len(skills_found) > 2 else skills_found
-            updates["skills_preferred"] = skills_found[2:] if len(skills_found) > 2 else []
+    # Only explicit source qualifiers may fill eligibility arrays. Bare
+    # positive mentions are recorded separately; domains never invent tools.
+    skills = extract_skill_requirements(_skill_source_text(opp))
+    for kind in ("required", "preferred"):
+        if skills[kind] and not opp.get("eligibility", {}).get(f"skills_{kind}"):
+            updates[f"skills_{kind}"] = skills[kind]
+    if skills["mentioned"] or (opp.get("metadata") or {}).get("skill_mentions"):
+        updates["skill_mentions"] = skills["mentioned"]
 
     # ── Year detection ──
     years_found = []
@@ -505,7 +392,18 @@ Opportunities:
         while len(results) < len(opps):
             results.append({})
 
-        return results[:len(opps)]
+        bounded = []
+        for opp, result in zip(opps, results, strict=False):
+            if opp.get("source_type") == "faculty_research":
+                bounded.append({})
+                continue
+            result = dict(result) if isinstance(result, dict) else {}
+            skills = extract_skill_requirements(_skill_source_text(opp))
+            result["skills_required"] = skills["required"]
+            result["skills_preferred"] = skills["preferred"]
+            result["skill_mentions"] = skills["mentioned"]
+            bounded.append(result)
+        return bounded
 
     except Exception as e:
         logger.error(f"LLM tagging failed: {e}")
@@ -526,7 +424,7 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
     # forced update must not turn faculty biography words such as
     # "Scholarship", "Volunteer", or "U.S. national security" into opening
     # facts.
-    if opp.get("source_type") == "faculty_research":
+    if opp.get("source_type") == "faculty_research" or not isinstance(updates, dict):
         return False
 
     changed = False
@@ -537,7 +435,7 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
         stamp_inferred(meta, "paid", method)
         changed = True
 
-    elig = opp.get("eligibility", {})
+    elig = opp.setdefault("eligibility", {})
 
     if "international_friendly" in updates and elig.get("international_friendly") == "unknown":
         elig["international_friendly"] = updates["international_friendly"]
@@ -547,15 +445,22 @@ def apply_updates(opp: dict, updates: dict, *, method: str = "rule:llm_tagger") 
             stamp_inferred(meta, "eligibility.citizenship_required", method)
         changed = True
 
-    if "skills_required" in updates and not elig.get("skills_required"):
-        elig["skills_required"] = updates["skills_required"]
-        stamp_inferred(meta, "eligibility.skills_required", method)
-        changed = True
-
-    if "skills_preferred" in updates and not elig.get("skills_preferred"):
-        elig["skills_preferred"] = updates["skills_preferred"]
-        stamp_inferred(meta, "eligibility.skills_preferred", method)
-        changed = True
+    # Cached/LLM payloads do not bypass the same source classifier. Preserve
+    # nonempty upstream fields; unsupported proposals cannot become evidence.
+    skills = extract_skill_requirements(_skill_source_text(opp))
+    for kind in ("required", "preferred"):
+        field = f"skills_{kind}"
+        proposed = updates.get(field)
+        other = "skills_preferred" if kind == "required" else "skills_required"
+        if isinstance(proposed, list) and not elig.get(field):
+            values = [value for value in skills[kind]
+                      if value in proposed and value not in (elig.get(other) or [])]
+            if values:
+                elig[field] = values
+                stamp_inferred(meta, f"eligibility.{field}", method)
+                changed = True
+    if "skill_mentions" in updates:
+        changed = _store_skill_mentions(opp, skills["mentioned"]) or changed
 
     # Faculty are cold-email research contacts, not postings with a class-year
     # requirement. The year words on their pages are academic ranks ("Senior

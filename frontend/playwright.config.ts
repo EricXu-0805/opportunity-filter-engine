@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8100);
+const RESEARCH_PROXY_PORT = Number(process.env.E2E_RESEARCH_PROXY_PORT ?? BACKEND_PORT + 1);
 const SUPABASE_PORT = Number(process.env.E2E_SUPABASE_PORT ?? 54321);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 // A loopback stand-in (e2e/supabase-stub.mjs), never a hosted project. The app
@@ -81,6 +82,17 @@ export default defineConfig({
       stderr: 'pipe',
     },
     {
+      // Shared controlled research details for SSR and browser acceptance.
+      // Without an explicitly registered fixture every request passes through.
+      command: 'node e2e/research-detail-proxy.mjs',
+      url: `http://127.0.0.1:${RESEARCH_PROXY_PORT}/__fixture/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      env: { E2E_BACKEND_PORT: String(BACKEND_PORT), E2E_RESEARCH_PROXY_PORT: String(RESEARCH_PROXY_PORT) },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
       // In CI, serve the pre-built production app (`next start`) — the CI job
       // runs `npm run build` first. `next start` serves already-compiled routes,
       // avoiding the per-route on-demand compilation of `next dev` that pushed
@@ -95,7 +107,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
       env: {
-        BACKEND_URL: `http://127.0.0.1:${BACKEND_PORT}`,
+        // Runtime SSR uses the fixture proxy; production build-time rewrites
+        // continue to use the real backend. Local dev also streams through it.
+        BACKEND_URL: `http://127.0.0.1:${RESEARCH_PROXY_PORT}`,
         // `next dev` inlines NEXT_PUBLIC_* per request, so the local dev path
         // gets the stub from here. The CI path is a prebuilt `next start`, so
         // ci.yml must pass the same two values at BUILD time.

@@ -54,6 +54,20 @@ async function goToResults(page: Page) {
   await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
+// Pin the selected row before its canonical view can refresh. The remove
+// label alone is optimistic; enabled means the persistence attempt finished.
+async function saveFirstFavorite(page: Page): Promise<string> {
+  const cardId = await page.locator('[id^="match-card-"]').first().getAttribute('id');
+  expect(cardId).toBeTruthy();
+  const card = page.locator(`[id=${JSON.stringify(cardId)}]`);
+  const title = await card.locator('h3').innerText();
+  await card.getByRole('button', { name: 'Add to favorites', exact: true }).click();
+  const saved = card.getByRole('button', { name: 'Remove from favorites', exact: true });
+  await expect(saved).toBeEnabled();
+  await expect(saved).toHaveAttribute('aria-busy', 'false');
+  return title;
+}
+
 test.describe('Favorites', () => {
   test('star toggles a card into the starred tab', async ({ page }) => {
     await goToResults(page);
@@ -120,9 +134,7 @@ test.describe('Interaction tracking (dismiss)', () => {
 test.describe('Shortlist accounting (error / partial / all-unavailable)', () => {
   test('a shortlist fetch failure shows error + Retry, never the empty-favorites copy, and hides Email even though a local item alone would make the old header show it — Retry recovers', async ({ page }) => {
     await goToResults(page);
-    const firstCard = page.locator('[id^="match-card-"]').first();
-    const title = await firstCard.locator('h3').innerText();
-    await firstCard.locator('button[aria-label*="favorite" i]').first().click();
+    const title = await saveFirstFavorite(page);
 
     // A local custom import needs no server fetch — it alone makes
     // opportunities.length > 0 even while the shortlist fetch is failing.
@@ -157,9 +169,7 @@ test.describe('Shortlist accounting (error / partial / all-unavailable)', () => 
 
   test('a partial shortlist (one id missing) shows the found card, an unavailable warning, and the correct total — never the empty-favorites copy, and still hides Email despite a real found row', async ({ page }) => {
     await goToResults(page);
-    const firstCard = page.locator('[id^="match-card-"]').first();
-    const title = await firstCard.locator('h3').innerText();
-    await firstCard.locator('button[aria-label*="favorite" i]').first().click();
+    const title = await saveFirstFavorite(page);
 
     // Seed a second, non-existent favorite id directly into the local
     // fallback store — the real backend legitimately skips it, producing a

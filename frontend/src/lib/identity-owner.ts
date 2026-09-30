@@ -50,10 +50,16 @@ export const USER_SCOPED_KEYS: readonly string[] = [
 // Per-opportunity keys discovered by localStorage key scan.
 export const USER_SCOPED_PREFIXES: readonly string[] = [
   STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // resume-tailor drafts — user-written content
+  STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX, // unsent email text and context; no send receipts
   // One lane per tab holding that tab's unsent profile edit operations, plus
   // the shared settled/claim lane. Same data as PROFILE/PROFILE_SYNC — an
   // operation staged by one account must never be replayed under another's.
   STORAGE_KEYS.PROFILE_JOURNAL_PREFIX,
+  STORAGE_KEYS.APPLICATION_MATERIAL_ATTEMPT_PREFIX, // metadata only; never PDF bytes
+  STORAGE_KEYS.APPLICATION_MATERIAL_DELETE_PREFIX, // opaque IDs for uncertain deletion
+  STORAGE_KEYS.CONTACT_MATERIAL_ATTEMPT_PREFIX, // separate contact-event file metadata
+  STORAGE_KEYS.CONTACT_MATERIAL_DELETE_PREFIX, // separate contact-event deletion intent
+  STORAGE_KEYS.APPLICATION_ATTEMPT_PREFIX, // exact private submission snapshots awaiting a verified receipt
 ];
 
 // Deliberately NOT cleared (device-scoped, or owned by another flow):
@@ -253,9 +259,25 @@ function transitionLocked(uid: string, claim: boolean): boolean {
   const existing = read.status === 'present' ? read.marker : null;
 
   if (existing && existing.uid === uid) {
-    // Same owner. A generation left in 'switching' by a crashed transition is
-    // finished here rather than trusted: its namespace is re-verified before
-    // it is published, exactly as a fresh one would be.
+    // A completed namespace can be adopted by this tab without publishing
+    // another switching/ready cycle. Those shared-storage writes make other
+    // tabs temporarily hide their profile, remount private readers, and sync
+    // again — two open readers would otherwise trigger each other forever.
+    if (existing.phase === 'ready') {
+      try {
+        const sentinel = window.localStorage.getItem(physicalKey(NAMESPACE_SENTINEL, existing.generation));
+        if (sentinel === String(existing.generation)) {
+          currentGeneration = existing.generation;
+          setLocalOwnerState(uid, 'ready');
+          return true;
+        }
+      } catch {
+        setLocalOwnerState(uid, 'blocked');
+        return false;
+      }
+    }
+    // An incomplete transition, legacy namespace, or missing/mismatched
+    // sentinel still needs the existing verified repair before it is ready.
     return publishGeneration(uid, existing.generation);
   }
 

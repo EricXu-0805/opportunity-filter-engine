@@ -71,7 +71,7 @@ BEGIN
     (SELECT count(*) FROM public.resume_renovations
       WHERE device_id = 'acl-preserve-device')
     + (SELECT count(*) FROM public.resume_renovation_versions
-      WHERE device_id = 'acl-preserve-device')
+      WHERE device_id = 'acl-preserve-device' AND snapshot_kind = 'legacy_doc')
     + (SELECT count(*) FROM public.professor_follows
       WHERE device_id = 'acl-preserve-device')
     + (SELECT count(*) FROM public.professor_update_reads

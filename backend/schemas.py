@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import json
 import re
+from datetime import date
 from typing import Literal, Union
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
+
+from backend.lib.email_claims import unsupported_action_claims
+from backend.lib.email_contact_context import contains_context_work_claim
+from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 
 # Where an imported skill came from. Absence is the student's own choice; an
 # unrecognised value is normalised to "unknown" and treated as an import.
@@ -32,6 +38,37 @@ class ProfilePreferences(BaseModel):
     show_reach_opportunities: bool = True
     prioritize_paid: bool = True
     exclude_citizenship_restricted: bool = True
+
+
+# Unicode codepoints. Complete admitted profile data is never prefix-clipped.
+PROFILE_MAX_CHARACTERS = 160_000
+PROFILE_TEXT_LIMITS = {
+    "name": 256, "school": 1000, "home_school": 50, "year": 100,
+    "major": 1000, "college": 1000, "experience_level": 100,
+    "research_interests_text": 60_000,
+    "linkedin_url": 2048, "github_url": 2048, "scholar_url": 2048,
+}
+PROFILE_LIST_LIMITS = {
+    "seeking_type": (20, 100), "desired_fields": (512, 60_000),
+    "secondary_interests": (512, 1000), "coursework": (512, 1000),
+}
+PROFILE_SKILL_LIMIT = 512
+PROFILE_SKILL_TEXT_LIMIT = 1000
+
+
+def _profile_error(field: str, *, actual: int | None = None,
+                   limit: int | None = None, unit: str = "characters") -> None:
+    if actual is not None and limit is not None:
+        raise PydanticCustomError("profile_input_limit_exceeded", "Profile input exceeds the supported limit.",
+                                  {"field": field, "actual": actual, "limit": limit, "unit": unit})
+    raise PydanticCustomError("profile_input_invalid", "Profile input is invalid.", {"field": field})
+
+
+def _profile_text(value: object, field: str, limit: int) -> None:
+    if not isinstance(value, str) or any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+        _profile_error(field)
+    if len(value) > limit:
+        _profile_error(field, actual=len(value), limit=limit)
 
 
 class ProfileRequest(BaseModel):
@@ -69,78 +106,74 @@ class ProfileRequest(BaseModel):
     include_cross_school: bool = False
     preferences: ProfilePreferences | None = None
 
-    @field_validator("research_interests_text")
+    @model_validator(mode="before")
     @classmethod
-    def cap_research_text(cls, v: str) -> str:
-        return v[:2000]
-
-    @field_validator("name")
-    @classmethod
-    def cap_name(cls, v: str) -> str:
-        return v[:100]
-
-    # These four are interpolated verbatim into the chat system prompt —
-    # uncapped they let a 100k-char field balloon the prompt past the LLM
-    # context budget.
-    @field_validator("year", "major", "college", "experience_level")
-    @classmethod
-    def cap_short_text(cls, v: str) -> str:
-        return v[:100]
+    def complete_profile_input(cls, value):
+        if not isinstance(value, dict):
+            _profile_error("profile")
+        for field, limit in PROFILE_TEXT_LIMITS.items():
+            if field in value:
+                _profile_text(value[field], f"profile.{field}", limit)
+        for field, (count_limit, text_limit) in PROFILE_LIST_LIMITS.items():
+            if field not in value:
+                continue
+            items = value[field]
+            if not isinstance(items, list):
+                _profile_error(f"profile.{field}")
+            if len(items) > count_limit:
+                _profile_error(f"profile.{field}", actual=len(items), limit=count_limit, unit="items")
+            for item in items:
+                _profile_text(item, f"profile.{field}", text_limit)
+        if "hard_skills" in value:
+            items = value["hard_skills"]
+            if not isinstance(items, list):
+                _profile_error("profile.hard_skills")
+            if len(items) > PROFILE_SKILL_LIMIT:
+                _profile_error("profile.hard_skills", actual=len(items), limit=PROFILE_SKILL_LIMIT, unit="items")
+            for item in items:
+                if isinstance(item, SkillItem):
+                    item = item.model_dump()
+                if isinstance(item, str):
+                    _profile_text(item, "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
+                elif isinstance(item, dict):
+                    _profile_text(item.get("name", ""), "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
+                    _profile_text(item.get("level", "beginner"), "profile.hard_skills.level", PROFILE_SKILL_TEXT_LIMIT)
+                    if isinstance(item.get("source"), str) and any(0xD800 <= ord(c) <= 0xDFFF for c in item["source"]):
+                        _profile_error("profile.hard_skills.source")
+                else:
+                    _profile_error("profile.hard_skills")
+        return value
 
     @field_validator("home_school")
     @classmethod
-    def normalize_home_school(cls, v: str) -> str:
-        return v.strip().lower()[:50] or "uiuc"
-
-    @field_validator("linkedin_url", "github_url", "scholar_url")
-    @classmethod
-    def cap_url(cls, v: str) -> str:
-        return v[:300]
-
-    @field_validator("coursework")
-    @classmethod
-    def cap_coursework(cls, v: list) -> list:
-        # 100 to match every other string list on this model. At 20 the cap was
-        # sized for a course code ("MATH 241") and silently halved the course
-        # names the resume parser goes out of its way to extract — it accepts
-        # names up to 40 characters precisely so "Data Structures" survives
-        # alongside the codes. "Introduction to Machine Learning" reached the
-        # ranker and the tailor prompt as "Introduction to Mach".
-        return [str(c)[:100] for c in v[:50]]
-
-    @field_validator("seeking_type", "desired_fields", "secondary_interests")
-    @classmethod
-    def cap_string_lists(cls, v: list) -> list:
-        return [str(x)[:100] for x in v[:20]]
+    def normalize_home_school(cls, value: str) -> str:
+        return value.strip().lower() or "uiuc"
 
     @field_validator("hard_skills", mode="before")
     @classmethod
-    def normalize_skills(cls, v) -> list:
-        if not isinstance(v, list):
-            return []
+    def normalize_skills(cls, values) -> list:
         result = []
-        for item in v[:50]:
+        for item in values:
+            if isinstance(item, SkillItem):
+                item = item.model_dump()
             if isinstance(item, str):
-                result.append(SkillItem(name=item[:50], level="beginner"))
-            elif isinstance(item, dict):
-                item["name"] = str(item.get("name", ""))[:50]
-                item["level"] = str(item.get("level", "beginner"))[:50]
-                # Absent means student-chosen; anything we do not recognise is
-                # NOT promoted to that. A client asserting an unknown source
-                # would otherwise re-authorise the experience claim the gate
-                # exists to withhold, so unrecognised values fail closed to
-                # "imported" rather than to "typed".
-                source = item.get("source")
-                if source is not None:
-                    source = str(source)[:20]
-                    if source not in _SKILL_SOURCES:
-                        source = "unknown"
-                item["source"] = source
-                item["confirmed"] = item.get("confirmed") is True
-                result.append(SkillItem(**item))
+                result.append(SkillItem(name=item, level="beginner"))
             else:
-                result.append(item)
+                # Do not mutate the caller's dictionary. Unknown provenance is
+                # still imported/unconfirmed, never promoted to student-chosen.
+                normalized = dict(item)
+                source = normalized.get("source")
+                normalized["source"] = source if source is None or (isinstance(source, str) and source in _SKILL_SOURCES) else "unknown"
+                normalized["confirmed"] = normalized.get("confirmed") is True
+                result.append(SkillItem(**normalized))
         return result
+
+    @model_validator(mode="after")
+    def complete_profile_budget(self):
+        actual = len(json.dumps(self.model_dump(), ensure_ascii=False, separators=(",", ":")))
+        if actual > PROFILE_MAX_CHARACTERS:
+            _profile_error("profile", actual=actual, limit=PROFILE_MAX_CHARACTERS)
+        return self
 
     def skill_names(self) -> list[str]:
         return [s.name if isinstance(s, SkillItem) else s for s in self.hard_skills]
@@ -311,17 +344,258 @@ class MatchesResponse(BaseModel):
     view_id: str = ""
 
 
+class ExperienceManualSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    kind: Literal["manual"]
+
+
+class ExperienceResumeSource(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    kind: Literal["resume"]
+    signature: str = Field(pattern=r"^[0-9a-f]{64}$")
+    quote: str = Field(min_length=1, max_length=6000)
+    start: int = Field(ge=0, le=60000)
+    end: int = Field(gt=0, le=60000)
+
+    @field_validator("quote")
+    @classmethod
+    def valid_unicode(cls, value: str) -> str:
+        value.encode("utf-8")
+        return value
+
+    @model_validator(mode="after")
+    def valid_range(self):
+        if not self.quote.strip() or self.end <= self.start or self.end - self.start != len(self.quote):
+            raise ValueError("source range must match the quote's Unicode codepoint length")
+        return self
+
+
+class ExperienceEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str = Field(min_length=1, max_length=80)
+    revision: int = Field(gt=0, le=9007199254740991)
+    status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
+    text: str = Field(min_length=1, max_length=6000)
+    source: Union[ExperienceManualSource, ExperienceResumeSource] = Field(discriminator="kind")
+
+    @field_validator("id", "text")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        value.encode("utf-8")
+        if not value.strip():
+            raise ValueError("experience fields must not be blank")
+        return value
+
+
+class ExperienceEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    version: Literal[1, 2]
+    resume_text: str = Field(max_length=MAX_RESUME_TEXT_CHARACTERS)
+    entries: list[ExperienceEntry] = Field(max_length=100)
+    resume_master: dict | None = None
+
+    @field_validator("resume_text")
+    @classmethod
+    def valid_unicode(cls, value: str) -> str:
+        value.encode("utf-8")
+        return value
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def integer_version(cls, value):
+        if type(value) is not int:
+            raise ValueError("experience version must be integer 1 or 2")
+        return value
+
+    @model_validator(mode="after")
+    def valid_collection(self):
+        if self.version == 2 and "resume_master" not in self.model_fields_set:
+            raise ValueError("experience version 2 requires current resume_master or null")
+        if self.version == 1 and "resume_master" in self.model_fields_set:
+            raise ValueError("resume_master requires experience version 2")
+        if self.resume_master is not None:
+            from backend.lib.target_resume_ai_validation import validate_master
+            validate_master(self.resume_master)
+        if len({entry.id for entry in self.entries}) != len(self.entries):
+            raise ValueError("duplicate experience entry id")
+        if sum(len(entry.text) for entry in self.entries) > 60000:
+            raise ValueError("experience text exceeds 60000 characters")
+        if sum(len(entry.source.quote) for entry in self.entries
+               if isinstance(entry.source, ExperienceResumeSource)) > 60000:
+            raise ValueError("experience quotes exceed 60000 characters")
+        return self
+
+
+# Match ECMAScript String.trim exactly; Python strip differs for FEFF/0085.
+_CONTACT_TRIM = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+
+class _ContactFields(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def exact_user_text(cls, value):
+        if isinstance(value, str):
+            value.encode("utf-8")
+            if not value or value != value.strip(_CONTACT_TRIM) or "\x00" in value:
+                raise ValueError("contact text must be nonblank, trimmed and valid Unicode")
+        return value
+
+
+class EmailReferralContext(_ContactFields):
+    referrer_name: str = Field(max_length=120)
+    referral_note: str = Field(max_length=1500)
+    confirmed: Literal[True]
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit confirmation required")
+        return value
+
+    @field_validator("referrer_name")
+    @classmethod
+    def single_line_name(cls, value):
+        if any(character in value for character in "\r\n\u2028\u2029"):
+            raise ValueError("referrer name must be a single line")
+        if contains_context_work_claim(value) or unsupported_action_claims(value):
+            raise ValueError("referrer name cannot contain a student work or unsupported action claim")
+        return value
+
+
+class EmailFollowUpContext(_ContactFields):
+    sent_confirmed: Literal[True]
+    previous_message: str = Field(max_length=4000)
+    sent_on: str | None = None
+    reply_status: Literal["unknown", "no_reply", "received"]
+    reply_text: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("sent_confirmed", mode="before")
+    @classmethod
+    def explicit_sent_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit sent confirmation required")
+        return value
+
+    @field_validator("sent_on")
+    @classmethod
+    def calendar_date(cls, value):
+        if value is not None:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                raise ValueError("sent date must be YYYY-MM-DD")
+            date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def corresponding_reply(self):
+        if (self.reply_status == "received") != (self.reply_text is not None):
+            raise ValueError("reply text is required only for a received reply")
+        return self
+
+
+class EmailAvailabilityContext(_ContactFields):
+    text: str = Field(max_length=500)
+    confirmed: Literal[True]
+
+    @field_validator("text")
+    @classmethod
+    def availability_not_work_claim(cls, value):
+        if contains_context_work_claim(value) or unsupported_action_claims(value):
+            raise ValueError("availability cannot contain a student work or unsupported action claim")
+        return value
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit confirmation required")
+        return value
+
+
+class EmailPaperReadingContext(_ContactFields):
+    title: str = Field(max_length=1000)
+    work_id: str | None = None
+    snapshot_version: str | None = None
+    year: int | None = Field(default=None, ge=1000, le=2100)
+    level: Literal["title_only", "abstract", "full_text"]
+    confirmed: Literal[True]
+
+    @model_validator(mode="after")
+    def bound_snapshot(self):
+        if (self.work_id is None) != (self.snapshot_version is None):
+            raise ValueError("work ID and snapshot version must be provided together")
+        if self.work_id is not None and (
+            not re.fullmatch(r"https://openalex\.org/W[1-9][0-9]*", self.work_id)
+            or not re.fullmatch(r"rs1:[0-9a-f]{64}", self.snapshot_version or "")
+        ):
+            raise ValueError("invalid research snapshot binding")
+        return self
+
+    @field_validator("title")
+    @classmethod
+    def single_line_title(cls, value):
+        if any(character in value for character in "\r\n\u2028\u2029"):
+            raise ValueError("paper title must be a single line")
+        return value
+
+    @field_validator("confirmed", mode="before")
+    @classmethod
+    def explicit_confirmation(cls, value):
+        if value is not True:
+            raise ValueError("explicit reading confirmation required")
+        return value
+
+
+class EmailContactContext(_ContactFields):
+    version: Literal[1]
+    purpose: Literal["first_contact", "referral", "follow_up"]
+    referral: EmailReferralContext | None = None
+    follow_up: EmailFollowUpContext | None = None
+    availability: EmailAvailabilityContext | None = None
+    paper_reading: EmailPaperReadingContext | None = None
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def integer_version(cls, value):
+        if type(value) is not int:
+            raise ValueError("contact version must be integer 1")
+        return value
+
+    @model_validator(mode="after")
+    def corresponding_context(self):
+        if (self.purpose == "referral") != (self.referral is not None):
+            raise ValueError("referral context must match the purpose")
+        if (self.purpose == "follow_up") != (self.follow_up is not None):
+            raise ValueError("follow-up context must match the purpose")
+        compact = json.dumps(self.model_dump(exclude_none=True), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if len(compact) > 9000:
+            raise ValueError("contact context exceeds its total character budget")
+        return self
+
+
+class EmailContactReceipt(BaseModel):
+    version: Literal[1] = 1
+    purpose: Literal["first_contact", "referral", "follow_up"]
+    context_sig: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class ColdEmailRequest(BaseModel):
+    contact_context: EmailContactContext | None = None
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
     engine: str = "template"
     # Voice overlay for the AI engine. None = no overlay (lab-type default).
     style: str | None = None
-    # The student's real resume experience bullets (from /tailor/extract-
-    # bullets). Optional + defaulted so existing clients that omit it are
-    # unaffected. Only the AI engine uses them; they are added to the
-    # anti-fabrication corpus so a draft may cite the student's own experience.
+    # Legacy strings remain parseable but cannot authenticate experience.
+    # Only explicitly confirmed, current structured evidence is consumed.
     resume_bullets: list[str] = Field(default_factory=list)
+    experience_evidence: ExperienceEvidence | None = None
 
     @field_validator("profile")
     @classmethod
@@ -345,7 +619,7 @@ class ColdEmailRequest(BaseModel):
     @field_validator("resume_bullets")
     @classmethod
     def cap_bullets(cls, v: list) -> list:
-        # Mirror TailorRequest.cap_bullets: 12 × 500 chars caps the LLM budget.
+        # Deprecated wire compatibility only; these strings never enter the fact corpus.
         return [str(b)[:500] for b in v[:12] if str(b).strip()]
 
     @field_validator("engine")
@@ -365,7 +639,52 @@ class ColdEmailRequest(BaseModel):
         return v
 
 
+class ExperienceResumeReference(BaseModel):
+    kind: Literal["resume"]
+    signature: str
+    start: int
+    end: int
+
+
+class SelectedExperience(BaseModel):
+    id: str
+    revision: int
+    excerpt: str = Field(min_length=1, max_length=4000)
+    source: Union[ExperienceManualSource, ExperienceResumeReference] = Field(discriminator="kind")
+
+
+class SelectedExperienceWithContext(SelectedExperience):
+    # This is a projection of validated current facts, not the entire master.
+    context: dict | None
+
+
+class ExcludedExperience(BaseModel):
+    id: str
+    revision: int
+    reason: Literal["candidate", "rejected", "withdrawn", "source_signature_mismatch", "source_quote_mismatch", "activity_reference_mismatch", "activity_ambiguous"]
+
+
+class ExperienceUsage(BaseModel):
+    version: Literal[1] = 1
+    eligible_count: int = 0
+    selected: list[Union[SelectedExperienceWithContext, SelectedExperience]] = Field(default_factory=list, max_length=8)
+    excluded: list[ExcludedExperience] = Field(default_factory=list, max_length=100)
+    needs_review: bool = False
+    notices: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def bounded_receipt(self):
+        if sum(len(entry.excerpt) for entry in self.selected) > 4000:
+            raise ValueError("experience receipt exceeds 4000 characters")
+        return self
+
+
 class ColdEmailResponse(BaseModel):
+    target_conditions: dict | None = None
+    contact_context_receipt: EmailContactReceipt | None = None
+    target_version: str | None = None
+    opportunity_id: str | None = None
+    experience_usage: ExperienceUsage = Field(default_factory=ExperienceUsage)
     subject: str
     body: str
     recipient_email: str
@@ -401,6 +720,47 @@ class ColdEmailResponse(BaseModel):
     corpus_version: str | None = None
     pipeline_version: str | None = None
     source_freshness: str | None = None
+
+
+class EmailDraftValidationRequest(ColdEmailRequest):
+    """Provider-free checks of the exact manually edited draft and current target."""
+    model_config = ConfigDict(extra="forbid")
+    expected_target_version: str = Field(strict=True, min_length=68, max_length=68,
+                                          pattern=r"^wt1:[0-9a-f]{64}$")
+    subject: str = Field(strict=True)
+    body: str = Field(strict=True)
+
+    @field_validator("subject", "body")
+    @classmethod
+    def bounded_draft_text(cls, value, info):
+        if "\0" in value:
+            raise ValueError("Email text contains unsupported characters")
+        try:
+            size = len(value.encode("utf-16-le")) // 2
+        except UnicodeEncodeError:
+            raise ValueError("Email text contains invalid Unicode") from None
+        limit = 2000 if info.field_name == "subject" else 5000
+        if size > limit:
+            raise PydanticCustomError("email_refine_text_too_long",
+                                      "{field} must be at most {max_utf16} UTF-16 code units.",
+                                      {"field": info.field_name, "max_utf16": limit})
+        return value
+
+
+EmailDraftIssue = Literal[
+    "unsupported_eligibility_claim", "unsupported_deadline_claim",
+    "unsupported_material_claim", "unsupported_attachment_claim", "empty_draft",
+]
+
+
+class EmailDraftValidationResponse(BaseModel):
+    opportunity_id: str
+    target_version: str
+    pipeline_version: str
+    contact_context_receipt: EmailContactReceipt
+    target_conditions: dict
+    outcome: Literal["ready", "review_required"]
+    issues: list[EmailDraftIssue]
 
 
 class GapAnalysisResponse(BaseModel):
@@ -453,11 +813,23 @@ class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
     original_bullets: list[str] = Field(default_factory=list)
+    # Optional for older clients. A supplied code version is an exact pre-work
+    # condition, not a claim that user-provided bullets are confirmed evidence.
+    expected_pipeline_version: str | None = Field(
+        default=None, strict=True, min_length=1, max_length=80,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    )
+    # Optional for older clients; new writing actions bind to an anonymous
+    # full-detail snapshot checked before provider work.
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     # R71-D: caller-declared output language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
     # to pick between the EN and ZH system prompts; everything else (the
-    # anti-fabrication validator, the evidence corpus, the cap_bullets
-    # field validator) is locale-agnostic by design — the ASCII hard-claim
+    # anti-fabrication validator, the evidence corpus, the bullet
+    # limits) is locale-agnostic by design — the ASCII hard-claim
     # regex still catches Python / PyTorch / Kubernetes regardless of
     # whether the LLM output is English or Chinese, which is the
     # high-priority fabrication risk we care about.
@@ -465,11 +837,12 @@ class TailorRequest(BaseModel):
 
     @field_validator("original_bullets")
     @classmethod
-    def cap_bullets(cls, v: list) -> list:
-        # Cap at 12 bullets × 500 chars each so a malicious / oversized
-        # paste cannot blow past the LLM context budget. Mirrors the
-        # ``ProfileRequest`` field-validator pattern.
-        return [str(b)[:500] for b in v[:12] if str(b).strip()]
+    def drop_blank_bullets(cls, v: list) -> list:
+        # Blank lines are layout, not input. The 12 × 500 limit is enforced by
+        # the /tailor route as a refusal that names it: slicing here used to
+        # rewrite the first 500 characters of the first 12 bullets and say
+        # nothing about the rest.
+        return [str(b) for b in v if str(b).strip()]
 
     @field_validator("locale")
     @classmethod
@@ -501,6 +874,11 @@ class TailoredBullet(BaseModel):
     source_index: int = 0
 
 
+class TailorStatusResponse(BaseModel):
+    ai_available: bool
+    pipeline_version: str
+
+
 class TailorResponse(BaseModel):
     tailored_bullets: list[TailoredBullet]
     method: str = "fallback"  # "ai" | "fallback"
@@ -512,19 +890,41 @@ class TailorResponse(BaseModel):
     opportunity_id: str | None = None
     generated_at: str | None = None
     pipeline_version: str | None = None
+    target_version: str | None = None
+
+
+class ResumeProcessingChunk(BaseModel):
+    # Offsets are Unicode code points into the accepted, unchanged raw text.
+    start: int
+    end: int
+    method: str
+    reason: str | None = None
+
+
+class ResumeProcessingCoverage(BaseModel):
+    input_characters: int
+    chunks: list[ResumeProcessingChunk] = Field(default_factory=list)
+    ai_chunks: int = 0
+    heuristic_chunks: int = 0
 
 
 class ExtractBulletsRequest(BaseModel):
-    # R71-G: raw resume text the modal extracts bullet-shaped lines from.
-    # Capped at 20k chars (well above a one-page resume) so an oversized
-    # paste can't blow the LLM context budget; the route caps again before
-    # the prompt.
-    resume_text: str = Field(default="", max_length=20000)
+    # Store/accept the complete supported document. Model inputs have their
+    # own smaller bound and total time/concurrency budget in the route.
+    resume_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
+    expected_pipeline_version: str | None = Field(
+        default=None, strict=True, min_length=1, max_length=80,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    )
 
 
 class ExtractBulletsResponse(BaseModel):
     bullets: list[str]
-    method: str = "heuristic"  # "ai" | "heuristic"
+    method: str = "heuristic"  # "ai" | "heuristic" | "mixed"
+    warnings: list[str] = Field(default_factory=list)
+    processing: ResumeProcessingCoverage | None = None
+    generated_at: str | None = None
+    pipeline_version: str | None = None
 
 
 # --- Résumé renovation (staged: structure → macro renovate → per-bullet) -----
@@ -536,6 +936,9 @@ class ExtractBulletsResponse(BaseModel):
 
 class ResumeBullet(BaseModel):
     id: str
+    # Uncut: this is the student's own wording and the renovation rollback
+    # floor. Structure text is verbatim résumé text; the rewrite stage skips
+    # (and names) a bullet too long for its prompt instead of clipping it.
     text: str = ""
 
     @field_validator("id")
@@ -546,11 +949,6 @@ class ResumeBullet(BaseModel):
         # length — unbounded ids were an unbounded-prompt cost vector even
         # under the 100-bullet cap.
         return re.sub(r"\s+", "", str(v))[:64]
-
-    @field_validator("text")
-    @classmethod
-    def cap_text(cls, v: str) -> str:
-        return str(v)[:600]
 
 
 class ResumeSection(BaseModel):
@@ -586,7 +984,7 @@ class ResumeSection(BaseModel):
 
 
 class StructureResumeRequest(BaseModel):
-    resume_text: str = Field(default="", max_length=20000)
+    resume_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
     locale: str = "en"
 
     @field_validator("locale")
@@ -598,11 +996,16 @@ class StructureResumeRequest(BaseModel):
 
 class StructureResumeResponse(BaseModel):
     sections: list[ResumeSection]
-    method: str = "heuristic"  # "ai" | "heuristic"
+    method: str = "heuristic"  # "ai" | "heuristic" | "mixed"
     warnings: list[str] = Field(default_factory=list)
+    processing: ResumeProcessingCoverage | None = None
 
 
 class RenovateRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
     sections: list[ResumeSection] = Field(default_factory=list)
@@ -655,11 +1058,11 @@ class RenovateRequest(BaseModel):
         seen_bullets: set[str] = set()
         for s in self.sections:
             if s.id in seen_sections:
-                raise ValueError(f"duplicate section id: {s.id}")
+                raise ValueError("duplicate section id")
             seen_sections.add(s.id)
             for b in s.bullets:
                 if b.id in seen_bullets:
-                    raise ValueError(f"duplicate bullet id: {b.id}")
+                    raise ValueError("duplicate bullet id")
                 seen_bullets.add(b.id)
                 total += 1
         if total > 100:
@@ -692,6 +1095,7 @@ class RenovatedSection(BaseModel):
 
 
 class RenovateResponse(BaseModel):
+    target_version: str | None = None
     sections: list[RenovatedSection]
     method: str = "fallback"  # "ai" | "fallback"
     warnings: list[str] = Field(default_factory=list)
@@ -705,10 +1109,16 @@ class RenovateResponse(BaseModel):
 
 
 class BulletOptimizeRequest(BaseModel):
+    expected_target_version: str | None = Field(
+        default=None, strict=True, min_length=68, max_length=68,
+        pattern=r"^wt1:[0-9a-f]{64}$",
+    )
     profile: ProfileRequest
     opportunity_id: str
-    current_text: str = Field(default="", max_length=600)
-    base_text: str = Field(default="", max_length=600)
+    # Bounded by the résumé itself so an over-limit bullet reaches the route,
+    # which refuses it by name instead of a generic validation error.
+    current_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
+    base_text: str = Field(default="", max_length=MAX_RESUME_TEXT_CHARACTERS)
     instruction: str | None = Field(default=None, max_length=300)
     locale: str = "en"
 
@@ -720,6 +1130,7 @@ class BulletOptimizeRequest(BaseModel):
 
 
 class BulletOptimizeResponse(BaseModel):
+    target_version: str | None = None
     text: str
     source_evidence: str = ""
     changed: bool = False

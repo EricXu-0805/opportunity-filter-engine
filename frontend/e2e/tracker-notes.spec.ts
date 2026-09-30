@@ -25,9 +25,9 @@ async function waitForSaved(page: Page) {
 // so the toggle can't oscillate.
 
 // Opens the notes panel and leaves it open. Matches both toggle labels
-// ("Add notes or reminder" before content exists, "Notes & reminder" after).
+// The tracker expander groups contact history, notes and reminders.
 async function openNotesPanel(page: Page) {
-  const toggle = page.getByRole('button', { name: /Notes & reminder|notes or reminder/i });
+  const toggle = page.getByRole('button', { name: /Records, notes & reminders/i });
   await expect(toggle).toBeVisible();
   await expect(async () => {
     if (await toggle.getAttribute('aria-expanded') !== 'true') {
@@ -57,7 +57,7 @@ test.describe('Application tracker notes & reminder', () => {
     await openNotesPanel(page);
     await expect(page.getByPlaceholder(/Private notes/i)).toBeVisible();
     // The open above proves hydration finished, so one plain click closes.
-    await page.getByRole('button', { name: /Notes & reminder|notes or reminder/i }).click();
+    await page.getByRole('button', { name: /Records, notes & reminders/i }).click();
     await expect(page.getByPlaceholder(/Private notes/i)).not.toBeVisible();
   });
 

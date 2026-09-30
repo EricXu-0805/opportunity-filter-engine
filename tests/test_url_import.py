@@ -32,7 +32,7 @@ client = TestClient(app)
 
 
 def _streamed_mock(text: str, *, content_length=None, status=200,
-                   is_redirect=False, location=None):
+                   is_redirect=False, location=None, url="https://example.com/job"):
     """A minimal stand-in for a streamed requests.Response: yields the body via
     iter_content (so _safe_fetch's byte-budget loop runs) and decodes .text from
     the bytes _safe_fetch caps and assigns to _content."""
@@ -40,6 +40,7 @@ def _streamed_mock(text: str, *, content_length=None, status=200,
 
     class _R:
         def __init__(self):
+            self.url = url
             self.status_code = status
             self.is_redirect = is_redirect
             self.headers: dict = {}
@@ -191,15 +192,16 @@ class TestMergeLlmIntoBase:
         assert merged.organization == "Acme Corp"
         assert merged.location == "Champaign, IL"
         assert merged.deadline == "2026-03-15"
-        assert merged.description_raw == "Build cool stuff with us."
+        assert merged.description_raw == ""
+        assert merged.extra_fields["suggested_description"] == "Build cool stuff with us."
         assert merged.extra_fields["opportunity_type"] == "internship"
         assert merged.extra_fields["on_campus"] is True
         assert merged.extra_fields["paid"] == "stipend"
-        assert merged.extra_fields["skills_required"] == ["Python", "React"]
+        assert merged.extra_fields["suggested_skills"] == ["Python", "React", "TypeScript"]
         assert merged.extra_fields["preferred_year"] == ["junior", "senior"]
         assert merged.extra_fields["international_friendly"] == "yes"
         assert merged.extra_fields["llm_enriched"] is True
-        assert merged.extra_fields["needs_manual_review"] is False
+        assert merged.extra_fields["needs_manual_review"] is True
 
     def test_drops_invalid_enum_values(self, base):
         llm = {
@@ -249,6 +251,55 @@ class TestMergeLlmIntoBase:
         assert merged.title == base.title
         assert "on_campus" not in merged.extra_fields
         assert "skills_required" not in merged.extra_fields
+
+
+    def test_stamps_every_model_set_field_as_inferred(self, base):
+        llm = {
+            "organization": "Acme Corp",
+            "opportunity_type": "internship",
+            "location": "Champaign, IL",
+            "on_campus": True,
+            "paid": "stipend",
+            "deadline": "2026-03-15",
+            "preferred_year": ["junior"],
+            "international_friendly": "yes",
+        }
+        merged = _merge_llm_into_base(base, llm)
+        stamps = merged.extra_fields["inferred_fields"]
+        for field in llm:
+            assert stamps[field] == "llm:url_parser", field
+
+    def test_does_not_stamp_fields_the_model_left_alone(self, base):
+        merged = _merge_llm_into_base(base, {"paid": "free pizza included", "deadline": "next March"})
+        assert "paid" not in merged.extra_fields.get("inferred_fields", {})
+        assert "deadline" not in merged.extra_fields.get("inferred_fields", {})
+
+
+class TestV1HeuristicStamps:
+    HTML = "<html><head><title>Lab opening</title></head><body><main>Deadline: March 15, 2026. Join us.</main></body></html>"
+
+    def test_domain_organization_and_regex_deadline_are_stamped(self):
+        from src.collectors.url_parser import parse_url
+        result = parse_url("https://cs.illinois.edu/lab", html=self.HTML)
+        assert result.organization == "University of Illinois at Urbana-Champaign"
+        assert result.deadline == "March 15, 2026"
+        assert result.extra_fields["inferred_fields"] == {
+            "organization": "heuristic:url_domain",
+            "deadline": "heuristic:page_text_date",
+        }
+
+    def test_model_value_replaces_the_heuristic_stamp(self):
+        from src.collectors.url_parser import parse_url
+        base = parse_url("https://cs.illinois.edu/lab", html=self.HTML)
+        merged = _merge_llm_into_base(base, {"deadline": "2026-03-15"})
+        assert merged.extra_fields["inferred_fields"]["deadline"] == "llm:url_parser"
+        assert merged.extra_fields["inferred_fields"]["organization"] == "heuristic:url_domain"
+
+    def test_no_deadline_found_means_no_deadline_stamp(self):
+        from src.collectors.url_parser import parse_url
+        result = parse_url("https://cs.illinois.edu/lab", html="<html><body><main>Join us.</main></body></html>")
+        assert result.deadline is None
+        assert "deadline" not in result.extra_fields["inferred_fields"]
 
 
 # ---------- parse_url_llm end-to-end ----------
@@ -318,7 +369,7 @@ class TestParseUrlLlm:
         # string — the fallback warning must not interpolate them into logs.
         url = "https://example.com/job?token=SECRET-VALUE"
         with patch("src.collectors.url_parser.requests.get") as mock_get:
-            mock_get.return_value = self._mock_response(self.SAMPLE_HTML)
+            mock_get.return_value = _streamed_mock(self.SAMPLE_HTML, url=url)
             with patch("backend.lib.llm.is_configured", return_value=True):
                 with patch("backend.lib.llm.chat_completion", return_value="not json at all"):
                     with caplog.at_level("WARNING", logger="src.collectors.url_parser"):

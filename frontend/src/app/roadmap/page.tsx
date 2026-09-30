@@ -1,5 +1,7 @@
 'use client';
 
+import { profileInputMessage } from '@/lib/profile-input';
+
 import { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, GraduationCap, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -108,7 +110,7 @@ export default function RoadmapPage() {
   const [data, setData] = useState<RoadmapResult | null>(null);
   const [favCount, setFavCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [retryToken, setRetryToken] = useState(0);
   // The roadmap is computed from one account's favorites. On a real uid
   // change it is cleared HERE, inside the auth callback, and any load still
@@ -150,8 +152,8 @@ export default function RoadmapPage() {
           const r = await getRoadmap(profile, ids);
           if (fresh()) setData(r);
         }
-      } catch {
-        if (fresh()) setError(true);
+      } catch (error) {
+        if (fresh()) setError(error);
       } finally {
         if (fresh()) setLoading(false);
       }
@@ -192,7 +194,8 @@ export default function RoadmapPage() {
   const errorCard = (
     <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
       <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
-      <p className="mt-1 text-[13px] text-gray-400">{t('roadmap.errorBody')}</p>
+      <p className="mt-1 text-[13px] text-gray-400">{profileInputMessage(error, t) ?? t('roadmap.errorBody')}</p>
+      {profileInputMessage(error, t) && <Link href="/" className="block mt-3 text-sm underline">{t('profileInput.editProfile')}</Link>}
       <button
         type="button"
         onClick={retry}

@@ -20,6 +20,7 @@ project, and no test asserts on a value the route did not have to compute.
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -31,11 +32,26 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.routes import ops as ops_mod
+from scripts.check_cron_response import check as check_cron_response
 
 client = TestClient(app)
 
 INCIDENT_ID = "11111111-2222-3333-4444-555555555555"
 REPO = Path(__file__).resolve().parents[1]
+MIGRATION_031 = REPO / "supabase" / "migrations" / "031_ops_incidents.sql"
+
+
+def _schema_failure_states() -> set[str]:
+    """The values ops_incidents.failure_state's CHECK accepts, read from 031."""
+    sql = MIGRATION_031.read_text(encoding="utf-8")
+    m = re.search(r"failure_state IS NULL OR failure_state IN \(([^)]*)\)", sql)
+    assert m, "031 no longer declares the failure_state CHECK this test parses"
+    states = set(re.findall(r"'([a-z_]+)'", m.group(1)))
+    assert states, "parsed an empty failure_state CHECK from 031"
+    return states
+
+
+SCHEMA_FAILURE_STATES = _schema_failure_states()
 
 
 def _heartbeat(name: str = "ops_dead_man_sweep", *, overdue_seconds: int | None = None,
@@ -173,6 +189,16 @@ def _install_supabase(
             if "/rpc/" in url:
                 if schema_missing and url.endswith("record_ops_heartbeat"):
                     return missing_rpc
+                # Postgres enforces 031's CHECK inside the RPC; a stub that
+                # accepted any value hid three detectors that were rejected in
+                # production on every run.
+                if url.endswith("record_ops_incident"):
+                    state = (json or {}).get("p_failure_state")
+                    if state is not None and state not in SCHEMA_FAILURE_STATES:
+                        return _Resp({"code": "23514", "message": (
+                            'new row for relation "ops_incidents" violates '
+                            'check constraint "ops_incidents_failure_state_check"'
+                        )}, 400)
                 return _Resp(rpc_result, status_code=rpc_status)
             return _Resp([], status_code=201)
 
@@ -1189,8 +1215,9 @@ class TestOpsScanSuspiciousZero:
         payload = _incident_for(calls, "collector_failure:ucb_ling_faculty")
         assert payload["p_kind"] == "collector_failure"
         assert payload["p_scope"] == "ucb_ling_faculty"
-        assert payload["p_failure_state"] == "suspicious_zero"
+        assert payload["p_failure_state"] == "failed"
         assert payload["p_priority"] == "high"
+        assert payload["p_detail"]["zero_class"] == "suspicious_zero"
         assert payload["p_detail"]["baseline"] == 17
         assert payload["p_detail"]["fetched"] == 0
         # The healthy sibling is not implicated.
@@ -1315,7 +1342,7 @@ class TestOpsScanSourceHealth:
             calls, "collector_failure:stale_shard:ucb_ling_faculty",
         )
         assert payload["p_scope"] == "ucb_ling_faculty"
-        assert payload["p_failure_state"] == "stale"
+        assert payload["p_failure_state"] == "failed"
         assert payload["p_detail"]["last_success_at"] == "2026-07-21T07:08:46+00:00"
         assert payload["p_detail"]["last_good_record_count"] == 17
         assert payload["p_detail"]["school"] == "ucb"
@@ -1372,6 +1399,7 @@ class TestOpsScanSourceHealth:
         )
         assert payload["p_priority"] == "urgent"
         assert payload["p_scope"] == "colgate"
+        assert payload["p_failure_state"] == "failed"
 
     def test_repeated_failure_raises_the_priority(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -1426,6 +1454,99 @@ class TestOpsScanSourceHealth:
         )
         _run_scan()
         assert _rpcs(calls, "record_ops_recovery") == []
+
+
+class TestEveryFailureStateTheSchemaAccepts:
+    """failure_state is CHECK-constrained by 031, and the RPC rejects anything
+    else with a 400. From 09-05 the scan wrote 'suspicious_zero' and 'stale':
+    every stale source and dead school went unrecorded, the queue showed an
+    all-clear, and the failed scan check kept Render from deploying."""
+
+    def test_a_scan_over_every_new_detector_records_them_all(
+        self, monkeypatch, tmp_path,
+    ):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            snapshot={
+                "timestamp": datetime.now(UTC).isoformat(),
+                "sources": {
+                    "ucb_ling_faculty": {
+                        "status": "suspicious_zero", "fetched": 0,
+                        "suspicious_zero_baseline": 17,
+                        "zero_class": "suspicious_zero",
+                    },
+                },
+            },
+            source_health=_health_ledger({
+                "colgate_faculty": ("colgate", "2026-07-29T06:00:00+00:00",
+                                    "suspicious_zero", 314),
+            }),
+        )
+        body = _run_scan().json()
+
+        assert body["errors"] == []
+        assert check_cron_response(body) == []
+        keys = {p["p_dedup_key"] for p in _rpcs(calls, "record_ops_incident")}
+        assert {
+            "collector_failure:ucb_ling_faculty",
+            "collector_failure:stale_shard:colgate_faculty",
+            "collector_failure:fully_stale_school:colgate",
+        } <= keys
+
+    def test_every_failure_state_written_anywhere_is_one_031_accepts(self):
+        """Static: holds for detectors no scan test happens to reach."""
+        written: dict[str, set[str]] = {}
+
+        def literals(node: ast.AST, funcs: dict[str, ast.FunctionDef], where: str) -> set[str]:
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                return {node.value}
+            if isinstance(node, ast.IfExp):
+                return literals(node.body, funcs, where) | literals(node.orelse, funcs, where)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) \
+                    and node.func.id in funcs:
+                found: set[str] = set()
+                for ret in ast.walk(funcs[node.func.id]):
+                    if isinstance(ret, ast.Return) and ret.value is not None:
+                        found |= literals(ret.value, funcs, where)
+                return found
+            # Anything this cannot resolve would otherwise be skipped
+            # silently, which is how the drift got in.
+            raise AssertionError(
+                f"{where}: cannot resolve failure_state={ast.unparse(node)}; "
+                "teach this test the new form")
+
+        for path in sorted((REPO / "backend").rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            funcs = {n.name: n for n in ast.walk(tree)
+                     if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)}
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                for kw in node.keywords:
+                    if kw.arg == "failure_state":
+                        where = f"{path.relative_to(REPO)}:{kw.value.lineno}"
+                        for value in literals(kw.value, funcs, where):
+                            written.setdefault(value, set()).add(where)
+
+        sql_032 = MIGRATION_032.read_text(encoding="utf-8")
+        for block in re.findall(r"p_failure_state\s*=>\s*(.*?)(?:,\s*\n|\n\s*\))",
+                                sql_032, re.DOTALL):
+            for value in re.findall(r"'([a-z_]+)'", block):
+                written.setdefault(value, set()).add("032_dead_man_switch.sql")
+
+        # Proves the walk reached the callers it exists to guard.
+        assert {"failed", "blocked", "timed_out", "partial"} <= set(written)
+        assert any("ops.py" in w for ws in written.values() for w in ws)
+        assert any("032" in w for ws in written.values() for w in ws)
+
+        rejected = {v: sorted(ws) for v, ws in written.items()
+                    if v not in SCHEMA_FAILURE_STATES}
+        assert rejected == {}, (
+            f"failure_state values 031's CHECK rejects: {rejected}; "
+            f"allowed: {sorted(SCHEMA_FAILURE_STATES)}")
 
 
 class TestOpsScanResilience:

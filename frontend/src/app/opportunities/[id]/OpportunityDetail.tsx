@@ -1,8 +1,15 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { Suspense, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { resultSessionUrl, publicResultsUrl, RESULT_SESSION_PARAM } from '@/lib/result-session';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useCheckedWritingProfile } from '@/lib/use-checked-writing-profile';
+import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import { useRetainedWritingProfile } from '@/lib/use-retained-writing-profile';
+import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useLocalStorageJSON } from '@/lib/use-local-storage-json';
@@ -14,6 +21,8 @@ import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { opportunityRecordKind } from '@/lib/match-utils';
 import { canDeliverReminder } from '@/lib/reminders';
 import { targetPosture } from '@/lib/target-truth';
+import { contactEmailBlock } from '@/lib/contact-instructions';
+import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
 import { readDetailFields } from '@/lib/detail-fields';
 
 import { ChatDrawer } from './ChatDrawer';
@@ -33,25 +42,45 @@ import { OpportunityHeader } from './OpportunityHeader';
 import { ProfessorFollowToggle } from './ProfessorFollowToggle';
 import { SimilarOpportunities } from './SimilarOpportunities';
 import { TrackerPanel } from './TrackerPanel';
+import ApplicationRecordForm from '@/components/ApplicationRecordForm';
 import { useOpportunityDetail } from './use-opportunity-detail';
 
-const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), { ssr: false });
+const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), { ssr: false });
 // R71 PR-3: second entry point for the tailor modal (first was MatchCard).
 // Keeping the same dynamic-ssr-off pattern so this leaf doesn't pull the
 // modal bundle into the server render.
-const TailorModal = dynamic(() => import('@/components/TailorModal'), { ssr: false });
-const ResumeRenovationModal = dynamic(() => import('@/components/ResumeRenovationModal'), { ssr: false });
+const TailorModal = dynamic(() => import('@/components/CheckedTailorModal'), { ssr: false });
+const ResumeRenovationModal = dynamic(() => import('@/components/ResumeWorkspaceModal'), { ssr: false });
 const OpportunityChatbot = dynamic(() => import('@/components/OpportunityChatbot'), { ssr: false });
+
+/** This link carries no authority: /results validates the opaque ticket against
+ * the accepted owner, profile and server cursor. It must be correct before
+ * private favorites/interaction hydration completes (including after reload). */
+function ResultsReturnLink({ label }: { label: string }) {
+  const params = useSearchParams();
+  const publicReturn = publicResultsUrl(params.get('returnTo') ?? '') ?? '/results';
+  const id = params.get(RESULT_SESSION_PARAM);
+  const href = id ? resultSessionUrl(publicReturn, id) : publicReturn;
+  return (
+    <Link href={href} scroll={false} data-testid="return-to-results"
+      className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
+      <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      {label}
+    </Link>
+  );
+}
 
 export default function OpportunityDetail({
   opp,
   similar = [],
+  similarContent,
 }: {
   opp: Opportunity;
   similar?: SimilarOpportunity[];
+  similarContent?: ReactNode;
 }) {
-  const { t } = useT();
-  const profile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
+  const { t, locale } = useT();
+  const rawProfile = useLocalStorageJSON<ProfileData>(STORAGE_KEYS.PROFILE);
   const {
     identityGeneration,
     ownerScopeKey,
@@ -63,6 +92,9 @@ export default function OpportunityDetail({
     favoriteSaveError,
     ownerReady,
     interactionDetail,
+    contactHistoryRevision,
+    applicationHistoryRevision,
+    noteApplicationConfirmed,
     noteContactConfirmed,
     noteReminderSet,
     interaction,
@@ -92,10 +124,20 @@ export default function OpportunityDetail({
     handleShare,
   } = useOpportunityDetail(opp);
 
+  const writingScope = `${ownerScopeKey}:${identityGeneration}:${opp.id}`;
+  const { profile, acceptHydration } = useCheckedWritingProfile(rawProfile, writingScope);
+  const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
+  const actionable = targetPosture(opp) === 'actionable';
+  const emailAllowed = actionable && !contactEmailBlock(opp);
+  // Only an editor opened while actionable may retain its draft after the
+  // target closes. Target readiness, separate from profile availability, stops actions.
+  const emailProfile = useRetainedWritingProfile(actionable ? profile : null, emailModalOpen, writingScope);
+  const resumeProfile = useRetainedWritingProfile(actionable ? profile : null, renovationOpen, writingScope);
+  const tailorProfile = useRetainedWritingProfile(actionable ? profile : null, tailorOpen, writingScope);
+
   // One read, used by every action surface on this page. Historical and
   // unverified both resolve to false: the page stays readable either way,
   // but nothing on it may act on the target.
-  const actionable = targetPosture(opp) === 'actionable';
   // Which body sections may exist at all. Each of the four gated below is a
   // block of offer terms — what it pays, when it closes, who may apply, what
   // to submit — and the sections themselves only knew `source_type`, so a
@@ -118,15 +160,12 @@ export default function OpportunityDetail({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      <Link
-        href="/results"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-      >
-        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-        {t('detail.backToMatches')}
-      </Link>
+      <Suspense fallback={<span className="inline-flex mb-6 text-sm text-gray-500" aria-busy="true">{t('detail.backToMatches')}</span>}>
+        <ResultsReturnLink label={t('detail.backToMatches')} />
+      </Suspense>
 
       <StorageStatusBanner />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} />
 
       <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
         <main className="flex-1 min-w-0 lg:max-w-3xl">
@@ -144,10 +183,10 @@ export default function OpportunityDetail({
               // from the accessibility tree and the tab order entirely. A
               // disabled button is still announced, still focusable, and still
               // says the action exists.
-              onOpenEmailModal={actionable ? () => setEmailModalOpen(true) : undefined}
-              onOpenTailorModal={actionable ? () => setTailorOpen(true) : undefined}
+              onOpenEmailModal={profile && emailAllowed ? () => setEmailModalOpen(true) : undefined}
+              onOpenTailorModal={profile && actionable ? () => setTailorOpen(true) : undefined}
               tailorDisabled={!ownerReady}
-              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && actionable
+              onOpenRenovationModal={RELEASE_SCOPE.resumeRenovate && profile && actionable
                 ? () => setRenovationOpen(true)
                 : undefined}
               onShare={handleShare}
@@ -198,6 +237,12 @@ export default function OpportunityDetail({
               suggestionError={suggestionError}
               t={t}
             />
+            <ApplicationRecordForm
+              key={'application:' + identityGeneration + ':' + opp.id}
+              opportunityId={opp.id}
+              ownerReady={ownerReady}
+              onConfirmed={noteApplicationConfirmed}
+            />
             <TrackerPanel
               // Relying on interactionDetail merely passing through null
               // between identities is not a robust guarantee that React
@@ -208,6 +253,8 @@ export default function OpportunityDetail({
               // explicitly, by construction (same fix as tracker/page.tsx).
               key={`${identityGeneration}:${opp.id}`}
               detail={interactionDetail}
+              contactHistoryRevision={contactHistoryRevision}
+              applicationHistoryRevision={applicationHistoryRevision}
               onSave={saveDetails}
               opportunityId={opp.id as string}
               hasInteraction={!!interaction}
@@ -253,11 +300,12 @@ export default function OpportunityDetail({
               prompts, not terms of an offer, so a live profile keeps them. */}
           {showsProfileOrOffer && !showsFacts && <EligibilitySection opp={opp} t={t} />}
           {showsProfileOrOffer && !showsFacts && <ApplicationSection opp={opp} t={t} />}
+          {showsProfileOrOffer && <div className="mb-4"><ContactInstructionsPanel target={opp} /></div>}
           {/* Revealing a contact is a direct action, not a display detail: it
               re-fetches the record to obtain the address, can raise the sign-in
               modal, and ends in a mailto. None of that belongs on a target the
               server would refuse to draft an email about. */}
-          {actionable && <ContactRevealSection opp={opp} t={t} />}
+          {emailAllowed && <ContactRevealSection opp={opp} t={t} />}
           {/* Placed after the address, where the size of the job becomes
               concrete. Bound to this record, because the work being asked for
               is: read this lab, tailor to this lab, write to this person. */}
@@ -265,7 +313,7 @@ export default function OpportunityDetail({
           {/* The facts section already carries research areas, split into
               what the page says and what we derived. */}
           {!showsFacts && <KeywordsSection opp={opp} t={t} />}
-          <SimilarOpportunities similar={similar} t={t} />
+          {similarContent ?? <SimilarOpportunities similar={similar} t={t} />}
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">
             {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}
@@ -300,26 +348,27 @@ export default function OpportunityDetail({
         />
       )}
 
-      {/* Historical and unverified targets mount none of these. A closed
-          listing stays readable; drafting an email about it, tailoring a
-          résumé to it, or asking an AI how to approach it are the actions
-          that must not exist — including as a closed modal one state change
-          from opening. */}
-      {profile && actionable && (
+      {/* Historical targets cannot start a writing session. An already-open
+          editor may keep its buffer while targetReady stops derived actions. */}
+      {emailProfile.profile && (
         <ColdEmailModal
           isOpen={emailModalOpen}
           onClose={() => setEmailModalOpen(false)}
-          profile={profile}
+          profile={emailProfile.profile}
+          profileAvailable={profile !== null}
+          targetReady={actionable}
+          profileRefresh={profileRefresh}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           opportunitySchool={opp.school ?? null}
+          target={opp}
           reminderTarget={opp}
           onContactConfirmed={noteContactConfirmed}
           onReminderSet={noteReminderSet}
         />
       )}
 
-      {profile && actionable && (
+      {tailorProfile.profile && (
         <TailorModal
           // Generation-qualified key (same fix as TrackerPanel above): a
           // real identity transition forces a full remount, destroying
@@ -330,7 +379,12 @@ export default function OpportunityDetail({
           key={`${identityGeneration}:${opp.id}`}
           isOpen={tailorOpen}
           onClose={() => setTailorOpen(false)}
-          profile={profile}
+          target={opp}
+          targetKey={JSON.stringify(opp)}
+          profile={tailorProfile.profile}
+          profileAvailable={profile !== null}
+          profileRefresh={profileRefresh}
+          targetReady={actionable}
           opportunityId={opp.id}
           opportunityTitle={opp.title}
           ownerReady={ownerReady}
@@ -338,16 +392,16 @@ export default function OpportunityDetail({
         />
       )}
 
-      {/* `actionable` is stated explicitly rather than left to the release
-          flag. A test that passes only because resumeRenovate is false proves
-          nothing about the day it is turned on. */}
-      {RELEASE_SCOPE.resumeRenovate && profile && actionable && (
+      {/* The retained profile can exist only after an actionable entry. */}
+      {RELEASE_SCOPE.resumeRenovate && resumeProfile.profile && (
         <ResumeRenovationModal
           isOpen={renovationOpen}
           onClose={() => setRenovationOpen(false)}
-          profile={profile}
-          opportunityId={opp.id}
-          opportunityTitle={opp.title}
+          profile={resumeProfile.profile}
+          profileAvailable={profile !== null}
+          targetReady={actionable}
+          opportunity={opp}
+          profileRefresh={profileRefresh}
         />
       )}
     </div>

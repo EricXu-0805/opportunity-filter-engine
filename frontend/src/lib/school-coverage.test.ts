@@ -95,6 +95,27 @@ describe('resolveCoverage — one number, listings + faculty contacts', () => {
     expect(resolveCoverage('ucd', null, staticStats).count).toBe(6);
   });
 
+  it('resolves both labelled parts from the same source as their total', () => {
+    expect(resolveCoverage('jhu', live({ jhu: counts(10, 20) }), staticStats)).toMatchObject({
+      available: true, count: 30, listingCount: 10, facultyCount: 20, source: 'live',
+    });
+    expect(resolveCoverage('jhu', null, staticStats)).toMatchObject({
+      available: true, count: 4581, listingCount: 27, facultyCount: 4554, source: 'static',
+    });
+  });
+
+  it.each([
+    { listing_count: -1, faculty_contact_count: 31, unreviewed_count: 0, total_count: 30 },
+    { listing_count: 10, faculty_contact_count: 20, unreviewed_count: 0, total_count: 99 },
+    { listing_count: 10.5, faculty_contact_count: 19.5, unreviewed_count: 0, total_count: 30 },
+    { listing_count: 10, faculty_contact_count: Number.NaN, unreviewed_count: 0, total_count: 30 },
+  ])('rejects inconsistent or invalid population counts together', (invalid) => {
+    expect(resolveCoverage('jhu', live({ jhu: invalid }), staticStats)).toMatchObject({
+      available: true, listingCount: 27, facultyCount: 4554, source: 'static',
+    });
+    expect(resolveCoverage('jhu', live({ jhu: invalid }), {}).available).toBe(false);
+  });
+
   it('reports an unmeasured school as unavailable, never as zero', () => {
     const resolved = resolveCoverage('nowhere', live({}), staticStats);
     expect(resolved.available).toBe(false);

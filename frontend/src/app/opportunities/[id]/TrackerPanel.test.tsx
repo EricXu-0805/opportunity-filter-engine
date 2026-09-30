@@ -12,6 +12,18 @@ vi.mock('@/components/AttachmentsPanel', () => ({
   ),
 }));
 
+vi.mock('@/components/ApplicationHistory', () => ({
+  default: ({ opportunityId, refreshKey }: { opportunityId: string; refreshKey?: string }) => (
+    <div data-testid="application-history" data-opp={opportunityId} data-refresh={refreshKey} />
+  ),
+}));
+
+vi.mock('@/components/ContactHistory', () => ({
+  default: ({ opportunityId, refreshKey }: { opportunityId: string; refreshKey?: string }) => (
+    <div data-testid="contact-history" data-opp={opportunityId} data-refresh={refreshKey} />
+  ),
+}));
+
 vi.mock('@/components/StatusTimeline', () => ({
   default: ({
     opportunityId,
@@ -20,7 +32,7 @@ vi.mock('@/components/StatusTimeline', () => ({
   }: {
     opportunityId: string;
     fallbackType: string;
-    fallbackUpdatedAt: string;
+    fallbackUpdatedAt?: string;
   }) => (
     <div
       data-testid="status-timeline"
@@ -54,6 +66,7 @@ function detail(overrides: Partial<InteractionRecord> = {}): InteractionRecord {
 
 beforeEach(() => {
   vi.useRealTimers();
+  window.history.replaceState(null, '', '/');
 });
 
 afterEach(() => {
@@ -1032,5 +1045,115 @@ describe('TrackerPanel — a reminder is only offered where one would be deliver
 
     expect(onSave).toHaveBeenCalledWith({ notes: 'my own note' });
     vi.useRealTimers();
+  });
+});
+
+
+it('reads status history for a newly selected status even without a row updated_at receipt', async () => {
+  render(<TrackerPanel detail={detail({ type: 'replied', updated_at: undefined, notes: 'open' })}
+    onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+  const timeline = await screen.findByTestId('status-timeline');
+  expect(timeline).toHaveAttribute('data-type', 'replied');
+  expect(timeline).not.toHaveAttribute('data-updated');
+});
+
+
+describe('TrackerPanel — immutable contact history', () => {
+  it('forwards a confirmation update and keeps history readable after the current interaction is removed', async () => {
+    const props = { onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} detail={detail({ notes: 'open', updated_at: '2026-09-25T10:00:00Z' })} />);
+    const history = await screen.findByTestId('contact-history');
+    expect(history).toHaveAttribute('data-opp', OPP_ID);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T10:00:00Z', 0]));
+    rerender(<TrackerPanel {...props} detail={detail({ notes: 'open', updated_at: '2026-09-25T11:00:00Z' })} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T11:00:00Z', 0]));
+    rerender(<TrackerPanel {...props} hasInteraction={false} detail={null} />);
+    expect(screen.getByTestId('contact-history')).toBeInTheDocument();
+  });
+
+  it('reads email history even when legacy detail lacks an update timestamp', async () => {
+    render(<TrackerPanel detail={detail({ notes: 'open', updated_at: undefined })} onSave={vi.fn()}
+      opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    expect(await screen.findByTestId('contact-history')).toHaveAttribute('data-refresh', JSON.stringify([null, 0]));
+  });
+
+  it('refreshes history after an unchanged-timestamp replay without replacing a notes draft', async () => {
+    const record = detail({ notes: 'Earlier note', updated_at: '2026-09-25T10:00:00Z' });
+    const props = { detail: record, onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} contactHistoryRevision={3} />);
+    const history = await screen.findByTestId('contact-history');
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'My unsaved note' } });
+    rerender(<TrackerPanel {...props} contactHistoryRevision={4} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify(['2026-09-25T10:00:00Z', 4]));
+    expect(notes).toHaveValue('My unsaved note');
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('keeps a pending note visible but disabled when an authoritative replay removes the summary', async () => {
+    const props = { onSave: vi.fn(), opportunityId: OPP_ID, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} detail={detail({ notes: 'Earlier note' })} hasInteraction writeReady reminderEligible contactHistoryRevision={1} />);
+    const history = await screen.findByTestId('contact-history');
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'My unsaved note' } });
+    rerender(<TrackerPanel {...props} detail={null} hasInteraction={false} writeReady={false} reminderEligible={false} contactHistoryRevision={2} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([null, 2]));
+    expect(notes).toHaveValue('My unsaved note');
+    expect(notes).toBeDisabled();
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch private contact history until the tracker is expanded', async () => {
+    render(<TrackerPanel detail={detail()} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    expect(screen.queryByTestId('contact-history')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(await screen.findByTestId('contact-history')).toBeInTheDocument();
+  });
+});
+
+
+describe('TrackerPanel — application records', () => {
+  it('refreshes applications independently from contacts and preserves unsaved notes', async () => {
+    const props = { detail: detail({ notes: 'Earlier note' }), onSave: vi.fn(), opportunityId: OPP_ID, hasInteraction: true, reminderEligible: true, t: tFn };
+    const { rerender } = render(<TrackerPanel {...props} applicationHistoryRevision={1} contactHistoryRevision={3} />);
+    const history = await screen.findByTestId('application-history');
+    const contact = await screen.findByTestId('contact-history');
+    expect(history).toHaveAttribute('data-opp', OPP_ID);
+    const notes = screen.getByRole('textbox');
+    fireEvent.change(notes, { target: { value: 'Keep my draft' } });
+    rerender(<TrackerPanel {...props} applicationHistoryRevision={2} contactHistoryRevision={3} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([props.detail.updated_at, 2]));
+    expect(contact).toHaveAttribute('data-refresh', JSON.stringify([props.detail.updated_at, 3]));
+    expect(notes).toHaveValue('Keep my draft');
+    expect(props.onSave).not.toHaveBeenCalled();
+    rerender(<TrackerPanel {...props} detail={null} hasInteraction={false} writeReady={false} reminderEligible={false} applicationHistoryRevision={3} />);
+    expect(history).toHaveAttribute('data-refresh', JSON.stringify([null, 3]));
+    expect(notes).toHaveValue('Keep my draft');
+    expect(notes).toBeDisabled();
+  });
+
+  it('does not mount application reads until records are expanded even without a summary', async () => {
+    render(<TrackerPanel detail={null} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction={false} reminderEligible={false} t={tFn} />);
+    expect(screen.queryByTestId('application-history')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(await screen.findByTestId('application-history')).toHaveAttribute('data-refresh', JSON.stringify([null, 0]));
+  });
+
+  it('opens saved records on hash entry without an interaction or note', async () => {
+    window.history.replaceState(null, '', '/opportunities/opp-7#tracker-records');
+    render(<TrackerPanel detail={null} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction={false} reminderEligible={false} t={tFn} />);
+    expect(await screen.findByTestId('application-history')).toBeInTheDocument();
+    expect(document.getElementById('tracker-records')).toContainElement(screen.getByTestId('application-history'));
+    expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
+  });
+
+  it('opens after a same-page records link changes the hash without discarding a notes draft', async () => {
+    render(<TrackerPanel detail={detail({ notes: 'Saved note' })} onSave={vi.fn()} opportunityId={OPP_ID} hasInteraction reminderEligible t={tFn} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Draft note' } });
+    fireEvent.click(screen.getByRole('button', { expanded: true }));
+    expect(screen.queryByTestId('application-history')).not.toBeInTheDocument();
+    act(() => { window.history.replaceState(null, '', '#tracker-records'); window.dispatchEvent(new HashChangeEvent('hashchange')); });
+    expect(await screen.findByTestId('application-history')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue('Draft note');
   });
 });

@@ -6,7 +6,8 @@ from src.evidence import (
     inferred_method,
     is_professor_rank,
 )
-from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS, _tokenize
+from src.lab_context import lab_context_for, validate_public_lab_context
+from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
 from src.publication_trust import verified_recent_works
 
 # Tokenizer for skill matching: a letter followed by letters/digits/+/#/. so
@@ -368,22 +369,6 @@ def _topic_domains(text: str) -> set[str]:
     }
 
 
-def _alignment_plausible(interests: str, opp_topic_text: str) -> bool:
-    """Whether claiming the student's interests align with the opportunity's
-    topic is defensible. A cheap lexical check cannot see semantic kinship
-    ("deep learning" ~ "computer vision"), so it vetoes only on provable
-    mismatch: zero shared tokens AND provably different lab-type domains
-    ("machine learning" vs "environmental economics"). No topic text, or no
-    domain signal on either side, means there is nothing to disprove."""
-    if not opp_topic_text.strip():
-        return True
-    if set(_tokenize(interests)) & set(_tokenize(opp_topic_text)):
-        return True
-    interest_domains = _topic_domains(interests)
-    opp_domains = _topic_domains(opp_topic_text)
-    return not interest_domains or not opp_domains or bool(interest_domains & opp_domains)
-
-
 def _source_backed_faculty_research_text(opportunity: dict) -> str:
     """Research text a faculty-contact draft is allowed to treat as evidence.
 
@@ -395,7 +380,7 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
     """
     parts = [
         str(keyword).strip()
-        for keyword in _stated_keywords(opportunity)[:20]
+        for keyword in _stated_keywords(opportunity)
         if str(keyword).strip()
     ]
     metadata = opportunity.get("metadata") or {}
@@ -659,7 +644,8 @@ def has_source_backed_target_evidence(
 
     The provider may run only when at least one source-backed, non-generic
     target signal exists: a specific keyword/area/topic/raw research label or
-    a work that passed attribution verification.  ``_professor_anchors`` is a
+    a work that passed attribution verification, or current verified website
+    source text. ``_professor_anchors`` is a
     separate scoring aid and may keep length thresholds; it must never decide
     whether evidence exists.
     """
@@ -669,7 +655,7 @@ def has_source_backed_target_evidence(
     # list made it disagree with the two helpers that already drop guessed
     # topics — it reported a specific signal while every field the professor
     # brief renders came back empty, which is an order to fabricate.
-    signals: list[object] = list(_stated_keywords(opportunity)[:20])
+    signals: list[object] = list(_stated_keywords(opportunity))
     metadata = opportunity.get("metadata") or {}
     if isinstance(metadata, dict):
         signals.append(metadata.get("research_areas_raw"))
@@ -682,7 +668,31 @@ def has_source_backed_target_evidence(
     if parts is not None and parts.get("recent_works"):
         # _common_parts populates this only through verified_recent_works.
         return True
-    return bool(verified_recent_works(opportunity))
+    if verified_recent_works(opportunity):
+        return True
+    # Website-only faculty records have no legacy keywords or paper metadata.
+    # Use the same validated source the professor brief receives; a malformed
+    # public projection must never fall back to retained private source data.
+    lab = opportunity.get("lab_context") if "lab_context" in opportunity else lab_context_for(opportunity)
+    if not validate_public_lab_context(lab) or lab["status"] != "available":
+        return False
+    return any(_target_signal_is_specific(section["text"])
+               for page in lab["snapshot"]["pages"] for section in page["sections"])
+
+
+def _stated_required_skills(opportunity: dict) -> list[str]:
+    """Do not upgrade inferred tags to a posting's stated requirements.
+
+    The public projection marks inferred lists without removing them from the
+    discovery UI. Email factual inputs need the same distinction. Unstamped
+    legacy lists keep their existing admission policy; this is not a new crawl
+    or verification of the source page.
+    """
+    if (faculty_contact_claims_unverified(opportunity)
+            or opportunity.get("skills_attribution") == "inferred"
+            or inferred_method(opportunity, "eligibility.skills_required")):
+        return []
+    return opportunity.get("eligibility", {}).get("skills_required", [])
 
 
 def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
@@ -692,11 +702,7 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
         if is_faculty
         else (opp.get("description_raw") or opp.get("description_clean") or "")
     ).lower()
-    required = (
-        []
-        if is_faculty
-        else [s.lower() for s in opp.get("eligibility", {}).get("skills_required", [])]
-    )
+    required = [skill.lower() for skill in _stated_required_skills(opp)]
     desc_tokens = set(_SKILL_TOKEN_RE.findall(desc))
     req_tokens = set()
     for r in required:
@@ -745,7 +751,7 @@ def _common_parts(
     # "Dear Spring Harbor,". The fallbacks below already handle the empty
     # case, and for these records that is "Program Coordinator".
     pi_name = "" if inferred_method(opportunity, "pi_name") else (opportunity.get("pi_name") or "")
-    lab = opportunity.get("lab_or_program", "")
+    lab = "" if inferred_method(opportunity, "lab_or_program") else opportunity.get("lab_or_program", "")
     title = opportunity.get("title", "")
     opp_type = opportunity.get("opportunity_type", "")
     research_area = _infer_research_area(opportunity)
@@ -757,11 +763,7 @@ def _common_parts(
     opp_desc = "" if is_faculty else (
         opportunity.get("description_raw") or opportunity.get("description_clean") or ""
     )
-    opp_skills_required = (
-        []
-        if is_faculty
-        else opportunity.get("eligibility", {}).get("skills_required", [])
-    )
+    opp_skills_required = _stated_required_skills(opportunity)
     matching_skills = _match_skills_to_tasks(skills, opportunity)
 
     meta = opportunity.get("metadata") or {}
@@ -808,12 +810,15 @@ def _common_parts(
         name=name, year=year, major=major, school=school,
         skills=skills, skill_levels=skill_levels,
         research_interests=research_interests,
+        research_interests_verbatim=profile.get("research_interests_text", ""),
         linkedin_url=linkedin_url, github_url=github_url,
         scholar_url=scholar_url,
         pi_name=pi_name, lab=lab, title=title,
         research_area=research_area, research_topic=research_topic,
         opp_desc=opp_desc, opp_skills_required=opp_skills_required,
         matching_skills=matching_skills, recipient=recipient,
+        contact_method=(opportunity.get("application") or {}).get("contact_method"),
+        application_url=(opportunity.get("application") or {}).get("application_url"),
         coursework=coursework, lab_type=lab_type,
         # Publication trust boundary: only works with explicitly verified
         # attribution may personalize output — name-matched/legacy/unknown
@@ -822,29 +827,30 @@ def _common_parts(
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
         faculty_is_professor=faculty_is_professor,
-        # The student's real resume experience bullets (from /tailor/extract-
-        # bullets, already grounded). Only the AI pipeline supplies these; the
-        # deterministic template path leaves it empty.
+        # Internal callers supply already-admitted evidence. Public routes
+        # populate this only after the structured confirmation/source gate.
         resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
     )
 
 
 def generate_cold_email(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+    *, parts_cache: dict | None = None,
 ) -> str:
-    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
-    return _build_balanced(p)
+    p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
+    return _contact_template(_build_balanced(p), p)
 
 
 def generate_variants(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None,
+    *, parts_cache: dict | None = None,
 ) -> list[dict]:
-    p = _common_parts(profile, opportunity, resume_bullets=resume_bullets)
+    p = parts_cache if parts_cache is not None else _common_parts(profile, opportunity, resume_bullets=resume_bullets)
     lab_type = p["lab_type"]
     return [
-        {"id": "balanced",  "label": "Balanced",       "text": _build_balanced(p),     "lab_type": lab_type},
-        {"id": "skills",    "label": "Skills Focus",   "text": _build_skills_focus(p), "lab_type": lab_type},
-        {"id": "concise",   "label": "Concise",        "text": _build_concise(p),      "lab_type": lab_type},
+        {"id": "balanced",  "label": "Balanced",       "text": _contact_template(_build_balanced(p), p),     "lab_type": lab_type},
+        {"id": "skills",    "label": "Skills Focus",   "text": _contact_template(_build_skills_focus(p), p), "lab_type": lab_type},
+        {"id": "concise",   "label": "Concise",        "text": _contact_template(_build_concise(p), p),      "lab_type": lab_type},
     ]
 
 
@@ -857,6 +863,35 @@ def _cap_subject(s: str, limit: int = 72) -> str:
         return s
     trimmed = body[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
     return prefix + trimmed
+
+
+def _contact_details(p: dict) -> str:
+    """Keep admitted logistics before the request, never invent availability."""
+    availability = p.get("contact_availability") or ""
+    # A legacy contact_method may be inferred. Do not restate it as an
+    # instruction from the posting; source rules are handled by the server.
+    return f"\n\n{availability}" if availability else ""
+
+
+def _contact_template(email: str, p: dict) -> str:
+    """Use only route-admitted context; reading stays beside research interest."""
+    opening = "\n\n".join(p.get(key) or "" for key in ("contact_opening", "contact_reply_line") if p.get(key))
+    if p.get("contact_purpose") == "follow_up":
+        subject = _cap_subject(f"Subject: Follow-up — {p.get('title') or 'research inquiry'}")
+        ask = p.get("target_conditions_template_request") or (
+            "Could you let me know whether there are any current or upcoming research "
+            "openings, and the best next step if so?"
+            if p.get("is_faculty") else
+            "Could you let me know the best next step for this opportunity?"
+        )
+        paragraphs = [_greeting(p), opening, p.get("contact_paper_reading"),
+                      _contact_details(p).strip(), ask]
+        return subject + "\n\n" + "\n\n".join(x for x in paragraphs if x) + _closing(p)
+    subject, body = email.split("\n\n", 1)
+    if opening:
+        greeting, rest = body.split("\n\n", 1)
+        body = f"{greeting}\n\n{opening}\n\n{rest}"
+    return f"{subject}\n\n{body}"
 
 
 def _subject(p: dict, style: str = "") -> str:
@@ -883,8 +918,6 @@ def _subject(p: dict, style: str = "") -> str:
         return _cap_subject(f"Subject: Research Interest — {ctx}")
     if area:
         return _cap_subject(f"Subject: {intent} — {area}")
-    if lab and "Prof" in lab:
-        return _cap_subject(f"Subject: {intent} — joining your lab")
     ctx = lab or p["title"] or "your research"
     return _cap_subject(f"Subject: {intent} — {ctx}")
 
@@ -909,42 +942,26 @@ def _greeting(p: dict) -> str:
 def _ask_for_lab_type(lab_type: LabType | None, is_faculty: bool = False) -> str:
     if is_faculty:
         return (
-            "\n\nWould you be open to letting me know whether you have any"
-            " current or upcoming research openings for a student? If so, I"
-            " would appreciate a brief conversation about how I might support"
-            " your research."
+            "\n\nCould I ask whether you have any current or upcoming research"
+            " openings for a student? If so, what preparation would be useful"
+            " before a brief conversation?"
         )
     if lab_type == "wet":
         return (
-            "\n\nI am eager to develop my wet-lab skills further and"
-            " can commit to in-person hours each week. I am happy to"
-            " complete any required safety training and to start under"
-            " a graduate mentor."
-            "\n\nWould you be open to a brief meeting to discuss"
-            " how I might contribute?"
-        )
-    if lab_type == "humanities":
-        return (
-            "\n\nI would welcome the chance to assist with literature"
-            " reviews, qualitative coding, or any other tasks that"
-            " would be helpful to your research."
-            "\n\nWould you have 15 minutes to discuss how I might"
-            " support your work?"
-        )
-    if lab_type is None:
-        # No lab to speak of: a finance or marketing professor has a
-        # research group, not a bench.
-        return (
-            "\n\nI would welcome the chance to contribute to your research"
-            " and to learn more about your work."
-            "\n\nWould you be open to a short meeting?"
-            " I am happy to work around your availability."
+            "\n\nCould we discuss the work and any preparation or safety training"
+            " needed to get started?"
         )
     return (
-        "\n\nI would love the chance to contribute to your lab"
-        " and to learn more about your research."
-        "\n\nWould you be open to a short meeting?"
-        " I am happy to work around your availability."
+        "\n\nWhat would be a useful first step for a student interested in this work?"
+        " Would you be open to a brief conversation?"
+    )
+
+
+def _template_ask(p: dict) -> str:
+    if p.get("target_conditions_template_request"):
+        return _contact_details(p) + "\n\n" + p["target_conditions_template_request"]
+    return _contact_details(p) + _ask_for_lab_type(
+        p.get("lab_type"), is_faculty=bool(p.get("is_faculty"))
     )
 
 
@@ -977,15 +994,9 @@ _BULLET_CAP = 220
 
 # Shared words a bullet needs before it counts as speaking to this target.
 #
-# One is a coincidence: "the campus learning center" shares `learn` with a
-# professor's "machine learning" and nothing else. Two is a topic. Measured
-# against production's top 100 for a UIUC ECE sophomore, with a four-line
-# résumé of real work and with a control résumé holding only tutoring and a
-# campus job:
-#
-#   >=1   real 100/100   irrelevant-only 18/100   <- the guard leaks
-#   >=2   real 100/100   irrelevant-only  1/100
-#   >=3   real  10/100   irrelevant-only  0/100   <- coverage collapses
+# One shared word is often a coincidence: "the campus learning center"
+# shares `learn` with "machine learning". Preserve the two-word threshold as
+# a conservative selection heuristic, not proof of a research connection.
 _MIN_BULLET_OVERLAP = 2
 
 
@@ -993,8 +1004,8 @@ def _significant_terms(text: str) -> list[str]:
     """Content words from a target's own description of itself.
 
     Split on non-letters so "image segmentation" contributes both halves; the
-    caller drops anything four characters or shorter, which is what keeps "and"
-    and "the" from matching every bullet.
+    caller keeps words of at least four characters, which keeps "and" and
+    "the" from matching every bullet.
     """
     return [w for w in re.split(r"[^a-z]+", text.lower()) if w]
 
@@ -1017,72 +1028,70 @@ def _stem(word: str) -> str:
 
 
 def _target_match_terms(p: dict) -> set[str]:
-    """Everything this target is on record as working on, as comparable stems.
+    """Comparable stems from the target's stated research and requirements.
 
-    ``research_topic`` alone is the first three keywords, which for a strong
-    match is the student's whole FIELD — "signal processing", "biomedical",
-    "algorithms". Those are abstract nouns, and an accomplishment sentence
-    never contains them, so the closer the match the less likely any bullet
-    scored against them. Measured on production's top 100 for a UIUC ECE
-    sophomore, the paragraph fired for 94% of ranks 51-100 and 20% of the top
-    five — inverted exactly where a student actually writes.
-
-    ``research_areas_raw`` is the professor's own prose (Zhi-Pei Liang's says
-    "Magnetic resonance imaging and spectroscopy" while his topic string says
-    "biomedical"), and the student's stated interests are the words that made
-    this a match at all.
+    Student interests may explain motivation, but cannot prove relevance to
+    this target. ``matching_skills`` is also omitted: it is a student-derived
+    subset, while the source requirements and research below stand on their
+    own. Legacy fields pass the gates in _common_parts; source_research_text
+    is populated by email routes only from validated available snapshots.
     """
-    return {
-        _stem(t) for t in (
-            [str(k).lower() for k in (p.get("opp_skills_required") or [])]
-            + [str(k).lower() for k in (p.get("matching_skills") or [])]
-            + _significant_terms(str(p.get("research_topic") or ""))
-            + _significant_terms(str(p.get("research_area") or ""))
-            + _significant_terms(str(p.get("research_areas_raw") or ""))
-            + _significant_terms(str(p.get("research_interests") or ""))
-        ) if len(t) > 3
-    }
+    target_text = " ".join(
+        [str(k) for k in (p.get("opp_skills_required") or [])]
+        + [str(p.get(key) or "") for key in (
+            "research_topic", "research_area", "research_areas_raw", "source_research_text",
+        )]
+    )
+    return {_stem(t) for t in _significant_terms(target_text) if len(t) > 3}
+
+
+def resume_bullet_relevance(p: dict, text: str) -> int:
+    """Target-only lexical overlap, shared by raw and source-bound selectors."""
+    words = {_stem(word) for word in _significant_terms(text) if len(word) > 3}
+    return len(_target_match_terms(p) & words)
+
+
+def select_resume_bullets(
+    p: dict, *, limit: int, min_overlap: int = 0,
+) -> list[str]:
+    """Select original experience strings by target-word overlap, then cap.
+
+    Ties retain input order; no source is rewritten or removed from ``p``.
+    The AI brief may retain weak-match experiences as factual background. The
+    template uses a stricter threshold before volunteering one example. This
+    lexical score prioritizes evidence; it does not prove a research connection.
+    """
+    scored: list[tuple[str, int]] = []
+    for bullet in p.get("resume_bullets") or []:
+        if not isinstance(bullet, str) or not bullet.strip():
+            continue
+        # Equality, not substring containment: "learning center" must not
+        # match a whole topic merely because it contains the stem "learn".
+        score = resume_bullet_relevance(p, bullet)
+        if score >= min_overlap:
+            scored.append((bullet, score))
+    scored.sort(key=lambda item: item[1], reverse=True)
+    return [bullet for bullet, _score in scored[:max(0, limit)]]
 
 
 def _pick_resume_bullet(p: dict) -> str:
-    """The student's own sentence that best matches this target, or "".
-
-    Quoted verbatim, never paraphrased: a bullet is the student's own statement
-    about themselves, which is the evidence class the claim rules admit. The
-    moment the template restates it in its own words it is asserting detail
-    nothing backs — which is the failure this whole path exists to avoid.
-    """
-    bullets = [b.strip() for b in (p.get("resume_bullets") or []) if b and b.strip()]
-    if not bullets:
+    """The strongest lexical match, quoted from the student's own source."""
+    if "experience_template_excerpt" in p:
+        return p["experience_template_excerpt"] or ""
+    selected = select_resume_bullets(p, limit=1, min_overlap=_MIN_BULLET_OVERLAP)
+    if not selected:
         return ""
-
-    # Score against what this target actually says, not against the student's
-    # own skill list — otherwise every bullet mentioning Python ties and the
-    # first one wins by accident.
-    terms = _target_match_terms(p)
-
-    def overlap(bullet: str) -> int:
-        # Stems compared for equality, not containment. Containment let short
-        # stems match anywhere — "learning center" scored against a professor's
-        # "machine learning" — and every bullet then matched every target, which
-        # is the same as having no guard at all.
-        words = {_stem(w) for w in _significant_terms(bullet) if len(w) > 3}
-        return len(terms & words)
-
-    best = max(bullets, key=overlap)
-    # Too little in common means nothing here speaks to this lab. Saying
-    # something irrelevant is worse than saying nothing: it reads as a mass
-    # mailing.
-    if overlap(best) < _MIN_BULLET_OVERLAP:
-        return ""
-    return best[:_BULLET_CAP].rstrip()
+    return selected[0].strip()[:_BULLET_CAP].rstrip()
 
 
 def _p3_concrete_work(p: dict) -> str:
     bullet = _pick_resume_bullet(p)
     if not bullet:
         return ""
-    return f"\n\nMost relevant to your work: {bullet}."
+    # Overlap is a selection aid, not proof this is the work most relevant to
+    # the recipient. Quote an actual experience without claiming that link.
+    ending = "" if bullet.endswith((".", "!", "?")) else "."
+    return f"\n\n{bullet}{ending}"
 
 
 def _build_balanced(p: dict) -> str:
@@ -1095,9 +1104,7 @@ def _build_balanced(p: dict) -> str:
 
     skills_para = _p2_skills_applied(p)
     work_para = _p3_concrete_work(p)
-    ask = _ask_for_lab_type(
-        p.get("lab_type", "dry"), is_faculty=bool(p.get("is_faculty"))
-    )
+    ask = _template_ask(p)
     closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{work_para}{ask}{closing}"
     return f"{subject}\n\n{body}"
@@ -1113,7 +1120,6 @@ def _build_skills_focus(p: dict) -> str:
 
     skills_para = ""
     skills = p["skills"]
-    matching = p["matching_skills"]
     levels = p["skill_levels"]
 
     if skills:
@@ -1132,49 +1138,6 @@ def _build_skills_focus(p: dict) -> str:
             # impose — never presented as experience, at most exposure.
             skills_para += f"\n\nI have foundational exposure to {', '.join(skills[:4])}."
 
-        seasoned = {
-            s.lower() for s in skills
-            if levels.get(s) in ("expert", "experienced")
-        }
-        if matching:
-            seasoned_matching = [s for s in matching if s.lower() in seasoned]
-            if seasoned_matching:
-                if p.get("is_faculty"):
-                    skills_para += (
-                        f" In particular, my background in {', '.join(seasoned_matching)}"
-                        f" is relevant to your research and current projects."
-                    )
-                else:
-                    skills_para += (
-                        f" In particular, my background in {', '.join(seasoned_matching)}"
-                        f" is directly applicable to this position."
-                    )
-            else:
-                # A beginner-level overlap is a reason to be interested, not a
-                # background to claim.
-                if p.get("is_faculty"):
-                    skills_para += (
-                        f" I am actively building on {', '.join(matching)},"
-                        f" which is relevant to your research areas."
-                    )
-                else:
-                    skills_para += (
-                        f" I am actively building on {', '.join(matching)},"
-                        f" which this position uses directly."
-                    )
-
-        required = p["opp_skills_required"]
-        if required:
-            have = [s for s in required if s.lower() in seasoned]
-            if have:
-                if p.get("is_faculty"):
-                    skills_para += (
-                        f" I already work with {', '.join(have)}, which could"
-                        " support your research and current projects."
-                    )
-                else:
-                    skills_para += f" I already work with {', '.join(have)} which this role requires."
-
     coursework = p.get("coursework", [])
     if coursework:
         skills_para += f" Relevant coursework includes {', '.join(coursework[:3])}."
@@ -1183,31 +1146,19 @@ def _build_skills_focus(p: dict) -> str:
     if lab_type == "dry" and p.get("github_url"):
         skills_para += f" My recent work is on GitHub at {p['github_url']}."
 
-    if p.get("is_faculty"):
-        ask = (
-            "\n\nCould I ask whether you have any current or upcoming research"
-            " openings for a student? If so, I would welcome a brief conversation"
-            " about how my skills could support your research."
-        )
-    else:
-        ask = (
-            "\n\nI would welcome the opportunity to discuss how my skills"
-            " could support your current projects."
-            "\n\nWould you have 15 minutes for a brief conversation?"
-        )
+    ask = _template_ask(p)
     closing = _closing(p)
     body = f"{greeting}\n\n{intro}{skills_para}{_p3_concrete_work(p)}{ask}{closing}"
     return f"{subject}\n\n{body}"
 
 
-def _skill_claims(names: list[str], levels: dict, applications: dict | None = None) -> str:
-    """A stronger skill never upgrades its beginner neighbours in a list."""
+def _skill_claims(names: list[str], levels: dict) -> str:
+    """State the supplied level, never infer work performed from a tool name."""
     sentences = []
     for seasoned, verb in ((True, "experience with"), (False, "foundational exposure to")):
         group = [s for s in names if (levels.get(s) in ("experienced", "expert")) == seasoned]
-        labels = [f"{s} for {applications[s]}" if applications and s in applications else s for s in group]
-        if labels:
-            joined = ", ".join(labels[:-1]) + f" and {labels[-1]}" if len(labels) > 1 else labels[0]
+        if group:
+            joined = ", ".join(group[:-1]) + f" and {group[-1]}" if len(group) > 1 else group[0]
             sentences.append(f"I have {verb} {joined}.")
     return " ".join(sentences)
 
@@ -1229,22 +1180,13 @@ def _build_concise(p: dict) -> str:
     matching = p["matching_skills"]
     levels = p["skill_levels"]
 
-    if matching:
-        chosen = matching[:3]
-        target = "your research" if p.get("is_faculty") else "your work"
-        final_group = [s for s in chosen if levels.get(s) not in ("experienced", "expert")] or chosen
-        verb = "is" if len(final_group) == 1 else "are"
-        core += f" {_skill_claims(chosen, levels)[:-1]}, which {verb} relevant to {target}."
-    elif skills:
-        core += f" {_skill_claims(skills[:3], levels)}"
+    reading = p.get("contact_paper_reading") or ""
+    if reading:
+        core += f" {reading}"
+    if matching or skills:
+        core += f" {_skill_claims((matching or skills)[:3], levels)}"
 
-    if p.get("is_faculty"):
-        ask = (
-            " Could I ask whether you have any current or upcoming research"
-            " openings for a student?"
-        )
-    else:
-        ask = " Would you be open to a brief conversation about potential opportunities in your lab?"
+    ask = _template_ask(p)
 
     closing = _closing(p)
     body = f"{greeting}\n\n{core}{_p3_concrete_work(p)}{ask}{closing}"
@@ -1252,84 +1194,36 @@ def _build_concise(p: dict) -> str:
 
 
 def _p1_research_hook(p: dict) -> str:
-    research_topic = p["research_topic"]
-    research_area = p["research_area"]
+    """Name the two interests separately; shared words do not establish fit."""
+    topic = p["research_topic"]
+    area = p["research_area"]
+    if topic and topic.lower() in _BROAD_FIELDS:
+        topic = ""
+    if area and area.lower() in _BROAD_FIELDS:
+        area = ""
+    target = topic if topic and len(topic) < 120 else area
+    interest = _short_interest(p["research_interests"])
     lab = p["lab"]
-    interests = p["research_interests"]
-
-    # CE-1: a bare broad department field ("physics", "molecular biology") is not
-    # a specific topic — claiming a student's interest "aligns closely" with it is
-    # exactly the lazy, unsupported outreach this email is meant to avoid. Drop a
-    # broad field so the hook falls back to a lab-only opener that makes no
-    # false-alignment claim.
-    if research_area and research_area.lower() in _BROAD_FIELDS:
-        research_area = ""
-    if research_topic and research_topic.lower() in _BROAD_FIELDS:
-        research_topic = ""
-
-    # CE-7: every interest-bearing branch below asserts alignment ("aligns
-    # closely", "strongly resonates", "closely related") but nothing ever
-    # compared the opportunity's topic to the student's interests. On a
-    # provable mismatch, drop the interests so the claim-free openers below
-    # ("I came across ... and would like to learn more") take over.
-    if interests and not _alignment_plausible(interests, f"{research_topic} {research_area}"):
-        interests = ""
-
-    # CE-2: compute the lab reference once so every branch drops the article
-    # before a possessive proper-noun lab ("Prof. X's Research Group") — one
-    # branch used to hardcode the ungrammatical "in the {lab}".
     if lab and lab[0].isupper() and ("Prof" in lab or "'s" in lab):
         lab_ref = lab
-    elif lab:
-        lab_ref = f"the {lab}"
     else:
-        lab_ref = ""
+        lab_ref = f"the {lab}" if lab else ""
 
-    is_short_topic = bool(research_topic and len(research_topic) < 50 and " " in research_topic)
-    short_interest = _short_interest(interests)
-
-    if interests and is_short_topic and lab_ref:
-        return (
-            f" I am writing because your work on {research_topic}"
-            f" in {lab_ref} strongly resonates with my interest in {short_interest}."
-        )
-    if interests and is_short_topic:
-        return (
-            f" I am writing because your research on {research_topic}"
-            f" closely aligns with my interest in {short_interest}."
-        )
-    if interests and research_area and lab_ref:
-        return (
-            f" I came across {lab_ref} and your work in {research_area},"
-            f" which aligns closely with my interest in {short_interest}."
-        )
-    if interests and research_area:
-        return (
-            f" I am reaching out because your work in {research_area}"
-            f" aligns with my interest in {short_interest}."
-        )
-    if interests and lab_ref:
-        return (
-            f" I came across {lab_ref} and would like to ask whether there are"
-            f" ways for a student interested in {short_interest} to contribute."
-        )
-    if is_short_topic and lab_ref:
-        return (
-            f" I came across {lab_ref} and your work on {research_topic},"
-            f" and would like to learn more about opportunities to contribute."
-        )
-    if is_short_topic:
-        return (
-            f" I came across your research on {research_topic}"
-            f" and would like to learn more about opportunities"
-            f" to contribute."
-        )
-    if lab_ref:
-        return (
-            f" I came across {lab_ref} and am very interested"
-            f" in contributing to your research."
-        )
-    return ""
+    sentences = []
+    if interest:
+        # A complete user sentence cannot be inserted as the object of "in".
+        # Quote it as an interest, not evidence that its contents happened.
+        if re.match(r"^(?:I\b|I['’]|My\b|我)", interest, re.I):
+            ending = "" if interest.endswith((".", "!", "?", "。", "！", "？")) else "."
+            sentences.append(f'My research interest is: “{interest}{ending}”')
+        else:
+            sentences.append(f"I am interested in {interest}.")
+    if target:
+        where = f" in {lab_ref}" if lab_ref else ""
+        sentences.append(f"I would like to learn more about your work on {target}{where}.")
+    elif lab_ref:
+        sentences.append(f"I would like to learn more about the work in {lab_ref}.")
+    return " " + " ".join(sentences) if sentences else ""
 
 
 # A paper stops being "recent" some years after it is published. Three keeps
@@ -1355,6 +1249,8 @@ def _recent_work_cite(p: dict) -> str:
     titles can carry markup (``[<sup>18</sup>F]FDG``) and can run to hundreds
     of characters, so tags are stripped and only a 10-110 char title is cited;
     none qualifying → no sentence."""
+    if p.get("contact_paper_reading"):
+        return f" {p['contact_paper_reading']}"
     for w in p.get("recent_works", [])[:3]:
         title = re.sub(r"<[^>]+>", "", str(w.get("title") or ""))
         title = re.sub(r"\s+", " ", title).strip()
@@ -1381,41 +1277,13 @@ def _p2_skills_applied(p: dict) -> str:
 
     matching = p["matching_skills"]
 
-    task_keywords = {
-        "Python":     "data processing, analysis, and scripting",
-        "MATLAB":     "data cleaning, visualization, and numerical computation",
-        "R":          "statistical analysis and data visualization",
-        "PyTorch":    "building and training deep learning models",
-        "TensorFlow": "building and training deep learning models",
-        "Java":       "software development and object-oriented design",
-        "C++":        "systems programming and performance-critical applications",
-        "C":          "low-level systems programming",
-        "JavaScript": "web development and interactive applications",
-        "SQL":        "database querying and data management",
-        "React":      "building interactive user interfaces",
-        "OpenCV":     "image processing and computer vision tasks",
-        "pandas":     "data wrangling and analysis",
-        "Git":        "version control and collaborative development",
-        "Linux":      "system administration and command-line tooling",
-        "Docker":     "containerization and reproducible environments",
-        "LaTeX":      "technical writing and documentation",
-    }
-
     top = (matching or skills)[:3]
     # The same standard the AI prompt's hard rules impose: a skill the student
     # marked BEGINNER is never presented as experience — at most foundational
     # exposure. This template is the fallback the fabrication gate degrades
-    # to, so it cannot itself overstate.
-    para = f"\n\n{_skill_claims(top, p['skill_levels'], task_keywords)}"
-
-    # When `top` is already the matching skills (matching is non-empty), naming
-    # them again here just repeats the same list. Keep the relevance emphasis
-    # without re-listing the identical skills.
-    if matching and len(matching) >= 2:
-        if p.get("is_faculty"):
-            para += " These are relevant to your research and current projects."
-        else:
-            para += " These directly apply to the work described in your posting."
+    # to, so it cannot itself overstate. A tool name does not prove a
+    # particular use; concrete actions come from _p3_concrete_work evidence.
+    para = f"\n\n{_skill_claims(top, p['skill_levels'])}"
 
     coursework = p.get("coursework", [])
     if coursework:

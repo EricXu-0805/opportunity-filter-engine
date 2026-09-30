@@ -374,3 +374,32 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.queryByTestId('skills-inferred-note')).not.toBeInTheDocument();
   });
 });
+
+import { researchFixture } from '@/lib/research-context.test-utils';
+
+describe('research snapshot details', () => {
+  it('uses actual source URLs and complete source abstracts, not title search', () => {
+    const research = researchFixture();
+    render(<RecentWorksSection opp={opp({}, { research_context: research })} t={tFn} />);
+    const work = research.snapshot!.works[0];
+    expect(screen.getByRole('link', { name: work.title })).toHaveAttribute('href', work.source_url);
+    expect(screen.getByText(work.abstract!)).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-25T12:00:00Z/)).toBeInTheDocument();
+    expect(screen.getByTestId('research-source-status')).toHaveTextContent('detail.researchSourcesNote');
+  });
+  it('keeps stale sources viewable with an explicit writing exclusion', () => {
+    const research = researchFixture(); research.status = 'stale';
+    render(<RecentWorksSection opp={opp({}, { research_context: research })} t={tFn} />);
+    expect(screen.getByTestId('research-source-status')).toHaveTextContent('detail.researchSourcesStale');
+    expect(screen.getByRole('link')).toHaveAttribute('href', research.snapshot!.works[0].source_url);
+  });
+  it('never turns an invalid new context into a legacy title link', () => {
+    const invalid = { ...researchFixture(), snapshot: null };
+    const { container } = render(<RecentWorksSection opp={opp({ publication_attribution_status: 'verified_author_id', recent_works: [{ title: 'Legacy', year: 2025 }] }, { research_context: invalid })} t={tFn} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+  it('labels the legacy link as a search instead of a retrieved paper source', () => {
+    render(<RecentWorksSection opp={opp({ publication_attribution_status: 'verified_author_id', recent_works: [{ title: 'Legacy', year: 2025 }] })} t={tFn} />);
+    expect(screen.getByText('detail.researchLegacySearchNote')).toBeInTheDocument();
+  });
+});

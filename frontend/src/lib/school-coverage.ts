@@ -1,18 +1,8 @@
 /**
- * The client half of the school-coverage contract.
- *
- * Coverage is `listing_count + faculty_contact_count`, and the backend already
- * adds them (`total_count`). This module's whole job is to make that the only
- * number any surface can render, because the alternative is what shipped:
- * `/api/opportunities/coverage` returned two maps, `counts` (listings) and
- * `faculty_contacts`, and the switcher read `counts` alone. Faculty contacts
- * are ~97% of the corpus, so JHU's chip said 28 where its coverage was 4,581.
- *
- * So: no consumer sees the parts. `resolveCoverage` returns one resolved count
- * or an explicit "unavailable", and the parts are not exported for arithmetic.
- * Adding `faculty_contact_count` to `total_count` is as wrong as omitting it,
- * and a shape nobody can add up twice is the cheapest defence against both.
- *
+ * The client half of the school-coverage contract. Coverage combines listings
+ * and faculty contacts, but neither population is interchangeable with the
+ * other. Resolve the total and both labelled parts from ONE validated source
+ * so a live total cannot be paired with a stale static breakdown.
  * Mirrors backend/lib/school_coverage.py.
  */
 
@@ -52,7 +42,13 @@ export interface SchoolStatsFile extends SchoolCoverageResponse {
 export type CoverageSource = 'live' | 'static';
 
 export type ResolvedCoverage =
-  | { readonly available: true; readonly count: number; readonly source: CoverageSource }
+  | {
+    readonly available: true;
+    readonly count: number;
+    readonly listingCount: number;
+    readonly facultyCount: number;
+    readonly source: CoverageSource;
+  }
   /**
    * No trustworthy number exists for this school. Distinct from `count: 0`,
    * which is a verified zero — a school we collected and found nothing for.
@@ -84,7 +80,10 @@ export function parseCoverageResponse(body: unknown): SchoolCoverageResponse | n
 
 /** Whether a value is a usable count for one school. */
 function counts(value: SchoolCoverageCounts | undefined): value is SchoolCoverageCounts {
-  return typeof value?.total_count === 'number' && Number.isFinite(value.total_count);
+  if (!value) return false;
+  return [value.listing_count, value.faculty_contact_count, value.unreviewed_count, value.total_count]
+    .every((count) => Number.isSafeInteger(count) && count >= 0)
+    && value.total_count === value.listing_count + value.faculty_contact_count;
 }
 
 /**
@@ -105,11 +104,19 @@ export function resolveCoverage(
 ): ResolvedCoverage {
   const liveCounts = live?.schools?.[slug];
   if (counts(liveCounts)) {
-    return { available: true, count: liveCounts.total_count, source: 'live' };
+    return {
+      available: true, count: liveCounts.total_count,
+      listingCount: liveCounts.listing_count, facultyCount: liveCounts.faculty_contact_count,
+      source: 'live',
+    };
   }
   const staticCounts = staticStats?.[slug];
   if (counts(staticCounts)) {
-    return { available: true, count: staticCounts.total_count, source: 'static' };
+    return {
+      available: true, count: staticCounts.total_count,
+      listingCount: staticCounts.listing_count, facultyCount: staticCounts.faculty_contact_count,
+      source: 'static',
+    };
   }
   return UNAVAILABLE;
 }

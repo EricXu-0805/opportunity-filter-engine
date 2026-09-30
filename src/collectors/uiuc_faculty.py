@@ -1236,6 +1236,14 @@ def _stable_contact_identity_matches(
     return True
 
 
+
+def carry_forward_contact_instruction_sources(existing: dict, incoming: dict) -> None:
+    """Preserve and update independently bound page observations."""
+    from ..contact_instructions import merge_contact_instruction_sources
+
+    merge_contact_instruction_sources(existing, incoming)
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1252,6 +1260,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     produces it, so even a keyword-richer re-scrape must not wipe it — and the
     merge paths replace ``metadata`` wholesale (``cur.update(opp)`` /
     full-replace), which would otherwise drop it silently."""
+    carry_forward_contact_instruction_sources(existing, incoming)
     if _faculty_is_richer(existing, incoming):
         for f in _ENRICHMENT_CARRY_FIELDS:
             if f in existing:
@@ -1268,8 +1277,51 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
                 method = inferred_method(existing, f)
                 if method:
                     stamp_inferred(incoming.setdefault("metadata", {}), f, method)
-    works = (existing.get("metadata") or {}).get("recent_works")
-    if works and not (incoming.get("metadata") or {}).get("recent_works"):
+    prior_metadata = existing.get("metadata") or {}
+    incoming_metadata = incoming.get("metadata") or {}
+    if "research_snapshot" in prior_metadata and "research_snapshot" not in incoming_metadata:
+        # A new snapshot is bound to its actual person, institution and source.
+        # Preserve its original time, including a stale snapshot for display;
+        # never relabel it onto an explicitly changed/revoked author or works.
+        from copy import deepcopy
+
+        from ..research_context import validate_research_snapshot
+
+        if "recent_works" not in incoming_metadata:
+            authority_fields = ("publication_attribution_status", "publication_author_id", "works_gate",
+                                "publication_institution_id")
+            candidate_metadata = {**{k: prior_metadata[k] for k in authority_fields if k in prior_metadata},
+                                  **incoming_metadata}
+            candidate = {**incoming, "metadata": candidate_metadata}
+            snapshot = validate_research_snapshot(prior_metadata["research_snapshot"], candidate)
+            if snapshot is not None and validate_research_snapshot(prior_metadata["research_snapshot"], existing) is not None:
+                md = incoming.setdefault("metadata", {})
+                for key in authority_fields:
+                    if key in candidate_metadata:
+                        md[key] = candidate_metadata[key]
+                md["research_snapshot"] = snapshot
+                md["recent_works"] = [{"title": work["title"], "year": work["year"]} for work in snapshot["works"]]
+                if "research_refresh" not in md and type(prior_metadata.get("research_refresh")) is dict:
+                    md["research_refresh"] = deepcopy(prior_metadata["research_refresh"])
+    # An applied official-website lab source (scripts/lab_candidate.py) is never
+    # produced by a directory scrape, so the wholesale metadata replace would
+    # erase it. The refresh record carries unconditionally: it holds any
+    # identity revocation. The snapshot carries only while it is still bound to
+    # the incoming identity; a carried revocation keeps withholding it from use.
+    incoming_metadata = incoming.get("metadata") or {}
+    if not {"lab_snapshot", "lab_refresh"} & set(incoming_metadata):
+        from copy import deepcopy
+
+        from ..lab_context import validate_lab_snapshot
+
+        if type(prior_metadata.get("lab_refresh")) is dict:
+            incoming.setdefault("metadata", {})["lab_refresh"] = deepcopy(prior_metadata["lab_refresh"])
+        if "lab_snapshot" in prior_metadata:
+            probe = {**incoming, "metadata": {k: v for k, v in incoming_metadata.items() if k != "lab_refresh"}}
+            if validate_lab_snapshot(prior_metadata["lab_snapshot"], probe) is not None:
+                incoming.setdefault("metadata", {})["lab_snapshot"] = deepcopy(prior_metadata["lab_snapshot"])
+    works = prior_metadata.get("recent_works")
+    if "research_snapshot" not in prior_metadata and works and not (incoming.get("metadata") or {}).get("recent_works"):
         md = incoming.setdefault("metadata", {})
         md["recent_works"] = works
         # Everything that describes exactly these works travels with them —

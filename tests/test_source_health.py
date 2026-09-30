@@ -573,3 +573,42 @@ class TestAnEmptyHarvestCannotDeleteRecords:
         assert after == before
         assert after[0]["metadata"]["is_active"] is True
         assert after[0]["metadata"]["last_seen_at"] == "2026-07-21T07:08:46"
+
+
+@pytest.mark.parametrize("status", ["captured", "empty", "unsupported", "failed"])
+def test_b55_condition_receipt_health(status):
+    counts = dict.fromkeys(("captured", "empty", "unsupported", "failed"), 0)
+    counts[status] = 1
+    good = status in {"captured", "empty"}
+    receipt = {"condition_capture_counts": counts, "condition_capture_complete": good,
+               "detail_pages_attempted": 1, "detail_pages_loaded": 0 if status == "failed" else 1,
+               "detail_pages_failed": 1 if status == "failed" else 0}
+    incomplete, invalid = sh.collection_evidence_issues(receipt)
+    assert invalid == []
+    assert bool(incomplete) is not good
+
+
+@pytest.mark.parametrize("fault", ["bool", "negative", "missing_count", "sum", "no_list_page", "complete_despite_failure", "capture_count", "capture_flag", "capture_attempts", "errors_shape"])
+def test_b55_rejects_malformed_collection_receipts(fault):
+    receipt = {"list_pages_attempted": 1, "list_pages_loaded": 1, "list_pages_failed": 0, "list_complete": True,
+               "detail_pages_attempted": 1, "detail_pages_loaded": 1, "detail_pages_failed": 0,
+               "condition_capture_counts": {"captured": 0, "empty": 1, "unsupported": 0, "failed": 0}, "condition_capture_complete": True}
+    if fault == "bool": receipt["list_pages_loaded"] = True
+    if fault == "negative": receipt["detail_pages_failed"] = -1
+    if fault == "missing_count": receipt.pop("list_pages_failed")
+    if fault == "sum": receipt["list_pages_attempted"] = 2
+    if fault == "no_list_page": receipt.update(list_pages_attempted=0, list_pages_loaded=0)
+    if fault == "complete_despite_failure": receipt.update(list_pages_loaded=0, list_pages_failed=1)
+    if fault == "capture_count": receipt["condition_capture_counts"]["empty"] = True
+    if fault == "capture_flag": receipt["condition_capture_complete"] = False
+    if fault == "capture_attempts": receipt["condition_capture_counts"]["empty"] = 2
+    if fault == "errors_shape": receipt["list_errors"] = "private raw response"
+    assert sh.collection_evidence_issues(receipt)[1]
+
+
+def test_b55_partial_page_or_parse_failure_remains_incomplete():
+    receipt = {"list_pages_attempted": 3, "list_pages_loaded": 2, "list_pages_failed": 1, "list_complete": False,
+               "normalization_failed": 1}
+    incomplete, invalid = sh.collection_evidence_issues(receipt)
+    assert invalid == []
+    assert set(incomplete) == {"list_pages_failed", "list_incomplete", "normalization_failed"}

@@ -25,7 +25,21 @@ import {
   type OwnerToken,
 } from './identity-owner';
 import { RELEASE_SCOPE } from './release-scope';
+import { runAttachmentRequest, assertAttachmentOwner, AttachmentRequestError, type AttachmentRequestOptions, type AttachmentRequestContext } from './attachment-request';
+import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort';
+import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { STORAGE_KEYS } from './storage-keys';
+import { ContactEventError, ContactHistoryLoadError, contactRecord, contactTimestamp,
+  snapshotContactEventInput, parseContactEvent, contactEventMatches, validContactTarget,
+  snapshotContactCursor, contactEventBefore,
+  type ContactEvent, type ContactEventInput, type ContactEventsCursor, type ContactEventsPage,
+} from './contact-ledger';
+
+import { ApplicationEventError, ApplicationHistoryLoadError, APPLICATION_EVENT_UUID,
+  snapshotApplicationEventInput, parseApplicationEvent, applicationEventMatches, snapshotApplicationCursor, applicationEventBefore,
+  type ApplicationEvent, type ApplicationEventInput, type ApplicationEventCursor, type ApplicationEventsPage,
+} from './application-ledger';
+import { readPendingApplicationAttempts } from './application-attempt-storage';
 
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
 export type { OwnerToken } from './identity-owner';
@@ -157,7 +171,7 @@ function establishLocalOnlyDegrade(reason: string, sinceEpoch?: number): boolean
   return true;
 }
 
-async function ensureAnonSession(): Promise<string | null> {
+async function ensureAnonSession(observe?: ProfileReadObserver): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   if (!SUPABASE_CONFIGURED) {
     // The dummy client points at localhost:54321 — signInAnonymously would
@@ -180,6 +194,7 @@ async function ensureAnonSession(): Promise<string | null> {
   const sinceEpoch = captureOwnerToken().epoch;
   const sinceRevision = getAuthObservationRevision();
   const { data: { session } } = await supabase.auth.getSession();
+  observe?.('session-resolved');
   if (session?.user?.id) {
     // syncLocalIdentityOwner has no epoch awareness of its own — it must
     // only run when this observation is actually accepted, never for a
@@ -197,7 +212,9 @@ async function ensureAnonSession(): Promise<string | null> {
       // "your data is safely synced" while isLocalOwnerReady is still
       // 'blocked' underneath it — a truthfulness bug, not a data-safety
       // one (every actual read/write still re-checks readiness itself).
+      observe?.('owner-sync-wait');
       const synced = await syncLocalIdentityOwner(session.user.id);
+      observe?.('owner-sync-completed');
       setStorageStatus(
         synced ? 'synced' : 'unknown',
         synced ? null : 'local data ownership could not be verified',
@@ -244,7 +261,9 @@ async function ensureAnonSession(): Promise<string | null> {
       getAuthObservationRevision() === sinceRevision
       && advanceOwnerEpochIfUnchanged(data.user?.id ?? null, sinceEpoch)
     ) {
+      observe?.('owner-sync-wait');
       const synced = await syncLocalIdentityOwner(data.user?.id ?? null);
+      observe?.('owner-sync-completed');
       setStorageStatus(
         synced ? 'synced' : 'unknown',
         synced ? null : 'local data ownership could not be verified',
@@ -371,17 +390,24 @@ export interface AuthState {
  * render label + click target without re-implementing the same Session
  * → label pipeline in three places.
  */
-export async function getAuthState(): Promise<AuthState> {
+export async function getAuthState(options: { throwOnError?: boolean } = {}): Promise<AuthState> {
   if (typeof window === 'undefined') {
     return { session: null, user: null, isAnonymous: false, email: null };
   }
-  const { data: { session } } = await supabase.auth.getSession();
-  return {
-    session,
-    user: session?.user ?? null,
-    isAnonymous: isAnonymousUser(session),
-    email: session?.user?.email ?? null,
-  };
+  if (options.throwOnError && !SUPABASE_CONFIGURED) throw new Error('Sign-in is unavailable. Please try again later.');
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (options.throwOnError && error) throw new Error('Sign-in check failed');
+    return {
+      session,
+      user: session?.user ?? null,
+      isAnonymous: isAnonymousUser(session),
+      email: session?.user?.email ?? null,
+    };
+  } catch (error) {
+    if (options.throwOnError) throw new Error('Your sign-in could not be checked. Please try again.');
+    throw error;
+  }
 }
 
 /**
@@ -390,13 +416,19 @@ export async function getAuthState(): Promise<AuthState> {
  * can never unlock the reveal (the backend enforces the same), so sending
  * theirs would only buy a wasted GoTrue round-trip.
  */
-export async function getRevealAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+export async function getRevealAccessToken(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  if (!SUPABASE_CONFIGURED) {
+    if (options.throwOnError) throw new Error('Sign-in is unavailable. Please try again later.');
+    return null;
+  }
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (options.throwOnError && error) throw new Error('Sign-in check failed');
     if (!session?.access_token || isAnonymousUser(session)) return null;
     return session.access_token;
   } catch {
+    if (options.throwOnError) throw new Error('Your sign-in could not be checked. Please try again.');
     return null;
   }
 }
@@ -405,17 +437,26 @@ export async function getRevealAccessToken(): Promise<string | null> {
  * W10b degrade-retry: when the backend answers `sign_in_required` to a token
  * we believed valid, refresh the session once and hand back the new token —
  * or null, in which case the UI shows the sign-in affordance instead of an
- * error. Never throws.
+ * error. Strict detail reads opt in to errors so a failed check is not
+ * presented as a confirmed signed-out state. Other callers keep degrading.
  */
-export async function refreshRevealAccessToken(): Promise<string | null> {
-  if (typeof window === 'undefined' || !SUPABASE_CONFIGURED) return null;
+export async function refreshRevealAccessToken(options: { throwOnError?: boolean } = {}): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  if (!SUPABASE_CONFIGURED) {
+    if (options.throwOnError) throw new Error('Sign-in is unavailable. Please try again later.');
+    return null;
+  }
   try {
     const { data, error } = await supabase.auth.refreshSession();
-    if (error) return null;
+    if (error) {
+      if (options.throwOnError) throw new Error('Sign-in refresh failed');
+      return null;
+    }
     const session = data.session;
     if (!session?.access_token || isAnonymousUser(session)) return null;
     return session.access_token;
   } catch {
+    if (options.throwOnError) throw new Error('Your sign-in could not be refreshed. Please try again.');
     return null;
   }
 }
@@ -1331,18 +1372,24 @@ function notReadyFor(candidate: OwnerToken, ensuredId: string | null): Error {
   return new OwnerNotReadyError();
 }
 
-export async function loadProfile(): Promise<LoadedProfile> {
+export async function loadProfile(signal?: AbortSignal, observe?: ProfileReadObserver): Promise<LoadedProfile> {
+  assertProfileReadActive(signal);
   // Dedup key is the pre-ensure "start-attempt" token: concurrent calls
   // captured at (near-)identical moments — including two concurrent
   // FIRST-ever calls, both uid: null — correctly collapse onto one
   // in-flight promise (R69-D's original mount+onAuthChange double-fire).
   const startAttempt = captureOwnerToken();
   const key = loadProfileKey(startAttempt);
-  const existing = inflightLoadProfile.get(key);
+  // An independently cancellable read must not inherit a hung legacy read,
+  // nor cancel another consumer's request. Legacy callers retain burst dedup.
+  const existing = signal ? undefined : inflightLoadProfile.get(key);
   if (existing) return existing;
 
   const promise = (async (): Promise<LoadedProfile> => {
-    const id = await ensureAnonSession();
+    observe?.('session-wait');
+    const id = await awaitProfileRead(ensureAnonSession(observe), signal);
+    assertProfileReadActive(signal);
+    observe?.('session-ready');
     let token = startAttempt;
     if (!isOwnerTokenValid(token, id)) {
       if (token.uid !== null) {
@@ -1389,11 +1436,14 @@ export async function loadProfile(): Promise<LoadedProfile> {
       // the profile row doesn't exist yet — every cold visit produced
       // a console error even though the empty-row case is expected.
       // maybeSingle() returns { data: null, error: null } for missing rows.
-      const result = await supabase
+      observe?.('select-started');
+      const query = supabase
         .from('profiles')
         .select('profile_data, revision')
-        .eq('id', id)
-        .maybeSingle();
+        .eq('id', id);
+      const result = await awaitProfileRead((signal ? query.abortSignal(signal) : query).maybeSingle(), signal);
+      assertProfileReadActive(signal);
+      observe?.('select-completed');
 
       // Re-verify after the SELECT's own await — same reasoning as above: a
       // read we can no longer attribute is an error, not an empty profile.
@@ -1433,6 +1483,7 @@ export async function loadProfile(): Promise<LoadedProfile> {
       const profile = (data.profile_data as Record<string, unknown>) ?? {};
       return { source: 'cloud', profile, revision, token };
     } catch (err) {
+      assertProfileReadActive(signal);
       // Ownership is decided FIRST, then the error is interpreted.
       //
       // An already-scoped failure — including everything notReadyFor decided
@@ -1451,6 +1502,7 @@ export async function loadProfile(): Promise<LoadedProfile> {
     }
   })();
 
+  if (signal) return promise;
   inflightLoadProfile.set(key, promise);
   try {
     return await promise;
@@ -2170,35 +2222,280 @@ export async function confirmInteractionContact(
   });
 }
 
+export interface ConfirmContactEventResult {
+  event: ContactEvent;
+  /** A replay after the user removed their tracker entry preserves its absence. */
+  interaction: InteractionRecord | null;
+  replayed: boolean;
+}
+function contactOwner(origin: OwnerToken): void {
+  if (!isOwnerTokenValid(origin, origin.uid)) throw new OwnerMismatchError();
+}
+function contactInteraction(value: unknown, owner: string, opportunityId: string, replayed: boolean): InteractionRecord {
+  const statuses = new Set(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+  if (!contactRecord(value) || value.device_id !== owner || value.opportunity_id !== opportunityId || !statuses.has(value.interaction_type as string)
+    || (value.notes !== null && typeof value.notes !== 'string')
+    || (value.remind_at !== null && (typeof value.remind_at !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.remind_at) || contactTimestamp(`${value.remind_at}T00:00:00Z`) === null))
+    || (value.last_contacted_at === null ? !replayed : contactTimestamp(value.last_contacted_at) === null)
+    || (value.updated_at === null ? !replayed : contactTimestamp(value.updated_at) === null)) {
+    throw new ContactEventError('invalid_receipt');
+  }
+  return { type: value.interaction_type as InteractionType, notes: value.notes as string | undefined ?? undefined,
+    remind_at: value.remind_at as string | undefined ?? undefined,
+    last_contacted_at: value.last_contacted_at as string | undefined ?? undefined, updated_at: value.updated_at as string | undefined ?? undefined };
+}
+/** Saves an exact immutable snapshot and updates the tracker atomically. An
+ * uncertain result is never retried with a new ID or downgraded to the legacy
+ * summary-only RPC. Reusing the same ID with different content is a conflict. */
+export async function confirmContactEvent(opportunityId: string, input: ContactEventInput,
+  token: OwnerToken): Promise<ConfirmContactEventResult> {
+  const origin = { ...token };
+  contactOwner(origin);
+  if (!validContactTarget(opportunityId)) throw new ContactEventError('invalid_input');
+  const snapshot = snapshotContactEventInput(input);
+  return enqueuePrivateWrite(origin, opportunityId, async () => {
+    try {
+      contactOwner(origin);
+      const deviceId = await ensureAnonSession();
+      contactOwner(origin);
+      if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+      if (!deviceId) throw new ContactEventError('unavailable');
+      const { data, error } = await supabase.rpc('confirm_contact_event', {
+        p_expected_device_id: deviceId, p_event_id: snapshot.id, p_opportunity_id: opportunityId,
+        p_recipient: snapshot.recipient, p_subject: snapshot.subject, p_body: snapshot.body,
+        p_materials: snapshot.materialRefs, p_actual_sent_at: snapshot.actualSentAt,
+      });
+      contactOwner(origin);
+      if (error) {
+        if (error.code === '23505' && error.message === 'contact_event_conflict') throw new ContactEventError('conflict');
+        if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
+        if (error.code === '22023' && error.message === 'invalid_contact_event') throw new ContactEventError('invalid_input');
+        if (error.code === 'P0002' && error.message === 'private_target_unavailable') throw new ContactEventError('target_unavailable');
+        throw new ContactEventError('unavailable');
+      }
+      if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ContactEventError('invalid_receipt');
+      const event = parseContactEvent(data.event, deviceId, opportunityId);
+      if (!contactEventMatches(event, snapshot)) throw new ContactEventError('invalid_receipt');
+      if (data.interaction === null && !data.replayed) throw new ContactEventError('invalid_receipt');
+      const interaction = data.interaction === null ? null : contactInteraction(data.interaction, deviceId, opportunityId, data.replayed);
+      return { event, interaction, replayed: data.replayed };
+    } catch (error) {
+      contactOwner(origin);
+      if (error instanceof OwnerMismatchError || error instanceof ContactEventError) throw error;
+      throw new ContactEventError('unavailable');
+    }
+  });
+}
+/** Only successful [] means no recorded events. Page boundaries preserve
+ * PostgreSQL microseconds and the event UUID, including tied timestamps. */
+export async function getContactEvents(opportunityId: string,
+  options: { cursor?: ContactEventsCursor; limit?: number } = {}): Promise<ContactEventsPage> {
+  const origin = { ...captureOwnerToken() };
+  try {
+    contactOwner(origin);
+    const limit = options.limit ?? 20;
+    if (!validContactTarget(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ContactHistoryLoadError();
+    const cursor = options.cursor === undefined ? null : snapshotContactCursor(options.cursor);
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ContactHistoryLoadError();
+    let query = supabase.from('contact_events')
+      .select('event_id, device_id, opportunity_id, recipient, subject, body, materials, actual_sent_at, confirmed_at, confirmation_source')
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId)
+      .order('confirmed_at', { ascending: false }).order('event_id', { ascending: false });
+    if (cursor) query = query.or(`confirmed_at.lt.${cursor.confirmedAt},and(confirmed_at.eq.${cursor.confirmedAt},event_id.lt.${cursor.id})`);
+    const { data, error } = await query.limit(limit + 1);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > limit + 1) throw new ContactHistoryLoadError();
+    const events = data.map(row => parseContactEvent(row, deviceId, opportunityId));
+    if (new Set(events.map(event => event.id)).size !== events.length
+      || events.some((event, index) => (cursor && !contactEventBefore(event, cursor))
+        || (index > 0 && !contactEventBefore(event, events[index - 1])))) throw new ContactHistoryLoadError();
+    const hasMore = events.length > limit;
+    const page = events.slice(0, limit);
+    const last = page.at(-1);
+    return { events: page, hasMore, nextCursor: hasMore && last ? { confirmedAt: last.confirmedAt, id: last.id } : null };
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ContactHistoryLoadError();
+  }
+}
+
+export interface ConfirmApplicationEventResult {
+  event: ApplicationEvent;
+  interaction: InteractionRecord | null;
+  replayed: boolean;
+}
+function applicationInteraction(value: unknown, owner: string, opportunityId: string, replayed: boolean): InteractionRecord {
+  const statuses = new Set(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+  if (!contactRecord(value) || value.device_id !== owner || value.opportunity_id !== opportunityId || !statuses.has(value.interaction_type as string)
+    || (!replayed && value.interaction_type === 'contacted')
+    || (value.notes !== null && typeof value.notes !== 'string')
+    || (value.remind_at !== null && (typeof value.remind_at !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.remind_at) || contactTimestamp(`${value.remind_at}T00:00:00Z`) === null))
+    || (value.last_contacted_at !== null && contactTimestamp(value.last_contacted_at) === null)
+    || (value.updated_at === null ? !replayed : contactTimestamp(value.updated_at) === null)) throw new ApplicationEventError('invalid_receipt');
+  return { type: value.interaction_type as InteractionType, notes: value.notes as string | undefined ?? undefined,
+    remind_at: value.remind_at as string | undefined ?? undefined, last_contacted_at: value.last_contacted_at as string | undefined ?? undefined,
+    updated_at: value.updated_at as string | undefined ?? undefined };
+}
+async function assertPreparedOrRecordedApplication(origin: OwnerToken, opportunityId: string, snapshot: ApplicationEventInput): Promise<void> {
+  const pending = readPendingApplicationAttempts(origin, opportunityId);
+  if (pending.some(attempt => applicationEventMatches(attempt.input, snapshot))) return;
+  // Another tab may have settled this exact request already. A successful
+  // immutable event lookup permits replay, never a new unprepared insert.
+  const recorded = await getApplicationEvent(opportunityId, snapshot.id, origin);
+  contactOwner(origin);
+  if (!recorded) throw new ApplicationEventError('unavailable');
+  if (!applicationEventMatches(recorded, snapshot)) throw new ApplicationEventError('conflict');
+}
+/** A durably prepared attempt or an exact independently verified existing
+ * event may reach the RPC. Uncertain requests keep their ID and snapshot,
+ * with no fallback to a status-only write or an unprepared new insertion. */
+export async function confirmApplicationEvent(opportunityId: string, input: ApplicationEventInput,
+  token: OwnerToken): Promise<ConfirmApplicationEventResult> {
+  const origin = { ...token }; contactOwner(origin);
+  if (!validContactTarget(opportunityId)) throw new ApplicationEventError('invalid_input');
+  const snapshot = snapshotApplicationEventInput(input);
+  return enqueuePrivateWrite(origin, opportunityId, async () => {
+    try {
+      contactOwner(origin); readPendingApplicationAttempts(origin, opportunityId);
+      const deviceId = await ensureAnonSession();
+      contactOwner(origin);
+      if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+      if (!deviceId) throw new ApplicationEventError('unavailable');
+      await assertPreparedOrRecordedApplication(origin, opportunityId, snapshot);
+      contactOwner(origin);
+      const { data, error } = await supabase.rpc('confirm_application_event', {
+        p_expected_device_id: deviceId, p_event_id: snapshot.id, p_opportunity_id: opportunityId,
+        p_channel: snapshot.channel, p_destination: snapshot.destination, p_actual_submitted_at: snapshot.submittedAt,
+        p_notes: snapshot.notes, p_result_note: snapshot.resultNote, p_next_step: snapshot.nextStep,
+      });
+      contactOwner(origin);
+      if (error) {
+        if (error.code === '23505' && error.message === 'application_event_conflict') throw new ApplicationEventError('conflict');
+        if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
+        if (error.code === '22023' && error.message === 'invalid_application_event') throw new ApplicationEventError('invalid_input');
+        if (error.code === 'P0002' && error.message === 'private_target_unavailable') throw new ApplicationEventError('target_unavailable');
+        throw new ApplicationEventError('unavailable');
+      }
+      if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new ApplicationEventError('invalid_receipt');
+      const event = parseApplicationEvent(data.event, deviceId, opportunityId);
+      if (!applicationEventMatches(event, snapshot) || (data.interaction === null && !data.replayed)) throw new ApplicationEventError('invalid_receipt');
+      const interaction = data.interaction === null ? null : applicationInteraction(data.interaction, deviceId, opportunityId, data.replayed);
+      return { event, interaction, replayed: data.replayed };
+    } catch (error) {
+      contactOwner(origin);
+      if (error instanceof OwnerMismatchError || error instanceof ApplicationEventError) throw error;
+      throw new ApplicationEventError('unavailable');
+    }
+  });
+}
+const APPLICATION_EVENT_COLUMNS = 'event_id, device_id, opportunity_id, channel, destination, actual_submitted_at, notes, result_note, next_step, confirmed_at, confirmation_source';
+/** Successful empty pages are distinct from failed or malformed reads. */
+export async function getApplicationEvents(opportunityId: string,
+  options: { cursor?: ApplicationEventCursor; limit?: number } = {}): Promise<ApplicationEventsPage> {
+  const origin = { ...captureOwnerToken() };
+  try {
+    contactOwner(origin);
+    const limit = options.limit ?? 20;
+    if (!validContactTarget(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApplicationHistoryLoadError();
+    const cursor = options.cursor === undefined ? null : snapshotApplicationCursor(options.cursor);
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ApplicationHistoryLoadError();
+    let query = supabase.from('application_events').select(APPLICATION_EVENT_COLUMNS)
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId)
+      .order('confirmed_at', { ascending: false }).order('event_id', { ascending: false });
+    if (cursor) query = query.or(`confirmed_at.lt.${cursor.confirmedAt},and(confirmed_at.eq.${cursor.confirmedAt},event_id.lt.${cursor.id})`);
+    const { data, error } = await query.limit(limit + 1);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > limit + 1) throw new ApplicationHistoryLoadError();
+    const events = data.map(row => parseApplicationEvent(row, deviceId, opportunityId));
+    if (new Set(events.map(event => event.id)).size !== events.length
+      || events.some((event, index) => (cursor && !applicationEventBefore(event, cursor))
+        || (index > 0 && !applicationEventBefore(event, events[index - 1])))) throw new ApplicationHistoryLoadError();
+    const hasMore = events.length > limit; const page = events.slice(0, limit); const last = page.at(-1);
+    return { events: page, hasMore, nextCursor: hasMore && last ? { confirmedAt: last.confirmedAt, id: last.id } : null };
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ApplicationHistoryLoadError();
+  }
+}
+/** Reconcile an uncertain attempt by its ID; absence is authoritative only
+ * after a successful owner/target-scoped lookup. This never sends or writes. */
+export async function getApplicationEvent(opportunityId: string, id: string,
+  token: OwnerToken = captureOwnerToken()): Promise<ApplicationEvent | null> {
+  const origin = { ...token };
+  try {
+    contactOwner(origin);
+    if (!validContactTarget(opportunityId) || typeof id !== 'string' || !APPLICATION_EVENT_UUID.test(id)) throw new ApplicationHistoryLoadError();
+    const deviceId = await ensureAnonSession();
+    contactOwner(origin);
+    if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new ApplicationHistoryLoadError();
+    const { data, error } = await supabase.from('application_events').select(APPLICATION_EVENT_COLUMNS)
+      .eq('device_id', deviceId).eq('opportunity_id', opportunityId).eq('event_id', id).limit(2);
+    contactOwner(origin);
+    if (error || !Array.isArray(data) || data.length > 1) throw new ApplicationHistoryLoadError();
+    if (!data.length) return null;
+    const event = parseApplicationEvent(data[0], deviceId, opportunityId);
+    if (event.id !== id) throw new ApplicationHistoryLoadError();
+    return event;
+  } catch (error) {
+    contactOwner(origin);
+    if (error instanceof OwnerMismatchError) throw error;
+    throw new ApplicationHistoryLoadError();
+  }
+}
+
 export interface StatusChange {
   fromStatus: InteractionType | null;
   toStatus: InteractionType;
   changedAt: string;
 }
 
-export async function getStatusChanges(opportunityId: string): Promise<StatusChange[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const { data, error } = await supabase
-    .from('interaction_status_changes')
-    .select('from_status, to_status, changed_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .order('changed_at', { ascending: true });
-
-  if (error || !data) {
-    if (error && !error.message?.toLowerCase().includes('does not exist')) {
-      console.warn('[ofe] getStatusChanges failed:', error.message);
-    }
-    return [];
+export class StatusHistoryLoadError extends Error {
+  constructor() {
+    super('Status history could not be loaded');
+    this.name = 'StatusHistoryLoadError';
   }
+}
 
-  return data.map((r: { from_status: string | null; to_status: string; changed_at: string }) => ({
-    fromStatus: (r.from_status ?? null) as InteractionType | null,
-    toStatus: r.to_status as InteractionType,
-    changedAt: r.changed_at,
-  }));
+/** A successful [] means no recorded transitions. Missing identity, a failed
+ * read, and malformed data are different outcomes, never an empty history. */
+export async function getStatusChanges(opportunityId: string): Promise<StatusChange[]> {
+  const token = captureOwnerToken();
+  try {
+    const deviceId = await ensureAnonSession();
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (!deviceId) throw new StatusHistoryLoadError();
+    const { data, error } = await supabase
+      .from('interaction_status_changes')
+      .select('from_status, to_status, changed_at')
+      .eq('device_id', deviceId)
+      .eq('opportunity_id', opportunityId)
+      .order('changed_at', { ascending: true });
+    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+    if (error || !Array.isArray(data)) throw new StatusHistoryLoadError();
+    const types = new Set<unknown>(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+    if (data.some(row => !row || typeof row !== 'object'
+      || !types.has(row.to_status)
+      || (row.from_status !== null && !types.has(row.from_status))
+      || typeof row.changed_at !== 'string' || !Number.isFinite(Date.parse(row.changed_at)))) {
+      throw new StatusHistoryLoadError();
+    }
+    return data.map(row => ({ fromStatus: row.from_status as InteractionType | null,
+      toStatus: row.to_status as InteractionType, changedAt: row.changed_at }));
+  } catch (error) {
+    if (error instanceof OwnerMismatchError || !isOwnerTokenValid(token, token.uid)) throw new OwnerMismatchError();
+    // Database/auth messages may contain private details; callers receive a
+    // stable safe error and decide how to present their explicit retry.
+    throw new StatusHistoryLoadError();
+  }
 }
 
 export const ATTACHMENTS_BUCKET = 'tracker-attachments';
@@ -2234,225 +2531,426 @@ export type AttachmentUploadResult =
   | { ok: true; name: string }
   | { ok: false; reason: 'too_large' | 'wrong_type' | 'duplicate' | 'unauthenticated' | 'unknown'; message?: string };
 
+async function attachmentOwner(token: OwnerToken, request: AttachmentRequestContext): Promise<string> {
+  // Reading files must not create an account or silently substitute a later one.
+  const auth = await request.wait(getAuthState({ throwOnError: true }));
+  const uid = auth.user?.id ?? null;
+  assertAttachmentOwner(token, uid);
+  return uid;
+}
+
+function checkAttachmentError(error: { statusCode?: string | number } | null): void {
+  if (error) throw new AttachmentRequestError(String(error.statusCode) === '401' ? 'unauthenticated' : 'unavailable');
+}
+
 export async function uploadAttachment(
   opportunityId: string,
   file: File,
   token: OwnerToken,
+  options: AttachmentRequestOptions = {},
 ): Promise<AttachmentUploadResult> {
   if (file.size > ATTACHMENTS_MAX_BYTES) return { ok: false, reason: 'too_large' };
   if (!ATTACHMENTS_ALLOWED_MIME.has(file.type)) return { ok: false, reason: 'wrong_type' };
-
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (!deviceId) return { ok: false, reason: 'unauthenticated' };
-
-  const safeName = sanitizeFilename(file.name);
-  const path = attachmentPath(deviceId, opportunityId, safeName);
-
-  const { error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .upload(path, file, { contentType: file.type, upsert: false });
-
-  if (error) {
-    const msg = error.message || '';
-    if (/exists|duplicate/i.test(msg)) return { ok: false, reason: 'duplicate', message: msg };
-    return { ok: false, reason: 'unknown', message: msg };
-  }
-  return { ok: true, name: safeName };
-}
-
-export async function listAttachments(opportunityId: string): Promise<Attachment[]> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return [];
-
-  const prefix = `${deviceId}/${opportunityId}`;
-  const { data, error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .list(prefix, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-
-  if (error || !data) {
-    if (error) console.warn('[ofe] listAttachments failed:', error.message);
-    return [];
-  }
-
-  return data
-    .filter((item) => item.name && !item.name.endsWith('/'))
-    .map((item) => {
-      const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
-      return {
-        name: item.name,
-        sizeBytes: meta.size ?? 0,
-        mimeType: meta.mimetype ?? 'application/octet-stream',
-        createdAt: item.created_at ?? item.updated_at ?? new Date().toISOString(),
-      };
-    });
-}
-
-export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken): Promise<boolean> {
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (!deviceId) return false;
-
-  const { error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .remove([attachmentPath(deviceId, opportunityId, filename)]);
-
-  if (error) {
-    console.warn('[ofe] deleteAttachment failed:', error.message);
-    return false;
-  }
-  return true;
-}
-
-export async function getAttachmentSignedUrl(
-  opportunityId: string,
-  filename: string,
-  expiresInSeconds = 300,
-): Promise<string | null> {
-  const deviceId = await ensureAnonSession();
-  if (!deviceId) return null;
-
-  const { data, error } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds);
-
-  if (error || !data) {
-    if (error) console.warn('[ofe] getAttachmentSignedUrl failed:', error.message);
-    return null;
-  }
-  return data.signedUrl;
-}
-
-// ── Resume renovation persistence ──────────────────────────────────────
-// Mirrors the profiles (mutable upsert) + profile_versions (append-only
-// snapshot) split: `resume_renovations` holds ONE working doc per
-// (device, opportunity) — the per-bullet rollback history lives INSIDE the
-// doc's variant chains — and `resume_renovation_versions` appends a whole-doc
-// snapshot on every save as the coarse recovery net. The modal keeps its
-// in-memory doc regardless, but the RESULT is reported truthfully (W13):
-// the UI may only show "Saved" when the working-doc upsert actually
-// succeeded — a swallowed failure flashing "Saved" is a false persistence
-// claim. The version snapshot stays best-effort and cannot hold the working
-// save hostage. These writes are not a database transaction or cross-device CAS.
-// See supabase/migrations/020_resume_renovations.sql.
-
-export async function saveRenovation(
-  opportunityId: string,
-  doc: Record<string, unknown>,
-  baseSnapshot: Record<string, unknown>,
-  method: string,
-  warnings: string[],
-  token: OwnerToken,
-): Promise<boolean> {
-  // Keep the action's original capability through the queue and every await.
-  // An anonymous session is a valid owner; an unresolved or changed one is not.
-  return enqueuePrivateWrite(token, `renovation:${opportunityId}`, async () => {
-    if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-    const deviceId = await ensureAnonSession();
-    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    if (!deviceId) return false;
-    const { error } = await supabase.from('resume_renovations').upsert(
-      {
-        device_id: deviceId,
-        opportunity_id: opportunityId,
-        doc,
-        base_snapshot: baseSnapshot,
-        method,
-        warnings,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'device_id,opportunity_id' },
-    );
-    if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    if (error) {
-      console.warn('[ofe] renovation save failed:', error.message);
-      return false;
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const safeName = sanitizeFilename(file.name);
+    const path = attachmentPath(deviceId, opportunityId, safeName);
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false }));
+    assertAttachmentOwner(token, deviceId);
+    if (error && /exists|duplicate/i.test(error.message || '')) return { ok: false, reason: 'duplicate' };
+    checkAttachmentError(error);
+    if (!data || data.path !== path || typeof data.id !== 'string' || !data.id) {
+      throw new AttachmentRequestError('unavailable');
     }
+    return { ok: true, name: safeName };
+  });
+}
 
-    // Best-effort history remains a separate write; do not start it for a
-    // context that changed while the working document was being saved.
-    void Promise.resolve(supabase
-      .from('resume_renovation_versions')
-      .insert({ device_id: deviceId, opportunity_id: opportunityId, doc }))
-      .then(({ error: versionError }) => {
-        if (versionError && !versionError.message.includes('does not exist')) {
-          console.warn('[ofe] renovation version snapshot failed:', versionError.message);
-        }
-      })
-      .catch(() => { console.warn('[ofe] renovation version snapshot unavailable'); });
+export async function listAttachments(opportunityId: string, token = captureOwnerToken(),
+  options: AttachmentRequestOptions = {}): Promise<Attachment[]> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .list(`${deviceId}/${opportunityId}`, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } }, { signal: request.signal }));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    if (!Array.isArray(data)) throw new AttachmentRequestError('unavailable');
+    return data.filter(item => {
+      if (!item || typeof item.name !== 'string') throw new AttachmentRequestError('unavailable');
+      // Storage lists virtual directories too; they have neither id nor metadata.
+      return item.name && !item.name.endsWith('/') && item.name !== '.emptyFolderPlaceholder'
+        && !(item.id === null && item.metadata === null);
+    }).map(item => {
+      const meta = (item.metadata ?? {}) as { size?: number; mimetype?: string };
+      if (item.name.includes('/') || item.name.includes('\\')
+        || (meta.size !== undefined && (!Number.isFinite(meta.size) || meta.size < 0))) {
+        throw new AttachmentRequestError('unavailable');
+      }
+      return { name: item.name, sizeBytes: meta.size ?? 0,
+        mimeType: typeof meta.mimetype === 'string' ? meta.mimetype : 'application/octet-stream',
+        createdAt: item.created_at ?? item.updated_at ?? '' };
+    });
+  });
+}
+
+export async function deleteAttachment(opportunityId: string, filename: string, token: OwnerToken,
+  options: AttachmentRequestOptions = {}): Promise<boolean> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const path = attachmentPath(deviceId, opportunityId, filename);
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET).remove([path]));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    // An empty response can be an RLS refusal. It is not a deletion receipt.
+    if (!Array.isArray(data) || !data.some(item => item.name === path)) throw new AttachmentRequestError('unavailable');
     return true;
   });
 }
 
-export interface StoredRenovation {
+export async function getAttachmentSignedUrl(opportunityId: string, filename: string, expiresInSeconds = 300,
+  token = captureOwnerToken(), options: AttachmentRequestOptions = {}): Promise<string | null> {
+  return runAttachmentRequest(token, options, async request => {
+    const deviceId = await attachmentOwner(token, request);
+    request.check();
+    const { data, error } = await request.wait(supabase.storage.from(ATTACHMENTS_BUCKET)
+      .createSignedUrl(attachmentPath(deviceId, opportunityId, filename), expiresInSeconds));
+    assertAttachmentOwner(token, deviceId);
+    checkAttachmentError(error);
+    if (!data || typeof data.signedUrl !== 'string') throw new AttachmentRequestError('unavailable');
+    const url = new URL(data.signedUrl);
+    if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) {
+      throw new AttachmentRequestError('unavailable');
+    }
+    return url.href;
+  });
+}
+
+// ── Resume renovation persistence ──────────────────────────────────────
+// Legacy bullet documents remain distinct from full target resumes. Private
+// table access stays closed: these four RPCs bind owner + target and commit
+// the working payload and a complete historical snapshot atomically.
+
+export interface RenovationPayload {
   doc: Record<string, unknown>;
   base_snapshot: Record<string, unknown>;
   method: string | null;
   warnings: string[];
+}
+export interface StoredRenovation extends RenovationPayload {
+  owner_id: string;
+  opportunity_id: string;
+  revision: number;
   updated_at: string;
 }
-
-export async function loadRenovation(
-  opportunityId: string,
-  token: OwnerToken = captureOwnerToken(),
-): Promise<StoredRenovation | null> {
-  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
-  if (!deviceId) return null;
-  const { data, error } = await supabase
-    .from('resume_renovations')
-    .select('doc, base_snapshot, method, warnings, updated_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .maybeSingle();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (error) {
-    console.warn('[ofe] renovation load failed:', error.message);
-    return null;
-  }
-  if (!data || !data.doc || typeof data.doc !== 'object') return null;
-  return {
-    doc: data.doc as Record<string, unknown>,
-    base_snapshot: (data.base_snapshot ?? {}) as Record<string, unknown>,
-    method: (data.method as string | null) ?? null,
-    warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
-    updated_at: String(data.updated_at ?? ''),
+export type RenovationSaveResult =
+  | { status: 'saved'; current: StoredRenovation }
+  | { status: 'unchanged'; current: StoredRenovation }
+  | { status: 'conflict'; current: StoredRenovation }
+  | { status: 'missing' | 'abandoned' | 'unavailable' | 'unknown' };
+export interface RenovationHistoryCursor { created_at: string; id: string }
+export interface RenovationVersionSummary extends RenovationHistoryCursor {
+  revision: number | null;
+  snapshot_kind: 'complete' | 'legacy_doc';
+  source_revision: number | null;
+  source_updated_at: string | null;
+}
+export interface RenovationVersion extends RenovationVersionSummary {
+  owner_id: string;
+  opportunity_id: string;
+  payload: {
+    doc: Record<string, unknown>;
+    base_snapshot: Record<string, unknown> | null;
+    method: string | null;
+    warnings: string[] | null;
   };
 }
-
-export interface RenovationVersion {
-  id: string;
-  doc: Record<string, unknown>;
-  created_at: string;
+export interface RenovationVersionPage {
+  items: RenovationVersionSummary[];
+  next_cursor: RenovationHistoryCursor | null;
+}
+export class RenovationSaveError extends Error {
+  constructor(public readonly code: 'invalid_payload' | 'invalid_revision' | 'invalid_target') {
+    super('The résumé changes could not be prepared for saving. Your draft is kept.');
+    this.name = 'RenovationSaveError';
+  }
 }
 
-export async function listRenovationVersions(
+/** The UI owns its sequential latest-pending queue; this call never rebases or retries. */
+export async function saveRenovation(
   opportunityId: string,
-  limit = 10,
-  token: OwnerToken = captureOwnerToken(),
-): Promise<RenovationVersion[]> {
-  if (!isTokenOwnerStillCurrent(token)) throw new OwnerMismatchError();
-  const deviceId = await ensureAnonSession();
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerNotReadyError();
-  if (!deviceId) return [];
-  const { data, error } = await supabase
-    .from('resume_renovation_versions')
-    .select('id, doc, created_at')
-    .eq('device_id', deviceId)
-    .eq('opportunity_id', opportunityId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (!isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-  if (error) {
-    console.warn('[ofe] renovation versions load failed:', error.message);
-    return [];
+  doc: Record<string, unknown>,
+  baseSnapshot: Record<string, unknown>,
+  method: string | null,
+  warnings: string[],
+  token: OwnerToken,
+  expectedRevision: number,
+): Promise<RenovationSaveResult> {
+  // Copy and validate before the first await, including the owner capability.
+  // Unknown extensions and incomplete old provenance are retained verbatim.
+  const origin = { ...token };
+  if (!renovationTargetValid(opportunityId)) throw new RenovationSaveError('invalid_target');
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) throw new RenovationSaveError('invalid_revision');
+  let payload: RenovationPayload;
+  try { payload = renovationPayloadSnapshot({ doc, base_snapshot: baseSnapshot, method, warnings }); }
+  catch { throw new RenovationSaveError('invalid_payload'); }
+  try {
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('save_renovation_cas', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId,
+      p_expected_revision: expectedRevision, p_payload: payload,
+    });
+    renovationOwner(origin);
+    if (error || !renovationRecord(data)) return { status: 'unknown' };
+    if (data.status === 'missing' && renovationKeys(data, ['status'])) return { status: 'missing' };
+    if (typeof data.status !== 'string' || !['saved', 'unchanged', 'conflict'].includes(data.status) || !renovationKeys(data, ['status', 'current'])) return { status: 'unknown' };
+    const current = renovationCurrent(data.current, opportunityId, origin);
+    if (data.status === 'conflict') return { status: 'conflict', current };
+    const received = { doc: current.doc, base_snapshot: current.base_snapshot, method: current.method, warnings: current.warnings };
+    if (renovationCanonical(received) !== renovationCanonical(payload)
+      || (data.status === 'saved' && current.revision !== expectedRevision + 1)
+      || (data.status === 'unchanged' && current.revision !== expectedRevision && current.revision !== expectedRevision + 1)) return { status: 'unknown' };
+    return { status: data.status as 'saved' | 'unchanged', current };
+  } catch (error) {
+    const failure = renovationReadFailure(error, origin);
+    return { status: failure instanceof OwnerMismatchError ? 'abandoned' : failure instanceof OwnerNotReadyError ? 'unavailable' : 'unknown' };
   }
-  return (data ?? []).map((r) => ({
-    id: String(r.id),
-    doc: (r.doc ?? {}) as Record<string, unknown>,
-    created_at: String(r.created_at ?? ''),
-  }));
+}
+
+export class RenovationLoadError extends Error {
+  constructor(public readonly code: 'read_failed' | 'invalid_saved_data') {
+    super('The saved résumé could not be restored. Please try again.');
+    this.name = 'RenovationLoadError';
+  }
+}
+
+function renovationRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function renovationStringList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function renovationSectionsValid(value: unknown, renovated: boolean): boolean {
+  if (!Array.isArray(value) || (renovated && value.length === 0)) return false;
+  const sectionIds = new Set<string>();
+  const bulletIds = new Set<string>();
+  return value.every((section) => {
+    if (!renovationRecord(section) || typeof section.id !== 'string' || !section.id.trim()
+      || sectionIds.has(section.id) || typeof section.heading !== 'string'
+      || typeof section.kind !== 'string' || !Array.isArray(section.bullets)) return false;
+    sectionIds.add(section.id);
+    return section.bullets.every((bullet: unknown) => {
+      if (!renovationRecord(bullet) || typeof bullet.id !== 'string' || !bullet.id.trim()
+        || bulletIds.has(bullet.id)) return false;
+      bulletIds.add(bullet.id);
+      if (!renovated) return typeof bullet.text === 'string';
+      if (typeof bullet.base_text !== 'string' || typeof bullet.action !== 'string'
+        || !Array.isArray(bullet.variants) || !Number.isInteger(bullet.current)
+        || (bullet.current as number) < -1 || (bullet.current as number) >= bullet.variants.length) return false;
+      return bullet.variants.every((variant: unknown) => renovationRecord(variant)
+        && typeof variant.source === 'string' && typeof variant.text === 'string'
+        && typeof variant.source_evidence === 'string');
+    });
+  });
+}
+
+function renovationProcessingValid(value: unknown): boolean {
+  if (!renovationRecord(value) || !Array.isArray(value.chunks)) return false;
+  const count = (item: unknown): item is number => Number.isSafeInteger(item) && (item as number) >= 0;
+  return count(value.input_characters) && count(value.ai_chunks) && count(value.heuristic_chunks)
+    && value.chunks.every((chunk: unknown) => renovationRecord(chunk)
+      && count(chunk.start) && count(chunk.end) && chunk.end >= chunk.start
+      && chunk.end <= (value.input_characters as number)
+      && (chunk.method === 'ai' || chunk.method === 'heuristic')
+      && (chunk.reason === undefined || chunk.reason === null || typeof chunk.reason === 'string'));
+}
+
+const RENOVATION_MAX_BYTES = 2 * 1024 * 1024;
+const RENOVATION_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function renovationKeys(value: Record<string, unknown>, keys: string[]): boolean {
+  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+}
+function renovationTargetValid(value: unknown): value is string {
+  return typeof value === 'string' && !!value.trim() && Array.from(value).length <= 200 && renovationTextValid(value);
+}
+function renovationPositive(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) > 0;
+}
+function renovationTextValid(value: string): boolean {
+  if (value.includes('\0')) return false;
+  for (let i = 0; i < value.length; i += 1) {
+    const unit = value.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const low = value.charCodeAt(++i);
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return false;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+function renovationSnapshot(value: unknown): unknown {
+  // JSON-compatible optional undefined fields are omitted, as in the existing
+  // wire format. Reject values JSON would otherwise silently turn into null.
+  const serialized = JSON.stringify(value, (key, item: unknown) => {
+    if (!renovationTextValid(key) || (typeof item === 'string' && !renovationTextValid(item))
+      || (typeof item === 'number' && !Number.isFinite(item))
+      || ['bigint', 'symbol', 'function'].includes(typeof item)) throw new RenovationLoadError('invalid_saved_data');
+    return item;
+  });
+  if (typeof serialized !== 'string' || new TextEncoder().encode(serialized).byteLength > RENOVATION_MAX_BYTES) throw new RenovationLoadError('invalid_saved_data');
+  return JSON.parse(serialized);
+}
+function renovationDocumentValid(doc: unknown): doc is Record<string, unknown> {
+  return renovationRecord(doc) && doc.kind !== 'full_resume'
+    && renovationSectionsValid(doc.sections, true) && typeof doc.method === 'string'
+    && renovationStringList(doc.warnings)
+    // Missing and unknown string signatures remain unknown, never upgraded.
+    && (doc.resume_sig === undefined || typeof doc.resume_sig === 'string')
+    && (doc.profile_sig === undefined || typeof doc.profile_sig === 'string')
+    && (doc.target_sig === undefined || typeof doc.target_sig === 'string')
+    && (doc.processing === undefined || renovationProcessingValid(doc.processing));
+}
+function renovationPayloadSnapshot(value: unknown): RenovationPayload {
+  const copy = renovationSnapshot(value);
+  if (!renovationRecord(copy) || !renovationKeys(copy, ['doc', 'base_snapshot', 'method', 'warnings'])
+    || !renovationDocumentValid(copy.doc) || !renovationRecord(copy.base_snapshot)
+    || (copy.method !== null && typeof copy.method !== 'string') || !renovationStringList(copy.warnings)
+    || (copy.base_snapshot.sections !== undefined && !renovationSectionsValid(copy.base_snapshot.sections, false))) {
+    throw new RenovationLoadError('invalid_saved_data');
+  }
+  return copy as unknown as RenovationPayload;
+}
+function renovationCanonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(renovationCanonical).join(',')}]`;
+  if (renovationRecord(value)) return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${renovationCanonical(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+/** Keep PostgreSQL microseconds for pagination; Date alone truncates them. */
+function renovationTime(value: unknown): bigint | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return null;
+  const millis = Date.parse(match[1] + match[3]);
+  return Number.isFinite(millis) ? BigInt(millis) * BigInt(1000) + BigInt((match[2] ?? '').padEnd(6, '0')) : null;
+}
+function renovationOwner(token: OwnerToken): void {
+  if (!isTokenOwnerStillCurrent(token) || captureOwnerToken().generation !== token.generation) throw new OwnerMismatchError();
+  if (!token.uid || !isOwnerTokenValid(token, token.uid)) throw new OwnerNotReadyError();
+}
+async function renovationReady(token: OwnerToken): Promise<void> {
+  renovationOwner(token);
+  const uid = await ensureAnonSession();
+  renovationOwner(token);
+  if (!uid) throw new OwnerNotReadyError();
+  if (uid !== token.uid) throw new OwnerMismatchError();
+}
+function renovationReadFailure(error: unknown, token: OwnerToken): Error {
+  try { renovationOwner(token); } catch (ownerError) { return ownerError as Error; }
+  return error instanceof RenovationLoadError || error instanceof OwnerMismatchError || error instanceof OwnerNotReadyError
+    ? error : new RenovationLoadError('read_failed');
+}
+function renovationCurrent(value: unknown, opportunityId: string, token: OwnerToken): StoredRenovation {
+  if (!renovationRecord(value) || !renovationKeys(value, ['owner_id', 'opportunity_id', 'revision', 'payload', 'updated_at'])
+    || value.owner_id !== token.uid || value.opportunity_id !== opportunityId || !renovationPositive(value.revision)
+    || renovationTime(value.updated_at) === null) throw new RenovationLoadError('invalid_saved_data');
+  return { owner_id: value.owner_id as string, opportunity_id: opportunityId, revision: value.revision,
+    ...renovationPayloadSnapshot(value.payload), updated_at: value.updated_at as string };
+}
+
+/** Only an explicit successful absent receipt permits creating a new draft. */
+export async function loadRenovation(opportunityId: string, token: OwnerToken = captureOwnerToken()): Promise<StoredRenovation | null> {
+  const origin = { ...token };
+  try {
+    if (!renovationTargetValid(opportunityId)) throw new RenovationLoadError('invalid_saved_data');
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('read_renovation', { p_expected_owner: origin.uid, p_opportunity_id: opportunityId });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
+    if (!renovationRecord(data) || data.status !== 'found' || !renovationKeys(data, ['status', 'current'])) throw new RenovationLoadError('invalid_saved_data');
+    return renovationCurrent(data.current, opportunityId, origin);
+  } catch (error) { throw renovationReadFailure(error, origin); }
+}
+
+function renovationCursor(value: unknown): RenovationHistoryCursor {
+  if (!renovationRecord(value) || !renovationKeys(value, ['created_at', 'id']) || typeof value.id !== 'string'
+    || !RENOVATION_UUID.test(value.id) || renovationTime(value.created_at) === null) throw new RenovationLoadError('invalid_saved_data');
+  return { id: value.id, created_at: value.created_at as string };
+}
+function renovationSummary(value: unknown): RenovationVersionSummary {
+  if (!renovationRecord(value) || !renovationKeys(value, ['id', 'created_at', 'revision', 'snapshot_kind', 'source_revision', 'source_updated_at'])
+    || typeof value.snapshot_kind !== 'string' || !['complete', 'legacy_doc'].includes(value.snapshot_kind)
+    || (value.revision !== null && !renovationPositive(value.revision))
+    || (value.source_revision !== null && !renovationPositive(value.source_revision))
+    || (value.source_updated_at !== null && renovationTime(value.source_updated_at) === null)
+    || (value.snapshot_kind === 'legacy_doc' && value.revision !== null)) throw new RenovationLoadError('invalid_saved_data');
+  return { ...renovationCursor({ id: value.id, created_at: value.created_at }), revision: value.revision as number | null,
+    snapshot_kind: value.snapshot_kind as RenovationVersionSummary['snapshot_kind'],
+    source_revision: value.source_revision as number | null, source_updated_at: value.source_updated_at as string | null };
+}
+function renovationBefore(left: RenovationHistoryCursor, right: RenovationHistoryCursor): boolean {
+  const a = renovationTime(left.created_at)!; const b = renovationTime(right.created_at)!;
+  return a < b || (a === b && left.id < right.id);
+}
+/** Metadata only, with a bounded stable timestamp/UUID cursor. Errors never become an empty history. */
+export async function listRenovationVersions(
+  opportunityId: string, limit = 20, token: OwnerToken = captureOwnerToken(), cursor?: RenovationHistoryCursor,
+): Promise<RenovationVersionPage> {
+  const origin = { ...token };
+  try {
+    if (!renovationTargetValid(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 50) throw new RenovationLoadError('invalid_saved_data');
+    const before = cursor === undefined ? null : renovationCursor(cursor);
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('list_renovation_versions', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_limit: limit,
+      p_before_created_at: before?.created_at ?? null, p_before_id: before?.id ?? null,
+    });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (!renovationRecord(data) || !renovationKeys(data, ['items', 'next_cursor']) || !Array.isArray(data.items) || data.items.length > limit) throw new RenovationLoadError('invalid_saved_data');
+    const items = data.items.map(renovationSummary);
+    if (new Set(items.map((item) => item.id)).size !== items.length
+      || items.some((item, i) => (before && !renovationBefore(item, before)) || (i > 0 && !renovationBefore(item, items[i - 1])))) throw new RenovationLoadError('invalid_saved_data');
+    const next = data.next_cursor === null ? null : renovationCursor(data.next_cursor);
+    const last = items.at(-1);
+    if (next && (items.length !== limit || !last || next.id !== last.id || next.created_at !== last.created_at)) throw new RenovationLoadError('invalid_saved_data');
+    return { items, next_cursor: next };
+  } catch (error) { throw renovationReadFailure(error, origin); }
+}
+
+export async function readRenovationVersion(
+  opportunityId: string, versionId: string, token: OwnerToken = captureOwnerToken(),
+): Promise<RenovationVersion | null> {
+  const origin = { ...token };
+  try {
+    if (!renovationTargetValid(opportunityId) || typeof versionId !== 'string' || !RENOVATION_UUID.test(versionId)) throw new RenovationLoadError('invalid_saved_data');
+    await renovationReady(origin);
+    const { data, error } = await supabase.rpc('get_renovation_version', {
+      p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_version_id: versionId,
+    });
+    renovationOwner(origin);
+    if (error) throw new RenovationLoadError('read_failed');
+    if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
+    if (!renovationRecord(data) || data.status !== 'found' || !renovationKeys(data, ['status', 'version']) || !renovationRecord(data.version)) throw new RenovationLoadError('invalid_saved_data');
+    const row = data.version;
+    if (!renovationKeys(row, ['id', 'created_at', 'revision', 'snapshot_kind', 'source_revision', 'source_updated_at', 'owner_id', 'opportunity_id', 'payload'])
+      || row.id !== versionId || row.owner_id !== origin.uid || row.opportunity_id !== opportunityId) throw new RenovationLoadError('invalid_saved_data');
+    const meta = renovationSummary({ id: row.id, created_at: row.created_at, revision: row.revision, snapshot_kind: row.snapshot_kind,
+      source_revision: row.source_revision, source_updated_at: row.source_updated_at });
+    let payload: RenovationVersion['payload'];
+    if (meta.snapshot_kind === 'complete') payload = renovationPayloadSnapshot(row.payload);
+    else {
+      const legacy = renovationSnapshot(row.payload);
+      if (!renovationRecord(legacy) || !renovationKeys(legacy, ['doc', 'base_snapshot', 'method', 'warnings'])
+        || !renovationDocumentValid(legacy.doc) || legacy.base_snapshot !== null || legacy.method !== null || legacy.warnings !== null) throw new RenovationLoadError('invalid_saved_data');
+      payload = { doc: legacy.doc, base_snapshot: null, method: null, warnings: null };
+    }
+    return { ...meta, owner_id: origin.uid!, opportunity_id: opportunityId, payload };
+  } catch (error) { throw renovationReadFailure(error, origin); }
 }
 
 // ── Professor follows + verified-update read cursors (W8) ─────────────────

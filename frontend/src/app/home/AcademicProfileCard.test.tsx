@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/lib/school-confirmation', () => ({
   persistHomeSchool: vi.fn(async () => ({ ok: true, synced: true, cacheCleared: true })),
@@ -261,6 +262,20 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
     expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
   });
 
+  it('UNC keeps college and major editable until its reviewed catalog is available', () => {
+    const { update } = renderCard({
+      home_school: 'unc', college: 'College of Arts and Sciences', major: 'Biology',
+    });
+    expect(screen.getByText('University of North Carolina at Chapel Hill')).toBeInTheDocument();
+    const college = screen.getByLabelText('home.form.collegeLabel');
+    const major = screen.getByLabelText('home.form.majorLabel');
+    expect(college).toHaveValue('College of Arts and Sciences');
+    expect(major).toHaveValue('Biology');
+    fireEvent.change(major, { target: { value: 'Chemistry' } });
+    expect(update).toHaveBeenCalledWith('major', 'Chemistry');
+    expect(screen.getByText('home.form.catalogPendingNote')).toBeInTheDocument();
+  });
+
   it('free-text inputs carry the stored college/major values (no data loss)', () => {
     renderCard({ home_school: 'future-school', college: 'College of Engineering', major: 'EECS' });
     expect((document.querySelector('input#college') as HTMLInputElement).value)
@@ -274,5 +289,86 @@ describe('AcademicProfileCard — catalog vs free-text fallback', () => {
       target: { value: 'College of Chemistry' },
     });
     expect(update).toHaveBeenCalledWith('college', 'College of Chemistry');
+  });
+});
+
+
+describe('AcademicProfileCard — opportunity-type multi-select', () => {
+  const labels = {
+    research: 'home.form.seekingResearch',
+    summer_program: 'home.form.seekingSummer',
+    internship: 'home.form.seekingInternship',
+  };
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  function EditableCard() {
+    const [profile, setProfile] = useState<ProfileData>({ ...DEFAULT_PROFILE, seeking_types: [] });
+    return <AcademicProfileCard profile={profile} viewSnapshot={null} t={t}
+      update={(key, value) => setProfile((current) => ({ ...current, [key]: value }))} />;
+  }
+
+  it('visibly selects the same Research + Summer defaults as legacy requests', () => {
+    renderCard({ seeking_types: undefined });
+    expect(screen.getByRole('button', { name: labels.research })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: labels.summer_program })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: labels.internship })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it.each(combinations.map((types) => ({ types })))('supports $types, all-off, and selecting again', ({ types }) => {
+    render(<EditableCard />);
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+    for (const type of types) fireEvent.click(screen.getByRole('button', { name: labels[type as keyof typeof labels] }));
+    for (const [type, label] of Object.entries(labels)) {
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', String(types.includes(type)));
+    }
+    expect(screen.queryByText('home.validation.seekingRequired')).not.toBeInTheDocument();
+    expect(screen.getByText('home.form.seekingHint')).toBeInTheDocument();
+    for (const type of types) fireEvent.click(screen.getByRole('button', { name: labels[type as keyof typeof labels] }));
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: labels.internship }));
+    expect(screen.getByRole('button', { name: labels.internship })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('home.validation.seekingRequired')).not.toBeInTheDocument();
+  });
+});
+
+
+describe('AcademicProfileCard — private controls reset independently of text inputs', () => {
+  it('keeps controlled input DOM but clears pending skill and major searches on generation change', () => {
+    const profile = { ...DEFAULT_PROFILE, home_school: 'unc', major: 'Biology', research_interests: 'Retained draft' };
+    const update = vi.fn();
+    const view = render(<AcademicProfileCard profile={profile} update={update} viewSnapshot={null} identityGeneration={0} t={t} />);
+    const text = view.container.querySelector('#research_interests');
+    fireEvent.change(screen.getByPlaceholderText('skills.searchPlaceholder'), { target: { value: 'Private skill search' } });
+    fireEvent.change(screen.getByPlaceholderText('home.form.additionalMajorsPlaceholder'), { target: { value: 'Private major search' } });
+    view.rerender(<AcademicProfileCard profile={profile} update={update} viewSnapshot={null} identityGeneration={1} t={t} />);
+    expect(view.container.querySelector('#research_interests')).toBe(text);
+    expect(text).toHaveValue('Retained draft');
+    expect(screen.getByPlaceholderText('skills.searchPlaceholder')).toHaveValue('');
+    expect(screen.getByPlaceholderText('home.form.additionalMajorsPlaceholder')).toHaveValue('');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'failure'] as const)('an old school selection %s cannot close or label the new picker', async outcome => {
+    let finish!: (value: Awaited<ReturnType<typeof persistHomeSchool>>) => void;
+    vi.mocked(persistHomeSchool).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const profile = { ...DEFAULT_PROFILE }; const accepted = viewFor(); const update = vi.fn();
+    const view = render(<AcademicProfileCard profile={profile} update={update} viewSnapshot={accepted} identityGeneration={0} t={t} />);
+    const text = view.container.querySelector('#research_interests');
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    fireEvent.click(screen.getByTestId('university-card-ucb'));
+    fireEvent.click(screen.getByText('universitySwitcher.confirm'));
+    expect(persistHomeSchool).toHaveBeenCalledTimes(1);
+    view.rerender(<AcademicProfileCard profile={profile} update={update} viewSnapshot={accepted} identityGeneration={1} t={t} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(view.container.querySelector('#research_interests')).toBe(text);
+    fireEvent.click(screen.getByText('home.form.changeSchool'));
+    await act(async () => finish(outcome === 'success' ? { ok: true, synced: true, cacheCleared: true } : { ok: false, reason: 'conflict' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('switcher-error')).toBeNull();
+    expect(screen.getByText('universitySwitcher.confirm')).not.toBeDisabled();
   });
 });

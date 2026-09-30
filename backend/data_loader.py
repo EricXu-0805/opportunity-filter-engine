@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 
 from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
+from src.import_source import sanitize_import_source
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,13 @@ def _sanitize_opportunity(opp: dict) -> dict:
     # Same idea for listing collectors: a constant the collector writes on
     # every row (Simplify's "stipend") is stamped as ours, not the posting's.
     stamp_collector_templates(opp)
+    import_source = sanitize_import_source(opp)
+    preserve_import_raw = import_source is not None and import_source['description_source'] != 'unknown'
     for field in ("description_raw", "description_clean", "title"):
+        # Identified import raw is already readable source text. Treating its
+        # comparisons or literal examples as HTML silently removes facts.
+        if field == "description_raw" and preserve_import_raw:
+            continue
         if field in opp and isinstance(opp[field], str):
             opp[field] = _strip_html(opp[field])
     # Pipeline-only payloads no serving path reads: drop them from the in-memory

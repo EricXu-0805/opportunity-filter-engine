@@ -67,3 +67,7 @@ data/processed/opportunities.json
 
 # root-level scrape/debug scratch must never be committed
 /*.html
+
+# Generated locally from the locked pdfjs-dist dependency before dev/build.
+/frontend/public/pdfjs/
+/frontend/public/.pdfjs-assets-*/

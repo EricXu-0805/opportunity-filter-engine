@@ -31,7 +31,7 @@ import time
 # Provider completions per UTC day.
 #
 # Priced from OpenRouter's public rate for the rerank model
-# (anthropic/claude-sonnet-5: $2/M prompt, $10/M completion) against a measured
+# (anthropic/claude-sonnet-5.5: $2/M prompt, $10/M completion) against a measured
 # payload: two calls and roughly $0.012 per fresh match refine, and that is a
 # floor — the reconstruction could not see research_areas_raw or recent works,
 # and each candidate may carry up to 600 characters against the ~220 observed.

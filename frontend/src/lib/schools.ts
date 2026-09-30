@@ -377,6 +377,19 @@ export const SCHOOLS: School[] = [
     catalog: { colleges: 14, majors: 113 },
   },
   {
+    slug: 'unc',
+    domain: 'unc.edu',
+    name: 'University of North Carolina at Chapel Hill',
+    shortName: 'UNC Chapel Hill',
+    nameZh: '北卡罗来纳大学教堂山分校',
+    color: '#7BAFD4',
+    location: 'Chapel Hill, NC',
+    coverage: campusCoverage('unc'),
+    // Faculty coverage exists; a reviewed college/major catalog does not yet.
+    // The profile form explicitly supports free-text inputs for this case.
+    catalog: null,
+  },
+  {
     slug: 'uf',
     domain: 'ufl.edu',
     name: 'University of Florida',

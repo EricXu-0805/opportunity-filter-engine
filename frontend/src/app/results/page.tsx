@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -14,9 +14,9 @@ import {
   useLocalStorageJSON,
   writeLocalStorageJSON,
 } from '@/lib/use-local-storage-json';
-import { captureOwnerToken, isTokenOwnerStillCurrent, OwnerMismatchError } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, OwnerMismatchError, type OwnerToken } from '@/lib/identity-owner';
 
-import type { ProfileData } from '@/lib/types';
+import type { Opportunity, ProfileData } from '@/lib/types';
 import { downloadCSV } from '@/lib/csv-export';
 import { matchesToCSV } from '@/lib/match-utils';
 import { targetPosture } from '@/lib/target-truth';
@@ -79,6 +79,7 @@ import {
   noMatchCarriesADeadline,
 } from './types';
 import {
+  buildResultsUrl,
   readInitialFiltersFromUrl,
   readSemanticRerankUrlPin,
   resolveSemanticRerank,
@@ -87,13 +88,29 @@ import {
 import { useHighlightSet } from './use-highlight-set';
 import { useSavedSearchAck } from './use-saved-search-ack';
 import { useResultsData } from './use-results-data';
+import { useResultsSession } from './use-results-session';
+import { useResultModalHistory, type ModalCloseRequest } from './use-result-modal-history';
+import { resultRequestKey, type ResultCursorState, RESULT_SESSION_PARAM } from '@/lib/result-session';
+import { useProfileRefresh } from '@/lib/use-profile-refresh';
+import ProfileRefreshBanner from '@/components/ProfileRefreshBanner';
 import { useAcceptedProfileView, useCrossSchoolToggle } from './use-results-profile-view';
 import { useResultsInteractions } from './use-results-interactions';
 import { useResultsKeyboardNav } from './use-results-keyboard-nav';
 
-const ColdEmailModal = dynamic(() => import('@/components/ColdEmailModal'), {
+const ColdEmailModal = dynamic(() => import('@/components/CheckedColdEmailModal'), {
   ssr: false,
 });
+
+const ResumeWorkspaceModal = dynamic(() => import('@/components/ResumeWorkspaceModal'), { ssr: false });
+
+interface WritingSession {
+  kind: 'email' | 'resume';
+  opportunity: Opportunity;
+  profile: ProfileData;
+  owner: OwnerToken;
+  ownerScopeKey: string | null;
+  identityGeneration: number;
+}
 
 const PAGE_SIZE = 50;
 const EMPTY_VIEW_COUNTS: Record<Tab, number> = {
@@ -138,7 +155,7 @@ function ResultsLoading() {
 function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useT();
+  const { t, locale } = useT();
   // R66: openAuthModal is renamed locally to avoid shadowing the email
   // modal's own "open" state names elsewhere in this large component.
   const { openModal: openAuthModal } = useAuthModal();
@@ -149,9 +166,13 @@ function ResultsContent() {
   const {
     accepted: { profile, view },
     accept: acceptProfileView,
+    acceptHydration,
     clear: clearProfileView,
   } = useAcceptedProfileView();
   const hasStoredProfile = useHasLocalStorageKey(STORAGE_KEYS.PROFILE);
+  // The key can disappear before the accepting effect publishes a null view.
+  // Never use that one-render-old view as current material or for a new action.
+  const profileAvailable = hasStoredProfile !== false && profile !== null;
 
   const initialUrl = useMemo(() => readInitialFiltersFromUrl(searchParams), [searchParams]);
   const [activeTab, setActiveTab] = useState<Tab>(initialUrl.activeTab);
@@ -189,9 +210,8 @@ function ResultsContent() {
   const semanticSettled = semanticUrlPin !== null
     || semanticPrefExists !== undefined
     || semanticSettleTimedOut;
-  useResultsUrlSync({
-    activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled,
-  });
+  const urlState = { activeTab, debouncedQuery, filters, sortBy, semanticRerank, semanticSettled };
+  const [arrivalSessionId] = useState(() => searchParams.get(RESULT_SESSION_PARAM));
 
   const highlightSet = useHighlightSet(searchParams);
   useSavedSearchAck(searchParams, highlightSet);
@@ -204,19 +224,14 @@ function ResultsContent() {
   );
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
-  const [emailModal, setEmailModal] = useState<{
-    open: boolean;
-    opportunityId: string;
-    opportunityTitle: string;
-    opportunitySchool: string | null;
-    openedAgainstResults: MatchResult[] | null;
-  }>({
-    open: false,
-    opportunityId: '',
-    opportunityTitle: '',
-    opportunitySchool: null,
-    openedAgainstResults: null,
-  });
+  // The editor belongs to an owner and a target, not a result row. A rematch
+  // can remove every card without discarding the student's unsaved writing.
+  const [writingSession, setWritingSession] = useState<WritingSession | null>(null);
+  const resumeCloseRequest = useRef<ModalCloseRequest | null>(null);
+  const registerResumeCloseRequest = useCallback((request: ModalCloseRequest | null) => {
+    resumeCloseRequest.current = request;
+  }, []);
+  const closeWritingSession = useCallback(() => setWritingSession(null), []);
 
   // Close (never leave open) the recipient modal on a REAL identity switch —
   // it can trigger a write, and a U1-opened modal must not be left able to
@@ -236,12 +251,13 @@ function ResultsContent() {
   // explanations stayed on U2's screen for that whole window, remounted to
   // look like U2's fresh list.
   const clearDataRef = useRef<() => void>(() => {});
+  const clearResultSessionRef = useRef<() => void>(() => {});
   // A dialog U1 was filling in must not survive into U2's session: the name
   // and digest e-mail typed by one account would be filed onto a row the
   // INSERT creates for the other. Same treatment as the e-mail modal.
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const handleIdentityChange = useCallback(() => {
-    setEmailModal((m) => (m.open ? { ...m, open: false } : m));
+    setWritingSession(null);
     setSaveDialogOpen(false);
     // SYNCHRONOUSLY, in the transition itself — not in a passive effect keyed
     // on identityGeneration, which runs after paint and would leave U1's
@@ -250,6 +266,7 @@ function ResultsContent() {
     clearCrossSchoolRef.current();
     clearFeedbackRef.current();
     clearDataRef.current();
+    clearResultSessionRef.current();
     setPage(1);
   }, [clearProfileView]);
   const {
@@ -273,6 +290,7 @@ function ResultsContent() {
     retryTrackSave,
     retryInteractionsLoad,
   } = useResultsInteractions(handleIdentityChange);
+  const profileRefresh = useProfileRefresh(ownerReady, acceptHydration);
 
   // Page-level wrappers: preserve the pre-extraction "jump back to page 1"
   // semantics on every favorite/status mutation attempt — the filtered list
@@ -329,26 +347,63 @@ function ResultsContent() {
     dismissedIds,
     viewToday,
   ]);
+  const resultSession = useResultsSession({
+    arrivalId: arrivalSessionId, profile: profileAvailable ? profile : null, semantic: semanticRerank, view: matchView,
+    ready: ownerReady && !interactionsLoading && !interactionsError && !favoritesLoadError && semanticSettled,
+    failed: interactionsError || favoritesLoadError,
+    publicUrl: buildResultsUrl(urlState), page, setPage, setShowDismissed,
+  });
+  useLayoutEffect(() => { clearResultSessionRef.current = resultSession.resetForIdentity; }, [resultSession.resetForIdentity]);
+  useResultsUrlSync({ ...urlState, sessionId: resultSession.sessionId, enabled: profileAvailable });
+  const writingOwnerCurrent = !!writingSession
+    && writingSession.ownerScopeKey === ownerScopeKey
+    && writingSession.identityGeneration === identityGeneration
+    && isOwnerTokenValid(writingSession.owner, writingSession.owner.uid)
+    && writingSession.owner.generation === captureOwnerToken().generation;
+  const requestWritingClose = useCallback(() => {
+    if (writingSession?.kind === 'resume' && resumeCloseRequest.current) {
+      return resumeCloseRequest.current();
+    }
+    closeWritingSession();
+    return true;
+  }, [writingSession?.kind, closeWritingSession]);
+  useResultModalHistory(writingOwnerCurrent, closeWritingSession, ownerScopeKey, requestWritingClose, {
+    returnToResultsOnClose: profileAvailable,
+  });
+
+  const [validatedWritingView, setValidatedWritingView] = useState<{ key: string; page: number; owner: ReturnType<typeof captureOwnerToken> } | null>(null);
+  const onResultValidated = resultSession.onValidated;
+  const acceptResultPage = useCallback((state: ResultCursorState, origin: ReturnType<typeof captureOwnerToken>) => {
+    if (!isOwnerTokenValid(origin, origin.uid)) return;
+    onResultValidated(state, origin);
+    setValidatedWritingView((previous) => previous?.key === state.requestKey && previous.page === state.page && isOwnerTokenValid(previous.owner, previous.owner.uid)
+      ? previous : { key: state.requestKey, page: state.page, owner: origin });
+  }, [onResultValidated]);
+  const writingRequestKey = profileAvailable && profile ? resultRequestKey(profile, semanticRerank, matchView) : '';
+  const writingViewCurrent = validatedWritingView?.key === writingRequestKey && validatedWritingView?.page === page
+    && isOwnerTokenValid(validatedWritingView.owner, validatedWritingView.owner.uid);
   const {
     data,
     setData,
     loading,
     error,
+    errorCode,
     showSlowHint,
     paginationReady,
     refining,
     refined,
     refineFailed,
   } = useResultsData(
-    profile,
+    profileAvailable ? profile : null,
     semanticRerank,
     matchView,
     page,
     t,
-    semanticSettled,
+    semanticSettled && resultSession.settled,
     // A dead cursor is dropped by the hook; returning to page 1 is the page's
     // own job, since it owns `page`.
-    useCallback(() => setPage(1), []),
+    resultSession.cursorExpired,
+    { owner: view?.token ?? null, restore: resultSession.restore, onValidated: acceptResultPage },
   );
 
   // Facets are derived from the complete canonical snapshot by the backend,
@@ -456,8 +511,8 @@ function ResultsContent() {
   }, []);
 
   useEffect(() => {
-    if (hasStoredProfile === false) router.replace('/');
-  }, [hasStoredProfile, router]);
+    if (hasStoredProfile === false && !writingOwnerCurrent) router.replace('/');
+  }, [hasStoredProfile, writingOwnerCurrent, router]);
 
   const toggleSemantic = useCallback((next: boolean) => {
     if (!RELEASE_SCOPE.matchAiRefine) return;
@@ -596,71 +651,36 @@ function ResultsContent() {
     setShowDismissed(next);
   }, []);
 
-  const openEmailModal = useCallback(
-    (opportunityId: string) => {
-      const results = data?.results;
-      if (!results) return;
-      const match = results.find((m) => m.opportunity.id === opportunityId);
-      // Re-checked here, not just on the card that offered the button. This
-      // modal copies an id and then lives on its own — it is the one target
-      // control on this page that is NOT inside the result's keyed subtree,
-      // so nothing unmounts it when the row goes away.
-      if (!match || targetPosture(match.opportunity) !== 'actionable') return;
-      setEmailModal({
-        open: true,
-        opportunityId,
-        opportunityTitle: match.opportunity.title ?? t('results.opportunityFallback'),
-        opportunitySchool: match.opportunity.school ?? null,
-        openedAgainstResults: results,
-      });
-    },
-    [data, t],
-  );
+  const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
+    // Do not retarget an existing editor behind its unsaved-changes guard.
+    if (writingOwnerCurrent || !ownerReady || !profileAvailable || !profile || !writingViewCurrent || loading || error) return;
+    const match = data?.results.find((m) => m.opportunity.id === opportunityId);
+    if (!match || targetPosture(match.opportunity) !== 'actionable') return;
+    setWritingSession({ kind, opportunity: match.opportunity, profile,
+      owner: captureOwnerToken(), ownerScopeKey, identityGeneration });
+  }, [writingOwnerCurrent, ownerReady, profileAvailable, profile, writingViewCurrent, loading, error, data, ownerScopeKey, identityGeneration]);
+  const openEmailModal = useCallback((id: string) => openWritingSession('email', id), [openWritingSession]);
+  const openResumeModal = useCallback((id: string) => openWritingSession('resume', id), [openWritingSession]);
 
-  const closeEmailModal = useCallback(() => {
-    setEmailModal({
-      open: false,
-      opportunityId: '',
-      opportunityTitle: '',
-      opportunitySchool: null,
-      openedAgainstResults: null,
-    });
-  }, []);
-
-  // Re-resolved on every render against the CURRENT results, so a stale target
-  // cannot exist rather than being cleaned up after the fact. A passive effect
-  // would run after paint, leaving one frame in which a dialog for a target
-  // that just closed is on screen with a working Generate button.
-  //
-  // Absence of results is not evidence of life either. `data` is null on
-  // every refetch — the cache no longer paints, so that window is now the
-  // normal state between a filter change and its answer — and standing on the
-  // check made when the dialog opened means a Generate button backed by a
-  // posture nobody has re-read. During a split deploy the backend answering
-  // it may not even understand the current truth contract. So a null results
-  // set withdraws the dialog exactly like a set that no longer contains the
-  // target: it fails closed, and a live target has to be opened again
-  // deliberately rather than resurfacing on its own.
-  const emailTargetLive = useMemo(() => {
-    if (!emailModal.open) return false;
-    const results = data?.results;
-    // A modal belongs to the exact results snapshot on which the student
-    // opened it. Once that snapshot is withdrawn or replaced, the old modal
-    // cannot revive when a later response happens to contain the same id;
-    // the student must explicitly open it against the new evidence.
-    if (!results || results !== emailModal.openedAgainstResults) return false;
-    const match = results.find((m) => m.opportunity.id === emailModal.opportunityId);
-    return !!match && targetPosture(match.opportunity) === 'actionable';
-  }, [emailModal.open, emailModal.opportunityId, emailModal.openedAgainstResults, data]);
+  // Keep the editing buffer mounted while separately withdrawing target
+  // actions. Absence from this filtered page means unknown, not closed. Only
+  // a current same-id actionable row can re-enable actions after a rematch.
+  const currentWritingTarget = writingSession
+    ? data?.results.find((m) => m.opportunity.id === writingSession.opportunity.id)?.opportunity
+    : undefined;
+  const writingTargetReady = writingOwnerCurrent && ownerReady && profileAvailable
+    && writingViewCurrent && !loading && !error && !!currentWritingTarget
+    && targetPosture(currentWritingTarget) === 'actionable';
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [digestAvailable, setDigestAvailable] = useState(false);
-  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const openHelp = useCallback(() => setHelpOpen(true), [setHelpOpen]);
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
     paginated,
-    emailModalOpen: emailModal.open && emailTargetLive,
-    onCloseEmailModal: closeEmailModal,
+    suspended: writingOwnerCurrent,
+    emailModalOpen: writingOwnerCurrent && writingSession?.kind === 'email',
+    onCloseEmailModal: closeWritingSession,
     onToggleFavorite: handleToggleFav,
     onOpenHelp: openHelp,
   });
@@ -878,7 +898,7 @@ function ResultsContent() {
   // performs the actual navigation. hasStoredProfile is undefined while
   // localStorage probes; we only skip rendering once it's been confirmed
   // absent (=== false), so users with profiles never hit this branch.
-  if (hasStoredProfile === false) return null;
+  if (hasStoredProfile === false && !writingOwnerCurrent) return null;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -892,6 +912,7 @@ function ResultsContent() {
       </button>
 
       <StorageStatusBanner />
+      <ProfileRefreshBanner locale={locale} refresh={profileRefresh} />
 
       {/*
         Favorite/status SAVE failures are per-opportunity now (favSaveErrors/
@@ -917,6 +938,7 @@ function ResultsContent() {
         </div>
       )}
 
+      {profileAvailable && <>
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
@@ -954,7 +976,7 @@ function ResultsContent() {
         <ProfileCompletenessHint profile={profile} onEdit={() => router.push('/')} t={t} />
       )}
 
-      {(loading || !data) && (
+      {!error && (loading || !data) && (
         <div className="space-y-3 mb-8">
           <div className="skeleton h-11 rounded-xl" />
           <div className="flex flex-wrap gap-2">
@@ -1009,7 +1031,7 @@ function ResultsContent() {
         </div>
       )}
 
-      {loading && (
+      {loading && !error && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
           {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} />
@@ -1017,16 +1039,24 @@ function ResultsContent() {
         </div>
       )}
 
+      {resultSession.resetNotice && (
+        <p role="status" data-testid="results-return-reset" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          {t('results.returnReset')}
+        </p>
+      )}
       {error && (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <AlertCircle className="w-10 h-10 text-red-500" />
           <p className="text-gray-700 font-medium">{error}</p>
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              if (errorCode === 'MATCH_TYPE_REQUIRED' || errorCode === 'PROFILE_INPUT_LIMIT_EXCEEDED' || errorCode === 'PROFILE_INPUT_INVALID') router.push('/');
+              else window.location.reload();
+            }}
             className="text-sm text-indigo-600 underline hover:text-indigo-700"
           >
-            {t('common.retry')}
+            {t(errorCode === 'MATCH_TYPE_REQUIRED' ? 'results.chooseOpportunityTypes' : errorCode === 'PROFILE_INPUT_LIMIT_EXCEEDED' || errorCode === 'PROFILE_INPUT_INVALID' ? 'profileInput.editProfile' : 'common.retry')}
           </button>
         </div>
       )}
@@ -1046,6 +1076,10 @@ function ResultsContent() {
             />
           ) : (
             <MatchList
+              returnUrl={buildResultsUrl(urlState)}
+              sessionId={resultSession.sessionId}
+              viewedIds={resultSession.viewedIds}
+              onViewOpportunity={resultSession.rememberOpportunity}
               matches={paginated}
               profile={profile}
               highlightSet={highlightSet}
@@ -1062,6 +1096,7 @@ function ResultsContent() {
               interactionsUnready={interactionsLoading || interactionsError}
               feedback={feedback}
               onDraftEmail={openEmailModal}
+              onOpenResume={openResumeModal}
               onToggleFavorite={handleToggleFav}
               onTrackInteraction={handleTrackInteraction}
               onRetryFavSave={retryFavSave}
@@ -1078,7 +1113,7 @@ function ResultsContent() {
         </div>
       )}
 
-      {loading && (
+      {loading && !error && (
         <div
           className="fixed top-12 left-0 right-0 z-40"
           role="progressbar"
@@ -1096,26 +1131,39 @@ function ResultsContent() {
         </div>
       )}
 
-      {profile && emailTargetLive && (
+      </>}
+
+      {writingSession && writingOwnerCurrent && (writingSession.kind === 'email' ? (
         <ColdEmailModal
-          isOpen={emailModal.open}
-          onClose={closeEmailModal}
-          profile={profile}
-          opportunityId={emailModal.opportunityId}
-          opportunityTitle={emailModal.opportunityTitle}
-          opportunitySchool={emailModal.opportunitySchool}
-          // The row as this page currently sees it, re-resolved every render.
-          // Undefined while a refetch is in flight or the row has gone, which
-          // fails the follow-up chips closed rather than letting them write a
-          // reminder against a posture nobody has re-read.
-          reminderTarget={data?.results?.find(
-            (m) => m.opportunity.id === emailModal.opportunityId,
-          )?.opportunity}
+          isOpen
+          onClose={closeWritingSession}
+          profile={profileAvailable && profile ? profile : writingSession.profile}
+          profileAvailable={profileAvailable}
+          opportunityId={writingSession.opportunity.id}
+          opportunityTitle={(currentWritingTarget ?? writingSession.opportunity).title ?? t('results.opportunityFallback')}
+          opportunitySchool={(currentWritingTarget ?? writingSession.opportunity).school ?? null}
+          targetReady={writingTargetReady}
+          targetChecking={loading || (!error && profileAvailable && !writingViewCurrent)}
+          profileRefresh={profileRefresh}
+          target={currentWritingTarget ?? writingSession.opportunity}
+          reminderTarget={writingTargetReady ? currentWritingTarget : undefined}
           onContactConfirmed={(record) => {
-            if (record?.type) noteContactConfirmed(emailModal.opportunityId, record.type);
+            noteContactConfirmed(writingSession.opportunity.id, record?.type ?? null);
           }}
         />
-      )}
+      ) : (
+        <ResumeWorkspaceModal
+          isOpen
+          onClose={closeWritingSession}
+          onCloseRequestChange={registerResumeCloseRequest}
+          profile={profileAvailable && profile ? profile : writingSession.profile}
+          profileAvailable={profileAvailable}
+          opportunity={currentWritingTarget ?? writingSession.opportunity}
+          targetReady={writingTargetReady}
+          targetChecking={loading || (!error && profileAvailable && !writingViewCurrent)}
+          profileRefresh={profileRefresh}
+        />
+      ))}
 
       {helpOpen && <KeyboardHelpDialog onClose={() => setHelpOpen(false)} t={t} />}
 

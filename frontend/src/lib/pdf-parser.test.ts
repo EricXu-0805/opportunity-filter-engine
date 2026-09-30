@@ -1,27 +1,40 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+import type { createPdfResourceLoaders } from './pdf-resources';
+type Loaders = ReturnType<typeof createPdfResourceLoaders>;
+type DocumentOptions = {
+  data: ArrayBuffer; cMapUrl: string; cMapPacked: boolean; standardFontDataUrl: string;
+  CMapReaderFactory: Loaders['CMapReaderFactory']; StandardFontDataFactory: Loaders['StandardFontDataFactory'];
+  useWorkerFetch: boolean;
+};
+
 const globalWorkerOptions = { workerSrc: '' };
-const mockGetDocument = vi.fn<(opts: { data: ArrayBuffer }) => { promise: Promise<MockPdf> }>();
+const mockGetDocument = vi.fn<(opts: DocumentOptions) => { promise: Promise<MockPdf> }>();
 
 vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: globalWorkerOptions,
-  getDocument: (opts: { data: ArrayBuffer }) => mockGetDocument(opts),
+  getDocument: (opts: DocumentOptions) => mockGetDocument(opts),
 }));
 
 import { parseResumePDF } from './pdf-parser';
+import { MAX_RESUME_TEXT_CHARACTERS } from './resume-input';
 
 type MockPdf = {
   numPages: number;
-  getPage: (n: number) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str: string }> }> }>;
+  destroy: () => Promise<void>;
+  getPage: (n: number) => Promise<{
+    cleanup: () => void;
+    getTextContent: () => Promise<{ items: Array<{ str: string; hasEOL?: boolean } | { type: string }> }>;
+  }>;
 };
 
 function fakePdf(pages: string[]): MockPdf {
   return {
     numPages: pages.length,
+    destroy: async () => {},
     getPage: async (n: number) => ({
-      getTextContent: async () => ({
-        items: (pages[n - 1] ?? '').split(' ').map((str) => ({ str })),
-      }),
+      cleanup: () => {},
+      getTextContent: async () => ({ items: [{ str: pages[n - 1] ?? '' }] }),
     }),
   };
 }
@@ -57,6 +70,14 @@ describe('parseResumePDF — worker bootstrap + IO', () => {
     const arg = mockGetDocument.mock.calls[0][0];
     expect(arg).toHaveProperty('data');
     expect(arg.data).toBeInstanceOf(ArrayBuffer);
+    expect(arg).toMatchObject({
+      cMapUrl: '/pdfjs/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/pdfjs/standard_fonts/',
+      useWorkerFetch: false,
+    });
+    expect(arg.cMapUrl).not.toMatch(/https?:|cdn/);
+    expect(arg.standardFontDataUrl).not.toMatch(/https?:|cdn/);
   });
 
   it('concatenates page texts across every page returned by numPages', async () => {
@@ -283,12 +304,14 @@ describe('parseResumePDF — research interests capture', () => {
 });
 
 describe('parseResumePDF — success response shape', () => {
-  it('caps raw_text at 8000 characters (multi-page resumes feed the tailor flow)', async () => {
-    const longBody = 'Python '.repeat(2000);
-    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([longBody])) });
+  it('retains text and evidence beyond 8,000 and 20,000 characters across pages', async () => {
+    const pages = ['Earlier experience. '.repeat(1200), 'Research: Python 数据分析\nFinal source marker'];
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(pages)) });
     const res = await parseResumePDF(fakeFile());
     expect(res.success).toBe(true);
-    expect(res.raw_text.length).toBe(8000);
+    expect(res.raw_text).toBe(pages.join('\n'));
+    expect(res.raw_text).toContain('Final source marker');
+    expect(res.skill_evidence.find((hit) => hit.skill === 'Python')?.line).toContain('数据分析');
   });
 
   it('builds the success message with the extracted counts', async () => {
@@ -371,4 +394,92 @@ describe('parseResumePDF — the inferred experience level is gone', () => {
     expect('experience_level' in out).toBe(false);
   });
 
+});
+
+
+describe('complete supported resume input', () => {
+  it.each(['文', '🧪'])('counts %s as one Unicode character and accepts the exact limit', async (character) => {
+    const text = character.repeat(MAX_RESUME_TEXT_CHARACTERS);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([text])) });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.success).toBe(true);
+    expect(res.raw_text).toBe(text);
+  });
+
+  it('refuses oversize text without a partial replacement and releases PDF resources', async () => {
+    const pdf = fakePdf(['x'.repeat(MAX_RESUME_TEXT_CHARACTERS), 'tail']);
+    const destroy = vi.spyOn(pdf, 'destroy');
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdf) });
+    const res = await parseResumePDF(fakeFile());
+    expect(res).toMatchObject({ success: false, error_code: 'text_too_long', raw_text: '', extracted_skills: [] });
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves PDF.js line/page boundaries and ignores non-text marked content', async () => {
+    const cleanup = vi.fn();
+    const pdf: MockPdf = {
+      numPages: 2, destroy: vi.fn(async () => {}),
+      getPage: async (page) => ({ cleanup, getTextContent: async () => ({ items: page === 1 ? [
+        { type: 'beginMarkedContent' }, { str: 'Experience', hasEOL: true },
+        { str: '• Built' }, { str: 'a Python parser', hasEOL: true },
+        { str: '• 分析研究数据', hasEOL: true },
+      ] : [{ str: 'Final page' }] }) }),
+    };
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdf) });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.raw_text).toBe('Experience\n• Built a Python parser\n• 分析研究数据\n\nFinal page');
+    expect(cleanup).toHaveBeenCalledTimes(2);
+    expect(pdf.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports pages without text rather than claiming the whole PDF was read', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(['Readable page', '', 'Tail'])) });
+    const res = await parseResumePDF(fakeFile());
+    expect(res.success).toBe(true);
+    expect(res.pages_without_text).toEqual([2]);
+    expect(res.raw_text).toBe('Readable page\n\nTail');
+  });
+
+  it('releases the document when a later page fails; no partial result is returned', async () => {
+    const pdf = fakePdf(['First', 'Second']);
+    const destroy = vi.spyOn(pdf, 'destroy');
+    vi.spyOn(pdf, 'getPage').mockRejectedValue(new Error('corrupt page'));
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdf) });
+    await expect(parseResumePDF(fakeFile())).rejects.toThrow('corrupt page');
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('PDF resource failures cannot become a partial successful upload', () => {
+  it.each(['cmap', 'standard-font'] as const)('rejects nonempty text after PDF.js swallows a %s failure', async (resource) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const pdf = fakePdf(['English survives while Chinese disappears']);
+    const destroy = vi.spyOn(pdf, 'destroy');
+    mockGetDocument.mockImplementation((options) => {
+      pdf.getPage = async () => ({
+        cleanup: () => {},
+        getTextContent: async () => {
+          const read = resource === 'cmap'
+            ? new options.CMapReaderFactory({ baseUrl: options.cMapUrl, isCompressed: options.cMapPacked })
+              .fetch({ name: 'UniGB-UCS2-H' })
+            : new options.StandardFontDataFactory({ baseUrl: options.standardFontDataUrl })
+              .fetch({ filename: 'FoxitSerif.pfb' });
+          // This is the installed PDF.js ErrorFont path: the resource promise
+          // rejects, but the page still resolves with the remaining text.
+          await read.catch(() => undefined);
+          return { items: [{ str: 'English survives while Chinese disappears' }] };
+        },
+      });
+      return { promise: Promise.resolve(pdf) };
+    });
+    try {
+      const result = await parseResumePDF(fakeFile());
+      expect(result).toMatchObject({
+        success: false, error_code: 'pdf_resources_unavailable', raw_text: '', extracted_skills: [],
+      });
+      expect(result.message).not.toContain('/pdfjs');
+      expect(destroy).toHaveBeenCalledTimes(1);
+    } finally { vi.unstubAllGlobals(); }
+  });
 });

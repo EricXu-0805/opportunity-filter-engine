@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockSignIn = vi.fn();
 const mockSignInExisting = vi.fn();
@@ -20,7 +20,7 @@ const mockOAuth = vi.fn();
 const mockOAuthExisting = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
-  getAuthState: () => mockGetAuthState(),
+  getAuthState: (...args: unknown[]) => mockGetAuthState(...args),
   onAuthChange: (cb: (s: unknown) => void) => mockOnAuthChange(cb),
   signInOrLinkEmail: (email: string, redirect: string) => mockSignIn(email, redirect),
   signInExistingEmail: (email: string, redirect: string) => mockSignInExisting(email, redirect),
@@ -41,7 +41,7 @@ vi.mock('@/i18n/client', () => ({
 
 // Closure-bound auth modal context state. Each test resets via
 // vi.clearAllMocks + sets initial phase via the wrapper.
-let modalState: { open: boolean; phase: string } = { open: true, phase: 'auto' };
+let modalState: { open: boolean; phase: string; reason?: string } = { open: true, phase: 'auto' };
 const setPhaseMock = vi.fn((p: string) => { modalState = { ...modalState, phase: p }; });
 const closeModalMock = vi.fn(() => { modalState = { ...modalState, open: false }; });
 
@@ -49,7 +49,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
   useAuthModal: () => ({
     open: modalState.open,
     phase: modalState.phase,
-    reason: null,
+    reason: modalState.reason ?? null,
     openModal: vi.fn(),
     closeModal: closeModalMock,
     setPhase: setPhaseMock,
@@ -80,6 +80,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  mockOnAuthChange.mockImplementation(() => () => {});
 });
 
 describe('AuthModal — gating', () => {
@@ -112,6 +113,60 @@ describe('AuthModal — auto phase resolution', () => {
 describe('AuthModal — signin phase', () => {
   beforeEach(() => {
     mockGetAuthState.mockResolvedValue(ANON);
+  });
+
+  it('sends a real existing-account sign-in link for a forced formal-session sign-in', async () => {
+    modalState = { open: true, phase: 'signin' };
+    mockGetAuthState.mockResolvedValue(PERMANENT);
+    mockSignInExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
+    render(<AuthModal />);
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalled());
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(mockSignInExisting).toHaveBeenCalledWith('eric@illinois.edu', expect.stringContaining('/auth/callback')));
+    expect(mockSignIn).not.toHaveBeenCalled(); expect(setPhaseMock).toHaveBeenCalledWith('sent');
+  });
+
+  it('does not claim a link was sent when contact reauthentication fails', async () => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockGetAuthState.mockReturnValue(new Promise(() => {}));
+    mockSignInExisting.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'Please wait' });
+    render(<AuthModal />);
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(mockSignInExisting).toHaveBeenCalled());
+    expect(mockSignIn).not.toHaveBeenCalled(); expect(setPhaseMock).not.toHaveBeenCalledWith('sent');
+  });
+
+  it('uses the current auth state rather than the earlier modal snapshot for forced sign-in', async () => {
+    modalState = { open: true, phase: 'signin' };
+    mockGetAuthState.mockResolvedValueOnce(PERMANENT).mockResolvedValue(ANON);
+    mockSignIn.mockResolvedValue({ ok: true, mode: 'link-anon', message: 'check inbox' });
+    render(<AuthModal />);
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalledTimes(1));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(mockSignIn).toHaveBeenCalled());
+    expect(mockSignInExisting).not.toHaveBeenCalled();
+  });
+
+  it('restores the submit button after a rejected reauthentication request without claiming success', async () => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockGetAuthState.mockResolvedValue(PERMANENT);
+    mockSignInExisting.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
+    render(<AuthModal />);
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    expect(await screen.findByText('auth.modal.signin.sendUnconfirmed')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.signin.submit')).not.toBeDisabled();
+    expect(setPhaseMock).not.toHaveBeenCalledWith('sent');
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(setPhaseMock).toHaveBeenCalledWith('sent'));
+    expect(mockSignInExisting).toHaveBeenCalledTimes(2);
   });
 
   it('shows the form and a privacy line', async () => {
@@ -457,5 +512,77 @@ describe('AuthModal — signout-confirm phase', () => {
     await waitFor(() => {
       expect(sessionStorage.getItem('ofe_just_signed_out')).toBe('1');
     });
+  });
+});
+
+
+function heldAuth<T = unknown>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+describe('AuthModal — auth snapshot recovery', () => {
+  it('reports a failed strict auth read and recovers on explicit retry', async () => {
+    mockGetAuthState.mockRejectedValueOnce(new Error('private SDK details')).mockResolvedValue(PERMANENT);
+    render(<AuthModal />);
+    expect(await screen.findByTestId('auth-state-error')).toHaveTextContent('auth.modal.signin.stateReadError');
+    expect(screen.queryByText('private SDK details')).toBeNull();
+    expect(mockGetAuthState).toHaveBeenCalledWith({ throwOnError: true });
+    fireEvent.click(screen.getByTestId('auth-state-retry'));
+    expect(await screen.findByText('auth.modal.account.title')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-state-error')).toBeNull();
+  });
+
+  it.each(['success', 'failure'] as const)('a live auth event wins over late initial %s', async kind => {
+    const initial = heldAuth(); let notify!: (value: unknown) => void;
+    mockGetAuthState.mockReturnValue(initial.promise);
+    mockOnAuthChange.mockImplementation(cb => { notify = cb; return () => {}; });
+    render(<AuthModal />);
+    act(() => notify(PERMANENT));
+    expect(screen.getByText('auth.modal.account.title')).toBeInTheDocument();
+    await act(async () => { if (kind === 'success') initial.resolve(ANON); else initial.reject(new Error('stale failure')); });
+    expect(screen.getByText('auth.modal.account.title')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-state-error')).toBeNull();
+  });
+
+  it('does not show the previous account snapshot while reopening', async () => {
+    mockGetAuthState.mockResolvedValueOnce(PERMANENT);
+    const view = render(<AuthModal />);
+    expect(await screen.findByText('auth.modal.account.title')).toBeInTheDocument();
+    modalState = { open: false, phase: 'auto' }; view.rerender(<AuthModal />);
+    const next = heldAuth(); mockGetAuthState.mockReturnValue(next.promise);
+    modalState = { open: true, phase: 'auto' }; view.rerender(<AuthModal />);
+    expect(screen.queryByText('auth.modal.account.title')).toBeNull();
+    expect(screen.queryByText('eric@illinois.edu')).toBeNull();
+    await act(async () => next.resolve(ANON));
+    expect(screen.getByText('auth.modal.signin.headline')).toBeInTheDocument();
+  });
+
+  it('ignores a rejected initial auth read after close and cleans up its subscription', async () => {
+    const initial = heldAuth(); const stop = vi.fn();
+    mockGetAuthState.mockReturnValueOnce(initial.promise).mockResolvedValue(PERMANENT);
+    mockOnAuthChange.mockReturnValue(stop);
+    const view = render(<AuthModal />);
+    modalState = { open: false, phase: 'auto' }; view.rerender(<AuthModal />);
+    expect(stop).toHaveBeenCalledTimes(1);
+    await act(async () => initial.reject(new Error('closed modal failure')));
+    modalState = { open: true, phase: 'auto' }; view.rerender(<AuthModal />);
+    expect(await screen.findByText('auth.modal.account.title')).toBeInTheDocument();
+    expect(screen.queryByTestId('auth-state-error')).toBeNull();
+  });
+
+  it('does not send an email when the forced sign-in current-session check fails', async () => {
+    modalState = { open: true, phase: 'signin' };
+    mockGetAuthState.mockResolvedValueOnce(PERMANENT).mockRejectedValue(new Error('auth check failed'));
+    render(<AuthModal />);
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalledTimes(1));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } }); fireEvent.submit(input.closest('form')!);
+    expect(await screen.findByText('auth.modal.signin.sendUnconfirmed')).toBeInTheDocument();
+    expect(mockSignIn).not.toHaveBeenCalled(); expect(mockSignInExisting).not.toHaveBeenCalled();
+    expect(screen.getByText('auth.modal.signin.submit')).not.toBeDisabled();
+    expect(setPhaseMock).not.toHaveBeenCalledWith('sent');
   });
 });

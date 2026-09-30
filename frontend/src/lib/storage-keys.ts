@@ -18,6 +18,12 @@ export const STORAGE_KEYS = {
   // all; only the merge/claim/settle pass reads across lanes, and that pass
   // runs under an exclusive Web Lock (see profile-journal.ts).
   PROFILE_JOURNAL_PREFIX: 'ofe_profile_journal_v1_',
+  // Frozen application attempts survive uncertain requests and reloads.
+  APPLICATION_ATTEMPT_PREFIX: 'ofe_application_attempt_v1_',
+  APPLICATION_MATERIAL_ATTEMPT_PREFIX: 'ofe_application_material_attempt_v1_',
+  APPLICATION_MATERIAL_DELETE_PREFIX: 'ofe_application_material_delete_v1_',
+  CONTACT_MATERIAL_ATTEMPT_PREFIX: 'ofe_contact_material_attempt_v1_',
+  CONTACT_MATERIAL_DELETE_PREFIX: 'ofe_contact_material_delete_v1_',
   // _v2: #226 switched the opt-in rerank from the (regressing) embedding
   // blend to the LLM "AI smart match" — pre-#226 caches held embedding-ranked
   // sets. _v3: the publication trust boundary — pre-boundary caches hold
@@ -49,6 +55,7 @@ export const STORAGE_KEYS = {
   // written beside the data (never wrapped around it) — see identity-owner.ts.
   LOCAL_IDENTITY_OWNER: 'ofe_local_identity_owner',
   TAILOR_DRAFT_PREFIX: 'ofe_tailor_draft_',
+  COLD_EMAIL_DRAFT_PREFIX: 'ofe_cold_email_draft_v1_',
   ANCHOR_3FAV_DISMISSED: 'ofe_anchor_3fav_dismissed',
   JUST_SIGNED_OUT: 'ofe_just_signed_out',
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',

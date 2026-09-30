@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getShortlistOpportunities } from '@/lib/api';
+import { loadTrackerTargets } from '@/lib/tracker-targets';
 import {
   dismissInteraction,
   getAuthState,
@@ -14,7 +14,7 @@ import {
   type InteractionRecord,
   type InteractionType,
 } from '@/lib/supabase';
-import { captureOwnerToken } from '@/lib/identity-owner';
+import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
 import type { Opp } from '@/app/favorites/types';
 
@@ -379,6 +379,7 @@ export function useTrackerData(): UseTrackerDataResult {
 
   const load = useCallback((generation: number) => {
     const attempt = ++loadAttemptRef.current;
+    const owner = captureOwnerToken();
     const stale = () => identityGenerationRef.current !== generation || loadAttemptRef.current !== attempt;
     setLoading(true);
     setError(false);
@@ -402,7 +403,7 @@ export function useTrackerData(): UseTrackerDataResult {
         // partial result, and its own unavailableIds accounting is what
         // this hook relies on below rather than re-deriving a "missing"
         // set by hand.
-        const { opportunities, unavailableIds } = await getShortlistOpportunities(ids);
+        const { opportunities, unavailableIds } = await loadTrackerTargets(ids, owner);
         if (stale()) return;
         const opps = opportunities as unknown as Opp[];
         const byId = new Map(opps.map((o) => [o.id, o]));
@@ -443,6 +444,7 @@ export function useTrackerData(): UseTrackerDataResult {
     let cancelled = false;
     let liveEventSeen = false;
     let lastIdentity: string | null | undefined;
+    let lastOwnerScope: string | undefined;
 
     function resetForIdentity() {
       const generation = ++identityGenerationRef.current;
@@ -471,8 +473,13 @@ export function useTrackerData(): UseTrackerDataResult {
     }
 
     function applyIdentity(identity: string | null) {
-      if (identity === lastIdentity) return; // not a real transition (e.g. TOKEN_REFRESHED re-reporting the same uid)
+      const token = captureOwnerToken();
+      const ownerScope = JSON.stringify([token.uid, token.epoch, token.generation, isOwnerTokenValid(token, token.uid)]);
+      // The initial session can arrive before local ownership is ready. A
+      // later same-account notification must retry that now-valid read.
+      if (identity === lastIdentity && ownerScope === lastOwnerScope) return;
       lastIdentity = identity;
+      lastOwnerScope = ownerScope;
       resetForIdentity();
     }
 

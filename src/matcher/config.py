@@ -191,7 +191,7 @@ RESPONSIVENESS_BONUS = _env_float("OFE_RESPONSIVENESS_BONUS", 2.0)
 # Centralized here with every other score-shaping tunable so they participate
 # in the matcher fingerprint below: re-pointing the model or weight via env
 # changes conclusions and must therefore change MATCHER_VERSION.
-LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5")
+LLM_RERANK_MODEL = os.environ.get("OFE_LLM_RERANK_MODEL", "anthropic/claude-sonnet-5.5")
 LLM_RERANK_TOPK = int(_env_float("OFE_LLM_RERANK_TOPK", 20))
 # Candidates per provider call. The batches run concurrently, so this is the
 # refine pass's wall-clock knob, not a cost knob: the candidate payload is
@@ -284,7 +284,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # selected opportunity types are a set; the high-priority shortlist has a
 # strict canonical top-N cap (including ties), with ordered lower-band cutoffs.
 # No layer weights changed, so the manual base retires the old conclusions.
-_MATCHER_VERSION_BASE = "14"
+# 15: selected types are hard result-universe boundaries. Major affinity and
+# unknown record types can no longer admit an opportunity the user did not
+# select; invalidate snapshots and explanations built with that old filter.
+# 16: inferred major and skill labels, and optional skills, are positive-only
+# relevance signals. They cannot manufacture missing qualifications or score
+# below unknown requirements. Retire cached scores and gap explanations.
+_MATCHER_VERSION_BASE = "16"
 
 
 def _matcher_fingerprint() -> str:

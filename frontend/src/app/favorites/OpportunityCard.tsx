@@ -15,6 +15,9 @@ import {
   Star,
 } from 'lucide-react';
 import Badge from '@/components/Badge';
+import ImportSourceText from '@/components/ImportSourceText';
+import { importSourceInfo } from '@/lib/import-source';
+import ImportSuggestions from '@/components/ImportSuggestions';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
@@ -56,6 +59,10 @@ export interface OpportunityCardProps {
   onToggleExpand: (id: string) => void;
   onToggleSelect: (opp: Opp) => void;
   onRemove: (opp: Opp) => void;
+  removeDisabled?: boolean;
+  removing?: boolean;
+  onSaveAccount?: (opp: Opp) => void;
+  accountSaveDisabled?: boolean;
   onOpenEmailModal: (opp: Opp) => void;
   /**
    * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
@@ -83,6 +90,10 @@ export function OpportunityCard({
   onToggleExpand,
   onToggleSelect,
   onRemove,
+  removeDisabled = false,
+  removing = false,
+  onSaveAccount,
+  accountSaveDisabled = false,
   onOpenEmailModal,
   onOpenTailorModal,
   tailorDisabled,
@@ -189,6 +200,8 @@ export function OpportunityCard({
               <button
                 type="button"
                 onClick={() => onRemove(opp)}
+                disabled={removeDisabled}
+                aria-busy={removing}
                 className="p-1.5 rounded-lg hover:bg-red-50 transition-colors shrink-0"
                 aria-label={opp._customId ? t('favorites.removeCustomAria') : t('favorites.removeAria')}
               >
@@ -201,6 +214,8 @@ export function OpportunityCard({
             )}
           </div>
 
+          {opp._customId && onSaveAccount && <button type="button" disabled={accountSaveDisabled} onClick={() => onSaveAccount(opp)}
+            className="mb-4 rounded-lg border border-indigo-200 px-3 py-2 text-sm text-indigo-700 disabled:opacity-50">{t('privateImport.prepareSave')}</button>}
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             {opp._customId && (
               <Badge variant="indigo" dot>
@@ -333,11 +348,11 @@ export function OpportunityCard({
                   </div>
                 )}
 
-                {desc && (
-                  <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">
-                    {desc}
-                  </p>
-                )}
+                {desc && (isCustom ? (
+                  <ImportSourceText key={opp.id} text={desc} info={opp.import_source ?? importSourceInfo(undefined, desc)} t={t} />
+                ) : (
+                  <p className="text-[13px] text-gray-500 leading-relaxed line-clamp-4">{desc}</p>
+                ))}
 
                 {showsOfferTerms && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                   <div>
@@ -348,6 +363,10 @@ export function OpportunityCard({
                       ))}
                     </div>
                   </div>
+                )}
+
+                {isCustom && opp.import_suggestions && (
+                  <ImportSuggestions skills={opp.import_suggestions.skills} summary={opp.import_suggestions.summary} t={t} />
                 )}
 
                 {opp.keywords && opp.keywords.length > 0 && (

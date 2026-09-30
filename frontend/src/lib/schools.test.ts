@@ -130,7 +130,9 @@ describe('registry — switcher metadata', () => {
 
     const pending = SCHOOLS.filter((s) => s.coverage.campusOpportunities === 'pending');
     expect(pending).toEqual([]);
-    expect(SCHOOLS.length).toBe(114);
+    // Both directions matter: checking registered schools alone missed UNC,
+    // whose backend coverage existed but had no selectable frontend entry.
+    expect(SCHOOLS.map((s) => s.slug).sort()).toEqual(Object.keys(file.schools).sort());
   });
 
   it('slugs are unique', () => {
@@ -138,12 +140,23 @@ describe('registry — switcher metadata', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it('every school ships a catalog with positive counts', () => {
-    // Exact count-vs-data parity is asserted in catalogs/catalogs.test.ts.
-    for (const school of SCHOOLS) {
-      expect(school.catalog, school.slug).not.toBeNull();
+  it('reports catalog availability separately from campus coverage', () => {
+    // Adding a school must not invent an academic catalog to unlock its data.
+    expect(SCHOOLS.filter((s) => !s.catalog).map((s) => s.slug)).toEqual(['unc']);
+    for (const school of SCHOOLS.filter((s) => s.catalog)) {
       expect(school.catalog!.colleges, school.slug).toBeGreaterThan(0);
       expect(school.catalog!.majors, school.slug).toBeGreaterThan(0);
     }
+  });
+
+  it('recognizes UNC mail and exposes its existing faculty coverage', () => {
+    expect(detectSchoolFromEmail('student@unc.edu')).toMatchObject({
+      kind: 'school', school: { slug: 'unc' },
+    });
+    expect(detectSchoolFromEmail('student@cs.unc.edu')).toMatchObject({
+      kind: 'school', school: { slug: 'unc' },
+    });
+    expect(bySlug('unc')).toMatchObject({ catalog: null });
+    expect(stats.schools.unc.faculty_contact_count).toBeGreaterThan(0);
   });
 });

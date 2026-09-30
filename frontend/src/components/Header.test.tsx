@@ -68,6 +68,12 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
   });
 
+  it('names the home link even when its visible brand text is hidden on narrow screens', () => {
+    render(<Header />);
+    const home = screen.getByRole('link', { name: 'JoinALab · auth.callback.goHome' });
+    expect(home).toHaveAttribute('href', '/');
+  });
+
   it('does not advertise hidden Fellowships or Roadmap routes', () => {
     // The nav builds itself from RELEASE_SCOPE; a link the route 404s is the
     // failure this guards, in whichever direction the switch sits.
@@ -327,5 +333,24 @@ describe('Header', () => {
     });
 
     expect(findMatchesHrefs().every((h) => h === '/')).toBe(true);
+  });
+});
+
+
+describe('mobile feedback entry', () => {
+  it('opens the single footer form without leaving the page and closes the navigation', () => {
+    const reveal = vi.fn();
+    render(<><Header /><footer><button id="site-feedback-trigger" onClick={reveal}>Footer feedback</button></footer></>);
+    const toggle = screen.getByTestId('mobile-nav-toggle');
+    const entry = screen.getByTestId('mobile-feedback-link');
+    expect(entry).toHaveAttribute('href', '#site-feedback');
+    expect(entry).toHaveAttribute('tabindex', '-1');
+    fireEvent.click(toggle);
+    expect(entry).toHaveAttribute('tabindex', '0');
+    fireEvent.click(entry);
+    expect(reveal).toHaveBeenCalledOnce();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(entry).toHaveAttribute('tabindex', '-1');
+    expect(screen.getAllByText('Footer feedback')).toHaveLength(1);
   });
 });

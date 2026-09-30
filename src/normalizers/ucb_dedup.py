@@ -153,6 +153,49 @@ def find_duplicate_groups(opportunities: list[dict]) -> list[list[int]]:
     return [sorted(g) for g in groups.values() if len(g) > 1]
 
 
+def _same_source_target(left: dict, right: dict) -> bool:
+    """Stricter than display dedup: source evidence requires one exact target.
+
+    A shared program URL or similar title is insufficient. This does not prove
+    identity for a new project; it only permits updating the existing target's
+    source bundle while preserving its canonical id and all other fields.
+    """
+    def text(value):
+        return " ".join(value.casefold().split()) if isinstance(value, str) else ""
+    url = canonicalize_url(left.get("url") or left.get("source_url"))
+    if not url or url != canonicalize_url(right.get("url") or right.get("source_url")):
+        return False
+    if left.get("source_type") != right.get("source_type"):
+        return False
+    for key in ("title", "organization"):
+        if not text(left.get(key)) or text(left.get(key)) != text(right.get(key)):
+            return False
+    return text(left.get("pi_name")) == text(right.get("pi_name"))
+
+
+def _source_update_for_duplicate(existing: dict, incoming: dict) -> dict | None:
+    from copy import deepcopy
+
+    from ..collectors.uiuc_faculty import carry_forward_contact_instruction_sources
+    from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY
+
+    supplied = incoming.get("metadata") or {}
+    if not any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY)):
+        return None
+    candidate = deepcopy(existing)
+    metadata = candidate.setdefault("metadata", {})
+    for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY):
+        metadata.pop(key, None)
+        if key in supplied:
+            metadata[key] = deepcopy(supplied[key])
+    carry_forward_contact_instruction_sources(existing, candidate)
+    previous = existing.get("metadata") or {}
+    if all((key in metadata) == (key in previous) and metadata.get(key) == previous.get(key)
+           for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY)):
+        return None
+    return candidate
+
+
 def dedupe_against_existing(
     new_opps: list[dict], existing: list[dict]
 ) -> tuple[list[dict], int]:
@@ -193,6 +236,24 @@ def dedupe_against_existing(
         if is_dup and o.get("id") not in new_ids - {o.get("id")}:
             # Only drop when it is NOT a same-id upsert of an existing record.
             if o.get("id") not in {e.get("id") for e in existing}:
+                # Keep the canonical project identity, but do not discard a
+                # newer source restriction/withdrawal for that exact target.
+                # Title-only/shared-program matches cannot transfer evidence.
+                from ..contact_instructions import CAPTURE_KEY, PAGES_KEY, SOURCE_KEY
+
+                supplied = o.get("metadata")
+                has_bundle = isinstance(supplied, dict) and any(key in supplied for key in (CAPTURE_KEY, SOURCE_KEY, PAGES_KEY))
+                matches = {item.get("id"): item for item in [*existing, *kept]
+                           if item.get("id") and _same_source_target(item, o)} if has_bundle else {}
+                if len(matches) == 1:
+                    canonical = next(iter(matches.values()))
+                    update = _source_update_for_duplicate(canonical, o)
+                    if update is not None:
+                        prior_index = next((i for i, item in enumerate(kept) if item.get("id") == canonical["id"]), None)
+                        if prior_index is None:
+                            kept.append(update)
+                        else:
+                            kept[prior_index] = update
                 dropped += 1
                 continue
         if cu:

@@ -6,9 +6,11 @@ vi.mock('@/i18n/client', () => ({
   useLocale: () => 'en',
 }));
 vi.mock('@/lib/analytics', () => ({ trackOnce: vi.fn(), track: vi.fn() }));
+// Next keeps this object stable while the query is unchanged.
+const fixedSearchParams = vi.hoisted(() => new URLSearchParams(''));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(''),
+  useSearchParams: () => fixedSearchParams,
   usePathname: () => '/',
 }));
 vi.mock('@/lib/api', () => ({
@@ -73,10 +75,11 @@ import HomePage from './page';
 import type { LoadedProfile, ProfilePatchIntent } from '@/lib/supabase';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
-function emitAuth(uid: string | null) {
-  act(() => {
+async function emitAuth(uid: string | null) {
+  await act(async () => {
     advanceOwnerEpoch(uid);
-    if (uid) syncLocalIdentityOwner(uid);
+    // Match the real auth adapter: local owner sync completes before delivery.
+    if (uid) await syncLocalIdentityOwner(uid);
     authChangeCb?.({ user: uid ? { id: uid } : null });
   });
 }
@@ -107,28 +110,86 @@ describe('HomePage — identity-private child state', () => {
 
   it('discards the previous identity\'s resume upload state on an account switch', async () => {
     render(<HomePage />);
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     // next/dynamic({ssr:false}) resolves the (mocked) module asynchronously.
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('pick-resume'));
     expect(screen.getByTestId('resume-filename').textContent).toBe('u1-resume.pdf');
 
-    emitAuth('home-page-u2');
+    resolveProfileLoad = null;
+    await emitAuth('home-page-u2');
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    expect(screen.queryByTestId('resume-filename')).toBeNull();
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
 
     await waitFor(() => expect(screen.getByTestId('resume-filename').textContent).toBe(''));
   });
 
   it('keeps the uploader mounted across a same-identity re-observation', async () => {
     render(<HomePage />);
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
-    emitAuth('home-page-u2');
+    resolveProfileLoad = null;
+    await emitAuth('home-page-u2');
+    expect(screen.queryByTestId('pick-resume')).toBeNull();
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
 
     fireEvent.click(screen.getByTestId('pick-resume'));
-    emitAuth('home-page-u2'); // token refresh, not a switch
+    const uploader = screen.getByTestId('resume-filename');
+    await emitAuth('home-page-u2'); // token refresh, not a switch
 
+    expect(screen.getByTestId('resume-filename')).toBe(uploader);
     expect(screen.getByTestId('resume-filename').textContent).toBe('u1-resume.pdf');
   });
+
+  it.each(['unchanged', 'failed', 'deleted'] as const)(
+    'keeps the selected resume mounted while a background read is checking and then %s',
+    async (outcome) => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+      render(<HomePage />);
+      await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+      await act(async () => { resolveProfileLoad?.(VALID_ROW); });
+      await waitFor(() => expect(screen.getByTestId('pick-resume')).toBeTruthy());
+      fireEvent.click(screen.getByTestId('pick-resume'));
+      const uploader = screen.getByTestId('resume-filename');
+      resolveProfileLoad = null;
+      rejectProfileLoad = null;
+
+      fireEvent.focus(window);
+      await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+      expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent('home.actions.profileRefreshing');
+      expect(screen.getByTestId('generate-matches')).toBeDisabled();
+      expect(screen.queryByTestId('hydration-note')).toBeNull();
+      expect(screen.getByTestId('resume-filename')).toBe(uploader);
+      expect(uploader).toHaveTextContent('u1-resume.pdf');
+
+      await act(async () => {
+        if (outcome === 'failed') rejectProfileLoad?.(new Error('background read failed'));
+        else resolveProfileLoad?.(outcome === 'deleted' ? null : VALID_ROW);
+      });
+      if (outcome === 'unchanged') {
+        await waitFor(() => expect(screen.queryByTestId('home-profile-refresh-status')).toBeNull());
+        expect(screen.getByTestId('generate-matches')).not.toBeDisabled();
+      } else {
+        await waitFor(() => expect(screen.getByTestId('home-profile-refresh-status')).toHaveTextContent(
+          outcome === 'deleted' ? 'home.actions.profileRefreshDeleted' : 'home.actions.profileRefreshFailed',
+        ));
+        expect(screen.getByTestId('generate-matches')).toBeDisabled();
+      }
+      expect(screen.queryByTestId('hydration-note')).toBeNull();
+      expect(screen.getByTestId('resume-filename')).toBe(uploader);
+      expect(uploader).toHaveTextContent('u1-resume.pdf');
+    },
+  );
+
 });
 
 describe('HomePage — Generate is unavailable until the profile row has loaded', () => {
@@ -177,7 +238,7 @@ describe('HomePage — Generate is unavailable until the profile row has loaded'
     // A different account, whose row cannot be read.
     resolveProfileLoad = null;
     rejectProfileLoad = null;
-    emitAuth('home-page-u3');
+    await emitAuth('home-page-u3');
     await waitFor(() => expect(rejectProfileLoad).toBeTruthy());
     await act(async () => { rejectProfileLoad?.(new Error('read failed')); });
 
@@ -185,5 +246,14 @@ describe('HomePage — Generate is unavailable until the profile row has loaded'
       screen.getByTestId('hydration-note').textContent,
     ).toBe('home.actions.profileLoadFailed'));
     expect(screen.getByTestId('generate-matches')).toBeDisabled();
+
+    // Page wiring must reach the real hook read retry, not the write retry.
+    resolveProfileLoad = null;
+    fireEvent.click(screen.getByTestId('retry-profile-load'));
+    await waitFor(() => expect(resolveProfileLoad).toBeTruthy());
+    expect(screen.getByTestId('generate-matches')).toBeDisabled();
+    await act(async () => { resolveProfileLoad?.(VALID_ROW); });
+    await waitFor(() => expect(screen.getByTestId('generate-matches')).not.toBeDisabled());
+    expect(screen.queryByTestId('retry-profile-load')).toBeNull();
   });
 });

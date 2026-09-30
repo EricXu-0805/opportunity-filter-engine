@@ -13,6 +13,9 @@ import {
   generateColdEmail,
   getEmailVariants,
   refineEmail,
+  validateEmailDraft,
+  tailorResume,
+  renovateResume,
   parseGitHubProfile,
   getStats,
   wakeBackend,
@@ -24,6 +27,12 @@ import {
   deriveDesiredFields,
 } from './api';
 import type { ProfileData } from './types';
+
+// These tests cover HTTP contracts; SDK/auth failures have dedicated suites.
+vi.mock('./supabase', () => ({
+  getRevealAccessToken: async () => null,
+  refreshRevealAccessToken: async () => null,
+}));
 
 const fetchMock = vi.fn();
 
@@ -654,7 +663,99 @@ describe('cold-email endpoints', () => {
     expect(body.instruction).toBe('make warmer');
     expect(body.opportunity_id).toBe('opp-1');
     expect(body.profile.school).toBe('UIUC');
+    expect(body).not.toHaveProperty('selection');
+    expect(body).not.toHaveProperty('subject');
+    expect(body.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: '', entries: [] });
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
+
+  describe('refineEmail selected-text HTTP contract', () => {
+    const targetVersion = `wt1:${'a'.repeat(64)}`;
+    const contactContext = { version: 1, purpose: 'first_contact' } as const;
+    const receipts = { opportunity_id: 'opp-1', target_version: targetVersion,
+      contact_context_receipt: { version: 1, purpose: 'first_contact', context_sig: 'b'.repeat(64) },
+      experience_usage: { version: 1, eligible_count: 1, selected: [{ id: 'role', revision: 2, excerpt: 'I wrote parser tests.', source: { kind: 'manual' } }],
+        excluded: [], needs_review: false, notices: [] } };
+    const repeated = '本人贡献😀\nI wrote parser tests.';
+    const prefix = 'Dear Pat Lee,\r\n\r\n' + repeated + '\r\n\r\n';
+    const currentBody = prefix + repeated + '\r\n\r\nBest,\r\nAlex';
+    const selection = { start_utf16: prefix.length, end_utf16: prefix.length + repeated.length, text: repeated };
+
+    it('sends the exact second UTF-16 range, complete body, subject and confirmed evidence envelope without trimming', async () => {
+      const entry = { id: 'role', revision: 2, status: 'confirmed', source: { kind: 'manual' }, text: 'I wrote parser tests.' } as const;
+      const profile = makeProfile({ resume_text: '原简历😀\r\nFull source tail.  ', experience_entries: [entry] });
+      const subject = '  Research inquiry 王😀\n完整主题  ', instruction = '  Keep my own role.\n保留团队归属。  ';
+      const response = { ...receipts, scope: 'selection', outcome: 'proposal', method: 'llm',
+        proposal: { start_utf16: selection.start_utf16, end_utf16: selection.end_utf16,
+          original_text: repeated, replacement: '本人写测试😀\nI wrote parser tests.', base_body_sha256: 'c'.repeat(64) } };
+      fetchMock.mockResolvedValue(okJson(response));
+      const result = await refineEmail(currentBody, instruction, profile, 'opp-1', {
+        selection, subject, expectedTargetVersion: targetVersion, contactContext,
+      });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0][0]).toBe('/api/cold-email/refine');
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      expect(init.method).toBe('POST');
+      const body = JSON.parse(init.body as string);
+      expect(body.current_body).toBe(currentBody);
+      expect(body.selection).toEqual(selection);
+      expect(body.selection.start_utf16).toBeGreaterThan(currentBody.indexOf(repeated));
+      expect(body.subject).toBe(subject);
+      expect(body.instruction).toBe(instruction);
+      expect(body.expected_target_version).toBe(targetVersion);
+      expect(body.contact_context).toEqual(contactContext);
+      expect(body.experience_evidence).toEqual({ version: 2, resume_master: null, resume_text: profile.resume_text, entries: [entry] });
+      expect(body.profile.school).toBe('UIUC');
+      expect(result).toEqual(response);
+    });
+
+    it.each(['provider_unavailable', 'invalid_output', 'fabrication', 'unchanged'] as const)(
+      'preserves a no_change %s response and receipts without inventing a body or retrying', async reason => {
+        const response = { ...receipts, scope: 'selection', outcome: 'no_change', method: 'none', reason };
+        fetchMock.mockResolvedValue(okJson(response));
+        const result = await refineEmail(currentBody, 'Revise this passage', makeProfile(), 'opp-1', { selection });
+        expect(result).toEqual(response);
+        expect(result).not.toHaveProperty('body');
+        expect(result).not.toHaveProperty('proposal');
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).subject).toBe('');
+        expect(fetchMock).toHaveBeenCalledOnce();
+      },
+    );
+
+    it('does not add selection-only subject to legacy whole-body requests and preserves legacy receipts', async () => {
+      const response = { ...receipts, body: 'Legacy revised body.', method: 'local' };
+      fetchMock.mockResolvedValue(okJson(response));
+      expect(await refineEmail(currentBody, 'Make it shorter', undefined, 'opp-1', {
+        subject: 'Not a selection request', expectedTargetVersion: targetVersion, contactContext,
+      })).toEqual(response);
+      const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(sent).not.toHaveProperty('selection');
+      expect(sent).not.toHaveProperty('subject');
+      expect(sent.current_body).toBe(currentBody);
+      expect(sent.profile).toBeNull();
+      expect(sent.expected_target_version).toBe(targetVersion);
+      expect(sent.contact_context).toEqual(contactContext);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('keeps an empty replacement proposal intact for explicit selected-text deletion', async () => {
+      const response = { ...receipts, scope: 'selection', outcome: 'proposal', method: 'llm',
+        proposal: { start_utf16: selection.start_utf16, end_utf16: selection.end_utf16,
+          original_text: repeated, replacement: '', base_body_sha256: 'c'.repeat(64) } };
+      fetchMock.mockResolvedValue(okJson(response));
+      expect(await refineEmail(currentBody, 'Delete this selected passage', makeProfile(), 'opp-1', { selection })).toEqual(response);
+      expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('surfaces HTTP 422 after exactly one selected-text request without whole-body replay', async () => {
+      fetchMock.mockResolvedValue(badResponse(422, JSON.stringify({ detail: [{ type: 'value_error', loc: ['body', 'selection'], msg: 'Invalid selection' }] })));
+      await expect(refineEmail(currentBody, 'Revise this passage', makeProfile(), 'opp-1', { selection }))
+        .rejects.toMatchObject({ status: 422 });
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body).selection).toEqual(selection);
+    });
+  });
+
 });
 
 describe('github + stats', () => {
@@ -789,10 +890,10 @@ describe('deriveDesiredFields', () => {
     expect(deriveDesiredFields(undefined)).toEqual([]);
   });
 
-  it('dedupes case-insensitively and caps at 20', () => {
+  it('dedupes case-insensitively and preserves terms after the twentieth', () => {
     expect(deriveDesiredFields('AI, ai, Ai')).toEqual(['AI']);
     const many = Array.from({ length: 30 }, (_, i) => `field${i}`).join(', ');
-    expect(deriveDesiredFields(many).length).toBe(20);
+    expect(deriveDesiredFields(many).length).toBe(30);
   });
 
   it('does not split the substring "and" inside a word', () => {
@@ -1016,4 +1117,106 @@ describe('retryable server errors are retried, not shown', () => {
     await expect(sendMatchesEmail('a@b.edu', [])).rejects.toThrow(ApiError);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+});
+
+
+describe('opportunity-type request intent', () => {
+  const combinations = [
+    ['research'], ['summer_program'], ['internship'],
+    ['research', 'summer_program'], ['research', 'internship'],
+    ['summer_program', 'internship'], ['research', 'summer_program', 'internship'],
+  ];
+
+  it.each(combinations.map((types) => ({ types })))('sends exactly $types for Match', async ({ types }) => {
+    fetchMock.mockResolvedValue(okJson({ results: [] }));
+    await getMatches(makeProfile({ seeking_types: types }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.seeking_type).toEqual(types);
+  });
+
+  it('defaults only a missing legacy field; an explicit empty array stays empty', async () => {
+    fetchMock.mockImplementation(async () => okJson({ results: [] }));
+    await getMatches(makeProfile());
+    await getMatches(makeProfile({ seeking_types: [] }));
+    const bodies = fetchMock.mock.calls.map((call) => JSON.parse((call[1] as RequestInit).body as string));
+    expect(bodies[0].seeking_type).toEqual(['research', 'summer_program']);
+    expect(bodies[1].seeking_type).toEqual([]);
+  });
+
+  it('does not invent a selection after removing release-disabled preferences', async () => {
+    fetchMock.mockResolvedValue(okJson({ results: [] }));
+    await getMatches(makeProfile({ seeking_types: ['fellowship', ' Fellowship '] }));
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).seeking_type).toEqual([]);
+  });
+
+  it('still permits material requests without a selected Match type', async () => {
+    fetchMock.mockImplementation(async () => okJson({}));
+    const profile = makeProfile({ seeking_types: [] });
+    await getEmailVariants(profile, 'opp-1');
+    await tailorResume(profile, 'opp-1', ['Built a parser']);
+    await renovateResume(profile, 'opp-1', []);
+    for (const path of ['/api/cold-email/variants', '/api/tailor', '/api/tailor/renovate']) {
+      const call = fetchMock.mock.calls.find(([url]) => url === path);
+      expect(call, path).toBeDefined();
+      expect(JSON.parse((call![1] as RequestInit).body as string).profile.seeking_type).toEqual([]);
+    }
+  });
+});
+
+
+describe('Tailor server target version transport', () => {
+  it('sends the checked version unchanged, separately from code rules', async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    const token = 'wt1:' + 'a'.repeat(64);
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser'], {
+      expectedTargetVersion: token, expectedPipelineVersion: 'w13.2', locale: 'zh',
+    });
+    const call = fetchMock.mock.calls.find(([url]) => url === '/api/tailor');
+    expect(JSON.parse((call![1] as RequestInit).body as string)).toMatchObject({
+      opportunity_id: 'opp-1', original_bullets: ['Built a parser'],
+      expected_target_version: token, expected_pipeline_version: 'w13.2', locale: 'zh',
+    });
+  });
+  it('leaves an omitted legacy version absent and does not silently discard an explicitly bad one', async () => {
+    fetchMock.mockImplementation(async () => okJson({}));
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser']);
+    await tailorResume(makeProfile(), 'opp-1', ['Built a parser'], { expectedTargetVersion: '' });
+    const calls = fetchMock.mock.calls.filter(([url]) => url === '/api/tailor');
+    expect(JSON.parse((calls[0][1] as RequestInit).body as string)).not.toHaveProperty('expected_target_version');
+    expect(JSON.parse((calls[1][1] as RequestInit).body as string)).toHaveProperty('expected_target_version', '');
+  });
+});
+
+describe('manual email checking request', () => {
+  it('sends complete text, profile, confirmed materials and target binding without generation', async () => {
+    const profile = makeProfile({ research_interests: 'Full interests 🧪', experience_entries: [{ id: 'e1', revision: 1, status: 'confirmed', text: 'My work', source: { kind: 'manual' } }] });
+    fetchMock.mockResolvedValue(okJson({ outcome: 'review_required', issues: ['unsupported_attachment_claim'] }));
+    const body = 'Full body 🧪\n最後一段'; const subject = 'Exact subject'; const controller = new AbortController();
+    await validateEmailDraft(subject, body, profile, 'target-A', { expectedTargetVersion: 'wt1:' + 'a'.repeat(64), contactContext: { version: 1, purpose: 'first_contact' }, signal: controller.signal });
+    expect(fetchMock).toHaveBeenCalledOnce(); const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/cold-email/validate'); const sent = JSON.parse(init.body);
+    expect(sent).toMatchObject({ subject, body, opportunity_id: 'target-A', expected_target_version: 'wt1:' + 'a'.repeat(64), profile: { research_interests_text: profile.research_interests }, experience_evidence: { version: 2, entries: profile.experience_entries } });
+  });
+});
+
+
+describe('import rejection codes', () => {
+  it.each([importByUrl, importByText])('preserves an oversized-input code without exposing server material', async (importer) => {
+    fetchMock.mockResolvedValueOnce(badResponse(413, JSON.stringify({ detail: {
+      code: 'import_input_too_large', message: 'PRIVATE INPUT SHOULD NOT DISPLAY', retryable: false,
+    } })));
+    const result = await importer('original material');
+    expect(result).toEqual({ ok: false, error_code: 'import_input_too_large', llm_enriched: false });
+    expect(JSON.stringify(result)).not.toContain('PRIVATE');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['invalid_html', 'unsupported_content_type', 'empty_page', 'metadata_only', 'access_page', 'javascript_required'])(
+    'preserves the unreadable-source code for %s without leaking source details', async (reason) => {
+      fetchMock.mockResolvedValueOnce(badResponse(422, JSON.stringify({ detail: {
+        code: 'import_source_unreadable', reason, message: 'PRIVATE PAGE URL OR BODY', retryable: false,
+      } })));
+      expect(await importByUrl('https://example.com')).toEqual({ ok: false, error_code: 'import_source_unreadable', llm_enriched: false });
+    },
+  );
 });

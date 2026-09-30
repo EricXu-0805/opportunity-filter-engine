@@ -1,3 +1,6 @@
+import type { EmailTargetConditions } from './email-target-conditions';
+import type { ResearchContext } from './research-context';
+
 // ── Filter values shared across surfaces ─────────────────────────────
 /**
  * The deadline facet's accepted values.
@@ -32,6 +35,91 @@ export interface SkillWithLevel {
   evidence?: string;
 }
 
+// ── Student-confirmed experience evidence ──────────────────────────
+export type ExperienceSource =
+  | { kind: 'manual' }
+  | {
+    kind: 'resume';
+    /** SHA-256 of the full exact UTF-8 resume text, lowercase hexadecimal. */
+    signature: string;
+    quote: string;
+    /** Unicode codepoint offsets, with end exclusive (not UTF-16 offsets). */
+    start: number;
+    end: number;
+  };
+
+export interface ExperienceEntry {
+  id: string;
+  revision: number;
+  status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
+  text: string;
+  source: ExperienceSource;
+}
+
+// ── Complete résumé master (source-preserving; independent of AI budgets) ──
+export interface ResumeFact {
+  id: string;
+  revision: number;
+  status: 'candidate' | 'confirmed' | 'rejected' | 'withdrawn';
+  value: string; // exact full text; dates/authors remain strings, no inferred parsing
+  source: ExperienceSource;
+}
+export interface ResumeExperienceRef { id: string; revision: number }
+export interface ResumeRawRange { start: number; end: number }
+export interface ResumeBasics {
+  name?: ResumeFact;
+  email?: ResumeFact;
+  phone?: ResumeFact;
+  location?: ResumeFact;
+  links: Array<{ id: string; label: string; url: ResumeFact }>;
+}
+export interface ResumeEducationItem {
+  id: string;
+  school?: ResumeFact;
+  degree?: ResumeFact;
+  field?: ResumeFact;
+  start?: ResumeFact;
+  end?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export interface ResumeActivityItem {
+  id: string;
+  kind: 'employment' | 'research' | 'project' | 'volunteer' | 'other';
+  title?: ResumeFact;
+  organization?: ResumeFact;
+  location?: ResumeFact;
+  start?: ResumeFact;
+  end?: ResumeFact;
+  url?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export interface ResumePublicationItem {
+  id: string;
+  title?: ResumeFact;
+  authors?: ResumeFact;
+  venue?: ResumeFact;
+  date?: ResumeFact;
+  publication_status?: ResumeFact;
+  url?: ResumeFact;
+  doi?: ResumeFact;
+  details: ResumeExperienceRef[];
+}
+export type ResumeMasterSectionKind = 'basics' | 'education' | 'activities' | 'publications' | 'skills' | 'other';
+export interface ResumeMasterV1 {
+  version: 1;
+  id: string;
+  revision: number;
+  source_signature: string | null;
+  basics: ResumeBasics;
+  education: ResumeEducationItem[];
+  activities: ResumeActivityItem[];
+  publications: ResumePublicationItem[];
+  skills: ResumeFact[]; // exact display text; never updates ProfileData.skills or its levels
+  other_sections: Array<{ id: string; heading: string; items: ResumeFact[] }>;
+  section_order: string[]; // exactly ['basics','education','activities','publications','skills', ...other section IDs], reorderable
+  unmapped_ranges: ResumeRawRange[]; // sorted nonoverlapping; requires source_signature when nonempty
+}
+
 // ── Frontend Profile (form state) ────────────────────────────────────
 export interface ProfileData {
   institution: string;
@@ -55,6 +143,10 @@ export interface ProfileData {
   research_interests: string;
   skills: SkillWithLevel[];
   resume_text?: string;
+  /** Missing in older profiles: no student-confirmed experience evidence. */
+  experience_entries?: ExperienceEntry[];
+  /** Missing/null means the student has not created a complete master yet. */
+  resume_master?: ResumeMasterV1 | null;
   coursework?: string[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
@@ -139,6 +231,10 @@ export interface PublicTargetTruth {
 }
 
 export interface OpportunityEligibility {
+  min_gpa?: number | string | null;
+  skills_preferred?: string[] | null;
+  work_auth_notes?: string | null;
+  first_time_researchers?: boolean | null;
   international_friendly: string; // "yes" | "no" | "unknown"
   preferred_year: string[];
   majors: string[];
@@ -151,6 +247,7 @@ export interface OpportunityApplication {
   requires_resume: string;
   requires_recommendation?: string;
   requires_cover_letter?: string;
+  requires_transcript?: string | null;
   contact_method: string;
   application_url?: string | null;
 }
@@ -217,6 +314,13 @@ export type FacultyAvailabilityStatus =
   | 'research_inactive';
 
 export interface Opportunity {
+  target_conditions?: EmailTargetConditions;
+  /** Validated source snapshot; available does not imply an opening or user reading. */
+  research_context?: ResearchContext;
+  lab_context?: import('./lab-context').LabContext;
+  contact_instructions?: import('./contact-instructions').ContactInstructions;
+  /** Opaque server receipt for the public writing snapshot; absent in legacy/list data. */
+  writing_target_version?: string;
   id: string;
   title: string;
   organization: string;
@@ -423,7 +527,65 @@ export type ColdEmailFallbackReason =
   | 'fabrication'
   | 'insufficient_evidence';
 
+export interface ExperienceUsage {
+  version: 1;
+  eligible_count: number;
+  selected: Array<{
+    id: string;
+    revision: number;
+    excerpt: string;
+    source: { kind: 'manual' } | { kind: 'resume'; signature: string; start: number; end: number };
+    context?: { master_id: string; master_revision: number; section: 'activities' | 'education' | 'publications'; id: string; kind?: string; fields: Record<string, ResumeFact> } | null;
+  }>;
+  excluded: Array<{
+    id: string;
+    revision: number;
+    reason: 'candidate' | 'rejected' | 'withdrawn' | 'source_signature_mismatch' | 'source_quote_mismatch' | 'activity_reference_mismatch' | 'activity_ambiguous';
+  }>;
+  needs_review: boolean;
+  notices: string[];
+}
+
+export type EmailContactPurpose = 'first_contact' | 'referral' | 'follow_up';
+
+/** User-confirmed message context, separate from profile facts and delivery status. */
+export interface EmailContactContext {
+  version: 1;
+  purpose: EmailContactPurpose;
+  referral?: { referrer_name: string; referral_note: string; confirmed: true };
+  follow_up?: {
+    sent_confirmed: true;
+    previous_message: string;
+    sent_on?: string;
+    reply_status: 'unknown' | 'no_reply' | 'received';
+    reply_text?: string;
+  };
+  availability?: { text: string; confirmed: true };
+  /** User attestation only; the server checks the current target's verified publication list. */
+  paper_reading?: {
+    title: string;
+    year?: number | null;
+    work_id?: string;
+    snapshot_version?: string;
+    level: 'title_only' | 'abstract' | 'full_text';
+    confirmed: true;
+  };
+}
+
+export interface EmailContactContextReceipt {
+  version: 1;
+  purpose: EmailContactPurpose;
+  /** SHA-256 of canonical normalized context, lowercase hex without a prefix. */
+  context_sig: string;
+}
+
 export interface ColdEmailResponse {
+  target_conditions?: EmailTargetConditions;
+  contact_context_receipt?: EmailContactContextReceipt;
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
+  experience_usage?: ExperienceUsage;
   subject: string;
   body: string;
   recipient_email: string;
@@ -456,6 +618,9 @@ export interface ColdEmailResponse {
 export type ColdEmailEngine = 'template' | 'ai';
 
 export interface EmailVariant {
+  target_conditions?: EmailTargetConditions;
+  contact_context_receipt?: EmailContactContextReceipt;
+  experience_usage?: ExperienceUsage;
   id: string;
   label: string;
   subject: string;
@@ -471,6 +636,12 @@ export interface EmailVariant {
 }
 
 export interface EmailVariantsResponse {
+  target_conditions?: EmailTargetConditions;
+  contact_context_receipt?: EmailContactContextReceipt;
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
+  experience_usage?: ExperienceUsage;
   variants: EmailVariant[];
   lab_type?: LabType | null;
   /** W10b: one status for the whole response — it is a property of the
@@ -519,6 +690,8 @@ export interface TailoredBullet {
  *   - `all_bullets_rejected`      — every bullet was flagged → passthrough
  */
 export interface TailorResponse {
+  /** Exact server snapshot used for this result, separate from code pipeline rules. */
+  target_version?: string | null;
   tailored_bullets: TailoredBullet[];
   method: 'ai' | 'fallback';
   warnings: string[];
@@ -549,10 +722,24 @@ export interface ResumeSectionInput {
   bullets: ResumeBulletInput[];
 }
 
+/** Character offsets are Unicode code points, not JavaScript string offsets. */
+export interface ResumeProcessingCoverage {
+  input_characters: number;
+  chunks: Array<{
+    start: number;
+    end: number;
+    method: 'ai' | 'heuristic';
+    reason?: string | null;
+  }>;
+  ai_chunks: number;
+  heuristic_chunks: number;
+}
+
 export interface StructureResumeResponse {
   sections: ResumeSectionInput[];
-  method: 'ai' | 'heuristic';
+  method: 'ai' | 'heuristic' | 'mixed';
   warnings: string[];
+  processing?: ResumeProcessingCoverage;
 }
 
 export type RenovatedVariantSource = 'macro' | 'ai' | 'user';
@@ -581,12 +768,18 @@ export interface RenovatedSection {
 }
 
 export interface RenovateResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
 }
 
 export interface BulletOptimizeResponse {
+  /** Server receipt for the exact public target used by this writing action. */
+  opportunity_id?: string | null;
+  target_version?: string | null;
   text: string;
   source_evidence: string;
   changed: boolean;
@@ -595,6 +788,7 @@ export interface BulletOptimizeResponse {
 
 /** The working document the modal edits and supabase persists (doc jsonb). */
 export interface RenovationDoc {
+  processing?: ResumeProcessingCoverage;
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
@@ -602,6 +796,10 @@ export interface RenovationDoc {
    *  Absent on legacy docs — no staleness claim is made for them (unknown
    *  is not stale, and not fresh). */
   resume_sig?: string;
+  /** Digest of the full profile used for this draft; absent on older drafts. */
+  profile_sig?: string;
+  /** SHA-256 of the exact provided public target payload (detail or match-card projection); older drafts are unbound. */
+  target_sig?: string;
 }
 
 // ── Resume ───────────────────────────────────────────────────────────
@@ -618,6 +816,8 @@ export interface ResumeSkillEvidence {
 }
 
 export interface ResumeParseResponse {
+  error_code?: 'text_too_long' | 'no_readable_text' | 'pdf_resources_unavailable';
+  pages_without_text?: number[];
   extracted_skills: string[];
   skill_evidence: ResumeSkillEvidence[];
   extracted_coursework: string[];

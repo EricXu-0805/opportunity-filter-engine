@@ -1,0 +1,407 @@
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { webcrypto } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProfileViewSnapshot } from '@/lib/profile-sync';
+import type { OwnerToken } from '@/lib/identity-owner';
+import { sourceDigest } from '@/lib/experience-evidence';
+import { createEmptyResumeMaster } from '@/lib/resume-master';
+import type { ResumeFact } from '@/lib/types';
+import { DEFAULT_PROFILE } from '@/app/home/types';
+import type { ResumeSupplementOptions, useResumeSupplement } from './use-resume-supplement';
+import ResumeSupplementPanel, { type ResumeSupplementPanelProps } from './ResumeSupplementPanel';
+
+const mocked = vi.hoisted(() => ({ controller: null as unknown, options: null as unknown, locale: 'en' }));
+vi.mock('./use-resume-supplement', () => ({ useResumeSupplement: (options: unknown) => { mocked.options = options; return mocked.controller; } }));
+vi.mock('@/i18n/client', () => ({ useLocale: () => mocked.locale }));
+type Controller = ReturnType<typeof useResumeSupplement>;
+const owner: OwnerToken = { uid: 'panel-owner-a', epoch: 4, generation: 0 };
+const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
+function view(token = owner): ProfileViewSnapshot {
+  const master = createEmptyResumeMaster('master-one');
+  master.activities = [
+    { id: 'project-one', kind: 'project', title: fact('title-one', 'Sensor project'), details: [{ id: 'old-entry', revision: 2 }] },
+    { id: 'project-two', kind: 'research', title: fact('title-two', 'Literature study'), details: [] },
+  ];
+  const profile = { ...DEFAULT_PROFILE, resume_master: master, experience_entries: [{ id: 'old-entry', revision: 2,
+    status: 'confirmed' as const, text: 'Existing full source; I did not lead the team.', source: { kind: 'manual' as const } }] };
+  return { viewId: 'view-one', baseProfile: profile, renderedProfile: profile, revision: 1, token,
+    identityGeneration: token.epoch, source: 'hydration' };
+}
+function controller(overrides: Partial<Controller> = {}): Controller {
+  return { view: view(), acceptedView: view(), phase: 'ready', error: null, ownerScopeKey: 'owner-a', operationLocked: false,
+    confirmedEntryId: null, acceptCurrent: vi.fn().mockResolvedValue(undefined), assign: vi.fn(), confirm: vi.fn().mockResolvedValue({ durable: false, reason: 'record-failed' }),
+    retryRecorded: vi.fn().mockResolvedValue({ status: 'error', message: 'unavailable' }),
+    baseline: vi.fn((activityId: string) => ({ view: current().view!, activityId, targetKey: (mocked.options as ResumeSupplementOptions).targetKey })), ...overrides };
+}
+function current(): Controller { return mocked.controller as Controller; }
+function mount(props: Partial<ResumeSupplementPanelProps> = {}) {
+  const full = { owner, targetKey: 'target-one-v1', ...props };
+  return { ...render(<ResumeSupplementPanel {...full} />), props: full };
+}
+const task = () => screen.getByRole('textbox', { name: 'What was the task?' });
+const confirm = () => screen.getByRole('checkbox', { name: /(?:I confirm the selected information|I reviewed the current activity and profile, and confirm the selected information) is accurate\./ });
+const submit = () => screen.getByRole('button', { name: 'Confirm and add to my master résumé' });
+function fill(value = 'I helped test the sensor; I did not lead the project.') {
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
+  fireEvent.change(task(), { target: { value } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Include task' }));
+}
+function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>((yes) => { resolve = yes; }); return { promise, resolve }; }
+beforeEach(() => { vi.stubGlobal('crypto', webcrypto); mocked.locale = 'en'; mocked.controller = controller(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+describe('resume supplement panel', () => {
+  it('only submits explicitly selected complete answers after the user confirms accuracy, with optional outcome left empty', async () => {
+    const onDirtyChange = vi.fn(); const onAcceptedProfile = vi.fn();
+    mount({ onDirtyChange, onAcceptedProfile });
+    const text = '  Tested C++ sensors.\nI helped; I did not lead or measure an outcome.  ';
+    fill(text);
+    fireEvent.change(screen.getByRole('textbox', { name: 'What methods or tools did you use?' }), { target: { value: 'Unselected private draft' } });
+    const preview = within(screen.getByRole('region', { name: 'Information to confirm' }));
+    expect(preview.getByText((_, element) => element?.tagName === 'PRE' && element.textContent === `Task: ${text}`)).toBeInTheDocument();
+    expect(preview.queryByText('Unselected private draft')).toBeNull();
+    expect(submit()).toBeDisabled(); expect(current().confirm).not.toHaveBeenCalled();
+    fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const [draft, baseline] = vi.mocked(current().confirm).mock.calls[0];
+    expect(draft).toMatchObject({ activityId: 'project-one', selected: ['task'], answers: { task: text, outcome: '', outcomeBasis: '' } });
+    expect(draft.entryId).toEqual(expect.any(String)); expect(baseline.view).toBe(current().view);
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true); expect(onAcceptedProfile).not.toHaveBeenCalled();
+    expect((mocked.options as ResumeSupplementOptions).onAcceptedProfile).toBe(onAcceptedProfile);
+  });
+
+  it('keeps the same entry identity across retry, prevents double submission and requires re-confirmation after edits', async () => {
+    const pending = deferred<Awaited<ReturnType<Controller['confirm']>>>();
+    vi.mocked(current().confirm).mockReturnValueOnce(pending.promise);
+    mount(); fill(); fireEvent.click(confirm()); fireEvent.click(submit()); fireEvent.click(submit());
+    expect(current().confirm).toHaveBeenCalledTimes(1);
+    const originalId = vi.mocked(current().confirm).mock.calls[0][0].entryId;
+    await act(async () => pending.resolve({ durable: false, reason: 'record-failed' }));
+    fireEvent.change(task(), { target: { value: 'Rechecked original task, without invented numbers.' } });
+    expect(confirm()).not.toBeChecked(); expect(submit()).toBeDisabled();
+    fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(current().confirm).mock.calls[1][0].entryId).toBe(originalId);
+    expect(vi.mocked(current().confirm).mock.calls[1][0].answers.task).toContain('without invented numbers');
+  });
+
+  it('keeps focus while typing and clears the truth confirmation after changing activity or selected fields', async () => {
+    mount(); fill(); fireEvent.click(confirm());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-two' } });
+    expect(confirm()).not.toBeChecked();
+    fireEvent.click(confirm()); fireEvent.click(screen.getByRole('checkbox', { name: 'Include method' }));
+    expect(confirm()).not.toBeChecked();
+    const input = task(); const user = userEvent.setup(); await user.clear(input); await user.type(input, 'Continuous detail text');
+    expect(input).toHaveFocus(); expect(input).toHaveValue('Continuous detail text');
+  });
+
+  it('shows complete over-limit text without truncating it or allowing confirmation', () => {
+    mount(); const long = '否'.repeat(6001) + '\nTail survives.'; fill(long);
+    expect(task()).toHaveValue(long);
+    const preview = screen.getByRole('region', { name: 'Information to confirm' });
+    expect(preview.textContent).toContain(long); expect(preview).toHaveTextContent('too long for one entry');
+    expect(confirm()).toBeDisabled(); expect(submit()).toBeDisabled();
+    expect(current().confirm).not.toHaveBeenCalled();
+  });
+
+  it('clears answers on an owner generation change while retaining them through same-owner target review', async () => {
+    const dirty = vi.fn(); const mounted = mount({ onDirtyChange: dirty }); fill('Answers for this target'); fireEvent.click(confirm());
+    const accept = vi.fn().mockResolvedValue(undefined);
+    mocked.controller = controller({ phase: 'stale', view: null, acceptCurrent: accept });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} targetKey="target-one-v2" />);
+    expect(task()).toHaveValue('Answers for this target'); expect(submit()).toBeDisabled(); expect(confirm()).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Review current materials' })); await waitFor(() => expect(accept).toHaveBeenCalledTimes(1));
+    mocked.controller = controller({ view: { ...view(), viewId: 'reviewed-v2' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} targetKey="target-one-v2" />);
+    expect(task()).toHaveValue('Answers for this target'); expect(confirm()).not.toBeChecked();
+    const nextOwner = { ...owner, generation: 1 };
+    mocked.controller = controller({ view: view(nextOwner) });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} owner={nextOwner} targetKey="target-one-v2" />);
+    expect(task()).toHaveValue(''); expect(screen.getByRole('combobox')).toHaveValue(''); expect(dirty).toHaveBeenLastCalledWith(false);
+  });
+
+  it.each(['load-error', 'not-saved', 'conflict'] as const)('keeps answers through %s and exposes the appropriate recovery action', async (phase) => {
+    const onOpenProfile = vi.fn(); const mounted = mount({ onOpenProfile }); fill();
+    const retry = vi.fn().mockResolvedValue(undefined);
+    mocked.controller = controller({ phase, acceptCurrent: retry, error: 'PRIVATE backend detail must not appear' });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(task()).toHaveValue('I helped test the sensor; I did not lead the project.'); expect(submit()).toBeDisabled();
+    expect(screen.queryByText('PRIVATE backend detail must not appear')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: phase === 'load-error' ? 'Retry reading profile' : 'Review current materials' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+    if (phase !== 'load-error') { fireEvent.click(screen.getByRole('button', { name: 'Review my profile' })); expect(onOpenProfile).toHaveBeenCalledTimes(1); }
+  });
+
+  it.each(['recorded', 'save-unknown'] as const)('locks the original answers and retries the same operation for %s', async (phase) => {
+    const mounted = mount(); fill();
+    const retry = vi.fn().mockResolvedValue({ status: 'error', message: 'still unavailable' });
+    mocked.controller = controller({ phase, operationLocked: true, retryRecorded: retry });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(task()).toBeDisabled(); expect(submit()).toBeDisabled();
+    expect(task()).toHaveValue('I helped test the sensor; I did not lead the project.');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry cloud save' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1)); expect(current().confirm).not.toHaveBeenCalled();
+    if (phase === 'save-unknown') expect(screen.queryByText(/Recorded on this device/)).toBeNull();
+  });
+
+  it('keeps a recorded operation locked even when its target or profile becomes stale', () => {
+    const mounted = mount(); fill();
+    mocked.controller = controller({ phase: 'stale', operationLocked: true });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(task()).toBeDisabled(); expect(submit()).toBeDisabled();
+  });
+
+  it.each(['master', 'activity'] as const)('provides a guarded profile exit when the %s is missing', (kind) => {
+    const missing = view();
+    if (kind === 'master') delete missing.renderedProfile.resume_master;
+    else missing.renderedProfile.resume_master!.activities = [];
+    mocked.controller = controller({ view: missing });
+    const onOpenProfile = vi.fn(); mount({ onOpenProfile });
+    expect(screen.getByRole('combobox')).toBeDisabled(); expect(submit()).toBeDisabled();
+    expect(screen.getByText(kind === 'master' ? 'Create your master résumé before adding details here.'
+      : 'Add a project or experience to your master résumé first.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review my profile' }));
+    expect(onOpenProfile).toHaveBeenCalledTimes(1); expect(current().confirm).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirmed appearance and shows success at the submit button after the saved view changes', async () => {
+    const dirty = vi.fn(); const mounted = mount({ onDirtyChange: dirty }); fill('Confirmed task');
+    fireEvent.change(screen.getByRole('textbox', { name: 'What was the outcome, if known?' }), { target: { value: 'Unselected draft remains private' } });
+    fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const entryId = vi.mocked(current().confirm).mock.calls[0][0].entryId;
+    mocked.controller = controller({ phase: 'saved', confirmedEntryId: entryId, operationLocked: true,
+      view: { ...view(), viewId: 'saved-receipt-view' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(confirm()).toBeChecked(); expect(confirm()).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Added to master résumé' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Confirm and add to my master résumé' })).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'What was the outcome, if known?' })).toHaveValue('Unselected draft remains private');
+    expect(dirty).toHaveBeenLastCalledWith(true);
+    mocked.locale = 'zh'; mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(screen.getByRole('checkbox', { name: '我确认所选内容属实。' })).toBeChecked();
+    expect(screen.getByRole('button', { name: '已加入母版简历' })).toBeDisabled();
+  });
+
+  it('preserves unselected drafts after saved confirmation and starts a new ID only after explicit clearing and accepted refresh', async () => {
+    const dirty = vi.fn(); const mounted = mount({ onDirtyChange: dirty }); fill('Confirmed task only');
+    fireEvent.change(screen.getByRole('textbox', { name: 'What was the outcome, if known?' }), { target: { value: 'Unselected outcome to revisit' } });
+    fireEvent.click(confirm()); fireEvent.click(submit()); await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const savedId = vi.mocked(current().confirm).mock.calls[0][0].entryId;
+    const accept = vi.fn().mockResolvedValue(undefined);
+    mocked.controller = controller({ phase: 'saved', confirmedEntryId: savedId, operationLocked: true, acceptCurrent: accept });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(dirty).toHaveBeenLastCalledWith(true); expect(screen.getByText(/current target draft is unchanged/)).toBeInTheDocument();
+    const ask = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add another detail' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Add another detail' })); expect(accept).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'What was the outcome, if known?' })).toHaveValue('Unselected outcome to revisit');
+    ask.mockReturnValue(true); fireEvent.click(screen.getByRole('button', { name: 'Add another detail' }));
+    await waitFor(() => expect(accept).toHaveBeenCalledTimes(1));
+    mocked.controller = controller({ view: { ...view(), viewId: 'saved-refreshed' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    await waitFor(() => expect(task()).toHaveValue('')); expect(dirty).toHaveBeenLastCalledWith(false);
+    fill('A separate new detail'); fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(current().confirm).mock.calls[0][0].entryId).not.toBe(savedId);
+  });
+
+
+  it('hides private answers immediately when the controller retires an old owner before parent props catch up', () => {
+    const dirty = vi.fn(); const mounted = mount({ onDirtyChange: dirty }); fill('Private old-owner draft');
+    mocked.controller = controller({ phase: 'retired', view: null, operationLocked: true });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(screen.queryByRole('textbox')).toBeNull(); expect(screen.queryByText('Private old-owner draft')).toBeNull();
+    expect(dirty).toHaveBeenLastCalledWith(false);
+  });
+
+  it('does not clear answers when a new-round profile refresh fails', async () => {
+    const mounted = mount(); fill('Already confirmed content'); fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const entryId = vi.mocked(current().confirm).mock.calls[0][0].entryId;
+    mocked.controller = controller({ phase: 'saved', confirmedEntryId: entryId, operationLocked: true });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add another detail' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Add another detail' }));
+    await waitFor(() => expect(current().acceptCurrent).toHaveBeenCalledTimes(1));
+    mocked.controller = controller({ phase: 'load-error' });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    expect(task()).toHaveValue('Already confirmed content'); expect(task()).toBeDisabled();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry reading profile' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Retry reading profile' }));
+    await waitFor(() => expect(current().acceptCurrent).toHaveBeenCalledTimes(1));
+    mocked.controller = controller({ view: { ...view(), viewId: 'fresh-after-retry' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} />);
+    await waitFor(() => expect(task()).toHaveValue('')); expect(task()).toBeEnabled();
+  });
+
+  it('shows concise Chinese questions and never calls the writer for an empty selection', () => {
+    mocked.locale = 'zh'; mount();
+    expect(screen.getByRole('textbox', { name: '你本人具体做了什么？' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '确认并加入简历母版' })).toBeDisabled();
+    expect(screen.getByText(/不必写数字或结果/)).toBeInTheDocument(); expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it('preserves answers, selections and dirty state while a deleted profile pauses confirmation', () => {
+    const dirty = vi.fn(); const onOpenProfile = vi.fn(); const mounted = mount({ onDirtyChange: dirty, onOpenProfile });
+    fill('Unsubmitted answer stays here'); fireEvent.click(confirm());
+    mocked.controller = controller({ phase: 'profile-unavailable', view: null, acceptedView: null });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable={false} />);
+    expect(task()).toHaveValue('Unsubmitted answer stays here');
+    expect(screen.getByRole('checkbox', { name: 'Include task' })).toBeChecked();
+    expect(submit()).toBeDisabled(); expect(confirm()).toBeDisabled(); expect(confirm()).not.toBeChecked();
+    expect(dirty).toHaveBeenLastCalledWith(true); expect((mocked.options as ResumeSupplementOptions).profileAvailable).toBe(false);
+    expect(screen.getByText(/adding information and retrying saves are paused/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Review my profile' })); expect(onOpenProfile).toHaveBeenCalledTimes(1);
+    mocked.controller = controller({ phase: 'stale', view: null, acceptedView: null });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable />);
+    expect(task()).toHaveValue('Unsubmitted answer stays here'); expect(submit()).toBeDisabled();
+    mocked.controller = controller({ view: { ...view(), viewId: 'restored-current-view' } });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable />);
+    expect(confirm()).not.toBeChecked(); expect(submit()).toBeDisabled(); expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it('does not offer a writable retry for a recorded supplement while the parent marks the profile unavailable', () => {
+    const mounted = mount(); fill('Recorded answer');
+    const retry = vi.fn(); mocked.controller = controller({ phase: 'recorded', operationLocked: true, retryRecorded: retry });
+    mounted.rerender(<ResumeSupplementPanel {...mounted.props} profileAvailable={false} />);
+    expect(task()).toHaveValue('Recorded answer'); expect(task()).toBeDisabled();
+    const control = screen.getByRole('button', { name: 'Retry cloud save' }); expect(control).toBeDisabled();
+    fireEvent.click(control); expect(retry).not.toHaveBeenCalled(); expect(current().confirm).not.toHaveBeenCalled();
+  });
+
+});
+
+
+describe('cold email contribution reuse', () => {
+  it('uses the same confirmed supplement controller and keeps contribution wording separate from the team outcome', async () => {
+    mount({ purpose: 'cold_email' });
+    expect(screen.getByText(/Describe your own contribution, separately from the team/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
+    const role = '  I wrote the parser tests. My teammate designed the model; I did not.  ';
+    fireEvent.change(screen.getByRole('textbox', { name: 'What did you personally do?' }), { target: { value: role } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'What was the outcome, if known?' }), { target: { value: 'The team released a prototype; I did not measure improvement.' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include my role' }));
+    fireEvent.click(confirm()); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledTimes(1));
+    const [draft] = vi.mocked(current().confirm).mock.calls[0];
+    expect(draft.selected).toEqual(['personalRole']); expect(draft.answers.personalRole).toBe(role);
+    expect(draft.answers.task).toBe('');
+  });
+  it.each(['en', 'zh'])('explains successful saving without claiming the current email was rewritten (%s)', locale => {
+    mocked.locale = locale;
+    mocked.controller = controller({ phase: 'saved' });
+    mount({ purpose: 'cold_email' });
+    expect(screen.getByText(locale === 'en' ? /Saved to your profile and master résumé. Your current email is kept/ : /已保存到个人资料和简历母版。当前邮件仍保留/)).toBeInTheDocument();
+  });
+});
+
+const recoveredAnswer = () => ({ version: 1 as const, opportunityId: 'opportunity-one', targetKey: 'old-target', entryId: 'recovered-entry', activityId: 'project-one', answers: { task: 'Exact restored task 王', method: 'Unselected retained method', personalRole: '', outcome: '', outcomeBasis: '' }, selected: ['task' as const] });
+describe('recovering an unfinished supplement', () => {
+  it('requires current-material review and a new accuracy confirmation, preserving the original entry identity', async () => {
+    mount({ opportunityId: 'opportunity-one', initialDraft: recoveredAnswer() });
+    expect(task()).toHaveValue('Exact restored task 王'); expect(screen.getByLabelText('What methods or tools did you use?')).toHaveValue('Unselected retained method');
+    expect(confirm()).not.toBeChecked(); expect(confirm()).toBeEnabled(); expect(submit()).toBeDisabled(); expect(current().confirm).not.toHaveBeenCalled();
+    fireEvent.click(confirm()); expect(submit()).toBeEnabled(); fireEvent.click(submit());
+    await waitFor(() => expect(current().confirm).toHaveBeenCalledOnce()); expect(vi.mocked(current().confirm).mock.calls[0][0].entryId).toBe('recovered-entry');
+  });
+  it('requires fresh review after answers, activity, target or hydrated profile change', () => {
+    const m=mount({ opportunityId:'opportunity-one',initialDraft:recoveredAnswer() });
+    const review=confirm;
+    fireEvent.click(review());fireEvent.change(task(),{target:{value:'Edited restored answer'}});expect(review()).not.toBeChecked();expect(submit()).toBeDisabled();
+    fireEvent.click(review());fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-two'}});expect(review()).not.toBeChecked();
+    fireEvent.click(review());mocked.controller=controller({view:{...view(),viewId:'new-current-profile'}});m.rerender(<ResumeSupplementPanel {...m.props}/>);expect(review()).not.toBeChecked();
+    fireEvent.click(review());m.rerender(<ResumeSupplementPanel {...m.props} targetKey="new-target"/>);expect(review()).not.toBeChecked();
+  });
+  it('does not silently replace a removed activity and never re-adds an already saved entry',()=>{
+    const v=view();v.renderedProfile.resume_master!.activities[0].details.push({id:'recovered-entry',revision:1});
+    v.renderedProfile.experience_entries!.push({id:'recovered-entry',revision:1,status:'confirmed',text:'Task: Exact restored task 王',source:{kind:'manual'}});
+    mocked.controller=controller({view:v});mount({opportunityId:'opportunity-one',initialDraft:recoveredAnswer()});
+    expect(screen.getByText('These selected answers are already recorded in your current profile. They will not be added again.')).toBeVisible();
+    expect(screen.getByRole('button',{name:'Added to master résumé'})).toBeDisabled();expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it('blocks a restored entry that now belongs to another activity',()=>{
+    const v=view();v.renderedProfile.resume_master!.activities[1].details.push({id:'recovered-entry',revision:1});
+    v.renderedProfile.experience_entries!.push({id:'recovered-entry',revision:1,status:'confirmed',text:'Task: Exact restored task 王',source:{kind:'manual'}});
+    mocked.controller=controller({view:v});mount({opportunityId:'opportunity-one',initialDraft:recoveredAnswer()});
+    expect(screen.getByRole('alert')).toHaveTextContent('belongs to another activity');expect(submit()).toBeDisabled();expect(current().confirm).not.toHaveBeenCalled();
+  });
+  it.each(['edited', 'withdrawn', 'moved'])('can explicitly discard a %s recovered entry without resubmitting it', async change => {
+    const v = view();
+    v.renderedProfile.experience_entries!.push({ id: 'recovered-entry', revision: change === 'edited' ? 2 : 1,
+      status: change === 'withdrawn' ? 'withdrawn' : 'confirmed', text: change === 'edited' ? 'Later edited text' : 'Task: Exact restored task 王', source: { kind: 'manual' } });
+    v.renderedProfile.resume_master!.activities[change === 'moved' ? 1 : 0].details.push({ id: 'recovered-entry', revision: change === 'edited' ? 2 : 1 });
+    mocked.controller = controller({ view: v });
+    const changed = vi.fn(); mount({ opportunityId: 'opportunity-one', initialDraft: recoveredAnswer(), onDraftSnapshotChange: changed });
+    const discard = screen.getByRole('button', { name: 'Discard recovered answers and start again' });
+    const prompt = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(discard); expect(task()).toHaveValue('Exact restored task 王'); expect(current().acceptCurrent).not.toHaveBeenCalled();
+    prompt.mockReturnValue(true); fireEvent.click(discard);
+    await waitFor(() => expect(task()).toHaveValue(''));
+    expect(current().acceptCurrent).toHaveBeenCalledOnce(); expect(current().confirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox')).toHaveValue(''); expect(confirm()).not.toBeChecked();
+    expect(changed.mock.calls.at(-1)![0].entryId).not.toBe('recovered-entry'); expect(screen.queryByTestId('supplement-recovery-review')).toBeNull();
+  });
+  it('keeps a deleted activity unavailable until the user explicitly selects a current activity', () => {
+    const v = view(); v.renderedProfile.resume_master!.activities.shift(); mocked.controller = controller({view:v});
+    mount({ opportunityId:'opportunity-one', initialDraft:recoveredAnswer() });
+    expect(screen.getByRole('combobox')).toHaveValue('project-one'); expect(screen.getByText('Previously selected activity is unavailable')).toBeInTheDocument();
+    expect(submit()).toBeDisabled(); expect(confirm()).not.toBeChecked();
+    fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-two'}}); expect(task()).toHaveValue('Exact restored task 王'); expect(submit()).toBeDisabled();
+  });
+  it('preserves over-limit input visibly and reports an unsavable draft rather than a truncated snapshot',()=>{
+    const changed=vi.fn();mount({opportunityId:'opportunity-one',onDraftSnapshotChange:changed});fireEvent.change(task(),{target:{value:'x'.repeat(66000)}});
+    expect(task()).toHaveValue('x'.repeat(66000));expect(changed).toHaveBeenLastCalledWith(null);fireEvent.change(task(),{target:{value:'Corrected'}});expect(changed.mock.calls.at(-1)![0].answers.task).toBe('Corrected');
+  });
+  it('ignores another opportunity’s snapshot and preserves the ordinary no-recovery path',()=>{mount({opportunityId:'other',initialDraft:recoveredAnswer()});expect(task()).toHaveValue('');expect(screen.queryByTestId('supplement-recovery-review')).toBeNull();});
+});
+
+
+describe('current activity source display', () => {
+  it.each(['candidate', 'withdrawn', 'rejected'] as const)('does not turn a %s project label into a current name', (status) => {
+    const profileView = view();
+    const item = profileView.renderedProfile.resume_master!.activities[0];
+    item.title = { ...fact('title-one', 'PRIVATE OLD NAME'), status };
+    item.organization = { ...fact('org-one', 'PRIVATE OLD ORG'), status };
+    item.start = { ...fact('start-one', '1999 OLD DATE'), status };
+    mocked.controller = controller({ view: profileView }); mount();
+    expect(screen.queryByRole('option', { name: 'PRIVATE OLD NAME' })).toBeNull();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'project-one' } });
+    expect(screen.getByRole('combobox')).toHaveValue('project-one');
+    expect(screen.queryByText('PRIVATE OLD NAME')).toBeNull(); expect(screen.queryByText('PRIVATE OLD ORG')).toBeNull(); expect(screen.queryByText('1999 OLD DATE')).toBeNull();
+    const state = status === 'candidate' ? 'Awaiting confirmation' : status === 'withdrawn' ? 'Withdrawn' : 'Not accepted';
+    expect(screen.getByText(`Project name: ${state}`)).toBeInTheDocument();
+    expect(screen.getByText(`Organization: ${state}`)).toBeInTheDocument();
+  });
+  it('uses a current confirmed organization if the title needs review, without changing the selected activity', () => {
+    const profileView=view(); const item=profileView.renderedProfile.resume_master!.activities[0];
+    item.title={...fact('title-one','Unconfirmed title'),status:'candidate'};item.organization=fact('org','Current organization');
+    mocked.controller=controller({view:profileView});mount();
+    expect(screen.getByRole('option',{name:'Current organization'})).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'),{target:{value:'project-one'}});
+    expect(screen.getByRole('combobox')).toHaveValue('project-one');expect(screen.getAllByText('Current organization')).toHaveLength(2);
+  });
+  it('keeps a full source-backed name only while its exact résumé source remains current', async () => {
+    const raw='Confirmed project 王🙂';const signature=await sourceDigest(raw);const profileView=view();
+    profileView.renderedProfile.resume_text=raw;
+    profileView.renderedProfile.resume_master!.activities[0].title={...fact('title-one',raw),source:{kind:'resume',signature,start:0,end:Array.from(raw).length,quote:raw}};
+    mocked.controller=controller({view:profileView});const mounted=mount();
+    await screen.findByRole('option',{name:raw});fill('My contribution stays here');fireEvent.click(confirm());
+    const changed={...structuredClone(profileView),viewId:'view-two'};changed.renderedProfile.resume_text='A replaced original';
+    mocked.controller=controller({view:changed});mounted.rerender(<ResumeSupplementPanel {...mounted.props}/>);
+    expect(screen.queryByRole('option',{name:raw})).toBeNull();expect(screen.getByRole('combobox')).toHaveValue('project-one');expect(task()).toHaveValue('My contribution stays here');expect(confirm()).not.toBeChecked();
+    await screen.findByText('Project name: Source changed or unavailable; review in your profile');
+    expect(screen.queryByText(raw)).toBeNull();
+  });
+  it('withholds withdrawn experience text while retaining its explicit state and the new answer', () => {
+    const profileView=view();profileView.renderedProfile.experience_entries![0].status='withdrawn';
+    mocked.controller=controller({view:profileView});mount();fill('Separate new answer');
+    expect(screen.queryByText('Existing full source; I did not lead the team.')).toBeNull();
+    expect(screen.getByText('Withdrawn')).toBeInTheDocument();expect(task()).toHaveValue('Separate new answer');
+  });
+  it('states missing current revisions instead of showing another revision as current material', () => {
+    const profileView=view();profileView.renderedProfile.experience_entries![0].revision=3;
+    mocked.controller=controller({view:profileView});mount();fill();
+    expect(screen.queryByText('Existing full source; I did not lead the team.')).toBeNull();
+    expect(screen.getByText('This linked experience needs review in your profile.')).toBeInTheDocument();
+  });
+});

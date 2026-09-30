@@ -1,5 +1,7 @@
+import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
   /* The real useT memoizes `t` via useCallback so it is stable across
@@ -22,11 +24,14 @@ const mockGenerateColdEmail = vi.fn();
 const mockGenerateColdEmailStream = vi.fn();
 const mockRefineEmail = vi.fn();
 const mockExtractResumeBullets = vi.fn();
+// Independent compose tests cover address revalidation; these suites retain their history/encoding assertions.
+vi.mock('@/lib/email-compose', () => ({ verifyComposeRecipient: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/lib/api', () => ({
-  getEmailVariants: (...args: unknown[]) => mockGetVariants(...args),
-  generateColdEmail: (...args: unknown[]) => mockGenerateColdEmail(...args),
-  generateColdEmailStream: (...args: unknown[]) => mockGenerateColdEmailStream(...args),
-  refineEmail: (...args: unknown[]) => mockRefineEmail(...args),
+  validateEmailDraft: emailValidationReceipt,
+  getEmailVariants: (...args: unknown[]) => emailReceipt(mockGetVariants(...args), args[1] as string, (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmail: (...args: unknown[]) => emailReceipt(mockGenerateColdEmail(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  generateColdEmailStream: (...args: unknown[]) => emailReceipt(mockGenerateColdEmailStream(...args), args[1] as string, (args[2] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
+  refineEmail: (...args: unknown[]) => emailReceipt(mockRefineEmail(...args), args[3] as string, (args[4] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion),
   extractResumeBullets: (...args: unknown[]) => mockExtractResumeBullets(...args),
 }));
 
@@ -45,7 +50,18 @@ vi.mock('@/lib/auth-modal-context', () => ({
   }),
 }));
 
-import ColdEmailModal from './ColdEmailModal';
+vi.mock('@/lib/supabase', () => ({
+  onAuthChange: () => () => {},
+  confirmContactEvent: vi.fn(),
+  updateInteractionDetails: vi.fn(),
+}));
+
+import RawColdEmailModal from './ColdEmailModal';
+import { emailTarget, emailReceipt, EMAIL_TARGET_VERSION } from './ColdEmailModal.test-fixtures';
+function ColdEmailModal(props: Parameters<typeof RawColdEmailModal>[0]) {
+  return <RawColdEmailModal target={emailTarget(props.opportunityId)} {...props} />;
+}
+import { advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { ProfileData, EmailVariant, LabType } from '@/lib/types';
 import { en, zh } from '@/i18n/dictionaries';
 
@@ -81,22 +97,25 @@ function makeVariant(overrides: Partial<EmailVariant> = {}): EmailVariant {
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 const windowOpenMock = vi.fn();
 
-beforeEach(() => {
+beforeEach(async () => {
+  advanceOwnerEpoch('cold-email-test-owner');
+  await syncLocalIdentityOwner('cold-email-test-owner');
   mockGetVariants.mockReset();
-  mockGenerateColdEmail.mockReset();
-  // The modal is stream-first with a blocking-route fallback; existing AI
-  // tests exercise the fallback path by default (stream "unavailable").
-  mockGenerateColdEmailStream.mockReset().mockRejectedValue(new Error('no stream in tests'));
+  mockGenerateColdEmail.mockReset().mockResolvedValue({ ...makeVariant(), method: 'template' });
+  // These legacy AI fixtures exercise a known old backend: its SSE endpoint
+  // returns 404 before generation begins. Only that explicit unsupported
+  // result permits the blocking compatibility request; network/timeout
+  // failures remain covered separately and must never replay.
+  mockGenerateColdEmailStream.mockReset().mockRejectedValue(new ColdEmailStreamError('unsupported', 404));
   mockRefineEmail.mockReset();
   mockExtractResumeBullets.mockReset().mockResolvedValue({
     bullets: [],
     method: 'heuristic',
   });
   writeTextMock.mockReset().mockResolvedValue(undefined);
-  windowOpenMock.mockReset();
+  windowOpenMock.mockReset().mockImplementation(() => ({ closed: false, opener: null, location: { href: 'about:blank' }, close: vi.fn() }));
 
-  /* jsdom does not implement scrollIntoView; the modal calls it on a chatEnd
-     ref every time chatMessages updates, so we stub it to a no-op spy. */
+  /* A chat update must never scroll a field or any ancestor into view. */
   Element.prototype.scrollIntoView = vi.fn();
 
   /* navigator.clipboard is not present in jsdom by default. The copy button
@@ -195,7 +214,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGetVariants).toHaveBeenCalledTimes(1));
-      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', []);
+      expect(mockGetVariants).toHaveBeenCalledWith(profile, 'opp-42', undefined, { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('shows a loading spinner before variants resolve', () => {
@@ -273,7 +292,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue('SUBJ-A')).toBeInTheDocument());
       fireEvent.click(screen.getByText('Casual'));
-      expect(screen.getByDisplayValue('SUBJ-B')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByDisplayValue('SUBJ-B')).toBeInTheDocument());
       expect(screen.getByDisplayValue('BODY-B')).toBeInTheDocument();
     });
   });
@@ -293,7 +312,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       fireEvent.click(screen.getByLabelText('coldEmail.closeAria'));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('calls onClose when the backdrop is clicked', async () => {
@@ -312,7 +331,7 @@ describe('ColdEmailModal', () => {
       const backdrop = container.querySelector('div[aria-hidden="true"].bg-gray-900\\/60');
       expect(backdrop).not.toBeNull();
       fireEvent.click(backdrop!);
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('calls onClose when Escape is pressed', async () => {
@@ -329,7 +348,7 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       fireEvent.keyDown(document, { key: 'Escape' });
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     });
 
     it('exposes role=dialog with aria-modal and a labelled title', () => {
@@ -386,7 +405,9 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.gmail'));
       expect(windowOpenMock).toHaveBeenCalledTimes(1);
-      const url = windowOpenMock.mock.calls[0][0] as string;
+      await waitFor(() => expect(windowOpenMock.mock.results[0].value.location.href).toContain('mail.google.com'));
+      expect(windowOpenMock.mock.calls[0][0]).toBe('about:blank');
+      const url = windowOpenMock.mock.results[0].value.location.href as string;
       expect(url).toContain('mail.google.com');
       expect(url).toContain('to=p%40x.edu');
     });
@@ -405,11 +426,13 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
-      const edited = 'p@x.edu?cc=evil@x.com&bcc=e2@x.com';
+      const edited = 'p+lab&tag@x.edu';
       fireEvent.change(screen.getByDisplayValue('p@x.edu'), { target: { value: edited } });
       fireEvent.click(screen.getByText('coldEmail.gmail'));
+      await waitFor(() => expect(windowOpenMock.mock.results[0].value.location.href).toContain('mail.google.com'));
       fireEvent.click(screen.getByText('coldEmail.outlook'));
-      const [gmailUrl, outlookUrl] = windowOpenMock.mock.calls.map((c) => c[0] as string);
+      await waitFor(() => expect(windowOpenMock.mock.results[1].value.location.href).toContain('outlook.office365.com'));
+      const [gmailUrl, outlookUrl] = windowOpenMock.mock.results.map((result) => result.value.location.href as string);
       for (const url of [gmailUrl, outlookUrl]) {
         expect(url).toContain(`to=${encodeURIComponent(edited)}`);
         // raw ?/&/@ must not leak extra query params into the compose URL
@@ -440,13 +463,14 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
-      // Stream-first: the (default-rejecting) stream mock was tried before the
-      // blocking fallback landed the draft.
+      // Stream-first: the known unsupported (404) endpoint was checked before
+      // the blocking compatibility route landed the draft.
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       // No recommended_style in this variants mock → seeds the default tone.
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional' });
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'professional', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('uses the stream result when streaming succeeds (no blocking call)', async () => {
@@ -478,8 +502,8 @@ describe('ColdEmailModal', () => {
           opportunityTitle="REU"
         />,
       );
-      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
-      fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
+      // The stream starts automatically once templates load. Wait for its
+      // result rather than race the temporary stage label with a pill click.
       await waitFor(() =>
         expect(screen.getByDisplayValue('Streamed AI Body')).toBeInTheDocument(),
       );
@@ -508,9 +532,11 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await screen.findByDisplayValue('AI Body');
+      await waitFor(() => expect(screen.getByText('coldEmail.tone.lively')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.tone.lively'));
-      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
-      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively' });
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
+      expect(mockGenerateColdEmail).toHaveBeenCalledWith(profile, 'opp-7', { engine: 'ai', style: 'lively', expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' } });
     });
 
     it('R72-A: shows the fabrication fallback hint when the AI draft is rejected', async () => {
@@ -533,6 +559,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() =>
         expect(screen.getByText('coldEmail.aiFallbackFabrication')).toBeInTheDocument(),
@@ -559,6 +586,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() =>
         expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument(),
@@ -586,28 +614,43 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       const pill = screen.getByText('coldEmail.aiVariantLabel');
+      await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       await waitFor(() => expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('Template A'));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Template A' })).toBeEnabled());
+      fireEvent.click(screen.getByRole('button', { name: 'Template A' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue(makeVariant().body));
+      await waitFor(() => expect(pill).toBeEnabled());
       fireEvent.click(pill);
       expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1);
-      expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByDisplayValue('AI Subject')).toBeInTheDocument());
     });
 
     it('FE-5: shows a durable "template, not AI" badge when the AI pill falls back', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
-      mockGenerateColdEmail.mockResolvedValue({
+      const fallback = {
         subject: 'T', body: 'Template Body', recipient_email: 'p@x.edu',
         mailto_link: 'mailto:p@x.edu', method: 'template', fallback_reason: 'not_configured',
-      });
+      };
+      let finishAuto!: (response: typeof fallback) => void;
+      const autoResponse = new Promise<typeof fallback>(resolve => { finishAuto = resolve; });
+      mockGenerateColdEmail.mockReturnValueOnce(autoResponse).mockResolvedValue(fallback);
       render(
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
-      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      // An enabled pill before the automatic effect starts is not completion.
+      // Hold that first request, then release its silent template fallback
+      // before exercising the separate explicit request this test is about.
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
+      await act(async () => { finishAuto(fallback); });
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
+      expect(screen.getByRole('textbox', { name: 'coldEmail.body' })).toHaveValue(makeVariant().body);
+      expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
-      await waitFor(() =>
-        expect(screen.getByText('coldEmail.templateFallbackBadge')).toBeInTheDocument(),
-      );
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(2));
+      await screen.findByDisplayValue('Template Body');
+      expect(await screen.findByText('coldEmail.templateFallbackBadge')).toBeInTheDocument();
     });
 
     it('FE-5: shows no template badge when the AI draft is genuine', async () => {
@@ -620,6 +663,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
       expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
@@ -633,6 +677,7 @@ describe('ColdEmailModal', () => {
       recipient_email: 'p@x.edu',
       mailto_link: 'mailto:p@x.edu',
       method: 'ai',
+      pipeline_version: 'pipeline-current',
     };
 
     it('runs the pipeline once on open and switches to the AI draft, no click needed', async () => {
@@ -697,6 +742,7 @@ describe('ColdEmailModal', () => {
         />,
       );
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(2));
       expect(mockExtractResumeBullets).toHaveBeenCalledTimes(0);
@@ -712,7 +758,7 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-silent" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
-      // the automatic attempt did run (stream rejected → blocking fallback)…
+      // the automatic attempt did run (known stream 404 → compatibility POST)…
       await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
       // …but the user never asked, so nothing is announced or switched.
       expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument();
@@ -731,18 +777,18 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
       await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
-      const bodyArea = screen.getByDisplayValue(/Interested/).closest('div')!.parentElement!
-        .querySelector('textarea[id="email-body"], textarea')!;
+      const bodyArea = screen.getByLabelText('coldEmail.body');
       fireEvent.change(bodyArea, { target: { value: 'my hand-tuned draft' } });
       await act(async () => { release(AI_RESP); });
       // Draft is available on the AI pill but the user's edit stays put.
       expect(screen.getByDisplayValue('my hand-tuned draft')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByText('coldEmail.aiVariantLabel')).toBeEnabled());
       fireEvent.click(screen.getByText('coldEmail.aiVariantLabel'));
       await waitFor(() => expect(screen.getByDisplayValue('Auto AI Body')).toBeInTheDocument());
     });
 
     it('reopening the same opportunity serves the cached draft without re-billing', async () => {
-      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
       mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
       const profile = makeProfile();
       const { rerender } = render(
@@ -764,10 +810,12 @@ describe('ColdEmailModal', () => {
         .mockResolvedValueOnce({
           variants: [makeVariant({ recipient_email: 'p@x.edu' })],
           recipient_status: 'revealed',
+          pipeline_version: 'pipeline-current',
         })
         .mockResolvedValueOnce({
           variants: [makeVariant({ recipient_email: '' })],
           recipient_status: 'unavailable',
+          pipeline_version: 'pipeline-current',
         });
       mockGenerateColdEmailStream.mockReset().mockResolvedValue(AI_RESP);
       const profile = makeProfile();
@@ -877,11 +925,12 @@ describe('ColdEmailModal', () => {
         'Make it more formal and professional',
         makeProfile(),
         'opp',
-        expect.any(Object),
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Interested in research with you' },
       );
-      await waitFor(() =>
-        expect(screen.getByDisplayValue(/I would greatly appreciate to chat/)).toBeInTheDocument(),
-      );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('I would greatly appreciate to chat.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would love to chat.\n\nBest regards,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('I would greatly appreciate to chat.\n\nRespectfully,\nAlex'));
     });
 
     it('"shorter" routes through the backend refine (deterministic fallback shown)', async () => {
@@ -910,10 +959,11 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByText('coldEmail.quickActions.shorter'));
       await waitFor(() => expect(mockRefineEmail).toHaveBeenCalledTimes(1));
       expect(mockRefineEmail.mock.calls[0][1]).toBe('Make it shorter and more concise');
-      await waitFor(() => {
-        const textarea = screen.getByDisplayValue(/Line one/) as HTMLTextAreaElement;
-        expect(textarea.value).not.toMatch(/fast learner/);
-      });
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Line three.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Line one.\nI am a fast learner and want to help.\nLine three.');
+      expect(screen.getByText('Basic edit suggestion ready. Compare it, then accept or reject.')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Line one.\nLine three.'));
     });
 
     it('"coursework" inserts the profile\'s coursework when present', async () => {
@@ -924,15 +974,29 @@ describe('ColdEmailModal', () => {
         <ColdEmailModal
           isOpen
           onClose={vi.fn()}
-          profile={makeProfile({ coursework: ['CS 225', 'CS 374'] })}
+          profile={makeProfile({ coursework: ['CS 225', 'CS 374', 'CS 101', 'CS 102', 'LATE COURSE 5'] })}
           opportunityId="opp"
           opportunityTitle="REU"
         />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Intro/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Intro.\n\nBest regards,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue(/CS 225/)).toBeInTheDocument());
       expect(screen.getByDisplayValue(/CS 374/)).toBeInTheDocument();
+      expect(screen.getByDisplayValue(/LATE COURSE 5/)).toBeInTheDocument();
+    });
+
+    it('keeps the draft when complete coursework exceeds the email body limit', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ body: 'Original draft.\n\nBest regards,\nAlex' })] });
+      render(<ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile({ coursework: Array.from({length:110},(_,i)=>String(i)+'x'.repeat(990)) })} opportunityId="opp" opportunityTitle="REU" />);
+      await screen.findByDisplayValue(/Original draft/);
+      fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByText('profileInput.courseworkTooLarge')).toBeInTheDocument();
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original draft.\n\nBest regards,\nAlex');
+      expect(screen.queryByRole('region', {name:'Pending edit suggestion'})).toBeNull();
     });
 
     it('FE-4: "coursework" inserts BEFORE a non-"Best" closing (e.g. Sincerely)', async () => {
@@ -950,6 +1014,9 @@ describe('ColdEmailModal', () => {
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Intro paragraph/)).toBeInTheDocument());
       fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('CS 225');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Intro paragraph.\n\nSincerely,\nAlex');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       const value = await waitFor(() => {
         const ta = screen.getByDisplayValue(/CS 225/) as HTMLTextAreaElement;
         return ta.value;
@@ -1010,9 +1077,14 @@ describe('ColdEmailModal', () => {
         'Make it warmer',
         makeProfile(),
         'opp',
-        expect.any(Object), // options (resumeBullets when extracted)
+        { expectedTargetVersion: EMAIL_TARGET_VERSION, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Interested in research with you' },
       );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Refined body.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('Make it warmer');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue('Refined body.')).toBeInTheDocument());
+      expect(input).toHaveValue('');
     });
 
     it('R72-A: shows the fabrication hint when a refine edit is rejected', async () => {
@@ -1043,6 +1115,9 @@ describe('ColdEmailModal', () => {
       await waitFor(() =>
         expect(screen.getByText('coldEmail.refineFabrication')).toBeInTheDocument(),
       );
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('say I know Rust');
+      expect(screen.queryByRole('region', { name: 'Pending edit suggestion' })).toBeNull();
     });
 
     it('reports an evidence-gated safe-template replacement instead of a basic tone edit', async () => {
@@ -1071,9 +1146,12 @@ describe('ColdEmailModal', () => {
         fireEvent.submit(form!);
       });
 
-      await waitFor(() =>
-        expect(screen.getByDisplayValue('Safe general inquiry template.')).toBeInTheDocument(),
-      );
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('Safe general inquiry template.');
+      expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Original body.');
+      expect(input).toHaveValue('Make it warmer');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByDisplayValue('Safe general inquiry template.')).toBeInTheDocument());
+      expect(input).toHaveValue('');
       expect(screen.getByText('coldEmail.aiFallbackInsufficientEvidence')).toBeInTheDocument();
       expect(screen.queryByText('coldEmail.doneFallback')).not.toBeInTheDocument();
       expect(screen.queryByText('coldEmail.doneLlm')).not.toBeInTheDocument();
@@ -1267,5 +1345,35 @@ describe('W10b recipient states (contact bar)', () => {
     fireEvent.change(toInput, { target: { value: 'typed@example.edu' } });
     fireEvent.click(screen.getByText('Casual'));
     expect(screen.getByDisplayValue('typed@example.edu')).toBeInTheDocument();
+  });
+});
+
+
+describe('ColdEmailModal editing workspace', () => {
+  it('names the guidelines and request areas and scrolls only chat history on new messages', async () => {
+    mockGetVariants.mockResolvedValue({ variants: [makeVariant()], lab_type: 'dry' });
+    mockGenerateColdEmail.mockRejectedValue(new Error('AI unavailable in test'));
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="layout-opp" opportunityTitle="Research" />,
+    );
+    const guidelines = await screen.findByRole('region', { name: 'coldEmail.guidelinesTitle' });
+    expect(guidelines).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('region', { name: 'coldEmail.aiRequestsTitle' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeDisabled();
+
+    const history = screen.getByRole('log', { name: 'coldEmail.aiRequestsTitle' });
+    const workspace = screen.getByTestId('cold-email-workspace');
+    const editor = screen.getByTestId('cold-email-editor-fields');
+    Object.defineProperty(history, 'scrollHeight', { configurable: true, value: 720 });
+    workspace.scrollTop = 130;
+    editor.scrollTop = 90;
+    guidelines.scrollTop = 40;
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.coursework' }));
+    await waitFor(() => expect(history.scrollTop).toBe(720));
+    expect(workspace.scrollTop).toBe(130);
+    expect(editor.scrollTop).toBe(90);
+    expect(guidelines.scrollTop).toBe(40);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 });

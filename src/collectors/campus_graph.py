@@ -35,10 +35,18 @@ import json
 import logging
 import re
 from collections import Counter, deque
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
+from src.contact_instructions import (
+    _BLOCKED_PAGE_TITLE,
+    capture_failure,
+    capture_from_html,
+    capture_metadata,
+    same_source_page,
+)
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from .application_status import detect_application_status
@@ -252,6 +260,8 @@ def _normalize_program(
             "notes": f"Auto-imported from {source['source_name']} ({source['source_type']})",
             "collector_key": program_spec["key"],
             "collector_source": source["source_name"],
+            "collector_school": school["school_slug"],
+            "shared_program_page": _ambiguous_program_url(school, program_spec["url"]),
             "status": status,
             "deadline_note": program_spec.get("deadline_note", ""),
             # This is deliberately separate from ``status``: a page can load
@@ -314,7 +324,8 @@ def _normalize_discovered(school: dict, source: dict, title: str, url: str, snip
             "confidence_score": 0.4, "last_verified": None, "first_seen_at": now,
             "last_seen_at": now, "is_active": False, "manually_reviewed": False,
             "notes": f"Crawl-discovered from {source['source_name']}",
-            "collector_source": source["source_name"], "discovered": True,
+            "collector_source": source["source_name"],
+            "collector_school": school["school_slug"], "discovered": True,
             "discovered_page_verified": False,
             "status": "unknown",
         },
@@ -374,7 +385,13 @@ def _fetch(url: str, *, render: bool = False):
             verify=_ca_bundle(),
         )
         resp.raise_for_status()
-        return BeautifulSoup(resp.content, "html.parser")
+        soup = BeautifulSoup(resp.content, "html.parser")
+        soup._ofe_fetch_metadata = {
+            "requested_url": url,
+            "final_url": getattr(resp, "url", None),
+            "checked_at": datetime.now(UTC).isoformat(),
+        }
+        return soup
     except Exception as e:  # noqa: BLE001
         logger.warning("campus_graph: fetch failed for %s: %s", url, e)
         return None
@@ -415,6 +432,89 @@ def _same_site(seed: str, candidate: str) -> bool:
     return ch == sh or (sh_root and ch.endswith(sh_root))
 
 
+_same_page_url = same_source_page
+
+
+def _page_capture(soup, url: str) -> dict:
+    observation = getattr(soup, "_ofe_fetch_metadata", None)
+    if not isinstance(observation, dict) or not isinstance(observation.get("final_url"), str):
+        return capture_failure(source_url=url, reason="fetch_metadata_missing")
+    try:
+        stamp = datetime.fromisoformat(observation.get("checked_at", "").replace("Z", "+00:00"))
+        valid_time = stamp.tzinfo is not None and stamp <= datetime.now(UTC)
+    except (AttributeError, TypeError, ValueError):
+        valid_time = False
+    if not valid_time or not same_source_page(url, observation.get("requested_url")):
+        return capture_failure(source_url=url, reason="fetch_metadata_missing")
+    final = observation["final_url"]
+    binding = dict(source_url=final, record_source_url=url, checked_at=observation.get("checked_at"))
+    if not _same_page_url(url, final):
+        return capture_failure(**binding, reason="redirect_mismatch")
+    return capture_from_html(soup, **binding)
+
+
+def _ambiguous_program_url(school: dict, url: str) -> bool:
+    keys = {spec["key"] for source in school.get("sources", []) for spec in source.get("programs", [])
+            if _same_page_url(spec["url"], url) or _same_page_url(url, spec["url"])}
+    return len(keys) > 1
+
+
+def _dedupe_with_program_scope(records: list[dict], existing: list[dict]) -> tuple[list[dict], int]:
+    # Distinct configured projects may intentionally share a funding/program
+    # page. URL equality is not identity equality for these explicit records.
+    protected = [row for row in records if row.get("metadata", {}).get("shared_program_page") is True
+                 and row.get("metadata", {}).get("collector_key") and not row["metadata"].get("discovered")]
+    protected_ids = {row["id"] for row in protected}
+    ordinary = [row for row in records if row["id"] not in protected_ids]
+    kept, dropped = dedupe_against_existing(ordinary, [*existing, *protected])
+    return [*protected, *kept], dropped
+
+
+def apply_condition_capture_updates(existing: list[dict], updates: list[dict] | None) -> int:
+    """Apply only failed observations to exactly scoped existing records.
+
+    Successful content travels with its own record, never a URL-wide update.
+    This channel also reaches a previous discovery whose new page failed and
+    therefore was correctly omitted from this crawl's publishable records.
+    """
+    from .uiuc_faculty import carry_forward_contact_instruction_sources
+
+    changed = 0
+    for update in updates or []:
+        if not isinstance(update, dict):
+            continue
+        school, source, requested = (update.get(key) for key in ("school", "collector_source", "requested_url"))
+        result = update.get("capture")
+        if (not all(isinstance(value, str) and value for value in (school, source, requested))
+                or not isinstance(result, dict) or not isinstance(result.get("status"), str)
+                or result["status"] not in {"failed", "unsupported"}
+                or not _same_page_url(requested, result.get("record_source_url"))):
+            continue
+        for record in existing:
+            metadata = record.get("metadata", {})
+            if (not isinstance(metadata, dict) or metadata.get("collector_source") != source
+                    or (metadata.get("collector_school", record.get("school")) != school)
+                    or not str(record.get("source_type", "")).startswith("campus_")
+                    or not _same_page_url(requested, record.get("url"))):
+                continue
+            incoming = deepcopy(record)
+            incoming["metadata"].update(capture_metadata(result))
+            carry_forward_contact_instruction_sources(record, incoming)
+            if incoming["metadata"] != record["metadata"]:
+                record["metadata"] = incoming["metadata"]
+                changed += 1
+    return changed
+
+
+def _observable_page(soup) -> bool:
+    title = soup.find("title")
+    if ((title is not None and _BLOCKED_PAGE_TITLE.fullmatch(title.get_text(" ", strip=True)))
+            or soup.find("input", attrs={"type": re.compile("^password$", re.I)})):
+        return False
+    return any(text.strip() for text in soup.find_all(string=True)
+               if text.parent is None or text.parent.name not in {"script", "style", "noscript", "template", "title"})
+
+
 def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
     status_by_url: dict[str, dict] = {}
     discovered: list[dict] = []
@@ -429,6 +529,7 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
     seed_page_errors: list[str] = []
     degraded_page_errors: list[str] = []
     discovery_truncated = False
+    captures: dict[str, dict] = {}
 
     while queue and len(visited) < _MAX_PAGES_PER_SOURCE:
         url, depth = queue.popleft()
@@ -437,15 +538,33 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         visited.add(url)
         soup = _fetch(url, render=render)
         if soup is None:
+            captures[url] = capture_failure(source_url=url)
             if url in seed_urls:
                 seed_page_errors.append(url)
             else:
                 degraded_page_errors.append(url)
             continue
+        capture = _page_capture(soup, url)
+        if (_ambiguous_program_url(school, url) and capture["status"] != "failed"
+                and capture.get("reason") not in {"access_page", "no_supported_content", "invalid_html"}):
+            capture = capture_failure(source_url=capture["source_url"], record_source_url=url,
+                                      checked_at=capture["attempted_at"], status="unsupported",
+                                      reason="ambiguous_program_scope")
+        captures[url] = capture
+        # A page with no heading/paragraph/list DOM (link-card hubs, div-only
+        # CMS bodies) still loaded: its condition capture is unsupported, but
+        # its status and links remain observed. An empty body, a script shell
+        # or a body-less sign-in page shows nothing, and counting it as loaded
+        # would complete the crawl and retire every earlier discovery.
+        if (capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}
+                or (capture.get("reason") == "no_supported_content" and not _observable_page(soup))):
+            (seed_page_errors if url in seed_urls else degraded_page_errors).append(url)
+            continue
         try:
             page_text = soup.get_text(" ", strip=True)
         except Exception as e:  # noqa: BLE001
             logger.warning("campus_graph: parse failed for %s: %s", url, e)
+            captures[url] = capture_failure(source_url=url, reason="parse_failed")
             if url in seed_urls:
                 seed_page_errors.append(url)
             else:
@@ -494,11 +613,20 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         metadata["status"] = status
         metadata["last_verified"] = verified_at
         metadata["is_active"] = status == "open"
+        metadata.update(capture_metadata(captures[record["url"]]))
         verified_discovered.append(record)
 
     seed_pages_loaded = sum(url in status_by_url for url in seed_urls)
     queue_truncated = any(url not in visited for url, _depth in queue)
     return status_by_url, verified_discovered, {
+        "condition_captures": captures,
+        "condition_capture_counts": {status: sum(value["status"] == status for value in captures.values())
+                                     for status in ("captured", "empty", "unsupported", "failed")},
+        "condition_capture_updates": [
+            {"school": school["school_slug"], "collector_source": source["source_name"],
+             "requested_url": url, "capture": result}
+            for url, result in captures.items() if result["status"] in {"failed", "unsupported"}
+        ],
         "live_pages_attempted": len(visited),
         "live_pages_loaded": len(status_by_url),
         "seed_pages_expected": len(seed_urls),
@@ -527,6 +655,10 @@ def fetch_and_normalize_with_evidence(
     records: list[dict] = []
     evidence = {
         "deep": deep,
+        "condition_capture_counts": {key: 0 for key in ("captured", "empty", "unsupported", "failed")},
+        "condition_capture_complete": False,
+        "condition_capture_updates": [],
+        "normalization_failed": 0,
         "crawl_sources_expected": len(school.get("sources", [])) if deep else 0,
         "crawl_sources_loaded": 0,
         "live_pages_attempted": 0,
@@ -543,12 +675,17 @@ def fetch_and_normalize_with_evidence(
     for source in school.get("sources", []):
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
+        captures: dict[str, dict] = {}
         if deep:
             try:
                 status_by_url, discovered, crawl_evidence = _crawl_source(
                     school,
                     source,
                 )
+                captures = crawl_evidence["condition_captures"]
+                evidence["condition_capture_updates"].extend(crawl_evidence["condition_capture_updates"])
+                for key, count in crawl_evidence["condition_capture_counts"].items():
+                    evidence["condition_capture_counts"][key] += count
                 evidence["live_pages_attempted"] += crawl_evidence[
                     "live_pages_attempted"
                 ]
@@ -587,20 +724,29 @@ def fetch_and_normalize_with_evidence(
                 evidence["seed_pages_expected"] += source_seed_count
                 evidence["seed_pages_failed"] += source_seed_count
                 evidence["crawl_errors"].append(
-                    f"{source['source_name']}: crawl failed: {e}"
+                    f"{source['source_name']}: crawl failed"
                 )
         for spec in source.get("programs", []):
             refine = status_by_url.get(spec["url"], {})
-            records.append(_normalize_program(
-                school, source, spec,
-                status=refine.get("status", "unknown"),
-                extra_desc=refine.get("excerpt", ""),
-                seed_page_verified=spec["url"] in status_by_url,
-            ))
-            evidence["seed_records"] += 1
+            try:
+                record = _normalize_program(
+                    school, source, spec,
+                    status=refine.get("status", "unknown"),
+                    extra_desc=refine.get("excerpt", ""),
+                    seed_page_verified=spec["url"] in status_by_url,
+                )
+                if spec["url"] in captures:
+                    record["metadata"].update(capture_metadata(captures[spec["url"]]))
+                records.append(record)
+                evidence["seed_records"] += 1
+            except Exception:  # noqa: BLE001
+                evidence["normalization_failed"] += 1
+                logger.warning("campus_graph: program normalization failed")
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
-    records, dropped = dedupe_against_existing(records, [])
+    counts = evidence["condition_capture_counts"]
+    evidence["condition_capture_complete"] = bool(sum(counts.values()) and not counts["failed"] and not counts["unsupported"])
+    records, dropped = _dedupe_with_program_scope(records, [])
     if dropped:
         logger.info("%s: dropped %d intra-batch duplicate(s)", school["school_slug"], dropped)
     return records, evidence
@@ -616,6 +762,7 @@ def merge_into_processed(
     *,
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
     school_slug: str | None = None,
+    condition_capture_updates: list[dict] | None = None,
 ) -> tuple[int, int]:
     """Upsert records and retire safely absent recursive discoveries.
 
@@ -635,6 +782,7 @@ def merge_into_processed(
         raise ValueError("school_slug is required for discovery retirement")
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
+    apply_condition_capture_updates(existing, condition_capture_updates)
     observed_discovered_ids = {
         opp.get("id")
         for opp in new_opps
@@ -649,7 +797,7 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
-    new_opps, dropped = dedupe_against_existing(new_opps, existing)
+    new_opps, dropped = _dedupe_with_program_scope(new_opps, existing)
     if dropped:
         logger.info("campus_graph: suppressed %d near-duplicate(s) vs corpus", dropped)
     index = {o.get("id"): o for o in existing if o.get("id")}
@@ -681,6 +829,9 @@ def merge_into_processed(
                     or existing_metadata.get("is_active") is False
                 ):
                     opp["title"] = existing_opp.get("title", opp["title"])
+            from .uiuc_faculty import carry_forward_contact_instruction_sources
+
+            carry_forward_contact_instruction_sources(existing_opp, opp)
             existing_opp.update(opp)
             updated += 1
         else:

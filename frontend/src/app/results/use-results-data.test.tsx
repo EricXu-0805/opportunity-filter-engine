@@ -1,9 +1,12 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
-import { useCallback, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
+import { translate } from '@/i18n/translate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
+import { useResultsSession } from './use-results-session';
+import { RESULT_SESSION_PREFIX, readResultSession, resultRequestKey, writeResultSession } from '@/lib/result-session';
 import MatchCard from '@/components/MatchCard';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
@@ -48,7 +51,7 @@ vi.mock('@/i18n/client', () => ({
       (vars && 'count' in vars ? `${key}:${vars.count}` : key),
   }),
 }));
-vi.mock('@/components/TailorModal', () => ({
+vi.mock('@/components/CheckedTailorModal', () => ({
   default: () => <div data-testid="tailor-modal" />,
 }));
 
@@ -169,7 +172,8 @@ function response(
 const t = (key: string) => key;
 
 describe('useResultsData', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    advanceOwnerEpoch('results-data-owner'); await syncLocalIdentityOwner('results-data-owner');
     mocks.getMatchView.mockReset();
     mocks.readMatchCache.mockReset();
     mocks.writeMatchCache.mockReset();
@@ -511,6 +515,36 @@ describe('useResultsData', () => {
     },
   );
 
+  it.each(['en', 'zh'] as const)('localizes an empty-selection failure on direct results entry (%s) without changing the profile', async (locale) => {
+    const emptyProfile = { ...profile, seeking_types: [] };
+    const before = JSON.stringify(emptyProfile);
+    const localT = (key: string) => translate(locale, key);
+    mocks.getMatchView.mockRejectedValue(new ApiError(422, 'MATCH_TYPE_REQUIRED', 'Select at least one opportunity type.', false));
+    const { result, rerender } = renderHook(
+      ({ current }) => useResultsData(current, false, baseView, 1, localT, true),
+      { initialProps: { current: emptyProfile as ProfileData } },
+    );
+    await waitFor(() => expect(result.current.errorCode).toBe('MATCH_TYPE_REQUIRED'));
+    expect(result.current.error).toBe(translate(locale, 'home.validation.seekingRequired'));
+    expect(mocks.getMatchView.mock.calls[0][0].seeking_types).toEqual([]);
+    expect(JSON.stringify(emptyProfile)).toBe(before);
+    expect(mocks.writeMatchCache).not.toHaveBeenCalled();
+    expect(result.current.error).not.toContain('MATCH_TYPE_REQUIRED');
+
+    mocks.getMatchView.mockResolvedValue(response('restored'));
+    rerender({ current: { ...emptyProfile, seeking_types: ['research'] } });
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-restored'));
+    expect(result.current.error).toBeNull();
+    expect(result.current.errorCode).toBeNull();
+  });
+
+  it('does not classify another 422 or similar wording as an empty-type failure', async () => {
+    mocks.getMatchView.mockRejectedValue(new ApiError(422, 'OTHER_VALIDATION', 'Select at least one opportunity type.', false));
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true));
+    await waitFor(() => expect(result.current.error).toBe('Select at least one opportunity type.'));
+    expect(result.current.errorCode).toBe('OTHER_VALIDATION');
+  });
+
   it('leaves an ordinary error alone rather than resetting the page', async () => {
     const onCursorReset = vi.fn();
     mocks.getMatchView
@@ -699,6 +733,32 @@ describe('useResultsData', () => {
     expect(mocks.writeMatchCache).not.toHaveBeenCalled();
   });
 
+  it('validates the interim rule list for writing, and it stays usable when the refine fails', async () => {
+    // Without a receipt the page keeps Draft/Résumé enabled on these cards but
+    // its writing gate refuses every click, silently, for good once the refine
+    // fails.
+    let rejectRefine: ((reason: Error) => void) | undefined;
+    mocks.getMatchView.mockImplementation(
+      (_profile, _view, options: { llm: boolean }) => (options.llm
+        ? new Promise<MatchesResponse>((_resolve, reject) => { rejectRefine = reject; })
+        : Promise.resolve(response('rule', { has_more: true, next_cursor: 'rule-snapshot-cursor' }))),
+    );
+    const validated = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, true, baseView, 1, t, true, undefined,
+      { restore: null, onValidated: validated }));
+
+    await waitFor(() => expect(result.current.refining).toBe(true), { timeout: 4000 });
+    // The rule snapshot's cursor is never offered: the refine owns the chain.
+    expect(validated).toHaveBeenCalledExactlyOnceWith(
+      { requestKey: resultRequestKey(profile, true, baseView), page: 1, cursors: [[1, null]] }, captureOwnerToken());
+    expect(result.current.paginationReady).toBe(false);
+
+    await act(async () => { rejectRefine?.(new Error('provider down')); });
+    await waitFor(() => expect(result.current.refineFailed).toBe(true));
+    expect(result.current.data?.result_set_id).toBe('set-rule');
+    expect(validated).toHaveBeenCalledTimes(1);
+  });
+
   it('still fails the page when there is no list to keep', async () => {
     // No interim painted means nothing loaded, and a student staring at an
     // empty page has to be told why.
@@ -862,7 +922,7 @@ describe('what a warm cache can put in front of a student', () => {
   // without it every mock implementation AND every call count carries over
   // from the tests above — which is how the first draft of these three tests
   // timed out against a call counter that was already at nine.
-  beforeEach(() => {
+  beforeEach(async () => {
     mocks.getMatchView.mockReset();
     mocks.readMatchCache.mockReset();
     mocks.writeMatchCache.mockReset();
@@ -870,6 +930,7 @@ describe('what a warm cache can put in front of a student', () => {
     mocks.trackOnce.mockReset();
     mocks.readMatchCache.mockReturnValue(null);
     localStorage.clear();
+    advanceOwnerEpoch('warm-results-owner'); await syncLocalIdentityOwner('warm-results-owner');
   });
 
   it('nothing, while the live request is still out — no rows, no CTAs, no offer terms', async () => {
@@ -936,5 +997,269 @@ describe('what a warm cache can put in front of a student', () => {
     expect(screen.getByText('Poisontype')).toBeInTheDocument();
     // The cached row's title never appeared at any point.
     expect(screen.queryByText('CACHED Vision Lab RA')).toBeNull();
+  });
+});
+
+
+describe('same-session cursor validation', () => {
+  beforeEach(async () => {
+    mocks.getMatchView.mockReset();
+    mocks.readMatchCache.mockReset();
+    mocks.writeMatchCache.mockReset();
+    mocks.clearMatchCache.mockReset();
+    advanceOwnerEpoch('cursor-owner');
+    await syncLocalIdentityOwner('cursor-owner');
+    window.history.replaceState({}, '', '/results');
+  });
+  function savedPage() {
+    return writeResultSession({ requestKey: resultRequestKey(profile, false, baseView), page: 2,
+      cursors: [[1, null], [2, 'restored-server-cursor']], returnUrl: '/results', showDismissed: false,
+      anchorId: null, anchorOffset: null, scrollY: 1800, viewedIds: [] })!;
+  }
+
+  it('rejects a late result after persistent generation changes with the same uid and epoch', async () => {
+    const origin = captureOwnerToken();
+    let resolve!: (value: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((done) => { resolve = done; }));
+    const validated = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 1, t, true, undefined,
+      { restore: null, onValidated: validated }));
+    const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
+    localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+    await syncLocalIdentityOwner(origin.uid!);
+    expect(captureOwnerToken()).toMatchObject({ uid: origin.uid, epoch: origin.epoch, generation: origin.generation + 1 });
+    await act(async () => resolve(response('old-generation', { has_more: true, next_cursor: 'old-cursor', ai_refined: true })));
+    expect(validated).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+    expect(result.current.paginationReady).toBe(false); expect(result.current.refined).toBe(false);
+    // Even the refused cache attempt is attributed to the request's origin.
+    expect(mocks.writeMatchCache.mock.calls[0]?.[3]).toEqual(origin);
+  });
+
+  it.each(['old-first', 'new-first'] as const)('restarts an identical profile only after a new accepted view owner, with %s receipts', async (order) => {
+    const origin = captureOwnerToken();
+    let oldReply!: (value: MatchesResponse) => void; let newReply!: (value: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValueOnce(new Promise<MatchesResponse>((done) => { oldReply = done; }))
+      .mockReturnValueOnce(new Promise<MatchesResponse>((done) => { newReply = done; }));
+    const validated = vi.fn();
+    const { result, rerender } = renderHook(({ owner }) => useResultsData(profile, false, baseView, 1, t, true, undefined,
+      { owner, restore: null, onValidated: validated }), { initialProps: { owner: origin } });
+    const marker = JSON.parse(localStorage.getItem('ofe_local_identity_owner')!);
+    localStorage.setItem('ofe_local_identity_owner', JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+    await syncLocalIdentityOwner(origin.uid!);
+    rerender({ owner: origin }); // The unchanged old view is NOT re-authorized.
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    const current = captureOwnerToken(); rerender({ owner: current });
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(2);
+    if (order === 'old-first') await act(async () => oldReply(response('retired')));
+    await act(async () => newReply(response('fresh-generation')));
+    if (order === 'new-first') await act(async () => oldReply(response('retired')));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data?.results[0].opportunity_id).toBe('fresh-generation');
+    expect(validated).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ page: 1 }), current);
+  });
+
+  it('validates the stored cursor on the server before painting any page', async () => {
+    const saved = savedPage();
+    let resolve!: (r: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((r) => { resolve = r; }));
+    const validated = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 2, t, true, undefined,
+      { restore: saved, onValidated: validated }));
+    expect(result.current.data).toBeNull();
+    expect(validated).not.toHaveBeenCalled();
+    expect(mocks.getMatchView.mock.calls[0][2].cursor).toBe('restored-server-cursor');
+    await act(async () => resolve(response('fresh-second', { view_start: 50 })));
+    expect(result.current.data?.result_set_id).toBe('set-fresh-second');
+    expect(validated).toHaveBeenCalledWith(expect.objectContaining({ page: 2, cursors: [[1, null], [2, 'restored-server-cursor']] }), captureOwnerToken());
+    expect(mocks.readMatchCache).not.toHaveBeenCalled();
+  });
+
+  it('notifies position restoration only after the validated cards replace the loading layout', async () => {
+    const saved = savedPage();
+    let resolve!: (r: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((r) => { resolve = r; }));
+    const committed: Array<{ card: boolean; loading: boolean }> = [];
+    const validated = vi.fn(() => committed.push({
+      card: document.getElementById('match-card-fresh-second') !== null,
+      loading: screen.queryByTestId('loading-layout') !== null,
+    }));
+    function Page() {
+      const data = useResultsData(profile, false, baseView, 2, t, true, undefined,
+        { restore: saved, onValidated: validated });
+      return data.loading ? <div data-testid="loading-layout" />
+        : <div id={`match-card-${data.data?.results[0].opportunity_id}`} />;
+    }
+    render(<Page />);
+    expect(validated).not.toHaveBeenCalled();
+    await act(async () => resolve(response('fresh-second', { view_start: 50 })));
+    expect(committed).toEqual([{ card: true, loading: false }]);
+  });
+
+  it('keeps restoration pending while React defers the validated card commit', async () => {
+    const saved = writeResultSession({ ...savedPage(), anchorId: 'fresh-second', anchorOffset: 160 })!;
+    let resolveFetch!: (r: MatchesResponse) => void;
+    let releaseCommit!: () => void;
+    let commitAllowed = false;
+    const commitGate = new Promise<void>((resolve) => { releaseCommit = resolve; });
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((resolve) => { resolveFetch = resolve; }));
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+    let scrollY = 0;
+    vi.spyOn(window, 'scrollY', 'get').mockImplementation(() => scrollY);
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation((options) => {
+      // A loading document is shorter than the saved position. Real browsers
+      // clamp a premature scroll instead of remembering the desired offset.
+      const max = document.getElementById('match-card-fresh-second') ? 8000 : 0;
+      scrollY = Math.min((options as ScrollToOptions).top ?? 0, max);
+    });
+    const paint = () => { while (frames.length) frames.shift()!(0); };
+    function Page() {
+      const [page, setPage] = useState(1);
+      const [showDismissed, setShowDismissed] = useState(false);
+      const view = { ...baseView, show_dismissed: showDismissed };
+      const session = useResultsSession({ arrivalId: saved.id, profile, semantic: false, view,
+        ready: true, failed: false, publicUrl: '/results', page, setPage, setShowDismissed });
+      const data = useResultsData(profile, false, view, page, t, session.settled,
+        session.cursorExpired, { restore: session.restore, onValidated: session.onValidated });
+      if (data.data && !commitAllowed) throw commitGate;
+      return data.loading ? <div data-testid="loading-layout" />
+        : <div id="match-card-fresh-second" ref={(node) => {
+          if (node) node.getBoundingClientRect = () => ({ top: 2160 - scrollY } as DOMRect);
+        }} />;
+    }
+    render(<Suspense fallback={<div data-testid="pending-commit" />}><Page /></Suspense>);
+    await act(async () => resolveFetch(response('fresh-second', { view_start: 50 })));
+    act(paint);
+    expect(scroll).not.toHaveBeenCalled();
+    expect(document.getElementById('match-card-fresh-second')).toBeNull();
+    await act(async () => { commitAllowed = true; releaseCommit(); });
+    act(paint);
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scrollY).toBe(2000);
+  });
+
+  it('rejects another owner before replaying its stored cursor', async () => {
+    const saved = savedPage();
+    advanceOwnerEpoch('other-owner'); await syncLocalIdentityOwner('other-owner');
+    const reset = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 2, t, true, reset,
+      { restore: saved, onValidated: vi.fn() }));
+    expect(reset).toHaveBeenCalledTimes(1);
+    expect(mocks.getMatchView).not.toHaveBeenCalled();
+    expect(result.current.data).toBeNull();
+  });
+
+  it('replaces an expired restored cursor with one fresh first-page request', async () => {
+    const saved = savedPage();
+    mocks.getMatchView.mockRejectedValueOnce(new ApiError(409, 'MATCH_CURSOR_EXPIRED', 'expired', false))
+      .mockResolvedValueOnce(response('fresh-first'));
+    const validated = vi.fn();
+    const { result } = renderHook(() => {
+      const [page, setPage] = useState(2);
+      const reset = useCallback(() => setPage(1), []);
+      return useResultsData(profile, false, baseView, page, t, true, reset, { restore: saved, onValidated: validated });
+    });
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-fresh-first'));
+    expect(mocks.getMatchView.mock.calls.map((call) => call[2].cursor)).toEqual(['restored-server-cursor', null]);
+    expect(validated).toHaveBeenCalledTimes(1);
+    expect(validated.mock.calls[0][0].page).toBe(1);
+  });
+
+  // A star or dismissal on the detail page changes the server's view id, so
+  // the saved chain is dead. The ticket arrives with page one only; the hook
+  // re-walks to the student's page under the current view instead of dropping
+  // them on page one.
+  function reboundTicket(page: number) {
+    return { ...savedPage(), page, cursors: [[1, null]] as Array<[number, string | null]> };
+  }
+
+  it('rebuilds the cursor chain to a restored page whose saved cursors no longer apply', async () => {
+    const saved = reboundTicket(3);
+    mocks.getMatchView
+      .mockResolvedValueOnce(response('walk-first', { has_more: true, next_cursor: 'fresh-2' }))
+      .mockResolvedValueOnce(response('walk-second', { has_more: true, next_cursor: 'fresh-3', view_start: 50 }))
+      .mockResolvedValueOnce(response('restored-third', { view_start: 100 }));
+    const validated = vi.fn();
+    const reset = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 3, t, true, reset,
+      { restore: saved, onValidated: validated }));
+    await waitFor(() => expect(result.current.data?.result_set_id).toBe('set-restored-third'));
+    expect(reset).not.toHaveBeenCalled();
+    expect(mocks.getMatchView.mock.calls.map((call) => call[2].cursor)).toEqual([null, 'fresh-2', 'fresh-3']);
+    expect(validated).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ page: 3,
+      cursors: [[1, null], [2, 'fresh-2'], [3, 'fresh-3']] }), captureOwnerToken());
+    // Only the destination page is painted, never a page walked through.
+    expect(result.current.data?.results[0].opportunity_id).toBe('restored-third');
+  });
+
+  it('returns to page one with notice when the re-walked list no longer reaches the saved page', async () => {
+    const saved = reboundTicket(2);
+    mocks.getMatchView.mockResolvedValueOnce(response('only-page'));
+    const validated = vi.fn();
+    const reset = vi.fn();
+    const { result } = renderHook(() => useResultsData(profile, false, baseView, 2, t, true, reset,
+      { restore: saved, onValidated: validated }));
+    await waitFor(() => expect(reset).toHaveBeenCalledTimes(1));
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toBeNull();
+    expect(validated).not.toHaveBeenCalled();
+  });
+
+  it('keeps the student on their page and anchor after starring on the detail page', async () => {
+    const saved = writeResultSession({ ...savedPage(), anchorId: 'fresh-second', anchorOffset: 160 })!;
+    const starred = { ...baseView, favorite_ids: ['starred-on-detail'] };
+    mocks.getMatchView
+      .mockResolvedValueOnce(response('walk-first', { has_more: true, next_cursor: 'fresh-2' }))
+      .mockResolvedValueOnce(response('fresh-second', { view_start: 50 }));
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length; });
+    vi.spyOn(window, 'scrollY', 'get').mockReturnValue(0);
+    const scroll = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    function Page() {
+      const [page, setPage] = useState(1);
+      const [showDismissed, setShowDismissed] = useState(false);
+      const view = { ...starred, show_dismissed: showDismissed };
+      const session = useResultsSession({ arrivalId: saved.id, profile, semantic: false, view,
+        ready: true, failed: false, publicUrl: '/results', page, setPage, setShowDismissed });
+      const data = useResultsData(profile, false, view, page, t, session.settled,
+        session.cursorExpired, { restore: session.restore, onValidated: session.onValidated });
+      return data.loading || !data.data ? <div data-testid="loading-layout" />
+        : <div data-page={page} data-notice={String(session.resetNotice)}
+          id={`match-card-${data.data.results[0].opportunity_id}`} ref={(node) => {
+            if (node) node.getBoundingClientRect = () => ({ top: 2160 } as DOMRect);
+          }} />;
+    }
+    render(<Page />);
+    await waitFor(() => expect(document.getElementById('match-card-fresh-second')).not.toBeNull());
+    act(() => { while (frames.length) frames.shift()!(0); });
+    const card = document.getElementById('match-card-fresh-second')!;
+    expect(card.dataset.page).toBe('2');
+    expect(card.dataset.notice).toBe('false');
+    expect(scroll).toHaveBeenCalledExactlyOnceWith({ top: 2000, behavior: 'instant' });
+    expect(readResultSession(saved.id)).toMatchObject({ page: 2,
+      requestKey: resultRequestKey(profile, false, starred), cursors: [[1, null], [2, 'fresh-2']] });
+  });
+
+  it('retains the first fast response while initially delayed private reads settle, without a duplicate match request', async () => {
+    mocks.getMatchView.mockResolvedValue(response('first-fast'));
+    const { result, rerender } = renderHook(({ ready }) => {
+      const [page, setPage] = useState(1);
+      const [showDismissed, setShowDismissed] = useState(false);
+      const view = { ...baseView, show_dismissed: showDismissed };
+      const session = useResultsSession({ arrivalId: null, profile, semantic: false, view, ready, failed: false,
+        publicUrl: '/results', page, setPage, setShowDismissed });
+      const data = useResultsData(profile, false, view, page, t, session.settled,
+        session.cursorExpired, { restore: session.restore, onValidated: session.onValidated });
+      return { session, data };
+    }, { initialProps: { ready: false } });
+    await waitFor(() => expect(result.current.data.data?.result_set_id).toBe('set-first-fast'));
+    expect(result.current.session.sessionId).toBeNull();
+    expect(Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index))
+      .filter((key) => key?.startsWith(RESULT_SESSION_PREFIX))).toEqual([]);
+    rerender({ ready: true });
+    await waitFor(() => expect(result.current.session.sessionId).not.toBeNull());
+    expect(readResultSession(result.current.session.sessionId)?.page).toBe(1);
+    expect(mocks.getMatchView).toHaveBeenCalledTimes(1);
   });
 });
