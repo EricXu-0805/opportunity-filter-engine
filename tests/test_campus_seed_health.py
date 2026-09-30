@@ -398,3 +398,14 @@ class TestWorkflow:
 
         assert mail["subject"] == "JoinALab: the campus page probe run failed"
         assert "404" not in mail["text"]
+
+    def test_a_run_cancelled_after_the_probe_found_a_dead_page_still_says_so(self, tmp_path):
+        mail = self._mail(tmp_path, "cancelled", "failure")
+
+        assert mail["subject"] == "JoinALab: a configured campus page is gone"
+
+    def test_a_run_cancelled_after_a_clean_probe_does_not_say_the_probe_was_cut_off(self, tmp_path):
+        mail = self._mail(tmp_path, "cancelled", "success")
+
+        assert mail["subject"] == "JoinALab: the campus page probe run failed"
+        assert "404" not in mail["text"]
