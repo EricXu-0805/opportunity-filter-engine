@@ -40,7 +40,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-from src.contact_instructions import capture_failure, capture_from_html, capture_metadata, same_source_page
+from src.contact_instructions import (
+    _BLOCKED_PAGE_TITLE,
+    capture_failure,
+    capture_from_html,
+    capture_metadata,
+    same_source_page,
+)
 from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from .application_status import detect_application_status
@@ -500,6 +506,15 @@ def apply_condition_capture_updates(existing: list[dict], updates: list[dict] | 
     return changed
 
 
+def _observable_page(soup) -> bool:
+    title = soup.find("title")
+    if ((title is not None and _BLOCKED_PAGE_TITLE.fullmatch(title.get_text(" ", strip=True)))
+            or soup.find("input", attrs={"type": re.compile("^password$", re.I)})):
+        return False
+    return any(text.strip() for text in soup.find_all(string=True)
+               if text.parent is None or text.parent.name not in {"script", "style", "noscript", "template", "title"})
+
+
 def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
     status_by_url: dict[str, dict] = {}
     discovered: list[dict] = []
@@ -538,8 +553,11 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         captures[url] = capture
         # A page with no heading/paragraph/list DOM (link-card hubs, div-only
         # CMS bodies) still loaded: its condition capture is unsupported, but
-        # its status and links remain observed.
-        if capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}:
+        # its status and links remain observed. An empty body, a script shell
+        # or a body-less sign-in page shows nothing, and counting it as loaded
+        # would complete the crawl and retire every earlier discovery.
+        if (capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}
+                or (capture.get("reason") == "no_supported_content" and not _observable_page(soup))):
             (seed_page_errors if url in seed_urls else degraded_page_errors).append(url)
             continue
         try:

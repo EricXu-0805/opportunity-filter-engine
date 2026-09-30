@@ -558,6 +558,31 @@ class TestSeedNormalization:
         assert saved[static["id"]]["metadata"]["is_active"] is True
         assert saved[other_school["id"]]["metadata"]["is_active"] is True
 
+    @pytest.mark.parametrize("html", [
+        "",
+        "<body><div id=\"root\"></div><script>window.boot()</script></body>",
+        "<title>Sign in</title><form><input type=\"password\"></form>",
+    ])
+    def test_a_blank_shell_or_sign_in_seed_never_completes_a_crawl(self, monkeypatch, tmp_path, html):
+        # These pages carry no capture DOM either, but unlike a link hub or a
+        # div-only page they show nothing to observe. Counting them as loaded
+        # would retire every earlier discovery of the source.
+        source = next(source for source in PRINCETON["sources"] if source["crawl"] == cg.RECURSIVE)
+        prior = cg._normalize_discovered(PRINCETON, source, "Old fellowship", "https://example.edu/old", "old")
+        prior["metadata"].update({"discovered_page_verified": True, "status": "open", "is_active": True})
+        processed = tmp_path / "opportunities.json"
+        processed.write_text(json.dumps([prior]), encoding="utf-8")
+        monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: _observed(BeautifulSoup(html, "html.parser"), url))
+
+        records, evidence = cg.fetch_and_normalize_with_evidence(PRINCETON, deep=True)
+
+        assert source["source_name"] not in set(evidence["complete_recursive_sources"])
+        cg.merge_into_processed(records, complete_recursive_sources=set(evidence["complete_recursive_sources"]),
+                                school_slug=PRINCETON["school_slug"])
+        saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+        assert saved[prior["id"]]["metadata"]["is_active"] is True
+
     def test_legacy_unverified_discovery_is_quarantined(self):
         legacy = {
             "id": "legacy-discovered",
