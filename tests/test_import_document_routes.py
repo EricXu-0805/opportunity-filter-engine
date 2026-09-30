@@ -1,6 +1,7 @@
 """Real endpoints save complete static source while model processing remains excerpt-only."""
 import json
 import socket
+from pathlib import Path
 
 import pytest
 import requests
@@ -177,4 +178,17 @@ def test_bot_verification_page_is_refused_before_any_model_call(importer, monkey
     assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'access_page')
     assert 'opportunity' not in result.json()
     assert 'private-token-for-test' not in result.text
+    assert not calls
+
+
+def test_anubis_check_under_the_site_title_is_refused_before_any_model_call(importer, monkeypatch):
+    # The captured BotStopper page (tests/fixtures). Through this route it used
+    # to come back ok:true, llm_enriched:true, after one model call.
+    client, calls = importer
+    html = (Path(__file__).parent / 'fixtures' / 'anubis_botstopper_challenge.html').read_text(encoding='utf-8')
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
+    result = client.post('/api/import-url', json={'url': URL})
+    assert result.status_code == 422
+    detail = result.json()['detail']
+    assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'access_page')
     assert not calls
