@@ -48,8 +48,12 @@ function url(value: unknown): value is string {
   if (!text(value, 2000) || !/^[\x21-\x7e]+$/.test(value) || /[\\?#"<>`{}^]/.test(value)) return false;
   try {
     const p = new URL(value);
+    // No punycode label: whether an invalid one even parses differs between
+    // runtimes (Node 25 throws, Node 24 accepts), and the browser has no IDNA
+    // round trip to match the backend's. Refusing only hides the source.
     return p.protocol === 'https:' && !p.username && !p.password && !p.port && p.href === value && p.hostname.length <= 253
-      && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(p.hostname);
+      && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(p.hostname)
+      && !p.hostname.split('.').some(label => label.startsWith('xn--'));
   } catch { return false; }
 }
 function timestamp(value: unknown): value is string {
