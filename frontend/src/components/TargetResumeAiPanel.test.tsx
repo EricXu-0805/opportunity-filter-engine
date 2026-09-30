@@ -159,6 +159,43 @@ describe('AI action profile checks and partial coverage', () => {
 });
 
 
+describe('request size refusals', () => {
+  const refuse = (payload: TargetResumeAiRequest, reason: (id: string) => 'batch_context_too_large' | 'context_too_large'): TargetResumeAiResponse => {
+    const result = response(payload);
+    for (const item of result.receipts) Object.assign(item, { status: 'skipped', reason_code: reason(item.unit_id), suggestion: null });
+    return { ...result, method: 'unavailable', logical_calls: 0, provider_attempts_upper_bound: 0 };
+  };
+  it('splits a request the server finds too large as a whole and reviews every unit', async () => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => payload.selected_unit_ids.length > 1
+      ? refuse(payload, () => 'batch_context_too_large') : response(payload));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.queryByRole('alert')).toBeNull();
+    const requested = mocked.generate.mock.calls.map(([payload]) => payload.selected_unit_ids as string[]);
+    expect(requested[0]).toEqual(prepared.batches[0]); expect(requested).toHaveLength(2 * prepared.units.length - 1);
+    expect(requested.filter(ids => ids.length === 1).flat().sort()).toEqual(prepared.units.map(unit => unit.unit_id).sort());
+  });
+  it('keeps reviewing the rest when one unit is too large even on its own', async () => {
+    const tooLarge = prepared.units.find(unit => unit.evidence.kind === 'fact')!.unit_id;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => payload.selected_unit_ids.length > 1
+      ? refuse(payload, id => id === tooLarge ? 'context_too_large' : 'batch_context_too_large')
+      : payload.selected_unit_ids[0] === tooLarge ? refuse(payload, () => 'context_too_large') : response(payload));
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByText(/Reviewed 8 of 9 items/)).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getByText(/source context is too long/)).toBeVisible();
+    expect(mocked.generate.mock.calls.some(([payload]) => payload.selected_unit_ids.length === 1 && payload.selected_unit_ids[0] === tooLarge)).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+  });
+  it('names over-long research interests as the cause instead of blaming each item', async () => {
+    const p = props(); p.profile = { ...p.profile, research_interests: 'i'.repeat(8001) };
+    p.draft = await createTargetResume(p.profile, p.draft.target_snapshot); p.currentContext = clone(p.draft.base);
+    render(<TargetResumeAiPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('research interests are over 8000 characters');
+    expect(screen.queryByText(/source context is too long/)).toBeNull(); expect(mocked.generate).not.toHaveBeenCalled();
+  });
+});
+
+
 describe('authority rejection after partial AI results', () => {
   const rejections = [['target_changed', 409], ['target_not_found', 404], ['TARGET_NOT_ACTIONABLE', 409], ['legacy_target_context', 409]] as const;
   const startPartial = async () => {

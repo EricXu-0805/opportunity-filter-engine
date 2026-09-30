@@ -9,10 +9,15 @@ export const FULL_TARGET_AI_MAX_UNIT_CHARACTERS = 16_000;
 export const FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS = 6_000;
 export const FULL_TARGET_AI_MAX_TARGET_CHARACTERS = 24_000;
 export const FULL_TARGET_AI_MAX_PROMPT_CHARACTERS = 60_000;
+/** Direction longer than this is refused by name; it is never clipped. */
+export const FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS = 8_000;
+/** Server instruction length; the batch planner counts it toward every prompt. */
+export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 4_505;
 
 export type TargetResumeAiPriority = 'high' | 'normal' | 'low';
 export type TargetResumeAiReasonCode =
   | 'no_change' | 'unit_too_large' | 'context_too_large' | 'target_too_large'
+  | 'interests_too_large' | 'batch_context_too_large'
   | 'model_unavailable' | 'invalid_model_response' | 'ungrounded_rewrite'
   | 'missing_result' | 'no_target_evidence' | 'budget_exhausted' | 'timeout';
 export interface TargetResumeLegacyEvidence {

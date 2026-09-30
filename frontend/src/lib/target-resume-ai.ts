@@ -7,7 +7,8 @@ import { resumeTextCharacters } from './resume-input';
 import {
   FULL_TARGET_AI_VERSION, FULL_TARGET_AI_MAX_BODY_BYTES, FULL_TARGET_AI_MAX_UNITS,
   FULL_TARGET_AI_MAX_UNIT_CHARACTERS, FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS,
-  FULL_TARGET_AI_MAX_TARGET_CHARACTERS,
+  FULL_TARGET_AI_MAX_TARGET_CHARACTERS, FULL_TARGET_AI_MAX_PROMPT_CHARACTERS, FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS,
+  FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS,
   type PreparedTargetResumeAi, type TargetResumeAiUnit, type TargetResumeAiReceipt,
   type TargetResumeAiRequest, type TargetResumeAiResponse,
   type TargetResumeAiPriority,
@@ -145,6 +146,9 @@ export async function prepareTargetResumeAI(value: unknown, supportGroups?: Targ
     const targetTooLarge = [target.opportunity_id, target.title, target.organization, target.source_url,
       target.description, ...target.requirements].reduce((sum, field) => sum + resumeTextCharacters(field), 0)
       + resumeTextCharacters(canonical(target.criteria)) + resumeTextCharacters(canonical(target.research)) + resumeTextCharacters(canonical(target.lab)) > FULL_TARGET_AI_MAX_TARGET_CHARACTERS;
+    const interests = draft.base_snapshot.research_interests;
+    const documentReason = targetTooLarge ? 'target_too_large'
+      : interests !== undefined && resumeTextCharacters(interests) > FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS ? 'interests_too_large' : null;
     const batches: string[][] = [];
     const skippedUnits: TargetResumeAiReceipt[] = [];
     let batch: string[] = [];
@@ -154,9 +158,40 @@ export async function prepareTargetResumeAI(value: unknown, supportGroups?: Targ
       return ids.length <= FULL_TARGET_AI_MAX_UNITS && sources.reduce((sum,unit)=>sum+resumeTextCharacters(unit.original),0) <= FULL_TARGET_AI_MAX_UNIT_CHARACTERS
         && sources.reduce((sum,unit)=>sum+(unit.evidence.kind==='experience' ? resumeTextCharacters(unit.original) : 0),0) <= FULL_TARGET_AI_MAX_EXPERIENCE_CHARACTERS;
     };
+    // Mirrors the server's canonical prompt: every batch repeats the system
+    // instructions, target, direction and whole-block fact context. The server
+    // stays authoritative and asks for a smaller request if this falls short.
+    const promptTarget = { ...target,
+      research: target.research.status === 'available' ? target.research : { ...target.research, snapshot: null },
+      lab: target.lab.status === 'available' ? target.lab : { ...target.lab, snapshot: null } };
+    const fixedPrompt = FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS + resumeTextCharacters(canonical({ locale: 'en', target: promptTarget,
+      block_contexts: [], units: [], ...(interests === undefined ? {} : { student_direction: { research_interests: interests } }) }));
+    const blockKey = (unit: TargetResumeAiUnit) => JSON.stringify([unit.section_id, unit.block_id]);
+    const blockPrompt = new Map<string, number>();
+    for (const section of draft.document.sections) for (const block of section.blocks) {
+      blockPrompt.set(JSON.stringify([section.id, block.id]), resumeTextCharacters(canonical({ section_id: section.id, block_id: block.id,
+        fields: block.lines.filter(line => line.evidence.kind === 'fact').map(line => ({ role: line.role, label: line.label, value: line.original })) })));
+    }
+    const unitPrompt = (unit: TargetResumeAiUnit) => {
+      const group = capturedGroups?.find(item => item.unit_id === unit.unit_id);
+      return resumeTextCharacters(canonical({ unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id,
+        kind: unit.evidence.kind, role: unit.role, label: unit.label, original: unit.original,
+        ...(group?.support_unit_ids.length ? { support_sources: group.support_unit_ids.map(id => byId.get(id)!)
+          .map(source => ({ unit_id: source.unit_id, evidence: source.evidence, original: source.original })) } : {}) }));
+    };
+    const promptFits = (ids: string[]) => {
+      const selected = ids.map(id => byId.get(id)!);
+      const blocks = new Set(selected.map(blockKey));
+      // Each array's separators: one comma fewer than its entries.
+      const size = fixedPrompt + [...blocks].reduce((sum, key) => sum + blockPrompt.get(key)! + 1, -1)
+        + selected.reduce((sum, unit) => sum + unitPrompt(unit) + 1, -1);
+      return size <= FULL_TARGET_AI_MAX_PROMPT_CHARACTERS;
+    };
     for (const unit of units) {
-      if (targetTooLarge || !fits([unit.unit_id])) { skippedUnits.push(skipped(unit,targetTooLarge ? 'target_too_large' : 'unit_too_large')); continue; }
-      if (batch.length && !fits([...batch,unit.unit_id])) { batches.push(batch); batch=[]; }
+      if (documentReason || !fits([unit.unit_id])) { skippedUnits.push(skipped(unit, documentReason ?? 'unit_too_large')); continue; }
+      // A unit whose own prompt overflows still gets its own request; only the
+      // server can refuse it as permanently too large.
+      if (batch.length && (!fits([...batch,unit.unit_id]) || !promptFits([...batch,unit.unit_id]))) { batches.push(batch); batch=[]; }
       batch.push(unit.unit_id);
     }
     if (batch.length) batches.push(batch);
@@ -166,6 +201,7 @@ export async function prepareTargetResumeAI(value: unknown, supportGroups?: Targ
 }
 
 const REASONS = new Set(['no_change', 'unit_too_large', 'context_too_large', 'target_too_large',
+  'interests_too_large', 'batch_context_too_large',
   'model_unavailable', 'invalid_model_response', 'ungrounded_rewrite', 'missing_result',
   'no_target_evidence', 'budget_exhausted', 'timeout']);
 const PRIORITIES = new Set(['high', 'normal', 'low']);
@@ -246,6 +282,9 @@ export function validateTargetResumeAIResponse(prepared: PreparedTargetResumeAi,
     for (const item of value.receipts) {
       if (!object(item) || typeof item.unit_id !== 'string' || !selected.has(item.unit_id) || seen.has(item.unit_id)) fail('invalid_response');
       seen.add(item.unit_id);
+      // The server gives this only when a smaller request would fit; a single
+      // unit can never be split further, so it would retry forever.
+      if (item.reason_code === 'batch_context_too_large' && expected.selected_unit_ids.length < 2) fail('invalid_response');
       validateReceipt(prepared, byId.get(item.unit_id)!, item);
     }
     const skippedCount = value.receipts.filter((item) => (item as TargetResumeAiReceipt).status === 'skipped').length;

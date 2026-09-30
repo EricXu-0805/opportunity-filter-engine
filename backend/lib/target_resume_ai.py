@@ -9,6 +9,7 @@ from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, supported_claim_upgrade_detected
 from backend.lib.target_resume_ai_schema import (
+    MAX_DIRECTION_CHARACTERS,
     MAX_EXPERIENCE_CHARACTERS,
     MAX_ORIGINAL_CHARACTERS,
     MAX_PROMPT_CHARACTERS,
@@ -285,10 +286,25 @@ def dispatch(messages):
     return raw, None if raw else "model_unavailable", 1
 
 
+def prompt_too_large(messages):
+    return sum(len(message["content"]) for message in messages) > MAX_PROMPT_CHARACTERS
+
+
 def batch_preflight(doc, processable, locale):
+    """Return (messages, None), or (None, reason) where reason is one code for
+    every unit or a {unit_id: code} map when only the combination overflows."""
     if target_character_count(doc["target_snapshot"]) > MAX_TARGET_CHARACTERS:
         return None, "target_too_large"
+    if len(doc["base_snapshot"].get("research_interests", "")) > MAX_DIRECTION_CHARACTERS:
+        return None, "interests_too_large"
     messages = build_prompt(doc, processable, locale)
-    if sum(len(message["content"]) for message in messages) > MAX_PROMPT_CHARACTERS:
+    if not prompt_too_large(messages):
+        return messages, None
+    if prompt_too_large(build_prompt(doc, [], locale)):
+        return None, "target_too_large"
+    if len(processable) == 1:
         return None, "context_too_large"
-    return messages, None
+    # Only a unit whose own prompt overflows is permanently too large; the rest
+    # are retryable in a smaller request.
+    return None, {unit["unit_id"]: "context_too_large" if prompt_too_large(build_prompt(doc, [unit], locale))
+                  else "batch_context_too_large" for unit in processable}

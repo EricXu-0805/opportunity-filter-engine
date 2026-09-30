@@ -4263,6 +4263,10 @@ export const en = {
     bullets: {
       empty: 'No bullets to display.',
     },
+    fullTarget: {
+      interestsTooLarge: 'Your research interests are over {limit} characters, so AI suggestions cannot use them in full. Shorten them in your profile, then rebuild this draft. Nothing was cut.',
+      batchContextTooLarge: 'This item needs a smaller AI request. Continue to review it.',
+    },
   },
   resume: {
     pdfOnly: 'PDF only · Max 5 MB · Up to 60,000 text characters',
@@ -9342,6 +9346,10 @@ export const zh = {
     },
     bullets: {
       empty: '没有可展示的条目。',
+    },
+    fullTarget: {
+      interestsTooLarge: '研究兴趣超过 {limit} 个字符，AI 建议无法完整使用。请在个人资料中精简后重新生成此稿。内容没有被截断。',
+      batchContextTooLarge: '此项需要拆成更小的 AI 请求，点击继续即可核对。',
     },
   },
   resume: {

@@ -16,7 +16,7 @@ const lines = (v: TargetResumeV1) => v.document.sections.flatMap(s => s.blocks.f
 const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
 const target = { opportunity_id: 'opp', title: 'Robotics', organization: 'University', source_url: '', description: 'Robotics 😀 materials.', requirements: ['Python', '😀研究'], context_version: 4 as const, lab: { version: 1 as const, status: 'unavailable' as const, snapshot: null }, research: { version: 1 as const, status: 'unavailable' as const, snapshot: null },
   criteria: { eligibility: {}, timing: {}, application: {}, setting: {}, availability: {}, attribution: {} } };
-async function make(facts: string[] = ['Python'], experiences: string[] = ['Built a Python parser.'], description?: string) {
+async function make(facts: string[] = ['Python'], experiences: string[] = ['Built a Python parser.'], description?: string, research_interests = '') {
   const master = createEmptyResumeMaster('master');
   master.basics = { name: fact('name', 'Student'), links: [] };
   if (facts.reduce((n, value) => n + Array.from(value).length, 0) === 60000) master.basics = { links: [] };
@@ -24,7 +24,7 @@ async function make(facts: string[] = ['Python'], experiences: string[] = ['Buil
   const entries: ExperienceEntry[] = experiences.map((text, i) => ({ id: `exp-${i}`, revision: 1, status: 'confirmed', text, source: { kind: 'manual' } }));
   master.activities = entries.map(e => ({ id: `activity-${e.id}`, kind: 'project', details: [{ id: e.id, revision: e.revision }] }));
   const profile: ProfileData = { institution: 'UIUC', college: 'Engineering', major: 'Engineering', grade: 'junior', is_international: false,
-    research_interests: '', skills: [], resume_text: '', experience_entries: entries, resume_master: master };
+    research_interests, skills: [], resume_text: '', experience_entries: entries, resume_master: master };
   return createTargetResume(profile, description === undefined ? target : { ...target, description }, 'draft');
 }
 const prep = async (draft?: TargetResumeV1) => unwrap(await prepareTargetResumeAI(draft ?? await make()));
@@ -90,6 +90,24 @@ describe('whole-document preparation and bounded complete batches', () => {
     const over = await prep(await make(['Python'], [], 'x'.repeat(24001 - overhead - criteriaLength)));
     expect(over.batches).toEqual([]); expect(over.skipped.map(r => r.reason_code)).toEqual(['target_too_large']);
   });
+  it('packs batches against the repeated target, direction and whole-block facts, not only the unit originals', async () => {
+    // 14,000 original characters fit one batch by the original budget, but each
+    // fact is repeated in its block context next to a long target and direction.
+    const facts = ['A'.repeat(7000), 'B'.repeat(7000)];
+    const p = await prep(await make(facts, [], 'd'.repeat(20000), 'i'.repeat(8000)));
+    expect(p.skipped).toEqual([]);
+    expect(p.batches).toEqual(p.units.map(u => [u.unit_id]));
+    const small = await prep(await make(facts, [], 'd'.repeat(200), 'i'.repeat(8000)));
+    expect(small.batches).toEqual([small.units.map(u => u.unit_id)]);
+  });
+  it('refuses over-long research interests by name for every unit and never clips them', async () => {
+    const at = await make(['Python'], ['Built a parser.'], undefined, 'i'.repeat(7996) + 'TAIL');
+    expect((await prep(at)).batches.flat()).toHaveLength(2);
+    const over = await make(['Python'], ['Built a parser.'], undefined, 'i'.repeat(7997) + 'TAIL');
+    const p = await prep(over);
+    expect(p.batches).toEqual([]); expect(p.skipped.map(r => r.reason_code)).toEqual(['interests_too_large', 'interests_too_large']);
+    expect(p.draft.base_snapshot.research_interests).toBe('i'.repeat(7997) + 'TAIL');
+  });
   it('ignores object insertion order while binding array order, and clones before the first await', async () => {
     const d = await make(['A', 'B']);
     const reorderedKeys = Object.fromEntries(Object.entries(d).reverse());
@@ -148,6 +166,14 @@ describe('strict receipts and target quotation', () => {
   ] as const)('rejects %s atomically', async (_name, mutate) => {
     const p = await prep(); const r = response(p); const request = expected(r); mutate(r);
     expect(validateTargetResumeAIResponse(p, request, r)).toEqual({ ok: false, code: 'invalid_response' });
+  });
+  it('accepts a request-size refusal only for a request of more than one unit', async () => {
+    const p = await prep(); const r = response(p);
+    Object.assign(r, { method: 'unavailable', logical_calls: 0, provider_attempts_upper_bound: 0 });
+    for (const item of r.receipts) Object.assign(item, { status: 'skipped', reason_code: 'batch_context_too_large', suggestion: null });
+    expect(validateTargetResumeAIResponse(p, expected(r), r).ok).toBe(true);
+    const single = { ...r, receipts: [r.receipts[0]] };
+    expect(validateTargetResumeAIResponse(p, expected(single), single)).toEqual({ ok: false, code: 'invalid_response' });
   });
   it('rejects results from the previous writing rules without changing the draft', async () => {
     const p = await prep(); const before = clone(p.draft); const current = response(p);

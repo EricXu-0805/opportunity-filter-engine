@@ -79,7 +79,7 @@ async def full_target_suggestions(request: FullTargetRequest):
         reason = "model_unavailable"
     results = []
     if reason:
-        results = [receipt(unit, reason) for unit in processable]
+        results = [receipt(unit, reason[unit["unit_id"]] if isinstance(reason, dict) else reason) for unit in processable]
     elif processable:
         try:
             raw, reason, calls = await run_blocking(dispatch, messages)

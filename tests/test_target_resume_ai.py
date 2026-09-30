@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 from copy import deepcopy
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.lib import target_resume_ai as engine
-from backend.lib.target_resume_ai_schema import FullTargetRequest
+from backend.lib.target_resume_ai_schema import MAX_DIRECTION_CHARACTERS, MAX_PROMPT_CHARACTERS, FullTargetRequest
 from backend.lib.target_resume_ai_validation import (
     confirmed_document,
     fingerprint,
@@ -162,8 +163,20 @@ def test_changed_or_hidden_target_refused_before_model(endpoint):
     assert not calls
 
 
-@pytest.mark.parametrize("kind", ["unknown", "duplicate", "fact_rewrite", "wrong_quote", "cross_project_number", "missing"])
-def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind):
+# Keeps both sensitive clauses verbatim so the claim locks pass and only the
+# unsupported quantity can reject it; the same sentence with "3 kg" is accepted.
+UNSUPPORTED_NUMBER = "Built a Python robot with a team of 3. I did not lead the project. The robot weighed {} kg."
+
+
+@pytest.mark.parametrize(("kind", "skipped"), [
+    ("unknown", {"line-2": "invalid_model_response", "line-3": "invalid_model_response", "line-4": "invalid_model_response"}),
+    ("duplicate", {"line-2": "invalid_model_response", "line-3": "invalid_model_response", "line-4": "invalid_model_response"}),
+    ("fact_rewrite", {"line-2": "invalid_model_response"}),
+    ("wrong_quote", {"line-2": "no_target_evidence"}),
+    ("cross_project_number", {"line-3": "ungrounded_rewrite"}),
+    ("missing", {"line-4": "missing_result"}),
+])
+def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind, skipped):
     client, doc, _, _ = endpoint
     data = output(doc)
     if kind == "unknown":
@@ -175,14 +188,23 @@ def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind):
     elif kind == "wrong_quote":
         data["units"][0]["target_evidence"][0]["quote"] = "Imagined"
     elif kind == "cross_project_number":
-        data["units"][1]["proposed_text"] = "Built 999 Python robots."
+        data["units"][1]["proposed_text"] = UNSUPPORTED_NUMBER.format(999)
     else:
         data["units"].pop()
     monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
     response = client.post(PATH, json=payload(doc)).json()
     assert [row["unit_id"] for row in response["receipts"]] == ["line-2", "line-3", "line-4"]
-    assert any(row["status"] == "skipped" for row in response["receipts"])
-    assert response["method"] in ("partial", "unavailable")
+    assert {row["unit_id"]: row["reason_code"] for row in response["receipts"] if row["status"] == "skipped"} == skipped
+    assert response["method"] == ("unavailable" if len(skipped) == 3 else "partial")
+
+
+def test_supported_quantity_in_the_number_case_is_accepted(endpoint, monkeypatch):
+    client, doc, _, _ = endpoint
+    data = output(doc)
+    data["units"][1]["proposed_text"] = UNSUPPORTED_NUMBER.format(3)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    receipt = client.post(PATH, json=payload(doc)).json()["receipts"][1]
+    assert receipt["status"] == "suggested" and receipt["suggestion"]["proposed_text"] == UNSUPPORTED_NUMBER.format(3)
 
 
 def test_target_quote_offsets_use_codepoints_and_require_literal_match():
@@ -333,6 +355,68 @@ def test_oversize_target_or_context_is_explicit_and_zero_model(endpoint, reason)
     assert response.status_code == 200, response.text
     assert response.json()["receipts"][0]["reason_code"] == reason
     assert response.json()["logical_calls"] == 0 and not calls
+
+
+def crowd_prompt(doc, opp, title, skill, interests="i" * 8000):
+    # Every unit is within the original budgets; only the context repeated in
+    # one combined prompt (target, direction, whole-block facts) overflows it.
+    opp["eligibility"]["skills_required"] = ["Python", "r" * 11000]
+    doc["target_snapshot"] = route.authoritative_target(opp)
+    doc["base"]["target_signature"] = fingerprint(doc["target_snapshot"])
+    doc["base_snapshot"]["research_interests"] = interests
+    doc["base_snapshot"]["resume_master"]["activities"][0]["title"]["value"] = title
+    doc["document"]["sections"][1]["blocks"][0]["lines"][0].update(original=title, text=title)
+    doc["base_snapshot"]["resume_master"]["skills"][0]["value"] = skill
+    doc["document"]["sections"][2]["blocks"][0]["lines"][0].update(original=skill, text=skill)
+
+
+def test_combined_overflow_is_retryable_for_units_that_fit_alone(endpoint, monkeypatch):
+    client, doc, opp, calls = endpoint
+    crowd_prompt(doc, opp, "T" * 8000, "S" * 7000)
+    body = client.post(PATH, json=payload(doc)).json()
+    assert [row["reason_code"] for row in body["receipts"]] == ["batch_context_too_large"] * 3
+    assert body["logical_calls"] == 0 and not calls
+
+    def model(messages, **kwargs):
+        requested = [unit["unit_id"] for unit in json.loads(messages[1]["content"])["units"]]
+        return json.dumps(output(doc, requested))
+
+    monkeypatch.setattr(engine, "chat_completion", model)
+    for ident in ("line-2", "line-3", "line-4"):
+        single = client.post(PATH, json=payload(doc, [ident])).json()
+        assert single["method"] == "ai" and single["logical_calls"] == 1, (ident, single["receipts"])
+
+
+def test_only_a_unit_too_large_on_its_own_is_permanently_skipped(endpoint):
+    client, doc, opp, calls = endpoint
+    crowd_prompt(doc, opp, "T" * 12500, "S" * 3000)
+    body = client.post(PATH, json=payload(doc)).json()
+    assert {row["unit_id"]: row["reason_code"] for row in body["receipts"]} == {
+        "line-2": "context_too_large", "line-3": "batch_context_too_large", "line-4": "batch_context_too_large"}
+    assert client.post(PATH, json=payload(doc, ["line-2"])).json()["receipts"][0]["reason_code"] == "context_too_large"
+    assert not calls
+
+
+def test_long_research_interests_are_refused_by_name_and_never_clipped(endpoint):
+    client, doc, _, calls = endpoint
+    doc["base_snapshot"]["research_interests"] = "interest " * 3888 + "TAIL"
+    body = client.post(PATH, json=payload(doc)).json()
+    assert [row["reason_code"] for row in body["receipts"]] == ["interests_too_large"] * 3
+    assert body["logical_calls"] == 0 and not calls
+    doc["base_snapshot"]["research_interests"] = "i" * 7996 + "TAIL"
+    assert client.post(PATH, json=payload(doc)).json()["method"] == "ai"
+    assert json.loads(calls[0][0][1]["content"])["student_direction"]["research_interests"] == "i" * 7996 + "TAIL"
+
+
+def test_browser_prompt_estimate_constants_match_the_server():
+    protocol = (Path(__file__).parents[1] / "frontend/src/lib/target-resume-ai-protocol.ts").read_text()
+
+    def constant(name):
+        return int(re.search(rf"export const {name} = ([0-9_]+);", protocol)[1].replace("_", ""))
+
+    assert constant("FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS") == len(engine.SYSTEM_PROMPT)
+    assert constant("FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS") == MAX_DIRECTION_CHARACTERS
+    assert constant("FULL_TARGET_AI_MAX_PROMPT_CHARACTERS") == MAX_PROMPT_CHARACTERS
 
 
 def test_no_provider_returns_unavailable_without_claiming_an_attempt(endpoint, monkeypatch):

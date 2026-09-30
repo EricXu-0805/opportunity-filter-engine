@@ -6,6 +6,7 @@ import { targetResumeEvidenceLabel } from '@/lib/target-resume-evidence';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/client';
+import { translate } from '@/i18n/translate';
 import { ApiError, generateTargetResumeSuggestions } from '@/lib/api';
 import { isOwnerTokenValid, onLocalOwnerStateChange, type OwnerToken } from '@/lib/identity-owner';
 import {
@@ -18,7 +19,7 @@ import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { useProfileAction } from '@/lib/use-profile-action';
-import type { PreparedTargetResumeAi, TargetResumeAiReceipt, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
+import { FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS, type PreparedTargetResumeAi, type TargetResumeAiReceipt, type TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
 
 export interface TargetResumeAiPanelProps {
   supportGroups?: TargetResumeSupportGroup[];
@@ -40,7 +41,9 @@ export interface TargetResumeAiPanelProps {
 type Run = { prepared: PreparedTargetResumeAi; responses: TargetResumeAiResponse[] };
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
 const authorityRefusals = new Set(['target_changed', 'target_not_found', 'TARGET_NOT_ACTIONABLE', 'legacy_target_context']);
-const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large']);
+const permanent = new Set(['unit_too_large', 'context_too_large', 'target_too_large', 'interests_too_large']);
+// Whole-draft causes: no smaller request can succeed until the draft changes.
+const stopping = new Set(['budget_exhausted', 'target_too_large', 'interests_too_large']);
 const successful = (receipt: TargetResumeAiReceipt) => receipt.status !== 'skipped';
 
 export default function TargetResumeAiPanel({ supportGroups, draft, profile, profileAvailable = true, profileRefresh, target, targetRefresh, readiness, owner, contextKey, currentContext, enabled, onApply, onDirtyChange, onAuthorityRefusal }: TargetResumeAiPanelProps) {
@@ -108,6 +111,8 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     unit_too_large: copy('This item is too long for one AI review. Its full text is kept.', '此项超过单次 AI 处理范围，全文仍保留。'),
     context_too_large: copy('This item’s source context is too long. Review it manually.', '此项的来源上下文过长，请手动核对。'),
     target_too_large: copy('The saved opportunity details exceed this AI request’s limit.', '保存的机会资料超过本次 AI 处理范围。'),
+    interests_too_large: translate(locale, 'tailor.fullTarget.interestsTooLarge', { limit: FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS }),
+    batch_context_too_large: translate(locale, 'tailor.fullTarget.batchContextTooLarge'),
     legacy_target_context: copy('This older draft is missing saved opportunity requirements. Rebuild before using AI.', '旧稿缺少完整机会要求，请重新创建后再用 AI。'),
     budget_exhausted: copy('The AI allowance is used up. Continue after it becomes available.', 'AI 额度已用完，恢复后可继续。'),
     ungrounded_rewrite: copy('The proposed wording failed the source checks. Your wording is kept.', '建议未通过来源核对，保留现有表述。'),
@@ -144,7 +149,11 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         setSelected(new Set()); setDismissed(new Set()); setOrder(false);
       }
       setRun(working); runRef.current = working;
-      for (const batch of working.prepared.batches) {
+      const blocked = working.prepared.skipped.find((item) => stopping.has(item.reason_code ?? ''));
+      if (blocked) { setError(blocked.reason_code); return; }
+      const queue = working.prepared.batches.map((batch) => [...batch]);
+      while (queue.length) {
+        const batch = queue.shift()!;
         if (!live(generation, expected)) return;
         const coverage = mergeTargetResumeAIResponses(working.prepared, working.responses);
         if (!coverage.ok) { setError(coverage.code); return; }
@@ -165,9 +174,14 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         const combined = mergeTargetResumeAIResponses(working.prepared, working.responses);
         if (!combined.ok) { setError(combined.code); return; }
         setRun(working); runRef.current = working;
-        const stopping = checked.value.receipts.find((item) => item.reason_code === 'budget_exhausted' || item.reason_code === 'target_too_large');
-        if (stopping || checked.value.method === 'unavailable') {
-          setError(stopping?.reason_code ?? checked.value.receipts.find((item) => item.status === 'skipped')?.reason_code ?? 'model_unavailable');
+        // The server refused only the combination; each half is a smaller request.
+        const split = checked.value.receipts.filter((item) => item.reason_code === 'batch_context_too_large').map((item) => item.unit_id);
+        if (split.length) queue.unshift(...[split.slice(0, Math.ceil(split.length / 2)), split.slice(Math.ceil(split.length / 2))].filter((part) => part.length));
+        const stop = checked.value.receipts.find((item) => stopping.has(item.reason_code ?? ''));
+        const failed = checked.value.receipts.find((item) => item.status === 'skipped'
+          && !permanent.has(item.reason_code ?? '') && item.reason_code !== 'batch_context_too_large');
+        if (stop || (checked.value.method === 'unavailable' && failed)) {
+          setError(stop?.reason_code ?? failed?.reason_code ?? 'model_unavailable');
           return;
         }
       }
