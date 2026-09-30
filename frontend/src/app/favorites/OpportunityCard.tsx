@@ -26,6 +26,7 @@ import {
   targetStatusReason,
   type TargetStatusReason,
 } from '@/lib/target-truth';
+import { typeLabel } from '@/app/results/types';
 import { DeadlineBadge } from './DeadlineBadge';
 import { MAX_COMPARE, type Opp, type TFunc } from './types';
 
@@ -239,7 +240,7 @@ export function OpportunityCard({
               <Badge variant="red">{t(SAVED_STATUS_KEY[statusReason])}</Badge>
             )}
             {showsOfferTerms && opp.opportunity_type && (
-              <Badge variant="indigo">{opp.opportunity_type}</Badge>
+              <Badge variant="indigo">{typeLabel(opp.opportunity_type, t)}</Badge>
             )}
             {intlBadge && (
               <Badge variant={intlBadge.variant} dot>
