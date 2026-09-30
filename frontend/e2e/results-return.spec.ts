@@ -563,6 +563,22 @@ test.describe('Results return context', () => {
     expectPublicFilters(page.url());
   });
 
+  test('the reset explanation leaves once the student pages forward again', async ({ page }) => {
+    const net = await installNetwork(page);
+    await seedProfile(page);
+    await onSecondPage(page, net);
+    await title(page).click();
+    await expect(page.getByTestId('return-to-results')).toBeVisible();
+    net.generation += 1;
+    await page.getByTestId('return-to-results').click();
+    await expect(page.getByText(RESET_NOTICE, { exact: true })).toBeVisible();
+    await expect(page.getByText('1 / 2', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
+    await expect(page.locator('[id^="match-card-"]')).toHaveCount(8);
+    await expect(page.getByText(RESET_NOTICE, { exact: true })).toHaveCount(0);
+  });
+
   test('unavailable sessionStorage leaves working filters and safe page-one navigation', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
