@@ -416,6 +416,37 @@ describe('résumé master candidates proposed from the résumé text', () => {
     expect(next.skills.filter((skill) => skill.value === 'Python').map((skill) => skill.status)).toEqual(['withdrawn', 'candidate']);
   });
 
+  it('reads school, employer and skills set in capitals as content, not as headings', async () => {
+    const raw = ['Jordan Lee', 'EDUCATION', 'UNIVERSITY OF MICHIGAN', 'B.S. Computer Science, Aug 2024 - May 2028', 'EXPERIENCE',
+      'Software Engineering Intern, PRAIRIE ANALYTICS - Jun 2026 - Aug 2026', '- Wrote SQL jobs.', 'SKILLS', 'HTML, CSS, SQL',
+      'Python, Git'].join('\n');
+    expect(values(proposeResumeMaster(null, raw, await sourceDigest(raw)))).toEqual({
+      basics: { name: 'Jordan Lee' },
+      links: [],
+      education: [{ school: 'UNIVERSITY OF MICHIGAN', degree: 'B.S.', field: 'Computer Science', start: 'Aug 2024', end: 'May 2028' }],
+      activities: [{ kind: 'employment', title: 'Software Engineering Intern', organization: 'PRAIRIE ANALYTICS', start: 'Jun 2026', end: 'Aug 2026' }],
+      skills: ['HTML', 'CSS', 'SQL', 'Python', 'Git'],
+    });
+  });
+
+  it('never takes a heading on the first line for the name', async () => {
+    const chinese = ['教育背景', '伊利诺伊大学厄巴纳-香槟分校 计算机科学 本科 2024.09 - 2028.05', '专业技能', 'Python、PyTorch、SQL'].join('\n');
+    expect(values(proposeResumeMaster(null, chinese, await sourceDigest(chinese)))).toEqual({
+      basics: {},
+      links: [],
+      education: [{ school: '伊利诺伊大学厄巴纳-香槟分校', degree: '本科', start: '2024.09', end: '2028.05' }],
+      activities: [],
+      skills: ['Python', 'PyTorch', 'SQL'],
+    });
+    const mainFirst = ['Work Experience', 'Research Intern, Biomechanics Lab\tJun 2025 - Aug 2025', 'Priya Natarajan',
+      'priya.natarajan.test@example.com'].join('\n');
+    const master = proposeResumeMaster(null, mainFirst, await sourceDigest(mainFirst));
+    expect(master.basics.name).toBeUndefined();
+    expect(values(master).activities).toEqual([
+      { kind: 'research', title: 'Research Intern', organization: 'Biomechanics Lab', start: 'Jun 2025', end: 'Aug 2025' },
+    ]);
+  });
+
   it('keeps what the master already holds and never re-proposes a span, even one the student excluded', async () => {
     const signature = await sourceDigest(persona);
     const own = empty();

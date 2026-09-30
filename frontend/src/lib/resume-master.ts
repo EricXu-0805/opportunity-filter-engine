@@ -365,7 +365,7 @@ const PLACE = String.raw`[\p{Lu}][\p{L}.' -]*,\s*(?:[A-Z]{2}|USA|China|Canada|Un
 const LABELLED_PLACE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?(${PLACE})$`, 'u');
 const TRAILING_PLACE = new RegExp(String.raw`(?:\(\s*(${PLACE})\s*\)|(?:,\s*|\t|\s[|–—-]\s)(${PLACE}))\s*$`, 'u');
 const PERSON = /^(?:[\p{Lu}][\p{L}.'’-]*)(?:\s+[\p{Lu}][\p{L}.'’-]*){1,4}$|^\p{Script=Han}{2,4}$/u;
-const SCHOOL = /\b(?:University|College|Institute|School|Academy|Polytechnic)\b|大学|学院/u;
+const SCHOOL = /\b(?:University|College|Institute|School|Academy|Polytechnic|UNIVERSITY|COLLEGE|INSTITUTE|SCHOOL|ACADEMY|POLYTECHNIC)\b|大学|学院/u;
 const DEGREE = /(?<![\p{L}.])(?:(?:B|M)\.?\s?(?:S|A|Sc|Eng|E|Ed)\.?|Ph\.?\s?D\.?|MBA|(?:Bachelor|Master)(?:'s|’s)?(?: of (?:Science|Arts|Engineering|Fine Arts|Business Administration|Applied Science))?|Associate(?:'s|’s)? of (?:Science|Arts)|Doctor of Philosophy|本科|学士|硕士|博士)(?![\p{L}])/u;
 const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(?:and|&|of|in)\s+)?[\p{Lu}][\p{L}&'-]*)*)/u;
 const NOT_A_FIELD = new RegExp(String.raw`^(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter|Expected|Class|GPA|Minor|Honors|Present)\b`, 'u');
@@ -474,10 +474,11 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
   for (const line of lines) {
     const text = line.text.trim();
     if (!text) continue;
-    // The first line names the student, even when it is set in capitals.
+    // The first line names the student, even when it is set in capitals,
+    // unless it is a heading (a layout that prints the main column first).
     if (opening) {
       opening = false;
-      if (PERSON.test(text.split(/\s[|•·]\s|\t/u)[0].trim())) {
+      if (PERSON.test(text.split(/\s[|•·]\s|\t/u)[0].trim()) && !resumeSectionHeading(text)) {
         contact(line, true);
         continue;
       }
@@ -540,7 +541,9 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
       }
       if (school) {
         const cut = content.search(/\s[-–—|]\s|\t|\(/u);
-        current.fields.school ??= fact(line, 0, cut < 0 ? content.length : cut);
+        // A Chinese school name is one token: "北京大学 物理学院 本科".
+        const han = /\S*(?:大学|学院)\S*/u.exec(content);
+        current.fields.school ??= han ? match(line, han) : fact(line, 0, cut < 0 ? content.length : cut);
       }
       if (degree) {
         current.fields.degree ??= match(line, degree);

@@ -159,9 +159,7 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
     context = [];
   };
   const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
-  // The first line is the name even when it is set in capitals.
-  const first = texts.findIndex((text) => text.trim());
-  const firstHeading = texts.findIndex((text, index) => index > first && resumeSectionHeading(text) !== null);
+  const firstHeading = texts.findIndex((text) => resumeSectionHeading(text) !== null);
   for (const [index, [from, to]] of lines.entries()) {
     const text = texts[index];
     if (notExperience(text, index < firstHeading)) {

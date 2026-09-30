@@ -683,6 +683,18 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('rejoins a widowed last word even when it is a section title', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Assisted a PhD student with literature reviews and data collection for autonomous driving', 50, 500, 700, { hasEOL: true }),
+      at('research', 50, 40, 688, { hasEOL: true }),
+      at('- Wrote SQL jobs', 50, 80, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Assisted a PhD student with literature reviews and data collection for autonomous driving research',
+      '- Wrote SQL jobs',
+    ]);
+  });
+
   it('keeps apart two lines that a paragraph gap separates', async () => {
     const full = 'the first paragraph wraps here and its words run to the edge';
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([

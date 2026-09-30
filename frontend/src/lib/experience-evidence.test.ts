@@ -212,6 +212,23 @@ describe('local proposals and confirmed eligibility', () => {
       'Software Engineering Intern, Prairie Analytics',
     ]);
   });
+  it('keeps a widowed lowercase word with its bullet even when it is also a section title', async () => {
+    const raw = ['EXPERIENCE', '- Assisted a PhD student with literature reviews and data collection for autonomous driving',
+      'research', '- Wrote SQL and Python ETL jobs'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      '- Assisted a PhD student with literature reviews and data collection for autonomous driving\nresearch',
+      '- Wrote SQL and Python ETL jobs',
+    ]);
+  });
+  it('offers school, employer and skill lines set in capitals, and reads a heading on the first line as a heading', async () => {
+    // A layout that prints the main column first opens with a heading, not a name.
+    const raw = ['EXPERIENCE', 'PRAIRIE ANALYTICS', 'Research Intern, Lab', '- Wrote SQL jobs.', 'EDUCATION',
+      'UNIVERSITY OF MICHIGAN', 'SKILLS', 'HTML, CSS, SQL', 'TECHNICAL SKILLS & TOOLS', 'Git', 'HONORS AND AWARDS',
+      "Dean's List"].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'PRAIRIE ANALYTICS', 'Research Intern, Lab', '- Wrote SQL jobs.', 'UNIVERSITY OF MICHIGAN', 'HTML, CSS, SQL', 'Git', "Dean's List",
+    ]);
+  });
   it('keeps one proposal per line when a line-per-row résumé fits the cap', async () => {
     const raw = ['Built a robot', 'wrote a report', 'Led a team'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Built a robot', 'wrote a report', 'Led a team']);

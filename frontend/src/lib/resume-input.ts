@@ -36,18 +36,22 @@ const SECTION_TITLES: ReadonlyArray<[ResumeSectionKind, readonly string[]]> = [
   ['other', ['获奖情况', '荣誉奖项', '个人简介', '自我评价', '姓名与联系方式']],
 ];
 const SECTION_WORDS: ReadonlyArray<[ResumeSectionKind, RegExp]> = [
-  ['education', /EDUCATION/u], ['projects', /PROJECTS?\b/u],
-  ['experience', /EXPERIENCE|EMPLOYMENT|INTERNSHIPS/u], ['skills', /SKILLS|TECHNOLOGIES/u],
-  ['publications', /PUBLICATIONS/u],
+  ['education', /\bEDUCATION(?:AL)?\b/u], ['projects', /\bPROJECTS?\b/u],
+  ['experience', /\b(?:EXPERIENCES?|EMPLOYMENT|INTERNSHIPS?|ACTIVITIES|INVOLVEMENT|LEADERSHIP|VOLUNTEERING)\b/u],
+  ['skills', /\b(?:SKILLS?|SKILLSETS?|TECHNOLOGIES|TOOLS|LANGUAGES)\b/u],
+  ['publications', /\b(?:PUBLICATIONS|PAPERS|PRESENTATIONS)\b/u],
+  ['other', /\b(?:SUMMARY|OBJECTIVE|PROFILE|AWARDS|HONOU?RS|ACHIEVEMENTS|SCHOLARSHIPS|CERTIFICATIONS|CERTIFICATES|COURSEWORK|INTERESTS|HOBBIES|AFFILIATIONS|MEMBERSHIPS|REFERENCES)\b/u],
 ];
 
 /** The section a whole line names: a known title in any case ("Skills:"), or
- *  an all-capitals label ("TECHNICAL SKILLS & TOOLS", "HONORS AND AWARDS").
- *  A lone capitalized word that is no known title ("SQL", "MATLAB") is
- *  content, and so is anything longer or with digits. */
+ *  an all-capitals label with a section word in it ("TECHNICAL SKILLS &
+ *  TOOLS", "RESEARCH INTERESTS"). Capitals without one are content: a name,
+ *  a school or employer, a skills list ("UNIVERSITY OF MICHIGAN", "HTML, CSS,
+ *  SQL"). So is a line that starts in lowercase (a wrapped last word such as
+ *  "research"), anything longer, and anything with digits. */
 export function resumeSectionHeading(line: string): ResumeSectionKind | null {
   const label = line.trim().replace(/[:：]$/u, '').trim();
-  if (!label || label.length > 40 || /\d/u.test(label)) return null;
+  if (!label || label.length > 40 || /\d/u.test(label) || /^\p{Ll}/u.test(label)) return null;
   const lower = label.toLowerCase().replace(/\s+/gu, ' ');
   for (const [kind, titles] of SECTION_TITLES) if (titles.includes(lower)) return kind;
   const letters = label.replace(/[^\p{L}]/gu, '');
@@ -55,7 +59,7 @@ export function resumeSectionHeading(line: string): ResumeSectionKind | null {
     || !/^[\p{L}\s&/,'’-]+$/u.test(label)) return null;
   const words = label.split(/\s+/u).length;
   for (const [kind, pattern] of SECTION_WORDS) if (words <= 5 && pattern.test(label)) return kind;
-  return words >= 2 && words <= 5 ? 'other' : null;
+  return null;
 }
 
 export const RESUME_EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/u;
