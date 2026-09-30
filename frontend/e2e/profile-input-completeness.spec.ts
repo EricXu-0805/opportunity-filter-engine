@@ -1,9 +1,8 @@
 import {test,expect} from '@playwright/test';
-import {readFileSync} from 'node:fs';
 import {STORAGE_KEYS} from '../src/lib/storage-keys';
 import {encodeProfile} from '../src/lib/profile-share';
 import type {ProfileData,ProfileRequest} from '../src/lib/types';
-const STUB=`http://127.0.0.1:${process.env.E2E_SUPABASE_PORT??55050}`,FRONT=`http://127.0.0.1:${process.env.E2E_PORT??3320}`,BACK=`http://127.0.0.1:${process.env.E2E_BACKEND_PORT??8320}`;
+const STUB=`http://127.0.0.1:${process.env.E2E_SUPABASE_PORT??54321}`,FRONT=`http://127.0.0.1:${process.env.E2E_PORT??3100}`,BACK=`http://127.0.0.1:${process.env.E2E_BACKEND_PORT??8100}`;
 const normal=():ProfileData=>({name:'Alex 王',institution:'UIUC',college:'Grainger College of Engineering',major:'Computer Science',grade:'Junior',is_international:false,research_interests:'robotics '.repeat(260)+'🧪 LATE_INTEREST',skills:Array.from({length:60},(_,i)=>({name:`Skill ${i+1}`,level:'experienced'})),coursework:Array.from({length:60},(_,i)=>`Course ${i+1}`),seeking_types:['research']});
 test('B53 complete imported profile, field rejection and server aggregate recovery',async({page,request},info)=>{
  test.setTimeout(120000);const zh=info.project.name==='mobile-chrome',copy=(en:string,cn:string)=>zh?cn:en;if(zh)await page.setViewportSize({width:390,height:844});
@@ -13,7 +12,8 @@ test('B53 complete imported profile, field rejection and server aggregate recove
  await page.context().route('**/*',route=>{const url=new URL(route.request().url());if(![STUB,FRONT,BACK].includes(url.origin)){audit.external.push(url.origin);return route.abort();}if(/^\/api\/(cold-email|tailor|chat|send)/.test(url.pathname))return route.abort();return route.continue();});
  page.on('pageerror',e=>audit.errors.push(e.message));
  await page.context().addCookies([{name:STORAGE_KEYS.LOCALE,value:zh?'zh':'en',url:FRONT}]);await page.addInitScript(({session,keys,locale})=>{if(!localStorage.getItem('b53-seeded')){localStorage.setItem('ofe_auth',JSON.stringify(session));localStorage.setItem(keys.LOCALE,locale);localStorage.setItem(keys.ONBOARDING_SEEN,'1');localStorage.setItem('b53-seeded','1');}},{session,keys:STORAGE_KEYS,locale:zh?'zh':'en'});
- const actual=JSON.parse(readFileSync(process.env.B53_BACKEND_RECEIPT!,'utf8'));const actualError=actual.cases.find((c:{name:string})=>c.name==='aggregateBoundary').error;
+ // backend/schemas.py PROFILE_MAX_CHARACTERS: the whole normalized profile, not any one field.
+ const actualError={code:'PROFILE_INPUT_LIMIT_EXCEEDED',field:'profile',limit:160000};
  let replayAggregate=false;
  await page.route('**/api/matches/view?**',async route=>{const body=route.request().postDataJSON();audit.requests.push(body.profile);if(replayAggregate){const response=await route.fetch();audit.statuses.push(response.status());expect(response.status()).toBe(422);expect((await response.json()).detail).toMatchObject({code:actualError.code,field:actualError.field,limit:actualError.limit});return route.fulfill({response});}const response=await route.fetch();audit.statuses.push(response.status());return route.fulfill({response});});
  await page.goto('/?share='+encodeProfile(original));await expect(page.locator('#research_interests')).toHaveValue(original.research_interests);await expect(page.getByTestId('generate-matches')).toBeEnabled();await page.getByTestId('generate-matches').click();await expect(page).toHaveURL(/\/results/);await expect.poll(()=>audit.statuses.length).toBe(1);expect(audit.statuses[0]).toBe(200);expect(audit.requests[0].research_interests_text).toBe(original.research_interests);expect(audit.requests[0].hard_skills.at(-1)?.name).toBe('Skill 60');expect(audit.requests[0].coursework.at(-1)).toBe('Course 60');expect(audit.requests[0].hard_skills).toHaveLength(60);

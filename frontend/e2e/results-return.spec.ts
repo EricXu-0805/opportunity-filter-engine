@@ -510,14 +510,17 @@ test.describe('Results return context', () => {
         base_snapshot: {}, method: 'fallback', warnings: [], updated_at: '2026-09-24T00:00:00Z',
       };
       let reads = 0;
+      // Every read before the user's retry fails: `next dev` runs React
+      // StrictMode, whose mount/unmount/mount issues a second, discarded read.
+      let retried = false;
       await page.route('**/rest/v1/rpc/read_renovation', async (route) => {
         expect(route.request().method()).toBe('POST');
         reads += 1;
-        if (reads === 1 && failure === 'read failure') {
+        if (!retried && failure === 'read failure') {
           await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'synthetic-private-backend-detail' }) });
           return;
         }
-        const data = reads === 1 ? { ...stored, doc: { sections: 'broken' } } : stored;
+        const data = retried ? stored : { ...stored, doc: { sections: 'broken' } };
         const request = route.request().postDataJSON();
         const { updated_at, ...payload } = data;
         await route.fulfill({ status: 200, json: { status: 'found', current: { owner_id: request.p_expected_owner,
@@ -531,11 +534,15 @@ test.describe('Results return context', () => {
       await expect(dialog.getByRole('button', { name: en.renovate.start, exact: true })).toHaveCount(0);
       await expect(dialog.getByText('synthetic-private-backend-detail')).toHaveCount(0);
       expect(net.writes.filter((write) => write.includes('/save_renovation_cas') || write.includes('/resume_renovations'))).toEqual([]);
+      const readsBeforeRetry = reads;
+      // playwright.config serves the production build only under CI.
+      expect(readsBeforeRetry).toBeGreaterThanOrEqual(1); expect(readsBeforeRetry).toBeLessThanOrEqual(process.env.CI ? 1 : 2);
+      retried = true;
       await dialog.getByRole('button', { name: en.renovate.restoreRetry, exact: true }).click();
       await expect(dialog.getByText(en.renovate.restored, { exact: true })).toBeVisible();
       await expect(dialog.getByRole('button', { name: en.renovate.copyAll, exact: true })).toBeVisible();
       await expect(dialog.getByText(existingText, { exact: false })).toBeVisible();
-      expect(reads).toBe(2);
+      expect(reads).toBe(readsBeforeRetry + 1);
       expect(net.writes.filter((write) => write.includes('/save_renovation_cas') || write.includes('/resume_renovations'))).toEqual([]);
     });
   }

@@ -81,7 +81,7 @@ test.describe('Import by URL', () => {
       page.getByRole('heading', { name: 'Software Engineering Intern' }),
     ).toBeVisible();
     await expect(page.getByText('Acme Corp')).toBeVisible();
-    await expect(page.getByText(/AI-extracted/i)).toBeVisible();
+    await expect(page.getByText('AI-assisted · needs review')).toBeVisible();
     await expect(page.getByText('2026-04-15')).toBeVisible();
     await expect(page.getByText('Python').first()).toBeVisible();
     await expect(page.getByText('Rust').first()).toBeVisible();
@@ -118,7 +118,7 @@ test.describe('Import by URL', () => {
     await expect(page.getByPlaceholder('https://...')).toHaveValue('');
   });
 
-  test('Save to my list persists the import and surfaces it on /favorites', async ({ page, context }) => {
+  test('Save in this browser persists the import and surfaces it on /favorites', async ({ page, context }) => {
     await page.route('**/api/import-url', (route: Route) =>
       route.fulfill({
         status: 200,
@@ -150,7 +150,7 @@ test.describe('Import by URL', () => {
     const card = page.getByRole('article');
     await expect(card.getByRole('heading', { name: /Quantum Lab/i })).toBeVisible();
 
-    const saveBtn = card.getByRole('button', { name: /Save to my list/i });
+    const saveBtn = card.getByRole('button', { name: /Save in this browser/i });
     await expect(saveBtn).toBeVisible();
     await saveBtn.click();
 
@@ -197,7 +197,7 @@ test.describe('Import by URL', () => {
     await page.getByPlaceholder('https://...').fill('https://dedup.example/role');
     await page.getByRole('button', { name: /Fetch & parse/i }).click();
     const cardA = page.getByRole('article');
-    await cardA.getByRole('button', { name: /Save to my list/i }).click();
+    await cardA.getByRole('button', { name: /Save in this browser/i }).click();
     await expect(cardA.getByText(/^Saved$/i)).toBeVisible();
 
     await cardA.getByRole('button', { name: /Try another URL/i }).click();
@@ -205,7 +205,7 @@ test.describe('Import by URL', () => {
     await page.getByRole('button', { name: /Fetch & parse/i }).click();
     const cardB = page.getByRole('article');
     await expect(cardB.getByText(/^Saved$/i)).toBeVisible();
-    await expect(cardB.getByRole('button', { name: /Save to my list/i })).toHaveCount(0);
+    await expect(cardB.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
 
     const stored = await page.evaluate(() => window.localStorage.getItem('ofe_custom_imports'));
     const parsed = JSON.parse(stored as string) as unknown[];
@@ -305,7 +305,7 @@ test.describe('Import by Text', () => {
     await expect(card.getByText('BigCo')).toBeVisible();
     await expect(card.getByText('2026-05-30')).toBeVisible();
     await expect(card.getByText('Go').first()).toBeVisible();
-    await expect(card.getByText(/AI-extracted/i)).toBeVisible();
+    await expect(card.getByText('AI-assisted · needs review')).toBeVisible();
     await expect(page.getByRole('button', { name: /Try another text/i })).toBeVisible();
   });
 

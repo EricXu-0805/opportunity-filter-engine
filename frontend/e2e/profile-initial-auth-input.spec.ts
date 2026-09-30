@@ -102,7 +102,9 @@ test.describe('Input during initial auth observation', () => {
       expect(await page.evaluate(() => localStorage.getItem('ofe_auth'))).toBeNull();
       const name = page.locator('#student_name'), research = page.locator('#research_interests');
       if (hadDraft) { await name.fill('First anonymous visitor 王'); await research.fill('Before first sign-in'); }
-      else await research.focus();
+      // focus() does not wait for actionability; a streamed Suspense segment
+      // can still sit in React's hidden <div hidden id="S:0"> container.
+      else { await expect(research).toBeVisible(); await research.focus(); }
       await expect(name).toHaveValue(hadDraft ? 'First anonymous visitor 王' : '');
       await expect(research).toHaveValue(hadDraft ? 'Before first sign-in' : '');
       await expect(research).toBeFocused();

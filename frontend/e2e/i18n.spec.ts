@@ -2,9 +2,13 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function expectMatchNav(page: Page, name: RegExp) {
   const link = page.getByRole('link', { name }).first();
+  const menu = page.getByRole('button', { name: /Open menu|打开菜单/ });
+  // A switch re-renders through a server refresh, so wait for the new locale's
+  // link or the mobile menu instead of sampling visibility once.
+  await expect(link.or(menu).filter({ visible: true }).first()).toBeVisible();
   if (!(await link.isVisible())) {
     // The same navigation is intentionally collapsed behind a menu on mobile.
-    await page.getByRole('button', { name: /Open menu|打开菜单/ }).click();
+    await menu.click();
   }
   await expect(link).toBeVisible();
 }
@@ -28,7 +32,7 @@ test.describe('i18n: language switcher', () => {
     await page.goto('/');
     expect(await page.locator('html').getAttribute('lang')).toBe('en');
     await page.getByRole('button', { name: /Switch to Chinese/i }).click();
-    expect(await page.locator('html').getAttribute('lang')).toBe('zh');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
   });
 
   test('language preference persists across navigations via cookie', async ({ page }) => {
@@ -86,6 +90,8 @@ test.describe('i18n: language switcher', () => {
     await page.waitForURL('**/results*');
 
     await expect(page.getByRole('heading', { name: '你的匹配' })).toBeVisible({ timeout: 15_000 });
+    // The heading renders while matching is still in progress; tabs come with the results.
+    await expect(page.locator('[id^="match-card-"]').first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('tab', { name: /高优先级/ })).toBeVisible();
     await expect(page.getByRole('tab', { name: /匹配良好/ })).toBeVisible();
   });

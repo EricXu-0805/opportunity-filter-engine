@@ -191,6 +191,8 @@ test.describe('Send-error ownership after a new email background', () => {
     try {
       await seed(page, owner); const mutations = writes(page);
       await page.route('**/api/cold-email**', route => route.fulfill({ status: 503, json: {} }));
+      // Copy runs the provider-free pre-send check first; it must reach the real backend.
+      await page.route('**/api/cold-email/validate', route => route.continue());
       await page.route('**/api/cold-email/variants', route => {
         const request = route.request().postDataJSON(); const receipt = contactReceiptForRequest(request);
         const variant = { id: 'history-template', label: 'Checked template', subject: 'Careful request 王',
