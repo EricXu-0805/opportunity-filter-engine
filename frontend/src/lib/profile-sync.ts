@@ -70,7 +70,7 @@ import {
 } from './identity-owner';
 import { STORAGE_KEYS } from './storage-keys';
 import { writeLocalStorageJSON } from './use-local-storage-json';
-import { commitProfilePatch, loadProfile, type LoadedProfile } from './supabase';
+import { commitProfilePatch, loadProfile, type LoadedProfile, type ProfilePatchOutcome } from './supabase';
 
 export type ProfileKey = keyof ProfileData;
 
@@ -346,6 +346,15 @@ function stableStringify(value: unknown): string {
 
 function sameValue(a: unknown, b: unknown): boolean {
   return stableStringify(a) === stableStringify(b);
+}
+
+/** Absent, null, '', [] or {}: a value that says nothing. A field the base row
+ *  did not have and the current row holds empty was not changed by anybody —
+ *  a create fills every field the form showed empty. */
+function noContent(value: unknown): boolean {
+  if (value === undefined || value === null || value === '') return true;
+  if (Array.isArray(value)) return value.length === 0;
+  return typeof value === 'object' && Object.keys(value as object).length === 0;
 }
 
 function pick(profile: ProfileData, keys: readonly ProfileKey[]): Partial<ProfileData> {
@@ -4346,12 +4355,28 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         };
       }
 
-      const outcome = await commitProfilePatch({
-        expectedRevision: pending.baseRevision,
-        patch: pick(pending.desiredProfile, sendKeys) as Record<string, unknown>,
-        token,
-        mutationId: pending.mutationId,
-      });
+      const patch = pick(pending.desiredProfile, sendKeys) as Record<string, unknown>;
+      // Revision 0 is the "no row yet" baseline — here, an edit made while
+      // this browser's own create was unanswered. The server refuses every
+      // revision-0 patch that is not a complete create, before it looks the
+      // row up, so sending it fails the same way forever. When the row
+      // confirmed since holds nothing else for these fields, nothing can be
+      // overwritten: the CAS answer (expected 0, current N) is taken against
+      // that row and rebased like any other conflict. A field the row holds
+      // other content for is a real disagreement that a local rebase must not
+      // settle; that write is sent as before.
+      const known = env?.confirmed ?? null;
+      const onKnownRow = pending.baseRevision === 0 && !!known
+        && !isCompleteDocument(patch as unknown as ProfileData)
+        && resolveConflict({ ...pending, dirtyKeys: sendKeys as string[] }, known.profile).conflictKeys.length === 0;
+      const outcome: ProfilePatchOutcome = onKnownRow && known
+        ? { status: 'conflict', revision: known.revision, profile: known.profile as unknown as Record<string, unknown> }
+        : await commitProfilePatch({
+          expectedRevision: pending.baseRevision,
+          patch,
+          token,
+          mutationId: pending.mutationId,
+        });
 
       if (outcome.status === 'abandoned') return { status: 'abandoned' };
       if (!isOwnerTokenValid(token, token.uid)) return { status: 'abandoned' };
@@ -4674,7 +4699,7 @@ export function resolveConflict(
     const b = base[key];
     const d = desired[key];
     if (sameValue(r, d)) continue;         // already landed
-    if (sameValue(r, b)) { applyKeys.push(key as ProfileKey); continue; }
+    if (sameValue(r, b) || (noContent(r) && noContent(b))) { applyKeys.push(key as ProfileKey); continue; }
     if (additive.has(key) && key === 'skills' && pending.skillAdditions.length > 0) {
       // The ADDITIONS are merged into whatever the other device currently
       // has — not this device's whole list. Merging the full list would

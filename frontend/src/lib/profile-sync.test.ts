@@ -5227,3 +5227,79 @@ describe('full supported resume persistence', () => {
     expect(dirtyKeys(captureOwnerToken())).toEqual([]);
   });
 });
+
+describe('an edit made while this device\'s first create is unanswered', () => {
+  /** supabase/migrations/029_profile_save_cas.sql as deployed: a revision-0
+   *  patch must be a complete create, and that is checked BEFORE the row is
+   *  looked up, so a partial revision-0 patch fails even when the row exists.
+   *  commitProfilePatch reports that RPC error as a transport error. */
+  function productionCas() {
+    let row: Record<string, unknown> | null = null;
+    let rev = 0;
+    const seen: { expected: number; keys: string[] }[] = [];
+    return {
+      get row() { return row; },
+      get rev() { return rev; },
+      seen,
+      handle(intent: { expectedRevision: number; patch: Record<string, unknown> }): ProfilePatchOutcome {
+        seen.push({ expected: intent.expectedRevision, keys: Object.keys(intent.patch).sort() });
+        const complete = ['home_school', 'college', 'major', 'grade', 'search_weight'].every((k) => k in intent.patch);
+        if (intent.expectedRevision === 0 && !complete) {
+          return { status: 'transport-error', message: 'commit_profile_patch_cas: incomplete_create' };
+        }
+        if (!row) {
+          if (intent.expectedRevision !== 0) return { status: 'missing', reason: 'absent' };
+          row = { ...intent.patch };
+          rev = 1;
+          return { status: 'saved', revision: rev, profile: { ...row } };
+        }
+        const merged = { ...row, ...intent.patch };
+        if (JSON.stringify(merged) === JSON.stringify(row) && (rev === intent.expectedRevision || rev === intent.expectedRevision + 1)) {
+          return { status: 'already-saved', revision: rev, profile: { ...row } };
+        }
+        if (rev !== intent.expectedRevision) return { status: 'conflict', revision: rev, profile: { ...row } };
+        row = merged;
+        rev += 1;
+        return { status: 'saved', revision: rev, profile: { ...row } };
+      },
+    };
+  }
+
+  it('saves a résumé parsed during the create onto the created row, with no conflict', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+
+    // The résumé parse lands before the create is answered, so the form still
+    // shows no row: its fields are recorded against revision 0.
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+    expect(server.rev).toBe(1);
+
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next.status).toBe('saved');
+    expect(server.rev).toBe(2);
+    expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'], college: 'Grainger' });
+    // The résumé went out as a patch on revision 1, never as a partial create.
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'] }]);
+    expect(journalOps()).toEqual([]);
+  });
+});
