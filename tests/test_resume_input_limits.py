@@ -401,3 +401,48 @@ def test_ai_structure_reports_bullets_past_the_section_limit(monkeypatch):
     assert body["method"] == "ai"
     assert sum(len(s["bullets"]) for s in body["sections"]) == 40
     assert "bullet_selection_limited" in body["warnings"]
+
+
+# A verbatim résumé line longer than both the tailor limit (500) and the old
+# structure cut (600). Extraction and structure used to keep only its head
+# and say nothing, so the student reviewed and sent a clipped bullet.
+_LONG_BULLET = "Designed and ran a laboratory protocol " + " ".join(f"stage{i:03d}" for i in range(80))
+
+
+def _long_resume():
+    return f"• {_LONG_BULLET}\n• Calibrated the pipettes for the group"
+
+
+def test_long_bullet_fixture_is_over_both_old_cuts():
+    assert len(_LONG_BULLET) > 600
+
+
+def test_local_extraction_keeps_a_long_bullet_whole_and_names_the_tailor_limit():
+    body = client.post("/api/tailor/extract-bullets", json={"resume_text": _long_resume()}).json()
+    assert _LONG_BULLET in body["bullets"]
+    assert "bullet_exceeds_tailor_limit" in body["warnings"]
+    short = client.post("/api/tailor/extract-bullets", json={"resume_text": _glyph_resume(3)}).json()
+    assert "bullet_exceeds_tailor_limit" not in short["warnings"]
+
+
+def test_ai_extraction_keeps_a_long_bullet_whole_and_names_the_tailor_limit(monkeypatch):
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps({"bullets": [_LONG_BULLET]}))
+    body = client.post("/api/tailor/extract-bullets", json={"resume_text": _long_resume()}).json()
+    assert body["method"] == "ai"
+    assert body["bullets"] == [_LONG_BULLET]
+    assert "bullet_exceeds_tailor_limit" in body["warnings"]
+
+
+def test_local_structure_keeps_a_long_bullet_whole():
+    body = client.post("/api/tailor/structure", json={"resume_text": _long_resume()}).json()
+    assert _LONG_BULLET in [b["text"] for s in body["sections"] for b in s["bullets"]]
+
+
+def test_ai_structure_keeps_a_long_bullet_whole(monkeypatch):
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps(
+        {"sections": [{"heading": "Research", "kind": "research", "bullets": [_LONG_BULLET]}]}))
+    body = client.post("/api/tailor/structure", json={"resume_text": _long_resume()}).json()
+    assert body["method"] == "ai"
+    assert [b["text"] for s in body["sections"] for b in s["bullets"]] == [_LONG_BULLET]

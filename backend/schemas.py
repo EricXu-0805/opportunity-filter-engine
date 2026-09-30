@@ -936,6 +936,9 @@ class ExtractBulletsResponse(BaseModel):
 
 class ResumeBullet(BaseModel):
     id: str
+    # Uncut: this is the student's own wording and the renovation rollback
+    # floor. Structure text is verbatim résumé text; the rewrite stage skips
+    # (and names) a bullet too long for its prompt instead of clipping it.
     text: str = ""
 
     @field_validator("id")
@@ -946,11 +949,6 @@ class ResumeBullet(BaseModel):
         # length — unbounded ids were an unbounded-prompt cost vector even
         # under the 100-bullet cap.
         return re.sub(r"\s+", "", str(v))[:64]
-
-    @field_validator("text")
-    @classmethod
-    def cap_text(cls, v: str) -> str:
-        return str(v)[:600]
 
 
 class ResumeSection(BaseModel):

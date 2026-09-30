@@ -172,6 +172,33 @@ function canonicalFingerprint(value: unknown): string {
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 
+// /api/tailor refuses more than 12 bullets or a bullet over 500 characters
+// (Python len: code points) instead of cutting them. Checking here names the
+// exact bullet before any request; the server's refusal stays the authority.
+const TAILOR_MAX_BULLETS = 12;
+const TAILOR_MAX_BULLET_CHARACTERS = 500;
+
+function tailorLimitIssue(
+  bullets: string[], t: Replier, maxBullets = TAILOR_MAX_BULLETS, maxCharacters = TAILOR_MAX_BULLET_CHARACTERS,
+): string | null {
+  const issues: string[] = [];
+  if (bullets.length > maxBullets) issues.push(t('tailor.limits.tooMany', { count: bullets.length, max: maxBullets }));
+  const long = bullets.map((b, i) => ({ n: i + 1, actual: [...b].length })).filter((b) => b.actual > maxCharacters);
+  if (long.length === 1) issues.push(t('tailor.limits.tooLongOne', { n: long[0].n, actual: long[0].actual, max: maxCharacters }));
+  if (long.length > 1) issues.push(t('tailor.limits.tooLongMany', { items: long.map((b) => b.n).join(', '), max: maxCharacters }));
+  return issues.length > 0 ? issues.join(' ') : null;
+}
+
+/** The bullet limits a TAILOR_INPUT_TOO_LARGE refusal names, or null for the
+ *  combined-prompt refusal that shares the code but carries no limits. */
+function refusedTailorLimits(err: unknown): [number, number] | null {
+  if (!err || typeof err !== 'object' || !('code' in err) || err.code !== 'TAILOR_INPUT_TOO_LARGE' || !('detail' in err)) return null;
+  const detail = err.detail as Record<string, unknown> | null;
+  const bullets = detail?.max_bullets;
+  const characters = detail?.max_characters_per_bullet;
+  return Number.isSafeInteger(bullets) && Number.isSafeInteger(characters) ? [Number(bullets), Number(characters)] : null;
+}
+
 /**
  * Map a backend `warnings[]` entry to a user-facing i18n key. Order
  * matters — we return the first match because the route appends
@@ -286,6 +313,7 @@ export default function TailorModal({
   const [pipelineVersion, setPipelineVersion] = useState<string | null>(null);
   const [record, setRecord] = useState<TailorDraftV2 | null>(null);
   const draft = record?.text ?? '';
+  const limitIssue = useMemo(() => tailorLimitIssue(parseBullets(draft), t), [draft, t]);
   const [draftStatus, setDraftStatus] = useState<'checking' | 'current' | 'stale' | 'unknown'>('checking');
   const [bindingState, setBindingState] = useState<{ key: string; binding: TailorDraftBinding } | null>(null);
   const [storageRead, setStorageRead] = useState<'ready' | 'unavailable' | 'invalid'>('unavailable');
@@ -720,6 +748,8 @@ export default function TailorModal({
       setError(t('tailor.fillBulletsFirst'));
       return;
     }
+    const overLimit = tailorLimitIssue(bullets, t);
+    if (overLimit) { setError(overLimit); return; }
     const attempt = ++generateAttemptRef.current;
     const sessionEpoch = sessionEpochRef.current;
     const ctx = { opportunityId, ownerScopeKey };
@@ -766,7 +796,10 @@ export default function TailorModal({
       if (err && typeof err === 'object' && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') {
         setError(t('tailor.targetVersionChanged'));
       } else {
-        setError(profileInputMessage(err, t) ?? (err instanceof Error ? err.message : t('tailor.failedToTailor')));
+        const limits = refusedTailorLimits(err);
+        setError(limits
+          ? tailorLimitIssue(bullets, t, ...limits) ?? t('tailor.limits.server', { bullets: limits[0], characters: limits[1] })
+          : profileInputMessage(err, t) ?? (err instanceof Error ? err.message : t('tailor.failedToTailor')));
         handleRuleFailure(err);
       }
     } finally {
@@ -1016,6 +1049,7 @@ export default function TailorModal({
               </p>
               {sourceReady && target && !writingTargetVersion(target) && !error && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.targetVersionUnavailable')}</p>}
               {inputRejected && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.invalidDraftText')}</p>}
+              {limitIssue && <p role="alert" data-testid="tailor-limit-issue" className="mb-2 text-xs text-amber-800">{limitIssue}</p>}
               {record && needsReview && (
                 <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" data-testid="tailor-draft-review">
                   <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>
@@ -1398,7 +1432,7 @@ export default function TailorModal({
           <button
             type="button"
             onClick={requestGeneration}
-            disabled={loading || extracting || reviewing || action.busy || draft.trim().length === 0 || !canRequest}
+            disabled={loading || extracting || reviewing || action.busy || draft.trim().length === 0 || limitIssue !== null || !canRequest}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
           >
             {resp ? (

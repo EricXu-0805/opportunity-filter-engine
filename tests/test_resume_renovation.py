@@ -577,6 +577,60 @@ class TestRenovate:
         assert by_id["s1b2"]["current"] == 0
         assert "documentation" in by_id["s1b2"]["variants"][0]["text"].lower()
 
+    def test_long_bullet_keeps_its_whole_base_text(self, python_profile, real_opp_id, monkeypatch):
+        """ResumeBullet used to cut text at 600 characters, so a renovated
+        résumé's rollback floor silently lost the end of a long bullet."""
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        sections = _sections_payload()
+        sections[0]["bullets"][0]["text"] = _LONG_BULLET
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile, "opportunity_id": real_opp_id, "sections": sections,
+        })
+        assert resp.status_code == 200
+        by_id = {b["id"]: b for b in resp.json()["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["base_text"] == _LONG_BULLET
+
+    def test_foreground_bullet_over_the_rewrite_limit_stays_whole_at_base(
+        self, python_profile, real_opp_id, monkeypatch,
+    ):
+        """The rewrite prompt shows each bullet's first 500 characters, so a
+        longer bullet's rewrite would replace the whole bullet with a rewrite
+        of its head. It stays at base, named, and never reaches the prompt."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        sections = _sections_payload()
+        sections[0]["bullets"][0]["text"] = _LONG_BULLET
+        plan = json.dumps({"sections": [{"id": "s1", "bullets": [
+            {"id": "s1b1", "action": "foreground"},
+            {"id": "s1b2", "action": "foreground"},
+        ]}]})
+        rewrite = json.dumps({"bullets": [
+            {"text": "Wrote documentation for a class project.", "source_evidence": "x"},
+        ]})
+        rewrite_prompts: list[str] = []
+        route = _chat_router([("REORGANIZE", plan), ("rewrite a student", rewrite)])
+
+        def _fake(messages, *a, **k):
+            if "rewrite a student" in messages[0]["content"]:
+                rewrite_prompts.append(messages[1]["content"])
+            return route(messages, *a, **k)
+
+        monkeypatch.setattr(tailor_module, "chat_completion", _fake)
+        resp = client.post("/api/tailor/renovate", json={
+            "profile": python_profile, "opportunity_id": real_opp_id, "sections": sections,
+        })
+        assert resp.status_code == 200
+        body = resp.json()
+        by_id = {b["id"]: b for b in body["sections"][0]["bullets"]}
+        assert by_id["s1b1"]["current"] == -1 and by_id["s1b1"]["variants"] == []
+        assert by_id["s1b1"]["base_text"] == _LONG_BULLET
+        assert "bullet_s1b1_too_long_to_rewrite" in body["warnings"]
+        assert by_id["s1b2"]["current"] == 0
+        assert rewrite_prompts and all("stage000" not in p for p in rewrite_prompts)
+
+
+_LONG_BULLET = "Designed and ran a laboratory protocol " + " ".join(f"stage{i:03d}" for i in range(80))
+
 
 # --------------------------------------------------------------------------- #
 # /tailor/bullet

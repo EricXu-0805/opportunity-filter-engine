@@ -825,6 +825,77 @@ describe('TailorModal', () => {
     expect(screen.queryByRole('button', { name: /tailor\.rejectBulletAria/ })).toBeNull();
   });
 
+  // /api/tailor refuses 13+ bullets or a bullet over 500 characters. The
+  // modal must say which limit and which bullet before sending anything,
+  // not surface the server's generic "profile too long" refusal afterwards.
+  describe('bullet limits', () => {
+    it('names the 12-bullet limit and sends nothing for a 13-line draft', async () => {
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      const lines = Array.from({ length: 13 }, (_, i) => `Bullet number ${i + 1}`).join('\n');
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: lines } });
+
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooMany:13|12');
+      const generate = screen.getByRole('button', { name: /tailor\.generate/ }) as HTMLButtonElement;
+      expect(generate.disabled).toBe(true);
+      fireEvent.click(generate);
+      await act(async () => { await Promise.resolve(); });
+      expect(mockTailorResume).not.toHaveBeenCalled();
+    });
+
+    it('names which bullet is over 500 characters, counting code points like the server', async () => {
+      mockTailorResume.mockResolvedValueOnce({ method: 'ai', warnings: [], tailored_bullets: [] } satisfies TailorResponse);
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${'x'.repeat(501)}\nAnother short bullet\n${'y'.repeat(700)}` } });
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooLongMany:2, 4|500');
+
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${'x'.repeat(501)}` } });
+      expect(screen.getByTestId('tailor-limit-issue').textContent).toBe('tailor.limits.tooLongOne:2|501|500');
+      expect((screen.getByRole('button', { name: /tailor\.generate/ }) as HTMLButtonElement).disabled).toBe(true);
+
+      // 500 emoji are 1,000 UTF-16 units but 500 characters to the server.
+      const emoji = '🧪'.repeat(500);
+      fireEvent.change(textarea, { target: { value: `A short bullet\n${emoji}` } });
+      expect(screen.queryByTestId('tailor-limit-issue')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(mockTailorResume.mock.calls[0][2]).toEqual(['A short bullet', emoji]);
+    });
+
+    it('shows the limit for an over-long bullet that smart-extract kept whole', async () => {
+      const long = `Ran the lab protocol ${'step '.repeat(120)}`.trim();
+      mockExtractResumeBullets.mockResolvedValueOnce({ method: 'ai', bullets: ['A short bullet', long], warnings: ['bullet_exceeds_tailor_limit'] });
+      render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'Research Assistant\nDid a bunch of things' })} />);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.extractFromResume/ }));
+
+      await waitFor(() => expect(screen.getByTestId('tailor-limit-issue').textContent)
+        .toBe(`tailor.limits.tooLongOne:2|${[...long].length}|500`));
+    });
+
+    it('a server bullet-limit refusal names the server limits, not the combined profile', async () => {
+      mockTailorResume.mockRejectedValueOnce(Object.assign(new Error('Tailor at most 1 bullets'), {
+        code: 'TAILOR_INPUT_TOO_LARGE', detail: { code: 'TAILOR_INPUT_TOO_LARGE', max_bullets: 1, max_characters_per_bullet: 500 },
+      }));
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'first bullet\nsecond bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+      await waitFor(() => expect(screen.getByText('tailor.limits.tooMany:2|1')).toBeTruthy());
+      expect(screen.queryByText('profileInput.tailorTooLarge')).toBeNull();
+    });
+
+    it('the combined-prompt refusal, which names no bullet limits, keeps its own message', async () => {
+      mockTailorResume.mockRejectedValueOnce(Object.assign(new Error('The combined resume input is too long.'), {
+        code: 'TAILOR_INPUT_TOO_LARGE', detail: { code: 'TAILOR_INPUT_TOO_LARGE', message: 'The combined resume input is too long.' },
+      }));
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: 'first bullet' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+
+      await waitFor(() => expect(screen.getByText('profileInput.tailorTooLarge')).toBeTruthy());
+    });
+  });
+
   // Nested (not sibling) describe blocks below — they must share the outer
   // beforeEach (vi.resetAllMocks + localStorage.clear + the getTailorStatus
   // default) or every mocked call inside them silently returns undefined.

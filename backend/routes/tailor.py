@@ -567,7 +567,7 @@ def _heuristic_bullets(resume_text: str, *, limit: int = 12) -> list[str]:
         if m:
             cleaned = m.group(1).strip()
             if len(cleaned) >= 10:
-                out.append(cleaned[:500])
+                out.append(cleaned)
         if len(out) >= limit:
             break
     return out
@@ -637,7 +637,7 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
     out: list[str] = []
     seen: set[str] = set()
     for item in items:
-        text = str(item).strip()[:500]
+        text = str(item).strip()
         if len(text) < 10:
             continue
         if not _bullet_grounded(text, resume_lower):
@@ -790,6 +790,9 @@ async def extract_bullets(request: ExtractBulletsRequest, http_request: Request)
     warnings = _processing_warnings(coverage)
     if limited:
         warnings.append("bullet_selection_limited")
+    # Kept whole for review; /tailor refuses it until the student shortens it.
+    if any(len(b) > _MAX_BULLET_CHARACTERS for b in bullets):
+        warnings.append("bullet_exceeds_tailor_limit")
     return ExtractBulletsResponse(
         bullets=bullets, method=_processing_method(coverage), warnings=warnings, processing=coverage,
         pipeline_version=version, generated_at=datetime.now(UTC).isoformat(),
@@ -1119,7 +1122,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
             raw_bullets = []
         bullets: list[ResumeBullet] = []
         for bi, b in enumerate(raw_bullets, 1):
-            text = str(b).strip()[:600]
+            text = str(b).strip()
             if len(text) < 10 or not _bullet_grounded(text, resume_lower):
                 continue
             bullets.append(ResumeBullet(id=f"s{si}b{bi}", text=text))
@@ -1412,6 +1415,12 @@ async def _renovate_resume_snapshot(request: RenovateRequest, opp: dict, authori
                 if b:
                     fg.append((bid, b.text))
     warnings: list[str] = []
+    # The rewrite prompt carries each bullet's first _MAX_BULLET_CHARACTERS;
+    # a rewrite of that head would replace the whole bullet. Keep it at base.
+    for bid, text in fg:
+        if len(text) > _MAX_BULLET_CHARACTERS:
+            warnings.append(f"bullet_{bid}_too_long_to_rewrite")
+    fg = [(bid, text) for bid, text in fg if len(text) <= _MAX_BULLET_CHARACTERS]
     if len(fg) > _MAX_FOREGROUND:
         warnings.append(f"foreground_capped_{_MAX_FOREGROUND}")
         fg = fg[:_MAX_FOREGROUND]

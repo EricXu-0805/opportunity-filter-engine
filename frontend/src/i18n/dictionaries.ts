@@ -4253,6 +4253,12 @@ export const en = {
     failedToTailor: 'Could not tailor — please try again.',
     tryAgain: 'Try again',
     fillBulletsFirst: 'Add at least one bullet first',
+    limits: {
+      tooMany: 'This draft has {count} bullets. Tailor up to {max} at a time: remove some lines first. Nothing has been cut.',
+      tooLongOne: 'Bullet {n} has {actual} characters. Each bullet can have up to {max}: shorten or split it first. Nothing has been cut.',
+      tooLongMany: 'Bullets {items} are each over {max} characters. Shorten or split them first. Nothing has been cut.',
+      server: 'Tailor up to {bullets} bullets of up to {characters} characters each. Nothing was shortened or dropped; your draft is kept.',
+    },
     warnings: {
       noBullets: 'No bullets provided.',
       llmUnavailable: 'AI is unavailable right now — showing your originals.',
@@ -9341,6 +9347,12 @@ export const zh = {
     failedToTailor: '定制失败 —— 请重试。',
     tryAgain: '重试',
     fillBulletsFirst: '请先填写至少一条',
+    limits: {
+      tooMany: '当前有 {count} 条。每次最多定制 {max} 条，请先删掉一些。内容没有被截断。',
+      tooLongOne: '第 {n} 条有 {actual} 个字符，每条最多 {max} 个字符，请先缩短或拆分。内容没有被截断。',
+      tooLongMany: '第 {items} 条都超过 {max} 个字符，请先缩短或拆分。内容没有被截断。',
+      server: '每次最多定制 {bullets} 条，每条最多 {characters} 个字符。内容没有被截断或丢弃，原稿已保留。',
+    },
     warnings: {
       noBullets: '未提供任何条目。',
       llmUnavailable: 'AI 当前不可用 —— 展示你的原始条目。',
