@@ -41,6 +41,11 @@ def write(endpoint, monkeypatch, path, original, proposed, *, other=None, curren
 
     def model(messages, **kwargs):
         calls.append(messages)
+        if messages[0]["content"].startswith("FAITHFULNESS REVIEW"):
+            # A reviewer that accepts everything: only the deterministic gates reject.
+            pairs = json.loads(messages[1]["content"])["pairs"]
+            return json.dumps({"verdicts": [{"index": pair["index"], "faithful": True, "problem": ""}
+                                            for pair in pairs]})
         if "REORGANIZE" in messages[0]["content"]:
             return json.dumps({"section_order": ["s1"], "sections": [{"id": "s1", "bullets": [
                 {"id": f"b{i}", "action": "foreground"} for i in range(len(originals))]}]})
@@ -106,8 +111,10 @@ def assert_rejected(path, result, original, *, current=None):
     ("Wrote documentation for a class project", "Wrote clear documentation for a class project"),
 ])
 def test_roles_negation_and_publication_cannot_be_upgraded(endpoint, monkeypatch, path, original, proposed):
-    result, _ = write(endpoint, monkeypatch, path, original, proposed)
+    result, calls = write(endpoint, monkeypatch, path, original, proposed)
     assert_rejected(path, result, original)
+    # Rejected by a hard gate, never left to a reviewer that would have accepted it.
+    assert not any(messages[0]["content"].startswith("FAITHFULNESS REVIEW") for messages in calls)
 
 
 @pytest.mark.parametrize("path", PATHS)

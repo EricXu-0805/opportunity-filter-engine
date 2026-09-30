@@ -71,6 +71,39 @@ HARD = [
     ("论文已投稿，尚未录用。", "论文已录用。"),
 ]
 
+# The review used to decide these; each changes who did what, the object, a
+# number, the setting or the quality claimed. (original, rewrite, finding)
+MOVED = [
+    ("My team built a Python parser. I wrote parser tests.",
+     "I built a Python parser and wrote parser tests. My team built a Python parser.", "team_result_claimed"),
+    ("Our team trained a model reaching 90% accuracy; I cleaned the data.",
+     "I trained a model reaching 90% accuracy; our team cleaned the data.", "team_result_claimed"),
+    ("团队开发了解析器。本人开发了测试。", "本人开发了解析器和测试。团队开发了解析器。", "team_result_claimed"),
+    ("I built a Python parser. I did not build the compiler.",
+     "I built a compiler. I did not build the compiler.", "denied_action_asserted"),
+    ("我主导了测试。我没有主导项目。", "我主导了项目。我没有主导项目。", "denied_action_asserted"),
+    ("As part of a four-person team, I helped design the survey.",
+     "As part of a four-person team, led the design of the survey.", "leadership_claim_added"),
+    ("作为四人小组成员，本人协助设计问卷。", "作为四人小组成员，负责设计问卷。", "leadership_claim_added"),
+    ("I improved parser throughput by 45% and reduced parser latency by 12%.",
+     "I improved parser throughput by 12% and reduced parser latency by 45%.", "quantity_moved"),
+    ("Implemented Python ML exercises in CS 225", "Implemented Python ML in CS 225", "object_changed"),
+    ("Implemented machine learning experiments in Python",
+     "Built machine learning models in Python for a research project", "setting_added"),
+    ("用 Python 分析了脑电数据。", "为课题组的项目用 Python 分析了脑电数据。", "setting_added"),
+    ("Wrote documentation for a class project", "Wrote clear documentation for a class project",
+     "quality_claim_added"),
+]
+PAD_BASE = "Cleaned 212 survey responses in R."
+PAD_BASE_ZH = "清洗了212份问卷数据。"
+# Appended to the verbatim original, which the old pattern let through.
+APPENDED = [PAD_BASE[:-1] + f", {word} human factors research." for word in (
+    "supporting", "enabling", "strengthening", "building", "developing", "gaining", "highlighting",
+    "reflecting", "relevant to", "applicable to", "useful for")] + [
+    PAD_BASE[:-1] + " with a focus on human factors research."]
+APPENDED_ZH = [PAD_BASE_ZH[:-1] + tail for tail in (
+    "，培养了严谨态度。", "，提升了科研素养。", "，锻炼了科研思维。", "，为后续研究打下基础。", "，与人因研究相关。")]
+
 
 def _review_reply(faithful: bool, count: int = 1) -> str:
     return json.dumps({"verdicts": [
@@ -153,6 +186,35 @@ class TestFindingsSplit:
         # The split is additive: the full target résumé path keeps rejecting all of these.
         assert claim_upgrade_detected(proposed, original)
 
+    @pytest.mark.parametrize(("original", "proposed", "finding"), MOVED)
+    def test_moved_denied_or_changed_claims_are_hard(self, original, proposed, finding):
+        hard, _ = claim_upgrade_findings(proposed, original)
+        assert finding in hard
+
+    @pytest.mark.parametrize("proposed", APPENDED)
+    def test_relevance_clause_appended_to_the_original_is_hard(self, proposed):
+        assert "relevance_clause_added" in claim_upgrade_findings(proposed, PAD_BASE)[0]
+
+    @pytest.mark.parametrize("proposed", APPENDED_ZH)
+    def test_chinese_relevance_clause_appended_to_the_original_is_hard(self, proposed):
+        assert "relevance_clause_added" in claim_upgrade_findings(proposed, PAD_BASE_ZH)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Built a sensor rig supporting 4 experiments.", "Built the sensor rig, supporting 4 experiments."),
+        ("Reviewed 40 papers with a focus on sleep.", "Reviewed the 40 papers, with a focus on sleep."),
+        ("Mapped the lab network, highlighting 3 faults.", "Mapped the lab network, highlighting the 3 faults."),
+        ("记录生长数据，培养细胞样本。", "记录了生长数据，培养了细胞样本。"),
+        ("整理实验记录，为后续实验打下基础。", "整理了实验记录，为后续实验打下基础。"),
+    ])
+    def test_a_word_the_original_already_uses_is_not_padding(self, original, proposed):
+        assert claim_upgrade_findings(proposed, original)[0] == []
+
+    def test_a_reworded_original_is_not_read_as_appended_padding(self):
+        # "supporting" restates "for" here; the whole original is not carried before it.
+        hard, _ = claim_upgrade_findings("Maintained the lab server, supporting its 12 users.",
+                                         "Maintained the lab server for 12 users.")
+        assert "relevance_clause_added" not in hard
+
     def test_padding_the_original_already_states_is_not_new(self):
         original = "Cleaned 212 survey responses in R, applying the lab's exclusion rules."
         assert claim_upgrade_findings(original.replace("Cleaned", "Cleaned the"), original)[0] == []
@@ -190,7 +252,7 @@ class TestReviewDecidesParaphrases:
 
 @pytest.mark.parametrize("path", PATHS)
 class TestHardRejectsNeverReachTheReviewer:
-    @pytest.mark.parametrize(("original", "proposed"), PADDED + HARD)
+    @pytest.mark.parametrize(("original", "proposed"), PADDED + HARD + [case[:2] for case in MOVED])
     def test_rejected_without_a_review_call(self, endpoint, monkeypatch, path, original, proposed):
         body, reviews = run(endpoint, monkeypatch, path, [(original, proposed)], _review_reply(True))
         assert reviews == []
@@ -228,6 +290,48 @@ def test_review_timeout_fails_closed(endpoint, monkeypatch, path):
     monkeypatch.setattr(tailor, "run_blocking", run_blocking)
     body, reviews = run(endpoint, monkeypatch, path, [FAITHFUL[0]], _review_reply(True))
     assert reviews == []
+    assert accepted_texts(path, body) == [None]
+    assert rejection_warnings(path, body)
+
+
+def _clocked(monkeypatch, seconds_per_call: float) -> list[float]:
+    """A fake request clock that each rewrite/plan call advances; returns the
+    timeouts the review call was given."""
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(tailor, "time", SimpleNamespace(monotonic=lambda: clock["now"]), raising=False)
+    real_run_blocking = tailor.run_blocking
+    review_timeouts: list[float] = []
+
+    async def run_blocking(fn, *args, timeout_seconds, **kwargs):
+        if fn is tailor._ai_review_rewrites:
+            review_timeouts.append(timeout_seconds)
+        result = await real_run_blocking(fn, *args, timeout_seconds=timeout_seconds, **kwargs)
+        if fn is not tailor._ai_review_rewrites:
+            clock["now"] += seconds_per_call
+        return result
+
+    monkeypatch.setattr(tailor, "run_blocking", run_blocking)
+    return review_timeouts
+
+
+# Renovation makes two calls (plan, rewrite) before the review; the others one.
+_CALLS_BEFORE_REVIEW = {"/api/tailor": 1, "/api/tailor/renovate": 2, "/api/tailor/bullet": 1}
+
+
+@pytest.mark.parametrize("path", PATHS)
+def test_review_gets_only_what_is_left_of_the_clients_60_seconds(endpoint, monkeypatch, path):
+    review_timeouts = _clocked(monkeypatch, 20.0 / _CALLS_BEFORE_REVIEW[path])
+    body, reviews = run(endpoint, monkeypatch, path, [FAITHFUL[0]], _review_reply(True))
+    assert len(reviews) == 1 and accepted_texts(path, body) == [FAITHFUL[0][1]]
+    # 60 s client budget - 20 s already spent - 5 s margin, under the 45 s single-call cap.
+    assert review_timeouts == [pytest.approx(35.0)]
+
+
+@pytest.mark.parametrize("path", PATHS)
+def test_review_is_skipped_and_rejects_when_the_client_would_give_up(endpoint, monkeypatch, path):
+    review_timeouts = _clocked(monkeypatch, 52.0 / _CALLS_BEFORE_REVIEW[path])
+    body, reviews = run(endpoint, monkeypatch, path, [FAITHFUL[0]], _review_reply(True))
+    assert reviews == [] and review_timeouts == []
     assert accepted_texts(path, body) == [None]
     assert rejection_warnings(path, body)
 

@@ -31,6 +31,7 @@ import json
 import logging
 import os
 import re
+import time
 import unicodedata
 from collections.abc import Callable
 from copy import deepcopy
@@ -315,11 +316,25 @@ def _ai_review_rewrites(pairs: list[tuple[str, str]]) -> list[bool]:
     return [seen.get(i, False) for i in range(1, len(pairs) + 1)]
 
 
-async def _review_rewrites(pairs: list[tuple[str, str]]) -> list[bool]:
+# The browser abandons /tailor, /tailor/renovate and /tailor/bullet after 60 s
+# (request() in frontend/src/lib/api.ts). The review runs after the rewrite
+# call, so it gets only what is left of that, less a margin for the response.
+_CLIENT_REQUEST_SECONDS = 60.0
+_REVIEW_MARGIN_SECONDS = 5.0
+_MIN_REVIEW_SECONDS = 5.0
+
+
+async def _review_rewrites(pairs: list[tuple[str, str]], started: float) -> list[bool]:
+    """Review ``pairs`` within the request that began at ``started`` (time.monotonic)."""
     if not pairs:
         return []
+    remaining = _CLIENT_REQUEST_SECONDS - (time.monotonic() - started) - _REVIEW_MARGIN_SECONDS
+    if remaining < _MIN_REVIEW_SECONDS:
+        logger.warning("tailor: no time left for the faithfulness review; rejecting reviewed rewrites")
+        return [False] * len(pairs)
     try:
-        return await run_blocking(_ai_review_rewrites, pairs, timeout_seconds=SINGLE_LLM_TIMEOUT_SECONDS)
+        return await run_blocking(_ai_review_rewrites, pairs,
+                                  timeout_seconds=min(SINGLE_LLM_TIMEOUT_SECONDS, remaining))
     except BlockingWorkTimeout:
         logger.warning("tailor: faithfulness review timed out; rejecting reviewed rewrites")
         return [False] * len(pairs)
@@ -932,6 +947,7 @@ async def tailor_status() -> TailorStatusResponse:
 @router.post("/tailor", response_model=TailorResponse)
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
     """Apply the optional rule precondition and stamp every accepted outcome."""
+    started = time.monotonic()
     version = _require_pipeline_version(request.expected_pipeline_version)
     if (len(request.original_bullets) > _DEFAULT_BULLETS_PER_REQUEST
             or any(len(b) > _MAX_BULLET_CHARACTERS for b in request.original_bullets)):
@@ -958,7 +974,7 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
             "message": "This opportunity changed. Check it again before continuing.",
             "retryable": False,
         })
-    result = await _generate_tailor_response(request, snapshot)
+    result = await _generate_tailor_response(request, snapshot, started)
     return result.model_copy(update={
         "opportunity_id": request.opportunity_id,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -967,7 +983,7 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
     })
 
 
-async def _generate_tailor_response(request: TailorRequest, opp: dict) -> TailorResponse:
+async def _generate_tailor_response(request: TailorRequest, opp: dict, started: float) -> TailorResponse:
     """Tailor a student's resume bullets for a specific opportunity.
 
     Provider failures preserve the local original fallback. Schema, stale-target
@@ -1025,7 +1041,7 @@ async def _generate_tailor_response(request: TailorRequest, opp: dict) -> Tailor
         original = request.original_bullets[source_index]
         checked.append((i, item, source_index, original, *_validate_bullet_rewrite(item["text"], original)))
     reviewed = iter(await _review_rewrites(
-        [(original, item["text"]) for _, item, _, original, verdict, _ in checked if verdict == _REVIEW]))
+        [(original, item["text"]) for _, item, _, original, verdict, _ in checked if verdict == _REVIEW], started))
 
     accepted: list[TailoredBullet] = []
     warnings: list[str] = []
@@ -1467,12 +1483,13 @@ def _assemble_renovation(
 async def renovate_resume(
     request: RenovateRequest, authorization: str | None = Header(default=None),
 ) -> RenovateResponse:
+    started = time.monotonic()
     pipeline_version = TAILOR_PIPELINE_VERSION
     resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
     if not resolved:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     target = prepare_writing_snapshot(resolved, request.expected_target_version)
-    result = await _renovate_resume_snapshot(request, target.public, authorization)
+    result = await _renovate_resume_snapshot(request, target.public, authorization, started)
     return result.model_copy(update={
         "opportunity_id": request.opportunity_id,
         "target_version": target.version,
@@ -1481,7 +1498,9 @@ async def renovate_resume(
     })
 
 
-async def _renovate_resume_snapshot(request: RenovateRequest, opp: dict, authorization: str | None) -> RenovateResponse:
+async def _renovate_resume_snapshot(
+    request: RenovateRequest, opp: dict, authorization: str | None, started: float,
+) -> RenovateResponse:
     """Macro-renovate a structured résumé toward one opportunity.
 
     Reorders sections/bullets (ID-only plan) and rewrites the foregrounded
@@ -1576,7 +1595,7 @@ async def _renovate_resume_snapshot(request: RenovateRequest, opp: dict, authori
                        # An empty/invalid item for a slot leaves that bullet at base_text.
                        for (bid, base), item in zip(fg, raw_rewrites, strict=True) if item is not None]
             reviewed = iter(await _review_rewrites(
-                [(base, item["text"]) for _, base, item, verdict, _ in checked if verdict == _REVIEW]))
+                [(base, item["text"]) for _, base, item, verdict, _ in checked if verdict == _REVIEW], started))
             for bid, base, item, verdict, fabricated in checked:
                 if verdict == _PASS or (verdict == _REVIEW and next(reviewed)):
                     item["source_evidence"] = _verify_evidence(
@@ -1705,6 +1724,7 @@ def _ai_optimize_bullet(
 async def optimize_bullet(
     request: BulletOptimizeRequest, authorization: str | None = Header(default=None),
 ) -> BulletOptimizeResponse:
+    started = time.monotonic()
     pipeline_version = TAILOR_PIPELINE_VERSION
     # The wording being rewritten has the same limit as every other rewrite
     # path; base_text is evidence only and is shown whole.
@@ -1728,7 +1748,7 @@ async def optimize_bullet(
     if not resolved:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     target = prepare_writing_snapshot(resolved, request.expected_target_version)
-    result = await _optimize_bullet_snapshot(request, target.public, authorization)
+    result = await _optimize_bullet_snapshot(request, target.public, authorization, started)
     return result.model_copy(update={
         "opportunity_id": request.opportunity_id,
         "target_version": target.version,
@@ -1737,7 +1757,9 @@ async def optimize_bullet(
     })
 
 
-async def _optimize_bullet_snapshot(request: BulletOptimizeRequest, opp: dict, authorization: str | None) -> BulletOptimizeResponse:
+async def _optimize_bullet_snapshot(
+    request: BulletOptimizeRequest, opp: dict, authorization: str | None, started: float,
+) -> BulletOptimizeResponse:
     """Re-optimize a single résumé bullet (the per-point AI channel).
 
     Grounds the rewrite in this bullet's base_text; current_text is an editable
@@ -1775,7 +1797,7 @@ async def _optimize_bullet_snapshot(request: BulletOptimizeRequest, opp: dict, a
 
     verdict, fabricated = _validate_bullet_rewrite(result["text"], original)
     if verdict == _REVIEW:
-        verdict = _PASS if (await _review_rewrites([(original, result["text"])]))[0] else _REJECT
+        verdict = _PASS if (await _review_rewrites([(original, result["text"])], started))[0] else _REJECT
     if verdict != _PASS:
         return BulletOptimizeResponse(
             text=current, changed=False,
