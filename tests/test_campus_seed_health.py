@@ -182,6 +182,34 @@ class TestSeedInventory:
         assert programs[("duke", "data_plus_x")] == "https://iid.duke.edu/iid/data/"
         assert programs[("duke", "data_plus_x")] in seeds
 
+    def test_bates_academic_year_grants_point_at_the_student_research_fund(self):
+        """The first run that probed program pages found this one gone.
+
+        academic-year/ answers 404 to every client. It used to 301 to the
+        Academic Year Research Grant Information index, which the Wayback
+        Machine last saw live on 2026-06-16 and which is a 404 now too. The
+        grant the record describes, academic-year research expenses in any
+        discipline with a faculty endorsement, is the index's Bates Student
+        Research Fund, whose page still answers 200 at its old address and is
+        in the academics sitemap. The key stays, so the stored row
+        bates-1fa68fe1447a moves in place on the next Bates refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://www.bates.edu/academics/student-research/academic-year/"
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in set(programs.values())
+        assert programs[("bates", "bates_academic_year_grants")] == (
+            "https://www.bates.edu/academics/student-research/"
+            "academic-year-research-grant-information/bates-student-research-fund/"
+        )
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.
