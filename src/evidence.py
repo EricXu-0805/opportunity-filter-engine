@@ -153,9 +153,11 @@ def stamp_inferred(metadata: dict, field: str, method: str) -> None:
 
 def inferred_method(record: dict, field: str) -> str | None:
     """The inference method stamped for ``field``, or None (stated/legacy)."""
-    meta = record.get("metadata") or {}
-    stamps = meta.get(INFERRED_FIELDS_KEY) or {}
-    method = stamps.get(field)
+    meta = record.get("metadata")
+    stamps = meta.get(INFERRED_FIELDS_KEY) if isinstance(meta, dict) else None
+    # Malformed legacy shapes (metadata or the stamp map as a string) carry no
+    # readable stamp: None, the same answer as an unstamped record.
+    method = stamps.get(field) if isinstance(stamps, dict) else None
     return method if isinstance(method, str) and method else None
 
 
@@ -178,6 +180,50 @@ def is_read_off_the_page(record: dict, field: str) -> bool:
     """
     method = inferred_method(record, field)
     return method is not None and not method.startswith("policy:")
+
+
+# Collector constants that read like source statements (M03). Keyed by
+# collector, then stamp path, to (template value, method). Stamped at corpus
+# load — the neutralizer pattern — so the committed shards become honest
+# without a re-scrape, and every stamp-aware reader (ranker fit sentences,
+# the public projector's attribution flags) agrees at once.
+#
+# Deliberately narrow. Simplify writes paid="stipend" on every internship
+# because its feed has no pay field (the collector's DQ-3 comment); the ranker
+# then told 6,096 students "Includes stipend". Stamping it `default:` keeps the
+# pay score (the expectation is reasonable) and drops the sentence (it is not
+# the posting's). Other collector templates that stamp-aware ranking reads —
+# majors, skills, class years — would move scores, so they are classified for
+# display only by backend.lib.opportunity_detail, not stamped here.
+_COLLECTOR_TEMPLATE_STAMPS: dict[str, dict[str, tuple[object, str]]] = {
+    "simplify_internships": {
+        "paid": ("stipend", "default:simplify_feed_has_no_pay_field"),
+    },
+}
+
+
+def stamp_collector_templates(record: dict) -> dict:
+    """Stamp registered collector constants as inferred, in place; return record.
+
+    Idempotent, and never overrides an existing stamp: a field some other
+    producer already accounted for keeps that producer's method. Only a value
+    equal to the registered template is stamped — a future collector that
+    reads a real pay value off the page is left stated.
+    """
+    templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "")
+    if not templates:
+        return record
+    for path, (template, method) in templates.items():
+        if inferred_method(record, path) is not None:
+            continue
+        value: object = record
+        for part in path.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        if value == template:
+            metadata = record.setdefault("metadata", {})
+            if isinstance(metadata, dict):
+                stamp_inferred(metadata, path, method)
+    return record
 
 
 # ---------------------------------------------------------------------------

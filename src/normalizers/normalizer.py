@@ -117,6 +117,9 @@ def normalize(raw: dict, source_defaults: dict = None) -> dict:
     # Compute application effort
     normalized["application"]["application_effort"] = _compute_effort(normalized["application"])
 
+    if normalized["eligibility"]["preferred_year"] != ["unknown"]:
+        stamp_inferred(normalized["metadata"], "eligibility.preferred_year", "rule:normalizer_keyword_bank")
+
     if isinstance(extra, dict) and isinstance(extra.get(SOURCE_KEY), list) and len(extra[SOURCE_KEY]) > 8:
         metadata = normalized['metadata']
         metadata[SOURCE_KEY] = []
@@ -206,14 +209,19 @@ def _extract_skills(text: str, required: bool = True) -> list[str]:
     return extract_skill_requirements(text)["required" if required else "preferred"]
 
 
-def _check_citizenship(text: str) -> bool:
+def _check_citizenship(text: str) -> Optional[bool]:
+    """True when the text states a citizenship/authorization rule, else None.
+
+    Never False: a description that does not mention citizenship has not said
+    there is no requirement (M03 — unknown must not collapse to false).
+    """
     citizenship_phrases = [
         "u.s. citizen", "us citizen", "united states citizen",
         "permanent resident", "authorized to work in the u.s.",
         "must be a citizen", "citizenship required",
     ]
     text_lower = text.lower()
-    return any(phrase in text_lower for phrase in citizenship_phrases)
+    return True if any(phrase in text_lower for phrase in citizenship_phrases) else None
 
 
 def _check_keyword(text: str, keywords: list[str]) -> str:

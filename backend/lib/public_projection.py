@@ -9,6 +9,8 @@ from html.parser import HTMLParser
 from typing import TypeVar
 from urllib.parse import unquote, urlsplit
 
+# Module import: opportunity_detail imports this module back.
+from backend.lib import opportunity_detail
 from src.evidence import (
     inferred_method,
     is_read_off_the_page,
@@ -851,10 +853,32 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # deliberate exception — `policy:` names a published requirement of the
     # funding program (the REU solicitation mandates a stipend), not a reading
     # of the page, and hedging those would hide real money.
-    if is_read_off_the_page(canonical_record, "paid") and projected.get("paid") in {
-        "yes", "stipend", "no",
-    }:
+    #
+    # M03 widens the trigger from stamps to the collector-template registry:
+    # Simplify writes "stipend" on all 6,096 internships because its feed has
+    # no pay field, and that green badge was the same guess without a stamp.
+    # `paid_basis` is the one rule the detail facts use too, so the badge and
+    # the "System inference" row cannot disagree. Policy stays unhedged here.
+    paid = projected.get("paid")
+    if paid in {"yes", "stipend", "no"} and (
+        is_read_off_the_page(canonical_record, "paid")
+        or opportunity_detail.paid_basis(canonical_record, paid) not in (None, "program_policy")
+    ):
         projected["paid_attribution"] = "inferred"
+
+    # The host school's city is not where the work happens. Six collectors
+    # write their campus city into `location` on every record — all 130k
+    # faculty rows and the campus-program listings — and the header printed it
+    # beside a map pin as the opportunity's location. "institution" tells the
+    # client the value locates the school; "inferred" that we read it off
+    # another record (the NSF awardee). Absent means the posting stated it.
+    location = projected.get("location")
+    if isinstance(location, str) and location.strip():
+        how = opportunity_detail.location_basis(canonical_record, location)
+        if how == "institution":
+            projected["location_attribution"] = "institution"
+        elif how is not None:
+            projected["location_attribution"] = "inferred"
 
     metadata = projected.get("metadata")
     if isinstance(metadata, dict):

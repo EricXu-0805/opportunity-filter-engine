@@ -122,7 +122,8 @@ def _to_normalized(r: RawOpportunity) -> dict:
             # URAP only admits Berkeley-matriculated students; an unconditional
             # "yes" would mislead this product's international users.
             "international_friendly": "unknown",
-            "citizenship_required": False,
+            # Unknown, not False: the page states no citizenship rule (M03).
+            "citizenship_required": None,
         },
         "application": {
             "application_url": r.url,

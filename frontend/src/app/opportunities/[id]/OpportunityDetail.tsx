@@ -23,10 +23,12 @@ import { canDeliverReminder } from '@/lib/reminders';
 import { targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
 import ContactInstructionsPanel from '@/components/ContactInstructionsPanel';
+import { readDetailFields } from '@/lib/detail-fields';
 
 import { ChatDrawer } from './ChatDrawer';
 import { ContactRevealSection } from './ContactRevealSection';
 import { ConciergeRequestSection } from './ConciergeRequestSection';
+import { DetailFactsSection } from './DetailFactsSection';
 import {
   ApplicationSection,
   AtAGlanceSection,
@@ -150,6 +152,11 @@ export default function OpportunityDetail({
   const showsProfileOrOffer = isCurrentListing || isActionableFaculty;
 
   const description = opp.description_raw || opp.description_clean || '';
+  // M03: the server's per-field source / inference / unknown classification.
+  // Null on an older backend or a cached payload — then the legacy sections
+  // render with their own hedges, exactly as before.
+  const detailFields = readDetailFields(opp);
+  const showsFacts = showsProfileOrOffer && detailFields !== null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
@@ -278,14 +285,21 @@ export default function OpportunityDetail({
               posture is — the section already refuses anything without
               verified attribution. */}
           <RecentWorksSection opp={opp} t={t} />
-          {showsProfileOrOffer && <AtAGlanceSection opp={opp} t={t} />}
+          {showsFacts && detailFields && (
+            <DetailFactsSection
+              fields={detailFields}
+              isFaculty={recordKind === 'faculty_contact'}
+              t={t}
+            />
+          )}
+          {showsProfileOrOffer && !showsFacts && <AtAGlanceSection opp={opp} t={t} />}
           {/* The faculty variant of this section is deliberately narrow — it
               hides year, major and required skills, and shows only the
               fail-closed international answer plus an explicit citizenship
               restriction. Those are evidenced negatives and verify-this
               prompts, not terms of an offer, so a live profile keeps them. */}
-          {showsProfileOrOffer && <EligibilitySection opp={opp} t={t} />}
-          {showsProfileOrOffer && <ApplicationSection opp={opp} t={t} />}
+          {showsProfileOrOffer && !showsFacts && <EligibilitySection opp={opp} t={t} />}
+          {showsProfileOrOffer && !showsFacts && <ApplicationSection opp={opp} t={t} />}
           {showsProfileOrOffer && <div className="mb-4"><ContactInstructionsPanel target={opp} /></div>}
           {/* Revealing a contact is a direct action, not a display detail: it
               re-fetches the record to obtain the address, can raise the sign-in
@@ -296,7 +310,9 @@ export default function OpportunityDetail({
               concrete. Bound to this record, because the work being asked for
               is: read this lab, tailor to this lab, write to this person. */}
           {actionable && <ConciergeRequestSection opportunityId={opp.id} t={t} />}
-          <KeywordsSection opp={opp} t={t} />
+          {/* The facts section already carries research areas, split into
+              what the page says and what we derived. */}
+          {!showsFacts && <KeywordsSection opp={opp} t={t} />}
           {similarContent ?? <SimilarOpportunities similar={similar} t={t} />}
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">

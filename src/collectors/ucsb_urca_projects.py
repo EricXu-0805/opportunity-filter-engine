@@ -325,7 +325,8 @@ def normalize_project(raw: dict) -> dict:
             "majors": [],
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": False,
+            # Unknown, not False: the page states no citizenship rule (M03).
+            "citizenship_required": None,
             "international_friendly": "unknown",
             "work_auth_notes": "",
             "eligibility_text_raw": "",

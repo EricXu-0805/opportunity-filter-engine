@@ -50,8 +50,13 @@ export function getPaidBadge(
   // 201 live records carry paid='yes' because _detect_paid_from_text read it
   // off prose — one says only "in many cases, funding or a stipend". The
   // detail page calls those "Funding mentioned"; so does the card now.
-  if (attribution === 'inferred' && (paid === 'yes' || paid === 'stipend')) {
+  if (attribution === 'inferred' && paid === 'yes') {
     return { label: t('badges.fundingMentioned'), variant: 'gray' };
+  }
+  // An inferred stipend is mostly Simplify's collector default (its feed has
+  // no pay field, M03) — nothing was "mentioned", so say only what is true.
+  if (attribution === 'inferred' && paid === 'stipend') {
+    return { label: t('badges.payUnconfirmed'), variant: 'gray' };
   }
   if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
   if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };

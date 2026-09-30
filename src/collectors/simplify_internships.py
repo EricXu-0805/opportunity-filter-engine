@@ -78,19 +78,21 @@ _CATEGORY_MAJORS: dict[str, list[str]] = {
 # The 4-value sponsorship enum -> (international_friendly, citizenship_required,
 # work_auth_notes). "Does Not Offer Sponsorship" is "no" for full-time roles but
 # CPT/OPT usually still covers internships, so we say so rather than hard-block.
-_SPONSORSHIP_MAP: dict[str, tuple[str, bool, str]] = {
+# citizenship_required is tri-state (M03): only "Offers Sponsorship" says
+# anything about it, and "Other"/"Does Not Offer" state no citizenship rule.
+_SPONSORSHIP_MAP: dict[str, tuple[str, bool | None, str]] = {
     "Offers Sponsorship": (
         "yes", False, "Employer offers visa sponsorship.",
     ),
     "Does Not Offer Sponsorship": (
-        "no", False,
+        "no", None,
         "Employer does not offer visa sponsorship; CPT/OPT may still apply "
         "for internships.",
     ),
     "U.S. Citizenship is Required": (
         "no", True, "U.S. citizenship is required.",
     ),
-    "Other": ("unknown", False, ""),
+    "Other": ("unknown", None, ""),
 }
 
 

@@ -172,7 +172,8 @@ def _normalize_program(
             "majors": program.get("eligibility_majors", []),
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": intl == "no",
+            # Tri-state (M03): an unknown intl answer is not "no requirement".
+            "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
             "international_friendly": intl,
             "work_auth_notes": "",
             "eligibility_text_raw": (program.get("deadline_note", "") or "")[:300],
@@ -251,7 +252,7 @@ def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> d
             "majors": [],
             "skills_required": [],
             "skills_preferred": [],
-            "citizenship_required": False,
+            "citizenship_required": None,
             "international_friendly": "unknown",
             "work_auth_notes": "",
             "eligibility_text_raw": desc[:300],

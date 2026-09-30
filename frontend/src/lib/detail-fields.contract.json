@@ -1,0 +1,1096 @@
+{
+  "_generated_by": "scripts/generate_detail_fields_contract.py",
+  "cases": [
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
+              "application_url": "https://example.edu/programs/surf/apply"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "website"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {
+              "department": "Biology"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "eligibility": {
+            "explicit": {
+              "citizenship": "not_required",
+              "class_year": [
+                "sophomore",
+                "junior"
+              ],
+              "international_students": "yes",
+              "majors": [
+                "Biology",
+                "Chemistry"
+              ]
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": [
+              "min_gpa",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {
+              "compensation": "$5,000",
+              "paid": "stipend"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "unknown",
+            "unknown": [
+              "location",
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {
+              "lab_or_program": "SURF"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {
+              "research_areas": {
+                "basis": "text_scan",
+                "value": [
+                  "biology",
+                  "undergraduate research"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "Duke University"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {
+              "application_window": "Applications reviewed on a rolling basis",
+              "deadline": "2027-02-01",
+              "rolling": true
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/surf"
+            },
+            "state": "source",
+            "unknown": [
+              "start_date",
+              "duration",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": "institution",
+      "name": "curated_campus_program",
+      "paid_attribution": null
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
+              "application_url": "https://jobs.example.com/123"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "online"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "unknown",
+            "unknown": [
+              "department"
+            ]
+          },
+          "eligibility": {
+            "explicit": {
+              "work_authorization_notes": "Employer does not offer visa sponsorship."
+            },
+            "inferred": {
+              "international_students": {
+                "basis": "derived_from_source",
+                "value": "no"
+              },
+              "majors": {
+                "basis": "text_scan",
+                "value": [
+                  "Computer Science"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "source",
+            "unknown": [
+              "class_year",
+              "min_gpa",
+              "citizenship"
+            ]
+          },
+          "funding": {
+            "explicit": {},
+            "inferred": {
+              "paid": {
+                "basis": "collector_default",
+                "value": "stipend"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "inferred",
+            "unknown": [
+              "compensation"
+            ]
+          },
+          "location": {
+            "explicit": {
+              "location": "Seattle, WA"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "source",
+            "unknown": [
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "unknown",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank",
+              "lab_or_program"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {
+              "mentioned": {
+                "basis": "text_scan",
+                "value": [
+                  "Python",
+                  "Java"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "inferred",
+            "unknown": [
+              "required",
+              "preferred"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {
+              "research_areas": {
+                "basis": "text_scan",
+                "value": [
+                  "software engineering"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "ExampleCorp"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {
+              "duration": "Summer 2027",
+              "posted_date": "2026-08-20"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://jobs.example.com/123"
+            },
+            "state": "source",
+            "unknown": [
+              "deadline",
+              "rolling",
+              "application_window",
+              "start_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": null,
+      "name": "simplify_internship_template",
+      "paid_attribution": "inferred"
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
+              "application_url": "https://example.edu/reu/apply"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "online"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "department"
+            ]
+          },
+          "eligibility": {
+            "explicit": {},
+            "inferred": {
+              "citizenship": {
+                "basis": "program_policy",
+                "value": "required"
+              },
+              "international_students": {
+                "basis": "program_policy",
+                "value": "no"
+              },
+              "majors": {
+                "basis": "text_scan",
+                "value": [
+                  "Physics"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "inferred",
+            "unknown": [
+              "class_year",
+              "min_gpa",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {},
+            "inferred": {
+              "compensation": {
+                "basis": "program_policy",
+                "value": "NSF-funded stipend (typically $6,000-$7,000 for 10 weeks)"
+              },
+              "paid": {
+                "basis": "program_policy",
+                "value": "yes"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {
+              "location": {
+                "basis": "derived_from_source",
+                "value": "Springfield, IL"
+              },
+              "remote_option": {
+                "basis": "program_policy",
+                "value": "no"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "professor_or_lab": {
+            "explicit": {
+              "lab_or_program": "Materials Science REU",
+              "principal_investigator": "Jane Doe"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "source",
+            "unknown": [
+              "faculty_rank"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {
+              "research_areas": {
+                "basis": "text_scan",
+                "value": [
+                  "materials science"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "Example State University"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {},
+            "inferred": {
+              "deadline": {
+                "basis": "estimate",
+                "value": "2027-02-15"
+              },
+              "duration": {
+                "basis": "program_policy",
+                "value": "Summer (8-10 weeks)"
+              },
+              "start_date": {
+                "basis": "estimate",
+                "value": "2026-06-01"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
+            },
+            "state": "inferred",
+            "unknown": [
+              "rolling",
+              "application_window",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": "inferred",
+      "name": "nsf_reu_policy",
+      "paid_attribution": null
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
+              "application_url": "https://example.edu/sro/1/apply"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "online"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "department"
+            ]
+          },
+          "eligibility": {
+            "explicit": {},
+            "inferred": {
+              "majors": {
+                "basis": "text_scan",
+                "value": [
+                  "Chemistry"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "inferred",
+            "unknown": [
+              "class_year",
+              "min_gpa",
+              "international_students",
+              "citizenship",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {},
+            "inferred": {
+              "paid": {
+                "basis": "text_scan",
+                "value": "yes"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "inferred",
+            "unknown": [
+              "compensation"
+            ]
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "location",
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank",
+              "lab_or_program"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {
+              "mentioned": {
+                "basis": "text_scan",
+                "value": [
+                  "MATLAB"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "inferred",
+            "unknown": [
+              "required",
+              "preferred"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {
+              "research_areas": {
+                "basis": "text_scan",
+                "value": [
+                  "chemistry"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "inferred",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "University of Illinois"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/sro/1"
+            },
+            "state": "unknown",
+            "unknown": [
+              "deadline",
+              "rolling",
+              "application_window",
+              "start_date",
+              "duration",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": null,
+      "name": "stamped_listing",
+      "paid_attribution": "inferred"
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "application_url",
+              "contact_method",
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {
+              "department": "Mathematics"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "eligibility": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "class_year",
+              "majors",
+              "min_gpa",
+              "international_students",
+              "citizenship",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "paid",
+              "compensation"
+            ]
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "location",
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {
+              "faculty_rank": "Professor",
+              "principal_investigator": "Ada Lovelace"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "source",
+            "unknown": [
+              "lab_or_program"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {
+              "research_areas": "Analytical engines; number theory"
+            },
+            "inferred": {
+              "research_areas": {
+                "basis": "external_enrichment",
+                "value": [
+                  "analytical engines",
+                  "number theory"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "University of Michigan"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/people/ada"
+            },
+            "state": "unknown",
+            "unknown": [
+              "deadline",
+              "rolling",
+              "application_window",
+              "start_date",
+              "duration",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": "institution",
+      "name": "faculty_profile",
+      "paid_attribution": null
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "application_url",
+              "contact_method",
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "department"
+            ]
+          },
+          "eligibility": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "class_year",
+              "majors",
+              "min_gpa",
+              "international_students",
+              "citizenship",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "paid",
+              "compensation"
+            ]
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "location",
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank",
+              "lab_or_program"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "research_areas"
+            ]
+          },
+          "school": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "institution"
+            ]
+          },
+          "timing": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": null,
+              "source_url": null
+            },
+            "state": "unknown",
+            "unknown": [
+              "deadline",
+              "rolling",
+              "application_window",
+              "start_date",
+              "duration",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": null,
+      "name": "legacy_sparse",
+      "paid_attribution": null
+    }
+  ],
+  "field_facets": {
+    "application_method": [
+      "application_url",
+      "contact_method",
+      "requirements",
+      "effort"
+    ],
+    "department": [
+      "department"
+    ],
+    "eligibility": [
+      "class_year",
+      "majors",
+      "min_gpa",
+      "international_students",
+      "citizenship",
+      "work_authorization_notes"
+    ],
+    "funding": [
+      "paid",
+      "compensation"
+    ],
+    "location": [
+      "location",
+      "remote_option"
+    ],
+    "professor_or_lab": [
+      "principal_investigator",
+      "faculty_rank",
+      "lab_or_program"
+    ],
+    "required_skills": [
+      "required",
+      "preferred",
+      "mentioned"
+    ],
+    "research_content": [
+      "research_areas"
+    ],
+    "school": [
+      "institution"
+    ],
+    "timing": [
+      "deadline",
+      "rolling",
+      "application_window",
+      "start_date",
+      "duration",
+      "posted_date"
+    ]
+  },
+  "field_names": [
+    "school",
+    "department",
+    "professor_or_lab",
+    "research_content",
+    "eligibility",
+    "required_skills",
+    "timing",
+    "funding",
+    "location",
+    "application_method"
+  ],
+  "version": "m03-v1"
+}
