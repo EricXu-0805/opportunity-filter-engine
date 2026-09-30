@@ -46,8 +46,11 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); if (clipboardDescriptor) Obj
 describe('Tailor authoritative target version', () => {
   it('submits the exact verified version and accepts only its matching receipt', async () => {
     render(<TailorModal {...base} />); await ready(); fireEvent.click(generate());
-    await waitFor(() => expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, ID, ['My original sensor work'],
-      { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: A }));
+    // Wait only for the dispatch; a changed call shape then fails with the
+    // argument diff instead of a polling timeout.
+    await waitFor(() => expect(api.tailor).toHaveBeenCalled());
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, ID, ['My original sensor work'],
+      { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: A });
     await waitFor(() => expect(screen.getAllByText(fullText('Verified target suggestion')).length).toBeGreaterThan(0));
   });
   it.each([undefined, '', `wt1:${'A'.repeat(64)}`, ` ${A}`])('does not generate without a valid server target token (%s)', async version => {
@@ -106,7 +109,8 @@ describe('Tailor authoritative target version', () => {
   it('does not add a target token to source extraction', async () => {
     render(<TailorModal {...base} target={withVersion(undefined)} />); await ready();
     fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' }));
-    await waitFor(() => expect(api.extract).toHaveBeenCalledExactlyOnceWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' }));
+    await waitFor(() => expect(api.extract).toHaveBeenCalled());
+    expect(api.extract).toHaveBeenCalledExactlyOnceWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
     await waitFor(() => expect(input()).toHaveValue('Fresh source extraction')); expect(api.tailor).not.toHaveBeenCalled();
   });
 });

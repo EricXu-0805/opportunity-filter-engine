@@ -435,3 +435,53 @@ def test_future_offers_in_availability_remain_usable(client, availability):
     context = {**FIRST, 'availability': {'text': availability, 'confirmed': True}}
     out = result(post(client, '', context), '')
     assert availability in out['body']
+
+
+@pytest.mark.parametrize("sentence", [
+    "I look forward to following up with you.",
+    "Thank you in advance for your response.",
+    "Thank you for your response in advance.",
+    "Thanks so much for your reply in advance.",
+    "I am interested in the summer program you offered last year.",
+    "I read about the positions you offered in 2025.",
+    "I noticed the students you accepted last year came from many majors.",
+    "Could we schedule a follow-up to discuss the project?",
+])
+def test_first_contact_wording_is_not_a_prior_contact_claim(sentence):
+    from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == []
+
+
+@pytest.mark.parametrize("sentence", [
+    "I am following up on my previous email.",
+    "I'm following up about the position.",
+    "I wanted to follow up on our conversation.",
+    "I am writing to follow up regarding the lab.",
+    "This is a follow-up to my email from last week.",
+    "Thank you for your reply.",
+    "Thanks so much for your quick response.",
+    "You offered me a position.",
+    "As you offered to review my resume, I have revised it.",
+    "You agreed to meet with me in October.",
+    "You accepted my request to join the group meeting.",
+    "Janet Rowan referred me to you.",
+    "I emailed you last week.",
+    "I have not yet received a reply.",
+])
+def test_prior_contact_claims_are_still_flagged(sentence):
+    from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == ["unsupported contact history claim"]
+
+
+@pytest.mark.parametrize("sentence", [
+    "I look forward to following up with you.", "Thank you for your response in advance.",
+    "I am interested in the summer program you offered last year.",
+])
+def test_first_contact_ai_draft_is_not_rejected_as_contact_history(client, monkeypatch, sentence):
+    body = f"Dear Pat Lee,\n\nI am interested in Python parser tools. {sentence}\n\nBest regards,\nAudit Student"
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
+    out = result(post(client, "", FIRST, engine="ai"), "")
+    assert out["method"] == "ai", out
+    assert sentence in out["body"]
+    assert out.get("fallback_reason") is None

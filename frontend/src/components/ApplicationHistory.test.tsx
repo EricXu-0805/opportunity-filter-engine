@@ -178,15 +178,53 @@ describe('ApplicationHistory — pagination and private read scopes', () => {
     expect(mocks.getApplicationEvents.mock.calls).toEqual([['opp-A'], ['opp-A']]);
   });
 
-  it('replaces a refreshing record with the error when the refreshed read fails', async () => {
+  it('keeps an older-page record mounted when the refreshed page one does not include it', async () => {
     const refreshed = deferred<ReturnType<typeof page>>();
-    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()])).mockReturnValueOnce(refreshed.promise);
+    const older = { confirmedAt: '2026-09-20T11:00:00Z', id: 'event-B' };
+    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()], cursor))
+      .mockResolvedValueOnce(page([event({ id: 'event-B', destination: 'Older portal', confirmedAt: older.confirmedAt })], older))
+      .mockReturnValueOnce(refreshed.promise);
     const { rerender } = render(<ApplicationHistory {...props} />);
-    await screen.findByText('Research program portal');
+    fireEvent.click(await screen.findByRole('button', { name: label('loadMore') }));
+    const record = (await screen.findByText('Older portal')).closest('details')!;
+    record.open = true;
+    rerender(<ApplicationHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    await act(async () => { refreshed.resolve(page([event({ id: 'event-N', destination: 'New confirmation', confirmedAt: '2026-09-25T13:00:00Z' }), event()], cursor)); });
+    // Its material upload lives inside this record; page one alone would unmount and abort it.
+    expect(record.isConnected).toBe(true); expect(record.open).toBe(true);
+    expect(Array.from(document.querySelectorAll('[data-testid="application-history"] ol > li > details > summary > span:nth-child(2)')).map(span => span.textContent))
+      .toEqual(['New confirmation', 'Research program portal', 'Older portal']);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('keeps the loaded records beside the error when the refreshed read fails, then retries', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getApplicationEvents.mockResolvedValueOnce(page([event()])).mockReturnValueOnce(refreshed.promise)
+      .mockResolvedValueOnce(page([event({ id: 'event-N', destination: 'New confirmation' }), event()]));
+    const { rerender } = render(<ApplicationHistory {...props} />);
+    const record = (await screen.findByText('Research program portal')).closest('details')!;
+    record.open = true;
     rerender(<ApplicationHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
     await act(async () => { refreshed.reject(new Error('offline')); });
     expect(screen.getByRole('alert')).toHaveTextContent(label('error'));
-    expect(screen.queryByText('Research program portal')).not.toBeInTheDocument();
+    expect(screen.queryByText('offline')).not.toBeInTheDocument();
+    expect(record.isConnected).toBe(true); expect(record.open).toBe(true);
+    expect(screen.queryByText(label('empty'))).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: label('retry') }));
+    await screen.findByText('New confirmation');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(record.isConnected).toBe(true);
+  });
+
+  it('shows the error, not an empty history, when a refresh of an empty history fails', async () => {
+    const refreshed = deferred<ReturnType<typeof page>>();
+    mocks.getApplicationEvents.mockResolvedValueOnce(page([])).mockReturnValueOnce(refreshed.promise);
+    const { rerender } = render(<ApplicationHistory {...props} />);
+    await screen.findByText(label('empty'));
+    rerender(<ApplicationHistory {...props} refreshKey="2026-09-25T13:00:00Z" />);
+    await act(async () => { refreshed.reject(new Error('offline')); });
+    expect(screen.getByRole('alert')).toHaveTextContent(label('error'));
+    expect(screen.queryByText(label('empty'))).not.toBeInTheDocument();
   });
 
   it('retracts the previous opportunity history immediately while the new read waits', async () => {

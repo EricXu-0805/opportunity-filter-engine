@@ -65,7 +65,8 @@ describe('Tailor profile preflight', () => {
     fireEvent.click(generate());
     // Rule binding and draft comparison await native SHA work, which a fixed
     // number of Promise turns does not exhaust. Await the actual dispatch.
-    await waitFor(() => expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }));
+    await waitFor(() => expect(api.tailor).toHaveBeenCalled());
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
     expect(check).toHaveBeenCalledTimes(3); // initial action, explicit review, then generation
   });
   it('extracts the latest complete résumé only after its receipt is rendered', async () => {
@@ -81,7 +82,9 @@ describe('Tailor profile preflight', () => {
     if (kind === 'rejected') read.reject(new Error('PRIVATE cloud text')); else read.resolve(kind === 'deleted' ? receipt(null) : null);
     await drain(); expect(api.tailor).not.toHaveBeenCalled(); expect(textarea()).toHaveValue('My unchanged manual bullet');
     expect(screen.getByText(/This action did not run/)).toBeTruthy(); expect(screen.queryByText('PRIVATE cloud text')).toBeNull();
-    fireEvent.click(generate()); await drain(); expect(check).toHaveBeenCalledTimes(2); expect(api.tailor).toHaveBeenCalledOnce();
+    // The retry dispatches only after native SHA work, which a fixed drain does not exhaust.
+    fireEvent.click(generate()); await waitFor(() => expect(api.tailor).toHaveBeenCalled());
+    expect(check).toHaveBeenCalledTimes(2); expect(api.tailor).toHaveBeenCalledOnce();
   });
   it('deduplicates double clicks and cancels the queued intent when the user edits', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise);

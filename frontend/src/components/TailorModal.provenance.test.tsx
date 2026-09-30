@@ -60,8 +60,9 @@ describe('Tailor local draft provenance', () => {
     expect(input()).toHaveValue('Manual text entered while the full opportunity is loading');
     expect(screen.queryByTestId('tailor-draft-review')).not.toBeInTheDocument();
     fireEvent.click(generate());
-    await waitFor(() => expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, OPP,
-      ['Manual text entered while the full opportunity is loading'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }));
+    await waitFor(() => expect(api.tailor).toHaveBeenCalled());
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, OPP,
+      ['Manual text entered while the full opportunity is loading'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
     await waitFor(() => expect(screen.getByRole('button', { name: 'tailor.useAsOriginals' })).toBeInTheDocument());
     const changed = { ...target, eligibility: { ...target.eligibility, skills_required: ['Python', 'R'] } };
     view.rerender(<TailorModal {...base} target={changed} targetChecking={false} targetReady />);

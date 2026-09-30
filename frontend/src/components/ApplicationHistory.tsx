@@ -19,7 +19,18 @@ type History = {
   events: ApplicationEvent[];
   nextCursor: ApplicationEventCursor | null;
   more: 'idle' | 'loading' | 'error';
+  /** A same-account refresh failed; the records shown are the last ones read. */
+  refreshFailed?: boolean;
 };
+
+// A same-account refresh keeps records that page one does not cover (loaded
+// with Load more): unmounting one would abort a material upload open inside
+// it. A complete page one covers every record, so nothing older is kept.
+function withLoaded(current: History | null, identity: string, events: ApplicationEvent[], nextCursor: unknown): ApplicationEvent[] {
+  if (!nextCursor || current?.identity !== identity || current.status !== 'ready') return events;
+  const ids = new Set(events.map(event => event.id));
+  return [...events, ...current.events.filter(event => !ids.has(event.id))];
+}
 
 function ownerSnapshot(): string {
   const token = captureOwnerToken();
@@ -60,10 +71,14 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
       return getApplicationEvents(opportunityId);
     }).then(page => {
       if (active && isOwnerTokenValid(origin, origin.uid)) {
-        setHistory({ scope, identity, status: 'ready', events: page.events, nextCursor: page.nextCursor, more: 'idle' });
+        setHistory(current => ({ scope, identity, status: 'ready', events: withLoaded(current, identity, page.events, page.nextCursor),
+          nextCursor: page.nextCursor, more: 'idle' }));
       }
     }, () => {
-      if (active) setHistory({ scope, identity, status: 'error', events: [], nextCursor: null, more: 'idle' });
+      // Keep the same account's records beside the error; an empty or other list shows only the error.
+      if (active) setHistory(current => current?.identity === identity && current.status === 'ready' && current.events.length > 0
+        ? { ...current, scope, more: 'idle', refreshFailed: true }
+        : { scope, identity, status: 'error', events: [], nextCursor: null, more: 'idle' });
     });
     return () => { active = false; };
   }, [opportunityId, scope, identity]);
@@ -102,7 +117,7 @@ export default function ApplicationHistory({ opportunityId, refreshKey }: Props)
     <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">{label('title')}</h3>
     <p className="text-xs text-gray-500">{label('hint')}</p>
     {(!view || refreshing) && <p role="status" className="text-xs text-gray-500">{label('loading')}</p>}
-    {view?.status === 'error' && <div role="alert" className="text-xs text-amber-800">
+    {(view?.status === 'error' || (view?.refreshFailed && !refreshing)) && <div role="alert" className="text-xs text-amber-800">
       <p>{label('error')}</p>
       <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-1 min-h-9 rounded underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-indigo-500">{label('retry')}</button>
     </div>}

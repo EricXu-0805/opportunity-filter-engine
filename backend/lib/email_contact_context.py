@@ -197,12 +197,19 @@ def contact_context_brief(parts: dict) -> str:
 _CONTACT_CLAIM = re.compile(
     r"\b(?:referred\s+me|introduced\s+me|(?:suggested|recommended|encouraged|told)\s+(?:that\s+)?i?\s*"
     r"(?:me\s+to\s+)?(?:contact|write|reach)|(?:on|at)\s+(?:the\s+)?(?:recommendation|suggestion)\s+of|"
-    r"following\s+up|follow[- ]up\s+(?:on|to)|my\s+(?:previous|earlier|last)\s+(?:email|message)|"
+    # Past contact only: "I look forward to following up", "thank you in advance
+    # for your response" and "the program you offered" are first-contact wording.
+    r"(?:\bam|i['’]m|just)\s+following\s+up|(?:writing|wanted)\s+to\s+follow\s+up|"
+    r"follow(?:ing)?[- ]?up\s+(?:on|to|regarding|about)\s+(?:my|our)|"
+    r"my\s+(?:previous|earlier|last)\s+(?:email|message)|"
     r"i\s+(?:emailed|contacted|wrote\s+to)\s+you|i\s+sent\s+(?:you\s+)?(?:an?\s+)?(?:email|message)|"
-    r"(?:thank\s+you|thanks)\s+for\s+(?:your\s+)?(?:reply|response)|"
+    r"(?<!in\sadvance\s)(?:thank\s+you|thanks)\s+(?:so\s+much\s+|very\s+much\s+)?for\s+(?:your\s+)?"
+    r"(?:kind\s+|quick\s+|prompt\s+)?(?:reply|response)(?!\s+in\s+advance)|"
     r"(?:have\s+not|haven['’]t|not\s+yet)\s+(?:yet\s+)?(?:received\s+a\s+reply|heard\s+back)|"
     r"in\s+your\s+(?:reply|response)|your\s+(?:reply|response)\s+(?:said|stated|asked|offered|was|mentioned)|"
-    r"you\s+(?:agreed|promised|offered|accepted)|as\s+(?:we\s+agreed|you\s+requested))\b",
+    r"you\s+(?:kindly\s+)?(?:offered|promised|accepted)\s+(?:me|us|my|our)|you\s+(?:kindly\s+)?agreed\s+to|"
+    r"you\s+(?:kindly\s+)?(?:offered|promised)\s+to\s+(?:meet|speak|talk|chat|review|read|consider|share|send|"
+    r"forward|introduce|connect|discuss|look)|as\s+(?:we\s+agreed|you\s+requested))\b",
     re.I,
 )
 

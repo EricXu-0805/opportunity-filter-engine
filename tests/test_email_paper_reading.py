@@ -103,6 +103,7 @@ from backend.routes import cold_email as ce
 from tests.test_cold_email_writing_quality import OPP as WRITING_OPP
 from tests.test_cold_email_writing_quality import PROFILE
 from tests.test_email_contact_context import post, result
+from tests.test_email_contact_instructions import trip_every_generator
 
 NEUTRAL_ASK = "Could I ask whether you have any current or upcoming research openings?"
 
@@ -157,9 +158,9 @@ def test_every_endpoint_rejects_stale_or_other_target_reading_before_auth_or_pro
         opp["metadata"]["recent_works"] = []
     else:
         opp["metadata"]["publication_attribution_status"] = "name_match"
-    async def no_auth(_authorization):
-        pytest.fail("rejected reading must not reach auth/provider")
-    monkeypatch.setattr(ce, "authenticated_uid", no_auth)
+    # /refine never authenticates, so auth alone cannot trip there; every
+    # generator and a configured provider must be tripwires as well.
+    trip_every_generator(monkeypatch, "rejected reading must not reach auth/generator/provider")
     response = post(client, path, value)
     assert response.status_code == 422, response.text
     assert response.json()["detail"]["code"] == "EMAIL_READING_CHANGED"
