@@ -96,6 +96,10 @@ Steps 3 and 4 are per school and safe to repeat. Step 2 is safe to repeat at
 any time and is *also* run by every data refresh (below), so it is not something
 anyone has to remember.
 
+Step 4 exits 2 without touching anything when the manifest's `works_gate` is
+not `CURRENT_WORKS_GATE`. `apply_works` stamps everything it lands at the
+current gate, so a harvest made before a gate bump has to be made again.
+
 ### Cost
 
 The roster path is what makes this affordable. Resolving an author through

@@ -22,8 +22,10 @@ never been the thing that broke.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -877,3 +879,87 @@ class TestPipelineEnforcement:
         assert invalidate_population(clean) == {
             "professors_withdrawn": 0, "relationships_withdrawn": 0
         }
+
+
+# ---------------------------------------------------------------------------
+# The driver: scripts/remediate_publications.py
+# ---------------------------------------------------------------------------
+
+_spec = importlib.util.spec_from_file_location(
+    "remediate_publications",
+    Path(__file__).resolve().parents[1] / "scripts" / "remediate_publications.py",
+)
+driver = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(driver)
+
+
+_NO_GATE = object()
+
+
+class TestApplyDriver:
+    """`apply` run through the real CLI against an in-memory one-shard corpus."""
+
+    def _apply(self, tmp_path, monkeypatch, *, works_gate=CURRENT_WORKS_GATE):
+        record = faculty()
+        invalidate_record(record)
+        before = json.dumps(record, sort_keys=True)
+        written: list[list[str]] = []
+        monkeypatch.setattr(driver, "load_shards", lambda: {"uiuc": [record]})
+        monkeypatch.setattr(
+            driver, "save_shards",
+            lambda _shards, touched: written.append(sorted(touched)) or sorted(touched),
+        )
+
+        mapping = tmp_path / "works.json"
+        mapping.write_text(json.dumps({
+            unit_for(record)["person_key"]: {
+                "author_id": "A5000",
+                "works": [{"title": "Real MRI Paper", "year": 2026}],
+            },
+        }), encoding="utf-8")
+        manifest = {
+            "schools_requested": ["uiuc"],
+            "schools_answered": ["uiuc"],
+            "budget_exhausted": False,
+            "reasons": {},
+            "mapping_entries": 1,
+        }
+        if works_gate is not _NO_GATE:
+            manifest["works_gate"] = works_gate
+        manifest_path = tmp_path / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        ledger = tmp_path / "ledger.jsonl"
+
+        rc = driver.main([
+            "--ledger", str(ledger), "apply", str(mapping),
+            "--manifest", str(manifest_path), "--save",
+        ])
+        return rc, record, before, written, ledger
+
+    @pytest.mark.parametrize(
+        "works_gate", [CURRENT_WORKS_GATE - 1, _NO_GATE], ids=["older_gate", "no_gate"],
+    )
+    def test_refuses_a_harvest_the_current_gate_did_not_choose(
+        self, tmp_path, monkeypatch, works_gate,
+    ):
+        """apply_works stamps works_gate at the CURRENT gate on every write, so
+        papers an older rule chose would land certified by a rule that never
+        judged them. A manifest that does not name the current gate cannot show
+        which rule chose its papers."""
+        rc, record, before, written, ledger = self._apply(
+            tmp_path, monkeypatch, works_gate=works_gate,
+        )
+        assert rc == 2
+        assert json.dumps(record, sort_keys=True) == before
+        assert written == []
+        assert not ledger.exists()
+
+    def test_lands_the_same_harvest_when_the_current_gate_chose_it(self, tmp_path, monkeypatch):
+        """The control: identical files, current gate, and the unit settles."""
+        rc, record, _before, written, ledger = self._apply(tmp_path, monkeypatch)
+        assert rc == 0
+        assert record["metadata"]["works_gate"] == CURRENT_WORKS_GATE
+        assert [w["title"] for w in verified_recent_works(record)] == ["Real MRI Paper"]
+        assert written == [["uiuc"]]
+        entry = Ledger(ledger).index()[unit_for(record)["idempotency_key"]]
+        assert (entry["status"], entry["result"]) == (VERIFIED_COMPLETE, DISPOSITION_VERIFIED)

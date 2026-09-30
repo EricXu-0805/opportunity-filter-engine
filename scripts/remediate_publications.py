@@ -289,6 +289,14 @@ def cmd_apply(args: argparse.Namespace) -> int:
               "answered, so every disposition would be a guess about a professor "
               "nobody asked about", file=sys.stderr)
         return 2
+    # apply_works stamps works_gate at the gate in force on every write, so a
+    # mapping chosen by an older rule would land certified by one that never
+    # judged it.
+    if manifest.get("works_gate") != CURRENT_WORKS_GATE:
+        print(f"refusing to apply: the manifest records works_gate "
+              f"{manifest.get('works_gate')!r} and the current gate is "
+              f"{CURRENT_WORKS_GATE}; re-run harvest", file=sys.stderr)
+        return 2
 
     shards = load_shards()
     ledger = Ledger(Path(args.ledger))
