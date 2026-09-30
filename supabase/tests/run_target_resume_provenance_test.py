@@ -155,7 +155,7 @@ def main():
                     migrations.append((HERE / 'legacy_renovation_seed.sql').read_text())
                 migrations.append(path.read_text())
             run('prior-migrations', sql='\n'.join(migrations))
-            run('legacy-before', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=7)
+            run('legacy-before', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=9)
             seed = (HERE / 'target_resume_provenance_fixtures.sql').read_text() + """
 INSERT INTO auth.users(id) VALUES ('45000000-0000-4000-8000-000000000999');
 SELECT set_config('test.uid','45000000-0000-4000-8000-000000000999',false);
@@ -229,13 +229,13 @@ CREATE TABLE public.b48_before_history AS SELECT * FROM public.target_resume_ver
             if args.material_fixture:
                 from target_resume_material_roundtrip import material_roundtrip_sql
                 run('material-input-roundtrip', sql=material_roundtrip_sql(json.loads(args.material_fixture.read_text())), expected=5)
-            run('legacy-after', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=7)
+            run('legacy-after', sql='BEGIN;\n' + (HERE / 'target_resume_cas_test.sql').read_text() + '\nROLLBACK;', expected=9)
             script = 'set -euo pipefail\nPSQL=(' + ' '.join(shlex.quote(x) for x in psql) + ')\nWORK=' + shlex.quote(str(work)) + '\nSOCK=' + shlex.quote(str(sock)) + '\n'
             script += (HERE / 'target_resume_concurrency_test.sh').read_text()
             run('legacy-concurrency-after', command=['bash', '-c', script], expected=1)
             test = 'BEGIN;\n' + (HERE / 'target_resume_provenance_test.sql').read_text() + '\nROLLBACK;'
             test = test.replace('\\i :fixture_path', '\\i ' + shlex.quote(str(HERE / 'target_resume_provenance_fixtures.sql')))
-            run('provenance-behavior', sql=test, expected=19)
+            run('provenance-behavior', sql=test, expected=20)
             for kind in ('different', 'identical', 'legacy'):
                 concurrent('provenance-concurrency-' + kind, kind)
             advisor_url = 'postgresql:///postgres?' + urlencode({'host': str(sock), 'user': 'postgres'})
