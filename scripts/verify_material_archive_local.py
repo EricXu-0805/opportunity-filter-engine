@@ -353,14 +353,14 @@ def run(args, report):
         assert outcome['failed'] == 0
         passed('logical deletion denies download and actual Storage object removed', cleanup=outcome)
         if args.max_size:
-            large = pdf(64 * 1024 * 1024)
+            large = pdf(50_000_000)
             maximum = meta(large, 'maximum-size.pdf')
             expect(upload(maximum, large), 200)
             downloaded = expect(client.get(app + '/' + maximum['record_id'] + '/file', params=scope, headers=headers), 200)
             assert len(downloaded.content) == len(large) and hashlib.sha256(downloaded.content).hexdigest() == maximum['bytes_sha256']
             expect(delete(maximum), 200)
             erased(maximum)
-            passed('64 MiB original file roundtrip through Next rewrite', byte_length=len(large), sha256=maximum['bytes_sha256'])
+            passed('50 MB original file roundtrip through Next rewrite', byte_length=len(large), sha256=maximum['bytes_sha256'])
         for remaining in (recovery, replacement):
             expect(delete(remaining), 200)
             erased(remaining)

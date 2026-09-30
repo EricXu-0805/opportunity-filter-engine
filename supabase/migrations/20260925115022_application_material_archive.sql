@@ -2,8 +2,8 @@
 -- events. Storage bytes are uploaded/deleted only through the Storage API.
 -- Browser roles cannot forge verified hashes or bypass active-session checks.
 INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-VALUES('application-materials','application-materials',false,67108864,ARRAY['application/pdf'])
-ON CONFLICT(id) DO UPDATE SET public=false,file_size_limit=67108864,allowed_mime_types=ARRAY['application/pdf'];
+VALUES('application-materials','application-materials',false,50000000,ARRAY['application/pdf'])
+ON CONFLICT(id) DO UPDATE SET public=false,file_size_limit=50000000,allowed_mime_types=ARRAY['application/pdf'];
 -- Restrictive policies prevent an unrelated permissive browser policy from
 -- opening this bucket. The trusted service role is not included here.
 CREATE POLICY application_materials_no_browser_objects ON storage.objects
@@ -29,7 +29,7 @@ CREATE TABLE public.material_artifacts(
  stage_token uuid,
  stage_session_id uuid,
  authorized_until timestamptz,
- CHECK(byte_length IS NULL OR byte_length BETWEEN 1 AND 67108864),
+ CHECK(byte_length IS NULL OR byte_length BETWEEN 1 AND 50000000),
  CHECK(declared_sha256 IS NULL OR declared_sha256 ~ '^[a-f0-9]{64}$'),
  CHECK(sha256 IS NULL OR sha256 ~ '^[a-f0-9]{64}$'),
  CHECK((status='deleted' AND filename IS NULL AND byte_length IS NULL AND declared_sha256 IS NULL AND sha256 IS NULL
@@ -166,7 +166,7 @@ BEGIN
  uid:=private.material_user(p_expected_owner); PERFORM private.material_event(uid,p_application_event_id,p_opportunity_id);
  IF p_material_id IS NULL OR p_record_id IS NULL OR p_filename IS NULL OR length(p_filename) NOT BETWEEN 1 AND 200
    OR p_filename !~ '[^[:space:]]' OR p_filename ~ '[[:cntrl:]/\\]' OR p_filename !~* '\.pdf$'
-   OR p_byte_length IS NULL OR p_byte_length NOT BETWEEN 1 AND 67108864 OR p_sha256 IS NULL OR p_sha256 !~ '^[0-9a-f]{64}$' THEN
+   OR p_byte_length IS NULL OR p_byte_length NOT BETWEEN 1 AND 50000000 OR p_sha256 IS NULL OR p_sha256 !~ '^[0-9a-f]{64}$' THEN
    RAISE EXCEPTION 'invalid_application_material' USING ERRCODE='22023'; END IF;
  -- Global ID lock prevents cross-owner races without exposing another owner's
  -- row or changing the sorted owner locks used by merge.

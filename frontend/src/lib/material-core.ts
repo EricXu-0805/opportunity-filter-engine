@@ -2,7 +2,7 @@ import { APPLICATION_EVENT_UUID } from './application-ledger';
 import { contactRecord, contactTimestamp, validContactTarget } from './contact-ledger';
 import { isOwnerTokenValid, onLocalOwnerStateChange, OwnerMismatchError, type OwnerToken } from './identity-owner';
 
-export const MATERIAL_MAX_BYTES = 64 * 1024 * 1024;
+export const MATERIAL_MAX_BYTES = 50_000_000;
 export const MATERIAL_MIME = 'application/pdf' as const;
 export type MaterialEventField = 'applicationEventId' | 'contactEventId';
 export type MaterialScope<F extends MaterialEventField> = { opportunityId: string } & Record<F, string>;

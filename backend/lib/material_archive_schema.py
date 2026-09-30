@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
 
-MAX_FILE_BYTES = 64 * 1024 * 1024
+MAX_FILE_BYTES = 50_000_000
 MAX_BODY_BYTES = MAX_FILE_BYTES + 65536
 BUCKET = "application-materials"
 PRIVATE = {"Cache-Control": "private, no-store, max-age=0", "Pragma": "no-cache", "X-Content-Type-Options": "nosniff"}

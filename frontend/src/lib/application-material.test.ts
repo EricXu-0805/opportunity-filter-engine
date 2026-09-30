@@ -34,6 +34,9 @@ it('uses codepoints for Unicode filenames and excludes paths/control characters'
 });
 it('validates metadata size boundary and attestation without normalizing it', () => {
   expect(snapshotApplicationMaterialInput({ ...input(), byteLength: APPLICATION_MATERIAL_MAX_BYTES }).byteLength).toBe(APPLICATION_MATERIAL_MAX_BYTES);
+  // The Supabase project caps every upload at 50 MB (decimal); anything larger would pass here and fail in Storage.
+  expect(snapshotApplicationMaterialInput({ ...input(), byteLength: 50_000_000 }).byteLength).toBe(50_000_000);
+  expect(() => snapshotApplicationMaterialInput({ ...input(), byteLength: 50_000_001 })).toThrow();
   for (const change of [{ byteLength: 0 }, { byteLength: 2.1 }, { byteLength: APPLICATION_MATERIAL_MAX_BYTES + 1 }, { attested: false }])
     expect(() => snapshotApplicationMaterialInput({ ...input(), ...change })).toThrow();
 });
@@ -44,6 +47,8 @@ it('hashes full PDF bytes; accepts omitted/octet MIME but rejects magic and size
   await expect(inspectApplicationMaterialFile(captureOwnerToken(), file('x.pdf', 'not a pdf'))).rejects.toMatchObject({ code: 'invalid_pdf' });
   Object.defineProperty(selected, 'size', { value: APPLICATION_MATERIAL_MAX_BYTES + 1 });
   await expect(inspectApplicationMaterialFile(captureOwnerToken(), selected)).rejects.toMatchObject({ code: 'file_too_large' });
+  const overCap = file(); Object.defineProperty(overCap, 'size', { value: 50_000_001 });
+  await expect(inspectApplicationMaterialFile(captureOwnerToken(), overCap)).rejects.toMatchObject({ code: 'file_too_large' });
 });
 it('retires a held file read immediately when the owner changes', async () => {
   const pending = deferred<ArrayBuffer>(); const selected = file(); Object.defineProperty(selected, 'arrayBuffer', { value: () => pending.promise });

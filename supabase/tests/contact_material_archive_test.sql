@@ -81,16 +81,16 @@ DO $$DECLARE bad text;r jsonb;u text:=pg_temp.login(2);BEGIN
   BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',123,bad); RAISE EXCEPTION 'invalid hash accepted'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  END LOOP;
  BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',0,repeat('a',64)); RAISE EXCEPTION 'zero bytes'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
- BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',67108865,repeat('a',64)); RAISE EXCEPTION 'over 64MiB'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
- r:=public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp',repeat('研',195)||'😀.PDF',67108864,repeat('a',64));
- IF r#>>'{artifact,byte_length}'<>'67108864' THEN RAISE EXCEPTION 'exact limits rejected'; END IF;
+ BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp','x.pdf',50000001,repeat('a',64)); RAISE EXCEPTION 'over 50 MB'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ r:=public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'opp',repeat('研',195)||'😀.PDF',50000000,repeat('a',64));
+ IF r#>>'{artifact,byte_length}'<>'50000000' THEN RAISE EXCEPTION 'exact limits rejected'; END IF;
  BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),u::uuid,'other','x.pdf',123,repeat('a',64)); RAISE EXCEPTION 'target mismatch'; EXCEPTION WHEN no_data_found THEN NULL; END;
  BEGIN PERFORM public.stage_contact_material(u,gen_random_uuid(),gen_random_uuid(),'36000000-0000-4000-8000-000000000001','opp','x.pdf',123,repeat('a',64)); RAISE EXCEPTION 'foreign event'; EXCEPTION WHEN no_data_found THEN NULL; END;
  IF public.get_contact_material(u,'36000000-0000-4000-a000-000000000001',u::uuid,'opp')->'artifact'<>'null'::jsonb THEN RAISE EXCEPTION 'cross-owner metadata exposed'; END IF;
  r:=pg_temp.archive(2,2);
  BEGIN UPDATE public.material_artifacts SET filename='replacement.pdf' WHERE material_id='36000000-0000-4000-9000-000000000002'; RAISE EXCEPTION 'privileged content mutated'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  BEGIN UPDATE public.contact_material_records SET recorded_at=now() WHERE material_id='36000000-0000-4000-9000-000000000002'; RAISE EXCEPTION 'record timestamp mutable'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- RAISE WARNING 'PASS input boundaries, 64MiB/200 codepoints, scoped event lookup, immutable content and declaration times';
+ RAISE WARNING 'PASS input boundaries, 50 MB/200 codepoints, scoped event lookup, immutable content and declaration times';
 END$$;
 DO $$DECLARE u text:=pg_temp.login(3);claims text:=current_setting('request.jwt.claims');BEGIN
  PERFORM set_config('request.jwt.claims','{}',false);

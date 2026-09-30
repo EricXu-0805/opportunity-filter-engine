@@ -555,6 +555,49 @@ def test_storage_size_rejection_is_reported_as_too_large(endpoint, rejection):
     assert not any(path.endswith("finalize_application_material") for _, path, _, _ in state.calls)
 
 
+# The Supabase project caps every upload at 50 MB (decimal); a bucket limit
+# cannot raise it, so a larger PDF would pass every app check and then fail in
+# Storage.
+STORAGE_UPLOAD_CAP = 50_000_000
+
+
+def exact_size_pdf(size):
+    def build(padding):
+        writer = PdfWriter()
+        page = writer.add_blank_page(width=100, height=100)
+        content = StreamObject()
+        content.set_data(b" " * padding)
+        page[NameObject("/Contents")] = writer._add_object(content)
+        output = io.BytesIO()
+        writer.write(output)
+        return output.getvalue()
+    # Same digit count for /Length keeps the overhead constant.
+    probe = 10_000_000
+    data = build(size - (len(build(probe)) - probe))
+    assert len(data) == size
+    return data
+
+
+@pytest.mark.parametrize("size,accepted", [(STORAGE_UPLOAD_CAP, True), (STORAGE_UPLOAD_CAP + 1, False)])
+def test_upload_limit_matches_the_storage_project_cap(endpoint, size, accepted):
+    client, state = endpoint
+    contents = exact_size_pdf(size)
+    digest = hashlib.sha256(contents).hexdigest()
+    state.rpc_overrides["stage_application_material"] = {
+        "artifact": artifact("staged", byte_length=size), "replayed": False,
+        "upload": {"bucket": "application-materials", "object_key": f"pdf/{MATERIAL}.pdf", "stage_token": TOKEN,
+                   "session_id": SESSION, "authorized_until": "2026-09-25T13:00:00Z"}}
+    state.rpc_overrides["finalize_application_material"] = {
+        "artifact": artifact("ready", byte_length=size, sha256=digest), "replayed": False}
+    response = upload(client, metadata(byte_length=size, bytes_sha256=digest), contents)
+    if accepted:
+        assert response.status_code == 200, response.text
+        assert state.object == contents
+    else:
+        assert 400 <= response.status_code < 500, response.text
+        assert [path for _, path, _, _ in state.calls] == ["/auth/v1/user"] and state.object is None
+
+
 def test_finalize_that_lost_to_a_restage_is_retryable_not_sign_in(endpoint):
     client, state = endpoint
     state.rpc_overrides["finalize_application_material"] = httpx.Response(

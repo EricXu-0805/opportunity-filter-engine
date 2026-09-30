@@ -5,7 +5,7 @@ import io
 import logging
 import sys
 
-MAX_BYTES = 64 * 1024 * 1024
+MAX_BYTES = 50_000_000
 
 
 def main() -> int:

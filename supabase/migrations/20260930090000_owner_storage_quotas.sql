@@ -31,7 +31,7 @@ BEGIN
  uid:=private.material_user(p_expected_owner); PERFORM private.material_event_for_kind(p_kind,uid,p_event_id,p_opportunity_id);
  IF p_material_id IS NULL OR p_record_id IS NULL OR p_filename IS NULL OR length(p_filename) NOT BETWEEN 1 AND 200
    OR p_filename !~ '[^[:space:]]' OR p_filename ~ '[[:cntrl:]/\\]' OR p_filename !~* '\.pdf$'
-   OR p_byte_length IS NULL OR p_byte_length NOT BETWEEN 1 AND 67108864 OR p_sha256 IS NULL OR p_sha256 !~ '^[0-9a-f]{64}$' THEN
+   OR p_byte_length IS NULL OR p_byte_length NOT BETWEEN 1 AND 50000000 OR p_sha256 IS NULL OR p_sha256 !~ '^[0-9a-f]{64}$' THEN
    RAISE EXCEPTION USING MESSAGE='invalid_' || p_kind || '_material', ERRCODE='22023'; END IF;
  -- Global ID lock prevents cross-owner races without exposing another owner's
  -- row or changing the sorted owner locks used by merge.

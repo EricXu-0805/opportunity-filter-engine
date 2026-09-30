@@ -56,13 +56,14 @@ DO $$DECLARE first jsonb; u text; BEGIN
  RAISE WARNING 'PASS per-event material cap, retry exempt, delete frees a live slot';
 END$$;
 
--- Per owner bytes: four 64 MiB files fill 256 MiB; one more byte is refused,
--- across application and contact kinds alike.
+-- Per owner bytes: five 50 MB files plus 18435456 bytes fill 256 MiB; one
+-- more byte is refused, across application and contact kinds alike.
 DO $$BEGIN
- PERFORM pg_temp.stage(2,1,67108864); PERFORM pg_temp.stage(2,2,67108864);
- PERFORM pg_temp.stage(2,1,67108864,'contact'); PERFORM pg_temp.stage(2,2,67108864,'contact');
- IF NOT pg_temp.rejected(2,3,1) OR NOT pg_temp.rejected(2,3,1,'contact') THEN RAISE EXCEPTION 'owner byte quota not enforced'; END IF;
- IF pg_temp.rejected(3,1,67108864) THEN RAISE EXCEPTION 'byte quota leaked to another owner'; END IF;
+ PERFORM pg_temp.stage(2,1,50000000); PERFORM pg_temp.stage(2,2,50000000); PERFORM pg_temp.stage(2,3,50000000);
+ PERFORM pg_temp.stage(2,1,50000000,'contact'); PERFORM pg_temp.stage(2,2,50000000,'contact');
+ PERFORM pg_temp.stage(2,3,18435456,'contact');
+ IF NOT pg_temp.rejected(2,4,1) OR NOT pg_temp.rejected(2,4,1,'contact') THEN RAISE EXCEPTION 'owner byte quota not enforced'; END IF;
+ IF pg_temp.rejected(3,1,50000000) THEN RAISE EXCEPTION 'byte quota leaked to another owner'; END IF;
  RAISE WARNING 'PASS per-owner byte quota spans both material kinds';
 END$$;
 
