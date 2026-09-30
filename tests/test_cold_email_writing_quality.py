@@ -1,5 +1,6 @@
 """Controlled writing examples, not a claim about live model or human quality."""
 from copy import deepcopy
+from datetime import UTC, datetime
 
 import pytest
 from fastapi import FastAPI
@@ -149,3 +150,43 @@ def test_every_real_pipeline_call_receives_the_same_connection_boundary(client, 
         assert evidence in response.json()["body"]
         assert response.json()["experience_usage"]["selected"][0]["excerpt"] == evidence
         assert response.json()["pipeline_version"] == "w12.18"
+
+
+def test_draft_and_revise_carry_the_reader_rules_and_today_but_user_edits_do_not(client, monkeypatch):
+    # Blind review of real drafts (2026-09-30) found the same defects for every
+    # model: pasted keyword lists, the prompt's own restraint echoed back, stacked
+    # asks and past roles in the present tense. Draft and revise must carry the
+    # reader rules; a student's own edit request is not limited by them.
+    calls = []
+    evidence = "Built a Python parser for research tools."
+    body = (
+        f"Dear Pat Lee,\n\n{evidence}\n\nWould you have time for a conversation?"
+        "\n\nBest regards,\nAudit Student"
+    )
+
+    def provider(messages, **_kwargs):
+        system = messages[0]["content"]
+        stage = ("judge" if "You are judging candidate" in system else "critique" if "You are a strict reviewer" in system
+                 else "revise" if "You are revising" in system else "refine" if "You are an email editor" in system else "draft")
+        calls.append((stage, deepcopy(messages)))
+        return {"judge": '{"winner":1}', "critique": '{"verdict":"revise","revision_notes":"Tighten."}',
+                "refine": body}.get(stage, f"Subject: Research inquiry\n\n{body}")
+
+    monkeypatch.setattr(ce, "chat_completion", provider)
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "2")
+    monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "1")
+    request = payload("Python", evidence=[evidence])
+    assert client.post("/api/cold-email", json={**request, "engine": "ai"}).status_code == 200
+    assert client.post("/api/cold-email/refine", json={
+        **request, "current_body": body, "instruction": "Add a second question about funding",
+    }).status_code == 200
+    by_stage = {}
+    for stage, messages in calls:
+        by_stage.setdefault(stage, messages)
+    for stage in ("draft", "revise"):
+        system, user = by_stage[stage][0]["content"], by_stage[stage][1]["content"]
+        assert "Never list their keywords or stated areas back to them" in system, stage
+        assert "Make one clear request and ask it once" in system, stage
+        assert "Today's date (for tense only)" in user and datetime.now(UTC).date().isoformat() in user, stage
+    assert "Make one clear request and ask it once" not in by_stage["refine"][0]["content"]
