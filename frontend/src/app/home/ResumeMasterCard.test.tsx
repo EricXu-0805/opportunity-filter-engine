@@ -165,16 +165,23 @@ describe('complete résumé master editor', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
   it('does not overwrite malformed stored data or use a stale digest to confirm a source', async () => {
+    // Both sources carry the quote at 0-10, so only the digest tells them apart.
+    const original = 'Old source.', replacement = 'Old source!';
+    const originalDigest = await evidence.sourceDigest(original);
     let resolve!: (value: string) => void;
-    vi.spyOn(evidence, 'sourceDigest').mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+    const digest = vi.spyOn(evidence, 'sourceDigest').mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
     const master = createEmptyResumeMaster();
-    master.basics.name = { ...fact('Old source', 'candidate'), source: { kind: 'resume', signature: 'a'.repeat(64), quote: 'Old source', start: 0, end: 10 } };
+    master.basics.name = { ...fact('Old source', 'candidate'), source: { kind: 'resume', signature: originalDigest, quote: 'Old source', start: 0, end: 10 } };
     const onChange = vi.fn(() => true);
-    const { rerender } = render(<ResumeMasterCard ready profile={{ ...DEFAULT_PROFILE, resume_text: 'Old source', resume_master: master }} onChange={onChange} />); open();
-    rerender(<ResumeMasterCard ready profile={{ ...DEFAULT_PROFILE, resume_text: 'New source', resume_master: master }} onChange={onChange} />);
-    await act(async () => resolve('a'.repeat(64)));
+    const profileFor = (resume_text: string) => ({ ...DEFAULT_PROFILE, resume_text, resume_master: master });
+    const { rerender } = render(<ResumeMasterCard ready profile={profileFor(original)} onChange={onChange} />); open();
+    rerender(<ResumeMasterCard ready profile={profileFor(replacement)} onChange={onChange} />);
+    await act(async () => { await digest.mock.results[1].value; });
+    await act(async () => resolve(originalDigest));
     expect(screen.getByRole('button', { name: 'Confirm Full name' })).toBeDisabled();
     expect(preview().queryByText('Old source')).toBeNull();
+    rerender(<ResumeMasterCard ready profile={profileFor(original)} onChange={onChange} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Confirm Full name' })).toBeEnabled());
     rerender(<ResumeMasterCard ready profile={{ ...DEFAULT_PROFILE, resume_master: { wrong: 'shape' } as unknown as ResumeMasterV1 }} onChange={onChange} />);
     expect(screen.getByRole('alert')).toHaveTextContent('has not been replaced');
     expect(screen.queryByText('Open full résumé editor')).toBeNull(); expect(onChange).not.toHaveBeenCalled();

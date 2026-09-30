@@ -142,4 +142,14 @@ describe('local proposals and confirmed eligibility', () => {
     expect(removeResumeEntries(withdrawn)).toEqual([own]);
     expect(isActiveExperience(own, { rawText: '', expectedDigest: '' })).toBe(true);
   });
+  it('drops unconfirmed résumé proposals on replacement so the next extraction still fits the cap', async () => {
+    const lines = (tag: string) => Array.from({ length: 60 }, (_, i) => `${tag} project ${i}`).join('\n');
+    const [kept, refused, ...unreviewed] = await createResumeCandidates(lines('Old'));
+    const own = manual({ status: 'confirmed' });
+    const replaced = withdrawResumeEntries([{ ...kept, status: 'confirmed', revision: 2 }, { ...refused, status: 'rejected', revision: 2 }, ...unreviewed, own]);
+    expect(replaced).toEqual([{ ...kept, status: 'withdrawn', revision: 3 }, own]);
+    expect(withdrawResumeEntries(replaced)).toEqual(replaced);
+    const next = await createResumeCandidates(lines('New'));
+    expect(validateExperienceEntries([...replaced, ...next])).toMatchObject({ ok: true });
+  });
 });

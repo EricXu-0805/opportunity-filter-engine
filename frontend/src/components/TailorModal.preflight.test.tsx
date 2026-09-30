@@ -28,6 +28,12 @@ function receipt(next: ProfileData | null = profile): ProfileActionReceipt {
   return { checkId: 1, owner: captureOwnerToken(), revision: 2, source: next ? 'cloud' : 'cloud-absent', profile: next };
 }
 async function drain() { await act(async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); }); }
+// A dispatched intent calls getTailorStatus synchronously, before the native SHA
+// work that a microtask drain cannot exhaust. api.tailor alone would stay
+// uncalled after the drain even if the queued intent had run.
+function expectNotDispatched(statusCalls: number) {
+  expect(api.status).toHaveBeenCalledTimes(statusCalls); expect(api.tailor).not.toHaveBeenCalled();
+}
 function refresh(check: ProfileRefreshState['checkForAction'], status: ProfileRefreshState['status'] = 'ready'): ProfileRefreshState {
   return { status, refresh: vi.fn(async () => true), checkForAction: check };
 }
@@ -80,8 +86,9 @@ describe('Tailor profile preflight', () => {
   it('deduplicates double clicks and cancels the queued intent when the user edits', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise);
     render(<TailorModal {...base} profileRefresh={refresh(check)} />); type(); fireEvent.click(generate()); fireEvent.click(generate()); await drain();
-    expect(check).toHaveBeenCalledOnce(); type('New user text'); read.resolve(receipt()); await drain();
-    expect(api.tailor).not.toHaveBeenCalled(); expect(textarea()).toHaveValue('New user text');
+    expect(check).toHaveBeenCalledOnce(); type('New user text'); const statusCalls = api.status.mock.calls.length; read.resolve(receipt()); await drain();
+    expectNotDispatched(statusCalls); expect(textarea()).toHaveValue('New user text');
+    expect(screen.queryByText('Checking the latest profile for this action…')).toBeNull(); expect(generate()).toBeEnabled();
   });
   it('preserves the right-side inline edit buffer when a same-owner source changes', async () => {
     const check = vi.fn(async () => receipt()); const props = { ...base, profileRefresh: refresh(check) };
@@ -100,7 +107,9 @@ describe('Tailor profile preflight', () => {
   it('retires a pending check on target change without sending a request under the new target', async () => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn(() => read.promise); const props = { ...base, profileRefresh: refresh(check) };
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(generate()); await drain();
-    view.rerender(<TailorModal {...props} opportunityId="target-two" target={publicTarget("target-two")} />); read.resolve(receipt()); await drain(); expect(api.tailor).not.toHaveBeenCalled();
+    view.rerender(<TailorModal {...props} opportunityId="target-two" target={publicTarget("target-two")} />); await drain();
+    const statusCalls = api.status.mock.calls.length; read.resolve(receipt()); await drain();
+    expectNotDispatched(statusCalls); expect(screen.getByText(/This action did not run/)).toBeTruthy();
   });
   it('rejects an old generation response and clears its private editor content', async () => {
     const pending = deferred<TailorResponse>(); api.tailor.mockReturnValueOnce(pending.promise);
@@ -116,8 +125,9 @@ describe('Tailor profile preflight', () => {
   });
   it('does not run after closing while the receipt is pending', async () => {
     const read = deferred<ProfileActionReceipt | null>(); render(<TailorModal {...base} profileRefresh={refresh(() => read.promise)} />);
-    type(); fireEvent.click(generate()); await drain(); fireEvent.click(screen.getByRole('button', { name: 'tailor.closeAria' })); read.resolve(receipt()); await drain();
-    expect(api.tailor).not.toHaveBeenCalled();
+    type(); fireEvent.click(generate()); await drain(); fireEvent.click(screen.getByRole('button', { name: 'tailor.closeAria' }));
+    const statusCalls = api.status.mock.calls.length; read.resolve(receipt()); await drain();
+    expectNotDispatched(statusCalls); expect(screen.queryByText('Checking the latest profile for this action…')).toBeNull();
   });
   it.each(['queued', 'network'] as const)('same-ID target content changes retire %s work without clearing manual input', async (phase) => {
     const read = deferred<ProfileActionReceipt | null>(); const pending = deferred<TailorResponse>();
@@ -131,7 +141,9 @@ describe('Tailor profile preflight', () => {
       await waitFor(() => expect(check).toHaveBeenCalledOnce());
       expect(api.tailor).not.toHaveBeenCalled();
     }
-    view.rerender(<TailorModal {...props} targetKey="target version two" />); read.resolve(receipt()); pending.resolve(response); await drain();
+    view.rerender(<TailorModal {...props} targetKey="target version two" />); await drain(); const statusCalls = api.status.mock.calls.length;
+    read.resolve(receipt()); pending.resolve(response); await drain();
+    if (phase === 'queued') { expectNotDispatched(statusCalls); expect(screen.getByText(/This action did not run/)).toBeTruthy(); }
     expect(api.tailor).toHaveBeenCalledTimes(phase === 'queued' ? 0 : 1); expect(screen.queryByText('tailor.methodAi')).toBeNull(); expect(textarea()).toHaveValue('My unchanged manual bullet');
   });
   it('does not revive a late network result when an unavailable source comes back unchanged', async () => {

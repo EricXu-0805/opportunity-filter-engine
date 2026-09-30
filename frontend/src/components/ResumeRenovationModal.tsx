@@ -578,6 +578,8 @@ export default function ResumeRenovationModal({
     setBaseSections(Array.isArray(current.base_snapshot.sections) ? current.base_snapshot.sections as ResumeSectionInput[] : []);
     setRestoredFromSave(true);
     setHistoryOwner(null);
+    // markUserEdit retires any in-flight rerun, and a retired rerun never restores the phase itself.
+    setPhase('doc');
   }
 
   function restoreHistory(payload: RenovationPayload) {

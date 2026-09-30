@@ -180,10 +180,14 @@ export function createManualCandidate(text: string, id: string = globalThis.cryp
   return requireEntries([{ id, revision: 1, status: 'candidate', text, source: { kind: 'manual' } }])[0];
 }
 
-/** A replacement keeps the old evidence visible, but revokes its eligibility. */
+/** A replacement keeps the old confirmed evidence visible, but revokes its
+ *  eligibility. Unconfirmed proposals of the old source carry no student
+ *  decision; keeping them would fill the entry cap before the next extraction. */
 export function withdrawResumeEntries(value: unknown): ExperienceEntry[] {
-  return requireEntries(requireEntries(value).map((entry) => entry.source.kind === 'resume' && entry.status !== 'withdrawn'
-    ? { ...entry, status: 'withdrawn', revision: entry.revision + 1 } : entry));
+  return requireEntries(requireEntries(value).flatMap((entry) => {
+    if (entry.source.kind !== 'resume' || entry.status === 'withdrawn') return [entry];
+    return entry.status === 'confirmed' ? [{ ...entry, status: 'withdrawn' as const, revision: entry.revision + 1 }] : [];
+  }));
 }
 
 /** Deleting the resume removes its quoted material. Explicit manual entries stay. */

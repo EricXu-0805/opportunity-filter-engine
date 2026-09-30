@@ -1633,6 +1633,24 @@ describe('M42 revisioned bullet drafts and history', () => {
     confirm.mockRestore();
   });
 
+  it('shows the adopted saved version when it is chosen while a rerun is in flight', async () => {
+    const remote = { ...savedDoc(makeDoc({ sections: [{ id: 'remote', kind: 'projects', heading: 'REMOTE SAVED', bullets: [] }] })), revision: 8 };
+    const pending = deferred<RenovationDoc>();
+    mockLoadRenovation.mockResolvedValue(savedDoc()); mockSaveRenovation.mockResolvedValue({ status: 'conflict', current: remote });
+    mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockReturnValue(pending.promise);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderModal(); await screen.findByText('renovate.restored'); editFirstBullet('My conflict draft'); fireEvent.click(screen.getByText('renovate.save'));
+    await screen.findByTestId('renovation-save-conflict');
+    fireEvent.click(screen.getByText('renovate.rerun'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByText('Use saved version'));
+    await act(async () => { pending.resolve(makeDoc({ sections: [{ id: 'late', kind: 'projects', heading: 'LATE RESULT', bullets: [] }] })); });
+    expect(screen.getByText('REMOTE SAVED')).toBeInTheDocument();
+    expect(screen.queryByText('LATE RESULT')).toBeNull();
+    expect(screen.getByText('renovate.copyAll')).toBeInTheDocument();
+    confirm.mockRestore();
+  });
+
   const summary = { id: 'history-1', created_at: '2026-09-24T10:00:00Z', revision: 1, snapshot_kind: 'complete' as const, source_revision: null, source_updated_at: null };
   it('restores a selected complete envelope as a new save, retaining its old provenance', async () => {
     const historical = makeDoc({ profile_sig: 'historical-profile', target_sig: 'historical-target' });
