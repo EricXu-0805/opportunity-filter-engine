@@ -604,6 +604,174 @@ def _appended_relevance(proposed, original):
     return False
 
 
+_CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
+_LATIN_WORD = re.compile(r"[A-Za-z]+")
+
+
+def language(text):
+    """"zh" when Chinese carries the sentence, else "en".
+
+    A Chinese line keeps English tool and course names ("用 PyTorch 训练 CNN
+    模型"); an English line may name a Chinese place once ("at 北京大学").
+    """
+    cjk = len(_CJK.findall(text))
+    if not cjk:
+        return "en"
+    runs = len(_CJK_RUN.findall(text))
+    leading = re.sub(r"^[^A-Za-z\u4e00-\u9fff]+", "", text)[:1]
+    chinese_frame = runs >= 2 or bool(_CJK.match(leading))
+    return "zh" if chinese_frame and cjk >= len(_LATIN_WORD.findall(text)) else "en"
+
+
+# Who did each action. A résumé verb with no subject is the student's; a
+# subject at the start of a clause ("our team", "I", "my advisor", 团队, 本人,
+# 导师) holds for the rest of its sentence, and a subjectless sentence keeps the
+# previous sentence's doer. The actor of every verb the rewrite keeps must not
+# change: "Our team built a robot; I wrote the controller" -> "As part of a
+# team, built a robot and wrote the controller" gives the team's build to the
+# student.
+_ABBREVIATION = r"(?<!\bdr)(?<!\bprof)(?<!\bmr)(?<!\bms)(?<!\bmrs)(?<!\bst)(?<!\be\.g)(?<!\bi\.e)(?<!\betc)(?<!\bvs)(?<!\bno)"
+_SENTENCE_BREAK = re.compile(_ABBREVIATION + r"(?<!\d)\.(?!\d)|[;!?。；！？\n]", re.I)
+_CLAUSE_BREAK = re.compile(r"[,，:：]|\s+(?=(?:and|but|then|that|which|who|whom|where|while|whereas)\b)|(?=并且|并|而且|而)", re.I)
+_CLAUSE_LEAD = re.compile(r"^(?:\s|[(（]|(?:and|but|then|that|which|who|whom|where|while|whereas)\b|并且|并|而且|而|且)+", re.I)
+_PERSONAL_SUBJECT = re.compile(r"I\b|(?i:my\s+(?:part|role|contribution|job|task|work)s?\b|personally\b)|本人|我(?!们)")
+_OTHER_SUBJECT = re.compile(
+    r"(?:(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
+    r"|lab|research|attending|head)\s+)?(?:advisors?|advisers?|supervisors?|mentors?|pis?|professors?|prof\b\.?"
+    r"|dr\b\.?|postdocs?|tas?|nurses?|doctors?|physicians?|surgeons?|veterinarians?|therapists?|pharmacists?"
+    r"|operators?|staff|clinicians?|technicians?|instructors?|teachers?|he|she|they)\b"
+    r"|导师|博士生|研究生|老师|医生|护士|药师|技术员|他们|他|她|对方|合作者|师兄|师姐|主治医生", re.I)
+_TEAM_SUBJECT = re.compile(
+    r"(?:we|our|us|together\s+with|my\s+(?:team|group|lab|club|teammates?|classmates?|lab\s*mates?))\b"
+    r"|the\s+(?:team|group|club)\b|团队|小组|我们|组员|课题组|项目组|研究组|大家", re.I)
+_ZH_VERBS = re.compile(
+    "采集|检测|监测|负责|整理|设计|安装|担任|协助|参与|开发|搭建|分析|完成|实现|编写|撰写|测定|测量|培养|维护|运行"
+    "|组织|主持|带领|主导|制作|处理|研究|学习|检查|审阅|评分|安排|记录|采购|构建|建立|绘制|测试|调试|训练|清洗|收集"
+    "|录入|发表|投稿|讲解|辅导|观察|观摩|调配|实施|操作|部署|优化|复现|爬取|统计|标注|访谈|招募|筛选|提取|纯化|合成"
+    "|焊接|组装|编辑|翻译|汇报|展示|领导|牵头|评估|验证|规划|做")
+_BASE_VERB_CUE = frozenset({"to", "help", "helped", "helping", "helps", "not", "never", "will", "did", "didn't"})
+
+
+def _pieces(text, pattern):
+    """Spans of ``text`` between matches of ``pattern``, never splitting inside brackets."""
+    depth, spans, start = 0, [], 0
+    breaks = {match.start(): match.end() for match in pattern.finditer(text)}
+    i = 0
+    while i < len(text):
+        character = text[i]
+        if character in "(（[":
+            depth += 1
+        elif character in ")）]":
+            depth = max(0, depth - 1)
+        if depth == 0 and i in breaks:
+            spans.append((start, i))
+            start = max(breaks[i], i + 1) if breaks[i] > i else i
+            if breaks[i] > i:
+                i = breaks[i]
+                continue
+        i += 1
+    spans.append((start, len(text)))
+    return [(a, b) for a, b in spans if text[a:b].strip()]
+
+
+def _verbs(clause):
+    """(position, lemma) of each action verb in a clause, English and Chinese."""
+    found = [(match.start(), match.group(0)) for match in _ZH_VERBS.finditer(clause)]
+    words = list(_WORD.finditer(clause))
+    for index, match in enumerate(words):
+        use = verb_use(match.group(0))
+        if not use:
+            continue
+        previous = words[index - 1].group(0).casefold() if index else ""
+        # "helped a nurse record": help's object stands between it and the verb.
+        helped = any(HELP.fullmatch(word.group(0)) for word in words[max(0, index - 4):index])
+        if use[1] != "base" or index == 0 or previous in _BASE_VERB_CUE or helped:
+            found.append((match.start(), use[0]))
+    return sorted(found)
+
+
+def _subject(clause):
+    lead = _CLAUSE_LEAD.sub("", clause)
+    if _PERSONAL_SUBJECT.match(lead):
+        return "P"
+    if _OTHER_SUBJECT.match(lead):
+        return "O"
+    if _TEAM_SUBJECT.match(lead):
+        return "T"
+    return None
+
+
+def action_actors(text):
+    """{verb: [actor, ...]} with actor P (the student), T (the team) or O (another person)."""
+    actors: dict[str, list[str]] = {}
+    running = "P"
+    for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
+        sentence = text[sentence_start:sentence_end]
+        for clause_start, clause_end in _pieces(sentence, _CLAUSE_BREAK):
+            clause = sentence[clause_start:clause_end]
+            running = _subject(clause) or running
+            for _, verb in _verbs(clause):
+                actors.setdefault(verb, []).append(running)
+    return actors
+
+
+def actor_changed(proposed, original):
+    before, after = action_actors(original), action_actors(proposed)
+    for verb in before.keys() & after.keys():
+        if len(before[verb]) == len(after[verb]):
+            if sorted(before[verb]) != sorted(after[verb]):
+                return True
+        elif not set(after[verb]) <= set(before[verb]):
+            return True
+    return False
+
+
+# Each qualifier stays on its action: "I helped design X and cleaned Y" ->
+# "Designed X and helped clean Y" moves the help. A qualifier binds to the next
+# verb in its clause (a span word to the next word or number); "alone" binds to
+# the verb before it.
+_QUALIFIERS = {
+    "help": (HELP, "verb"),
+    "negation": (re.compile(r"\b(?:not|never|didn['’]t|no\s+longer)\b|没有|并非|尚未|从未|未(?!来|知)"
+                            r"|(?<!得)不(?=(?:再|直接|亲自|太|常|曾|单独|独立){0,3}(?:参与|负责|主导|带领|设计|开发|完成))", re.I), "verb"),
+    "limit": (re.compile(r"\b(?:only|just|solely)\b|只|仅", re.I), "verb"),
+    "solo": (re.compile(r"\b(?:alone|independently|single-handedly|by\s+myself|on\s+my\s+own)\b", re.I), "previous"),
+    "solo_zh": (re.compile(r"独立|独自|单独"), "verb"),
+    "span": (re.compile(r"\b(?:about|approximately|approx\.?|roughly|nearly|almost|around|over|more\s+than|less\s+than"
+                        r"|at\s+least|at\s+most|up\s+to)\b|约|大约|将近|超过|至少", re.I), "next"),
+    "intent": (INTENT, "verb"),
+}
+_NEXT_TOKEN = re.compile(r"\d+(?:[.,]\d+)*%?|[A-Za-z]+(?:-[A-Za-z]+)*|[\u4e00-\u9fff]")
+
+
+def _qualifier_bindings(text):
+    found = []
+    for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
+        sentence = text[sentence_start:sentence_end]
+        for clause_start, clause_end in _pieces(sentence, _CLAUSE_BREAK):
+            clause = sentence[clause_start:clause_end]
+            verbs = _verbs(clause)
+            for family, (pattern, binds) in _QUALIFIERS.items():
+                for match in pattern.finditer(clause):
+                    if binds == "previous":
+                        before = [verb for position, verb in verbs if position < match.start()]
+                        target = before[-1] if before else None
+                    elif binds == "next":
+                        token = _NEXT_TOKEN.search(clause, match.end())
+                        target = token.group(0).casefold() if token else None
+                    else:
+                        after = [verb for position, verb in verbs if position >= match.end()]
+                        target = after[0] if after else None
+                    found.append((family, target))
+    return sorted(found, key=str)
+
+
+def qualifier_moved(proposed, original):
+    before, after = _qualifier_bindings(original), _qualifier_bindings(proposed)
+    families = {family for family, _ in before} & {family for family, _ in after}
+    return [pair for pair in before if pair[0] in families] != [pair for pair in after if pair[0] in families]
+
+
 def _leadership(text, name):
     return bool(re.search(ACTIONS[name], text, re.I)) or any(name in _guarded_gerunds(clause) for clause in clauses(text))
 
@@ -664,6 +832,12 @@ def claim_upgrade_findings(proposed, original):
         hard.append("setting_added")
     if any(match.re is QUALITY and normalized(match.group(0)) not in original_normal for match in comparable):
         hard.append("quality_claim_added")
+    # A translation is judged by the review; these compare words in one language.
+    if language(proposed) == language(original):
+        if actor_changed(proposed, original):
+            hard.append("actor_changed")
+        if qualifier_moved(proposed, original):
+            hard.append("qualifier_moved")
     parsed_hard, soft = _parsed_claim_findings(proposed, original)
     hard.extend(dict.fromkeys(_moved_claims(proposed, original) + parsed_hard))
     proposed_normal = normalized(proposed)

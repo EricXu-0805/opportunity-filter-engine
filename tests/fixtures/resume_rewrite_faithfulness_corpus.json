@@ -919,14 +919,12 @@
   {
    "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
    "rewrite": "Designed an online survey on sleep and memory as part of a four-person team in PSYC 238 and helped clean the 212 responses in R.",
-   "kind": "qualifier moved to another action",
-   "caught": "review"
+   "kind": "qualifier moved to another action"
   },
   {
    "original": "Helped a graduate student write the grant proposal and designed the lab website.",
    "rewrite": "Wrote the grant proposal and helped a graduate student design the lab website.",
-   "kind": "qualifier moved to another action",
-   "caught": "review"
+   "kind": "qualifier moved to another action"
   },
   {
    "original": "With two teammates, built the rover chassis; wrote the control code alone.",
@@ -942,8 +940,7 @@
   {
    "original": "协助博士生设计了实验方案，本人独立完成了数据录入。",
    "rewrite": "本人独立设计了实验方案，协助博士生完成了数据录入。",
-   "kind": "qualifier moved to another action",
-   "caught": "review"
+   "kind": "qualifier moved to another action"
   },
   {
    "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
@@ -972,8 +969,7 @@
   {
    "original": "Our team of four built a line-following robot; I wrote the PID controller.",
    "rewrite": "As part of a team of four, built a line-following robot and wrote the PID controller.",
-   "kind": "own part folded into the team's",
-   "caught": "review"
+   "kind": "own part folded into the team's"
   },
   {
    "original": "Observed surgeons at Carle Hospital, operating on pediatric patients.",
@@ -990,14 +986,12 @@
   {
    "original": "Assisted a graduate student running mass spectrometry experiments.",
    "rewrite": "Ran mass spectrometry experiments, assisting a graduate student.",
-   "kind": "another person's action given to the student",
-   "caught": "review"
+   "kind": "another person's action given to the student"
   },
   {
    "original": "Volunteered at a free clinic, where nurses administered flu vaccines to 300 patients.",
    "rewrite": "Administered flu vaccines to 300 patients while volunteering at a free clinic.",
-   "kind": "another person's action given to the student",
-   "caught": "review"
+   "kind": "another person's action given to the student"
   },
   {
    "original": "跟随主治医生观摩了为儿童患者实施的手术。",
@@ -1138,8 +1132,7 @@
   {
    "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
    "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 监测自来水样本中的军团菌；未参与引物设计和数据分析。",
-   "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "kind": "cross-language relabel or translation changes the claim"
   },
   {
    "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
@@ -1162,8 +1155,7 @@
   {
    "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
    "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 开展 pathogen surveillance，检测自来水样本中的军团菌；未参与引物设计和数据分析。",
-   "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "kind": "cross-language relabel or translation changes the claim"
   },
   {
    "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
@@ -1178,8 +1170,7 @@
   {
    "original": "Did not write the parser and did not run the benchmarks; only documented the results.",
    "rewrite": "Did not write the parser; ran the benchmarks and documented the results.",
-   "kind": "one of two denials dropped",
-   "caught": "review"
+   "kind": "one of two denials dropped"
   },
   {
    "original": "Processed over 200 tissue samples.",
@@ -1258,26 +1249,22 @@
   {
    "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
    "rewrite": "Graded weekly quizzes and helped the TA write the answer keys.",
-   "kind": "qualifier moved to another action",
-   "caught": "review"
+   "kind": "qualifier moved to another action"
   },
   {
    "original": "与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
    "rewrite": "本人单独搭建了气象站，与两名同学合作编写了数据采集程序。",
-   "kind": "qualifier moved to another action",
-   "caught": "review"
+   "kind": "qualifier moved to another action"
   },
   {
    "original": "Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
    "rewrite": "With a four-person team, designed a solar-powered bike charger and built the voltage regulator.",
-   "kind": "own part folded into the team's",
-   "caught": "review"
+   "kind": "own part folded into the team's"
   },
   {
    "original": "小组（共 5 人）完成了校园噪声地图；本人负责 3 个测点的录音。",
    "rewrite": "与小组（共 5 人）一起完成了校园噪声地图和 3 个测点的录音。",
-   "kind": "own part folded into the team's",
-   "caught": "review"
+   "kind": "own part folded into the team's"
   },
   {
    "original": "Toured the Fermilab accelerator with a physics club, watching operators calibrate the beamline.",
@@ -1377,8 +1364,7 @@
   {
    "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
    "rewrite": "Member of a 5-person team: designed a campus bike-share app; only made the logo.",
-   "kind": "team's action left without its doer",
-   "caught": "review"
+   "kind": "team's action left without its doer"
   },
   {
    "original": "Worked in the Beckman building, testing circuit boards.",
@@ -1409,6 +1395,16 @@
    "original": "Used Python to clean survey data.",
    "rewrite": "Used advanced Python to clean survey data.",
    "kind": "proficiency claim"
+  },
+  {
+   "original": "Reviewed the lab's protocol documents. Our team built a sample tracker.",
+   "rewrite": "Our team built a sample tracker. Reviewed the lab's protocol documents.",
+   "kind": "reorder hands the student's action to the team"
+  },
+  {
+   "original": "Helped plan the club fair and made the posters.",
+   "rewrite": "Planned the club fair and helped make the posters.",
+   "kind": "qualifier moved to another action"
   }
  ]
 }

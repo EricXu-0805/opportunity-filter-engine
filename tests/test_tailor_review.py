@@ -331,6 +331,54 @@ class TestLockChangesForEvidenceMappedRewrites:
         hard = claim_upgrade_findings(proposed, original)[0]
         assert "status_upgraded" not in hard and "intent_dropped" not in hard
 
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Our team of four built a line-following robot; I wrote the PID controller.",
+         "As part of a team of four, built a line-following robot and wrote the PID controller."),
+        ("Reviewed the lab's protocol documents. Our team built a sample tracker.",
+         "Our team built a sample tracker. Reviewed the lab's protocol documents."),
+        ("Volunteered at a free clinic, where nurses administered flu vaccines to 300 patients.",
+         "Administered flu vaccines to 300 patients while volunteering at a free clinic."),
+        ("小组（共 5 人）完成了校园噪声地图；本人负责 3 个测点的录音。", "与小组（共 5 人）一起完成了校园噪声地图和 3 个测点的录音。"),
+    ])
+    def test_an_action_that_changes_its_doer_is_hard(self, original, proposed):
+        assert "actor_changed" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        (SURVEY, "Designed an online survey on sleep and memory as part of a four-person team in PSYC 238 and "
+                 "helped clean the 212 responses in R."),
+        ("Helped a graduate student write the grant proposal and designed the lab website.",
+         "Wrote the grant proposal and helped a graduate student design the lab website."),
+        ("With two teammates, built the rover chassis; wrote the control code alone.",
+         "Built the rover chassis alone; wrote the control code with two teammates."),
+        ("协助博士生设计了实验方案，本人独立完成了数据录入。", "本人独立设计了实验方案，协助博士生完成了数据录入。"),
+    ])
+    def test_a_qualifier_moved_to_another_action_is_hard(self, original, proposed):
+        assert "qualifier_moved" in claim_upgrade_findings(proposed, original)[0]
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
+         "Only made the logo for a campus bike-share app that our 5-person team designed."),
+        ("Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+         "Drafted the methods section of a grant proposal; my advisor later rewrote it."),
+        ("Assisted a nurse in recording vital signs for 30 patients.",
+         "Helped a nurse record vital signs for 30 patients."),
+        ("I did not run the statistics; I cleaned the 212 survey responses in R.",
+         "Cleaned the 212 survey responses in R; did not run the statistics."),
+    ])
+    def test_reorders_that_keep_each_doer_and_qualifier_are_not_moves(self, original, proposed):
+        hard = claim_upgrade_findings(proposed, original)[0]
+        assert "actor_changed" not in hard and "qualifier_moved" not in hard
+
+    def test_a_translation_is_left_to_the_review(self):
+        from backend.lib.target_resume_ai_grounding import language
+
+        original = "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。"
+        assert (language(original), language("用 PyTorch 训练 CNN 模型"), language("Volunteered at 北京大学 hospital")) \
+            == ("zh", "zh", "en")
+        translated = ("Member of an 8-person club project team: the team designed and built a lending mini-program "
+                      "for the community library; I only did the testing.")
+        assert claim_upgrade_findings(translated, original)[0] == []
+
     def test_every_resume_verb_form_maps_to_its_base(self):
         from backend.lib.target_resume_ai_grounding import RESUME_VERB_FORMS, verb_use
 
