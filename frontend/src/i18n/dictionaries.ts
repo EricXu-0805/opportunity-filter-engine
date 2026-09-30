@@ -2534,7 +2534,7 @@ export const en = {
   home: {
     walkthrough: {
       title: 'How JoinALab works',
-      subtitle: 'From profile to confirmed application tracking — a tour of the release product. It plays on its own; click any step to explore.',
+      subtitle: 'From profile to confirmed application tracking — the steps of the release product.',
       steps: {
         profile: {
           title: 'Tell us your background',
@@ -4342,7 +4342,6 @@ export const en = {
     authorRole: 'UIUC Electrical & Computer Engineering',
     behindTitle: 'Behind JoinALab',
     behindBody: 'An independent student project — built and maintained in the open. Questions, bugs, or schools you want added? Reach out anytime.',
-    photoComing: 'Photo coming soon',
     contributorsTitle: 'Contributors',
     collabEmilyRole: 'Multi-school data & infrastructure',
     emailLabel: 'Email',
@@ -7691,7 +7690,7 @@ export const zh = {
   home: {
     walkthrough: {
       title: 'JoinALab 如何工作',
-      subtitle: '从填写档案到确认申请并进入追踪——发布版产品完整导览。自动播放，也可点击任意步骤查看。',
+      subtitle: '从填写档案到确认申请并进入追踪——发布版产品的使用步骤。',
       steps: {
         profile: {
           title: '填写你的背景',
@@ -9453,7 +9452,6 @@ export const zh = {
     authorRole: 'UIUC 电气与计算机工程',
     behindTitle: 'JoinALab 背后',
     behindBody: '一个独立学生项目 —— 公开构建、持续维护。有问题、发现 bug、或想加入某所学校?随时联系。',
-    photoComing: '照片待补',
     contributorsTitle: '贡献者',
     collabEmilyRole: '多校数据与基础设施',
     emailLabel: '邮箱',
