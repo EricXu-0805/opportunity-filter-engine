@@ -611,3 +611,13 @@ def test_unsupported_claims_are_reported_as_their_own_sentences():
     text = ('I built a PyTorch image classifier for chest X-ray triage. '
             'I use Python and PyTorch at an experienced level.')
     assert unsupported_experience_claims(text, [COURSE]) == ['I use Python and PyTorch at an experienced level']
+
+
+@pytest.mark.parametrize('collaboration', [
+    'with a teammate', 'with two classmates', 'with my research group', 'in a group of four',
+    'collaboratively', 'with another student', 'with my lab partner', 'in collaboration with a postdoc',
+])
+def test_every_common_collaboration_phrase_keeps_team_credit(collaboration):
+    source = f'Built a Python parser {collaboration}.'
+    assert check('I built a Python parser.', [source])
+    assert check(f'I built a Python parser {collaboration}.', [source]) == []

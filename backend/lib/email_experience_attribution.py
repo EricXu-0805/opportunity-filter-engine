@@ -72,10 +72,13 @@ _TEAM_PREFIX = re.compile(r'^(?:working\s+)?with\s+(?:my|our|the)\s+team,?$', re
 # not an object detail a shortened claim may drop. "for my team" is a
 # beneficiary, not a collaborator, and stays an ordinary object phrase.
 _TEAM_CONTEXT = re.compile(
-    r'\b(?:(?:together\s+)?(?:with|alongside)\s+(?:my|our|the|other)\s+'
-    r'(?:team(?:mates?)?|colleagues?|classmates?|lab\s*mates?|partners?)'
-    r'|with\s+(?:teammates|colleagues|classmates|a\s+team|a\s+partner)'
-    r'|as\s+(?:part\s+of\s+)?(?:a|my|our|the)\s+team|in\s+a\s+team(?:\s+of\s+\w+)?)\b', re.I)
+    r'\b(?:(?:together\s+)?(?:with|alongside)\s+'
+    r'(?:(?:my|our|the|other|a|an|another|fellow|several|one|two|three|four|five|six|\d+)\s+)?'
+    r'(?:(?:research|lab|project|fellow)\s+)?'
+    r'(?:team(?:mates?)?|colleagues?|classmates?|lab\s*mates?|lab\s+partners?|partners?|students?|peers?|group)'
+    r'|as\s+(?:part\s+of\s+)?(?:a|my|our|the)\s+(?:team|group)'
+    r'|in\s+a\s+(?:team|group)(?:\s+of\s+\w+)?'
+    r'|collaboratively|in\s+collaboration\s+with\s+[^,;.!?]+)\b', re.I)
 _CARE_QUALIFIER = re.compile(r'\b(not|never|without|only|hardly|barely|rarely)\b[^.!?;\n]*\bcarefully\s*$', re.I)
 _BOUND = re.compile(r'\b(?:at\s+(?:most|least)|or\s+(?:less|more)|roughly|approximately|about|up\s+to|more\s+than|less\s+than)\b', re.I)
 _UNITS = {'samples': 'sample', 'records': 'record', 'users': 'user', 'participants': 'participant',
