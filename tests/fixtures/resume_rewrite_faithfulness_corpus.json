@@ -320,6 +320,291 @@
    "original": "针对不足搭建了测试框架。",
    "rewrite": "搭建了测试框架。",
    "kind": "dropped 针对不足; not a denial"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "Wired the data logger and kept the test log for a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery reaching 72% round-trip efficiency.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：本人只负责材料采购和预算记录；团队为一所乡村小学设计并安装了一套慢砂过滤装置。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "协助博士生用 qPCR 检测自来水样本中的军团菌（2025 年 9 月起在环境微生物实验室担任本科研究助理，每周约 8 小时）；未参与引物设计和数据分析。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据；与组员一起采集了校园 12 个雨水口的径流水样。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Presented our team's flow-battery poster with two teammates at the 2026 Illinois Undergraduate Research Symposium.",
+   "rewrite": "With two teammates, presented our team's flow-battery poster at the 2026 Illinois Undergraduate Research Symposium.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "In Summer 2025, helped three lab mates run cyclic voltammetry on 30 electrolyte samples; the graduate mentor did the data analysis.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); I assembled and cycled the coin cells.",
+   "rewrite": "Assembled and cycled the coin cells; co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published).",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Helped design an online survey on sleep and memory and cleaned the 212 responses in R as part of a four-person team in PSYC 238.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "With two teammates, built the drivetrain for the Illini Robotics club rover in 2025; I designed the motor mount in SolidWorks.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Held weekly office hours for about 40 students as undergraduate course assistant for CS 124 (Spring 2026).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduled participants and scored cognitive tests as a research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "kind": "verb first"
+  },
+  {
+   "original": "Undergraduate researcher in the Brooks Lab (Summer 2025), measuring leaf nitrogen content.",
+   "rewrite": "Measured leaf nitrogen content as an undergraduate researcher in the Brooks Lab (Summer 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Volunteer at the Champaign County Humane Society (2024–2025), walking dogs and cleaning kennels weekly.",
+   "rewrite": "Walked dogs and cleaned kennels weekly as a volunteer at the Champaign County Humane Society (2024–2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Member of the Illini Solar Car electrical team (2025), soldering battery-pack connections.",
+   "rewrite": "Soldered battery-pack connections as a member of the Illini Solar Car electrical team (2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest radiograph triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive assessments.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌（Legionella）；未参与引物设计和数据分析。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "我用 Python 分析了脑电数据。",
+   "rewrite": "用 Python 分析了 EEG 数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的雨水径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Served as undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); I assembled and cycled the coin cells.",
+   "rewrite": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); assembled and cycled the coin cells.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Currently building a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "Building a Flask dashboard for the lab's sample inventory.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Hoping to build a robot arm for the club next semester.",
+   "rewrite": "Hoping to build the club a robot arm next semester.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a grant proposal; my advisor later rewrote it.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Observed surgeons at Carle Hospital, operating on pediatric patients.",
+   "rewrite": "Observed surgeons operating on pediatric patients at Carle Hospital.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Built a web scraper for course listings, adapted from an open-source tutorial.",
+   "rewrite": "Adapted an open-source tutorial to build a web scraper for course listings.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "计划下学期用 Python 复现该论文的实验。",
+   "rewrite": "计划下学期用 Python 复现这篇论文的实验。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "自 2025 年秋季起在认知老化实验室担任研究助理，安排被试并为认知测试评分。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "CS 124 本科课程助教（2026 年春季），每周为约 40 名学生提供答疑。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 course project (4-person group): collected runoff samples from 12 campus storm drains together with teammates; I was responsible for turbidity and pH measurements and organized 48 sets of data in Excel.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
+   "rewrite": "Wrote the answer keys and helped the TA grade weekly quizzes.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
+   "rewrite": "本人单独编写了数据采集程序，并与两名同学合作搭建了气象站。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
+   "rewrite": "Built the voltage regulator for a solar-powered bike charger that our four-person team designed.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Toured the Fermilab accelerator with a physics club, watching operators calibrate the beamline.",
+   "rewrite": "Watched operators calibrate the beamline while touring the Fermilab accelerator with a physics club.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Drafting a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "rewrite": "With Dr. Ortiz, drafting a review article on microplastics in freshwater (not yet submitted).",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "目前在做一个基于 Arduino 的土壤湿度监测装置。",
+   "rewrite": "正在制作一个基于 Arduino 的土壤湿度监测装置。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Coded a Python bot that posts club meeting reminders on Discord.",
+   "rewrite": "Wrote a Python bot that posts club meeting reminders on Discord.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Programmed a drone to follow a GPS route in the robotics club.",
+   "rewrite": "Programmed an unmanned aerial vehicle to follow a GPS route in the robotics club.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Measured water hardness in 20 household samples by titration.",
+   "rewrite": "Measured water hardness in 20 household samples using titration.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "用 GIS 绘制了校园树木分布图。",
+   "rewrite": "用地理信息系统（GIS）绘制了校园树木分布图。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "Helped a nurse record vital signs for 30 patients.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Reviewed roughly 50 papers on bird migration.",
+   "rewrite": "Reviewed about 50 papers on bird migration.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Lab assistant for CHEM 102 (Fall 2025), preparing reagents for 6 lab sections.",
+   "rewrite": "Prepared reagents for 6 lab sections as a CHEM 102 lab assistant (Fall 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "用 Python 爬取并清洗了 2 万条微博数据。",
+   "rewrite": "用 Python 爬取并清洗了 2 万条社交媒体（微博）数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "打算用 MATLAB 分析这批心电数据。",
+   "rewrite": "打算用 MATLAB 分析这批 ECG 数据。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Intern at a Champaign accounting firm (Summer 2025), reconciling 40 client bank statements.",
+   "rewrite": "Reconciled 40 client bank statements as an intern at a Champaign accounting firm (Summer 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Planning to test the app with 10 classmates in October.",
+   "rewrite": "Plan to test the app with 10 classmates in October.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "协助护士为 30 名患者记录生命体征。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Took part in designing a campus rain garden.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: the team designed and built a lending mini-program for the community library; I only did the testing.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
+   "rewrite": "Only made the logo for a campus bike-share app that our 5-person team designed.",
+   "kind": "reordered; qualifiers kept on their actions"
   }
  ],
  "unfaithful": [
@@ -599,6 +884,484 @@
    "original": "本人整理了实验记录。",
    "rewrite": "本人整理并分析了实验记录。",
    "kind": "new action",
+   "caught": "review"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Designed an online survey on sleep and memory as part of a four-person team in PSYC 238 and helped clean the 212 responses in R.",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "Helped a graduate student write the grant proposal and designed the lab website.",
+   "rewrite": "Wrote the grant proposal and helped a graduate student design the lab website.",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "With two teammates, built the rover chassis; wrote the control code alone.",
+   "rewrite": "Built the rover chassis alone; wrote the control code with two teammates.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "Cleaned the survey data in R and made the figures in Excel.",
+   "rewrite": "Cleaned the survey data in Excel and made the figures in R.",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "协助博士生设计了实验方案，本人独立完成了数据录入。",
+   "rewrite": "本人独立设计了实验方案，协助博士生完成了数据录入。",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "With two teammates, built the drivetrain for the Illini Robotics club rover in 2025 and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency, wiring the data logger and keeping the test log.",
+   "kind": "'my part was' dropped: the team's result reads as the student's",
+   "caught": "review"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样、测定浊度和 pH，并用 Excel 整理了 48 组数据。",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Our team of four built a line-following robot; I wrote the PID controller.",
+   "rewrite": "As part of a team of four, built a line-following robot and wrote the PID controller.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Observed surgeons at Carle Hospital, operating on pediatric patients.",
+   "rewrite": "Operated on pediatric patients; observed surgeons at Carle Hospital.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Shadowed a physical therapist at Carle, treating stroke patients.",
+   "rewrite": "Treated stroke patients while shadowing a physical therapist at Carle.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Assisted a graduate student running mass spectrometry experiments.",
+   "rewrite": "Ran mass spectrometry experiments, assisting a graduate student.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Volunteered at a free clinic, where nurses administered flu vaccines to 300 patients.",
+   "rewrite": "Administered flu vaccines to 300 patients while volunteering at a free clinic.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "跟随主治医生观摩了为儿童患者实施的手术。",
+   "rewrite": "为儿童患者实施了手术，并跟随主治医生观摩。",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a grant proposal.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Wrote a Python script to automate data entry, starting from a template my TA provided.",
+   "rewrite": "Wrote a Python script to automate data entry.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Built a web scraper for course listings, adapted from an open-source tutorial.",
+   "rewrite": "Built a web scraper for course listings.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "基于师兄的代码框架，编写了数据预处理脚本。",
+   "rewrite": "编写了数据预处理脚本。",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Designed the survey questions, which Prof. Lee revised before launch.",
+   "rewrite": "Designed the survey questions.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
+   "rewrite": "Co-authored a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "Currently building a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "Built a Flask dashboard for the lab's sample inventory.",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "Training a CNN on 5,000 labeled leaf images (in progress).",
+   "rewrite": "Trained a CNN on 5,000 labeled leaf images.",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "正在开发一个课程选课小程序。",
+   "rewrite": "开发了一个课程选课小程序。",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "毕业论文撰写中，研究校园雨水径流的浊度变化。",
+   "rewrite": "撰写了毕业论文，研究校园雨水径流的浊度变化。",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "Hoping to build a robot arm for the club next semester.",
+   "rewrite": "Built a robot arm for the club.",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "Interested in building autonomous robots.",
+   "rewrite": "Built autonomous robots.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Plan to analyze the sleep survey data in R this fall.",
+   "rewrite": "Analyzed the sleep survey data in R.",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "计划下学期用 Python 复现该论文的实验。",
+   "rewrite": "用 Python 复现了该论文的实验。",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "Learning ROS to program the club rover's navigation.",
+   "rewrite": "Programmed the club rover's navigation in ROS.",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "希望参与机器人社团的机械臂设计。",
+   "rewrite": "参与了机器人社团的机械臂设计。",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a Saccharomyces cerevisiae genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, I helped design an online survey on memory consolidation and sleep and cleaned the 212 responses in R.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting causal representation learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), supporting curriculum design for about 40 students.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club agricultural robot in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray diagnosis in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a yeast genetics lab since January 2026, running RNA/DNA extractions and maintaining strain stocks.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the robot mechanism in SolidWorks.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 监测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水管网生物膜样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的地下水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤消毒装置；本人只负责材料采购和预算记录。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 开展 pathogen surveillance，检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "2025 年夏季带领三名实验室同学对 30 个电解液样品进行了循环伏安测试；数据分析由研究生导师完成。",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "Since September 2025, undergraduate research assistant in an environmental microbiology lab (about 8 hours per week), using qPCR to detect Legionella in tap-water samples; did not take part in primer design or data analysis.",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "Did not write the parser and did not run the benchmarks; only documented the results.",
+   "rewrite": "Did not write the parser; ran the benchmarks and documented the results.",
+   "kind": "one of two denials dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Processed over 200 tissue samples.",
+   "rewrite": "Processed 200 tissue samples.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for 40 students.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Our team is building a data pipeline; I wrote the tests.",
+   "rewrite": "Building a data pipeline and wrote the tests.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水管网生物膜监测样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "CS 124 本科课程助教（2026 年春季），每周为约 40 名学生授课。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Member of the six-person drinking-water project team of the campus Engineers Without Borders chapter: designed and installed a slow sand filter for a rural primary school; only handled materials purchasing and budget records.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 course project (4-person group): collected runoff samples from 12 campus storm drains, measured turbidity and pH, and organized 48 sets of data in Excel.",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "Built a Python robot with a team of 3. I did not lead the project.",
+   "rewrite": "Built a Python robot with a team of 3. I did not lead the project. The robot weighed 3 kg.",
+   "kind": "new claim",
+   "caught": "review"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping for aging research and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "kind": "new claim",
+   "caught": "review"
+  },
+  {
+   "original": "Worked in the Beckman building on sensor calibration.",
+   "rewrite": "Built a sensor calibration rig in the Beckman building.",
+   "kind": "new claim"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a yeast genetics lab in January 2026, running PCR genotyping and maintaining strain stocks.",
+   "kind": "duration changed (since -> in)",
+   "caught": "review"
+  },
+  {
+   "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
+   "rewrite": "Graded weekly quizzes and helped the TA write the answer keys.",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
+   "rewrite": "本人单独搭建了气象站，与两名同学合作编写了数据采集程序。",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
+   "rewrite": "With a four-person team, designed a solar-powered bike charger and built the voltage regulator.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "小组（共 5 人）完成了校园噪声地图；本人负责 3 个测点的录音。",
+   "rewrite": "与小组（共 5 人）一起完成了校园噪声地图和 3 个测点的录音。",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Toured the Fermilab accelerator with a physics club, watching operators calibrate the beamline.",
+   "rewrite": "Calibrated the Fermilab beamline; toured the accelerator with a physics club.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "在药房见习，观察药师为 50 名患者调配处方。",
+   "rewrite": "为 50 名患者调配处方（药房见习）。",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Wrote the lab's inventory app, extending a codebase a previous student started.",
+   "rewrite": "Wrote the lab's inventory app.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "参考开源项目，完成了微信小程序的前端页面。",
+   "rewrite": "完成了微信小程序的前端页面。",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Drafting a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "rewrite": "Drafted a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "目前在做一个基于 Arduino 的土壤湿度监测装置。",
+   "rewrite": "做了一个基于 Arduino 的土壤湿度监测装置。",
+   "kind": "ongoing to finished",
+   "caught": "review"
+  },
+  {
+   "original": "Applying to run a pilot study on study-app usage next semester.",
+   "rewrite": "Ran a pilot study on study-app usage.",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "打算用 MATLAB 分析这批心电数据。",
+   "rewrite": "用 MATLAB 分析了这批心电数据。",
+   "kind": "intent to done",
+   "caught": "review"
+  },
+  {
+   "original": "Stained tissue sections for a histology course.",
+   "rewrite": "Stained brain tissue sections for a histology course.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Programmed a drone to follow a GPS route in the robotics club.",
+   "rewrite": "Programmed a drone swarm to follow a GPS route in the robotics club.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Measured water hardness in 20 household samples by titration.",
+   "rewrite": "Measured heavy-metal contamination in 20 household samples by titration.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "用 GIS 绘制了校园树木分布图。",
+   "rewrite": "用 GIS 绘制了校园城市森林碳汇分布图。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "为 30 名患者记录并分析了生命体征。",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "Reviewed roughly 50 papers on bird migration.",
+   "rewrite": "Reviewed 50 papers on bird migration.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Led the design of a campus rain garden.",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Designed a campus rain garden.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: designed and built a lending mini-program for the community library; only did the testing.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
+   "rewrite": "Member of a 5-person team: designed a campus bike-share app; only made the logo.",
+   "kind": "team's action left without its doer",
    "caught": "review"
   }
  ]
