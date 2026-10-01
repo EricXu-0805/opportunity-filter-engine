@@ -291,6 +291,23 @@ class TestR70ADataQuality:
             f"First 3: {leaks[:3]}"
         )
 
+    def test_nothing_stays_active_past_its_stated_expiry(self):
+        """A dated snapshot row carries ``metadata.expires_at`` (the CMU URO
+        project list's valid-until date). deactivate_past retires it on every
+        committed shard once that date passes, so a live one is a leak — the
+        same anchoring to the data's as-of date as the deadline gate above."""
+        data = _load_data()
+        as_of = _data_as_of(data)
+        leaks = [
+            o.get("id") for o in data
+            if (o.get("metadata") or {}).get("is_active") is not False
+            and (expiry := _parse_iso((o.get("metadata") or {}).get("expires_at"))) is not None
+            and expiry < as_of
+        ]
+        assert not leaks, (
+            f"{len(leaks)} records past expires_at as of {as_of} still active: {leaks[:3]}"
+        )
+
     def test_no_shared_department_keyword_pollution(self):
         """DQ-1: a department-wide 'Research Areas' nav block scraped into many
         profiles produced byte-identical multi-keyword sets across same-department

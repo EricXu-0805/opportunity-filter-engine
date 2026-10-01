@@ -381,6 +381,39 @@ class TestIncidentGate:
         assert got["status"] == gate.BLOCKED
         assert got["reason"] == "access_required"
 
+    def test_open_snapshot_reminders_do_not_block(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 2, "release_blocking_total": 0, "truncated": False}})
+        assert got["status"] == gate.PASS
+        assert "2 snapshot reminder(s) open" in got["detail"]
+
+    def test_only_the_release_blocking_count_fails_the_gate(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 3, "release_blocking_total": 1, "truncated": False}})
+        assert got["status"] == gate.FAIL
+        assert got["detail"].startswith("1 unresolved incident(s)")
+
+    def test_a_rollup_that_does_not_say_what_blocks_counts_every_open_row(self):
+        """An older backend's rollup has no release_blocking_total."""
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(), "rollup": {"open_total": 1, "truncated": False}})
+        assert got["status"] == gate.FAIL
+
+    def test_an_impossible_release_blocking_count_is_not_believed(self):
+        for bogus in (-1, 2, "0", None, True, 0.0):
+            got = gate.check_open_incidents(
+                {"observed_at": _now_iso(),
+                 "rollup": {"open_total": 1, "release_blocking_total": bogus, "truncated": False}})
+            assert got["status"] == gate.FAIL, bogus
+
+    def test_a_truncated_rollup_cannot_prove_zero_even_with_reminders_set_apart(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 1, "release_blocking_total": 0, "truncated": True}})
+        assert got["status"] == gate.UNVERIFIED
+
 
 class TestFlagParity:
     def test_current_repo_state_is_evaluated(self):
