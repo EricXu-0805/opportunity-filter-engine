@@ -727,6 +727,15 @@ class TestSnapshotPagination:
             profile_dict, False
         )
 
+    def test_the_running_release_participates_in_snapshot_key(self, snapshot_env, monkeypatch):
+        # The result-set id leaves the cards to the key, so the key has to
+        # change with the code that projects them.
+        profile_dict = m_module._normalized_profile(ProfileRequest(**_profile()))
+        monkeypatch.setenv("RENDER_GIT_COMMIT", "a" * 40)
+        key_now = m_module._snapshot_key(profile_dict, False, "corpus-1")
+        monkeypatch.setenv("RENDER_GIT_COMMIT", "b" * 40)
+        assert m_module._snapshot_key(profile_dict, False, "corpus-1") != key_now
+
     def test_same_key_concurrent_miss_is_single_flight(self, snapshot_env, monkeypatch):
         import asyncio
         import time
@@ -1087,6 +1096,42 @@ class TestServerMatchView:
         response = client.post("/api/matches/view", json=request)
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_view_cursor_pages_across_workers_whose_rows_differ_only_in_wording(
+        self, snapshot_env, monkeypatch
+    ):
+        """The id names what a page is cut from, not every sentence on it.
+
+        Whole rows used to be hashed, so any wording one worker produced and
+        its sibling did not (a next step, a gap line, a refine reason) split
+        the id and refused the cursor, although no view selects or orders by
+        that text. It also cost about a second per cross-school snapshot.
+        """
+        rank = m_module.rank_visible_universe
+        wording = {"line": "Email the lab"}
+
+        def worded(*args, **kwargs):
+            universe = rank(*args, **kwargs)
+            for result in universe.visible:
+                result.next_steps = [*result.next_steps, wording["line"]]
+                result.reasons_gap = [*result.reasons_gap, wording["line"]]
+            return universe
+
+        monkeypatch.setattr(m_module, "rank_visible_universe", worded)
+        request = self._request(_profile())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, workers[0])
+        page_one = client.post("/api/matches/view", json=request).json()
+
+        wording["line"] = "Write to the lab"
+        _serve_from(monkeypatch, workers[1])
+        response = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["results"][0]["next_steps"][-1] == "Write to the lab"
 
     def test_view_cursor_minted_in_one_process_pages_in_another(
         self, snapshot_env, tmp_path
@@ -1705,6 +1750,76 @@ class TestUnknownPolicy:
         restricted["eligibility"]["international_friendly"] = "no"
         assert ranker.hard_exclusion(restricted, ctx) == "citizenship_restricted"
         assert ranker.hard_exclusion(_opp("x"), ctx) is None
+
+
+class TestResultSetId:
+    """The id names the ranked rows a page is cut from, and only those."""
+
+    @staticmethod
+    def _rows():
+        return [
+            ranker.MatchResult(
+                opportunity_id=f"rs-{index}",
+                eligibility_score=70.0,
+                readiness_score=60.0,
+                upside_score=50.0,
+                final_score=90.0 - index,
+                bucket="good_match",
+                reasons_fit=["fit"],
+                reasons_gap=["gap"],
+                next_steps=["step"],
+                field_relevant=True,
+                evidence_rank=1,
+            )
+            for index in range(3)
+        ]
+
+    @staticmethod
+    def _id(rows, key="key", refined=False, buckets=None, field_relevant_count=3):
+        return m_module._result_set_id(
+            key,
+            rows,
+            buckets or {"high_priority": 0, "good_match": 3, "reach": 0, "low_fit": 2},
+            field_relevant_count,
+            refined=refined,
+        )
+
+    @pytest.mark.parametrize(
+        "move",
+        [
+            lambda rows: rows.reverse(),
+            lambda rows: rows.pop(),
+            lambda rows: setattr(rows[1], "opportunity_id", "rs-other"),
+            lambda rows: setattr(rows[1], "final_score", 88.9),
+            lambda rows: setattr(rows[1], "bucket", "reach"),
+            lambda rows: setattr(rows[1], "evidence_rank", 2),
+            lambda rows: setattr(rows[1], "field_relevant", False),
+        ],
+        ids=["order", "membership", "id", "score", "bucket", "tie_break", "field"],
+    )
+    def test_every_row_field_a_view_cuts_by_moves_the_id(self, move):
+        rows = self._rows()
+        move(rows)
+        assert self._id(rows) != self._id(self._rows())
+
+    def test_the_key_and_the_counts_move_the_id(self):
+        base = self._id(self._rows())
+        assert self._id(self._rows(), key="other") != base
+        assert self._id(self._rows(), refined=True) != base
+        assert self._id(self._rows(), field_relevant_count=2) != base
+        assert self._id(
+            self._rows(),
+            buckets={"high_priority": 0, "good_match": 3, "reach": 0, "low_fit": 3},
+        ) != base
+
+    def test_an_id_cannot_pass_for_two_rows(self):
+        two = self._rows()[:2]
+        # One row whose id spells out the first row and the start of the
+        # second, and whose own fields finish the second: written unquoted,
+        # the two lists would encode to the same bytes.
+        one = self._rows()[1:2]
+        one[0].opportunity_id = "rs-0 90.0 good_match 1 1\nrs-1"
+        assert self._id(one) != self._id(two)
 
 
 class TestCorpusDedup:

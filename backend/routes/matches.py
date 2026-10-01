@@ -29,6 +29,7 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
+from backend.lib.build_info import release_sha
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_budget import PromptInputTooLarge, check_prompt_size
@@ -680,6 +681,11 @@ def _snapshot_key(
         # still says v3, but a snapshot from before the target-truth filter
         # describes a universe that included the closed records.
         f"|snapshot={MATCH_SNAPSHOT_VERSION}"
+        # The code that projected the cards. The result-set id hashes the
+        # ranked rows but not the cards, which are this key's corpus run
+        # through this release's projection: the same on every worker of one
+        # deploy, not across deploys.
+        f"|release={release_sha() or ''}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()
 
@@ -687,7 +693,6 @@ def _snapshot_key(
 def _result_set_id(
     key: str,
     visible: list[MatchResult],
-    opportunities_by_id: dict[str, dict],
     buckets: dict[str, int],
     field_relevant_count: int,
     refined: bool,
@@ -701,16 +706,25 @@ def _result_set_id(
     reached the other worker, which had ranked the identical list under
     another id.
 
-    The id covers the snapshot key (scoring profile, llm flag, corpus
-    generation, matcher and snapshot versions) and everything a page is cut
-    from: each visible result in order, its card, and the counts. A process
-    that materializes the same list names it the same, so a cursor survives a
-    worker switch, a TTL expiry or an eviction. A list that moved (a calendar
-    day or a responsiveness signal reordering the same key, an LLM blend) gets
-    a new id, so its old cursors still fail closed instead of skipping or
-    repeating rows. The key's corpus token is the data's source mtime, the same
-    on every worker that loaded the same files however often each reloaded
-    (see load_opportunities_generation).
+    The id covers the snapshot key (scoring profile, llm flag, corpus data,
+    matcher and snapshot versions, release) and the ranked rows a page is cut
+    from: each visible result in order, with the score, bucket, tie-break rank
+    and field relevance that views filter, order and count by, plus the counts.
+    A process that materializes the same list names it the same, so a cursor
+    survives a worker switch, a TTL expiry or an eviction. A list that moved (a
+    deadline passing at midnight, a professor-signals window turning, an LLM
+    blend) gets a new id, so its old cursors still fail closed instead of
+    skipping or repeating rows.
+
+    Left out on purpose: the cards, which the key already names (this corpus
+    through this release's projection), and the wording of reasons and steps.
+    Gap lines, next steps and a refine reason are text no view reads. Fit
+    reasons do feed the search filter, but every worker writes the same ones
+    on a given day, and hashing them would refuse every cursor over a list
+    holding a dated row at midnight ("Deadline in 3 days" turning into "2
+    days") to spare a search for that wording one shifted row. Hashing whole
+    rows and cards also cost about a second per cross-school snapshot of
+    84,092 rows; this costs about 45 ms.
     """
     digest = hashlib.sha256(
         json.dumps(
@@ -719,17 +733,14 @@ def _result_set_id(
             separators=(",", ":"),
         ).encode()
     )
-    for result in visible:
-        digest.update(
-            json.dumps(
-                # vars, not dataclasses.asdict: asdict deep-copies every list
-                # and doubled the cost (135 ms vs 70 ms for 4,090 results).
-                [vars(result), opportunities_by_id.get(result.opportunity_id)],
-                sort_keys=True,
-                default=str,
-                separators=(",", ":"),
-            ).encode()
-        )
+    digest.update(
+        "\n".join(
+            # repr quotes the id, so no corpus id can blur two rows together.
+            f"{result.opportunity_id!r} {result.final_score!r} {result.bucket} "
+            f"{result.evidence_rank} {result.field_relevant:d}"
+            for result in visible
+        ).encode()
+    )
     return digest.hexdigest()
 
 
@@ -958,25 +969,23 @@ def _compute_rule_snapshot(
             responsiveness=responsiveness,
         )
     visible_ids = {result.opportunity_id for result in universe.visible}
-    opportunities_by_id = {
-        opportunity["id"]: _match_card(opportunity)
-        for opportunity in opportunities
-        if opportunity.get("id") in visible_ids
-    }
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
         result_set_id=_result_set_id(
             key,
             universe.visible,
-            opportunities_by_id,
             universe.buckets,
             universe.field_relevant_count,
             refined=False,
         ),
         visible=universe.visible,
         by_id={result.opportunity_id: result for result in universe.visible},
-        opportunities_by_id=opportunities_by_id,
+        opportunities_by_id={
+            opportunity["id"]: _match_card(opportunity)
+            for opportunity in opportunities
+            if opportunity.get("id") in visible_ids
+        },
         buckets=universe.buckets,
         field_relevant_count=universe.field_relevant_count,
         ranked_with=ranked_with,
@@ -1213,25 +1222,23 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
                 field_relevant_count += 1
 
     visible_ids = {result.opportunity_id for result in visible_results}
-    opportunities_by_id = {
-        opportunity_id: _match_card(opportunity)
-        for opportunity_id, opportunity in opp_lookup.items()
-        if opportunity_id in visible_ids
-    }
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
         result_set_id=_result_set_id(
             key,
             visible_results,
-            opportunities_by_id,
             buckets,
             field_relevant_count,
             refined=refined,
         ),
         visible=visible_results,
         by_id={r.opportunity_id: r for r in visible_results},
-        opportunities_by_id=opportunities_by_id,
+        opportunities_by_id={
+            opportunity_id: _match_card(opportunity)
+            for opportunity_id, opportunity in opp_lookup.items()
+            if opportunity_id in visible_ids
+        },
         buckets=buckets,
         field_relevant_count=field_relevant_count,
         refined=refined,
