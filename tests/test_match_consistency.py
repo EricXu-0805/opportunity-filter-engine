@@ -2591,3 +2591,157 @@ class TestAnEstimatedDeadlineAnswersNoDeadlineQuestion:
     def test_an_estimate_sorts_as_unknown_not_as_a_passed_deadline(self, marker):
         filtered, *_ = self._run(self._view(sort_by="deadline"), marker)
         assert [r.opportunity_id for r in filtered] == ["estimated", "real"]
+
+
+class TestEverySelectionServesTheRowsItCounts:
+    """F2 at the route: a combined type selection serves exactly the rows of
+    its single-type selections, and every count in the response — totals,
+    bucket counts, view counts — describes the rows that are served."""
+
+    @pytest.fixture
+    def typed_corpus(self, snapshot_env, monkeypatch):
+        from tests.test_matcher_core_contract import pin_scores
+
+        scores = pin_scores(monkeypatch)
+        corpus = []
+        for kind, low, step, count in (
+            ("research", 30.0, 1.5, 30),
+            ("summer_program", 50.0, 1.0, 25),
+            ("internship", 56.0, 2.0, 22),
+        ):
+            for index in range(count):
+                ident = f"{kind}-{index:02}"
+                corpus.append(_opp(ident, opportunity_type=kind))
+                scores[ident] = (low + step * index, 1)
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "typed-fixture")
+        )
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+        return corpus
+
+    @staticmethod
+    def _matches(profile):
+        rows, query = [], "?limit=9"
+        while True:
+            response = client.post(f"/api/matches{query}", json=profile)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            rows += page["results"]
+            if not page["has_more"]:
+                return page, rows
+            query = f"?limit=9&cursor={page['next_cursor']}"
+
+    @staticmethod
+    def _view(profile, tab):
+        rows, cursor = [], None
+        while True:
+            body = {
+                "profile": profile,
+                "view": {"tab": tab, "today": "2026-09-30"},
+                "page_size": 9,
+                "cursor": cursor,
+            }
+            response = client.post("/api/matches/view", json=body)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            rows += page["results"]
+            if not page["has_more"]:
+                return page, rows
+            cursor = page["next_cursor"]
+
+    def test_counts_describe_the_served_rows_for_every_selection(self, typed_corpus):
+        from collections import Counter
+
+        from backend.schemas import ProfileRequest
+        from tests.test_matcher_core_contract import (
+            SELECTIONS,
+            SERVED_TYPES,
+            expected_selection_labels,
+        )
+
+        single = {
+            kind: ranker.rank_all(
+                m_module._normalized_profile(ProfileRequest(**_profile(seeking_type=[kind]))),
+                typed_corpus,
+            )
+            for kind in SERVED_TYPES
+        }
+        for selection in SELECTIONS:
+            profile = _profile(seeking_type=selection)
+            page, rows = self._matches(profile)
+            served = {row["opportunity_id"]: row["bucket"] for row in rows}
+            assert len(served) == len(rows) == page["total"]
+            assert served == expected_selection_labels(single, selection)
+            counts = Counter(served.values())
+            for label in ("high_priority", "good_match", "reach"):
+                assert page[label] == counts[label]
+            assert page["total"] + page["low_fit"] == sum(
+                record["opportunity_type"] in selection for record in typed_corpus
+            )
+            for tab in ("all", "high_priority", "good_match", "reach"):
+                view, view_rows = self._view(profile, tab)
+                assert view["total"] == view["view_counts"]["all"] == page["total"]
+                assert view["filtered_total"] == len(view_rows) == view["view_counts"][tab]
+                assert {row["opportunity_id"]: row["bucket"] for row in view_rows} == {
+                    ident: bucket
+                    for ident, bucket in served.items()
+                    if tab == "all" or bucket == tab
+                }
+
+
+class TestTheReportedPersonaOnTheCommittedCorpus:
+    """F2 was measured for this profile on 2026-09-30: Summer alone showed 307
+    of 510 summer programs while 200 of the hidden ones scored at least 42 and
+    appeared once Research was ticked too, and Research + Internship hid 578
+    rows the single-type views showed."""
+
+    PERSONA = {
+        "school": "UIUC",
+        "home_school": "uiuc",
+        "year": "sophomore",
+        "major": "Computer Science",
+        "college": "Grainger College of Engineering",
+        "desired_fields": [
+            "machine learning for medical imaging",
+            "interpretable deep learning",
+            "low-resource NLP",
+        ],
+        "research_interests_text": (
+            "machine learning for medical imaging; interpretable deep learning; low-resource NLP"
+        ),
+    }
+
+    def test_every_selection_serves_exactly_its_single_type_rows(self):
+        from backend.lib.release_scope import release_visible_opportunities
+        from backend.lib.target_actionability import actionable_opportunities
+        from backend.schemas import ProfileRequest
+        from tests.test_matcher_core_contract import (
+            SELECTIONS,
+            SERVED_TYPES,
+            expected_selection_labels,
+        )
+
+        opportunities = actionable_opportunities(
+            release_visible_opportunities(data_loader.load_opportunities())
+        )
+        universes = {
+            tuple(selection): ranker.rank_visible_universe(
+                m_module._normalized_profile(
+                    ProfileRequest(**self.PERSONA, seeking_type=selection)
+                ),
+                opportunities,
+            )
+            for selection in SELECTIONS
+        }
+        single = {kind: universes[(kind,)].visible for kind in SERVED_TYPES}
+        assert all(single.values())
+        for selection in SELECTIONS:
+            universe = universes[tuple(selection)]
+            served = {row.opportunity_id: row.bucket for row in universe.visible}
+            assert served == expected_selection_labels(single, selection)
+            assert universe.buckets["low_fit"] == sum(
+                universes[(kind,)].buckets["low_fit"] for kind in selection
+            )

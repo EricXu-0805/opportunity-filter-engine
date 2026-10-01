@@ -417,6 +417,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       </dl>)}
     </div>)}
   </section>;
+  const savedAt = (value: string) => {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale === 'zh' ? 'zh-CN' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  };
   const recordKind = (kind: string, field: string) => kind === 'manual' ? copy('Manual edit', '手动修改')
     : kind === 'target_order' ? copy('Order suggested from the target', '按目标建议排序')
       : field === 'order' ? copy('Accepted AI order', '采用 AI 排序')
@@ -565,8 +569,6 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
               try { const ordered = suggestTargetResumeOrder(doc); edit((next) => { next.document = ordered.document; }, 'target_order'); }
               catch { update(activeSession.scope, (old) => ({ ...old, error: 'invalid' })); }
             }}>{copy('Suggest order of whole blocks', '建议完整内容块的顺序')}</button>
-            <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.provenanceError || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict || !!activeSession.quota} onClick={() => void persist(doc, activeSession.provenance)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
-            <p role="status" className="text-sm text-gray-600">{activeSession.saving ? copy('Waiting for the cloud save result.', '正在等待云端保存结果。') : dirty ? copy('Unsaved local edits', '本地编辑尚未保存') : `${copy('Saved version', '已保存版本')} ${activeSession.revision}`}</p>
           </div>
           {activeSession.provenanceError && <div role="alert" className="my-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm">
             <p>{copy('Your full draft is kept, but its change record could not be recorded. Saving and AI changes are paused. You can export the draft, or discard local changes and load the saved version.', '全文仍保留，但本次修改记录无法保存。保存和 AI 修改已暂停。可先导出，或放弃本地修改并载入已保存版本。')}</p>
@@ -666,7 +668,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             {activeSession.historyError && <p role="alert" className="mt-2 text-sm text-red-700">{copy('History could not be read. Your current draft is unchanged; retry loading.', '无法读取历史版本，当前文稿未变，请重试。')}</p>}
             {activeSession.history?.length === 0 && <p className="mt-2 text-sm">{copy('No saved history yet.', '暂无已保存历史。')}</p>}
             <div className="mt-3 flex flex-wrap gap-2">{activeSession.history?.map((version) => <button type="button" key={version.revision} className={button} aria-pressed={activeSession.selectedRevision === version.revision} disabled={!ownerReady}
-              onClick={() => void selectVersion(version.revision)}>{copy('View version', '查看版本')} {version.revision} · {version.updated_at}</button>)}</div>
+              onClick={() => void selectVersion(version.revision)}>{copy('View version', '查看版本')} {version.revision} · {savedAt(version.updated_at)}</button>)}</div>
             {activeSession.historyHasMore && <button type="button" className={`${button} mt-3`} disabled={!ownerReady || activeSession.historyBusy} onClick={() => void history(true)}>{copy('Load older versions', '读取更早版本')}</button>}
             {activeSession.versionBusy && <p role="status" className="mt-2 text-sm">{copy('Reading selected version…', '正在读取所选版本…')}</p>}
             {activeSession.versionError && <p role="alert" className="mt-2 text-sm text-red-700">{copy('The selected version could not be read. Select it again to retry; your current draft is unchanged.', '无法读取所选版本，可再次选择重试，当前文稿未变。')}</p>}
@@ -682,6 +684,11 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {onOpenLegacy && <button type="button" className={`${button} mt-6`} onClick={() => askLeave('legacy')}>{copy('Edit résumé bullets', '编辑经历条目')}</button>}
         </div>
       </div>
+      {/* Outside the scrolling editor: on a phone its last field is ~20 screens below the top. */}
+      {doc && activeSession && <div className="flex shrink-0 flex-wrap items-center gap-3 border-t bg-white px-4 py-3 sm:px-6">
+        <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={!ownerReady || !dirty || activeSession.provenanceError || activeSession.saving || activeSession.reloading || creating || !!activeSession.conflict || !!activeSession.quota} onClick={() => void persist(doc, activeSession.provenance)}>{activeSession.saving ? copy('Saving…', '正在保存…') : copy('Save target draft', '保存目标文稿')}</button>
+        <p role="status" className="text-sm text-gray-600">{activeSession.saving ? copy('Waiting for the cloud save result.', '正在等待云端保存结果。') : dirty ? copy('Unsaved local edits', '本地编辑尚未保存') : `${copy('Saved version', '已保存版本')} ${activeSession.revision}`}</p>
+      </div>}
     </div>
   </div>;
 }

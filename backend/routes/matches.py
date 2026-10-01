@@ -91,6 +91,7 @@ from src.matcher.ranker import (
     rank_visible_universe,
     registered_corpus_identity,
     registered_corpus_identity_nowait,
+    served_sort_key,
 )
 from src.recommender.resume_advisor import analyze_gaps
 
@@ -548,6 +549,7 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
     # rank_all established — equal-score bands could reorder between requests.
     results.sort(key=canonical_sort_key)
     _assign_buckets(results)
+    results.sort(key=served_sort_key)
     # A reply that named none of the ids we sent leaves `rated` empty: parsed,
     # paid for, and worth nothing to this student. That is not a refined list.
     return RerankOutcome(results, bool(rated))

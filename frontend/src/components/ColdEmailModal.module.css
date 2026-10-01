@@ -1,3 +1,17 @@
+/* A phone or a short window gets the whole height: 90dvh of a 400px window
+   (1280x800 at 200% zoom) left a 209px editing strip. */
+.dialog {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+@media (min-width: 640px) and (min-height: 720px) {
+  .dialog {
+    height: 90dvh;
+    max-height: 90dvh;
+  }
+}
+
 .statePanel {
   flex: 1;
   min-height: 0;
@@ -5,8 +19,9 @@
   overscroll-behavior-y: contain;
 }
 
-/* Narrow or short viewports use one reachable workspace. The header stays
-   outside it, so closing never depends on scrolling through the draft. */
+/* Narrow or short viewports use one scrolling workspace. The header and the
+   Copy / Open in Email bar stay outside it (checklist M29), so closing or
+   sending never depends on scrolling through the draft. */
 .workspace {
   display: flex;
   flex: 1;
@@ -76,9 +91,13 @@
     overscroll-behavior-y: contain;
   }
 
+  /* The request log is where a suggestion is read and accepted; the tips
+     have their own scroll range and give way first. The old 0.9 : 1.1 split
+     left the log 54px tall at 1280x800: two lines of a 1,700-character
+     comparison. */
   .refinePane {
     display: grid;
-    grid-template-rows: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(min(22rem, 100%), 3fr);
   }
 
   .refinePane[data-has-guidelines='false'] {

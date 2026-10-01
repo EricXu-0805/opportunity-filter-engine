@@ -1172,6 +1172,12 @@ def check_open_incidents(evidence: dict | None) -> dict:
 
     The queue lives in Supabase, which this process cannot reach, so the
     count must be supplied as evidence from an authenticated admin call.
+
+    The count that blocks is the rollup's ``release_blocking_total``: every
+    unresolved incident except a reminder that a hand-exported snapshot needs
+    a new export, which is work for whoever holds that source's login, not a
+    fault in what is deployed. A rollup without that count (an older backend),
+    or with one that cannot be true, is read as every open row blocking.
     """
     if not evidence:
         return _gate("open_incidents", BLOCKED,
@@ -1190,12 +1196,21 @@ def check_open_incidents(evidence: dict | None) -> dict:
         return _gate("open_incidents", UNVERIFIED,
                      "rollup truncated: a capped count cannot prove zero",
                      reason="evidence_truncated")
-    if total > 0:
-        return _gate("open_incidents", FAIL, f"{total} unresolved incident(s)",
+    blocking = rollup.get("release_blocking_total")
+    if type(blocking) is not int or not 0 <= blocking <= total:
+        blocking = total
+    reminders = total - blocking
+    aside = (f"; {reminders} snapshot reminder(s) open, which do not block a release"
+             if reminders else "")
+    if blocking > 0:
+        return _gate("open_incidents", FAIL, f"{blocking} unresolved incident(s){aside}",
                      {"open_by_kind": rollup.get("open_by_kind"),
+                      "release_blocking_total": blocking,
                       "observed_at": evidence.get("observed_at")},
                      reason="check_failed")
-    return _gate("open_incidents", PASS, "no unresolved incidents", rollup)
+    return _gate("open_incidents", PASS,
+                 f"no release-blocking incidents{aside}" if reminders else "no unresolved incidents",
+                 rollup)
 
 
 def check_flag_parity() -> dict:

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
-from tests.experience_fixtures import confirmed_experience
+from tests.experience_fixtures import confirmed_experience, resume_line_experience
 
 PROFILE = {"name": "Audit Student", "school": "UIUC", "year": "sophomore",
            "major": "Computer Science", "hard_skills": [], "coursework": [],
@@ -77,7 +77,7 @@ def client(monkeypatch):
 
 def request(client, endpoint, evidence, *, claim=None):
     payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "engine": "ai",
-               "experience_evidence": confirmed_experience(evidence)}
+               "experience_evidence": evidence if isinstance(evidence, dict) else confirmed_experience(evidence)}
     if endpoint == "refine":
         payload.update(current_body=draft(claim or "I am interested in Python parser research."),
                        instruction="Make it clearer")
@@ -111,6 +111,112 @@ def test_attributed_work_and_equivalent_numbers_remain_usable(client, monkeypatc
     assert result["method"] == ("llm" if endpoint == "refine" else "ai"), result
     assert claim in result["body"]
     assert result["experience_usage"]["selected"]
+
+
+# A PDF import confirms each printed line as its own entry, so a bullet's
+# result sits one entry below the action it completes. The student's own
+# sentence must pass, and the printed bullet must not lend its result or its
+# collaborators to anything it does not say.
+PRINTED = (
+    "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present\n"
+    "- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline,\n"
+    "reaching 0.87 AUC on a held-out split.\n"
+    "- Built a Python parser\n"
+    "with my team.\n"
+    "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.\n"
+)
+XRAY = ("I built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains "
+        "a ResNet-18 baseline, reaching 0.87 AUC on a held-out split.")
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "refine"])
+def test_a_wrapped_bullet_restated_in_first_person_is_usable(client, monkeypatch, endpoint):
+    body = draft(XRAY)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body if endpoint == "refine" else f"Subject: Research inquiry\n\n{body}")
+    result = request(client, endpoint, resume_line_experience(PRINTED))
+    assert result["method"] == ("llm" if endpoint == "refine" else "ai"), result
+    assert result.get("fallback_reason") is None
+    assert XRAY in result["body"]
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "refine"])
+@pytest.mark.parametrize("unconfirmed,claim", [
+    pytest.param(["reaching 0.87 AUC on a held-out split."], XRAY, id="result-line-not-confirmed"),
+    pytest.param([], XRAY.replace("0.87", "0.95"), id="result-changed"),
+    pytest.param([], "I built a Python parser.", id="wrapped-team-qualifier-dropped"),
+    pytest.param([], "I wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes "
+                     "to 9 minutes, reaching 0.87 AUC on a held-out split.", id="result-moved-to-next-bullet"),
+])
+def test_a_wrapped_bullet_lends_nothing_it_does_not_print(client, monkeypatch, endpoint, unconfirmed, claim):
+    body = draft(claim)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body if endpoint == "refine" else f"Subject: Research inquiry\n\n{body}")
+    result = request(client, endpoint, resume_line_experience(PRINTED, unconfirmed=unconfirmed), claim=claim)
+    assert result["method"] in ("template", "local"), result
+    assert result["fallback_reason"] == "fabrication", result
+    assert claim not in result["body"], result
+
+
+@pytest.mark.parametrize("instruction,changed", [
+    pytest.param("Make it shorter and mention my parser tests first.", False, id="no-local-rule-changes-anything"),
+    pytest.param("Make it more formal.", True, id="formal-rule-changes-a-phrase"),
+])
+def test_a_rejected_edit_suggests_only_what_the_local_rules_changed(client, monkeypatch, instruction, changed):
+    # Walked 2026-09-30: the AI edit failed the fact check, the "shorter"
+    # rule had no filler to drop, and the student was still offered a
+    # "suggestion" that differed only by the blank line after the greeting.
+    original = draft("I would love to discuss my parser tests.")
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: draft("I built a Python parser."))
+    response = client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience([TEAM]),
+        "current_body": original, "instruction": instruction})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["fallback_reason"] == "fabrication"
+    assert "I built a Python parser." not in result["body"]
+    if changed:
+        assert "I would greatly appreciate to discuss my parser tests." in result["body"]
+        assert result["applied"] == ["formal"]
+    else:
+        assert result["body"] == original
+        assert result["applied"] == []
+
+
+FACULTY_WITHOUT_RESEARCH = {
+    "id": "faculty-without-research", "source_type": "faculty_research", "title": "Jane Doe",
+    "pi_name": "Jane Doe", "organization": "Test University", "department": "School of Computing",
+    "description_raw": "Faculty research profile for Jane Doe.",
+    "description_clean": "Faculty research profile for Jane Doe.", "keywords": ["law"],
+    "eligibility": {}, "application": {},
+    "metadata": {"is_active": True, "faculty_title": "Assistant Professor", "research_areas_raw": "law"}}
+
+
+@pytest.mark.parametrize("edited", [False, True], ids=["unedited-template", "edited-draft"])
+def test_a_rebuilt_template_is_offered_only_where_it_differs(client, monkeypatch, edited):
+    # With no source research to personalize, refine rebuilds the template
+    # and applies only local rules. On the template itself "Make it shorter"
+    # found nothing to drop, yet the student was offered it back without the
+    # blank line after "Dear ...,": the same one-blank-line suggestion as
+    # above. A draft whose words differ still gets the rebuilt template,
+    # never its own unchecked text back.
+    monkeypatch.setattr(ce, "load_opportunities_by_id",
+                        lambda: {FACULTY_WITHOUT_RESEARCH["id"]: deepcopy(FACULTY_WITHOUT_RESEARCH)})
+    variants = client.post("/api/cold-email/variants", json={
+        "profile": PROFILE, "opportunity_id": FACULTY_WITHOUT_RESEARCH["id"]})
+    assert variants.status_code == 200, variants.text
+    template = variants.json()["variants"][0]["body"]
+    current = template.replace("\n\nBest regards", "\n\nI built a Python parser.\n\nBest regards") if edited else template
+    assert edited == (current != template)
+    response = client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": FACULTY_WITHOUT_RESEARCH["id"],
+        "current_body": current, "instruction": "Make it shorter."})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["fallback_reason"] == "insufficient_evidence"
+    if edited:
+        assert result["body"].split() == template.split()
+    else:
+        assert result["body"] == current
+        assert result["applied"] == []
 
 
 @pytest.mark.parametrize("failure", ["unconfigured", "no-output", "timeout"])

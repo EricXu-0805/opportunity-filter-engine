@@ -1944,7 +1944,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.18"
+COLD_EMAIL_PIPELINE_VERSION = "w12.19"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2172,12 +2172,14 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
     parts["source_research_text"] = _source_research_text_for_selection(safe_opp)
     parts.update(contact_context_parts(context))
     selection = select_experience(request.experience_evidence, parts, legacy_bullets=request.resume_bullets)
-    # Full eligible originals remain available to deterministic fact checks.
-    # Only the smaller, source-bound projection may enter a provider prompt.
-    parts["resume_bullets"] = [entry.text for entry in selection.eligible]
+    # Full eligible originals remain available to deterministic fact checks,
+    # read as the bullets they print. Only the smaller, source-bound
+    # projection may enter a provider prompt.
+    facts = selection.materials()
+    parts["resume_bullets"] = [item["excerpt"] for item in facts]
     if selection.contexts is not None:
         parts["experience_materials"] = selection.selected
-        parts["experience_materials_all"] = selection.materials()
+        parts["experience_materials_all"] = facts
     parts["experience_excerpts"] = [item["excerpt"] for item in selection.selected]
     parts["experience_template_excerpt"] = selection.template["excerpt"] if selection.template else ""
     return parts, selection
@@ -2726,6 +2728,11 @@ def _local_refine_fallback(
         else:
             candidate = normalized
     result["body"] = redact_embedded_emails(candidate)
+    if result["body"].split() == safe_body.split():
+        # No rule changed a word of the student's draft, which may already be
+        # the rebuilt template. Greeting normalization alone (the blank line
+        # after "Dear ...,") is not an edit to offer the student.
+        result["body"], result["applied"] = safe_body, []
     result["experience_usage"] = (
         (context["experience_selection"].quoted_usage(result["body"]) if use_template
          else context["experience_selection"].local_usage(source_body)) if context is not None

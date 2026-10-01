@@ -9,7 +9,7 @@ data, not policy — moving them to YAML is a separate refactor.
 import math
 import re
 import threading
-from collections import Counter, OrderedDict
+from collections import Counter, OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
@@ -178,6 +178,9 @@ class MatchResult:
     # scored with its documented neutral policy (see docs/matching_logic.md),
     # and this list is the machine-readable trace of that.
     unknowns: list[str] = field(default_factory=list)
+    # The record's normalised opportunity type, the same key the type filter
+    # reads. Buckets are cut per type (see _assign_buckets).
+    opportunity_type: str = ""
 
 
 def canonical_sort_key(r: "MatchResult"):
@@ -188,6 +191,19 @@ def canonical_sort_key(r: "MatchResult"):
     use this key; a bare `final_score` sort silently drops the tie-break
     contract."""
     return (-r.final_score, -r.evidence_rank, r.opportunity_id)
+
+
+_BUCKET_ORDER = {"high_priority": 0, "good_match": 1, "reach": 2, "low_fit": 3}
+
+
+def served_sort_key(r: "MatchResult"):
+    """The order a selection is listed in once its labels are assigned: High
+    Priority, then Good Match, then Reach, each in canonical_sort_key order.
+    Each type is banded on its own scores and the types score on different
+    scales, so a score-ordered mixed list put an internship Reach above a
+    research Good Match. For a single type the labels already follow the
+    scores, so this is exactly the canonical order there."""
+    return (_BUCKET_ORDER[r.bucket], *canonical_sort_key(r))
 
 
 # --- Field matching utilities ---
@@ -2738,6 +2754,7 @@ def _rank_opportunity_unlocked(
         actionable=_is_actionable(opportunity, contact_checked_at),
         evidence_rank=_evidence_rank(opportunity, contact_checked_at),
         unknowns=_decision_unknowns(profile, opportunity),
+        opportunity_type=_normalize_type_key(opportunity.get("opportunity_type") or ""),
     )
 
 
@@ -2921,35 +2938,76 @@ def _bucket_thresholds(
     return floor_high, floor_good, floor_reach
 
 
-def _assign_bucket(
-    result: MatchResult,
-    thresholds: tuple[float, float, float],
-    *,
-    canonical_rank: int,
+def _histogram_thresholds(score_counts: Counter[float]) -> tuple[float, float, float]:
+    """``_bucket_thresholds`` read from a score histogram."""
+    descending_bands = sorted(score_counts.items(), reverse=True)
+
+    def score_at(index: int) -> float:
+        seen = 0
+        for score, count in descending_bands:
+            seen += count
+            if index < seen:
+                return score
+        raise IndexError(index)
+
+    return _bucket_thresholds(sum(score_counts.values()), score_at)
+
+
+def _assign_type_bands(
+    ordered: list[MatchResult],
+    thresholds_by_type: dict[str, tuple[float, float, float]],
 ) -> None:
-    hp_threshold, gm_threshold, reach_threshold = thresholds
-    if canonical_rank < HIGH_PRIORITY_TARGET_COUNT and result.final_score >= hp_threshold:
-        result.bucket = "high_priority"
-    elif result.final_score >= gm_threshold:
-        result.bucket = "good_match"
-    elif result.final_score >= reach_threshold:
-        result.bucket = "reach"
-    else:
-        result.bucket = "low_fit"
+    """Label canonically ordered results against their own type's cutoffs.
+
+    Cutoffs come from each type's own scores, so ticking another type can no
+    longer move a row in or out of view, or between Good Match and Reach: a
+    shared p40 did both (F2, 2026-09-30). What a selection shares is the High
+    Priority shortlist. Each type nominates the rows it would shortlist alone,
+    and the first HIGH_PRIORITY_TARGET_COUNT nominees in canonical order keep
+    the label; a nominee past them cleared its type's high cutoff, so it is a
+    Good Match.
+
+    ``ordered`` may leave out rows below the absolute Reach floor, but never a
+    row ranked above one it keeps, because a row's place in its type is
+    counted here.
+    """
+    type_rank: Counter[str] = Counter()
+    shortlisted = 0
+    for result in ordered:
+        high, good, reach = thresholds_by_type[result.opportunity_type]
+        nominated = (
+            type_rank[result.opportunity_type] < HIGH_PRIORITY_TARGET_COUNT
+            and result.final_score >= high
+        )
+        type_rank[result.opportunity_type] += 1
+        if nominated and shortlisted < HIGH_PRIORITY_TARGET_COUNT:
+            result.bucket = "high_priority"
+            shortlisted += 1
+        elif result.final_score >= good:
+            result.bucket = "good_match"
+        elif result.final_score >= reach:
+            result.bucket = "reach"
+        else:
+            result.bucket = "low_fit"
 
 
 def _assign_buckets(results: list[MatchResult]) -> None:
     """Assign each result's bucket from its current final_score. Expects results
-    sorted by canonical_sort_key. For >=10 results uses the strict top-N cap
-    + percentile banding; smaller sets fall back to the flat BUCKET_THRESHOLDS
-    floors. Mutates in place. Shared by rank_all and semantic_rerank so a
+    sorted by canonical_sort_key. Each opportunity type is banded on its own
+    scores: the strict top-N cap + percentile banding for a type with >=10
+    results, the flat BUCKET_THRESHOLDS floors below that. Mutates in place.
+    Shared by rank_all, semantic_rerank and the route's LLM rerank so a
     re-blended score never keeps a stale bucket label."""
-    thresholds = _bucket_thresholds(
-        len(results),
-        lambda index: results[index].final_score,
+    scores_by_type: defaultdict[str, list[float]] = defaultdict(list)
+    for result in results:
+        scores_by_type[result.opportunity_type].append(result.final_score)
+    _assign_type_bands(
+        results,
+        {
+            kind: _bucket_thresholds(len(scores), scores.__getitem__)
+            for kind, scores in scores_by_type.items()
+        },
     )
-    for index, r in enumerate(results):
-        _assign_bucket(r, thresholds, canonical_rank=index)
 
 
 def semantic_rerank(
@@ -3016,6 +3074,7 @@ def semantic_rerank(
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
     _assign_buckets(results)
+    results.sort(key=served_sort_key)
     return results
 
 
@@ -3301,7 +3360,7 @@ def rank_all(
     opportunities: list[dict],
     responsiveness: dict[str, dict] | None = None,
 ) -> list[MatchResult]:
-    """Rank all opportunities for a profile. Returns sorted by final_score desc."""
+    """Rank all opportunities for a profile, listed in served_sort_key order."""
     results = list(_iter_scored_results(profile, opportunities, responsiveness))
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
@@ -3311,6 +3370,7 @@ def rank_all(
     # #1 matches while equal-scored contactable peers sat below them.
     results.sort(key=canonical_sort_key)
     _assign_buckets(results)
+    results.sort(key=served_sort_key)
 
     if profile.get("exploring"):
         opportunities_by_id = _opportunity_lookup_for_results(opportunities, results)
@@ -3335,41 +3395,33 @@ def rank_visible_universe(
 ) -> RankedMatchUniverse:
     """Return the exact non-low-fit universe with bounded result retention.
 
-    Every survivor of the canonical hard/minimum filters is still scored.  A
-    compact histogram retains the complete score distribution needed by the
-    percentile bucket policy, while full ``MatchResult`` objects below the
-    absolute Reach floor are released immediately.  Because the effective
-    Reach threshold is always at least that floor, no discarded object could
-    become visible.
+    Every survivor of the canonical hard/minimum filters is still scored.  One
+    compact histogram per opportunity type retains the complete score
+    distribution its percentile bands need, while full ``MatchResult`` objects
+    below the absolute Reach floor are released immediately.  Because every
+    type's effective Reach threshold is at least that floor, no discarded
+    object could become visible.
     """
     floor_reach = float(BUCKET_THRESHOLDS[2][0])
-    score_counts: Counter[float] = Counter()
+    score_counts: defaultdict[str, Counter[float]] = defaultdict(Counter)
     retained: list[MatchResult] = []
 
     for result in _iter_scored_results(profile, opportunities, responsiveness):
-        score_counts[result.final_score] += 1
+        score_counts[result.opportunity_type][result.final_score] += 1
         if result.final_score >= floor_reach:
             retained.append(result)
 
-    result_count = sum(score_counts.values())
-    descending_bands = sorted(score_counts.items(), reverse=True)
-
-    def score_at(index: int) -> float:
-        seen = 0
-        for score, count in descending_bands:
-            seen += count
-            if index < seen:
-                return score
-        raise IndexError(index)
-
-    thresholds = _bucket_thresholds(result_count, score_at)
+    result_count = sum(sum(counts.values()) for counts in score_counts.values())
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
     visible: list[MatchResult] = []
-    # The histogram gives score thresholds, but cannot choose among a tied
+    # The histograms give score thresholds, but cannot choose among a tied
     # boundary. Assign the strict shortlist in the same total order as rank_all.
     retained.sort(key=canonical_sort_key)
-    for index, result in enumerate(retained):
-        _assign_bucket(result, thresholds, canonical_rank=index)
+    _assign_type_bands(
+        retained,
+        {kind: _histogram_thresholds(counts) for kind, counts in score_counts.items()},
+    )
+    for result in retained:
         buckets[result.bucket] += 1
         if result.bucket != "low_fit":
             visible.append(result)
@@ -3377,6 +3429,7 @@ def rank_visible_universe(
     # Everything not retained was strictly below the absolute Reach floor and
     # therefore low_fit under every percentile distribution.
     buckets["low_fit"] += result_count - len(retained)
+    visible.sort(key=served_sort_key)
 
     if profile.get("exploring"):
         opportunity_lookup = _opportunity_lookup_for_results(opportunities, visible)

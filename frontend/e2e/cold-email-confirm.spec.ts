@@ -1,6 +1,6 @@
 import { contactEventReceiptForRequest } from './contact-ledger-receipt';
 import { contactReceiptForRequest } from './email-contact-receipt';
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Route } from '@playwright/test';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import { en, zh } from '../src/i18n/dictionaries';
 
@@ -322,10 +322,37 @@ test.describe('Cold Email — a clipboard that refuses', () => {
 });
 
 
-// M29: real CSS geometry, with every generated draft and AI response stubbed.
-// These fixtures also retain the independent confirmation boundary: changing
-// layout and copying a draft never records a send.
-test.describe('Cold Email reachable editing workspace', () => {
+// M29: "with long content, on a phone, with the keyboard up and at 200% zoom,
+// the input and the primary actions stay visible and usable." Real CSS
+// geometry, with every generated draft and AI response stubbed. These
+// fixtures also retain the independent confirmation boundary: changing layout
+// and copying a draft never records a send.
+
+/** `next dev` pins its Dev Tools badge over the bottom-left corner. The
+ *  production build users get has none, so it must not cover what is measured. */
+async function hideDevBadge(page: Page) {
+  await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+    const style = document.createElement('style'); style.textContent = 'nextjs-portal { display: none !important; }'; document.head.append(style);
+  }));
+}
+
+/** Whole, in the viewport and on top at its centre: usable where it stands. */
+async function inView(locator: Locator) {
+  await expect(locator).toBeInViewport({ ratio: 1 });
+  expect(await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return !!hit && (hit === element || element.contains(hit));
+  })).toBe(true);
+}
+
+/** Copy and Open in Email, checked where the student happens to be scrolled. */
+async function actionsInView(page: Page) {
+  await inView(page.getByRole('button', { name: 'Copy', exact: true }));
+  await inView(page.getByRole('button', { name: 'Open in Email', exact: true }));
+}
+
+test.describe('Cold Email editing workspace keeps its actions in view', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   for (const viewport of [
@@ -334,15 +361,17 @@ test.describe('Cold Email reachable editing workspace', () => {
     { width: 320, height: 568 },
     { width: 1280, height: 500 },
   ]) {
-    test(`${viewport.width}x${viewport.height}: long guidelines, request, footer and close remain reachable`, async ({ page }) => {
+    test(`${viewport.width}x${viewport.height}: Copy and Open in Email stay in view while the guidelines, request and close are used`, async ({ page }) => {
       await page.setViewportSize(viewport);
       const net = await installNetwork(page, { labType: 'dry', body: VARIANT.body.repeat(20) });
+      await hideDevBadge(page);
       await openModal(page);
       const workspace = page.getByTestId('cold-email-workspace');
       const guidelines = page.getByRole('region', { name: 'Writing guidelines' });
       const request = page.getByRole('textbox', { name: 'Request an edit' });
       const submit = page.getByRole('button', { name: 'Submit request' });
       const close = page.getByRole('button', { name: 'Close email editor' });
+      await actionsInView(page);
 
       await guidelines.scrollIntoViewIfNeeded();
       await expect(guidelines).toBeInViewport();
@@ -352,23 +381,54 @@ test.describe('Cold Email reachable editing workspace', () => {
       await guidelines.evaluate((el) => { el.scrollTop = el.scrollHeight; });
       expect(await guidelines.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
       await expect(page.getByTestId('tips-read-more')).toBeInViewport();
+      await actionsInView(page);
 
       await request.scrollIntoViewIfNeeded();
-      await expect(request).toBeInViewport({ ratio: 1 });
-      await expect(submit).toBeInViewport({ ratio: 1 });
+      await inView(request);
+      await inView(submit);
       await request.fill('Keep the original facts and shorten the introduction.');
       await expect(submit).toBeEnabled();
       await expect(close).toBeInViewport({ ratio: 1 });
+      await actionsInView(page);
 
       await page.getByRole('button', { name: 'Copy', exact: true }).click();
-      await expect(page.getByTestId('cold-email-footer')).toBeInViewport();
-      await page.getByText(en.coldEmail.sentQuestion, { exact: true }).scrollIntoViewIfNeeded();
-      await expect(page.getByText(en.coldEmail.sentQuestion, { exact: true })).toBeInViewport();
+      // The question Copy raises appears beside it, not at the end of the scroll.
+      await inView(page.getByText(en.coldEmail.sentQuestion, { exact: true }));
+      await inView(confirmButton(page));
+      await expect(request).toHaveValue('Keep the original facts and shorten the introduction.');
       expect(net.confirms).toHaveLength(0);
       expect(net.otherWrites).toHaveLength(0);
       expect(await workspace.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
       await close.click();
       await expect(page.getByRole('dialog')).toBeHidden();
+    });
+  }
+
+  // Walked 2026-09-30: with writing guidelines shown, the request log was 54px
+  // tall and a pending Original/Suggestion card showed only its "Reject
+  // suggestion" button. At the shortest two-column height the tips give way
+  // first but keep a scrollable strip.
+  for (const size of [{ width: 1280, height: 800, tips: 50 }, { width: 1280, height: 720, tips: 30 }]) {
+    test(`${size.width}x${size.height}: a pending suggestion is read in a real scroll area, not a two-line strip`, async ({ page }) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await installNetwork(page, { labType: 'dry', body: VARIANT.body.repeat(20) });
+      await page.route('**/api/cold-email/refine', (route) => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ opportunity_id: route.request().postDataJSON().opportunity_id, target_version: route.request().postDataJSON().expected_target_version, contact_context_receipt: contactReceiptForRequest(route.request().postDataJSON()), body: VARIANT.body.repeat(21), method: 'llm' }),
+      }));
+      await openModal(page);
+      const history = page.getByTestId('cold-email-chat-history');
+      const guidelines = page.getByTestId('cold-email-guidelines');
+      const request = page.getByRole('textbox', { name: 'Request an edit' });
+      await request.fill('Make it shorter.');
+      await page.getByRole('button', { name: 'Submit request' }).click();
+      await expect(page.getByRole('region', { name: 'Pending edit suggestion' })).toBeVisible();
+      expect(await history.evaluate((el) => el.clientHeight)).toBeGreaterThanOrEqual(120);
+      expect(await guidelines.evaluate((el) => el.clientHeight)).toBeGreaterThanOrEqual(size.tips);
+      expect(await guidelines.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+      await expect(request).toBeInViewport({ ratio: 1 });
+      await expect(page.getByTestId('cold-email-footer')).toBeInViewport();
     });
   }
 
@@ -413,6 +473,69 @@ test.describe('Cold Email reachable editing workspace', () => {
 });
 
 
+// The three sizes the stranger walk measured (2026-09-30): at 390x844 Copy sat
+// 844px below the fold of a 1,900px scroll column, and at 640x400 the 90dvh
+// dialog left a 209px strip with Copy 776px down. 1280x800 at 200% zoom is a
+// 640x400 CSS viewport at two device pixels per CSS pixel.
+const LONG_BODY = `${VARIANT.body}\n\n${'I have been building research tools in Python and testing them with students. '.repeat(18)}`;
+for (const size of [
+  { name: '390x844 phone', use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    keyboardUp: { width: 390, height: 500 } },
+  { name: '640x400 window', use: { viewport: { width: 640, height: 400 }, deviceScaleFactor: 1 } },
+  { name: '1280x800 at 200% zoom', use: { viewport: { width: 640, height: 400 }, deviceScaleFactor: 2 } },
+]) {
+  test.describe(`Cold Email at ${size.name}`, () => {
+    test.use({ ...size.use, permissions: ['clipboard-read', 'clipboard-write'] });
+
+    test('a long draft keeps Copy and Open in Email in view and usable, and the request is reached without losing the draft', async ({ page }) => {
+      const net = await installNetwork(page, { labType: 'dry', body: LONG_BODY });
+      await hideDevBadge(page);
+      await openModal(page);
+      const body = page.locator('#cold-email-body');
+      const request = page.getByRole('textbox', { name: 'Request an edit' });
+      const viewport = page.viewportSize()!;
+      // A short window gets the whole height rather than 90dvh of it, and the
+      // pinned actions end at its bottom edge (once the 6px open slide settles).
+      await expect.poll(async () => {
+        const footer = await page.getByTestId('cold-email-footer').boundingBox();
+        return Math.abs(footer!.y + footer!.height - viewport.height);
+      }).toBeLessThanOrEqual(1);
+      await actionsInView(page);
+
+      await body.scrollIntoViewIfNeeded();
+      await expect(body).toBeInViewport();
+      const edited = `${LONG_BODY}\nP.S. Edited on a small screen.`;
+      await body.fill(edited);
+      await actionsInView(page);
+
+      await request.scrollIntoViewIfNeeded();
+      await inView(request);
+      await request.fill('Keep every fact and shorten the opening.');
+      await actionsInView(page);
+      if (size.keyboardUp) {
+        // A shorter viewport stands in for the space a soft keyboard takes;
+        // this is not a real-device keyboard claim.
+        await page.setViewportSize(size.keyboardUp);
+        await request.scrollIntoViewIfNeeded();
+        await inView(request);
+        await actionsInView(page);
+      }
+      await expect(body).toHaveValue(edited);
+      await expect(request).toHaveValue('Keep every fact and shorten the opening.');
+      await expect(page.getByRole('button', { name: 'Open in Email', exact: true })).toBeEnabled();
+
+      await page.getByRole('button', { name: 'Copy', exact: true }).click();
+      await inView(page.getByText(en.coldEmail.sentQuestion, { exact: true }));
+      await inView(confirmButton(page));
+      await expect(body).toHaveValue(edited);
+      expect(net.confirms).toHaveLength(0);
+      expect(net.otherWrites).toHaveLength(0);
+      expect(await page.getByTestId('cold-email-workspace').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    });
+  });
+}
+
+
 test.describe('Cold Email short-screen state recovery', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -433,38 +556,41 @@ test.describe('Cold Email short-screen state recovery', () => {
       expect(net.otherWrites).toHaveLength(0);
     });
 
-    test(`${locale} 320x568: missing recipient and failed confirmation keep controls reachable`, async ({ page }) => {
+    test(`${locale} 320x568: missing recipient and failed confirmation keep the actions and their outcome in view`, async ({ page }) => {
       await page.setViewportSize({ width: 320, height: 568 });
       const net = await installNetwork(page, { hold: true, labType: 'dry', recipient: '' });
+      await hideDevBadge(page);
       const { supabaseConfigured } = await openModal(page, { locale });
       const openEmail = page.getByRole('button', { name: copy.openInEmail, exact: true });
-      await openEmail.scrollIntoViewIfNeeded();
-      await expect(openEmail).toBeInViewport({ ratio: 1 });
+      const copyDraft = page.getByRole('button', { name: copy.copy, exact: true });
+      await inView(openEmail);
+      await inView(copyDraft);
       await expect(openEmail).toBeDisabled();
-      await page.getByRole('button', { name: copy.copy, exact: true }).click();
+      await copyDraft.click();
       expect(net.confirms).toHaveLength(0);
       expect(net.otherWrites).toHaveLength(0);
+      await inView(confirmButton(page));
       await confirmButton(page).click();
-      await expect(page.getByText(copy.contactInvalid, { exact: true })).toBeVisible();
+      await inView(page.getByText(copy.contactInvalid, { exact: true }));
       expect(net.confirms).toHaveLength(0);
       expect(net.otherWrites).toHaveLength(0);
       await page.locator('#cold-email-to').fill('student-entered@example.edu');
-      await page.getByRole('button', { name: copy.copy, exact: true }).click();
+      await inView(copyDraft);
+      await copyDraft.click();
       await confirmButton(page).click();
       if (supabaseConfigured) {
         await expect.poll(() => net.confirms.length).toBe(1);
         await expect(confirmButton(page)).toHaveText(copy.confirming);
         net.release('fail');
       }
-      const failure = page.getByText(copy.confirmFailed, { exact: true });
-      await failure.scrollIntoViewIfNeeded();
-      await expect(failure).toBeInViewport({ ratio: 1 });
-      await confirmButton(page).scrollIntoViewIfNeeded();
-      await expect(confirmButton(page)).toBeInViewport({ ratio: 1 });
+      await inView(page.getByText(copy.confirmFailed, { exact: true }));
+      await inView(confirmButton(page));
       await expect(confirmButton(page)).toHaveText(copy.confirmRetry);
       const request = page.getByRole('textbox', { name: copy.requestLabel });
       await request.scrollIntoViewIfNeeded();
-      await expect(request).toBeInViewport({ ratio: 1 });
+      await inView(request);
+      await inView(openEmail);
+      await inView(copyDraft);
       await expect(page.getByRole('button', { name: copy.closeAria })).toBeInViewport({ ratio: 1 });
       expect(await page.getByTestId('cold-email-workspace').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     });

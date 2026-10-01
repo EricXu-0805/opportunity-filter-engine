@@ -98,6 +98,8 @@ _WET_LAB_KEYWORDS = frozenset({
     "fluorescence", "flow cytometry", "crispr", "sequencing", "rna-seq",
     "wet lab", "wet bench", "assay", "bench work", "protein purification",
     "gel electrophoresis", "pipetting", "sterile technique",
+    # bench work that read wet only through "medical"/"medicine" beside it
+    "drug delivery", "biomaterial", "nanomedicine", "regenerative medicine",
 })
 
 _DRY_LAB_KEYWORDS = frozenset({
@@ -116,6 +118,8 @@ _DRY_LAB_KEYWORDS = frozenset({
     "applied math", "statistics", "operations research", "bioinformatics",
     "computational biology", "computational neuroscience",
     "human-computer interaction", "hci",
+    "medical imaging", "computational imaging", "image processing", "image analysis",
+    "image reconstruction", "signal processing", "inverse problems", "compressed sensing",
     # techniques / tools
     "python", "pytorch", "tensorflow", "jax", "scikit-learn", "pandas",
     "numpy", "kubernetes", "docker", "aws", "gcp", "azure",
@@ -123,6 +127,23 @@ _DRY_LAB_KEYWORDS = frozenset({
     "c++", "cuda", "github", "git", "linux", "command-line", "shell",
     "algorithm", "data structure", "simulation", "modeling",
 })
+
+# Where research is applied, not how it is done: "medical imaging" and "deep
+# learning for clinical decision-making" name computational groups as often as
+# bench ones. Two imaging professors in Bioengineering were told to lead with
+# PCR and cell culture on the strength of these words (faculty-bioe-4156cbf9,
+# faculty-bioe-b4e047a5, walked 2026-09-30). A department name keeps them, as
+# whole words, as the prior it always was ("College of Medicine"); anywhere else
+# they are not bench evidence, inside a longer word either ("telemedicine",
+# "medicalization"). Bench work named after the field it serves is read before
+# the field is set aside: setting "medicine" aside inside "Drug Delivery and
+# Nanomedicine" and "Tissue Engineering and Regenerative Medicine" moved
+# faculty-cornell-mae-89be0901 and faculty-uf-mse-637c113b to Dry Lab.
+# "biomedical" stays: discounting it too moved 89 more records, and among them
+# "biomedical research" summer programs and an mRNA-vaccine pharmaceutics group
+# lost their only wet signal.
+_APPLICATION_DOMAIN_WORDS = ("medicine", "medical", "clinical")
+_FIELD_NAMED_BENCH_WORK = ("regenerative medicine", "nanomedicine")
 
 # Departments this classifier has no category for. A business school is not
 # a wet lab, not a dry lab and not the humanities, yet every one of its
@@ -190,19 +211,25 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
          getting a "highlight your IRB training" template) would feel
          badly off-target.
     """
-    def _score(text: str, vocab: frozenset[str]) -> int:
+    def _score(text: str, vocab: frozenset[str], ignore: tuple[str, ...] = (),
+               whole_words: tuple[str, ...] = ()) -> int:
         if not text:
             return 0
         lower = text.lower()
+        hits = 0
+        if ignore:
+            # Bench work named after a field set aside below is still bench work.
+            hits += sum(work in lower for work in _FIELD_NAMED_BENCH_WORK)
+        for word in ignore:
+            lower = lower.replace(word, "\x00")
         # Longest entry first, blanking each match: nested entries must not
         # stack on one span — "mathematical biology" is ONE wet signal, not
         # two ("biology" + "bio"), and "microbiology" is one, not three.
         # The stacking systematically inflated wet scores (that vocabulary
         # is nesting-heavy) and routed theory groups to bench-technique
         # guidance (faculty-ece-817eb026, observed live 2026-08-07).
-        hits = 0
         for kw in sorted(vocab, key=lambda k: (-len(k), k)):
-            if len(kw) <= 4:
+            if len(kw) <= 4 or kw in whole_words:
                 # Short entries only count as standalone words: bare
                 # substrings turn person/school names into phantom signals —
                 # "law" and "aws" both live inside "Lawson", "irb" inside
@@ -210,7 +237,8 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
                 # a humanities point. "bio" alone keeps prefix rights
                 # ("biophysics", "bioengineering" are real wet signals not in
                 # the vocabulary as words) but must not fire mid-word
-                # ("autobiographical").
+                # ("autobiographical"). A field word in a department name is
+                # read the same way: a telemedicine program is no medical school.
                 pattern = _entry_pattern(kw)
                 if pattern.search(lower):
                     hits += 1
@@ -243,11 +271,11 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     # because UIUC department names are the cleanest classifier we have
     # (e.g. "Molecular and Cellular Biology" is unambiguously wet).
     wet = (
-        3 * _score(department, _WET_LAB_KEYWORDS)
-        + 2 * _score(title, _WET_LAB_KEYWORDS)
-        + 2 * _score(lab, _WET_LAB_KEYWORDS)
-        + 1 * _score(keywords_text, _WET_LAB_KEYWORDS)
-        + 1 * _score(desc, _WET_LAB_KEYWORDS)
+        3 * _score(department, _WET_LAB_KEYWORDS, whole_words=_APPLICATION_DOMAIN_WORDS)
+        + 2 * _score(title, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 2 * _score(lab, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 1 * _score(keywords_text, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
+        + 1 * _score(desc, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
     )
     dry = (
         3 * _score(department, _DRY_LAB_KEYWORDS)
@@ -271,9 +299,14 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     if wet == 0 and _score(department, _BUSINESS_KEYWORDS):
         return None
 
-    # All-zero (no signal) -> default to dry.
+    # All-zero (no signal) -> default to dry. A record whose only signal was
+    # the field its work serves ("Medical Ethics", "clinical trial
+    # transparency") gets no claim instead: the dry default would tell a
+    # theologian or a nurse to link a GitHub project.
     if wet == 0 and dry == 0 and hum == 0:
-        return "dry"
+        applied = any(word in text for word in _APPLICATION_DOMAIN_WORDS
+                      for text in (title, lab, keywords_text, desc))
+        return None if applied else "dry"
 
     # Pick the leader. Ties resolve in order: wet > humanities > dry,
     # which prevents a wet-lab posting with one "machine learning"
@@ -415,9 +448,36 @@ def _stated_keywords(opportunity: dict) -> list[str]:
     return opportunity.get("keywords") or []
 
 
+# Who and where a professor is, not what they study. faculty-bioe-b4e047a5
+# lists "medical physicist", "carle cancer center" and "urbana" between her
+# research areas, and the template told her "your work on ..., and medical
+# physicist" (walked 2026-09-30). Only a whole keyword that is a role or a named
+# institution (a few words, none of them of/for/and/the..., ending in the role
+# or singular institution noun) or the record's own city is set aside:
+# "technical communication for engineers" and "data centers" are still topics.
+_NO_FUNCTION_WORD = r"(?!(?:of|for|in|on|at|to|with|and|the)\b)"
+_ROLE_KEYWORD_RE = re.compile(
+    rf"^(?:{_NO_FUNCTION_WORD}[\w-]+\s+){{0,2}}(?:physicists?|professors?|lecturers?|directors?|chairs?|"
+    r"deans?|scientists?|researchers?|fellows?|postdocs?|physicians?|surgeons?|clinicians?|engineers?|"
+    r"investigators?)$", re.I)
+_INSTITUTION_KEYWORD_RE = re.compile(
+    rf"^(?:{_NO_FUNCTION_WORD}[\w&.'-]+\s+){{0,3}}(?:center|centre|hospital|clinic|institute|university|"
+    r"college|school|department|laboratory|lab)$", re.I)
+
+
+def _topic_keywords(opportunity: dict) -> list[str]:
+    """Stated keywords that can follow "your work on"."""
+    places = {part.strip().casefold() for part in re.split(r"[-,/]", str(opportunity.get("location") or ""))
+              if len(part.strip()) > 2}
+    return [kw for kw in _stated_keywords(opportunity)
+            if kw.lower() not in _EMAIL_GENERIC_KW
+            and not _ROLE_KEYWORD_RE.match(kw.strip())
+            and not _INSTITUTION_KEYWORD_RE.match(kw.strip())
+            and kw.strip().casefold() not in places]
+
+
 def _infer_research_topic(opportunity: dict) -> str:
-    keywords = _stated_keywords(opportunity)
-    specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
+    specific = _topic_keywords(opportunity)
 
     if specific:
         if len(specific) <= 2:
@@ -583,11 +643,9 @@ def _usable_research_phrase(raw: str) -> str:
 
 
 def _infer_research_area(opportunity: dict) -> str:
-    keywords = _stated_keywords(opportunity)
-    if keywords:
-        specific = [kw for kw in keywords if kw.lower() not in _EMAIL_GENERIC_KW]
-        if specific:
-            return specific[0]
+    specific = _topic_keywords(opportunity)
+    if specific:
+        return specific[0]
     if faculty_contact_claims_unverified(opportunity):
         metadata = opportunity.get("metadata") or {}
         raw = str(metadata.get("research_areas_raw") or "").strip()
