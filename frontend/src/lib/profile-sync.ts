@@ -4363,16 +4363,13 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       // Revision 0 is the "no row yet" baseline — here, an edit made while
       // this browser's own create was unanswered. The server refuses every
       // revision-0 patch that is not a complete create, before it looks the
-      // row up, so sending it fails the same way forever. When the row
-      // confirmed since holds nothing else for these fields, nothing can be
-      // overwritten: the CAS answer (expected 0, current N) is taken against
-      // that row and rebased like any other conflict. A field the row holds
-      // other content for is a real disagreement that a local rebase must not
-      // settle; that write is sent as before.
+      // row up, so sending it fails the same way forever. The CAS answer
+      // (expected 0, current N) is taken against the row confirmed since and
+      // handled like any other conflict: fields the row holds nothing else
+      // for are rebased, and a field it holds other content for is locked as
+      // a question for the student, never settled locally.
       const known = env?.confirmed ?? null;
-      const onKnownRow = pending.baseRevision === 0 && !!known
-        && !isCompleteDocument(patch as unknown as ProfileData)
-        && resolveConflict({ ...pending, dirtyKeys: sendKeys as string[] }, known.profile).conflictKeys.length === 0;
+      const onKnownRow = pending.baseRevision === 0 && !!known && !isCompleteDocument(patch as unknown as ProfileData);
       if (onKnownRow) localPasses += 1;
       const outcome: ProfilePatchOutcome = onKnownRow && known
         ? { status: 'conflict', revision: known.revision, profile: known.profile as unknown as Record<string, unknown> }

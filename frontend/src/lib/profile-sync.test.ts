@@ -5344,6 +5344,49 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: resumeKeys }]);
   });
 
+  it('asks about a field the created row holds other content for, instead of sending a partial create forever', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    // The create sends the whole form, and the form already holds a résumé
+    // that no edit recorded.
+    const form: ProfileData = { ...FULL, skills: [], resume_text: 'First résumé.', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+
+    // A second résumé lands against revision 0 while that create is out. The
+    // created row then holds other content for the field, so no local pass
+    // may settle it, and a revision-0 patch is refused every time: it is a
+    // question for the student, like any other disagreement.
+    const edited: ProfileData = { ...form, resume_text: 'Second résumé.' };
+    expect(recordProfileIntent(edited, ['resume_text'], token, { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+    expect(server.row).toMatchObject({ resume_text: 'First résumé.' });
+
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(edited, ['resume_text'], token, { allowCreate: true });
+    // The résumé and what was read from it are one question.
+    const resumeKeys = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: resumeKeys });
+    expect(server.seen.slice(1), 'no partial create goes out').toEqual([]);
+
+    const answered = await answerConflict(resumeKeys, 'local', token, edited);
+    expect(answered.status).toBe('saved');
+    expect(server.row).toMatchObject({ resume_text: 'Second résumé.', college: 'Grainger' });
+    expect(server.seen.slice(1).map((sent) => sent.expected)).toEqual([1]);
+    expect(server.seen[1].keys).toContain('resume_text');
+  });
+
   it('still saves the untouched half when another device\'s save collides with one field after the create', async () => {
     loadProfileMock.mockResolvedValue(absent());
     await hydrateProfile();
