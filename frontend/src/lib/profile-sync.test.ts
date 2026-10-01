@@ -5343,4 +5343,41 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
     expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: resumeKeys }]);
   });
+
+  it('still saves the untouched half when another device\'s save collides with one field after the create', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+
+    // Another device stores a different résumé before this one flushes. The
+    // résumé and what was read from it are theirs to decide now; the added
+    // skill is not, and the local pass must not have used up the one rebase
+    // that sends it.
+    server.elsewhere({ resume_text: 'Another device\'s résumé.' });
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] });
+    expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: [],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] });
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: ['skills'] }]);
+  });
 });
