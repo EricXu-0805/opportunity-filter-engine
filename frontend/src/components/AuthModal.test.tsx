@@ -232,6 +232,52 @@ describe('AuthModal — signin phase', () => {
     expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
   });
 
+  // The contact-reveal sign-in on a detail page goes straight to the
+  // existing-account link, so a guest never reaches the email-taken
+  // recovery above, yet the same merge leaves its tracker files behind.
+  async function settledAuth() {
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalled());
+    await act(async () => { await Promise.resolve(); });
+  }
+
+  it('tells a guest before the contact sign-in that its tracker files stay behind', async () => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockSignInExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
+    render(<AuthModal />);
+    await settledAuth();
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(mockSignInExisting).toHaveBeenCalled());
+    expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an account session on the contact sign-in', { open: true, phase: 'signin', reason: 'contact-reveal' }, PERMANENT],
+    // The guest's own "Sign in to reveal" links this session, keeping its files.
+    ['a guest on the contact sign-in that links the guest session', { open: true, phase: 'auto', reason: 'contact-reveal' }, ANON],
+    ['a guest on a forced sign-in for something else', { open: true, phase: 'signin' }, ANON],
+  ])('says nothing about tracker files up front for %s', async (_name, state, auth) => {
+    modalState = state;
+    mockGetAuthState.mockResolvedValue(auth);
+    render(<AuthModal />);
+    await settledAuth();
+    expect(screen.getByLabelText('auth.modal.signin.emailLabel')).toBeInTheDocument();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
+  });
+
+  it('shows the tracker-file notice once when the guest contact sign-in meets an identity conflict', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google');
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'identity-taken', message: 'raw lib message' });
+    render(<AuthModal />);
+    await settledAuth();
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await screen.findByTestId('auth-modal-oauth-signin-existing');
+    expect(screen.getAllByText('auth.modal.signin.guestFilesStay')).toHaveLength(1);
+  });
+
   it('does NOT render Sign-in-existing button for other error reasons', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'wait' });
     render(<AuthModal />);
