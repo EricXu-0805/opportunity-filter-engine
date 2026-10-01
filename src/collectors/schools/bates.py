@@ -158,10 +158,14 @@ SCHOOL: dict = {
                     keywords=["environment", "internship", "conservation",
                               "sustainability"],
                 ),
+                # academic-year/ is a 404, and so is the Academic Year Research
+                # Grant Information index it used to redirect to. The grant
+                # this record describes is that index's Bates Student Research
+                # Fund, whose page survives at its old address.
                 program(
                     "bates_academic_year_grants",
                     "Academic Year Research Grants (Bates)",
-                    f"{_SR}/academic-year/",
+                    f"{_SR}/academic-year-research-grant-information/bates-student-research-fund/",
                     "Grants supporting student research conducted during the "
                     "academic year across all disciplines, funding project "
                     "expenses, materials, and research-related travel in "

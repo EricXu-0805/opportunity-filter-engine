@@ -3,7 +3,9 @@ name: campus-seed-health
 # Configured seed URLs rot silently. Five of them 404'd for weeks before
 # anyone looked, and the only place it showed was one line among hundreds in
 # a refresh log. This asks the question on its own schedule, so a dead page
-# arrives as mail rather than as a mystery gap in the corpus.
+# arrives as mail rather than as a mystery gap in the corpus. Program record
+# URLs that are not seeds are probed too: they are where Match sends a
+# student, and one of Duke's was a 404 with no seed pointing at it.
 #
 # Sunday 12:00 UTC — after the national refresh has finished and well clear
 # of every school shard, so a burst of probes cannot compete with a live
@@ -23,7 +25,12 @@ env:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 1,083 pages (595 seeds, 488 program pages) at 8 workers took 2m18s on
+    # 2026-09-30, but each page may take 20 seconds to time out, and every one
+    # timing out once would take about 45 minutes. A run cut off here is
+    # cancelled and has found nothing either way, so the limit sits above that;
+    # test_campus_seed_health.py fails once the page count outgrows it.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
 
@@ -34,7 +41,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Probe every configured campus seed
+      - name: Probe every configured campus seed and program page
+        id: probe
         run: python3 scripts/check_campus_seeds.py
 
       # Dead man's switch (migration 032): the alert below fires when a seed is
@@ -47,15 +55,31 @@ jobs:
             -d '{"name":"campus_seed_health","detail":{"run_id":"${{ github.run_id }}"}}' \
             "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
 
-      - name: Alert operator on a dead seed page
+      # cancelled() as well as failure(): running past timeout-minutes cancels
+      # the job rather than failing it. Only a failed probe step means a page is
+      # gone, so the mail says which of the three ended the run.
+      - name: Alert operator on a gone page or an unfinished probe
         if: failure() || cancelled()
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+          JOB_STATUS: ${{ job.status }}
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
             echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
             exit 0
+          fi
+          if [ "$PROBE_OUTCOME" = "failure" ]; then
+            SUBJECT="JoinALab: a configured campus page is gone"
+            TEXT="At least one seed or program URL in schools/*.py now returns 404 or 410. A dead seed means the crawl no longer finds whatever that page used to link to; a dead program URL means Match sends students to a missing page.\n\nRun: $RUN_URL\n\nThe step output lists each dead URL with its school and whether it is a seed or a program page. Bot walls and timeouts are reported there too but never fail this check."
+          elif [ "$PROBE_OUTCOME" = "cancelled" ] || { [ "$JOB_STATUS" = "cancelled" ] && [ "$PROBE_OUTCOME" != "success" ]; }; then
+            SUBJECT="JoinALab: the campus page probe was cancelled or timed out"
+            TEXT="The weekly probe of the seed and program URLs in schools/*.py did not finish: it was cancelled, or it ran past the job's timeout-minutes. It reports pages only when it finishes, so this run says nothing about whether any page is gone. Re-run it from the run page.\n\nRun: $RUN_URL"
+          else
+            SUBJECT="JoinALab: the campus page probe run failed"
+            TEXT="A step after the probe failed or was cancelled (probe step: ${PROBE_OUTCOME:-not run}), so this run reported no page gone. The run page shows which step failed.\n\nRun: $RUN_URL"
           fi
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
@@ -63,6 +87,6 @@ jobs:
             -d "{
               \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
               \"to\": [\"$OPERATOR_EMAIL\"],
-              \"subject\": \"JoinALab: a configured campus seed page is gone\",
-              \"text\": \"At least one seed URL in schools/*.py now returns 404 or 410. The crawl still runs; it just no longer finds whatever that page used to link to.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe step output lists each dead URL with its school. Bot walls and timeouts are reported there too but never fail this check.\"
+              \"subject\": \"$SUBJECT\",
+              \"text\": \"$TEXT\"
             }" || true

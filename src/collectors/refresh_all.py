@@ -969,16 +969,19 @@ def refresh_all(
                     deep=deep,
                 )
             )
-            # Failure/revocation receipts are merge inputs, not public report
-            # content. Keep the collector's original evidence object untouched.
+            # Failure/revocation receipts and the listed program keys are merge
+            # inputs, not public report content. Keep the collector's original
+            # evidence object untouched.
             graph_evidence = dict(graph_evidence)
             condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
+            listed_program_keys = graph_evidence.pop("listed_program_keys", None) or ()
             added, updated = merge_campus_graph(
                 school_opps,
                 condition_capture_updates=condition_capture_updates,
                 complete_recursive_sources=set(
                     graph_evidence.get("complete_recursive_sources") or ()
                 ),
+                listed_program_keys=set(listed_program_keys),
                 school_slug=slug,
             )
             summary["sources"][f"campus_graph:{slug}"] = {

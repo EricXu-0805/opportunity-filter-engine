@@ -8,8 +8,17 @@ refresh log.
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
+import re
+import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+import requests
+import yaml
 
 _REPO = Path(__file__).resolve().parents[1]
 _SCRIPT = _REPO / "scripts" / "check_campus_seeds.py"
@@ -17,6 +26,44 @@ _spec = importlib.util.spec_from_file_location("check_campus_seeds", _SCRIPT)
 _checker = importlib.util.module_from_spec(_spec)
 sys.modules["check_campus_seeds"] = _checker
 _spec.loader.exec_module(_checker)
+
+
+def _school(slug, seeds, program_urls):
+    """The registry fields the canary reads: seeds and program URLs."""
+    return {
+        "school_slug": slug,
+        "sources": [{
+            "source_name": f"{slug}_programs",
+            "seeds": list(seeds),
+            "programs": [
+                {"key": f"program_{i}", "url": url}
+                for i, url in enumerate(program_urls)
+            ],
+        }],
+    }
+
+
+def _run(monkeypatch, capsys, registry, outcomes, *argv):
+    """Run the canary over ``registry`` with every request answered locally.
+
+    ``outcomes`` maps a URL to a status code or an exception to raise; any
+    other URL answers 200. Returns the exit code, stdout and each request.
+    """
+    from src.collectors import schools
+
+    calls = []
+
+    def get(url, **kwargs):
+        calls.append((url, kwargs))
+        outcome = outcomes.get(url, 200)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return SimpleNamespace(status_code=outcome)
+
+    monkeypatch.setattr(schools, "SCHOOL_CONFIGS", registry)
+    monkeypatch.setattr(requests, "get", get)
+    code = _checker.main(list(argv))
+    return code, capsys.readouterr().out, calls
 
 
 class TestClassify:
@@ -102,3 +149,263 @@ class TestSeedInventory:
         assert not (set(programs.values()) & dead)
         assert programs[("duke", "climate_plus")] == "https://iid.duke.edu/iid/climate/"
         assert programs[("duke", "climate_plus")] in seeds
+
+    def test_duke_lists_data_plus_and_climate_plus_once_each(self):
+        """Each program had a second record pointing at a dead page.
+
+        data_plus sent students to bigdata.duke.edu/data-summer-program/,
+        which now redirects to a 404 on iid.duke.edu; it was never a seed,
+        so the canary never probed it. climate_plus_x sent them to the
+        Nicholas Institute's climate-plus page, which answers curl and
+        python-requests with a 404 but a browser user agent, the canary's
+        included, with a 200 bot challenge, so the canary read the seed as
+        ok. Both duplicates go, along with the dead seed.
+
+        data_plus_x stays and moves to iiD's Data+ page. Its old bigdata URL
+        301s to /participate/data-plus/, which answers 200 but is only a
+        meta refresh to the iiD+ landing page, so curl -L calls it live
+        while a student sees no Data+ page at all.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = {
+            "https://bigdata.duke.edu/data-summer-program/",
+            "https://nicholasinstitute.duke.edu/climate-plus",
+        }
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert not (seeds & dead)
+        assert not (set(programs.values()) & dead)
+        assert ("duke", "data_plus") not in programs
+        assert ("duke", "climate_plus_x") not in programs
+        assert programs[("duke", "data_plus_x")] == "https://iid.duke.edu/iid/data/"
+        assert programs[("duke", "data_plus_x")] in seeds
+
+    def test_bates_academic_year_grants_point_at_the_student_research_fund(self):
+        """The first run that probed program pages found this one gone.
+
+        academic-year/ answers 404 to every client. It used to 301 to the
+        Academic Year Research Grant Information index, which the Wayback
+        Machine last saw live on 2026-06-16 and which is a 404 now too. The
+        grant the record describes, academic-year research expenses in any
+        discipline with a faculty endorsement, is the index's Bates Student
+        Research Fund, whose page still answers 200 at its old address and is
+        in the academics sitemap. The key stays, so the stored row
+        bates-1fa68fe1447a moves in place on the next Bates refresh.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://www.bates.edu/academics/student-research/academic-year/"
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in set(programs.values())
+        assert programs[("bates", "bates_academic_year_grants")] == (
+            "https://www.bates.edu/academics/student-research/"
+            "academic-year-research-grant-information/bates-student-research-fund/"
+        )
+
+
+class TestProgramPages:
+    """A program record's URL is the page a student lands on.
+
+    Duke's data_plus record pointed at a 404. Its URL was never a seed, so
+    the canary, which probed only seeds, never asked.
+    """
+
+    def test_a_dead_program_page_fails_the_run_like_a_dead_seed(
+        self, monkeypatch, capsys
+    ):
+        seed = "https://example.edu/research/"
+        dead = "https://example.edu/old-summer-program/"
+
+        code, out, _calls = _run(
+            monkeypatch, capsys, [_school("example", [seed], [dead])], {dead: 404}
+        )
+
+        assert code == 1
+        [line] = [line for line in out.splitlines() if dead in line]
+        assert line.split()[:4] == ["GONE", "example", "program", "404"]
+
+    def test_a_walled_or_unreachable_program_page_does_not_fail_the_run(
+        self, monkeypatch, capsys
+    ):
+        walled = "https://example.edu/walled/"
+        flaky = "https://example.edu/flaky/"
+
+        code, out, _calls = _run(
+            monkeypatch,
+            capsys,
+            [_school("example", [], [walled, flaky])],
+            {walled: 403, flaky: requests.ConnectTimeout()},
+            "--json",
+        )
+
+        assert code == 0
+        classes = {row["url"]: row["class"] for row in json.loads(out)["results"]}
+        assert classes == {walled: _checker.BLOCKED, flaky: _checker.UNREACHABLE}
+
+    def test_each_url_is_requested_once_even_when_programs_share_it(
+        self, monkeypatch, capsys
+    ):
+        """A program page that is already a seed, or that two programs share
+        (across schools too), costs the host one request, not one per
+        mention."""
+        seeded = "https://example.edu/summer/"
+        shared = "https://reu.example.org/"
+        registry = [
+            _school("example", [seeded], [seeded, shared]),
+            _school("other", [], [shared]),
+        ]
+
+        code, out, calls = _run(monkeypatch, capsys, registry, {}, "--json")
+
+        assert code == 0
+        assert sorted(url for url, _kwargs in calls) == sorted([seeded, shared])
+        payload = json.loads(out)
+        assert payload["probed"] == 2
+        assert {row["url"]: row["kind"] for row in payload["results"]} == {
+            seeded: "seed",
+            shared: "program",
+        }
+
+    def test_program_pages_are_probed_as_politely_as_seeds(
+        self, monkeypatch, capsys
+    ):
+        from src.collectors.campus_graph import HEADERS
+
+        seed = "https://example.edu/research/"
+        page = "https://example.edu/program/"
+
+        _code, _out, calls = _run(
+            monkeypatch, capsys, [_school("example", [seed], [page])], {}
+        )
+
+        assert {url for url, _kwargs in calls} == {seed, page}
+        for _url, kwargs in calls:
+            assert kwargs["timeout"] == 20
+            assert kwargs["headers"] is HEADERS
+
+    def test_every_configured_program_page_is_covered_exactly_once(self):
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        pages = [url for _slug, _src, url in _checker.configured_program_urls()]
+        configured = {
+            spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert len(pages) == len(set(pages))
+        assert not (set(pages) & seeds)
+        assert configured <= seeds | set(pages)
+        assert len(pages) > 100, "most program pages are not seeds"
+
+
+def _workflow_step(name_fragment: str) -> dict:
+    workflow = yaml.safe_load(
+        (_REPO / ".github" / "workflows" / "campus-seed-health.yml").read_text(encoding="utf-8")
+    )
+    return next(
+        step for step in workflow["jobs"]["probe"]["steps"]
+        if name_fragment in str(step.get("name", ""))
+    )
+
+
+class TestWorkflow:
+    """The weekly job: how long it may run, and what its mail claims.
+
+    Program pages took the probe from 595 pages to 1,083 under a 20-minute
+    job limit. Running past the limit cancels the job, and the alert, which
+    fires on cancellation too, said a page was gone.
+    """
+
+    def test_the_job_outlasts_every_page_timing_out_once(self):
+        workflow = yaml.safe_load(
+            (_REPO / ".github" / "workflows" / "campus-seed-health.yml").read_text(encoding="utf-8")
+        )
+        pages = len(_checker.configured_seeds()) + len(_checker.configured_program_urls())
+        every_page_times_out = pages * _checker.PROBE_TIMEOUT_S / _checker.DEFAULT_WORKERS
+        setup = 5 * 60
+
+        assert workflow["jobs"]["probe"]["timeout-minutes"] * 60 >= every_page_times_out + setup, (
+            f"{pages} pages take {every_page_times_out / 60:.0f} minutes if each times out once; "
+            "raise timeout-minutes in campus-seed-health.yml"
+        )
+
+    def test_the_alert_reads_how_the_job_and_the_probe_ended(self):
+        alert = _workflow_step("Alert operator")
+
+        assert {"failure()", "cancelled()"} <= set(re.findall(r"\w+\(\)", alert["if"]))
+        assert alert["env"]["JOB_STATUS"] == "${{ job.status }}"
+        assert alert["env"]["PROBE_OUTCOME"] == "${{ steps.probe.outcome }}"
+        assert _workflow_step("Probe every configured")["id"] == "probe"
+
+    @staticmethod
+    def _mail(tmp_path, job_status, probe_outcome):
+        """Run the alert step's script with a stand-in curl; return the mail it sends."""
+        script = re.sub(r"\$\{\{.*?\}\}", "JoinALab <alerts@example.com>", _workflow_step("Alert operator")["run"])
+        payload = tmp_path / "payload.json"
+        curl = tmp_path / "curl"
+        curl.write_text(
+            "#!/usr/bin/env bash\n"
+            f'while [ $# -gt 0 ]; do [ "$1" = -d ] && printf %s "$2" > "{payload}"; shift; done\n'
+        )
+        curl.chmod(0o755)
+        env = {
+            **os.environ,
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "RESEND_API_KEY": "re_test",
+            "OPERATOR_EMAIL": "ops@example.com",
+            "JOB_STATUS": job_status,
+            "PROBE_OUTCOME": probe_outcome,
+            "RUN_URL": "https://github.com/o/r/actions/runs/1",
+        }
+        result = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+        assert result.returncode == 0, result.stdout + result.stderr
+        mail = json.loads(payload.read_text(encoding="utf-8"))
+        assert "https://github.com/o/r/actions/runs/1" in mail["text"]
+        return mail
+
+    @pytest.mark.parametrize("probe_outcome", ["cancelled", "skipped"])
+    def test_a_cancelled_or_timed_out_run_says_so(self, tmp_path, probe_outcome):
+        mail = self._mail(tmp_path, "cancelled", probe_outcome)
+
+        assert mail["subject"] == "JoinALab: the campus page probe was cancelled or timed out"
+        assert "404" not in mail["text"]
+
+    def test_a_failed_probe_says_a_page_is_gone(self, tmp_path):
+        mail = self._mail(tmp_path, "failure", "failure")
+
+        assert mail["subject"] == "JoinALab: a configured campus page is gone"
+        assert "404 or 410" in mail["text"]
+
+    def test_another_failed_step_does_not_say_a_page_is_gone(self, tmp_path):
+        """The dead man's switch check-in runs after a clean probe."""
+        mail = self._mail(tmp_path, "failure", "success")
+
+        assert mail["subject"] == "JoinALab: the campus page probe run failed"
+        assert "404" not in mail["text"]
+
+    def test_a_run_cancelled_after_the_probe_found_a_dead_page_still_says_so(self, tmp_path):
+        mail = self._mail(tmp_path, "cancelled", "failure")
+
+        assert mail["subject"] == "JoinALab: a configured campus page is gone"
+
+    def test_a_run_cancelled_after_a_clean_probe_does_not_say_the_probe_was_cut_off(self, tmp_path):
+        mail = self._mail(tmp_path, "cancelled", "success")
+
+        assert mail["subject"] == "JoinALab: the campus page probe run failed"
+        assert "404" not in mail["text"]
