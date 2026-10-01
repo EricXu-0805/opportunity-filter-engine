@@ -315,12 +315,12 @@ describe('DashboardPage — an identity switch clears the lists in the transitio
 });
 
 describe('DashboardPage — one saved count with /favorites', () => {
-  function browserImport(id: string) {
+  function browserImport(id: string, fields: Record<string, unknown> = {}) {
     return {
       id, imported_at: '2026-09-30T16:00:00Z',
       opportunity: {
         source: 'text_parser', source_url: '', url: '', title: `Imported ${id}`,
-        description_raw: 'Pasted posting text.', extra_fields: {},
+        description_raw: 'Pasted posting text.', extra_fields: {}, ...fields,
       },
     };
   }
@@ -341,6 +341,57 @@ describe('DashboardPage — one saved count with /favorites', () => {
     mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'fav-2']));
     render(<DashboardPage />);
     await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('3'));
+  });
+
+  // M51: the saved count and the saved-deadline list have to reconcile. A
+  // browser import counted as saved was never listed, whatever its date; its
+  // date was read from the import, so the row says to verify it.
+  it('lists a browser import with a date under saved deadlines, to verify and open from favorites', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a', { deadline: isoDateIn(6), organization: 'Imported Org' })] };
+    render(<DashboardPage />);
+    const row = (await screen.findByText('Imported a')).closest('li')!;
+    expect(within(row).getByText('dashboard.deadlines.verifyDate')).toBeInTheDocument();
+    expect(within(row).getByText('dashboard.deadlines.browserImport')).toBeInTheDocument();
+    expect(within(row).getByText(isoDateIn(6))).toBeInTheDocument();
+    expect(within(row).getByText('Imported Org')).toBeInTheDocument();
+    expect(within(row).queryByText(/dashboard\.deadlines\.inDays/)).toBeNull();
+    expect(within(row).getByRole('link')).toHaveAttribute('href', '/favorites');
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('1');
+    expect(screen.queryByText('dashboard.deadlines.emptyTitle')).toBeNull();
+  });
+
+  it('orders browser imports among account deadlines by date, and keeps a date it cannot read', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      liveListing({ id: 'fav-1', title: 'Account Lab', deadline: isoDateIn(4), deadline_is_estimate: false }),
+    ]));
+    customStorageFeed.state = { status: 'ready', entries: [
+      browserImport('later', { deadline: 'March 2, 2027' }),
+      browserImport('sooner', { deadline: isoDateIn(2) }),
+      browserImport('undated'),
+    ] };
+    render(<DashboardPage />);
+    await screen.findByText('Account Lab');
+    const titles = screen.getAllByRole('listitem').map((item) => item.querySelector('p.text-sm')?.textContent);
+    expect(titles).toEqual(['Imported sooner', 'Account Lab', 'Imported later']);
+    expect(screen.getByText('March 2, 2027')).toBeInTheDocument();
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('4');
+  });
+
+  it('lists browser imports when every account favorite was unresolvable, beside the note', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['gone-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([], ['gone-1']));
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a', { deadline: isoDateIn(6) })] };
+    render(<DashboardPage />);
+    expect(await screen.findByText('Imported a')).toBeInTheDocument();
+    expect(screen.getByText('dashboard.unavailable.saved {"count":1}')).toBeInTheDocument();
+  });
+
+  it('lists no browser import while that storage is unreadable', async () => {
+    customStorageFeed.state = { status: 'damaged', entries: [browserImport('a', { deadline: isoDateIn(6) })] };
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'unknown'));
+    expect(screen.queryByText('Imported a')).toBeNull();
   });
 
   it('does not state a count it cannot read', async () => {

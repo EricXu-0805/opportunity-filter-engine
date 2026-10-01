@@ -23,7 +23,7 @@ import PushToggle from '@/components/PushToggle';
 import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import { getShortlistOpportunities, getStats } from '@/lib/api';
-import { useCustomImportStorageState } from '@/lib/custom-imports';
+import { useCustomImportStorageState, type CustomImport } from '@/lib/custom-imports';
 import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
@@ -80,7 +80,10 @@ interface FavoriteDeadline {
   organization?: string;
   deadline: string;
   deadlineIsEstimate: boolean | null;
-  daysLeft: number;
+  /** null: an imported date this page cannot count down to. */
+  daysLeft: number | null;
+  /** Imported and saved in this browser; opened from /favorites. */
+  browserImport?: true;
 }
 
 interface ReminderRow extends ReminderInfo {
@@ -114,10 +117,31 @@ interface ReminderState {
 interface FreshnessState { status: LoadStatus; ageHours: number | null }
 
 function sortDeadlines(a: FavoriteDeadline, b: FavoriteDeadline): number {
+  if (a.daysLeft === null || b.daysLeft === null) {
+    return Number(a.daysLeft === null) - Number(b.daysLeft === null);
+  }
   const aPast = a.daysLeft < 0;
   const bPast = b.daysLeft < 0;
   if (aPast !== bPast) return aPast ? 1 : -1;
   return aPast ? b.daysLeft - a.daysLeft : a.daysLeft - b.daysLeft;
+}
+
+/** The Saved tile counts these, so the saved-deadline list shows their dates.
+ *  Each date was read from the import, never reviewed: always "Verify date". */
+function browserDeadlines(entries: CustomImport[]): FavoriteDeadline[] {
+  return entries.flatMap((entry) => {
+    const deadline = entry.opportunity.deadline?.trim();
+    if (!deadline) return [];
+    return [{
+      id: entry.id,
+      title: entry.opportunity.title.trim() || undefined,
+      organization: entry.opportunity.organization?.trim() || undefined,
+      deadline,
+      deadlineIsEstimate: null,
+      daysLeft: daysUntil(deadline),
+      browserImport: true,
+    }];
+  });
 }
 
 export default function DashboardPage() {
@@ -214,9 +238,7 @@ export default function DashboardPage() {
               daysLeft: remaining,
             };
           })
-          .filter((item): item is FavoriteDeadline => item !== null)
-          .sort(sortDeadlines)
-          .slice(0, 8);
+          .filter((item): item is FavoriteDeadline => item !== null);
         setDeadlines({ status: 'ready', items, unavailableCount: unavailableIds.length });
       } catch {
         if (fresh()) setDeadlines({ status: 'error', items: [], unavailableCount: 0 });
@@ -423,6 +445,7 @@ export default function DashboardPage() {
   // /favorites counts opportunities imported and saved in this browser beside
   // account favorites, and hides its count while that storage is unreadable.
   const browserSaved = customStorage.status === 'ready' ? customStorage.entries.length : null;
+  const browserDeadlineItems = customStorage.status === 'ready' ? browserDeadlines(customStorage.entries) : [];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
@@ -491,7 +514,14 @@ export default function DashboardPage() {
           title={t('dashboard.deadlines.title')}
           subtitle={t('dashboard.deadlines.subtitle')}
         >
-          <DeadlineContent state={deadlines} savedCount={saved} browserSaved={browserSaved} onRetry={retry} t={t} />
+          <DeadlineContent
+            state={deadlines}
+            browserItems={browserDeadlineItems}
+            savedCount={saved}
+            browserSaved={browserSaved}
+            onRetry={retry}
+            t={t}
+          />
         </DashboardSection>
 
         <DashboardSection
@@ -812,12 +842,15 @@ function ErrorRow({
 
 function DeadlineContent({
   state,
+  browserItems,
   savedCount,
   browserSaved,
   onRetry,
   t,
 }: {
   state: DeadlineState;
+  /** Dated imports saved in this browser; empty while that storage is unreadable. */
+  browserItems: FavoriteDeadline[];
   savedCount: SavedState;
   /** Opportunities saved in this browser; null while that storage is unreadable. */
   browserSaved: number | null;
@@ -835,7 +868,8 @@ function DeadlineContent({
       />
     );
   }
-  if (state.items.length === 0 && state.unavailableCount > 0) {
+  const items = [...state.items, ...browserItems].sort(sortDeadlines).slice(0, 8);
+  if (items.length === 0 && state.unavailableCount > 0) {
     // Every saved item that could have shown a deadline is unresolvable.
     // Claiming "none of your saves list a deadline" here would be a
     // fabrication; say what actually happened instead.
@@ -855,7 +889,7 @@ function DeadlineContent({
       </>
     );
   }
-  if (state.items.length === 0) {
+  if (items.length === 0) {
     const noSaves = savedCount.status === 'ready' && savedCount.count === 0 && browserSaved === 0;
     return (
       <div className="px-6 py-9 text-center">
@@ -888,9 +922,10 @@ function DeadlineContent({
         />
       )}
       <ul className="divide-y divide-gray-50">
-        {state.items.map((item) => {
-          const exact = item.deadlineIsEstimate === false;
-          const urgent = exact && item.daysLeft >= 0 && item.daysLeft <= 7;
+        {items.map((item) => {
+          // A countdown only for a confirmed date this page can count to.
+          const exactDays = item.deadlineIsEstimate === false ? item.daysLeft : null;
+          const urgent = exactDays !== null && exactDays >= 0 && exactDays <= 7;
           const precisionLabel = item.deadlineIsEstimate === true
             ? t('dashboard.deadlines.estimated')
             : item.deadlineIsEstimate === null
@@ -899,12 +934,12 @@ function DeadlineContent({
           return (
             <li key={item.id}>
               <Link
-                href={`/opportunities/${encodeURIComponent(item.id)}`}
+                href={item.browserImport ? '/favorites' : `/opportunities/${encodeURIComponent(item.id)}`}
                 className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
               >
                 <div className={`w-20 shrink-0 text-right ${urgent ? 'text-red-600' : 'text-amber-600'}`}>
                   <p className="text-xs font-bold">
-                    {exact ? deadlineLabel(item.daysLeft, t) : precisionLabel}
+                    {exactDays !== null ? deadlineLabel(exactDays, t) : precisionLabel}
                   </p>
                   <p className="mt-0.5 text-[10px] text-gray-400">{item.deadline}</p>
                 </div>
@@ -914,6 +949,9 @@ function DeadlineContent({
                   </p>
                   {item.organization && (
                     <p className="mt-0.5 truncate text-xs text-gray-400">{item.organization}</p>
+                  )}
+                  {item.browserImport && (
+                    <p className="mt-0.5 text-xs text-amber-700">{t('dashboard.deadlines.browserImport')}</p>
                   )}
                 </div>
                 <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
