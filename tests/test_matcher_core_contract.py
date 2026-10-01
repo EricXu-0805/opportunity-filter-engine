@@ -412,3 +412,46 @@ class TestWhatTheAuditOfTheCandidateFound:
         ctx = ranker._filter_context(_profile(seeking_type=["Research", "", "  "]))
         assert ctx.seeking == {"research"}
         assert ranker.hard_exclusion(_opp(opportunity_type="research"), ctx) is None
+
+
+class TestAMixedSelectionListsItsLabelsInOrder:
+    """F2 follow-up, the owner's choice (2026-09-30): labels are cut per type
+    and the types score on different scales, so a score-ordered mixed list put
+    an internship Reach above a research Good Match. A selection now lists
+    High Priority, then Good Match, then Reach, each in canonical order. A
+    single type's list is unchanged: its labels already follow its scores."""
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_labels_never_step_back_and_one_type_keeps_the_canonical_order(self, seed, pinned_scores):
+        corpus = _generated_corpus(seed, pinned_scores)
+        rank = {label: index for index, label in enumerate(BUCKETS)}
+        for selection in SELECTIONS:
+            profile = _profile(seeking_type=selection)
+            for rows in (ranker.rank_all(profile, corpus), ranker.rank_visible_universe(profile, corpus).visible):
+                assert [rank[row.bucket] for row in rows] == sorted(rank[row.bucket] for row in rows)
+                for label in BUCKETS:
+                    group = [row.opportunity_id for row in rows if row.bucket == label]
+                    in_canonical = sorted((row for row in rows if row.bucket == label), key=ranker.canonical_sort_key)
+                    assert group == [row.opportunity_id for row in in_canonical]
+                if len(selection) == 1:
+                    assert rows == sorted(rows, key=ranker.canonical_sort_key)
+
+    def test_a_research_good_match_comes_before_a_higher_scoring_internship_reach(self, pinned_scores):
+        # Internships score higher across the board: their Reach band (71-82.5)
+        # sits above research's Good Match band (62-68).
+        corpus = []
+        for kind, top, step, count in (("research", 68.0, 1.0, 40), ("internship", 95.0, 0.5, 80)):
+            for index in range(count):
+                ident = f"{kind}-{index:02}"
+                corpus.append(_opp(ident, opportunity_type=kind))
+                pinned_scores[ident] = (top - index * step, 1)
+        rows = ranker.rank_visible_universe(_profile(seeking_type=["research", "internship"]), corpus).visible
+        position = {row.opportunity_id: index for index, row in enumerate(rows)}
+        pairs = [
+            (good, reach)
+            for good in rows if good.opportunity_type == "research" and good.bucket == "good_match"
+            for reach in rows if reach.opportunity_type == "internship" and reach.bucket == "reach"
+            if reach.final_score > good.final_score
+        ]
+        assert pairs, "the fixture must contain an internship Reach that outscores a research Good Match"
+        assert all(position[good.opportunity_id] < position[reach.opportunity_id] for good, reach in pairs)

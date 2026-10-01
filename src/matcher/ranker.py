@@ -161,6 +161,19 @@ def canonical_sort_key(r: "MatchResult"):
     return (-r.final_score, -r.evidence_rank, r.opportunity_id)
 
 
+_BUCKET_ORDER = {"high_priority": 0, "good_match": 1, "reach": 2, "low_fit": 3}
+
+
+def served_sort_key(r: "MatchResult"):
+    """The order a selection is listed in once its labels are assigned: High
+    Priority, then Good Match, then Reach, each in canonical_sort_key order.
+    Each type is banded on its own scores and the types score on different
+    scales, so a score-ordered mixed list put an internship Reach above a
+    research Good Match. For a single type the labels already follow the
+    scores, so this is exactly the canonical order there."""
+    return (_BUCKET_ORDER[r.bucket], *canonical_sort_key(r))
+
+
 # --- Field matching utilities ---
 
 MAJOR_GROUPS = {
@@ -3005,6 +3018,7 @@ def semantic_rerank(
     # and per-bucket counts match the re-ranked order (semantic=true used to
     # return stale buckets).
     _assign_buckets(results)
+    results.sort(key=served_sort_key)
     return results
 
 
@@ -3288,7 +3302,7 @@ def rank_all(
     opportunities: list[dict],
     responsiveness: dict[str, dict] | None = None,
 ) -> list[MatchResult]:
-    """Rank all opportunities for a profile. Returns sorted by final_score desc."""
+    """Rank all opportunities for a profile, listed in served_sort_key order."""
     results = list(_iter_scored_results(profile, opportunities, responsiveness))
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
@@ -3298,6 +3312,7 @@ def rank_all(
     # #1 matches while equal-scored contactable peers sat below them.
     results.sort(key=canonical_sort_key)
     _assign_buckets(results)
+    results.sort(key=served_sort_key)
 
     if profile.get("exploring"):
         opportunities_by_id = _opportunity_lookup_for_results(opportunities, results)
@@ -3356,6 +3371,7 @@ def rank_visible_universe(
     # Everything not retained was strictly below the absolute Reach floor and
     # therefore low_fit under every percentile distribution.
     buckets["low_fit"] += result_count - len(retained)
+    visible.sort(key=served_sort_key)
 
     if profile.get("exploring"):
         opportunity_lookup = _opportunity_lookup_for_results(opportunities, visible)
