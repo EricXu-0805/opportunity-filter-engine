@@ -85,6 +85,7 @@ from src.matcher.ranker import (
     corpus_generation_lock,
     expand_search_aliases,
     hard_exclusion,
+    is_dated_fit_reason,
     rank_all,
     rank_opportunity,
     rank_visible_universe,
@@ -718,13 +719,15 @@ def _result_set_id(
 
     Left out on purpose: the cards, which the key already names (this corpus
     through this release's projection), and the wording of reasons and steps.
-    Gap lines, next steps and a refine reason are text no view reads. Fit
-    reasons do feed the search filter, but every worker writes the same ones
-    on a given day, and hashing them would refuse every cursor over a list
-    holding a dated row at midnight ("Deadline in 3 days" turning into "2
-    days") to spare a search for that wording one shifted row. Hashing whole
-    rows and cards also cost about a second per cross-school snapshot of
-    84,092 rows; this costs about 45 ms.
+    Gap lines, next steps and a refine reason are text no view reads. The
+    search does read fit reasons, but none whose wording can change while
+    this id holds: the rest follow from the key's profile and corpus, and the
+    two that state the server's calendar, the deadline countdown and the
+    season line, are left out of the search (ranker.is_dated_fit_reason).
+    Hashing those two instead would refuse, at every server midnight, each
+    cursor over a list holding a record within a week of its deadline.
+    Hashing whole rows and cards also cost about a second per cross-school
+    snapshot of 84,092 rows; this costs about 45 ms.
     """
     digest = hashlib.sha256(
         json.dumps(
@@ -1429,7 +1432,11 @@ def _apply_match_view(
                 if description_clean is not None
                 else opportunity.get("description_raw") or ""
             ).lower()
-            reasons = " ".join(result.reasons_fit).lower()
+            # Not the countdown or the season line: they turn with the
+            # server's calendar while the result-set id holds.
+            reasons = " ".join(
+                reason for reason in result.reasons_fit if not is_dated_fit_reason(reason)
+            ).lower()
             if not any(
                 matches(title)
                 or matches(organization)

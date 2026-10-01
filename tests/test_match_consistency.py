@@ -1366,6 +1366,66 @@ class TestServerMatchView:
         assert page_three.json()["result_set_id"] == page_one["result_set_id"]
         assert page_three.json()["view_start"] == 8
 
+    def test_search_cursor_neither_repeats_nor_skips_a_row_across_the_servers_midnight(
+        self, snapshot_env, monkeypatch
+    ):
+        """A search reads nothing the result-set id leaves out.
+
+        The id leaves fit-reason wording out, and the search read all of it,
+        including "Deadline in 7 days — apply soon", which a record gains at the
+        server's midnight (00:00 UTC on Render, evening in the US) with no
+        change to its score. A search cursor minted before that midnight kept
+        its id after it, and every record entering the window that ranked above
+        the cursor's offset shifted the page under it: a row repeated or a row
+        skipped.
+        """
+        today, tomorrow = date(2026, 11, 2), date(2026, 11, 3)
+        calendar = {"today": today}
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        opening = [_opp(f"soon-{name}", title=f"ML lab opening soon {name}") for name in "abc"]
+        # Ranks above the three (equal score, earlier id) and only enters the
+        # 7-day window tomorrow; nothing in its own text says "soon".
+        due = _opp("due-in-8-days", deadline=(today + timedelta(days=8)).isoformat())
+        corpus = sorted(
+            [*snapshot_env["corpus"], *opening, due], key=lambda record: record["id"]
+        )
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "search-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        profile = m_module._normalized_profile(ProfileRequest(**_profile()))
+        assert ranker.rank_opportunity(profile, due).final_score == max(
+            ranker.rank_opportunity(profile, record).final_score for record in opening
+        ), "the dated record must rank above the three, or the test proves nothing"
+        request = self._request(_profile(), search_query="soon", today=today.isoformat())
+        request["page_size"] = 1
+
+        _serve_from(monkeypatch, {})
+        page = client.post("/api/matches/view", json=request).json()
+
+        calendar["today"] = tomorrow
+        rows = [row["opportunity_id"] for row in page["results"]]
+        _serve_from(monkeypatch, {})
+        while page["has_more"]:
+            response = client.post(
+                "/api/matches/view", json={**request, "cursor": page["next_cursor"]}
+            )
+            assert response.status_code == 200, response.text
+            page = response.json()
+            rows.extend(row["opportunity_id"] for row in page["results"])
+
+        assert rows == ["soon-a", "soon-b", "soon-c"]
+
     @staticmethod
     def _signals_on(monkeypatch, snapshot_env) -> _Clock:
         """Professor signals released, with one reply that moves opp-12.
@@ -1533,6 +1593,50 @@ class TestServerMatchView:
             {"source": "source-b", "count": 1},
         ]
         assert scope_available is True
+
+    def test_search_does_not_read_the_reasons_that_state_the_servers_calendar(self):
+        """The countdown and the season line describe the server's day, not the record.
+
+        Their wording turns at the server's midnight while everything the
+        result-set id names stays put, so a search that read them could move
+        under a cursor the id still vouched for. Every other fit reason is the
+        same on every day for one profile and one record.
+        """
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        def row(ident: str, reasons: list[str]) -> MatchResult:
+            return MatchResult(
+                opportunity_id=ident,
+                eligibility_score=80,
+                readiness_score=80,
+                upside_score=80,
+                final_score=80.0,
+                bucket="good_match",
+                reasons_fit=reasons,
+                reasons_gap=[],
+                next_steps=[],
+            )
+
+        results = [
+            row("due", [
+                "Deadline in 3 days — apply soon",
+                "Your interest in robotics matches this lab",
+            ]),
+            row("season", [
+                "Summer research — in season; applications are typically active now",
+            ]),
+        ]
+        opportunities = {ident: _opp(ident, title="Lab") for ident in ("due", "season")}
+
+        def search(query: str) -> list[str]:
+            view = MatchViewState(search_query=query, today="2026-11-02")
+            filtered, *_rest = m_module._apply_match_view(results, opportunities, view, "uiuc")
+            return [result.opportunity_id for result in filtered]
+
+        assert search("apply soon") == []
+        assert search("in season") == []
+        assert search("robotics") == ["due"]
 
     def test_rolling_deadline_excludes_unconfirmed_faculty_contacts(self):
         """A legacy faculty stamp cannot turn a directory profile into an opening."""

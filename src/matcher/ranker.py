@@ -2555,6 +2555,21 @@ def _reason_priority(reason: str) -> int:
     return 4
 
 
+_DATED_FIT_REASON_PREFIXES = ("Deadline in ", "Summer research — in season")
+
+
+def is_dated_fit_reason(reason: str) -> bool:
+    """Whether a fit reason states where the server's calendar stands.
+
+    "Deadline in N days — apply soon" counts down at the server's midnight,
+    and the in-season line comes and goes with the month and the deadline,
+    while the rest of the row can stay exactly as it was. Every other fit
+    reason follows from the profile, the record and the corpus alone. Match's
+    search leaves these two out, so what it selects cannot move under a cursor
+    whose result-set id still holds (backend.routes.matches._result_set_id).
+    """
+    return reason.startswith(_DATED_FIT_REASON_PREFIXES)
+
 
 def _rank_opportunity_unlocked(
     profile: dict,
