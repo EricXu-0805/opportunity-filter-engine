@@ -53,7 +53,58 @@
       ["row", "校园活动"],
       ["p", "组织校园编程工作坊，面向一百五十名同学讲授 Python 基础，并准备课后练习题和答疑记录供大家复习使用"],
       ["p", "参与医学影像标注项目，按照临床医生制定的规范标注四千张图像，并整理标注规范中的常见问题与示例说明"],
-      ["p", "在暑期实习中重写夜间数据处理任务，运行时间从四十分钟降到九分钟，并为关键步骤补充了监控与报警规则"]
+      ["p", "在暑期实习中重写夜间数据处理任务，运行时间从四十分钟降到九分钟，并为关键步骤补充了监控与报警规则"],
+      ["item", "• 组织校园编程工作坊，面向一百五十名同学讲授 Python 语言基础，并准备课后练习和答疑记录供大家复习"],
+      ["row", "荣誉"],
+      ["item", "• 校级优秀学生奖学金"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "EXPERIENCE"],
+      ["row", "Software Engineering Intern, Prairie Analytics"],
+      ["item", "• Rewrote the student club website in Next.js so officers can post their events without asking the webmaster"],
+      ["row", "Caterpillar"],
+      ["row", "Data Science Intern"],
+      ["item", "• Trained a gradient boosting model to predict which books students will request next term at the main library"],
+      ["row", "Accomplishments"],
+      ["item", "• Reviewed pull requests for a student-run open-source project and wrote contributor guidelines of the club"],
+      ["row", "COMPETITIONS"],
+      ["item", "• Organized a weekend hackathon for 150 students with prize sponsors from four local companies in Urbana"],
+      ["row", "PantryPal"],
+      ["item", "• Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker, Git, Jira"],
+      ["row", "Teaching Assistant, Statistics Department"],
+      ["item", "• Maintained the equipment checkout system that the photography club and two other student groups rely on"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["item", "• Set up the tutoring schedule and the waitlist form that the students in the intro physics course signed up for"],
+      ["row", "Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "PROJECTS"],
+      ["item", "• Wrote unit tests for the parser."],
+      ["item", "• Added a nightly job that checks the backups."],
+      ["item", "• Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office last spring"],
+      ["p", "A web app that shows live bus positions to about 200 students."],
+      ["item", "• Designed the logger board and wrote the firmware that wakes up once an hour to save power on the farm"],
+      ["p", "Custom firmware that logs soil moisture every hour on battery power."]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "ACTIVITIES"],
+      ["p", "Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, KiCad, Altium"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["p", "Built a self-service sign-in portal for the campus makerspace that all 300 student members now use to log in"],
+      ["p", "Mentored two new members through their first pull requests"],
+      ["p", "Ran gel electrophoresis for a plant genetics lab in Urbana and kept the shared sample database consistent"],
+      ["p", "12 students mentored through their first research projects"],
+      ["p", "Technologies: React, TypeScript, Node.js, Express, PostgreSQL, Redis, Docker, GitHub Actions, Jest, Bash"],
+      ["row", "Finalist, Illinois Innovation Prize"]
     ]
   }
 ]

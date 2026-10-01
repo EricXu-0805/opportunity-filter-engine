@@ -9,9 +9,13 @@
 // last line nearly fills the column, as a résumé builder and a word processor
 // lay them out; resume-boundaries.pdf ends such items right before the lines
 // a reflow could glue on: a same-font role row, title or sentence after "• "
-// items, the next item after ", SQL", ", IL", "C++" or ";", and Chinese items
-// with no 。 (each item's wording was chosen so its last line nearly fills the
-// 7in column in Chromium's Helvetica and PingFang SC).
+// items, the next item after ", SQL", ", IL", "C++" or ";", Chinese items
+// with no 。 before a two-character title, a lone organization, title or
+// project name, a role or award row after a "Tools: …" list, the next role or
+// item after "rely on" or "log in", a description sentence after an item
+// that lacks its full stop, and an item that opens with a count (each item's
+// wording was chosen so its last line nearly fills the 7in column in
+// Chromium's Helvetica and STHeiti).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
