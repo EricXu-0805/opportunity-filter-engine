@@ -50,7 +50,9 @@ ACTION_GERUNDS = {
 _GERUND_POSITION = re.compile(
     r"(?:^|[,，]\s*|\b(?:responsible\s+for|in\s+charge\s+of|helped(?:\s+with)?|assisted\s+(?:with|in)"
     r"|my\s+(?:part|role|job|task)s?\s+(?:was|were|is|are|included))\s+)"
-    r"(?:(?:also|currently|still|personally|independently|jointly|actively)\s+)?(?P<word>[a-z]+ing)\b", re.I)
+    r"(?:(?:also|currently|still|personally|independently|jointly|actively)\s+)?(?P<word>[a-z]+ing)\b"
+    # "building on prior protocols" draws on earlier work; it builds nothing.
+    r"(?!(?<=building)\s+(?:on|upon)\b)", re.I)
 # "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too.
 _GERUND_AND = re.compile(r"^[^,，;；]*?\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
 # Hoped-for, planned or tried work. Dropping the word turns it into work done.
@@ -736,6 +738,26 @@ def _verbs(clause):
     return sorted(found)
 
 
+# "supervised by a postdoc", "trained by graduate students": the agent did it.
+_STUDENT_AGENT = re.compile(
+    r"(?:(?:a|an|the|my|our|two|three|several|\d+)\s+)?(?:graduate|grad|phd|doctoral|senior|older)\s+students?\b", re.I)
+_BY = re.compile(r"\s+by\s+", re.I)
+
+
+def _passive_agent(clause, position):
+    """The doer of a past participle followed by "by <someone>", else None."""
+    word = _WORD.match(clause, position)
+    if not word or (verb_use(word.group(0)) or ("", ""))[1] != "past":
+        return None
+    by = _BY.match(clause, word.end())
+    if not by:
+        return None
+    agent = clause[by.end():]
+    if _OTHER_SUBJECT.match(agent) or _STUDENT_AGENT.match(agent):
+        return "O"
+    return "T" if _TEAM_SUBJECT.match(agent) else None
+
+
 def _subject(clause):
     lead = _CLAUSE_LEAD.sub("", clause)
     if _PERSONAL_SUBJECT.match(lead):
@@ -756,8 +778,8 @@ def action_actors(text):
         for clause_start, clause_end in _pieces(sentence, _CLAUSE_BREAK):
             clause = sentence[clause_start:clause_end]
             running = _subject(clause) or running
-            for _, verb in _verbs(clause):
-                actors.setdefault(verb, []).append(running)
+            for position, verb in _verbs(clause):
+                actors.setdefault(verb, []).append(_passive_agent(clause, position) or running)
     return actors
 
 

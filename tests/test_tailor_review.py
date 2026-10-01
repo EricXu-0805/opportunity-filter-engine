@@ -371,6 +371,9 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Interested in building autonomous robots.", "Built autonomous robots."),
         ("Participated in building the club rover.", "Built the club rover."),
         ("Worked in the Beckman building, testing circuit boards.", "Built circuit boards in the Beckman building."),
+        # "Building on" earlier work is not a build.
+        ("Worked at the Beckman Institute, building on prior lab protocols for EEG.",
+         "Built prior lab protocols for EEG at the Beckman Institute."),
     ])
     def test_a_gerund_counts_as_the_action_only_in_its_own_position(self, original, proposed):
         assert "personal_action_added" in claim_upgrade_findings(proposed, original)[0]
@@ -471,6 +474,11 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Volunteered at a free clinic, where nurses administered flu vaccines to 300 patients.",
          "Administered flu vaccines to 300 patients while volunteering at a free clinic."),
         ("小组（共 5 人）完成了校园噪声地图；本人负责 3 个测点的录音。", "与小组（共 5 人）一起完成了校园噪声地图和 3 个测点的录音。"),
+        # "<verb>ed by <someone>": that someone did it.
+        ("Research trainee, supervised by a postdoc while running PCR genotyping on mouse tails.",
+         "Supervised a postdoc while running PCR genotyping on mouse tails as research trainee."),
+        ("Trained by graduate students in PCR genotyping of mouse tail samples.",
+         "PCR genotyping of mouse tail samples trained graduate students."),
     ])
     def test_an_action_that_changes_its_doer_is_hard(self, original, proposed):
         assert "actor_changed" in claim_upgrade_findings(proposed, original)[0]
@@ -512,6 +520,10 @@ class TestLockChangesForEvidenceMappedRewrites:
          "Helped a nurse record vital signs for 30 patients."),
         ("I did not run the statistics; I cleaned the 212 survey responses in R.",
          "Cleaned the 212 survey responses in R; did not run the statistics."),
+        ("Ran PCR genotyping on 200 mouse tail samples, supervised by a postdoc.",
+         "Supervised by a postdoc, ran PCR genotyping on 200 mouse tail samples."),
+        ("Reduced the parser's latency by 45% and supervised by-hand checks.",
+         "By 45%, reduced the parser's latency and supervised by-hand checks."),
     ])
     def test_reorders_that_keep_each_doer_and_qualifier_are_not_moves(self, original, proposed):
         hard = claim_upgrade_findings(proposed, original)[0]

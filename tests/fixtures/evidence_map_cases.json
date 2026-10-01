@@ -2112,6 +2112,84 @@
     null,
     null
    ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after shared work with a friend",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Backend",
+     "source": "backend in Flask",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after shared work with my lab partner",
+   "anchors": [
+    "Error analysis of titration data"
+   ],
+   "original": "Ran titrations with my lab partner; I wrote the error analysis.",
+   "rewrite": "Wrote the error analysis and ran titrations with my lab partner.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "error analysis",
+     "source": "error analysis",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first after shared work with a friend",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "I wrote the backend in Flask. Built the website with a friend.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

@@ -555,7 +555,7 @@ _RELEVANCE_WORD = re.compile(
     r"\b(?:applying|demonstrating|showcasing|highlighting|relevant|relevance|contributing|experience|skills?"
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _SPAN, _SOLO, _LIMIT,
-              _OTHER_PERSON, _TEAM_ZH_EXTRA, _PERSONAL_MARKER]
+              _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions.
 _FAMILIES = {
     "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA], "help": [HELP], "limit": [_LIMIT], "negation": [NEGATION, DENIAL],
@@ -565,7 +565,7 @@ _FAMILIES = {
 
 
 def _team_or_help(text: str) -> bool:
-    return _team_marked(text) or bool(HELP.search(text)) or bool(_TEAM_ZH_EXTRA.search(text))
+    return _team_marked(text) or bool(HELP.search(text)) or _has([_TEAM_ZH_EXTRA, _TEAM_EN_EXTRA], text)
 
 
 _TEAM_HEADER = re.compile(
@@ -577,14 +577,16 @@ def _marks_own_part(text: str) -> bool:
     """Whether a personal marker separates the student's part from a shared one.
 
     "As part of a four-person team, I helped design X" only opens with a team
-    heading; "Built X with two teammates; I designed Y" and "our team built X;
-    I wrote Y" mark Y as the student's own.
+    heading; "Built X with two teammates; I designed Y", "built X with a
+    friend; I wrote Y" and "our team built X; I wrote Y" mark Y as the
+    student's own.
     """
-    marker = _PERSONAL_MARKER.search(text)
-    if not marker:
-        return False
-    before = text[:marker.start()].strip()
-    return _team_or_help(before) and not _TEAM_HEADER.fullmatch(before)
+    for marker in _PERSONAL_MARKER.finditer(text):
+        # "with my lab partner; I wrote Y": "my" belongs to the partner, "I" marks Y.
+        before = text[:marker.start()].strip()
+        if _team_or_help(before) and not _TEAM_HEADER.fullmatch(before):
+            return True
+    return False
 
 
 def _has(patterns: list[re.Pattern], text: str) -> bool:

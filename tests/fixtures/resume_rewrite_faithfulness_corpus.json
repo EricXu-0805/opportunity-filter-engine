@@ -1723,6 +1723,20 @@
    "original": "Jointly designed the survey and analyzed the results.",
    "rewrite": "Designed the survey and jointly analyzed the results.",
    "kind": "team qualifier moved to another action"
+  },
+  {
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "kind": "own part folded into the shared work",
+   "caught": "contract",
+   "case": "own part folded after shared work with a friend"
+  },
+  {
+   "original": "Ran titrations with my lab partner; I wrote the error analysis.",
+   "rewrite": "Wrote the error analysis and ran titrations with my lab partner.",
+   "kind": "own part folded into the shared work",
+   "caught": "contract",
+   "case": "own part folded after shared work with my lab partner"
   }
  ]
 }
