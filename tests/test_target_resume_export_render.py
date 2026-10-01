@@ -133,6 +133,7 @@ def test_pdf_contact_row_wraps_between_whole_items_and_keeps_their_links(page_si
         # No item is cut inside a word, and a separator ends the line of the item before it.
         items = [f'{label}: {text}' if label else text for _role, label, text in contact]
         assert [item for row in rows for item in row.removesuffix(' ·').split(' · ')] == items, rows
+        assert [row.endswith(' ·') for row in rows] == [True] * (len(rows) - 1) + [False], rows
         targets = ['mailto:' + text if role == 'email' else text for role, _label, text in contact if role in ('email', 'url')]
         assert sorted(annotation.get_object()['/A']['/URI'] for annotation in pdf.pages[0]['/Annots']) == sorted(targets), rows
     assert wrapped >= 5
