@@ -47,8 +47,10 @@ _ACCESS_SHELL = re.compile(
 )
 # A page its scripts have yet to fill: nothing but loading lines. Not source,
 # and not a bot check either; the posting appears once the scripts run.
+# Each line is matched atomically. A run of "loading" words splits into lines
+# many ways, and retrying every split took exponential time on page text.
 _LOADING_SHELL = re.compile(
-    r'^(?:(?:loading(?:(?: [\w-]+){1,3}(?:\.{2,}|…|,))?|please wait|'
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.{2,}|…|,))?|please wait|'
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )

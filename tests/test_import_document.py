@@ -1,4 +1,6 @@
 """Offline, source-preserving HTML reader contract."""
+import signal
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -543,3 +545,35 @@ def test_script_page_with_only_a_loading_line_needs_javascript(html):
 ])
 def test_loading_words_beside_source_are_not_a_loading_page(body, kept):
     assert kept in extract_import_document(page(body + '<script src="/app.js"></script>'))['text']
+
+
+@contextmanager
+def _deadline(seconds):
+    """Fail a runaway scan instead of hanging the suite: re checks signals while it matches."""
+    def expire(signum, frame):
+        raise TimeoutError(f'still reading after {seconds} s')
+    previous = signal.signal(signal.SIGALRM, expire)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+# The loading-line rule reads the whole text of a script page and each sentence
+# a sign-in or bot-check rule weighs. A run of "loading" words can be split into
+# lines many ways, and a failed match used to try every split: 409 characters
+# held a guest's /api/import-url request, and the API process with it, for 8 s,
+# doubling with each further pair of words.
+@pytest.mark.parametrize('html', [
+    pytest.param(page('<p>' + 'loading loading, ' * 400 + 'x</p><script src="/app.js"></script>'), id='page-text'),
+    pytest.param(page('<p>' + 'loading loading... ' * 400 + 'x</p><script src="/app.js"></script>'), id='page-text-dots'),
+    pytest.param(page('<p>' + 'loading loading, ' * 400 + 'x</p>', '<title>Sign in</title>'), id='sentence-behind-sign-in'),
+    pytest.param(page('<p>' + 'loading loading, ' * 400 + 'x</p><p>Checking your browser.</p>'),
+                 id='sentence-beside-bot-check-text'),
+])
+def test_loading_line_rule_reads_a_long_run_of_loading_words_in_linear_time(html):
+    with _deadline(2):
+        text = extract_import_document(html)['text']
+    assert text.startswith('loading loading')

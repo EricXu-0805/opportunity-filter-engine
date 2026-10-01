@@ -1,6 +1,7 @@
 """Real endpoints save complete static source while model processing remains excerpt-only."""
 import json
 import socket
+import time
 from pathlib import Path
 
 import pytest
@@ -206,3 +207,18 @@ def test_script_page_with_only_a_loading_line_is_refused_as_needing_javascript(i
     detail = result.json()['detail']
     assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'javascript_required')
     assert not calls
+
+
+def test_a_run_of_loading_words_does_not_hold_the_import_route(importer, monkeypatch):
+    # The route runs the reader in the API process. With this page the
+    # loading-line rule took 2.5 s at 22 pairs of words and doubled with each
+    # further pair, holding every other request until it finished.
+    client, calls = importer
+    html = ('<html><head><title>Posting</title><script src="/app.js"></script></head><body><p>'
+            + 'loading loading, ' * 24 + 'x</p></body></html>')
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
+    started = time.perf_counter()
+    result = client.post('/api/import-url', json={'url': URL})
+    assert time.perf_counter() - started < 2
+    assert result.status_code == 200, result.text
+    assert result.json()['opportunity']['description_raw'].startswith('loading loading, ')
