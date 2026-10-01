@@ -821,12 +821,16 @@ describe('TailorModal', () => {
       await generate('PCR genotyping on 40 mouse lines, run weekly.', [
         rewritten({ text: 'Ran PCR genotyping assays on 40 mouse lines.', ops: ['relabel', 'lead_with'], alternative: 'Ran PCR genotyping on 40 mouse lines.' }),
       ]);
+      expect(screen.getByText('tailor.ops.relabel')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithoutTerms' }));
       expect(screen.getByText(fullText('Ran PCR genotyping on 40 mouse lines.'))).toBeTruthy();
+      // Without the term the line no longer uses the opportunity's term.
+      expect(screen.queryByText('tailor.ops.relabel')).toBeNull(); expect(screen.getByText('tailor.ops.lead_with')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: /tailor\.copyAll/ }));
       await waitFor(() => expect(writeText).toHaveBeenCalledWith('• Ran PCR genotyping on 40 mouse lines.'));
       fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithTerms' }));
       expect(screen.getByText(fullText('Ran PCR genotyping assays on 40 mouse lines.'))).toBeTruthy();
+      expect(screen.getByText('tailor.ops.relabel')).toBeTruthy();
     });
 
     it('keeps each promoted line tied to its evidence across a reload and sends it as source_bullets', async () => {

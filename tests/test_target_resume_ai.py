@@ -248,6 +248,24 @@ def test_a_reviewed_rewrite_is_suggested_with_its_ops_and_reason(endpoint, monke
     assert body["logical_calls"] == 2 and body["provider_attempts_upper_bound"] == 4
 
 
+@pytest.mark.parametrize(("locale", "relabel_line", "lead_line"), [
+    ("en", "Uses the opportunity's term.", "Leads with the matching part."), ("zh", "改用机会中的术语。", "把相关内容放在最前。"),
+])
+def test_the_rewrite_without_the_posting_terms_has_its_own_reason(locale, relabel_line, lead_line):
+    doc = make_doc()
+    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
+    target = {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}
+    source = {"unit_id": unit["unit_id"], "start": 8, "end": 14, "quote": "Python"}
+    link = evidence_map.Link("L1", "same", "Python", "Python", target, source, written_as="Python", entailed=True)
+    outcome = evidence_map.Outcome(unit["unit_id"], "pending", text="x", links=[link], ops=["relabel", "lead_with"])
+    suggestion = engine._suggestion(unit, outcome, "high", "method_relevance", locale, proposed="Tailored wording.",
+                                    alternative="Plain wording.")
+    assert relabel_line in suggestion["reason"] and lead_line in suggestion["reason"]
+    assert relabel_line not in suggestion["alternative_reason"] and lead_line in suggestion["alternative_reason"]
+    plain = engine._suggestion(unit, outcome, "high", "method_relevance", locale, proposed="Tailored wording.")
+    assert plain["alternative_text"] is None and "alternative_reason" not in plain
+
+
 @pytest.mark.parametrize(("verdict", "status", "code"), [
     ("rejected", "unchanged", "review_rejected"), ("unavailable", "skipped", "rewrite_unchecked"),
 ])

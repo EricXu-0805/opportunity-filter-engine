@@ -1422,7 +1422,8 @@ export default function TailorModal({
                           )}
                           {b.status === 'rewritten' && !isEditing && (
                             <>
-                              <RewriteWhy links={b.links} ops={b.ops} t={t} />
+                              <RewriteWhy links={b.links} t={t}
+                                ops={plain.has(i) && b.alternative ? (b.ops ?? []).filter((op) => op !== 'relabel') : b.ops} />
                               {b.alternative && !isEdited && !isRejected && (
                                 <button
                                   type="button"

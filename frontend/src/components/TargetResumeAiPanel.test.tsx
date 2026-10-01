@@ -305,17 +305,24 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
   });
   it('shows what changed and applies the rewrite without the posting terms when the student asks', async () => {
     const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
-    withExperience((item) => { Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: plain }); });
+    const reason = "Higher-priority suggestion: Compare the stated methods with the target requirements.\nUses the opportunity's term.\nLeads with the matching part.";
+    const plainReason = 'Higher-priority suggestion: Compare the stated methods with the target requirements.\nLeads with the matching part.';
+    withExperience((item) => { Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], reason, alternative_text: plain, alternative_reason: plainReason }); });
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
     const unit = experience();
     const card = screen.getByRole('article', { name: `AI rewrite ${unit.unit_id}` });
     expect(card).toHaveTextContent('Uses the opportunity’s term'); expect(card).toHaveTextContent('Leads with the matching part');
+    expect(card).toHaveTextContent("Uses the opportunity's term.");
     fireEvent.click(screen.getByRole('checkbox', { name: 'Use without the posting’s terms' }));
     expect(card).toHaveTextContent(plain);
+    // The wording no longer uses the posting's term, so neither the chip nor the reason says it does.
+    expect(card).not.toHaveTextContent('Uses the opportunity’s term'); expect(card).not.toHaveTextContent("Uses the opportunity's term.");
+    expect(card).toHaveTextContent('Leads with the matching part');
     fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
-    const [, next] = vi.mocked(p.onApply).mock.calls[0];
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
     expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(plain);
+    expect(provenance!.annotations!.find(annotation => annotation.line_id === unit.unit_id)!.reason).toBe(plainReason);
   });
   it('stops on a target with no quotable text and names the cause once', async () => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {

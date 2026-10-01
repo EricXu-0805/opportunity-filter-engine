@@ -165,7 +165,8 @@ describe('strict receipts and target quotation', () => {
     });
   it('accepts a reviewed rewrite with its alternative and a second logical call for the review', async () => {
     const p = await prep(); const r = response(p); const e = r.receipts.find(x => x.evidence.kind === 'experience')!;
-    Object.assign(e.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.' });
+    Object.assign(e.suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.',
+      alternative_reason: 'Leads with the matching part.' });
     Object.assign(r, { logical_calls: 2, provider_attempts_upper_bound: 4 });
     const checked = unwrap(validateTargetResumeAIResponse(p, expected(r), r));
     expect(checked.receipts.find(x => x.unit_id === e.unit_id)!.suggestion!.links[0].entailed).toBe(true);
@@ -201,8 +202,11 @@ describe('strict receipts and target quotation', () => {
     ['repeated operation', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops.push('lead_with'); }],
     ['lead_with without a same link', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { links: [], target_evidence: [] }); }],
     ['translation with another move', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops = ['translate', 'lead_with']; }],
-    ['alternative without a relabel', (r: TargetResumeAiResponse) => { exp(r).suggestion!.alternative_text = 'Built a parser.'; }],
-    ['alternative equal to the rewrite', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { ops: ['relabel'], alternative_text: s.proposed_text }); }],
+    ['alternative without a relabel', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { alternative_text: 'Built a parser.', alternative_reason: 'Leads with the matching part.' }); }],
+    ['alternative equal to the rewrite', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { ops: ['relabel'], alternative_text: s.proposed_text, alternative_reason: 'Leads with the matching part.' }); }],
+    ['alternative without its own reason', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.' }); }],
+    ['blank alternative reason', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.', alternative_reason: ' ' }); }],
+    ['alternative reason without an alternative', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { alternative_reason: 'Leads with the matching part.' }); }],
     ['blank reason', (r: TargetResumeAiResponse) => { exp(r).suggestion!.reason = ''; }],
     ['no calls but claims AI', (r: TargetResumeAiResponse) => { r.logical_calls = 0; r.provider_attempts_upper_bound = 0; }],
     ['bound not twice the calls', (r: TargetResumeAiResponse) => { r.logical_calls = 2; }],
@@ -275,13 +279,13 @@ describe('partial completion, explicit continuation and independent application'
   });
   it('applies a selected rewrite without the posting terms only when asked and offered', async () => {
     const p = await prep(); const r = response(p); const e = exp(r);
-    Object.assign(e.suggestion!, { ops: ['relabel'], alternative_text: 'Built a parser, in Python, with the team.' });
+    Object.assign(e.suggestion!, { ops: ['relabel'], alternative_text: 'Built a parser, in Python, with the team.', alternative_reason: 'Advice.' });
     const plain = unwrap(applyTargetResumeAI(p, p.draft, [r], { ...options(p, [e.unit_id]), alternativeUnitIds: [e.unit_id] }));
     expect(lines(plain).find(l => l.id === e.unit_id)!.text).toBe('Built a parser, in Python, with the team.');
     const tailored = unwrap(applyTargetResumeAI(p, p.draft, [r], options(p, [e.unit_id])));
     expect(lines(tailored).find(l => l.id === e.unit_id)!.text).toBe('Built the Python parser with the team.');
     expect(applyTargetResumeAI(p, p.draft, [r], { ...options(p, []), alternativeUnitIds: [e.unit_id] })).toEqual({ ok: false, code: 'invalid_selection' });
-    e.suggestion!.alternative_text = null;
+    e.suggestion!.alternative_text = null; delete e.suggestion!.alternative_reason;
     expect(applyTargetResumeAI(p, p.draft, [r], { ...options(p, [e.unit_id]), alternativeUnitIds: [e.unit_id] })).toEqual({ ok: false, code: 'invalid_selection' });
   });
   it('merges out-of-order disjoint batches and counts every unit once', async () => {

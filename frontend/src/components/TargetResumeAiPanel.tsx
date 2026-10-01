@@ -221,6 +221,10 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     setBusy(false); setNotice('cancelled');
   };
   const alternativeUnitIds = () => [...selected].filter((id) => plain.has(id));
+  // Without the posting's terms the wording no longer relabels: its own reason and no relabel chip.
+  const reasonOf = (item: TargetResumeAiReceipt) => plain.has(item.unit_id) && item.suggestion?.alternative_reason
+    ? item.suggestion.alternative_reason : item.suggestion?.reason;
+  const opsOf = (item: TargetResumeAiReceipt) => (item.suggestion?.ops ?? []).filter((op) => !(plain.has(item.unit_id) && op === 'relabel'));
   const apply = () => {
     if (!run || runRef.current !== run || !ready || working || action.error || !currentContext) return;
     const result = applyTargetResumeAI(run.prepared, draft, run.responses,
@@ -236,7 +240,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
       const unit = run.prepared.units.find(item => item.unit_id === unitId);
       if (!response || !receipt?.suggestion || !unit) { setError('invalid_response'); return; }
       annotations.push({ section_id: unit.section_id, block_id: unit.block_id, line_id: unitId, field: 'text',
-        reason: receipt.suggestion.reason, target_evidence: receipt.suggestion.target_evidence,
+        reason: reasonOf(receipt)!, target_evidence: receipt.suggestion.target_evidence,
         source_evidence: receipt.suggestion.source_evidence ?? (unit.original.trim() ? [{ unit_id: unitId, start: 0, end: Array.from(unit.original).length, quote: unit.original }] : []),
         check: response.check_version ? { version: response.check_version, pipeline_version: response.pipeline_version,
           request_id: response.request_id, document_signature: response.document_signature, original: unit.original, evidence: unit.evidence } : null });
@@ -295,7 +299,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
         {review.receipts.filter((item) => item.status !== 'skipped').map((item) => <div key={item.unit_id} className="mt-3 min-w-0 border-t pt-3 text-sm">
           <p className="whitespace-pre-wrap break-words">{run?.prepared.units.find((unit) => unit.unit_id === item.unit_id)?.original}</p>
           <p className="mt-1 text-xs font-medium">{copy('Content priority', '内容优先级')}: {item.suggestion?.priority === 'high' ? copy('High', '高') : item.suggestion?.priority === 'low' ? copy('Low', '低') : copy('Normal', '普通')}</p>
-          <p className="mt-1 whitespace-pre-wrap break-words text-gray-600">{item.suggestion?.reason || reasonText(item.reason_code)}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-gray-600">{reasonOf(item) || reasonText(item.reason_code)}</p>
           {item.suggestion?.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-1 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
         </div>)}
       </details>
@@ -311,12 +315,12 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Current wording', '当前表述')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{item.before_text}</p></div>
           <div className="min-w-0"><h4 className="text-xs text-gray-500">{copy('Suggested wording — check the facts', '建议表述——请核对事实')}</h4><p className="mt-1 whitespace-pre-wrap break-words text-sm">{plain.has(item.unit_id) ? item.suggestion!.alternative_text : item.suggestion!.proposed_text}</p></div>
         </div>
-        <ul className="mt-2 flex flex-wrap gap-1" aria-label={copy('What changed', '改动')}>{item.suggestion!.ops.map((op) => <li key={op} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{opLabel(op)}</li>)}</ul>
+        <ul className="mt-2 flex flex-wrap gap-1" aria-label={copy('What changed', '改动')}>{opsOf(item).map((op) => <li key={op} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700">{opLabel(op)}</li>)}</ul>
         {item.suggestion!.alternative_text !== null && <label className="mt-2 flex items-start gap-2 text-sm"><input type="checkbox" checked={plain.has(item.unit_id)}
           disabled={!ready || working || !!action.error || dismissed.has(item.unit_id)} onChange={(event) => setPlain((old) => {
             const next = new Set(old); if (event.target.checked) next.add(item.unit_id); else next.delete(item.unit_id); return next;
           })} />{copy('Use without the posting’s terms', '不使用机会中的术语')}</label>}
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{item.suggestion!.reason}</p>
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-600">{reasonOf(item)}</p>
         <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review sources', '查看依据')}</summary>
         {item.suggestion!.target_evidence.map((evidence, index) => <blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2 text-sm">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
         {item.suggestion!.source_evidence?.map((evidence,index)=><blockquote key={index} className="mt-2 whitespace-pre-wrap break-words border-l-2 pl-2">{evidence.quote}</blockquote>)}

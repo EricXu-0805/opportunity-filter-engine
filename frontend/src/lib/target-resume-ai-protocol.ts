@@ -80,6 +80,8 @@ export interface TargetResumeAiSuggestion {
   ops: TargetResumeAiOp[];
   /** The rewrite with the posting's terms taken back out, when that still passed every check. */
   alternative_text: string | null;
+  /** The reason for alternative_text, without the relabel; present exactly when alternative_text is. */
+  alternative_reason?: string;
 }
 export interface TargetResumeAiReceipt {
   unit_id: string;

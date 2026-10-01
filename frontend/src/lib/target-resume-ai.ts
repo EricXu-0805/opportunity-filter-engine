@@ -251,8 +251,9 @@ function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiU
   if (!(value.status === 'suggested' && value.reason_code === null)
     && !(value.status === 'unchanged' && experience && KEEP_CODES.has(String(value.reason_code)))) fail('invalid_response');
   const group = prepared.support_groups?.find(item=>item.unit_id===unit.unit_id);
+  const alternative = object(value.suggestion) && value.suggestion.alternative_text !== null;
   shape(value.suggestion, ['priority', 'reason', 'target_evidence', 'proposed_text', 'links', 'ops', 'alternative_text',
-    ...(group ? ['source_evidence'] : [])]);
+    ...(group ? ['source_evidence'] : []), ...(alternative ? ['alternative_reason'] : [])]);
   if (group && !same(value.suggestion.source_evidence, targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
   const suggestion = value.suggestion;
   text(suggestion.reason);
@@ -288,7 +289,9 @@ function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiU
       || (ops.includes('translate') && ops.length !== 1)) fail('invalid_response');
     if (suggestion.alternative_text !== null) {
       rewriteText(suggestion.alternative_text);
-      if (!ops.includes('relabel') || suggestion.alternative_text === suggestion.proposed_text) fail('invalid_response');
+      text(suggestion.alternative_reason);
+      if (!ops.includes('relabel') || suggestion.alternative_text === suggestion.proposed_text
+        || !suggestion.alternative_reason.trim()) fail('invalid_response');
     }
   }
   return value as unknown as TargetResumeAiReceipt;
