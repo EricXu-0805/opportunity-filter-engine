@@ -785,6 +785,14 @@ class TestTopicKeywordsNameResearchNotPeopleOrPlaces:
         assert _infer_research_topic(opp) == (
             "technical communication for engineers, data centers, and hospital employment of physicians")
 
+    def test_a_role_or_place_after_a_function_word_is_still_a_topic(self):
+        # Corpus topics that end in a role or an institution noun but name a
+        # subject of study (reviewed 2026-09-30).
+        opp = {"keywords": ["board of directors", "sustainability in the laboratory",
+                            "learning in the laboratory"]}
+        assert _infer_research_topic(opp) == (
+            "board of directors, sustainability in the laboratory, and learning in the laboratory")
+
 
 class TestColdEmailPromptInjection:
     """SEC: scraped opportunity fields must be flattened before they enter the

@@ -281,6 +281,15 @@ def test_only_a_confirmed_printed_continuation_joins_the_line_above(change):
     assert excerpts == ([head] if change == "unconfirmed" else [head, tail])
 
 
+@pytest.mark.parametrize("end", [".", "!", "?"])
+def test_a_line_that_ended_its_sentence_is_not_continued_by_the_next(end):
+    # A lowercase line after a finished sentence starts a new fact; joining
+    # it would let the second line's result back the first line's claim.
+    printed = ("- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images" + end + "\n"
+               "reaching 0.87 AUC on a held-out split.")
+    assert [item["excerpt"] for item in selected(resume_line_experience(printed)).materials()] == printed.split("\n")
+
+
 def test_a_wrapped_course_number_is_a_continuation():
     printed = ("Relevant coursework: Data Structures (CS 225), Linear Algebra (MATH\n"
                "257), Probability & Statistics (STAT 400).")
