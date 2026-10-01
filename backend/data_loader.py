@@ -249,11 +249,19 @@ def load_opportunities() -> list[dict]:
 
 
 def load_opportunities_generation() -> tuple[list[dict], str]:
-    """Atomically return the corpus and its process-local generation token."""
+    """Atomically return the corpus and the token that names its data.
+
+    The token is the source mtime this list was published from: the same test
+    the loader uses to decide that the data changed, and the same value on
+    every API worker that loaded the same files. It must not carry this
+    process's publish count. Match result sets are named by it, and a worker
+    that had published once more than its sibling (a rewrite with the same
+    bytes, a reload caught mid-rewrite) would name an identical list
+    differently and refuse every cursor the sibling minted.
+    """
     with _loader_lock:
         opportunities = _load_opportunities_unlocked()
-        token = f"{_opp_cache_generation}:{_opp_cache_mtime:.6f}"
-        return opportunities, token
+        return opportunities, f"{_opp_cache_mtime:.6f}"
 
 
 def _load_opportunities_unlocked() -> list[dict]:

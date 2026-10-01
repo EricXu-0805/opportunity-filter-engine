@@ -218,6 +218,41 @@ for _ in range(int(sys.argv[3])):
 print(json.dumps(pages))
 """
 
+# The same worker, with its corpus coming through the real loader from the
+# data directory in argv[1], published argv[4] times. Between publishes the
+# file is rewritten with the same bytes (a newer mtime), the way a reload
+# during a shard rewrite looks to the loader.
+_LOADER_WORKER_PROCESS = """
+import json
+import os
+import sys
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from backend import data_loader
+from backend.main import app
+
+data_loader.DATA_DIR = Path(sys.argv[1])
+corpus_file = data_loader.DATA_DIR / "opportunities.json"
+for publish in range(int(sys.argv[4])):
+    if publish:
+        stat = corpus_file.stat()
+        os.utime(corpus_file, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    data_loader.load_opportunities()
+with open(sys.argv[2]) as handle:
+    request = json.load(handle)
+client = TestClient(app)
+pages = []
+for _ in range(int(sys.argv[3])):
+    response = client.post("/api/matches/view", json=request)
+    pages.append({"status": response.status_code, "body": response.json()})
+    if response.status_code != 200 or not response.json()["has_more"]:
+        break
+    request["cursor"] = response.json()["next_cursor"]
+print(json.dumps({"publishes": data_loader._opp_cache_generation, "pages": pages}))
+"""
+
 
 def _promote_last_result(monkeypatch) -> None:
     """Make every later materialization rank the current last result first.
@@ -1073,6 +1108,50 @@ class TestServerMatchView:
             row["opportunity_id"] for row in minted[1]["body"]["results"]
         ]
 
+    def test_view_cursor_pages_between_workers_that_published_the_data_unequally(
+        self, tmp_path
+    ):
+        """The corpus token names the data, not how often a worker loaded it.
+
+        It read "<publishes>:<mtime>", and each process keeps its own count. A
+        worker that had published once more than its sibling (the files
+        rewritten with the same bytes, or a reload caught mid-rewrite) named
+        the identical list differently and refused every cursor it minted.
+        """
+        data_dir = tmp_path / "processed"
+        data_dir.mkdir()
+        (data_dir / "opportunities.json").write_text(json.dumps(_varied_corpus()))
+        request = self._request(_profile())
+
+        def run(body: dict, publishes: int) -> dict:
+            request_path = tmp_path / f"request-{publishes}.json"
+            request_path.write_text(json.dumps(body))
+            completed = subprocess.run(
+                [
+                    sys.executable, "-c", _LOADER_WORKER_PROCESS,
+                    str(data_dir), str(request_path), "1", str(publishes),
+                ],
+                cwd=os.path.join(os.path.dirname(__file__), ".."),
+                env={**os.environ, "OFE_MATCH_SNAPSHOT_TTL": "600"},
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+            return json.loads(completed.stdout.strip().splitlines()[-1])
+
+        minted = run(request, publishes=2)
+        page_one = minted["pages"][0]
+        assert page_one["status"] == 200, page_one["body"]
+        assert page_one["body"]["next_cursor"]
+        followed = run({**request, "cursor": page_one["body"]["next_cursor"]}, publishes=1)
+
+        assert (minted["publishes"], followed["publishes"]) == (2, 1)
+        assert followed["pages"][0]["status"] == 200, followed["pages"][0]["body"]
+        page_two = followed["pages"][0]["body"]
+        assert page_two["result_set_id"] == page_one["body"]["result_set_id"]
+        assert page_two["view_start"] == 4
+
     def test_paid_filter_and_bucket_counts_match_full_snapshot(self, snapshot_env):
         profile = _profile()
         request = self._request(profile, paid="yes")
@@ -1527,6 +1606,36 @@ class TestCorpusDedup:
         dup = next(o for o in loaded if o["id"] == "dup-1")
         assert by_id["dup-1"] is dup
         assert dup["title"] == "From shard A"
+
+    def test_a_worker_that_published_twice_names_the_data_like_one_that_published_once(
+        self, tmp_path, monkeypatch, _reset_loader
+    ):
+        # The match snapshot key embeds this token, and two API workers have to
+        # agree on it before a cursor can page across them. It used to carry
+        # the process's own publish count: "2:<mtime>" here, "1:<mtime>" in the
+        # sibling that loaded the same file once.
+        corpus_file = tmp_path / "opportunities.json"
+        corpus_file.write_text(json.dumps([_opp("t-1"), _opp("t-2")]))
+        monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
+        data_loader._opp_cache_generation = 0
+
+        data_loader.load_opportunities()
+        stat = corpus_file.stat()
+        os.utime(corpus_file, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+        twice, twice_token = data_loader.load_opportunities_generation()
+        assert data_loader._opp_cache_generation == 2
+
+        # The sibling process, started after the rewrite: same file, one load.
+        data_loader._opp_cache = []
+        data_loader._opp_cache_by_id = {}
+        data_loader._opp_cache_mtime = 0
+        data_loader._opp_cache_generation = 0
+        data_loader._tfidf_fitted_mtime = -1
+        once, once_token = data_loader.load_opportunities_generation()
+        assert data_loader._opp_cache_generation == 1
+
+        assert [o["id"] for o in once] == [o["id"] for o in twice]
+        assert once_token == twice_token
 
     def test_corpus_version_tracks_load(self, tmp_path, monkeypatch, _reset_loader):
         shards = tmp_path / "shards"

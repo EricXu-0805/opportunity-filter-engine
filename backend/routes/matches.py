@@ -703,8 +703,9 @@ def _result_set_id(
     worker switch, a TTL expiry or an eviction. A list that moved (a calendar
     day or a responsiveness signal reordering the same key, an LLM blend) gets
     a new id, so its old cursors still fail closed instead of skipping or
-    repeating rows. The key's corpus token is per process, but workers of one
-    deploy agree on it: each loads the same shards once.
+    repeating rows. The key's corpus token is the data's source mtime, the same
+    on every worker that loaded the same files however often each reloaded
+    (see load_opportunities_generation).
     """
     digest = hashlib.sha256(
         json.dumps(
