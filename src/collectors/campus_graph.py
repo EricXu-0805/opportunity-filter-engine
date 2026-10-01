@@ -429,7 +429,7 @@ def _same_site(seed: str, candidate: str) -> bool:
         return False
     # same host, or shares the school's registrable domain (last two labels).
     sh_root = ".".join(sh.split(".")[-2:])
-    return ch == sh or (sh_root and ch.endswith(sh_root))
+    return ch == sh or bool(sh_root and (ch == sh_root or ch.endswith(f".{sh_root}")))
 
 
 _same_page_url = same_source_page
