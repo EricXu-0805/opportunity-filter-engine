@@ -129,16 +129,20 @@ def _post(path: str, payload: dict):
 
 
 @pytest.mark.parametrize(
-    "path",
+    ("path", "scan_name"),
     [
-        "/api/opportunities?opportunity_type=bogus&limit=1",
-        "/api/opportunities/upcoming?days=30",
+        ("/api/opportunities?opportunity_type=bogus&limit=1", "actionable_opportunities"),
+        ("/api/opportunities/upcoming?days=30", "actionable_opportunities"),
+        ("/api/opportunities/stats/summary", "actionable_opportunities"),
+        ("/api/opportunities/coverage", "coverage_payload"),
     ],
 )
-def test_public_corpus_scans_do_not_block_live(monkeypatch, path):
+def test_public_corpus_scans_do_not_block_live(monkeypatch, path, scan_name):
     # F6: on 2026-09-30 production took 1.0-3.3 s to answer a list query for a
     # type nothing has, and one /api/health on that worker finished 1 ms after
-    # it. Both routes filter the whole corpus on every call.
+    # it. The list and upcoming routes filter the whole corpus on every call;
+    # stats and coverage do on a cache miss (every 300 s, and once per corpus
+    # version, on each worker).
     corpus = [{
         "id": "scan-1",
         "title": "Scan fixture",
@@ -147,8 +151,10 @@ def test_public_corpus_scans_do_not_block_live(monkeypatch, path):
         "metadata": {"is_active": True},
     }]
     monkeypatch.setattr(opportunities, "load_opportunities", lambda: corpus)
-    scan, gate = _gated(opportunities.actionable_opportunities)
-    monkeypatch.setattr(opportunities, "actionable_opportunities", scan)
+    monkeypatch.setattr(opportunities, "_stats_cache", None)
+    monkeypatch.setattr(opportunities, "_coverage_cache", None)
+    scan, gate = _gated(getattr(opportunities, scan_name))
+    monkeypatch.setattr(opportunities, scan_name, scan)
 
     async def probe():
         transport = httpx.ASGITransport(app=app)
