@@ -862,24 +862,30 @@ def claim_upgrade_findings(proposed, original):
     if status_upgraded(proposed, original):
         hard.append("status_upgraded")
     original_normal = normalized(original)
-    if any(normalized(match.group(0)).strip(",，;； ") not in original_normal
-           for match in RELEVANCE_PADDING.finditer(proposed)) or _appended_relevance(proposed, original):
+    # Relevance, setting and quality words are compared within one language. A
+    # translation's are checked by the evidence-map contract (_check_translation)
+    # in both directions, and every translation still goes to the review.
+    translated = language(proposed) != language(original)
+    if not translated and (any(normalized(match.group(0)).strip(",，;； ") not in original_normal
+                               for match in RELEVANCE_PADDING.finditer(proposed))
+                           or _appended_relevance(proposed, original)):
         hard.append("relevance_clause_added")
     # Inside a team clause too: personal_actions skips those, and "helped design"
     # as part of a team must not become "led the design".
     if any(_leadership(proposed, name) and not _leadership(original, name) for name in LEADERSHIP):
         hard.append("leadership_claim_added")
-    # A Chinese rewrite of an English original (locale zh) is a translation this
-    # word comparison cannot judge; Chinese words are compared with Chinese only.
-    comparable = [match for pattern in (SETTING, QUALITY) for match in pattern.finditer(proposed)
-                  if not _CJK.search(match.group(0)) or _CJK.search(original)]
+    # An English line may name a Chinese place ("at 北京大学"): a Chinese word
+    # counts only against an original that has Chinese.
+    comparable = [] if translated else [
+        match for pattern in (SETTING, QUALITY) for match in pattern.finditer(proposed)
+        if not _CJK.search(match.group(0)) or _CJK.search(original)]
     if any(match.re is SETTING and not _setting_in(normalized(match.group(0)), original_normal)
            for match in comparable):
         hard.append("setting_added")
     if any(match.re is QUALITY and normalized(match.group(0)) not in original_normal for match in comparable):
         hard.append("quality_claim_added")
     # A translation is judged by the review; these compare words in one language.
-    if language(proposed) == language(original):
+    if not translated:
         if actor_changed(proposed, original):
             hard.append("actor_changed")
         if qualifier_moved(proposed, original):

@@ -655,6 +655,61 @@
    "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
    "rewrite": "Scheduling participants and scoring cognitive tests as research assistant in the Cognitive Aging Lab since Fall 2025.",
    "kind": "verb first, role kept after the action, ongoing form kept"
+  },
+  {
+   "original": "在实验室整理了实验记录。",
+   "rewrite": "Organized experiment records in the lab.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "在一家公司实习期间整理了 500 条客户数据。",
+   "rewrite": "Organized 500 customer records during an internship at a company.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "在 CS 225 课程中用 C++ 实现了哈希表。",
+   "rewrite": "Implemented a hash table in C++ in the CS 225 course.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "成功搭建了一台 3D 打印机。",
+   "rewrite": "Successfully built a 3D printer.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "每周约 8 小时在环境微生物实验室协助研究生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "About 8 hours per week in an environmental microbiology lab, helping a graduate student test tap water samples for Legionella with qPCR; did not take part in primer design or data analysis.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "Since September 2025, undergraduate research assistant in an environmental microbiology lab (about 8 hours per week), helping a PhD student test tap water samples for Legionella with qPCR; did not take part in primer design or data analysis.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "为课题组的项目用 Python 分析了脑电数据。",
+   "rewrite": "Analyzed EEG data in Python for the research group's project.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR.",
+   "rewrite": "协助一名研究生用 qPCR 检测了约 40 份水样。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Assisted a technician in calibrating 12 pH meters in March 2024.",
+   "rewrite": "2024 年 3 月协助技术员校准了 12 台 pH 计。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Organized experiment records in the lab.",
+   "rewrite": "在实验室整理了实验记录。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped a PhD student test about 40 water samples with qPCR.",
+   "rewrite": "协助一名博士生用 qPCR 检测了约 40 份水样。",
+   "kind": "faithful translation"
   }
  ],
  "unfaithful": [
@@ -1547,6 +1602,48 @@
    "kind": "personal marker added",
    "caught": "contract",
    "case": "lead_with adds my to a setting"
+  },
+  {
+   "original": "为课题组的项目用 Python 分析了脑电数据。",
+   "rewrite": "Analyzed EEG data in Python for the project.",
+   "kind": "translation drops the team",
+   "caught": "contract",
+   "case": "ZH to EN that drops the research group"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR",
+   "rewrite": "在饮用水研究课题中协助研究生用 qPCR 检测约 40 份水样。",
+   "kind": "translation adds a setting",
+   "caught": "contract",
+   "case": "EN to ZH adds a research setting"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR",
+   "rewrite": "协助研究生用 qPCR 高效、严谨地检测约 40 份水样。",
+   "kind": "translation adds a quality claim",
+   "caught": "contract",
+   "case": "EN to ZH adds quality words"
+  },
+  {
+   "original": "用 Python 清洗了 200 份问卷数据。",
+   "rewrite": "Cleaned 200 survey responses in Python for a sleep study.",
+   "kind": "translation adds a setting",
+   "caught": "contract",
+   "case": "ZH to EN adds a study setting"
+  },
+  {
+   "original": "整理了实验记录。",
+   "rewrite": "Thoroughly organized experiment records.",
+   "kind": "translation adds a quality claim",
+   "caught": "contract",
+   "case": "ZH to EN adds a quality word"
+  },
+  {
+   "original": "用 Python 清洗了 200 份问卷数据并画了 3 张图。",
+   "rewrite": "Cleaned 200 survey responses in Python and drew 3 charts, relevant to data visualization.",
+   "kind": "translation appends relevance",
+   "caught": "contract",
+   "case": "ZH to EN appends relevance"
   }
  ]
 }

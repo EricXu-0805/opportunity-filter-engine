@@ -20,7 +20,6 @@ from backend import data_loader
 from backend.lib import evidence_map as em
 from backend.lib import llm, llm_budget
 from backend.lib.blocking import BlockingWorkTimeout
-from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.release_scope import opportunity_visible_in_release
 from backend.lib.target_resume_ai_grounding import (
     claim_upgrade_detected,
@@ -286,9 +285,9 @@ def rejection_warnings(path, body) -> list[str]:
 
 
 def gate_findings(original, rewrite) -> list[str]:
-    """What the evidence map's lock gate refuses: fabricated tokens and hard claim findings."""
-    passed, fabricated = validate_no_fabrication(rewrite, original, policy=LENIENT_PROSE_NUMERIC)
-    return [*fabricated, *em.rewrite_findings(rewrite, original, [])]
+    """What the evidence map's lock gate refuses: ungrounded tokens and hard claim findings."""
+    translated = em.language(rewrite) != em.language(original)
+    return [*em.grounding_findings(rewrite, original, translated=translated), *em.rewrite_findings(rewrite, original, [])]
 
 
 class TestFindingsSplit:

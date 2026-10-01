@@ -29,6 +29,8 @@ from backend.lib.target_resume_ai_grounding import (
     NEGATION,
     PUBLICATION,
     QUALITY,
+    RELEVANCE_PADDING,
+    SETTING,
     TEAM,
     UNFINISHED,
     UNFINISHED_ZH,
@@ -529,15 +531,22 @@ _WEAK_OPENER = re.compile(
 _PERSONAL_PART = re.compile(r"(?:\bI\b|\bmy\s+part\s+was\b|本人|我(?!们))\s*(?:只|only\s+)?([^;；。.]+)")
 _FIRST_CLAUSE = re.compile(r"[;；,，。.(（:：]")
 _OTHER_PERSON = re.compile(
-    r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|TAs?|staff|instructors?"
-    r"|graduate\s+students?|grad\s+students?|nurses?|doctors?|physicians?|surgeons?|therapists?|pharmacists?"
-    r"|adapted|starter|template|revised|rewrote|edited|based\s+on)\b|导师|老师|师兄|师姐|博士生|研究生|教授|参考|基于|医生|护士",
+    r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|postdoctoral|TAs?|staff"
+    r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
+    r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
+    r"|therapists?|pharmacists?|adapted|starter|template|revised|rewrote|edited|based\s+on)\b"
+    r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考|基于|医生|护士",
     re.I)
 _SPAN = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|under|more\s+than|less\s+than"
                    r"|at\s+least|at\s+most|up\s+to|since|until|per)\b|约|大约|将近|超过|至少|左右|(?<!一)起(?!来)|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
-_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
+_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
+# English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
+_TEAM_EN_EXTRA = re.compile(
+    r"\b(?:research|lab|project|study|student|my|our)\s+groups?\b|\bgroup\s*(?:mates?|members?)\b"
+    r"|\b(?:classmates?|lab\s*mates?|teammates?|partners?|friends?|roommates?|together|jointly|collectively"
+    r"|cooperatively)\b|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)-person\b", re.I)
 _ACTION_WORDS = re.compile("|".join(ACTIONS.values()), re.I)
 _SETTING_NOUN = re.compile(
     r"\b(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program"
@@ -549,7 +558,7 @@ _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNF
               _OTHER_PERSON, _TEAM_ZH_EXTRA, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions.
 _FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA], "help": [HELP], "limit": [_LIMIT], "negation": [NEGATION, DENIAL],
+    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA], "help": [HELP], "limit": [_LIMIT], "negation": [NEGATION, DENIAL],
     "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT], "unfinished": [UNFINISHED, UNFINISHED_ZH],
     "publication": [PUBLICATION], "other_person": [_OTHER_PERSON],
 }
@@ -628,6 +637,57 @@ def _relabel_refusal(added_text: str, added: list[str], unit: Unit, term: str) -
 
 
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+_MONTH_NAMES = {name: number for number, names in enumerate(
+    (("January", "Jan"), ("February", "Feb"), ("March", "Mar"), ("April", "Apr"), ("May",), ("June", "Jun"),
+     ("July", "Jul"), ("August", "Aug"), ("September", "Sept", "Sep"), ("October", "Oct"), ("November", "Nov"),
+     ("December", "Dec")), start=1) for name in names}
+_MONTH = "|".join(sorted(_MONTH_NAMES, key=len, reverse=True))
+_MONTH_BEFORE_NUMBER = re.compile(rf"\b({_MONTH})\b\.?(?=,?\s*\d)")
+_MONTH_AFTER_NUMBER = re.compile(rf"(?<=\d)(\s+)({_MONTH})\b")
+# A translation may name only a setting whose noun the other line has: lab,
+# project, course, study, internship, company or competition, in either language.
+_SETTING_CONCEPTS = (
+    re.compile(r"\b(?:labs?|laborator(?:y|ies))\b|实验室", re.I),
+    re.compile(r"\b(?:projects?|programs?)\b|项目|课题", re.I),
+    re.compile(r"\b(?:courses?|coursework|class(?:es)?)\b|课程|课堂", re.I),
+    re.compile(r"\b(?:stud(?:y|ies)|research)\b|研究(?!生|员|助理)|实验(?!室)", re.I),
+    re.compile(r"\binternships?\b|实习", re.I),
+    re.compile(r"\bcompan(?:y|ies)\b|公司|企业", re.I),
+    re.compile(r"\b(?:competitions?|hackathons?|contests?)\b|比赛|竞赛", re.I),
+)
+_TRANSLATED_RELEVANCE = [RELEVANCE_PADDING, re.compile(
+    r"\b(?:relevant|applicable|useful)\s+(?:to|for)\b|\bwith\s+a\s+focus\s+on\b|为[^，,。；;]*打下[^，,。；;]*基础", re.I)]
+# A degree abbreviation an English line uses for a Chinese title it translates.
+_TRANSLATED_DEGREES = {"博士": ("phd", "ph.d"), "硕士": ("msc", "m.sc")}
+
+
+def _month_numbers(text: str) -> str:
+    """English month names written next to a number, as numbers: "September 2025" -> "9 2025"."""
+    text = _MONTH_BEFORE_NUMBER.sub(lambda match: str(_MONTH_NAMES[match[1]]), text)
+    return _MONTH_AFTER_NUMBER.sub(lambda match: match[1] + str(_MONTH_NAMES[match[2]]), text)
+
+
+def _latin_words(text: str) -> set[str]:
+    """Latin-script words, a sentence's final period or a trailing hyphen dropped ("qPCR." -> "qpcr")."""
+    return {word.rstrip(".-").casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", text)}
+
+
+_PHRASE_END = re.compile(r"[,，.。;；:：()（）]|\s+(?:and|but|while|with|using|to)\b", re.I)
+
+
+def _setting_added(source: str, text: str) -> bool:
+    """A setting in ``text`` whose noun ``source`` never names, in either language.
+
+    The setting runs to the end of its phrase: in "for the research group's
+    project" the noun is "project", not the "research" that SETTING stops at.
+    """
+    for match in SETTING.finditer(text):
+        end = _PHRASE_END.search(text, match.end())
+        phrase = text[match.start():end.start() if end else len(text)]
+        concepts = [concept for concept in _SETTING_CONCEPTS if concept.search(phrase)]
+        if not any(concept.search(source) for concept in concepts):
+            return True
+    return False
 
 
 def _relabel_swap_refusal(source: str, target: str) -> str | None:
@@ -652,10 +712,9 @@ def _relabel_swap_refusal(source: str, target: str) -> str | None:
 def _check_translation(unit: Unit, text: str) -> str | None:
     """Why a translation fails the checks that work across languages, or None."""
     source = unit.current
-    if Counter(re.findall(r"\d+(?:[.,]\d+)*", source)) != Counter(re.findall(r"\d+(?:[.,]\d+)*", text)):
+    if Counter(_NUMBER.findall(_month_numbers(source))) != Counter(_NUMBER.findall(_month_numbers(text))):
         return "translation_numbers"
-    source_latin = {word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", source)}
-    text_latin = {word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", text)}
+    source_latin, text_latin = _latin_words(source), _latin_words(text)
     if language(source) == "zh":
         # English names inside a Chinese line stay as written.
         if source_latin - text_latin:
@@ -663,13 +722,22 @@ def _check_translation(unit: Unit, text: str) -> str | None:
     else:
         if text_latin - source_latin:
             return "translation_names"
-        kept = {word.casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", source)
+        kept = {word.rstrip(".-").casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", source)
                 if word.casefold() in _TECH_TERMS or re.search(r"\d|[a-z][A-Z]|^[A-Z]{2,}", word)}
-        if kept - text_latin:
+        translated = {word for title, words in _TRANSLATED_DEGREES.items() if title in text for word in words}
+        if kept - text_latin - translated:
             return "translation_names"
     for name, patterns in _FAMILIES.items():
         if _has(patterns, source) != _has(patterns, text):
             return f"translation_{name}"
+    # The claim locks compare these words within one language; across two,
+    # a translation may not bring in a setting, a quality or a relevance claim.
+    if _setting_added(source, text):
+        return "translation_setting"
+    if QUALITY.search(text) and not QUALITY.search(source):
+        return "translation_quality"
+    if _has(_TRANSLATED_RELEVANCE, text) and not _has(_TRANSLATED_RELEVANCE, source):
+        return "translation_relevance"
     ratio = (1.0, 12) if language(source) == "en" else (4.5, 20)
     if len(text) > ratio[0] * len(source) + ratio[1]:
         return "too_long"
@@ -855,14 +923,28 @@ def rewrite_findings(text: str, evidence: str, relabels: list[tuple[str, str]]) 
     return list(dict.fromkeys(kept + [finding for finding in reread if finding in RELABEL_SENSITIVE]))
 
 
+def grounding_findings(text: str, corpus: str, *, translated: bool = False) -> list[str]:
+    """Concrete tokens and digit runs of ``text`` that ``corpus`` does not state.
+
+    A translation may write "September 2025" as 2025 年 9 月, or 博士生 as "PhD
+    student"; _check_translation has already compared its numbers and names.
+    """
+    allow: frozenset[str] = frozenset()
+    if translated:
+        corpus = corpus + "\n" + _month_numbers(corpus)
+        allow = frozenset(word for title, words in _TRANSLATED_DEGREES.items() if title in corpus for word in words)
+    _, fabricated = validate_no_fabrication(text, corpus, extra_allow=allow, policy=LENIENT_PROSE_NUMERIC)
+    return fabricated
+
+
 def gate(outcome: Outcome, unit: Unit) -> Outcome:
     """Run the claim locks on a pending rewrite. A hard finding keeps the original."""
     corpus = "\n".join(text for _, text in unit.sources)
-    passed, fabricated = validate_no_fabrication(outcome.text, corpus, policy=LENIENT_PROSE_NUMERIC)
+    fabricated = grounding_findings(outcome.text, corpus, translated=outcome.translated)
     hard = rewrite_findings(outcome.text, corpus, outcome.relabels)
     if unit.support and supported_claim_upgrade_detected(outcome.text, [text for _, text in unit.sources]):
         hard.append("supported_claim_changed")
-    if passed and not hard:
+    if not fabricated and not hard:
         return outcome
     return replace(outcome, status="kept", code="rewrite_rejected", detail="locks",
                    findings=[*fabricated, *dict.fromkeys(hard)])
