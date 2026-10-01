@@ -7,7 +7,11 @@
 // right-aligned dates, a one-item-per-line list and justified text split at
 // soft hyphens; resume-noperiod.pdf prints items with no final period whose
 // last line nearly fills the column, as a résumé builder and a word processor
-// lay them out.
+// lay them out; resume-boundaries.pdf ends such items right before the lines
+// a reflow could glue on: a same-font role row, title or sentence after "• "
+// items, the next item after ", SQL", ", IL", "C++" or ";", and Chinese items
+// with no 。 (each item's wording was chosen so its last line nearly fills the
+// 7in column in Chromium's Helvetica and PingFang SC).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +25,7 @@ const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, 
 const HEADINGS = new Set(['EDUCATION', 'EXPERIENCE', 'PROJECTS', 'SKILLS']);
 const NO_PERIOD_ROLES = JSON.parse(readFileSync(join(OUT, 'noperiod-roles.json'), 'utf8'));
 const NO_PERIOD_PARAGRAPHS = readFileSync(join(OUT, 'noperiod-paragraphs.txt'), 'utf8').trimEnd().split('\n');
+const BOUNDARIES = JSON.parse(readFileSync(join(OUT, 'boundaries.json'), 'utf8'));
 
 const fixtures = {
   // Cold-email walk: one paragraph per line, Helvetica (fi ligatures), 0.7in.
@@ -125,6 +130,19 @@ const fixtures = {
     <div style="font-size:10pt;width:6.5in">
       ${NO_PERIOD_PARAGRAPHS.map((line) => `<p>${esc(line)}</p>`).join('')}
     </div>`,
+    pdf: { margin: { top: '0.6in', bottom: '0.6in', left: '0.75in', right: '0.75in' } },
+  },
+  // One page per spec in boundaries.json: "item" is a typed "• " glyph with a
+  // hanging indent, "li" a list bullet drawn as a graphic, "p" a paragraph.
+  'resume-boundaries.pdf': {
+    body: `<style>
+      body{font-size:10.5pt;line-height:1.3;margin:0} .page{width:7in;break-after:page}
+      p,li{margin:0} ul{margin:0;padding-left:14pt} p.hang{padding-left:10pt;text-indent:-10pt}
+    </style>`
+      + BOUNDARIES.map(({ font, lines }) => `<div class="page" style="font-family:${esc(font)}">${lines.map(([kind, text], i) => {
+        if (kind !== 'li') return `<p${kind === 'item' ? ' class="hang"' : ''}>${esc(text)}</p>`;
+        return `${lines[i - 1]?.[0] === 'li' ? '' : '<ul>'}<li>${esc(text)}</li>${lines[i + 1]?.[0] === 'li' ? '' : '</ul>'}`;
+      }).join('')}</div>`).join(''),
     pdf: { margin: { top: '0.6in', bottom: '0.6in', left: '0.75in', right: '0.75in' } },
   },
 };

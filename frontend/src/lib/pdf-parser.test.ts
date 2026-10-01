@@ -591,6 +591,17 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       ...paragraphs,
     ]);
   });
+
+  it('keeps apart the next item, role row, title or sentence that a nearly full last line could absorb', async () => {
+    // Every item ends within about one word of the column edge, so the next
+    // line's first word "could not have fitted" on any of them: "• " items
+    // followed by same-font rows, a title, a project row and a sentence;
+    // list items that end in ", SQL", ", IL", "C++", ";" or ", Node.js";
+    // and Chinese items with no final 。, under a glyph or none.
+    const pages = JSON.parse(readFileSync(join(FIXTURES, 'boundaries.json'), 'utf8')) as Array<{ lines: Array<[string, string]> }>;
+    expect((await parseFixture('resume-boundaries.pdf')).split('\n'))
+      .toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));
+  });
 });
 
 describe('positioned text items', () => {
@@ -652,7 +663,9 @@ describe('positioned text items', () => {
   });
 
   it('still joins a capitalized word that wraps inside a glyph bullet, after a word that goes on, inside a list, or alone', async () => {
+    // The first item shows that this list ends its items with a full stop.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 712, { hasEOL: true }),
       at('- Trained a baseline that reached 0.87', 50, 500, 700, { hasEOL: true }),
       at('AUC on a held-out split.', 50, 110, 688, { hasEOL: true }),
       at('Compared saliency maps computed with', 50, 500, 676, { hasEOL: true }),
@@ -663,10 +676,202 @@ describe('positioned text items', () => {
       at('Sheet', 50, 25, 616),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
       '- Trained a baseline that reached 0.87 AUC on a held-out split.',
       'Compared saliency maps computed with Grad-CAM on chest X-rays.',
       'Coursework: Signals and Systems, Biomedical Imaging, Fluid Mechanics',
       'Automated the calibration log with a shared Google Sheet',
+    ]);
+  });
+
+  it('keeps a same-font role row, title or sentence apart from a glyph item whose last line fills the column', async () => {
+    // A glyph list ends at some line. After an item with no full stop, a
+    // capitalized line in the same font opens what follows, even when its
+    // first word would not have fitted and even when it ends a sentence.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Debugged intermittent CAN bus faults on a solar car battery management board with a logic analyzer', 50, 500, 712, { hasEOL: true }),
+      at('Software Engineering Intern, Greenhouse Analytics - May 2025 - Aug 2025', 50, 330, 700, { hasEOL: true }),
+      at('• Mentored three first-year students in data structures during weekly office hours in Siebel', 50, 500, 688, { hasEOL: true }),
+      at('Machine Learning Reading Group', 50, 140, 676, { hasEOL: true }),
+      at('• Tested a quantized MobileNet model on a Raspberry Pi and measured its latency against a GPU', 50, 500, 664, { hasEOL: true }),
+      at('Presented the results at the Undergraduate Research Symposium in April.', 50, 320, 652),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Debugged intermittent CAN bus faults on a solar car battery management board with a logic analyzer',
+      'Software Engineering Intern, Greenhouse Analytics - May 2025 - Aug 2025',
+      '• Mentored three first-year students in data structures during weekly office hours in Siebel',
+      'Machine Learning Reading Group',
+      '• Tested a quantized MobileNet model on a Raspberry Pi and measured its latency against a GPU',
+      'Presented the results at the Undergraduate Research Symposium in April.',
+    ]);
+  });
+
+  it('reads a full stop on the next line as the end of a glyph item only where glyph items end with one', async () => {
+    // One-line items here end with a full stop, so a capitalized line that
+    // ends one finishes the item before it, unless it is a row of its own.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 712, { hasEOL: true }),
+      at('- Trained a baseline that reached 0.87', 50, 500, 700, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 688, { hasEOL: true }),
+      at('- Compared three saliency methods for the clinical team and the lab manager', 50, 500, 676, { hasEOL: true }),
+      at('Campus Bus Tracker - React and Flask web app used by 200 students.', 50, 300, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Trained a baseline that reached 0.87 AUC on a held-out split.',
+      '- Compared three saliency methods for the clinical team and the lab manager',
+      'Campus Bus Tracker - React and Flask web app used by 200 students.',
+    ]);
+    // A lone item says nothing about how items end.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Reproduced the main experiment of a published reinforcement learning paper and wrote up two settings', 50, 500, 700, { hasEOL: true }),
+      at('Presented the results at the Undergraduate Research Symposium in April.', 50, 320, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Reproduced the main experiment of a published reinforcement learning paper and wrote up two settings',
+      'Presented the results at the Undergraduate Research Symposium in April.',
+    ]);
+  });
+
+  it('judges how glyph items end by the item ends, not by the rows or headings before them', async () => {
+    // "Organization<tab>Place" rows, project rows and headings come before
+    // items without saying how items end; the one-line item before the
+    // second item does.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Biomechanics Lab', 50, 160, 736), at('Urbana, IL', 490, 50, 736, { hasEOL: true }),
+      at('- Wrote a calibration script.', 50, 130, 724, { hasEOL: true }),
+      at('- Tested the script on twenty recordings.', 50, 190, 712, { hasEOL: true }),
+      at('Teaching Assistant, Statistics Department', 50, 190, 700), at('Champaign, IL', 480, 60, 700, { hasEOL: true }),
+      at('- Trained a baseline that reached 0.87', 50, 500, 688, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 676, { hasEOL: true }),
+      at('HONORS', 50, 50, 664, { hasEOL: true }),
+      at("- Dean's List for five semesters.", 50, 150, 652),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Biomechanics Lab\tUrbana, IL',
+      '- Wrote a calibration script.',
+      '- Tested the script on twenty recordings.',
+      'Teaching Assistant, Statistics Department\tChampaign, IL',
+      '- Trained a baseline that reached 0.87 AUC on a held-out split.',
+      'HONORS',
+      "- Dean's List for five semesters.",
+    ]);
+    // Nor do role rows dated without a separator.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Biomechanics Lab, Summer 2025', 50, 220, 724, { hasEOL: true }),
+      at('- Wrote a calibration script.', 50, 130, 712, { hasEOL: true }),
+      at('- Tested the script on twenty recordings.', 50, 190, 700, { hasEOL: true }),
+      at('Teaching Assistant, Statistics Department, 2024', 50, 230, 688, { hasEOL: true }),
+      at('- Trained a baseline that reached 0.87', 50, 500, 676, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Biomechanics Lab, Summer 2025',
+      '- Wrote a calibration script.',
+      '- Tested the script on twenty recordings.',
+      'Teaching Assistant, Statistics Department, 2024',
+      '- Trained a baseline that reached 0.87 AUC on a held-out split.',
+    ]);
+    // Project rows that end with a full stop do not make items without one
+    // read as finished by the next sentence.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Campus Bus Tracker - React and Flask web app.', 50, 210, 712, { hasEOL: true }),
+      at('- Built the backend in Flask', 50, 140, 700, { hasEOL: true }),
+      at('Soil Moisture Logger - custom PCB and firmware.', 50, 220, 688, { hasEOL: true }),
+      at('- Designed the logger board and wrote firmware that wakes up once an hour to save battery', 50, 500, 676, { hasEOL: true }),
+      at('Presented the results at the Undergraduate Research Symposium in April.', 50, 320, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Campus Bus Tracker - React and Flask web app.',
+      '- Built the backend in Flask',
+      'Soil Moisture Logger - custom PCB and firmware.',
+      '- Designed the logger board and wrote firmware that wakes up once an hour to save battery',
+      'Presented the results at the Undergraduate Research Symposium in April.',
+    ]);
+  });
+
+  it('keeps a no-glyph item that ends in C++, a short comma tail or a semicolon apart from the next item', async () => {
+    // ", SQL" or ", IL" ends a sentence with a short list or a place, and the
+    // next line is a sentence or a role row, not the rest of a list.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Graded weekly programming assignments for 180 students and wrote autograder tests in C++', 50, 500, 712, { hasEOL: true }),
+      at('Led two review sessions before each midterm exam', 50, 230, 700, { hasEOL: true }),
+      at('Built an internal dashboard that tracks weekly sales with Python, SQL and Tableau, Power BI', 50, 500, 688, { hasEOL: true }),
+      at('Presented findings to the regional director', 50, 200, 676, { hasEOL: true }),
+      at('Drafted grant budget tables for a successful NIH R21 application in Champaign, IL', 50, 500, 664, { hasEOL: true }),
+      at('Research Intern, Microfluidics Lab', 50, 160, 652, { hasEOL: true }),
+      at('Ran weekly code reviews for the robotics team and kept notes on recurring bugs;', 50, 500, 640, { hasEOL: true }),
+      at('Mentored two new members', 50, 120, 628, { hasEOL: true }),
+      at('Languages: Python, Java, C++, SQL, R, Go, Rust, MATLAB, Julia, Swift, Kotlin', 50, 500, 616, { hasEOL: true }),
+      at('Frameworks: React, Flask, Django', 50, 150, 604, { hasEOL: true }),
+      at('Tools: Git, Docker, Jira, Tableau, Excel, Stata, SPSS, LaTeX, Figma, Power BI', 50, 500, 592, { hasEOL: true }),
+      at('Presented findings to the regional director', 50, 200, 580, { hasEOL: true }),
+      at('Wrote ETL jobs in Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker', 50, 500, 568, { hasEOL: true }),
+      at('Research Intern, Microfluidics Lab', 50, 160, 556),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Graded weekly programming assignments for 180 students and wrote autograder tests in C++',
+      'Led two review sessions before each midterm exam',
+      'Built an internal dashboard that tracks weekly sales with Python, SQL and Tableau, Power BI',
+      'Presented findings to the regional director',
+      'Drafted grant budget tables for a successful NIH R21 application in Champaign, IL',
+      'Research Intern, Microfluidics Lab',
+      'Ran weekly code reviews for the robotics team and kept notes on recurring bugs;',
+      'Mentored two new members',
+      'Languages: Python, Java, C++, SQL, R, Go, Rust, MATLAB, Julia, Swift, Kotlin',
+      'Frameworks: React, Flask, Django',
+      'Tools: Git, Docker, Jira, Tableau, Excel, Stata, SPSS, LaTeX, Figma, Power BI',
+      'Presented findings to the regional director',
+      'Wrote ETL jobs in Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker',
+      'Research Intern, Microfluidics Lab',
+    ]);
+  });
+
+  it('still joins a line after a lone plus, and a list that wraps inside a name', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Built the campus bus tracker as a React +', 50, 500, 712, { hasEOL: true }),
+      at('Flask web app used by about 200 students', 50, 200, 700, { hasEOL: true }),
+      at('Skills: Python, MATLAB, NumPy, SolidWorks, Power', 50, 500, 688, { hasEOL: true }),
+      at('BI, Tableau, Excel', 50, 90, 676, { hasEOL: true }),
+      at('Relevant coursework: Introduction to Computer Science, Data', 50, 500, 664, { hasEOL: true }),
+      at('Structures and Algorithms, Discrete Mathematics', 50, 210, 652),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Built the campus bus tracker as a React + Flask web app used by about 200 students',
+      'Skills: Python, MATLAB, NumPy, SolidWorks, Power BI, Tableau, Excel',
+      'Relevant coursework: Introduction to Computer Science, Data Structures and Algorithms, Discrete Mathematics',
+    ]);
+  });
+
+  it('keeps a line that opens with a mixed-case name, an ordinal or a model number apart', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Ported a legacy spreadsheet of lab inventory into a searchable web page for four research groups', 50, 500, 712, { hasEOL: true }),
+      at('iOS app that reminds students of office hours', 50, 210, 700, { hasEOL: true }),
+      at('Designed a printed circuit board for a soil moisture logger and wrote firmware for long battery life', 50, 500, 688, { hasEOL: true }),
+      at('3D-printed a prosthetic hand for a local clinic', 50, 220, 676, { hasEOL: true }),
+      at('Organized weekly study sessions for an introductory statistics course and wrote practice problems', 50, 500, 664, { hasEOL: true }),
+      at('2nd place at HackIllinois for an accessibility tool', 50, 230, 652),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Ported a legacy spreadsheet of lab inventory into a searchable web page for four research groups',
+      'iOS app that reminds students of office hours',
+      'Designed a printed circuit board for a soil moisture logger and wrote firmware for long battery life',
+      '3D-printed a prosthetic hand for a local clinic',
+      'Organized weekly study sessions for an introductory statistics course and wrote practice problems',
+      '2nd place at HackIllinois for an accessibility tool',
+    ]);
+  });
+
+  it('keeps a space between runs painted out of order on one line', async () => {
+    // A right-floated date printed before its title: PDF.js jumps back on
+    // the same baseline without a line end.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Jan 2026 - Present', 491.5, 84.5, 700), at('Research Assistant, Health Imaging Lab', 36, 177.8, 700, { hasEOL: true }),
+      at('Built a PyTorch pipeline for chest X-ray images.', 50, 210, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Jan 2026 - Present Research Assistant, Health Imaging Lab',
+      'Built a PyTorch pipeline for chest X-ray images.',
     ]);
   });
 
@@ -735,11 +940,41 @@ describe('positioned CJK text', () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve({
       numPages: 1, destroy: async () => {},
       getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        // The first item shows that this list ends its items with 。.
+        run('- 维护实验室网站。', 50, 90, 714, 'f1', true),
         run('- 基于深度学习的医学影像', 50, 120, 700, 'f1'), run('分割系统：使⽤', 170, 380, 700, 'f2', true),
         run('模型复现', 50, 40, 686, 'f3'), run('⽂档。', 90, 30, 686, 'f2'),
       ] as never }) }),
     } as MockPdf) });
-    expect((await parseResumePDF(fakeFile())).raw_text).toBe('- 基于深度学习的医学影像分割系统：使用模型复现文档。');
+    expect((await parseResumePDF(fakeFile())).raw_text).toBe('- 维护实验室网站。\n- 基于深度学习的医学影像分割系统：使用模型复现文档。');
+  });
+
+  it('keeps Chinese items that end without 。 apart, under a glyph or none', async () => {
+    // Chinese wraps between any two characters and has no capitals, so a
+    // line that fills the column says nothing about where the next one
+    // belongs: the longest item would otherwise absorb the next.
+    const run = (str: string, y: number, width = 500, hasEOL = true) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, 50, y], fontName: 'f1', dir: 'ltr', hasEOL,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        run('组织校园编程工作坊，面向一百五十名同学讲授 Python 基础', 712),
+        run('参与医学影像标注项目，按照临床医生制定的规范标注四千张图像', 700),
+        run('• 负责后端接口设计与数据库建模，实现用户、商品与订单模块', 688),
+        run('本科生研究助理，生物力学实验室 2024.09 - 2025.05', 676, 260),
+        run('• 协助导师完成文献综述并整理实验数据，撰写组会报告', 664),
+        run('校园活动', 652, 40, false),
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '组织校园编程工作坊，面向一百五十名同学讲授 Python 基础',
+      '参与医学影像标注项目，按照临床医生制定的规范标注四千张图像',
+      '• 负责后端接口设计与数据库建模，实现用户、商品与订单模块',
+      '本科生研究助理，生物力学实验室 2024.09 - 2025.05',
+      '• 协助导师完成文献综述并整理实验数据，撰写组会报告',
+      '校园活动',
+    ]);
   });
 });
 

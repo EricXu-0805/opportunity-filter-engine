@@ -77,3 +77,99 @@ export function resumeContactLine(line: string): boolean {
     .replace(/[|•·,;:/()–—-]+/gu, ' ').trim();
   return (rest ? rest.split(/\s+/u).length : 0) <= (personal ? 6 : 2);
 }
+
+// Where a visual line break falls inside an item. The PDF reflow
+// (pdf-parser.ts) and text stored before it, which keeps a row per visual
+// line, read the words at a break the same way.
+
+const SENTENCE_END = /[.!?。！？]["'”’)\]）」』]*$/u;
+// A wrapped "Aug 2024 - May 2028" puts the range dash at the start of the next
+// line, where it reads like a bullet. A dash before words stays a bullet.
+const DASH_CONTINUATION = /^[-–—]\s+(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?|spring|summer|fall|autumn|winter)\s+\d{4}|present\b|current\b)/iu;
+// A line that goes on: a word broken at its hyphen, a comma, colon or opening
+// bracket (full-width too), a spaced dash or lone "+" ("React +"; the one in
+// "C++" ends a word), or a word that needs more after it. A ";" can end an item.
+const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,:&/(，、：（《「『]|\s[-–—+]|(?:^|\s)(?:and|or|of|the|a|an|to|for|in|on|with|by|at|from|as|into|via|using|including|across|between|than|that|which|while|over|under|per))$/u;
+// A number that a wrap moved down is a plain count or measure ("12,000",
+// "0.87", "257)"), not a year, an ordinal or "3D-printed".
+const CONTINUES_BEFORE = /^(?:\p{Ll}(?![\p{L}\p{N}]*\p{Lu})|[&()%]|(?!\d{4}\b)\d[\d,.]*%?(?=[\s)]|$))/u;
+// A break a word or two after a comma falls inside a list item ("Signals and
+// Systems, Biomedical" / "Imaging"); a comma further back says nothing.
+const LIST_TAIL = /,\s+\S+(?:\s+\S+)?$/u;
+const LABEL = /^[^,:：]{1,40}(?::\s|：)/u;
+// A row of its own rather than the rest of a sentence: a title and its
+// description split by a spaced dash or bar, or a label ("Coursework: …").
+const ROW = new RegExp(String.raw`\s[-–—|]\s|${LABEL.source}`, 'u');
+const YEAR = /\b(?:19|20)\d{2}\b/u;
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+// CJK text and its full-width punctuation wrap with no space at the break.
+const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
+
+/** A line that opens an item with a bullet glyph or number. */
+export function glyphLine(line: string): boolean {
+  return BULLET_LINE.test(line) && !DASH_CONTINUATION.test(line.trim());
+}
+
+/** A line's first word; in CJK text, its first character. */
+export function firstWord(line: string): string {
+  const head = Array.from(line)[0];
+  return CJK.test(head) ? head : line.split(/\s+/u)[0];
+}
+
+/** Text that always starts a new line: a bullet, a heading on either side,
+ *  a finished sentence, or contact details at the break. */
+export function lineBreakText(before: string, after: string): boolean {
+  const lastWord = before.split(/\s+/u).pop()!;
+  const first = firstWord(after);
+  return glyphLine(after) || resumeSectionHeading(before) !== null || resumeSectionHeading(after) !== null
+    || SENTENCE_END.test(before) || RESUME_EMAIL.test(lastWord) || RESUME_URL.test(lastWord)
+    || RESUME_EMAIL.test(first) || RESUME_URL.test(first) || RESUME_PHONE.exec(after)?.index === 0;
+}
+
+/** A run of short comma-separated names ("Imaging, Fluid Mechanics"), after
+ *  a label and a glyph. An item that ends in ", SQL" or ", IL" is a sentence
+ *  with a short tail, and the next item is a sentence too. */
+function listLike(line: string): boolean {
+  return line.replace(BULLET_LINE, '').replace(LABEL, '').split(/,\s+/u)
+    .every((part) => part.trim().split(/\s+/u).length <= 4);
+}
+
+/** The words at the break say the line goes on: a word or a list that goes
+ *  on, or a next line that starts in lowercase or with a plain number. */
+export function wrapEvidence(before: string, after: string): boolean {
+  return CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after)
+    || (LIST_TAIL.test(before) && listLike(before) && listLike(after) && !LABEL.test(after));
+}
+
+/** Without such words, the next line could just as well open the next item,
+ *  a role row or a subheading: a list without glyphs leaves nothing in the
+ *  text where an item starts, and a glyph list ends at some line. It still
+ *  finishes the line before when it is a lone widowed word, or, in a glyph
+ *  list whose items end with a full stop, when it ends the sentence and is
+ *  not a row of its own. */
+export function wrapsWithoutEvidence(after: string, periodItem: boolean): boolean {
+  const widow = CJK.test(Array.from(after)[0]) ? Array.from(after).length <= 3 : !/\s/u.test(after);
+  return widow || (periodItem && SENTENCE_END.test(after) && !ROW.test(after));
+}
+
+/** Whether glyph items end with a full stop, judged by the lines right before
+ *  a glyph line: the end of the previous item, unless it is a heading or a
+ *  row (a column gap, a title and its description, or a year with no full
+ *  stop). A lone item says nothing. */
+export function glyphItemsEndWithStop(lines: readonly string[], tabular: (index: number) => boolean): boolean {
+  let stops = 0;
+  for (let index = 1; index < lines.length; index++) {
+    const end = lines[index - 1].trim();
+    if (!glyphLine(lines[index]) || !end || resumeSectionHeading(end) || tabular(index - 1) || ROW.test(end)) continue;
+    if (SENTENCE_END.test(end)) stops += 1;
+    else if (!YEAR.test(end)) stops -= 1;
+  }
+  return stops > 0;
+}
+
+/** What joins a wrapped line to the one before: nothing inside a word broken
+ *  at its hyphen or inside CJK text, a space otherwise. */
+export function wrapJoin(before: string, after: string): string {
+  if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^[\p{L}\p{N}]/u.test(after)) return '';
+  return CJK_BREAK.test(Array.from(before).pop()!) && CJK_BREAK.test(Array.from(after)[0]) ? '' : ' ';
+}

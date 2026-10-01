@@ -1,7 +1,7 @@
 import type { ResumeParseResponse } from './types';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_PHONE, RESUME_URL,
-  resumeSectionHeading, resumeTextCharacters,
+  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, MAX_RESUME_TEXT_CHARACTERS,
+  resumeTextCharacters, wrapEvidence, wrapJoin, wrapsWithoutEvidence,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
@@ -168,19 +168,7 @@ const NARROW = 20;
 const SLACK = 1.3;
 const PITCH_SLACK = 1.15;
 
-const SENTENCE_END = /[.!?。！？]["'”’)\]）」』]*$/u;
 const BULLET_GLYPH = /^[•●▪◦‣∙·*–—\-■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]$/u;
-// A wrapped "Aug 2024 - May 2028" puts the range dash at the start of the next
-// line, where it reads like a bullet. A dash before words stays a bullet.
-const DASH_CONTINUATION = /^[-–—]\s+(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?|spring|summer|fall|autumn|winter)\s+\d{4}|present\b|current\b)/iu;
-const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,;:&/(+]|\s[-–—]|(?:^|\s)(?:and|or|of|the|a|an|to|for|in|on|with|by|at|from|as|into|via|using|including|across|between|than|that|which|while|over|under|per))$/u;
-const CONTINUES_BEFORE = /^(?:\p{Ll}|[&()%]|\d(?!\d{3}\b))/u;
-// A break a word or two after a comma falls inside a list item ("Signals and
-// Systems, Biomedical" / "Imaging"); a comma further back says nothing.
-const LIST_TAIL = /,\s+\S+(?:\s+\S+)?$/u;
-const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
-// CJK text and its full-width punctuation wrap with no space at the break.
-const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
 const WRAPPABLE = /\S\s+\S|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]./u;
 // Fonts that map CJK glyphs to Kangxi radicals instead of the ideographs
 // ("使⽤" for "使用") print correctly but extract as different characters.
@@ -232,29 +220,25 @@ function shapeOf(line: VisualLine, text: string): LineShape | null {
  *  real one. A wrap continues the same paragraph: same style, size and
  *  alignment, ordinary line pitch, and the previous line stops where the next
  *  line's first word could not have fitted. Bullets, headings, table-like
- *  rows, contact details and finished sentences always start a new line.
- *  `bulletItem` says the previous line belongs to an item that opened with a
- *  bullet glyph or number, so the next item will open with one too. */
+ *  rows, contact details and finished sentences always start a new line, and
+ *  the words at the break must carry the line on (resume-input.ts).
+ *  `periodItem` says the previous line belongs to an item that opened with a
+ *  bullet glyph or number, on a page whose glyph items end with a full stop,
+ *  so a next line that ends a sentence finishes that item. */
 function wrapSeparator(
-  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, bulletItem: boolean,
+  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
 ): string | null {
   const prev = shapes[index - 1];
   const next = shapes[index];
   const before = texts[index - 1].trim();
   const after = texts[index].trim();
-  if (!prev || !next || !before || !after || prev.tabular || next.tabular) return null;
-  if ((BULLET_LINE.test(after) && !DASH_CONTINUATION.test(after))
-    || resumeSectionHeading(before) || resumeSectionHeading(after)
-    || ![...next.fonts].some((font) => prev.fonts.has(font))
-    || Math.abs(prev.size - next.size) > 0.05 * prev.size) return null;
+  if (!prev || !next || !before || !after || prev.tabular || next.tabular || lineBreakText(before, after)) return null;
+  if (![...next.fonts].some((font) => prev.fonts.has(font)) || Math.abs(prev.size - next.size) > 0.05 * prev.size) return null;
   const step = prev.baseline - next.baseline;
   if (step < 0.8 * prev.size || step > PITCH_SLACK * (pitch.get(Math.round(prev.size * 2)) ?? Infinity)) return null;
   if (Math.abs(next.left - prev.left) > ALIGN * prev.size && Math.abs(next.left - prev.textLeft) > ALIGN * prev.size) return null;
-  const lastWord = before.split(/\s+/u).pop()!;
-  const head = Array.from(after)[0];
-  const firstWord = CJK.test(head) ? head : after.split(/\s+/u)[0];
-  if (SENTENCE_END.test(before) || RESUME_EMAIL.test(lastWord) || RESUME_URL.test(lastWord)
-    || RESUME_EMAIL.test(firstWord) || RESUME_URL.test(firstWord) || RESUME_PHONE.exec(after)?.index === 0) return null;
+  const evidence = wrapEvidence(before, after);
+  if (!evidence && !wrapsWithoutEvidence(after, periodItem)) return null;
   // The column's right edge, from the lines aligned with this one. A line
   // with no space in it cannot wrap and may overflow (a long email address).
   let left = prev.left;
@@ -272,20 +256,13 @@ function wrapSeparator(
   // goes on, a generous estimate decides; otherwise the plain one must.
   const room = right - prev.right;
   const space = SPACE * next.size;
-  const word = Array.from(firstWord).length * (next.right - next.left) / Array.from(after).length;
-  const evidence = CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || LIST_TAIL.test(before);
-  // Graphic list bullets and one-paragraph-per-item lists leave nothing in
-  // the text where the next item starts, and a capitalized first word that
-  // did not fit is just as likely to open it. Only the words themselves, or
-  // a lone widowed word, carry such a line on.
-  if (!bulletItem && /^\p{Lu}/u.test(after) && /\s/u.test(after) && !evidence) return null;
+  const word = Array.from(firstWord(after)).length * (next.right - next.left) / Array.from(after).length;
   if (right - left < NARROW * prev.size) {
     // A narrow column of short items ("Python" / "SolidWorks") is a list, not
     // a paragraph, unless the text itself says it goes on.
     if (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left) || !evidence || space + word * SLACK <= room) return null;
   } else if (space + word <= room && !(evidence && space + word * SLACK > room)) return null;
-  if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^[\p{L}\p{N}]/u.test(after)) return '';
-  return CJK_BREAK.test(Array.from(before).pop()!) && CJK_BREAK.test(head) ? '' : ' ';
+  return wrapJoin(before, after);
 }
 
 /** Page text in PDF.js reading order. Runs are spaced by their geometry, so a
@@ -306,7 +283,9 @@ function pageText(items: readonly unknown[]): string {
     const gap = run && last && Math.abs(run.y - last.y) <= Math.max(run.size, last.size) / 2
       ? run.x - (last.x + last.width) : null;
     const size = run && last ? Math.max(run.size, last.size) : 0;
-    const touching = gap !== null && gap <= TOUCH * size;
+    // A run that starts far left of where the last one ended is another
+    // field painted out of order (a right-floated date before its title).
+    const touching = gap !== null && Math.abs(gap) <= TOUCH * size;
     if (text && !/\s$/.test(text) && item.str && !/^\s/.test(item.str) && !touching) {
       text += gap !== null && gap > WIDE * size ? '\t' : ' ';
     }
@@ -339,12 +318,14 @@ function pageText(items: readonly unknown[]): string {
     const key = Math.round(prev.size * 2);
     if (step >= 0.8 * prev.size && step < (pitch.get(key) ?? Infinity)) pitch.set(key, step);
   }
+  const glyph = texts.map(glyphLine);
+  const periodItems = glyphItemsEndWithStop(texts, (index) => !!shapes[index]?.tabular);
   let out = texts[0];
-  let bulletItem = BULLET_LINE.test(texts[0]);
+  let bulletItem = glyph[0];
   for (let index = 1; index < texts.length; index++) {
-    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem);
+    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems);
     // A joined line stays in the item it continues; any other line opens one.
-    if (separator === null) bulletItem = BULLET_LINE.test(texts[index]) && !DASH_CONTINUATION.test(texts[index].trim());
+    if (separator === null) bulletItem = glyph[index];
     out += separator ?? '\n';
     out += texts[index];
   }

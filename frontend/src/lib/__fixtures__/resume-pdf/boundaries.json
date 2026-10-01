@@ -1,0 +1,59 @@
+[
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "EXPERIENCE"],
+      ["row", "Research Intern, Microfluidics Lab - Jun 2024 - Aug 2024"],
+      ["item", "• Wrote a grading script that runs student submissions in isolated containers and records time and memory used for each test"],
+      ["item", "• Rebuilt the volunteer scheduling tool so coordinators can swap shifts from their phones and see open slots"],
+      ["row", "Teaching Assistant, Statistics Department - Aug 2024 - May 2025"],
+      ["item", "• Trained a small convolutional network to sort recycling photos taken at the two dining hall bins every week"],
+      ["row", "Machine Learning Reading Group"],
+      ["item", "• Designed a printed circuit board for a soil moisture logger and wrote firmware that wakes up once an hour"],
+      ["row", "Campus Bus Tracker - React and Flask web app used by about 200 students."],
+      ["item", "• Interviewed twenty transit riders about late buses and summarized their answers in a two-page city memo"],
+      ["row", "Presented the results at the Undergraduate Research Symposium in April."],
+      ["heading", "Honors & Awards"],
+      ["item", "• Dean's List for five semesters"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "ACTIVITIES"],
+      ["row", "Software Engineering Intern, Prairie Analytics"],
+      ["li", "Analyzed survey responses from 1,200 undergraduates about rent and commute costs with Python, SQL"],
+      ["li", "Designed, built and tested a line-following robot for the intro course"],
+      ["li", "Built an inventory dashboard that the campus food pantry checks before every delivery in Champaign, IL"],
+      ["li", "Translated onboarding documents from Spanish to English for a legal clinic"],
+      ["li", "Graded weekly programming assignments for 180 students and wrote the autograder test suites in C++"],
+      ["li", "Led two review sessions before each midterm exam"],
+      ["li", "Ran weekly code reviews for the twelve members of the robotics team and kept notes on recurring bugs;"],
+      ["li", "Mentored two new members through their first pull requests"],
+      ["li", "Rewrote the student radio station's scheduling app so the hosts can trade time slots using React, Node.js"],
+      ["li", "Python, SQL, Tableau"],
+      ["row", "Data Analyst, City of Champaign"],
+      ["p", "Analyzed survey responses from 1,200 undergraduates about rent and commuting costs with Python, SQL"],
+      ["p", "Designed, built and tested a line-following robot for the intro course"],
+      ["p", "Built an inventory dashboard that the campus food pantry checks before every shipment in Champaign, IL"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["p", "Rewrote the student radio station's scheduling app so that hosts can trade their slots using React, Node.js"],
+      ["p", "Python, SQL, Tableau"]
+    ]
+  },
+  {
+    "font": "STHeiti,sans-serif",
+    "lines": [
+      ["heading", "实习经历"],
+      ["row", "软件工程实习生，草原数据分析公司 2025.06 - 2025.08"],
+      ["item", "• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块，并编写部署文档"],
+      ["item", "• 在暑期实习中重写夜间数据处理任务，使运行时间从四十分钟降到九分钟，并为关键步骤补充了监控与报警"],
+      ["row", "本科生研究助理，生物力学实验室 2024.09 - 2025.05"],
+      ["item", "• 参与医学影像标注项目，按照临床医生制定的规范标注了四千张图像，并整理标注规范中的常见问题与示例"],
+      ["row", "校园活动"],
+      ["p", "组织校园编程工作坊，面向一百五十名同学讲授 Python 基础，并准备课后练习题和答疑记录供大家复习使用"],
+      ["p", "参与医学影像标注项目，按照临床医生制定的规范标注四千张图像，并整理标注规范中的常见问题与示例说明"],
+      ["p", "在暑期实习中重写夜间数据处理任务，运行时间从四十分钟降到九分钟，并为关键步骤补充了监控与报警规则"]
+    ]
+  }
+]
