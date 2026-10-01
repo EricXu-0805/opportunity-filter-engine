@@ -502,7 +502,9 @@ def embed_docx_fonts(document, programs, deadline=None):
         root.append(font)
     table._blob = etree.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
     settings = document.settings.element
-    for tag, value in [('embedTrueTypeFonts', 'true'), ('saveSubsetFonts', 'false')]:
+    # Saved from Word for Mac with saveSubsetFonts false, a 0.8 MB export became 6.2 MB of whole
+    # system fonts; with true, 49 KB.
+    for tag, value in [('embedTrueTypeFonts', 'true'), ('saveSubsetFonts', 'true')]:
         node = settings.find(qn('w:' + tag))
         if node is None:
             node = OxmlElement('w:' + tag)

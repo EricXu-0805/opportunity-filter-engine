@@ -276,8 +276,19 @@ def test_docx_embedded_font_subsets_relationships_and_editable_unicode():
             assert font['name'].getDebugName(0) and font['name'].getDebugName(13)
     settings = etree.fromstring(z.read('word/settings.xml'))
     assert settings.find(f'{{{W}}}embedTrueTypeFonts').get(f'{{{W}}}val') == 'true'
-    assert settings.find(f'{{{W}}}saveSubsetFonts').get(f'{{{W}}}val') == 'false'
+    assert settings.find(f'{{{W}}}saveSubsetFonts').get(f'{{{W}}}val') == 'true'
     assert not any(name.endswith(('vbaProject.bin', '.html')) for name in z.namelist())
+
+
+@pytest.mark.parametrize('text,embeds', [('张三 Student', True), ('Jane Doe 😀', True), ('Jane Doe — Résumé', False)])
+def test_docx_settings_have_word_save_only_the_font_subsets_it_uses(text, embeds):
+    # With saveSubsetFonts false, Word for Mac 16.113.3 saved the walk draft plus one Chinese skill
+    # as 6,214,528 B, embedding whole Times New Roman, Calibri, Cambria, Courier and Symbol; true: 49,483 B.
+    # A file that embeds no font sets neither, so Word's default (off) applies.
+    settings = etree.fromstring(zipfile.ZipFile(io.BytesIO(renderer.render_export(sample(text), 'docx'))).read('word/settings.xml'))
+    values = [(etree.QName(node).localname, node.get(f'{{{W}}}val')) for node in settings
+              if etree.QName(node).localname in ('embedTrueTypeFonts', 'embedSystemFonts', 'saveSubsetFonts')]
+    assert values == ([('embedTrueTypeFonts', 'true'), ('saveSubsetFonts', 'true')] if embeds else [])
 
 
 COMMON_HANZI = '的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感'
